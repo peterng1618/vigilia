@@ -146,7 +146,31 @@ Alternatives if the approximation is rejected:
    overlay but never a bitmap substitute.
 2. Restrict gradients to non-gauge families.
 
+### Known engine gap: per-value thresholds on a line series
+
+Found 2026-09-12 while building the line adapter. A line's colour is a property
+of the **whole series**, so a `thresholds` fill — "above 80 °C the line turns
+red" — is not expressible the way it is on a gauge ring, where `axisLine`
+segments map onto value bands natively.
+
+Current behaviour: `toEngineColor` reduces a thresholds fill to its **top band**
+colour, so nothing is invented and the result is at least deterministic.
+
+Alternatives:
+
+1. `visualMap` with `pieces` — ECharts can recolour a line by value range this
+   way. Needs verification that it composes with our typed-settings boundary and
+   does not leak raw options into the theme format.
+2. Split one authored series into several engine series, one per band.
+3. Restrict thresholds to gauge and bar families, and use a solid stroke on lines.
+
+Note the inverse relationship with the gauge gap: gradients work natively on a
+line (cartesian) and not on a gauge (arc); thresholds work natively on a gauge
+(axis bands) and not on a line (whole-series colour). Neither family is strictly
+more capable — the matrix has to record both.
+
 - [ ] Human decision recorded on the gauge-gradient alternative
+- [ ] Human decision recorded on the line-thresholds alternative
 - [ ] Full family × style matrix authored
 - [ ] Every applicable cell has control + JSON + preset + fixture
 

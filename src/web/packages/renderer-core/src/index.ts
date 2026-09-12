@@ -44,3 +44,20 @@ export {
   mixHex,
   toColorSegments,
 } from './charts/gauge.js';
+
+export type {
+  EngineColor,
+  Interpolation,
+  LinearGradientColor,
+  LineOption,
+  LineSettings,
+  SeriesInput,
+  SeriesPoint,
+} from './charts/line.js';
+
+export {
+  buildLineOption,
+  defaultLineSettings,
+  toEngineColor,
+  toSeriesPoints,
+} from './charts/line.js';
