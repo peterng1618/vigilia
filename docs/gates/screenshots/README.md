@@ -9,8 +9,16 @@ Refresh them deliberately:
 ```bash
 cd src/web
 npx vite build packages/player
-VIGILIA_CAPTURE=1 npx playwright test -g "captures a screenshot"
+VIGILIA_CAPTURE=1 npx playwright test -g "captures a screenshot" --workers=1
 ```
+
+`--workers=1` is required, not tidiness: the desktop and phone projects
+otherwise write into this directory concurrently and Windows intermittently
+fails the open with `UNKNOWN`. Ordinary test runs are unaffected — they write to
+per-project directories under `test-results/`.
+
+The build step is not optional either. The harness previews the **built** bundle,
+so without it you capture the previous build.
 
 ## These are not baselines
 
