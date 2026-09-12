@@ -29,6 +29,9 @@ import {
  * when it holds a literal, **make local** when it holds a reference. That is
  * the explicit choice §75 requires, and the row always says which state it is
  * in rather than showing a bare value whose origin is ambiguous.
+ *
+ * Switching *to* a global is a two-step choice, and the intermediate step is
+ * held here rather than in the document — see {@link PendingRefs}.
  */
 
 export interface InspectorPanel {
@@ -40,6 +43,30 @@ export interface InspectorPanel {
 export interface InspectorCallbacks {
   /** The author changed a field. */
   readonly onChange: (key: string, change: FieldChange) => void;
+}
+
+/**
+ * Rows switched to "use global" whose token has not been chosen yet.
+ *
+ * Deliberately UI-local. The obvious implementation is to write
+ * `{ ref: 'palette.' }` immediately and let the row re-render as a picker — but
+ * that puts a **dangling reference** in the document and an undo entry in the
+ * history for a choice the author has not finished making, and an interrupted
+ * click leaves the theme referring to a token that does not exist. §75's
+ * conversion is not complete until a token is picked, so nothing is committed
+ * until then.
+ *
+ * Cleared when the selection changes, because a pending row belongs to the node
+ * it was opened on.
+ */
+interface PendingRefs {
+  has(key: string): boolean;
+  /** Open the picker for a row, without touching the document. */
+  begin(key: string): void;
+  /** A token was chosen: the resulting document change redraws the panel. */
+  end(key: string): void;
+  /** Backed out without choosing: nothing changed, so redraw explicitly. */
+  cancel(key: string): void;
 }
 
 export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks): InspectorPanel {
@@ -58,28 +85,72 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
 
   host.append(root);
 
-  return {
-    root,
+  const pendingKeys = new Set<string>();
+  let last: { sections: readonly InspectorSection[]; globals: Globals } | undefined;
 
-    render(sections: readonly InspectorSection[], globals: Globals): void {
+  const draw = (sections: readonly InspectorSection[], globals: Globals): void => {
       // Rebuilt wholesale on every render. A diffing panel would keep focus
       // through a re-render, which matters — but the scene re-renders on a 1 Hz
       // data tick, and rebuilding then would steal focus mid-typing. Guarded
       // instead by only re-rendering the panel when the selection or document
       // changes, which the caller decides.
-      root.textContent = '';
+    root.textContent = '';
 
-      if (sections.length === 0) {
-        const empty = document.createElement('p');
-        empty.textContent = 'Nothing selected.';
-        empty.style.cssText = 'color:#8a97ab;margin:8px 2px';
-        root.append(empty);
+    if (sections.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Nothing selected.';
+      empty.style.cssText = 'color:#8a97ab;margin:8px 2px';
+      root.append(empty);
+      return;
+    }
+
+    for (const section of sections) {
+      root.append(renderSection(section, globals, callbacks, pending));
+    }
+  };
+
+  const pending: PendingRefs = {
+    has: (key) => pendingKeys.has(key),
+
+    begin(key) {
+      pendingKeys.add(key);
+
+      // Redrawn from the last input rather than waiting for a document change,
+      // because there is no document change — that is the whole point.
+      if (last !== undefined) {
+        draw(last.sections, last.globals);
+      }
+    },
+
+    end(key) {
+      pendingKeys.delete(key);
+    },
+
+    cancel(key) {
+      if (!pendingKeys.delete(key) || last === undefined) {
         return;
       }
 
-      for (const section of sections) {
-        root.append(renderSection(section, globals, callbacks));
+      draw(last.sections, last.globals);
+    },
+  };
+
+  return {
+    root,
+
+    render(sections: readonly InspectorSection[], globals: Globals): void {
+      const keys = new Set(sections.flatMap((section) => section.fields.map((f) => f.key)));
+
+      // A pending row belongs to the node it was opened on. Anything that is no
+      // longer on screen is abandoned.
+      for (const key of pendingKeys) {
+        if (!keys.has(key)) {
+          pendingKeys.delete(key);
+        }
       }
+
+      last = { sections, globals };
+      draw(sections, globals);
     },
 
     dispose(): void {
@@ -92,6 +163,7 @@ function renderSection(
   section: InspectorSection,
   globals: Globals,
   callbacks: InspectorCallbacks,
+  pending: PendingRefs,
 ): HTMLElement {
   const wrapper = document.createElement('section');
   wrapper.dataset['vigiliaSection'] = section.title;
@@ -111,7 +183,7 @@ function renderSection(
   wrapper.append(heading);
 
   for (const field of section.fields) {
-    wrapper.append(renderField(field, globals, callbacks));
+    wrapper.append(renderField(field, globals, callbacks, pending));
   }
 
   return wrapper;
@@ -121,6 +193,7 @@ function renderField(
   field: FieldDescriptor,
   globals: Globals,
   callbacks: InspectorCallbacks,
+  pending: PendingRefs,
 ): HTMLElement {
   const row = document.createElement('div');
   row.dataset['vigiliaField'] = field.key;
@@ -134,8 +207,16 @@ function renderField(
   // A reference shows the token it points at, and the value it resolves to, so
   // the author can see both what they picked and what it looks like.
   if (field.source === 'ref' && field.globalGroup !== undefined) {
-    row.append(referencePicker(field, globals, callbacks));
-    row.append(modeButton('make local', field, callbacks, 'literal'));
+    row.append(referencePicker(field, globals, callbacks, pending));
+    row.append(modeButton('make local', field, callbacks, 'literal', pending));
+    return row;
+  }
+
+  // Switched to a global, token not chosen yet: a picker with nothing selected,
+  // and the same button to back out. No document change has happened.
+  if (field.globalGroup !== undefined && pending.has(field.key)) {
+    row.append(referencePicker(field, globals, callbacks, pending));
+    row.append(modeButton('make local', field, callbacks, 'literal', pending));
     return row;
   }
 
@@ -147,7 +228,7 @@ function renderField(
     // No button when the document defines no tokens of that kind: offering
     // "use global" that opens an empty list is worse than not offering it.
     if (options.length > 0) {
-      row.append(modeButton('use global', field, callbacks, 'ref'));
+      row.append(modeButton('use global', field, callbacks, 'ref', pending));
     }
   }
 
@@ -262,6 +343,7 @@ function referencePicker(
   field: FieldDescriptor,
   globals: Globals,
   callbacks: InspectorCallbacks,
+  pending: PendingRefs,
 ): HTMLElement {
   const group = document.createElement('div');
   group.style.cssText = 'flex:1;display:flex;gap:4px;align-items:center;min-width:0';
@@ -270,6 +352,16 @@ function referencePicker(
   select.dataset['vigiliaRef'] = field.key;
   select.disabled = field.readOnly === true;
   select.style.cssText = inputStyle();
+
+  // Nothing chosen yet: an explicit prompt, not the first token pre-selected.
+  // A pre-selected token would mean clicking "use global" and clicking away
+  // silently picked one.
+  if (field.source !== 'ref') {
+    const prompt = document.createElement('option');
+    prompt.value = '';
+    prompt.textContent = 'choose a token…';
+    select.append(prompt);
+  }
 
   for (const option of globalOptions(globals, field.globalGroup!)) {
     const element = document.createElement('option');
@@ -290,6 +382,11 @@ function referencePicker(
 
   select.value = field.ref ?? '';
   select.addEventListener('change', () => {
+    if (select.value === '') {
+      return;
+    }
+
+    pending.end(field.key);
     callbacks.onChange(field.key, { kind: 'ref', ref: select.value });
   });
 
@@ -316,6 +413,7 @@ function modeButton(
   field: FieldDescriptor,
   callbacks: InspectorCallbacks,
   target: 'ref' | 'literal',
+  pending: PendingRefs,
 ): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
@@ -339,17 +437,25 @@ function modeButton(
       // "Make local" freezes the token's CURRENT value into the element, which
       // is what §75's conversion means — and what an author expects: the
       // element keeps looking the same and stops following the token.
-      callbacks.onChange(field.key, {
-        kind: 'literal',
-        value: field.value === undefined ? '' : field.value,
-      });
+      //
+      // When the row was only *pending* a token there is nothing to freeze and
+      // nothing was ever committed, so backing out is a redraw, not an edit.
+      if (field.source === 'ref') {
+        callbacks.onChange(field.key, {
+          kind: 'literal',
+          value: field.value === undefined ? '' : field.value,
+        });
+      } else {
+        pending.cancel(field.key);
+      }
+
       return;
     }
 
-    // "Use global" needs a token chosen. Emitting the first one immediately
-    // would be a silent decision; the row re-renders as a picker instead, and
-    // the picker's own change event is what applies it.
-    callbacks.onChange(field.key, { kind: 'ref', ref: `${field.globalGroup}.` });
+    // "Use global" only opens the picker. Committing a ref here — even a
+    // placeholder one — would write a dangling reference and an undo entry for
+    // an unfinished choice.
+    pending.begin(field.key);
   });
 
   return button;

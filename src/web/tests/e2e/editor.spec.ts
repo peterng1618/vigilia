@@ -489,8 +489,40 @@ test.describe('the inspector', () => {
     await expect(input).toHaveValue(/^#[0-9a-fA-F]{3,8}$/);
     await expect(page.locator('[data-vigilia-ref="style.fill"]')).toHaveCount(0);
 
+    // "Use global" opens a picker with nothing chosen. It must NOT commit yet:
+    // writing a placeholder ref would put a dangling reference in the document
+    // and an undo entry in the history for an unfinished choice.
+    //
+    // The status already says "Set fill" from the detach above, so this
+    // compares the whole line for *no change* rather than looking for a label.
+    const detached = await page.locator('#status').textContent();
+
     await page.locator('[data-vigilia-mode="ref:style.fill"]').click();
-    await expect(page.locator('[data-vigilia-ref="style.fill"]')).toBeVisible();
+
+    const picker = page.locator('[data-vigilia-ref="style.fill"]');
+    await expect(picker).toBeVisible();
+    await expect(picker).toHaveValue('');
+    await expect(page.locator('#status')).toHaveText(detached ?? '');
+
+    await picker.selectOption('palette.panel');
+    // Back to a ref row, showing the token rather than a value.
+    await expect(page.locator('[data-vigilia-input="style.fill"]')).toHaveCount(0);
+  });
+
+  test('backing out of "use global" without choosing changes nothing', async ({ page }) => {
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    await page.locator('[data-vigilia-mode="literal:style.fill"]').click();
+    const before = await page.locator('#status').textContent();
+
+    // Open the picker, then back out with the same button.
+    await page.locator('[data-vigilia-mode="ref:style.fill"]').click();
+    await page.locator('[data-vigilia-mode="literal:style.fill"]').click();
+
+    await expect(page.locator('[data-vigilia-input="style.fill"]')).toBeVisible();
+    // No extra history entry: the pending state was never in the document.
+    await expect(page.locator('#status')).toHaveText(before ?? '');
   });
 
   test('editing a literal colour repaints the node', async ({ page }) => {

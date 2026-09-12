@@ -169,9 +169,13 @@ events to them without deciding anything. Gesture maths in the overlay is the
 same mistake as a decision in `mount.ts`, and it fails the same way: untestable
 without a browser.
 
-Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md)
-covers the renderer half. **The editor half has no spec yet** — the pure modules
-are the de facto contract.
+Specs: [`0003`](.agents/specs/0003-scene-rendering.md) covers the renderer half;
+[`0004`](.agents/specs/0004-editor-selection-and-gestures.md),
+[`0005`](.agents/specs/0005-editor-editing-and-history.md) and
+[`0006`](.agents/specs/0006-editor-inspector.md) cover selection and gestures,
+document editing and history, and the inspector. Each one's **"Not verified"**
+note is the honest edge of what has actually been observed — read it before
+trusting a criterion.
 
 `@vigilia/fake-source` fabricates readings, which §97 forbids presenting as
 real. It is currently imported by the player because no transport exists, and

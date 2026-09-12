@@ -258,6 +258,14 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Editor specs written (0004–0006)',
+    why: 'Selection and gestures, document editing and history, and the inspector now have committed specs — the edge cases that were only encoded in test names. Each one ends with what has NOT been verified, which is the part worth reading: §139 is unit-tested but has no caller, no binding field has been clicked in a browser, and nothing has dragged a child of a rotated group through real pointer input.',
+  },
+  {
+    what: 'Switching a property to a global no longer writes a broken document',
+    why: 'Clicking “use global” used to commit a placeholder reference immediately, so an unfinished click left the theme pointing at a token that does not exist — plus an undo entry for a choice nobody made. The pending row now lives in the panel; nothing is committed until a token is picked.',
+  },
+  {
     what: 'Editor: the inspector panel, and handles that know about groups',
     why: 'Every selected property is editable, and §75’s global-or-literal choice is a per-row control rather than something an author edits by hand: a style bound to a token shows the token and a swatch, with one button to detach it into a local value and one to put it back. Nine browser tests cover it. The panel immediately exposed a real bug — transform handles were placed from a node’s group-relative transform, so anything inside a group had its handles near the artboard origin while its outline was correct.',
   },
