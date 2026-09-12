@@ -258,6 +258,10 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Re-fit before paint, and a resize that stops killing animation',
+    why: 'The player now re-fits the artboard from a ResizeObserver, which runs after layout and BEFORE paint — so no frame is ever painted at the old scale when a window is dragged or a phone rotates. Charts are only re-laid-out when the artboard’s own size changes: chart.resize() interrupts a running animation, and an observer fires once on subscribe, so the unguarded version silently removed the appear animation. Two browser tests caught that within a minute.',
+  },
+  {
     what: 'Editor: a working canvas',
     why: 'Click, marquee, drag, resize, rotate, snap, nudge, delete, undo and redo — driven by real pointer input in 15 browser tests. It renders the LIVE dashboard through the same renderer the player uses, so ADR-0005 is now demonstrated rather than argued.',
   },

@@ -215,14 +215,25 @@ test.describe('the artboard transform', () => {
     await openPlayer(page);
     await page.setViewportSize({ width: 900, height: 900 });
 
-    const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
-    expect(box).not.toBeNull();
+    // Polled, not read once. `setViewportSize` resolves as soon as the viewport
+    // has changed, which is before the page has been told about it — so a
+    // single read here caught the artboard at its old 1280 px scale and this
+    // test failed against a player that re-fits correctly. The product does
+    // re-fit before the next paint (a ResizeObserver, not the resize event);
+    // Playwright simply gets to look first.
+    await expect
+      .poll(async () => {
+        const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
 
-    if (box !== null) {
-      // §57: scaled, not re-laid-out. A reflow would change the aspect ratio.
-      expect(box.width / box.height).toBeCloseTo(1280 / 720, 2);
-      expect(box.width).toBeLessThanOrEqual(901);
-    }
+        return box === null ? undefined : Math.round(box.width);
+      })
+      // min(900/1280, 900/720) = 0.703125, so 1280 × 0.703125 = 900.
+      .toBe(900);
+
+    const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
+
+    // §57: scaled, not re-laid-out. A reflow would change the aspect ratio.
+    expect(box?.height).toBeCloseTo(900 * (720 / 1280), 0);
   });
 });
 

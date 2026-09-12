@@ -52,9 +52,9 @@
 <main>
   <h1>Vigilia — development status</h1>
   <p class="sub">
-    Generated 2026-09-12T10:28:47.162Z ·
+    Generated 2026-09-12T11:17:25.683Z ·
     branch <code>main</code> ·
-    commit <code>b02ae2f</code> · <strong>uncommitted changes present</strong>
+    commit <code>a1fbdbd</code> · <strong>uncommitted changes present</strong>
   </p>
 
   <div class="warn-banner">
@@ -68,21 +68,21 @@
   <div class="grid">
     <div class="card">
       <h3>Unit tests</h3>
-      <div class="big">654</div>
+      <div class="big">696</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">654 of 654 passing</div>
+      <div class="note">696 of 696 passing</div>
     </div>
     <div class="card">
       <h3>Browser tests</h3>
-      <div class="big">—</div>
-      <div><span class="badge unknown">not measured</span></div>
-      <div class="note">the last run was filtered (1 of the suite) — run npx playwright test · just now</div>
+      <div class="big">110</div>
+      <div><span class="badge pass">passing</span></div>
+      <div class="note">110 passing, 30 skipped · 1 min ago</div>
     </div>
     <div class="card">
       <h3>Player bundle, gzip</h3>
       <div class="big">199.4 KB</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">199.4 KB of a 400 KB budget · built 3 min ago</div>
+      <div class="note">199.4 KB of a 400 KB budget · built 10 min ago</div>
     </div>
     <div class="card">
       <h3>Typechecks</h3>
@@ -96,6 +96,7 @@
   <table>
     <thead><tr><th>What</th><th>Why it mattered</th></tr></thead>
     <tbody>
+      <tr><td><strong>Re-fit before paint, and a resize that stops killing animation</strong></td><td class="missing">The player now re-fits the artboard from a ResizeObserver, which runs after layout and BEFORE paint — so no frame is ever painted at the old scale when a window is dragged or a phone rotates. Charts are only re-laid-out when the artboard’s own size changes: chart.resize() interrupts a running animation, and an observer fires once on subscribe, so the unguarded version silently removed the appear animation. Two browser tests caught that within a minute.</td></tr>
       <tr><td><strong>Editor: a working canvas</strong></td><td class="missing">Click, marquee, drag, resize, rotate, snap, nudge, delete, undo and redo — driven by real pointer input in 15 browser tests. It renders the LIVE dashboard through the same renderer the player uses, so ADR-0005 is now demonstrated rather than argued.</td></tr>
       <tr><td><strong>Editor foundation decided (ADR-0005)</strong></td><td class="missing">Both Fabric candidates rejected: they are canvas editors, and this renderer is DOM plus ECharts. Adopting one meant rendering the scene twice, which §31 forbids and Gate 0 rejects outright. Unblocks Gate 2.</td></tr>
       <tr><td><strong>Host sequenced after the frontend (ADR-0006)</strong></td><td class="missing">No .NET code here has ever compiled, so a mid-sequence Gate 3 stalled three milestones that do not depend on it. Gate content is unchanged; only the queue order moved.</td></tr>
@@ -178,44 +179,52 @@
   <div class="shots">
     <figure>
       <img src="docs/gates/screenshots/assets-desktop-chromium.png" alt="assets-desktop-chromium.png" loading="lazy" />
-      <figcaption>assets-desktop-chromium.png · 56 min ago</figcaption>
+      <figcaption>assets-desktop-chromium.png · 5 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
-      <figcaption>assets-phone-chromium.png · 55 min ago</figcaption>
+      <figcaption>assets-phone-chromium.png · 2 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
-      <figcaption>demo-desktop-chromium.png · 56 min ago</figcaption>
+      <figcaption>demo-desktop-chromium.png · 5 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
-      <figcaption>demo-phone-chromium.png · 56 min ago</figcaption>
+      <figcaption>demo-phone-chromium.png · 2 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/editor-desktop-chromium.png" alt="editor-desktop-chromium.png" loading="lazy" />
-      <figcaption>editor-desktop-chromium.png · just now</figcaption>
+      <figcaption>editor-desktop-chromium.png · 3 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/editor-inspector-desktop-chromium.png" alt="editor-inspector-desktop-chromium.png" loading="lazy" />
+      <figcaption>editor-inspector-desktop-chromium.png · 3 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-desktop-chromium.png" alt="portrait-cover-desktop-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-desktop-chromium.png · 56 min ago</figcaption>
+      <figcaption>portrait-cover-desktop-chromium.png · 5 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-phone-chromium.png · 55 min ago</figcaption>
+      <figcaption>portrait-cover-phone-chromium.png · 2 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
-      <figcaption>stress-desktop-chromium.png · 56 min ago</figcaption>
+      <figcaption>stress-desktop-chromium.png · 5 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
-      <figcaption>stress-phone-chromium.png · 55 min ago</figcaption>
+      <figcaption>stress-phone-chromium.png · 2 min ago</figcaption>
     </figure>
   </div>
 
   <h2>Recent commits</h2>
   <ol class="log">
+    <li><code>a1fbdbd</code> docs(agents): drop a sentence the editor note made redundant<br /><span>2026-09-12 17:36:14 +0700</span></li>
+    <li><code>fceea78</code> docs(agents): re-sync the agent guidance, and register three routine skills<br /><span>2026-09-12 17:35:37 +0700</span></li>
+    <li><code>98f479d</code> feat(editor): the inspector model — §75's global-or-literal choice, as data<br /><span>2026-09-12 17:34:21 +0700</span></li>
+    <li><code>60584ae</code> chore(gates): commit an editor screenshot as evidence<br /><span>2026-09-12 17:28:47 +0700</span></li>
     <li><code>b02ae2f</code> feat(editor): a working canvas — select, drag, resize, rotate, undo<br /><span>2026-09-12 17:27:54 +0700</span></li>
     <li><code>9e02e8e</code> feat(editor): document commands and undo history<br /><span>2026-09-12 17:08:16 +0700</span></li>
     <li><code>7af3582</code> feat(editor): transform gestures and snapping<br /><span>2026-09-12 17:03:41 +0700</span></li>
@@ -237,10 +246,6 @@
     <li><code>40d931a</code> feat(renderer): text layout, overflow and font diagnostics (§89)<br /><span>2026-09-12 15:25:19 +0700</span></li>
     <li><code>a1c2afe</code> docs: spec the scene renderer, and correct AGENTS.md against what was run<br /><span>2026-09-12 15:16:43 +0700</span></li>
     <li><code>f47d3b5</code> docs(gates): record what the display path now demonstrates, and the matrix<br /><span>2026-09-12 15:15:06 +0700</span></li>
-    <li><code>767f361</code> fix(renderer): three rendering defects the screenshot found<br /><span>2026-09-12 15:13:00 +0700</span></li>
-    <li><code>ae0ba95</code> feat(player): render the demo theme, and add a browser display harness<br /><span>2026-09-12 15:08:34 +0700</span></li>
-    <li><code>43ac4da</code> feat(renderer): add the scene plan, DOM mount and a deterministic fake source<br /><span>2026-09-12 14:48:56 +0700</span></li>
-    <li><code>4beff80</code> feat(theme): add the theme document model and import validation<br /><span>2026-09-12 14:37:32 +0700</span></li>
   </ol>
 </main>
 </body>

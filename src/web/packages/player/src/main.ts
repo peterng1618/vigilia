@@ -183,10 +183,19 @@ function start(host: HTMLElement): void {
 
   // §51: one uniform transform for the whole artboard, recomputed for the new
   // viewport. Nothing reflows — the design is scaled, not re-laid-out (§57).
-  window.addEventListener('resize', () => handle.resize());
+  //
+  // A ResizeObserver rather than `window.resize`, because the observer runs
+  // after layout and **before paint**: the new scale is in place for the very
+  // first frame at the new size. The resize event fires after that frame, so it
+  // paints one frame of the old scale — visible as a flash of overflow when a
+  // desktop window is dragged, and as a brief crop when a phone rotates.
+  const observer = new ResizeObserver(() => handle.resize());
+  observer.observe(host);
 
-  // A phone rotating fires resize before the new size settles on some WebViews,
-  // so recompute once more after the orientation change completes.
+  // A phone rotating settles its viewport in stages on some WebViews, and not
+  // every stage resizes the observed element, so recompute once more after the
+  // orientation change completes. Idempotent: re-fitting an unchanged viewport
+  // recomputes the same transform.
   window.addEventListener('orientationchange', () => {
     window.setTimeout(() => handle.resize(), 200);
   });

@@ -161,6 +161,9 @@ export function mountScene(options: MountOptions): SceneHandle {
 
   let currentTransform = applyArtboard();
 
+  /** The artboard size the charts were last laid out for. See `resize`. */
+  let chartArtboardSize = `${plan.artboard.width}x${plan.artboard.height}`;
+
   return {
     artboard,
 
@@ -180,9 +183,26 @@ export function mountScene(options: MountOptions): SceneHandle {
 
     resize(): void {
       currentTransform = applyArtboard();
-      // Chart elements have fixed artboard-pixel sizes, so their own canvas size
-      // never changes with the viewport — the artboard transform scales them.
-      // This exists for the case where the artboard itself changed size.
+
+      // Chart elements have fixed artboard-pixel sizes, so their own canvas
+      // size never changes with the viewport — the artboard transform scales
+      // them. Only a change to the artboard's OWN size needs to reach the
+      // engine.
+      //
+      // Guarded, not unconditional, because `chart.resize()` interrupts a
+      // running animation: ECharts re-lays out and jumps to the current target.
+      // Resizing on every call made the player's appear animation vanish the
+      // moment a ResizeObserver was used to drive re-fitting, because an
+      // observer delivers one callback when observation begins — a "resize" to
+      // the size the chart was already built at. Two browser tests caught it.
+      const size = `${plan.artboard.width}x${plan.artboard.height}`;
+
+      if (size === chartArtboardSize) {
+        return;
+      }
+
+      chartArtboardSize = size;
+
       for (const { chart } of charts.values()) {
         chart.resize();
       }
