@@ -165,7 +165,7 @@ function typechecks() {
     return [{ name: 'all', state: 'skipped', detail: 'not run for this page' }];
   }
 
-  return ['renderer-core', 'player', 'fake-source'].map((name) => {
+  return ['renderer-core', 'player', 'fake-source', 'editor'].map((name) => {
     const { output } = runNodeTool(
       'typescript/bin/tsc',
       ['--noEmit', '-p', `packages/${name}/tsconfig.json`],

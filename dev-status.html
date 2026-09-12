@@ -52,9 +52,9 @@
 <main>
   <h1>Vigilia — development status</h1>
   <p class="sub">
-    Generated 2026-09-12T09:47:46.731Z ·
+    Generated 2026-09-12T09:57:27.981Z ·
     branch <code>main</code> ·
-    commit <code>7323935</code> · <strong>uncommitted changes present</strong>
+    commit <code>81cc56f</code> · <strong>uncommitted changes present</strong>
   </p>
 
   <div class="warn-banner">
@@ -68,27 +68,27 @@
   <div class="grid">
     <div class="card">
       <h3>Unit tests</h3>
-      <div class="big">487</div>
+      <div class="big">554</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">487 of 487 passing</div>
+      <div class="note">554 of 554 passing</div>
     </div>
     <div class="card">
       <h3>Browser tests</h3>
       <div class="big">84</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">84 passing, 4 skipped · just now</div>
+      <div class="note">84 passing, 4 skipped · 10 min ago</div>
     </div>
     <div class="card">
       <h3>Player bundle, gzip</h3>
       <div class="big">199.2 KB</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">199.2 KB of a 400 KB budget · built 3 min ago</div>
+      <div class="note">199.2 KB of a 400 KB budget · built 12 min ago</div>
     </div>
     <div class="card">
       <h3>Typechecks</h3>
-      <div class="big">3/3</div>
+      <div class="big">4/4</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">renderer-core: clean · player: clean · fake-source: clean</div>
+      <div class="note">renderer-core: clean · player: clean · fake-source: clean · editor: clean</div>
     </div>
   </div>
 
@@ -178,40 +178,42 @@
   <div class="shots">
     <figure>
       <img src="docs/gates/screenshots/assets-desktop-chromium.png" alt="assets-desktop-chromium.png" loading="lazy" />
-      <figcaption>assets-desktop-chromium.png · 15 min ago</figcaption>
+      <figcaption>assets-desktop-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
-      <figcaption>assets-phone-chromium.png · 14 min ago</figcaption>
+      <figcaption>assets-phone-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
-      <figcaption>demo-desktop-chromium.png · 15 min ago</figcaption>
+      <figcaption>demo-desktop-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
-      <figcaption>demo-phone-chromium.png · 15 min ago</figcaption>
+      <figcaption>demo-phone-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-desktop-chromium.png" alt="portrait-cover-desktop-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-desktop-chromium.png · 15 min ago</figcaption>
+      <figcaption>portrait-cover-desktop-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-phone-chromium.png · 14 min ago</figcaption>
+      <figcaption>portrait-cover-phone-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
-      <figcaption>stress-desktop-chromium.png · 15 min ago</figcaption>
+      <figcaption>stress-desktop-chromium.png · 24 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
-      <figcaption>stress-phone-chromium.png · 14 min ago</figcaption>
+      <figcaption>stress-phone-chromium.png · 24 min ago</figcaption>
     </figure>
   </div>
 
   <h2>Recent commits</h2>
   <ol class="log">
+    <li><code>81cc56f</code> docs(adr-0005): record the relaxed fidelity constraint, and why the decision holds<br /><span>2026-09-12 16:50:46 +0700</span></li>
+    <li><code>3c2a5d3</code> feat(charts): make smooth animation the default, matched to the sample rate<br /><span>2026-09-12 16:47:47 +0700</span></li>
     <li><code>7323935</code> docs: decide the editor foundation (ADR-0005) and re-sequence the host (ADR-0006)<br /><span>2026-09-12 16:41:08 +0700</span></li>
     <li><code>cff028c</code> chore(gates): re-capture screenshots in static mode<br /><span>2026-09-12 16:33:33 +0700</span></li>
     <li><code>62c0e41</code> feat(player): static rendering, reduced motion, and the determinism boundary<br /><span>2026-09-12 16:32:44 +0700</span></li>
@@ -235,8 +237,6 @@
     <li><code>f492c69</code> feat(renderer): add the bar / progress-bar family<br /><span>2026-09-12 14:25:02 +0700</span></li>
     <li><code>e75576e</code> docs: add a handoff document<br /><span>2026-09-12 14:10:37 +0700</span></li>
     <li><code>5686a9a</code> feat(renderer): add the line / filled-area / sparkline family<br /><span>2026-09-12 14:09:29 +0700</span></li>
-    <li><code>5f2b090</code> feat(renderer): add the artboard fit/cover transform<br /><span>2026-09-12 14:05:52 +0700</span></li>
-    <li><code>c9362a2</code> chore: scaffold Vigilia, agent environment and verified dependency research<br /><span>2026-09-12 14:02:44 +0700</span></li>
   </ol>
 </main>
 </body>

@@ -1,0 +1,56 @@
+/**
+ * Desktop authoring: interaction and inspectors over the shared renderer.
+ *
+ * ADR-0005 settled the shape of this package. It does **not** render — it
+ * consumes `@vigilia/renderer-core`'s plan/mount path, the same one the player
+ * uses, and adds selection, gestures and inspector UI on top. §31 is then
+ * satisfied by construction rather than by discipline, because there is only one
+ * renderer to keep honest.
+ *
+ * Everything here is deliberately pure where it can be: geometry, hit-testing,
+ * selection and (next) transform gestures are values and functions, unit-tested
+ * in Node. The DOM layer turns pointer events into those calls and draws the
+ * result. That is the same split `plan.ts` / `mount.ts` uses in the renderer,
+ * for the same reason — a decision buried in an event handler is a decision
+ * nobody can test.
+ *
+ * §47's bundle budget does **not** apply here. The editor is desktop-hosted and
+ * unconstrained; the budget exists to keep the *player* small, which is why this
+ * package may grow dependencies the player never sees.
+ */
+
+export type { Bounds, Matrix2D, PlacedNode, Point } from './geometry.js';
+
+export {
+  IDENTITY,
+  applyMatrix,
+  boundsContain,
+  boundsIntersect,
+  containsPoint,
+  corners,
+  invert,
+  localMatrix,
+  multiply,
+  placeNodes,
+  unionBounds,
+  worldBounds,
+} from './geometry.js';
+
+export type { HitTestOptions, MarqueeOptions } from './hit-test.js';
+
+export { hitTest, hitTestDeep, hitTestInside, marqueeSelect, normalizeBounds } from './hit-test.js';
+
+export type { SelectionMode, SelectionState } from './selection.js';
+
+export {
+  addToSelection,
+  applyClick,
+  clearSelection,
+  emptySelection,
+  enterGroup,
+  exitAllGroups,
+  exitGroup,
+  isSelected,
+  pruneSelection,
+  setSelection,
+} from './selection.js';

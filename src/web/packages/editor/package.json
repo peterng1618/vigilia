@@ -6,13 +6,16 @@
   "license": "MIT",
   "description": "Desktop authoring experience. Adds interaction overlays and inspectors on top of the shared renderer.",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",
     "echarts": "6.1.0"
   },
-  "//": "ADR-0005: the editor is an interaction and inspector layer over @vigilia/renderer-core. Both Fabric candidates were rejected — they are canvas editors, and this renderer is DOM plus ECharts, so adopting one meant rendering the scene twice (§31 forbids it; Gate 0 rejects it outright). Do NOT add a Fabric dependency. No UI framework yet either: one is worth adding when the inspector surface is real enough to judge the trade, and adding it first would be choosing whatever got installed first."
+  "//": "ADR-0005: the editor is an interaction and inspector layer over @vigilia/renderer-core. Both Fabric candidates were rejected — they are canvas editors, and this renderer is DOM plus ECharts, so adopting one meant rendering the scene twice (§31 forbids it; Gate 0 rejects it outright). Do NOT add a Fabric dependency. No UI framework yet either: one is worth adding when the inspector surface is real enough to judge the trade, and adding it first would be choosing whatever got installed first.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
 }

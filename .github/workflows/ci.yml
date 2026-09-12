@@ -38,6 +38,7 @@ jobs:
           npx tsc --noEmit -p packages/renderer-core/tsconfig.json
           npx tsc --noEmit -p packages/player/tsconfig.json
           npx tsc --noEmit -p packages/fake-source/tsconfig.json
+          npx tsc --noEmit -p packages/editor/tsconfig.json
 
       - name: Unit tests
         run: npx vitest run
