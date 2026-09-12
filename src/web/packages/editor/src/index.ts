@@ -31,6 +31,7 @@ export {
   invert,
   localMatrix,
   multiply,
+  outermostOnly,
   placeNodes,
   unionBounds,
   worldBounds,

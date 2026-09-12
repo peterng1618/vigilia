@@ -28,6 +28,32 @@ async function openEditor(page: Page): Promise<void> {
   await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
 }
 
+/** Opens a named fixture theme instead of the showcase one. */
+async function openTheme(page: Page, theme: string, ready: string): Promise<void> {
+  await page.goto(`${EDITOR}?theme=${theme}`);
+  await page.waitForSelector('[data-vigilia-overlay="root"]');
+  await page.locator(`[data-node-id="${ready}"]`).waitFor();
+}
+
+/**
+ * Double-clicks at one spot until `id` is what is selected.
+ *
+ * Entering a group is one double-click per level, and the fixture used below is
+ * three deep. Driven by the status bar rather than a fixed count so the test
+ * says what it wants instead of encoding the tree's depth.
+ */
+async function selectByEntering(page: Page, id: string, at: { x: number; y: number }): Promise<void> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (((await page.locator('#status').textContent()) ?? '').startsWith(id)) {
+      return;
+    }
+
+    await page.mouse.click(at.x, at.y, { clickCount: 2 });
+  }
+
+  throw new Error(`could not select ${id}: status says ${await page.locator('#status').textContent()}`);
+}
+
 /** Centre of a node's rendered box, in page coordinates. */
 async function centreOf(node: Locator): Promise<{ x: number; y: number }> {
   const box = await node.boundingBox();
@@ -586,5 +612,72 @@ test.describe('the inspector', () => {
     await expect(page.locator('[data-vigilia-input="name"]')).toBeVisible();
     // But the transform handles are gone, so it cannot be dragged.
     await expect(page.locator('[data-vigilia-handle="se"]')).toHaveCount(0);
+  });
+});
+
+test.describe('a child of a transformed group', () => {
+  /**
+   * The case the pure tests cover and no fixture had ever driven with a real
+   * pointer: `nest-leaf` in the stress theme sits inside a group scaled to 0.9
+   * inside a group rotated 4°.
+   *
+   * A node's `x`/`y` are in its parent's space (§57) while a pointer delta
+   * arrives in document space, so the delta has to be converted. Without that
+   * conversion the node moves by the parent's scale factor — it lags the
+   * pointer — and under rotation it travels at an angle to it. Both are
+   * invisible for every top-level node, which is why this needs its own test.
+   */
+  test('follows the pointer exactly, despite a scaled and rotated ancestry', async ({ page }) => {
+    await openTheme(page, 'stress', 'nest-leaf');
+
+    const leaf = page.locator('[data-node-id="nest-leaf"]');
+    const start = await centreOf(leaf);
+
+    await selectByEntering(page, 'nest-leaf', start);
+
+    const before = await leaf.boundingBox();
+
+    // Ctrl disables snapping. Without it the drop lands on whatever alignment
+    // is within threshold — which is correct behaviour and ruins the
+    // measurement: the first run came back 1.73 px off on y for exactly that
+    // reason. This test is about the delta conversion, nothing else.
+    await page.keyboard.down('Control');
+    await drag(page, start, { x: start.x + 100, y: start.y + 40 });
+    await page.keyboard.up('Control');
+
+    const after = await leaf.boundingBox();
+
+    // Screen pixels in, screen pixels out. Scale-independent, so the artboard
+    // fit does not enter the assertion: drag the mouse 100 px and the element
+    // moves 100 px. The unconverted version moves 0.9 × that, ~90 px, and
+    // additionally drifts a few px off-axis from the 4° rotation.
+    expect((after?.x ?? 0) - (before?.x ?? 0)).toBeCloseTo(100, 0);
+    expect((after?.y ?? 0) - (before?.y ?? 0)).toBeCloseTo(40, 0);
+  });
+
+  test('a selection holding a group and its child moves the child once', async ({ page }) => {
+    await openTheme(page, 'stress', 'nest-leaf');
+
+    const leaf = page.locator('[data-node-id="nest-leaf"]');
+    const start = await centreOf(leaf);
+
+    await selectByEntering(page, 'nest-leaf', start);
+    // Shift-click adds the enclosing group, so both an ancestor and its
+    // descendant are selected — reachable in three clicks, and the reason
+    // gestures transform the outermost node only.
+    await page.locator('[data-node-id="nest-1"]').click({
+      modifiers: ['Shift'],
+      position: { x: 4, y: 4 },
+    });
+    await expect(page.locator('#status')).toContainText('2 selected');
+
+    const before = await leaf.boundingBox();
+    await page.keyboard.down('Control');
+    await drag(page, start, { x: start.x + 60, y: start.y });
+    await page.keyboard.up('Control');
+    const after = await leaf.boundingBox();
+
+    // Once, not twice. Moving the group already moves the child.
+    expect((after?.x ?? 0) - (before?.x ?? 0)).toBeCloseTo(60, 0);
   });
 });

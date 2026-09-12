@@ -9,6 +9,7 @@ import {
   invert,
   localMatrix,
   multiply,
+  outermostOnly,
   placeNodes,
   unionBounds,
   worldBounds,
@@ -234,5 +235,52 @@ describe('bounds', () => {
       bottom: 60,
     });
     expect(unionBounds([])).toBeUndefined();
+  });
+});
+
+describe('outermostOnly', () => {
+  const tree: ThemeNode[] = [
+    {
+      id: 'outer',
+      type: 'group',
+      transform: { x: 0, y: 0, width: 200, height: 200 },
+      children: [
+        { id: 'child', type: 'rectangle', transform: { x: 10, y: 10, width: 50, height: 50 } },
+        {
+          id: 'inner',
+          type: 'group',
+          transform: { x: 80, y: 0, width: 100, height: 100 },
+          children: [
+            { id: 'leaf', type: 'rectangle', transform: { x: 0, y: 0, width: 20, height: 20 } },
+          ],
+        },
+      ],
+    },
+    { id: 'sibling', type: 'rectangle', transform: { x: 300, y: 0, width: 40, height: 40 } },
+  ];
+
+  const placements = placeNodes(tree);
+
+  it('drops a node whose parent is also selected', () => {
+    expect(outermostOnly(placements, ['outer', 'child'])).toEqual(['outer']);
+  });
+
+  it('drops a node whose grandparent is selected, not just its parent', () => {
+    // The bug this prevents applied the delta once per selected ancestor, so a
+    // two-level nesting sent the leaf three times as far as the pointer.
+    expect(outermostOnly(placements, ['outer', 'inner', 'leaf'])).toEqual(['outer']);
+  });
+
+  it('keeps unrelated nodes, and the order they were picked in', () => {
+    expect(outermostOnly(placements, ['sibling', 'child'])).toEqual(['sibling', 'child']);
+    expect(outermostOnly(placements, ['child', 'sibling'])).toEqual(['child', 'sibling']);
+  });
+
+  it('keeps a descendant when the selected ancestor is a different branch', () => {
+    expect(outermostOnly(placements, ['inner', 'child'])).toEqual(['inner', 'child']);
+  });
+
+  it('keeps an id that is not in the tree, rather than silently pruning it', () => {
+    expect(outermostOnly(placements, ['ghost', 'child'])).toEqual(['ghost', 'child']);
   });
 });

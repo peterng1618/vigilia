@@ -13,7 +13,7 @@ import {
   type Transform,
 } from '@vigilia/renderer-core';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
-import { placeNodes, type PlacedNode } from './geometry.js';
+import { outermostOnly, placeNodes, type PlacedNode } from './geometry.js';
 import { hitTest, hitTestInside, marqueeSelect } from './hit-test.js';
 import {
   addToSelection,
@@ -280,8 +280,20 @@ function start(): void {
     fromCentre: event.altKey,
   });
 
+  /**
+   * Shift toggles; ctrl does NOT touch the selection.
+   *
+   * Ctrl used to mean "toggle" here while also meaning "disable snapping"
+   * during a move — so holding ctrl to avoid a snap silently changed what was
+   * being dragged. In the worst case it added an ancestor of the node under the
+   * cursor, and the gesture then moved both, sending the child twice as far as
+   * the pointer.
+   *
+   * Shift-click toggling matches what authors expect from other design tools,
+   * and it leaves ctrl free to mean one thing.
+   */
   const selectionModeOf = (event: PointerEvent): SelectionMode =>
-    event.ctrlKey || event.metaKey ? 'toggle' : event.shiftKey ? 'add' : 'replace';
+    event.shiftKey ? 'toggle' : 'replace';
 
   host.addEventListener('pointerdown', (event: PointerEvent) => {
     // Only the primary button starts a gesture; a right-click is for a context
@@ -620,7 +632,9 @@ function gestureNodes(
   placements: readonly PlacedNode[],
   ids: readonly string[],
 ): GestureNode[] {
-  return ids
+  // §57: moving a group moves its children, so a selection holding both must
+  // transform the group alone.
+  return outermostOnly(placements, ids)
     .map((id) => {
       const node = findNode(document_.nodes, id);
 

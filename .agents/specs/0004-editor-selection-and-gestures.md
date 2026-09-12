@@ -79,6 +79,16 @@ wins — not the smallest, and not the first. Then:
   and only transformation is refused. `hitTest` can be asked to skip locked
   nodes, but selection does not ask.
 
+### Modifiers mean exactly one thing each
+
+**Shift** toggles a node in or out of the selection; **ctrl/cmd** disables
+snapping and never touches the selection.
+
+Ctrl originally meant "toggle" *as well as* "disable snapping", so holding it to
+avoid a snap silently changed what was being dragged — and in the observed case
+it added an **ancestor** of the node under the cursor, which then moved the child
+twice as far as the pointer.
+
 `marqueeSelect` takes everything its rectangle *touches* by default, accepts a
 rectangle dragged in any direction, and can be asked to require full
 containment instead.
@@ -96,6 +106,12 @@ first) need it. `pruneSelection` drops ids that no longer exist and returns the
 changed**, so a caller can write an undo entry containing exactly what moved.
 
 - Locked nodes are filtered out before anything else (§61).
+- **A node whose ancestor is also selected is dropped** (`outermostOnly`).
+  Moving a group already moves its children, so transforming both applies the
+  delta twice: a 100 px drag moves the child 200 px and slides it out of its own
+  group. Reachable in three clicks — shift-click a group, enter it, shift-click a
+  child — and it compounds with depth, so two selected ancestors sent a leaf
+  three times as far.
 - The pointer delta is converted into each node's parent space **per node** — a
   multi-selection can span groups with different ancestors, so one pointer delta
   is several different local deltas.
@@ -176,6 +192,18 @@ a multi-selection must not fight its own alignment.
 | Translation-only chains are unchanged by that conversion | `transform-gesture.test.ts` — "leaves a translation-only ancestor chain unchanged" |
 | Pointer input reaches all of the above correctly | `tests/e2e/editor.spec.ts` — `selection` and `gestures` |
 
-Not verified: nothing here has been exercised with a rotated **group** through
-real pointer input — the unit tests cover the maths, and no fixture theme
-rotates a group. Adding one to a test theme is the cheapest way to close that.
+| A drag inside a transformed group tracks the pointer, in a browser | `tests/e2e/editor.spec.ts` — "follows the pointer exactly, despite a scaled and rotated ancestry" |
+| An ancestor plus its descendant moves the child once | `tests/e2e/editor.spec.ts` — "a selection holding a group and its child moves the child once" |
+
+The stress fixture's `nest-leaf` sits inside a group scaled to 0.9 inside a group
+rotated 4°, which is what makes the browser assertions above meaningful: screen
+pixels in, screen pixels out, so the unconverted implementation moves the node
+0.9 × the pointer delta and drifts off-axis. Both tests hold ctrl, because a snap
+correction is correct behaviour that ruins the measurement — the first run came
+back 1.73 px off on y for exactly that reason.
+
+Not verified: the zero-sized `nest-2` and `nest-3` groups in that fixture are
+**not clickable** (a zero-sized node gets no hit target, by design), so entering
+them is impossible and the selection reaches the leaf directly. Whether a group
+should be hittable by its children's extent is an open question, not a decided
+behaviour.

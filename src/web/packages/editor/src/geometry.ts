@@ -216,6 +216,40 @@ export function placeNodes(nodes: readonly ThemeNode[]): PlacedNode[] {
   return placed;
 }
 
+/**
+ * Drops any id whose ancestor is also in the set.
+ *
+ * A selection may legitimately contain both a group and something inside it —
+ * shift-click the group, enter it, shift-click a child — and a gesture must then
+ * move the group only. Moving both applies the delta **twice** to the child,
+ * because moving a group already moves its children: a 100 px drag moves the
+ * child 200 px, and it slides out of its own group.
+ *
+ * Observed exactly that way before this existed: a drag of one leaf inside a
+ * nested group moved it (200, 80) for a (100, 40) pointer delta.
+ *
+ * Order is preserved, so the caller's pick order survives.
+ */
+export function outermostOnly(
+  placements: readonly PlacedNode[],
+  ids: readonly string[],
+): string[] {
+  const selected = new Set(ids);
+  const byId = new Map(placements.map((placement) => [placement.id, placement]));
+
+  return ids.filter((id) => {
+    const placement = byId.get(id);
+
+    // An id with no placement no longer exists in the tree. Kept rather than
+    // dropped: this function answers one question, and pruning is
+    // `pruneSelection`'s job.
+    return (
+      placement === undefined ||
+      !placement.ancestors.some((ancestor) => selected.has(ancestor))
+    );
+  });
+}
+
 /** True when a world-space point falls inside a placed node's own box. */
 export function containsPoint(node: PlacedNode, point: Point): boolean {
   if (node.width <= 0 || node.height <= 0) {

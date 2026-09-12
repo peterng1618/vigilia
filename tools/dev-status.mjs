@@ -258,6 +258,10 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Two selection bugs the new specs turned up',
+    why: 'Dragging a node whose selection also contained an ancestor applied the delta twice — a 100 px drag moved the child 200 px and slid it out of its own group, compounding with nesting depth. Gestures now transform the outermost selected node only. And ctrl meant both “toggle selection” and “disable snapping”, so holding it to avoid a snap silently changed what was being dragged; shift toggles now, and ctrl means one thing.',
+  },
+  {
     what: 'Editor specs written (0004–0006)',
     why: 'Selection and gestures, document editing and history, and the inspector now have committed specs — the edge cases that were only encoded in test names. Each one ends with what has NOT been verified, which is the part worth reading: §139 is unit-tested but has no caller, no binding field has been clicked in a browser, and nothing has dragged a child of a rotated group through real pointer input.',
   },
