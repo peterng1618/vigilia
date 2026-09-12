@@ -7,6 +7,7 @@ import {
   type Interpolation,
   type LinearGradientColor,
   type LineSettings,
+  type SeriesInput,
 } from './line.js';
 import type { Sample, SensorStatus } from '../types.js';
 

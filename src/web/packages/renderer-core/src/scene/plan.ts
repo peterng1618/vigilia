@@ -10,6 +10,7 @@ import type {
   Globals,
   StyleMap,
   StyleValue,
+  TextContent,
   TextRun,
   ThemeDocument,
   ThemeNode,
@@ -70,6 +71,31 @@ export interface PlanTextSegment {
   readonly message?: string;
 }
 
+/**
+ * How a text element fills its box (§89).
+ *
+ * Resolved here rather than read out of the style map in the DOM layer: these
+ * come from the document's `TextContent`, they are layout rather than
+ * typography, and `maxLines` has to be *computed* — which is exactly the kind of
+ * decision that belongs in tested code.
+ */
+export interface PlanTextLayout {
+  readonly wrap: boolean;
+  /** §89 requires overflow to be authored, never silent. */
+  readonly overflow: 'clip' | 'ellipsis' | 'visible';
+  readonly align: 'left' | 'center' | 'right';
+  readonly verticalAlign: 'top' | 'middle' | 'bottom';
+  /**
+   * Lines that fit the box at the resolved type size, when that is knowable.
+   *
+   * Needed because `text-overflow: ellipsis` does not apply to wrapped text —
+   * only a line clamp does, and a clamp needs a line count. Undefined when the
+   * type size is not resolvable, in which case the DOM layer falls back to a
+   * single-line ellipsis.
+   */
+  readonly maxLines?: number;
+}
+
 export type PlanContent =
   | { readonly kind: 'group' }
   | {
@@ -77,7 +103,11 @@ export type PlanContent =
       readonly shape: 'rectangle' | 'ellipse' | 'line';
       readonly cornerRadius: number;
     }
-  | { readonly kind: 'text'; readonly segments: readonly PlanTextSegment[] }
+  | {
+      readonly kind: 'text';
+      readonly segments: readonly PlanTextSegment[];
+      readonly layout: PlanTextLayout;
+    }
   // Split per family rather than pairing one `family` field with a union of
   // options: narrowing on `family` then yields that family's option type, so a
   // consumer never has to cast to read it.
@@ -178,13 +208,18 @@ function planNode(
   globals: Globals,
   issues: PlanIssue[],
 ): PlanNode {
+  const box = planBox(node);
+  // Resolved once and passed down: resolving again inside planContent would
+  // report every unresolved global twice.
+  const style = resolveStyleMap(node.style, globals, node.id, issues);
+
   return {
     id: node.id,
-    box: planBox(node),
+    box,
     // Absent means visible: a node is drawn unless the document says otherwise.
     visible: node.visible !== false,
-    style: resolveStyleMap(node.style, globals, node.id, issues),
-    content: planContent(node, context, globals, issues),
+    style,
+    content: planContent(node, context, globals, issues, box, style),
     children:
       node.type === 'group'
         ? node.children.map((child) => planNode(child, context, globals, issues))
@@ -213,6 +248,8 @@ function planContent(
   context: PlanContext,
   globals: Globals,
   issues: PlanIssue[],
+  box: PlanBox,
+  style: ResolvedStyle,
 ): PlanContent {
   switch (node.type) {
     case 'group':
@@ -231,6 +268,7 @@ function planContent(
       return {
         kind: 'text',
         segments: planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues),
+        layout: planTextLayout(node.content, box.height, style),
       };
 
     case 'chart':
@@ -270,6 +308,63 @@ function resolveAsset(
   }
 
   return src;
+}
+
+/** Default line height when the document does not set one. */
+const DEFAULT_LINE_HEIGHT = 1.2;
+
+function planTextLayout(
+  content: TextContent,
+  boxHeight: number,
+  style: ResolvedStyle,
+): PlanTextLayout {
+  const wrap = content.wrap ?? false;
+  // Clip by default: §89 wants overflow explicit, and of the three, clipping is
+  // the one that cannot mislead — it shows less rather than something else.
+  const overflow = content.overflow ?? 'clip';
+
+  const maxLines =
+    wrap && overflow === 'ellipsis'
+      ? computeMaxLines(boxHeight, style['fontSize'], style['lineHeight'])
+      : undefined;
+
+  return {
+    wrap,
+    overflow,
+    align: content.align ?? 'left',
+    verticalAlign: content.verticalAlign ?? 'top',
+    ...(maxLines === undefined ? {} : { maxLines }),
+  };
+}
+
+/**
+ * How many lines of this type size fit in a box.
+ *
+ * Returns undefined when the answer is not knowable — no height, or no resolved
+ * font size — rather than guessing. A wrong clamp is worse than none: it hides
+ * text that would have fitted.
+ */
+export function computeMaxLines(
+  boxHeight: number,
+  fontSize: unknown,
+  lineHeight: unknown,
+): number | undefined {
+  if (!Number.isFinite(boxHeight) || boxHeight <= 0) {
+    return undefined;
+  }
+
+  if (typeof fontSize !== 'number' || !Number.isFinite(fontSize) || fontSize <= 0) {
+    return undefined;
+  }
+
+  const factor =
+    typeof lineHeight === 'number' && Number.isFinite(lineHeight) && lineHeight > 0
+      ? lineHeight
+      : DEFAULT_LINE_HEIGHT;
+
+  // At least one line: a box too short for even one line should still show that
+  // line clipped, not nothing at all.
+  return Math.max(1, Math.floor(boxHeight / (fontSize * factor)));
 }
 
 function planTextSegments(

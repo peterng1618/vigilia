@@ -4,6 +4,7 @@ import { GridComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import {
   buildScenePlan,
+  missingFontFamilies,
   mountScene,
   requiredSemanticKeys,
   type SampleSource,
@@ -85,6 +86,7 @@ function start(host: HTMLElement): void {
   const handle = mountScene({ host, plan: first });
 
   reportIssues(first);
+  reportMissingFonts(first);
   showScaffoldBanner(requiredSemanticKeys(theme).length);
 
   let timer: number | undefined;
@@ -152,6 +154,27 @@ function reportIssues(plan: ScenePlan): void {
     `Vigilia: ${plan.issues.length} binding or asset issue(s) in this theme:\n` +
       plan.issues.map((issue) => `  [${issue.code}] ${issue.nodeId}: ${issue.detail}`).join('\n'),
   );
+}
+
+/**
+ * Reports font families this device cannot provide (§89).
+ *
+ * Run after `document.fonts.ready` so a web font still downloading is not
+ * mistaken for one that is absent. The text was already drawn — the boxes are
+ * author-specified, so glyphs change but nothing moves — and this only says
+ * which family is actually in use.
+ */
+function reportMissingFonts(plan: ScenePlan): void {
+  void document.fonts.ready.then(() => {
+    const missing = missingFontFamilies(plan);
+
+    if (missing.length > 0) {
+      console.warn(
+        `Vigilia: ${missing.length} font family/families are unavailable on this device and ` +
+          `a fallback is being used: ${missing.join(', ')}. Metrics will differ from the design.`,
+      );
+    }
+  });
 }
 
 /** The document did not load at all. Say so on screen rather than showing black. */

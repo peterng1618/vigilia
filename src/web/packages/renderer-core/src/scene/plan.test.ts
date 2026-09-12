@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MISSING_VALUE_TEXT,
   buildScenePlan,
+  computeMaxLines,
   formatNumber,
   formatUnit,
   type PlanContext,
@@ -518,5 +519,92 @@ describe('formatUnit', () => {
 
   it('falls back to the short symbol rather than inventing a long name', () => {
     expect(formatUnit('RPM', 'long', undefined)).toBe(' RPM');
+  });
+});
+
+describe('text layout (§89)', () => {
+  const layoutOf = (content: unknown, style?: unknown, height = 60) => {
+    const node = {
+      id: 't',
+      type: 'text',
+      transform: { width: 200, height },
+      ...(style === undefined ? {} : { style }),
+      content,
+    } as unknown as ThemeNode;
+
+    const result = plan(documentWith([node]));
+    const planned = result.nodes[0]!.content;
+    if (planned.kind !== 'text') {
+      throw new Error('expected a text node');
+    }
+    return planned.layout;
+  };
+
+  it('clips by default', () => {
+    // §89 wants overflow explicit. Of the three modes, clipping is the only one
+    // that cannot mislead: it shows less rather than something else.
+    expect(layoutOf({ runs: [] })).toMatchObject({
+      wrap: false,
+      overflow: 'clip',
+      align: 'left',
+      verticalAlign: 'top',
+    });
+  });
+
+  it('carries authored layout through', () => {
+    expect(
+      layoutOf({ runs: [], wrap: true, overflow: 'visible', align: 'right', verticalAlign: 'bottom' }),
+    ).toMatchObject({
+      wrap: true,
+      overflow: 'visible',
+      align: 'right',
+      verticalAlign: 'bottom',
+    });
+  });
+
+  it('computes a line clamp only for wrapped, ellipsised text', () => {
+    // text-overflow: ellipsis applies to a single line; only a clamp ellipsises
+    // wrapped text, and a clamp needs a line count.
+    const style = { fontSize: { value: 20 }, lineHeight: { value: 1.5 } };
+
+    expect(layoutOf({ runs: [], wrap: true, overflow: 'ellipsis' }, style, 60).maxLines).toBe(2);
+    expect(layoutOf({ runs: [], wrap: false, overflow: 'ellipsis' }, style, 60).maxLines).toBeUndefined();
+    expect(layoutOf({ runs: [], wrap: true, overflow: 'clip' }, style, 60).maxLines).toBeUndefined();
+  });
+
+  it('omits the clamp when the type size is not resolvable', () => {
+    // A wrong clamp is worse than none: it hides text that would have fitted.
+    expect(layoutOf({ runs: [], wrap: true, overflow: 'ellipsis' }, {}, 60).maxLines).toBeUndefined();
+  });
+});
+
+describe('computeMaxLines', () => {
+  it('divides the box by the line box', () => {
+    expect(computeMaxLines(60, 20, 1.5)).toBe(2);
+    expect(computeMaxLines(100, 10, 1)).toBe(10);
+  });
+
+  it('defaults the line height when none is given', () => {
+    // 1.2 — the same default a browser applies to `normal`.
+    expect(computeMaxLines(48, 20, undefined)).toBe(2);
+  });
+
+  it('never returns zero', () => {
+    // A box too short for one line should still show that line clipped rather
+    // than nothing at all.
+    expect(computeMaxLines(5, 40, 1.2)).toBe(1);
+  });
+
+  it('returns undefined for unusable input rather than guessing', () => {
+    expect(computeMaxLines(0, 20, 1.2)).toBeUndefined();
+    expect(computeMaxLines(-10, 20, 1.2)).toBeUndefined();
+    expect(computeMaxLines(60, 0, 1.2)).toBeUndefined();
+    expect(computeMaxLines(60, '20px', 1.2)).toBeUndefined();
+    expect(computeMaxLines(Number.NaN, 20, 1.2)).toBeUndefined();
+  });
+
+  it('ignores a nonsensical line height instead of dividing by zero', () => {
+    expect(computeMaxLines(60, 20, 0)).toBe(2);
+    expect(computeMaxLines(60, 20, -3)).toBe(2);
   });
 });

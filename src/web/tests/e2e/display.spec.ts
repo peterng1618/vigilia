@@ -247,3 +247,113 @@ test.describe('update behaviour', () => {
     expect(screenshot.byteLength).toBeGreaterThan(1000);
   });
 });
+
+test.describe('typography (§89)', () => {
+  test('clamps wrapped, ellipsised text to the lines that fit', async ({ page }) => {
+    await openPlayer(page);
+
+    const node = page.locator('[data-node-id="memory-overflow-demo"]');
+    const inner = node.locator('[data-vigilia-text="runs"]');
+
+    // The plan computed the clamp from the box height and the resolved type
+    // size; this asserts the DOM layer actually applied it.
+    await expect(inner).toHaveCSS('-webkit-line-clamp', '2');
+
+    // The text must be cut, not spilling out of the authored box.
+    const box = await node.boundingBox();
+    const scroll = await inner.evaluate((el) => el.scrollHeight);
+    expect(box).not.toBeNull();
+    if (box !== null) {
+      expect(scroll).toBeGreaterThan(box.height);
+    }
+  });
+
+  test('keeps overflowing text inside its authored box', async ({ page }) => {
+    await openPlayer(page);
+
+    // §57: text must not reflow the scene. An element that grew to fit its
+    // content would push nothing — everything is absolutely positioned — but it
+    // would overlap its neighbours, which is just as wrong and harder to see.
+    const node = page.locator('[data-node-id="memory-overflow-demo"]');
+    const rendered = await node.boundingBox();
+
+    expect(rendered).not.toBeNull();
+    if (rendered !== null) {
+      // 44 authored pixels, and the desktop viewport renders the artboard 1:1.
+      expect(rendered.height).toBeLessThanOrEqual(45);
+    }
+  });
+
+  test('applies alignment from the document, not from the style map', async ({ page }) => {
+    await openPlayer(page);
+
+    // The readout is centred both ways via TextContent. If alignment were still
+    // read from the style map, two code paths would be writing justifyContent.
+    const readout = page.locator('[data-node-id="cpu-readout"]');
+    await expect(readout).toHaveCSS('justify-content', 'center');
+    await expect(readout).toHaveCSS('align-items', 'center');
+  });
+
+  test('detects a missing font family by metrics, not by fonts.check', async ({ page }) => {
+    await openPlayer(page);
+
+    // §89 requires missing-font diagnostics, and this is the test that proved
+    // the obvious API cannot provide them: FontFaceSet.check reports whether
+    // DECLARED faces have loaded, so a family that was never declared has no
+    // matching faces and the answer is vacuously true. Chromium returns true
+    // for a font nobody has ever installed.
+    const viaCheck = await page.evaluate(() =>
+      document.fonts.check('16px "Vigilia No Such Font"'),
+    );
+    expect(viaCheck, 'fonts.check is unsound for this question — see fonts.ts').toBe(true);
+
+    // Metric comparison gives the real answer.
+    const probe = await page.evaluate(() => {
+      const context = document.createElement('canvas').getContext('2d');
+      if (context === null) {
+        return null;
+      }
+      const width = (font: string): number => {
+        context.font = `72px ${font}`;
+        return context.measureText('mmmmmmmmmmlliWWWW@').width;
+      };
+      return {
+        invented: width('"Vigilia No Such Font", monospace') === width('monospace'),
+        real: width('serif, monospace') === width('monospace'),
+      };
+    });
+
+    expect(probe).not.toBeNull();
+    if (probe !== null) {
+      // The invented family contributes nothing, so its metrics equal the
+      // fallback's. A family that does resolve changes them.
+      expect(probe.invented).toBe(true);
+      expect(probe.real).toBe(false);
+    }
+  });
+
+  test('renders each styled run as its own span', async ({ page }) => {
+    await openPlayer(page);
+
+    // §91: native text, never a bitmap label. Separate spans are what lets a
+    // label, a value and a unit differ inside one element.
+    const spans = page.locator('[data-node-id="cpu-label"] span');
+    await expect(spans).toHaveCount(4);
+
+    const sizes = await spans.evaluateAll((elements) =>
+      elements.map((el) => getComputedStyle(el).fontSize),
+    );
+    expect(sizes.every((size) => size !== '')).toBe(true);
+  });
+
+  test('applies tabular numerals where the theme asks for them', async ({ page }) => {
+    await openPlayer(page);
+
+    // A font without tabular figures ignores this, which is the correct
+    // degradation — nothing is substituted.
+    await expect(page.locator('[data-node-id="cpu-readout"]')).toHaveCSS(
+      'font-variant-numeric',
+      'tabular-nums',
+    );
+  });
+});

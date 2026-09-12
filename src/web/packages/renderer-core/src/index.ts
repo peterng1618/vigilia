@@ -153,6 +153,7 @@ export type {
   PlanContext,
   PlanIssue,
   PlanNode,
+  PlanTextLayout,
   PlanTextSegment,
   ResolvedStyle,
   ScenePlan,
@@ -161,10 +162,20 @@ export type {
 export {
   MISSING_VALUE_TEXT,
   buildScenePlan,
+  computeMaxLines,
   formatNumber,
   formatUnit,
   resolveStyleValue,
 } from './scene/plan.js';
+
+export {
+  GENERIC_FAMILIES,
+  isGenericFamily,
+  missingFontFamilies,
+  parseFontStack,
+  requestedFontFamilies,
+  unavailableFontFamilies,
+} from './scene/fonts.js';
 
 export type { MountOptions, SceneHandle } from './scene/mount.js';
 

@@ -1,7 +1,13 @@
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { computeArtboardTransform, toCssTransform } from '../artboard.js';
-import type { PlanBox, PlanNode, ResolvedStyle, ScenePlan } from './plan.js';
+import type {
+  PlanBox,
+  PlanNode,
+  PlanTextLayout,
+  ResolvedStyle,
+  ScenePlan,
+} from './plan.js';
 
 /**
  * Applies a {@link ScenePlan} to the DOM.
@@ -208,9 +214,21 @@ function createNode(
       break;
 
     case 'text': {
-      applyTextLayout(element);
-      texts.set(node.id, element);
-      renderText(element, node);
+      // Two levels, because one cannot do both jobs: the outer element is a
+      // flex container for vertical alignment, and `text-overflow: ellipsis`
+      // does not apply to a flex container — so the text itself lives in an
+      // inner block that owns wrapping, alignment and overflow.
+      const inner = document.createElement('div');
+      inner.dataset['vigiliaText'] = 'runs';
+      inner.style.minWidth = '0';
+      inner.style.maxWidth = '100%';
+      element.append(inner);
+
+      applyTextBox(element, node.content.layout);
+      applyTextFlow(inner, node.content.layout);
+
+      texts.set(node.id, inner);
+      renderText(inner, node);
       break;
     }
 
@@ -353,11 +371,58 @@ function applyBox(element: HTMLElement, box: PlanBox): void {
   }
 }
 
-function applyTextLayout(element: HTMLElement): void {
+/** The outer box: alignment within the authored rectangle. */
+function applyTextBox(element: HTMLElement, layout: PlanTextLayout): void {
   element.style.display = 'flex';
-  element.style.whiteSpace = 'pre';
-  element.style.overflow = 'hidden';
+  element.style.justifyContent =
+    layout.align === 'center' ? 'center' : layout.align === 'right' ? 'flex-end' : 'flex-start';
+  element.style.alignItems =
+    layout.verticalAlign === 'middle'
+      ? 'center'
+      : layout.verticalAlign === 'bottom'
+        ? 'flex-end'
+        : 'flex-start';
+
+  // `visible` is the one overflow mode that must not clip. The other two both
+  // need the box to clip; which of them applies is decided on the inner block.
+  element.style.overflow = layout.overflow === 'visible' ? 'visible' : 'hidden';
 }
+
+/** The inner block: wrapping, alignment of wrapped lines, and overflow. */
+function applyTextFlow(element: HTMLElement, layout: PlanTextLayout): void {
+  // `pre-wrap` and `pre` both preserve authored spacing, which matters because
+  // runs are concatenated and a theme may space them deliberately.
+  element.style.whiteSpace = layout.wrap ? 'pre-wrap' : 'pre';
+  element.style.textAlign = layout.align;
+
+  if (layout.overflow === 'visible') {
+    return;
+  }
+
+  element.style.overflow = 'hidden';
+
+  if (layout.overflow !== 'ellipsis') {
+    return;
+  }
+
+  if (layout.wrap && layout.maxLines !== undefined) {
+    // A line clamp is the only thing that ellipsises WRAPPED text;
+    // `text-overflow` applies to a single line only. The line count comes from
+    // the plan, which computed it from the box and the resolved type size.
+    element.style.display = '-webkit-box';
+    element.style.setProperty('-webkit-box-orient', 'vertical');
+    element.style.setProperty('-webkit-line-clamp', String(layout.maxLines));
+    return;
+  }
+
+  // Single-line ellipsis. Also the fallback when the type size was not
+  // resolvable, because a wrong clamp hides text that would have fitted.
+  element.style.whiteSpace = 'nowrap';
+  element.style.textOverflow = 'ellipsis';
+}
+
+// Font availability diagnostics live in `fonts.ts`, because the collection half
+// is pure and testable and only the measuring needs a browser.
 
 /**
  * Writes the style properties this renderer understands.
@@ -423,17 +488,10 @@ function applyCommonStyle(element: HTMLElement, style: ResolvedStyle): void {
     element.style.lineHeight = String(lineHeight);
   }
 
-  const align = style['align'];
-  if (typeof align === 'string') {
-    element.style.justifyContent =
-      align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
-  }
-
-  const verticalAlign = style['verticalAlign'];
-  if (typeof verticalAlign === 'string') {
-    element.style.alignItems =
-      verticalAlign === 'middle' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start';
-  }
+  // Alignment is deliberately NOT here. It is layout, it comes from the
+  // document's TextContent rather than its style map, and it is applied by
+  // applyTextBox/applyTextFlow — which also need it to agree with wrapping and
+  // overflow. Two places writing justifyContent would fight.
 
   const tabularNumerals = style['tabularNumerals'];
   if (tabularNumerals === true) {

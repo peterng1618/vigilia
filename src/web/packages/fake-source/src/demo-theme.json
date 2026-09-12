@@ -49,10 +49,10 @@
         "fontFamily": { "ref": "fonts.ui" },
         "fontSize": { "ref": "fontSizes.title" },
         "fontWeight": { "value": 600 },
-        "color": { "ref": "palette.text" },
-        "verticalAlign": { "value": "middle" }
+        "color": { "ref": "palette.text" }
       },
       "content": {
+        "verticalAlign": "middle",
         "runs": [
           { "kind": "literal", "text": "Vigilia" },
           {
@@ -115,14 +115,14 @@
             "fontSize": { "ref": "fontSizes.readout" },
             "fontWeight": { "value": 600 },
             "color": { "ref": "palette.text" },
-            "align": { "value": "center" },
-            "verticalAlign": { "value": "middle" },
             "tabularNumerals": { "value": true }
           },
           "bindings": [
             { "id": "cpu-load-text", "semanticKey": "cpu.load", "precision": 0, "unitDisplay": "none" }
           ],
           "content": {
+            "align": "center",
+            "verticalAlign": "middle",
             "runs": [
               { "kind": "value", "bindingId": "cpu-load-text" },
               {
@@ -143,14 +143,14 @@
           "style": {
             "fontFamily": { "ref": "fonts.ui" },
             "fontSize": { "ref": "fontSizes.label" },
-            "color": { "ref": "palette.textDim" },
-            "align": { "value": "center" }
+            "color": { "ref": "palette.textDim" }
           },
           "bindings": [
             { "id": "cpu-temp-inline", "semanticKey": "cpu.temp", "precision": 0 },
             { "id": "cpu-power-inline", "semanticKey": "cpu.power", "precision": 0 }
           ],
           "content": {
+            "align": "center",
             "runs": [
               { "kind": "literal", "text": "CPU  ·  " },
               { "kind": "value", "bindingId": "cpu-temp-inline" },
@@ -210,14 +210,14 @@
             "fontSize": { "ref": "fontSizes.readout" },
             "fontWeight": { "value": 600 },
             "color": { "ref": "palette.text" },
-            "align": { "value": "center" },
-            "verticalAlign": { "value": "middle" },
             "tabularNumerals": { "value": true }
           },
           "bindings": [
             { "id": "gpu-load-text", "semanticKey": "gpu.load", "precision": 0, "unitDisplay": "none" }
           ],
           "content": {
+            "align": "center",
+            "verticalAlign": "middle",
             "runs": [
               { "kind": "value", "bindingId": "gpu-load-text" },
               {
@@ -238,14 +238,14 @@
           "style": {
             "fontFamily": { "ref": "fonts.ui" },
             "fontSize": { "ref": "fontSizes.label" },
-            "color": { "ref": "palette.textDim" },
-            "align": { "value": "center" }
+            "color": { "ref": "palette.textDim" }
           },
           "bindings": [
             { "id": "gpu-temp-inline", "semanticKey": "gpu.temp", "precision": 0 },
             { "id": "gpu-clock-inline", "semanticKey": "gpu.clock", "precision": 0 }
           ],
           "content": {
+            "align": "center",
             "runs": [
               { "kind": "literal", "text": "GPU  ·  " },
               { "kind": "value", "bindingId": "gpu-temp-inline" },
@@ -482,11 +482,11 @@
             "fontSize": { "ref": "fontSizes.readout" },
             "fontWeight": { "value": 600 },
             "color": { "ref": "palette.text" },
-            "verticalAlign": { "value": "middle" },
             "tabularNumerals": { "value": true }
           },
           "bindings": [{ "id": "ram-used-text", "semanticKey": "ram.used", "precision": 1 }],
           "content": {
+            "verticalAlign": "middle",
             "runs": [
               { "kind": "value", "bindingId": "ram-used-text" },
               {
@@ -496,6 +496,28 @@
                   "fontSize": { "ref": "fontSizes.label" },
                   "color": { "ref": "palette.textDim" }
                 }
+              }
+            ]
+          }
+        },
+        {
+          "id": "memory-overflow-demo",
+          "type": "text",
+          "name": "Wrapped, clamped text",
+          "transform": { "x": 260, "y": 188, "width": 290, "height": 44 },
+          "style": {
+            "fontFamily": { "ref": "fonts.ui" },
+            "fontSize": { "ref": "fontSizes.caption" },
+            "lineHeight": { "value": 1.4 },
+            "color": { "ref": "palette.textDim" }
+          },
+          "content": {
+            "wrap": true,
+            "overflow": "ellipsis",
+            "runs": [
+              {
+                "kind": "literal",
+                "text": "Wrapped text with an authored ellipsis: this run is deliberately longer than its box so the line clamp has something to cut, which is what §89 means by explicit overflow."
               }
             ]
           }
