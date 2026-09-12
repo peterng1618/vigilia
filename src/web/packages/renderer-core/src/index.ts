@@ -139,6 +139,8 @@ export type { IssueCode, ValidationIssue, ValidationResult } from './theme/valid
 
 export { validateThemeDocument } from './theme/validate.js';
 
+export { serializeThemeDocument } from './theme/serialize.js';
+
 export type { SampleSource } from './data/source.js';
 
 export { emptySampleSource } from './data/source.js';
