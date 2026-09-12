@@ -40,6 +40,24 @@ export type { HitTestOptions, MarqueeOptions } from './hit-test.js';
 
 export { hitTest, hitTestDeep, hitTestInside, marqueeSelect, normalizeBounds } from './hit-test.js';
 
+export type { GestureModifiers, GestureNode, GestureStart, Handle } from './transform-gesture.js';
+
+export {
+  MIN_SIZE,
+  ROTATION_SNAP_DEGREES,
+  applyGesture,
+  handlePosition,
+  normalizeDegrees,
+  preserveAnchor,
+  toLocalDelta,
+  toLocalPoint,
+  worldCentre,
+} from './transform-gesture.js';
+
+export type { SnapGuide, SnapOptions, SnapResult, SnapTarget } from './snapping.js';
+
+export { collectSnapTargets, snapMove, thresholdInDocumentUnits } from './snapping.js';
+
 export type { SelectionMode, SelectionState } from './selection.js';
 
 export {
