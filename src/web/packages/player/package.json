@@ -16,5 +16,9 @@
     "@vigilia/renderer-core": "*",
     "echarts": "6.1.0"
   },
+  "devDependencies": {
+    "@vigilia/fake-source": "*"
+  },
+  "//devDependencies": "SCAFFOLD. The player currently renders synthetic samples because no transport exists yet, so this is built into the bundle despite being a devDependency — Vite bundles what is imported, not what package.json calls it. Remove the import from src/main.ts when the SignalR client lands; the renderer only ever sees a SampleSource, so nothing else changes.",
   "//": "§47: this package proves the shared renderer runs in a small display-only bundle. Adding an editor dependency here is a Gate 0 failure, not a convenience — the budget check in scripts/check-size.mjs is what keeps that honest."
 }

@@ -200,6 +200,17 @@ describe('failure simulation', () => {
     expect(source.latest('gpu.temp')?.status).toBe('stale');
   });
 
+  it('reports an unmapped key as having no sample at all', () => {
+    // Distinct from a `missing` status: nothing is mapped, so the theme needs
+    // remapping (§141) rather than a retry. Without this option the source
+    // would invent a value for every key and hide the case entirely.
+    const source = new FakeSampleSource(T0, { unmappedKeys: ['disk.queue'] });
+
+    expect(source.latest('disk.queue')).toBeUndefined();
+    expect(source.history('disk.queue', 60)).toEqual([]);
+    expect(source.latest('cpu.load')).toBeDefined();
+  });
+
   it('ignores a rule with a non-positive cycle instead of dividing by zero', () => {
     const source = new FakeSampleSource(T0, {
       outages: [{ semanticKey: 'gpu.temp', everySeconds: 0, forSeconds: 5 }],

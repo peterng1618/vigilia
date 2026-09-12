@@ -33,6 +33,16 @@ import type { Sample, SampleSource, SensorStatus } from '@vigilia/renderer-core'
  *   real host would do and what makes multi-phone behaviour testable.
  */
 
+// The demo fixture ships from the same entry point so a consumer needs one
+// alias rather than two. It is the only thing in here that touches the theme
+// format; everything else is just sample generation.
+export {
+  createDemoSource,
+  demoSourceOptions,
+  demoThemeSource,
+  loadDemoTheme,
+} from './demo.js';
+
 /** How a family of sensors behaves, chosen by the last segment of its key. */
 export interface SensorProfile {
   readonly unit: string;
@@ -96,6 +106,16 @@ export interface FakeSourceOptions {
   readonly outages?: readonly OutageRule[];
   /** Keys that report text instead of a number, e.g. a GPU model name. */
   readonly textValues?: Readonly<Record<string, string>>;
+  /**
+   * Keys reported as having no sensor at all.
+   *
+   * Needed because this source would otherwise invent a value for *any* key,
+   * which hides the case a theme most needs to handle: a binding the host
+   * cannot satisfy, which calls for explicit remapping (§141) rather than a
+   * retry. `latest` returns undefined for these, which is different from a
+   * sample whose status is `missing`.
+   */
+  readonly unmappedKeys?: readonly string[];
   /** Shifts every waveform, so two sources can differ without either being random. */
   readonly seed?: number;
 }
@@ -105,6 +125,7 @@ export class FakeSampleSource implements SampleSource {
   readonly #forcedStatus: Readonly<Record<string, Exclude<SensorStatus, 'ok'>>>;
   readonly #outages: readonly OutageRule[];
   readonly #textValues: Readonly<Record<string, string>>;
+  readonly #unmapped: ReadonlySet<string>;
   readonly #seed: number;
   #nowMs: number;
 
@@ -114,6 +135,7 @@ export class FakeSampleSource implements SampleSource {
     this.#forcedStatus = options.forcedStatus ?? {};
     this.#outages = options.outages ?? [];
     this.#textValues = options.textValues ?? {};
+    this.#unmapped = new Set(options.unmappedKeys ?? []);
     this.#seed = options.seed ?? 0;
   }
 
@@ -127,6 +149,10 @@ export class FakeSampleSource implements SampleSource {
   }
 
   latest(semanticKey: string): Sample | undefined {
+    if (this.#unmapped.has(semanticKey)) {
+      return undefined;
+    }
+
     // Quantised to the sampling cadence, so the value holds still between ticks
     // exactly as a real 1 Hz feed would. Without this, a value readout would
     // flicker through digits at frame rate.
@@ -134,6 +160,10 @@ export class FakeSampleSource implements SampleSource {
   }
 
   history(semanticKey: string, windowSeconds: number): readonly Sample[] {
+    if (this.#unmapped.has(semanticKey)) {
+      return [];
+    }
+
     const end = this.#quantise(this.#nowMs);
     const start = end - Math.max(0, windowSeconds) * 1000;
     const samples: Sample[] = [];

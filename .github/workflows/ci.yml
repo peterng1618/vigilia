@@ -37,6 +37,7 @@ jobs:
         run: |
           npx tsc --noEmit -p packages/renderer-core/tsconfig.json
           npx tsc --noEmit -p packages/player/tsconfig.json
+          npx tsc --noEmit -p packages/fake-source/tsconfig.json
 
       - name: Unit tests
         run: npx vitest run
@@ -47,6 +48,26 @@ jobs:
       - name: Enforce display-only bundle budget (§47)
         # Fails if an editor dependency leaks into the player.
         run: node packages/player/scripts/check-size.mjs
+
+      # Only Chromium: these tests assert structure and behaviour, not pixels,
+      # so a second engine would triple the install time to re-check the same
+      # DOM. Cross-browser and real-device coverage is Gate 0 work on named
+      # reference hardware (§126).
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Display tests (browser)
+        run: npx playwright test --project=desktop-chromium
+
+      - name: Upload dashboard screenshots
+        # Evidence for review, not a pass/fail baseline — glyph rasterisation
+        # differs between this runner and a Windows development machine.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-screenshots
+          path: src/web/test-results/screenshots/
+          if-no-files-found: warn
 
   backend:
     name: Backend (.NET)

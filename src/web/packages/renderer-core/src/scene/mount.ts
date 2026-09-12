@@ -67,7 +67,16 @@ export function mountScene(options: MountOptions): SceneHandle {
   // The host clips the artboard: in `cover` mode the scaled design is larger
   // than the viewport by design, and without this it would spill onto the page.
   host.style.overflow = 'hidden';
-  host.style.position = 'relative';
+
+  // Only when the host is not already positioned. Writing `relative`
+  // unconditionally overrode a host styled `position: absolute; inset: 0`,
+  // which dropped it out of that layout and collapsed its height to zero — its
+  // only child being absolutely positioned. The transform then correctly
+  // reported a degenerate viewport and hid the whole scene. The artboard needs
+  // *a* positioned ancestor, not a specific one.
+  if (getComputedStyle(host).position === 'static') {
+    host.style.position = 'relative';
+  }
 
   const artboard = document.createElement('div');
   artboard.dataset['vigilia'] = 'artboard';

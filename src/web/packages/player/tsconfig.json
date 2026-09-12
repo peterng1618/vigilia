@@ -7,7 +7,8 @@
     // TypeScript reports TS6059 for every shared file.
     "rootDir": "../..",
     "paths": {
-      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"],
+      "@vigilia/fake-source": ["../fake-source/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

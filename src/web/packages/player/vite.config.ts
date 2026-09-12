@@ -7,6 +7,11 @@ export default defineConfig({
       '@vigilia/renderer-core': fileURLToPath(
         new URL('../renderer-core/src/index.ts', import.meta.url),
       ),
+      // SCAFFOLD: the synthetic sample source, which exists only because no
+      // transport does yet. Remove with the import in src/main.ts.
+      '@vigilia/fake-source': fileURLToPath(
+        new URL('../fake-source/src/index.ts', import.meta.url),
+      ),
     },
   },
   build: {
