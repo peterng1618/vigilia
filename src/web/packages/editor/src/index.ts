@@ -92,6 +92,20 @@ export {
   visibleDocument,
 } from './history.js';
 
+export type {
+  FieldDescriptor,
+  FieldKind,
+  FieldOption,
+  FieldSource,
+  InspectorSection,
+} from './inspector-model.js';
+
+export { describeSelection, globalOptions } from './inspector-model.js';
+
+export type { FieldChange } from './inspector-apply.js';
+
+export { applyFieldChange, labelForField } from './inspector-apply.js';
+
 export type { SelectionMode, SelectionState } from './selection.js';
 
 export {

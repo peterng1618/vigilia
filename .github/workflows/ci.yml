@@ -46,6 +46,13 @@ jobs:
       - name: Build display-only player
         run: npx vite build packages/player
 
+      - name: Build editor
+        # Not optional and not only for the editor's own tests: Playwright starts
+        # every `webServer` in its config regardless of which project runs, and
+        # `vite preview` on an unbuilt package cannot start. `dist/` is
+        # gitignored, so a fresh checkout has nothing until this step runs.
+        run: npx vite build packages/editor
+
       - name: Enforce display-only bundle budget (§47)
         # Fails if an editor dependency leaks into the player.
         run: node packages/player/scripts/check-size.mjs
