@@ -8,7 +8,8 @@
   "workspaces": [
     "packages/renderer-core",
     "packages/player",
-    "packages/editor"
+    "packages/editor",
+    "packages/fake-source"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

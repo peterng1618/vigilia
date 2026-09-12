@@ -138,3 +138,34 @@ export {
 export type { IssueCode, ValidationIssue, ValidationResult } from './theme/validate.js';
 
 export { validateThemeDocument } from './theme/validate.js';
+
+export type { SampleSource } from './data/source.js';
+
+export { emptySampleSource } from './data/source.js';
+
+export type { SampleStoreOptions } from './data/store.js';
+
+export { SampleStore, defaultSampleStoreOptions } from './data/store.js';
+
+export type {
+  PlanBox,
+  PlanContent,
+  PlanContext,
+  PlanIssue,
+  PlanNode,
+  PlanTextSegment,
+  ResolvedStyle,
+  ScenePlan,
+} from './scene/plan.js';
+
+export {
+  MISSING_VALUE_TEXT,
+  buildScenePlan,
+  formatNumber,
+  formatUnit,
+  resolveStyleValue,
+} from './scene/plan.js';
+
+export type { MountOptions, SceneHandle } from './scene/mount.js';
+
+export { mountScene } from './scene/mount.js';

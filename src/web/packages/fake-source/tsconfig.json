@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // renderer-core is consumed as source, so the program spans two workspace
+    // packages and rootDir has to cover both or TS6059 fires for every shared
+    // file. Same arrangement as the player.
+    "rootDir": "../..",
+    "paths": {
+      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

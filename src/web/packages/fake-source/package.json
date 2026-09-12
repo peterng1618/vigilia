@@ -1,0 +1,20 @@
+{
+  "name": "@vigilia/fake-source",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Deterministic synthetic sample source for developing and testing the display path without a host.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vigilia/renderer-core": "*"
+  },
+  "//": "DEV AND TEST ONLY. This is not a provider: providers acquire hardware data on the PC and live in src/Vigilia.Providers.*. This package fabricates samples so the renderer, themes and the player can be developed before the SignalR transport exists. It must never be a dependency of a shipped player or editor bundle — if it appears in one, the display is showing invented numbers, which §97 forbids."
+}
