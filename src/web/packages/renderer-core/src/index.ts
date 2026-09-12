@@ -17,6 +17,25 @@ export type {
 
 export { defaultGaugeSettings, hasPlottableValue } from './types.js';
 
+export type {
+  ArtboardBars,
+  ArtboardCrop,
+  ArtboardSize,
+  ArtboardTransform,
+  ComputeArtboardTransformInput,
+  FitMode,
+  Point,
+  ViewportSize,
+} from './artboard.js';
+
+export {
+  computeArtboardTransform,
+  documentToViewport,
+  isFullyVisible,
+  toCssTransform,
+  viewportToDocument,
+} from './artboard.js';
+
 export type { GaugeOption } from './charts/gauge.js';
 
 export {
