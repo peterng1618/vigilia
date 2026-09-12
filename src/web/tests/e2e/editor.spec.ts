@@ -322,3 +322,34 @@ test.describe('the scene is the renderer\'s, not a placeholder', () => {
     );
   });
 });
+
+test.describe('evidence', () => {
+  test('captures the editor with a selection, for human review', async ({ page }, testInfo) => {
+    // Committed to docs/gates/screenshots/ with VIGILIA_CAPTURE=1, like the
+    // player captures. Shows what the authoring surface actually looks like —
+    // including that the charts under the selection are live, which is the part
+    // ADR-0005 turns on.
+    const directory =
+      process.env['VIGILIA_CAPTURE'] === undefined
+        ? 'test-results/screenshots'
+        : '../../docs/gates/screenshots';
+
+    await openEditor(page);
+
+    // Select a panel so the outline and handles are in frame.
+    const panel = await centreOf(page.locator('[data-node-id="cpu-panel-bg"]'));
+    await page.mouse.click(panel.x, panel.y);
+    await expect(page.locator('[data-vigilia-handle]')).toHaveCount(9);
+
+    const screenshot = await page.screenshot({
+      path: `${directory}/editor-${testInfo.project.name}.png`,
+    });
+
+    await testInfo.attach(`editor-${testInfo.project.name}.png`, {
+      body: screenshot,
+      contentType: 'image/png',
+    });
+
+    expect(screenshot.byteLength).toBeGreaterThan(1000);
+  });
+});

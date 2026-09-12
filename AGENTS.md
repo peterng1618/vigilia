@@ -31,7 +31,7 @@ project name; that is intentional and not a bug to fix.
 | Package manager | **npm** (11.x). No `packageManager` field is pinned |
 | Node | **22.12+, 24, or 26+** per vitest 5's `engines`. Node 25 is outside that range but **works** — verified 2026-09-12, full suite on v25.9.0. npm warns; nothing fails unless `engine-strict` is set. Do not waste time downgrading |
 | .NET SDK | **10.0.100**, pinned in `global.json` (ADR-0002) |
-| Default branch | `main`. **No remote is configured and there are no commits yet** |
+| Default branch | `main`, pushed to `origin` (`github.com/peterng1618/vigilia`). History exists; `git log` is authoritative |
 | Issue tracker | None. Keep skills tracker-agnostic |
 | Source headers | None. Do not add licence headers to files |
 | Symlinks | **Unavailable** — `core.symlinks=false` and `ln -s` silently copies. Never introduce one |
@@ -80,21 +80,36 @@ Three planning locations exist and they do **not** overlap:
 
 ```bash
 npm install                                      # also regenerates package-lock.json
-npx vitest run                                   # unit tests (327 currently)
+npx vitest run                                   # unit tests
 npx tsc --noEmit -p packages/renderer-core/tsconfig.json
 npx tsc --noEmit -p packages/player/tsconfig.json
 npx tsc --noEmit -p packages/fake-source/tsconfig.json
+npx tsc --noEmit -p packages/editor/tsconfig.json
 npx vite build packages/player                   # display-only bundle
 node packages/player/scripts/check-size.mjs      # §47 budget gate; needs a build first
-npx playwright test                              # 21 browser tests; builds are NOT automatic
+npx playwright test                              # browser tests; builds are NOT automatic
 npx vite dev packages/player                     # watch the demo dashboard live
 ```
 
-**`npx playwright test` previews the *built* bundle**, so a source change is
-invisible until `npx vite build packages/player` runs again. It starts the
-preview server itself on `127.0.0.1:4173` — explicitly IPv4, because Vite
-otherwise binds `localhost`, which resolves to `::1` first on Windows and then
-never answers.
+**Test counts are deliberately not recorded here.** They moved by hundreds
+within single milestones and every stale number invited a wrong conclusion. Run
+`node tools/dev-status.mjs` from the repository root for current, *executed*
+figures — it runs the unit suite, measures the bundle on disk, and prints "not
+measured" for anything it cannot establish rather than carrying a number
+forward. `vigilia:verify` is the routine to run before committing.
+
+**There are four typecheck projects, not three.** `packages/editor` is one of
+them; CI checks all four, so omitting it locally means CI finds the error
+instead of you.
+
+**`npx playwright test` previews *built* bundles**, so a source change is
+invisible until the bundle is rebuilt — and **every bundle a suite exercises
+must be built first**, not just the player. Playwright starts the preview
+servers itself, each bound to `127.0.0.1` explicitly, because Vite otherwise
+binds `localhost`, which resolves to `::1` first on Windows and then never
+answers. Read `playwright.config.ts` for the current server list and ports
+rather than assuming one server: a missing build surfaces as a preview server
+that will not come up, which reads like a Playwright fault and is not one.
 
 If the browser is missing or its build is too old for the installed Playwright,
 `npx playwright install chromium` fixes it (~115 MB). The error message names a
@@ -132,7 +147,7 @@ No command here requires infrastructure, and none is interactive.
 | `schema/` | The owned theme format |
 | `src/web/packages/renderer-core` | Shared renderer. **No editor dependencies, ever** |
 | `src/web/packages/player` | Display-only bundle for phones |
-| `src/web/packages/editor` | Desktop authoring. Foundation not yet chosen (ADR-0001) |
+| `src/web/packages/editor` | Desktop authoring: interaction and inspector layer over `renderer-core` (ADR-0005). **Do not add Fabric** |
 | `src/web/packages/fake-source` | **Fabricated** samples + the demo theme. Dev and test only |
 | `src/web/tests/e2e` | Playwright display tests |
 
