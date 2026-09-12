@@ -204,11 +204,17 @@ evaluation, and building directly on Fabric 7 remains open (ADR-0001).
 and produces wrong values at runtime. **This is the highest-risk edit in the
 repository.** Change both, in the same commit.
 
-The theme format has the same shape of risk — `schema/theme-document.schema.json`
-against `renderer-core/src/theme/`— but that one has a guard:
-`theme/schema-sync.test.ts` reads the schema off disk and fails on drift. The C#
-mirror still has nothing equivalent, and that test is the pattern to copy when
-a .NET SDK exists.
+Two guards now fail on drift instead of leaving it to discipline:
+
+- `renderer-core/src/contracts-mirror.test.ts` parses the `.cs` files and
+  `types.ts` as text and compares member names. Narrow on purpose — names only,
+  not types — because that is the drift that actually happens. It cannot see
+  `DateTimeOffset` versus an ISO string, which is intentional and asserted.
+- `renderer-core/src/theme/schema-sync.test.ts` does the same for
+  `schema/theme-document.schema.json` against the validator.
+
+Neither replaces generating one side from the other, which needs a .NET SDK to
+exist first. A guard that runs today beats a better one that does not.
 
 ### Blast radius, in order
 
