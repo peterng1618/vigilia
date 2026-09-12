@@ -1,0 +1,30 @@
+{
+  "name": "vigilia-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Frontend workspace: shared renderer, display-only player and editor.",
+  "workspaces": [
+    "packages/renderer-core",
+    "packages/player",
+    "packages/editor"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:player": "npm run build -w @vigilia/player",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "size": "npm run size -w @vigilia/player"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

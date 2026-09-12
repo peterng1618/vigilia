@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vigilia.local/schema/theme-document/1.json",
+  "title": "Vigilia theme document",
+  "description": "The owned theme format (§134). Fabric JSON, DOM snapshots and raw ECharts options are explicitly NOT this format — they are engine details behind the renderer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "artboard", "nodes"],
+  "properties": {
+    "schemaVersion": {
+      "description": "Integer document version. An unsupported version must fail import without changing the library (§141).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": { "$ref": "#/$defs/stableId" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "maxLength": 200 },
+        "author": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "artboard": { "$ref": "#/$defs/artboard" },
+    "globals": {
+      "description": "Named, typed constants (§73). V1 holds literals only — no scripts, no sensor expressions, so reference cycles are impossible by construction.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "palette": { "$ref": "#/$defs/globalGroup" },
+        "fonts": { "$ref": "#/$defs/globalGroup" },
+        "fontSizes": { "$ref": "#/$defs/globalGroup" },
+        "spacing": { "$ref": "#/$defs/globalGroup" },
+        "assets": { "$ref": "#/$defs/globalGroup" }
+      }
+    },
+    "nodes": {
+      "description": "Ordered node tree. Child order alone determines stacking (§137) — there is no z-index.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assetReference" }
+    },
+    "editorMetadata": {
+      "description": "Rulers, grid and guides (§64). Persisted with the document but never part of rendering — and never part of undo for telemetry or viewport state (§67).",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "description": "Stable machine identifier. Renaming must preserve links, so display names live in a separate field (§75).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+
+    "artboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
+        "background": { "$ref": "#/$defs/styleValue" },
+        "fitMode": {
+          "description": "§53: 'contain' fits the whole design with colour bars; 'cover' fills and crops.",
+          "enum": ["contain", "cover"],
+          "default": "contain"
+        },
+        "barColor": { "$ref": "#/$defs/styleValue" }
+      }
+    },
+
+    "globalGroup": {
+      "type": "object",
+      "description": "Map of stable ID to a named literal.",
+      "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "value": {}
+        }
+      }
+    },
+
+    "styleValue": {
+      "description": "§75: every compatible property is EITHER a global reference OR its own literal — never both, and never a bare value whose origin is ambiguous. Inspectors surface this choice explicitly with 'use global' / 'make local'.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref"],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^(palette|fonts|fontSizes|spacing|assets)\\.[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": { "value": {} }
+        }
+      ]
+    },
+
+    "transform": {
+      "description": "Group-local coordinates (§57). Grouping and ungrouping must preserve world appearance, so transforms compose rather than being baked.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number", "default": 0 },
+        "y": { "type": "number", "default": 0 },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "rotation": { "type": "number", "minimum": -360, "maximum": 360, "default": 0 },
+        "scaleX": { "type": "number", "default": 1 },
+        "scaleY": { "type": "number", "default": 1 }
+      }
+    },
+
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "type": {
+          "description": "V1 node types. Shapes are deliberately minimal (§43): rectangle, ellipse and line only, to prove extensible node types without building a general graphics editor first.",
+          "enum": [
+            "group",
+            "rectangle",
+            "ellipse",
+            "line",
+            "text",
+            "chart",
+            "image",
+            "video"
+          ]
+        },
+        "name": { "type": "string", "maxLength": 120 },
+        "transform": { "$ref": "#/$defs/transform" },
+        "visible": { "type": "boolean", "default": true },
+        "locked": {
+          "description": "§61: a locked object stays inspectable in the tree but cannot transform until unlocked.",
+          "type": "boolean",
+          "default": false
+        },
+        "style": { "type": "object", "additionalProperties": { "$ref": "#/$defs/styleValue" } },
+        "content": { "type": "object", "additionalProperties": true },
+        "binding": { "$ref": "#/$defs/binding" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "group" } }, "required": ["type"] },
+          "then": { "required": ["children"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "chart" } }, "required": ["type"] },
+          "then": { "required": ["content"] }
+        }
+      ]
+    },
+
+    "binding": {
+      "description": "§93: themes bind to semantic keys, and a mapping layer resolves them to actual sensors — so changing providers must not require editing the theme. A theme therefore never stores a provider instance ID.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semanticKey"],
+      "properties": {
+        "semanticKey": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "unitDisplay": { "enum": ["none", "short", "long"], "default": "short" },
+        "scale": { "type": "number" },
+        "offset": { "type": "number" }
+      }
+    },
+
+    "assetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "path"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "kind": { "enum": ["image", "svg", "gif", "video", "font"] },
+        "path": {
+          "description": "Package-relative path under assets/. Absolute paths, traversal and symlinks are rejected at import (§141).",
+          "type": "string",
+          "pattern": "^assets/[A-Za-z0-9._/-]{1,200}$"
+        },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "license": {
+          "description": "§132: a URL alone does not establish reuse rights. Record what was actually supplied, and preserve required notices in packages.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "maxLength": 200 },
+            "url": { "type": "string", "format": "uri" },
+            "attribution": { "type": "string", "maxLength": 500 }
+          }
+        }
+      }
+    }
+  }
+}

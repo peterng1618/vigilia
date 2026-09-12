@@ -1,0 +1,57 @@
+# ---------- .NET ----------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+
+# ---------- Node / frontend ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+.eslintcache
+*.tsbuildinfo
+
+# ---------- Playwright ----------
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+
+# ---------- Runtime / local data ----------
+# SQLite metadata + managed asset files are user data, never committed.
+data/
+*.db
+*.db-shm
+*.db-wal
+assets-store/
+secrets.local.json
+appsettings.Local.json
+
+# ---------- Gate evidence (large binaries) ----------
+# Commit the written results; keep raw captures local.
+docs/gates/**/evidence/raw/
+
+# ---------- Agent environment ----------
+# Personal overrides; the committed .claude/settings.json is the shared one.
+.claude/settings.local.json
+# Throwaway implementation plans are not repository content. Tracked specs live
+# in .agents/specs/ instead (see that directory's README).
+.claude/plans/
+
+# ---------- Editors / OS ----------
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows sensor provider. This is one of the few projects allowed to touch
+    Windows types (§97) — it opts in below, which switches the target to
+    net10.0-windows via Directory.Build.props.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Vigilia.Providers.Windows</RootNamespace>
+    <IsWindowsPlatformProject>true</IsWindowsPlatformProject>
+    <Description>Windows hardware sensor provider (LibreHardwareMonitor + PawnIO).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vigilia.Contracts\Vigilia.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      PINNED EXACTLY per ADR-0003. 0.9.6 is the latest STABLE release; the package
+      also publishes 700+ 0.9.7-preNNN builds that a floating range would select.
+      0.9.6 already contains the PawnIO migration that replaces the blocklisted
+      WinRing0 driver, so there is no reason to take prerelease risk.
+
+      License: MPL-2.0. Embedded PawnIO modules: LGPL-2.1. Both must be reflected
+      in THIRD-PARTY-NOTICES.md and in distributed packages.
+    -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="[0.9.6]" />
+  </ItemGroup>
+
+</Project>

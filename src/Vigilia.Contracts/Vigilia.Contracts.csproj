@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    §97: shared contracts must not depend on Windows types.
+    This project deliberately has NO package references and NO platform-specific
+    target. If something here needs a Windows type, it belongs in
+    Vigilia.Platform.Windows or Vigilia.Providers.Windows instead.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Vigilia.Contracts</RootNamespace>
+    <Description>Platform-neutral contracts shared by the host, providers and tests.</Description>
+  </PropertyGroup>
+
+</Project>

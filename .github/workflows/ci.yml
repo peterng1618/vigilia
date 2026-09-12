@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (renderer, player)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # vitest 5 requires ^22.12 || ^24 || >=26 — pin to an LTS the toolchain
+          # actually supports rather than "latest", which can be an odd release.
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: |
+          npx tsc --noEmit -p packages/renderer-core/tsconfig.json
+          npx tsc --noEmit -p packages/player/tsconfig.json
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Build display-only player
+        run: npx vite build packages/player
+
+      - name: Enforce display-only bundle budget (§47)
+        # Fails if an editor dependency leaks into the player.
+        run: node packages/player/scripts/check-size.mjs
+
+  backend:
+    name: Backend (.NET)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # Version comes from global.json (ADR-0002: .NET 10 LTS).
+          global-json-file: global.json
+
+      - run: dotnet restore Vigilia.slnx
+
+      - name: Build
+        # Warnings are errors via Directory.Build.props.
+        run: dotnet build Vigilia.slnx --configuration Release --no-restore
+
+      - name: Provider contract tests
+        run: dotnet test Vigilia.slnx --configuration Release --no-build --verbosity normal
+
+  licences:
+    name: Licence notices present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every declared dependency must appear in THIRD-PARTY-NOTICES.md
+        # §157 requires a complete licence inventory at Gate 0, and §132/§161
+        # require notices to survive into packages. This is a coarse guard: it
+        # catches a new dependency added without a notice entry.
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in LibreHardwareMonitorLib echarts fabric; do
+            if ! grep -qi "$name" THIRD-PARTY-NOTICES.md; then
+              echo "::error::$name is not mentioned in THIRD-PARTY-NOTICES.md"
+              missing=1
+            fi
+          done
+          exit $missing

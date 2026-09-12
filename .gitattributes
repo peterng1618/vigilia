@@ -1,0 +1,27 @@
+# Normalize text on commit, check out platform-native.
+* text=auto
+
+*.cs        text diff=csharp
+*.csproj    text
+*.sln       text eol=crlf
+*.ps1       text eol=crlf
+*.sh        text eol=lf
+*.json      text
+*.md        text
+*.ts        text
+*.vue       text
+
+# Binary assets — never diff or normalize.
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.webp binary
+*.mp4  binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.zip  binary
+*.bin  binary
+*.sys  binary

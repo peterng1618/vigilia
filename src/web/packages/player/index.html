@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      §151: mobile fullscreen and keeping the screen awake are browser-dependent.
+      viewport-fit=cover keeps the artboard edge-to-edge on notched phones; the
+      fit/fill transform is applied by the renderer, never by CSS reflow (§57).
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Vigilia</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      /* Artboard host. The renderer applies one uniform transform to all
+         content (§51); this element must not impose its own layout. */
+      #artboard {
+        position: absolute;
+        inset: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="artboard"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

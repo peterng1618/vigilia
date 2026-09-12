@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // renderer-core is consumed as source via the Vite alias, so the program
+    // legitimately spans two workspace packages. rootDir has to cover both or
+    // TypeScript reports TS6059 for every shared file.
+    "rootDir": "../..",
+    "paths": {
+      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

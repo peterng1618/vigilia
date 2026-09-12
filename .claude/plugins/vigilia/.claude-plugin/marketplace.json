@@ -1,0 +1,13 @@
+{
+  "name": "vigilia",
+  "owner": {
+    "name": "Huy Nguyen"
+  },
+  "plugins": [
+    {
+      "name": "vigilia",
+      "source": "./",
+      "description": "Vigilia project skills, namespaced as vigilia:<name>."
+    }
+  ]
+}

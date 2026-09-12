@@ -1,0 +1,20 @@
+{
+  "name": "@vigilia/renderer-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Shared renderer used by both the editor and the display-only player.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "echarts": "6.1.0"
+  },
+  "//": "IMPORTANT: this package must never depend on editor UI, inspectors or a component framework. §47 requires the display-only bundle to exclude all of that, and a dependency here would pull it in. Editor-only behaviour belongs in @vigilia/editor."
+}

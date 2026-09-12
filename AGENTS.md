@@ -1,0 +1,257 @@
+# AGENTS.md — Vigilia
+
+Guidance for coding agents. Read this before changing anything.
+
+This file records **what you cannot infer from the code in front of you**: exact
+commands, which files lie about themselves, and where the tooling misleads. It
+deliberately does not explain the architecture you can read.
+
+---
+
+## 1. Project overview
+
+Vigilia is a PC-hosted website for live hardware monitoring over local Wi-Fi. A
+desktop browser runs a full design editor; phones each display one assigned
+dashboard. Windows-first, MIT, **personal-use-first** — optimise for development
+speed over release polish.
+
+Polyglot: **C# (.NET 10)** for the host, providers and platform adapters;
+**TypeScript** for the shared renderer, display-only player and editor. The
+frontend is an npm workspace at `src/web/`.
+
+**The design document is the spec:** [`docs/pc-stats-display-agent-plan.md`](docs/pc-stats-display-agent-plan.md)
+(revision 9). Section markers throughout the code — `§93`, `§122` — point into
+it. It is **user-authored: do not rewrite its prose.** It still uses the old
+project name; that is intentional and not a bug to fix.
+
+## 2. General guidelines
+
+| | |
+|---|---|
+| Package manager | **npm** (11.x). No `packageManager` field is pinned |
+| Node | **22.12+, 24, or 26+**. Odd releases such as 25 are rejected by vitest 5 |
+| .NET SDK | **10.0.100**, pinned in `global.json` (ADR-0002) |
+| Default branch | `main`. **No remote is configured and there are no commits yet** |
+| Issue tracker | None. Keep skills tracker-agnostic |
+| Source headers | None. Do not add licence headers to files |
+| Symlinks | **Unavailable** — `core.symlinks=false` and `ln -s` silently copies. Never introduce one |
+
+**Before proposing a dependency**, add it to `THIRD-PARTY-NOTICES.md` with its
+licence verified from the package's own metadata or LICENSE file — not from a
+search summary. CI fails if a known dependency is missing there.
+
+## 3. Agent skills
+
+Canonical content lives in [`.agents/skills/`](.agents/skills/) so any harness
+reads the same files. Claude Code additionally loads them through a plugin at
+`.claude/plugins/vigilia/` purely to obtain the `vigilia:` namespace.
+
+Invoke as `vigilia:<name>`:
+
+| Skill | Use when |
+|---|---|
+| `vigilia:conventions` | Quick reference for the rules and traps below |
+| `vigilia:code-review` | Reviewing a diff for what static analysis cannot see |
+| `vigilia:create-pr` | Opening a PR |
+| `vigilia:spec-driven-development` | Implementing a feature that has a spec |
+| `vigilia:create-skill` | Adding a skill |
+
+Layout and editing rules: [`.agents/skills/AGENTS.md`](.agents/skills/AGENTS.md).
+**Each skill has two files** (canonical + plugin pointer) because symlinks do not
+work here. Edit the canonical one.
+
+## 4. Specs
+
+Tracked specs live in [`.agents/specs/`](.agents/specs/). A spec is durable and
+committed; a plan is throwaway. See that directory's README for the convention
+and how specs relate to the gate checklists.
+
+Three planning locations exist and they do **not** overlap:
+
+| Location | Holds |
+|---|---|
+| `.agents/specs/` | Per-feature intended behaviour, kept in sync with the code |
+| `docs/gates/` | Gate acceptance evidence — measurements and observations |
+| `docs/decisions/` | ADRs — a decision, its context, its consequences |
+
+## 5. Essential commands
+
+### Frontend — run from `src/web/`
+
+```bash
+npm install                                      # also regenerates package-lock.json
+npx vitest run                                   # unit tests (19 currently)
+npx tsc --noEmit -p packages/renderer-core/tsconfig.json
+npx tsc --noEmit -p packages/player/tsconfig.json
+npx vite build packages/player                   # display-only bundle
+node packages/player/scripts/check-size.mjs      # §47 budget gate; needs a build first
+```
+
+### Backend — run from the repository root
+
+```bash
+dotnet restore Vigilia.slnx
+dotnet build Vigilia.slnx --configuration Release
+dotnet test Vigilia.slnx
+dotnet run --project src/Vigilia.Host            # binds 127.0.0.1:5227
+```
+
+**No .NET SDK is currently installed** — only the EOL 6.0.35 runtime. Every
+`dotnet` command above is **unverified and has never been run**. See the trap
+below for the misleading error you will get.
+
+No command here requires infrastructure, and none is interactive.
+
+## 6. Architecture
+
+| Path | Purpose |
+|---|---|
+| `src/Vigilia.Contracts` | Provider interface, `Sample`, `SensorDescriptor`. **No Windows types** |
+| `src/Vigilia.Core` | Registry, scheduling, normalization, bounded history, sensor mapping |
+| `src/Vigilia.Host` | ASP.NET Core + SignalR. Loopback-only by default |
+| `src/Vigilia.Platform.Abstractions` | `ISecretStore` and other platform-neutral interfaces |
+| `src/Vigilia.Platform.Windows` | Tray, secrets, startup, firewall |
+| `src/Vigilia.Providers.Fake` | Deterministic provider for contract and visual tests |
+| `src/Vigilia.Providers.Http` | Custom API sensors (§99) |
+| `src/Vigilia.Providers.Windows` | LibreHardwareMonitor + PawnIO driver probe |
+| `tests/Vigilia.Contracts.Tests` | Provider conformance suite |
+| `schema/` | The owned theme format |
+| `src/web/packages/renderer-core` | Shared renderer. **No editor dependencies, ever** |
+| `src/web/packages/player` | Display-only bundle for phones |
+| `src/web/packages/editor` | Desktop authoring. Foundation not yet chosen (ADR-0001) |
+
+**Outside the npm workspace:** everything except the three `src/web/packages/*`
+entries. The workspace root is `src/web/`, not the repository root.
+
+## 7. Technology stack
+
+.NET 10 · ASP.NET Core + SignalR (MessagePack) · LibreHardwareMonitorLib
+**exactly `[0.9.6]`** · PawnIO (external, optional) · Vue-less TypeScript for
+`renderer-core` · ECharts 6.1.0 · Vite 8 · TypeScript 7.0.2 · vitest 5 ·
+Playwright 1.63 (installed, no suite yet).
+
+Where several solutions coexist: the editor foundation is **undecided** —
+`vue-fabric-editor` (Fabric 5) and `yft-design` (Fabric 6) are both under
+evaluation, and building directly on Fabric 7 remains open (ADR-0001).
+
+## 8. Key architectural patterns
+
+1. **Two hard boundaries, both mechanically enforced.** Platform: `Contracts`,
+   `Core` and the renderer must not reference Windows types; projects that
+   legitimately do set `IsWindowsPlatformProject=true` (see
+   `Directory.Build.props`), and `CA1416` is an error everywhere else. Player vs
+   editor: `renderer-core` and `player` must not depend on editor UI or a
+   component framework, and `check-size.mjs` fails the build if one leaks.
+2. **Providers acquire; the host schedules.** A provider must never start a
+   timer, cache history, or push samples. It answers `SampleAsync` when asked
+   (`src/Vigilia.Contracts/ISensorProvider.cs`).
+3. **Themes bind to semantic keys, never to provider instances**, so changing
+   providers requires no theme edit (§93). A mapping layer resolves them.
+4. **Typed chart settings only.** Raw ECharts options never cross into the theme
+   format. There is exactly one engine-boundary cast, in
+   `packages/player/src/main.ts` — if that cast appears in feature code, the
+   boundary has been breached.
+5. **Two sensor tiers.** Baseline works with no driver and no elevation; extended
+   needs PawnIO and may legitimately be unavailable (ADR-0004). Tiers are
+   *discovered and reported*, never hardcoded.
+6. **Status before value, always.** A non-`Ok` sample carries no value, and a
+   missing sample renders as a **gap, never a zero** (§83).
+
+## 9. Key development patterns
+
+### Files you must not hand-edit, and what to edit instead
+
+| Do not edit | Edit / do instead |
+|---|---|
+| `src/web/package-lock.json` | Change `package.json`, then run `npm install` |
+| `src/web/packages/player/dist/**` | Build output. Gitignored |
+| `.claude/plugins/vigilia/skills/*/SKILL.md` | Pointer files. Edit `.agents/skills/<name>/SKILL.md` |
+| `docs/pc-stats-display-agent-plan.md` | User-authored spec. Propose changes; do not rewrite |
+| `docs/agent-environment-setup.md` | User-authored methodology. Same |
+
+### Not generated, but must be changed in pairs — nothing warns you
+
+`src/Vigilia.Contracts/*.cs` is **hand-mirrored** in
+`src/web/packages/renderer-core/src/types.ts`. A change to `Sample`,
+`SensorStatus` or `SensorDescriptor` on one side compiles cleanly on the other
+and produces wrong values at runtime. **This is the highest-risk edit in the
+repository.** Change both, in the same commit.
+
+### Blast radius, in order
+
+1. `Vigilia.Contracts` ↔ `renderer-core/src/types.ts` — the unenforced mirror above.
+2. `schema/theme-document.schema.json` — the persisted format. Themes already
+   saved must keep loading; bump `schemaVersion` and fail unsupported versions
+   without touching the library (§141).
+3. `renderer-core` — shared by editor *and* player; a stray dependency breaks the
+   player's budget.
+4. `ISensorProvider` — every provider plus the conformance suite.
+
+### C#
+
+- `Nullable` and `ImplicitUsings` are on; **`TreatWarningsAsErrors=true`**. Any
+  warning fails the build.
+- `ISensorProvider` is `IAsyncDisposable` only. `using` (synchronous) on it does
+  not compile — use `await using`.
+- Never use `string.GetHashCode()` where determinism matters: .NET randomizes
+  string hashing **per process**. `FakeSensorProvider.StableHash` exists for this
+  reason; using `GetHashCode` there would silently break screenshot tests across
+  runs.
+
+### TypeScript
+
+`tsconfig.base.json` enables `exactOptionalPropertyTypes` and
+`noUncheckedIndexedAccess`. Two consequences that bite immediately:
+
+- Passing an explicit `undefined` to an optional property is a **different type**
+  from omitting the key. Construct the object without the key.
+- Every indexed access is `T | undefined`. Use `arr[0]!` when the index is known
+  good.
+
+### Testing
+
+| Layer | Location | Command |
+|---|---|---|
+| Renderer unit | `src/web/packages/*/src/**/*.test.ts` | `npx vitest run` from `src/web/` |
+| Provider conformance | `tests/Vigilia.Contracts.Tests` | `dotnet test` (unverified — no SDK) |
+| E2E / visual | not yet written | Playwright is installed |
+
+**Adding a provider means subclassing `SensorProviderContractTests`**, not writing
+bespoke tests. That suite is the definition of correct provider behaviour.
+
+### Implementing a feature, in dependency order
+
+1. If the shape changes, update `src/Vigilia.Contracts` **and** the
+   `renderer-core/src/types.ts` mirror together.
+2. If persisted, update `schema/theme-document.schema.json` and decide whether
+   `schemaVersion` must bump.
+3. Implement behind the provider or renderer boundary it belongs to.
+4. Add tests at the layer above; for providers, extend the conformance suite.
+5. Run the frontend commands in §5; run the .NET ones if an SDK exists.
+6. Record measurements in `docs/gates/`, decisions in `docs/decisions/`.
+
+## 10. Design principles
+
+- **Report untested behaviour.** A ticked checkbox without observable behaviour
+  and a test is not a pass (§33). Say plainly what you did not verify.
+- **Never fabricate a reading.** Report the capability you have; an unavailable
+  sensor is `Unavailable` with a reason, not a zero (§97).
+- **Secrets** go through `ISecretStore`, are redacted in errors, and never appear
+  in browser responses or exported packages (§101, §143).
+- **Plain LAN HTTP has no confidentiality.** Trusted networks only; never
+  suggest internet exposure.
+- Licences: MIT project, but MPL-2.0 / LGPL-2.1 / Apache-2.0 dependencies require
+  notices to survive into distributed packages. Do not modify vendored
+  MPL/LGPL files.
+
+## 11. VCS guidelines
+
+- **Commit convention: Conventional Commits**, not currently enforced by any
+  hook or CI check — there are no git hooks installed in this repo.
+- Target branch `main`. No remote yet, so there is no PR template and no CI has
+  ever run.
+- CI, once a remote exists (`.github/workflows/ci.yml`): frontend typecheck +
+  vitest + player build + bundle budget; .NET restore/build/test on Windows; a
+  licence-notice grep.
+- Seek human review for schema breaks, major dependency changes, or scope
+  expansion (§164).

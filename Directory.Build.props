@@ -1,0 +1,39 @@
+<Project>
+
+  <!--
+    Shared properties for every .NET project in this repository.
+    Target framework is pinned by ADR-0002 (docs/decisions/0002-target-net10.md).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Vigilia</Product>
+    <Company>Huy Nguyen</Company>
+    <Copyright>Copyright (c) 2026 Huy Nguyen</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/peterng1618/vigilia</RepositoryUrl>
+  </PropertyGroup>
+
+  <!--
+    §97: shared contracts, domain logic, API collection and rendering must not
+    depend on Windows types. Projects that legitimately touch Windows APIs opt in
+    by setting IsWindowsPlatformProject=true in their own csproj; everything else
+    stays platform-neutral and CA1416 is an error (see .editorconfig).
+  -->
+  <PropertyGroup Condition="'$(IsWindowsPlatformProject)' == 'true'">
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+</Project>

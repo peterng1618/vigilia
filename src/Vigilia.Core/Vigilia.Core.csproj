@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Domain logic the host owns per §95: the provider registry, sampling schedule,
+    normalization, bounded history and the sensor mapping layer.
+
+    Platform-neutral (§97). No Windows types, no ASP.NET dependency — so all of
+    this is testable against the fake provider without a web host.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Vigilia.Core</RootNamespace>
+    <Description>Provider registry, scheduling, normalization, bounded history and sensor mapping.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vigilia.Contracts\Vigilia.Contracts.csproj" />
+    <ProjectReference Include="..\Vigilia.Platform.Abstractions\Vigilia.Platform.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>

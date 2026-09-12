@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    ASP.NET Core host: owns scheduling, normalization, bounded history and
+    publication (§95). Platform-neutral — tray, secrets, firewall and startup
+    integration live in Vigilia.Platform.Windows (§97).
+  -->
+  <PropertyGroup>
+    <RootNamespace>Vigilia.Host</RootNamespace>
+    <UserSecretsId>vigilia-host</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vigilia.Contracts\Vigilia.Contracts.csproj" />
+    <ProjectReference Include="..\Vigilia.Providers.Fake\Vigilia.Providers.Fake.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      MessagePack keeps the §116 "compact batched samples" requirement cheap.
+      Pin exact versions per §157; float nothing.
+    -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+{
+  "name": "vigilia",
+  "description": "Vigilia project skills: conventions, code review, PR creation, spec-driven development and skill authoring.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Huy Nguyen"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "//": "Pinned per ADR-0002. .NET 8 and 9 both reach EOL 2026-11-10; 10 is LTS through 2028-11-14.",
+  "sdk": {
+    "version": "10.0.100",
+    "rollForward": "latestFeature",
+    "allowPrerelease": false
+  }
+}

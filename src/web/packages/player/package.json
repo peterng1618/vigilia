@@ -1,0 +1,20 @@
+{
+  "name": "@vigilia/player",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Display-only bundle served to phones. Must not include editor controls or inspectors.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "size": "node ./scripts/check-size.mjs"
+  },
+  "dependencies": {
+    "@vigilia/renderer-core": "*",
+    "echarts": "6.1.0"
+  },
+  "//": "§47: this package proves the shared renderer runs in a small display-only bundle. Adding an editor dependency here is a Gate 0 failure, not a convenience — the budget check in scripts/check-size.mjs is what keeps that honest."
+}

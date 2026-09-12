@@ -1,0 +1,28 @@
+<Solution>
+  <!--
+    XML solution format (.slnx), supported by the .NET 9+ SDK and Visual Studio
+    17.13+. Chosen over the classic .sln because it needs no hand-maintained
+    GUIDs. Requires the .NET 10 SDK per ADR-0002.
+  -->
+  <Folder Name="/solution items/">
+    <File Path="README.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="THIRD-PARTY-NOTICES.md" />
+  </Folder>
+
+  <Folder Name="/src/">
+    <Project Path="src/Vigilia.Contracts/Vigilia.Contracts.csproj" />
+    <Project Path="src/Vigilia.Core/Vigilia.Core.csproj" />
+    <Project Path="src/Vigilia.Host/Vigilia.Host.csproj" />
+    <Project Path="src/Vigilia.Platform.Abstractions/Vigilia.Platform.Abstractions.csproj" />
+    <Project Path="src/Vigilia.Platform.Windows/Vigilia.Platform.Windows.csproj" />
+    <Project Path="src/Vigilia.Providers.Fake/Vigilia.Providers.Fake.csproj" />
+    <Project Path="src/Vigilia.Providers.Http/Vigilia.Providers.Http.csproj" />
+    <Project Path="src/Vigilia.Providers.Windows/Vigilia.Providers.Windows.csproj" />
+  </Folder>
+
+  <Folder Name="/tests/">
+    <Project Path="tests/Vigilia.Contracts.Tests/Vigilia.Contracts.Tests.csproj" />
+  </Folder>
+</Solution>
