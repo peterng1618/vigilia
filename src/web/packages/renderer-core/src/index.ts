@@ -83,3 +83,15 @@ export type {
 } from './charts/bar.js';
 
 export { buildBarOption, defaultBarSettings, toBarColor, toBarDataItem } from './charts/bar.js';
+
+export type {
+  PieComposition,
+  PieDataItem,
+  PieOption,
+  PieSettings,
+  PieSlice,
+  PieSliceInput,
+  PieTotal,
+} from './charts/pie.js';
+
+export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
