@@ -51,7 +51,10 @@ Invoke as `vigilia:<name>`:
 | Skill | Use when |
 |---|---|
 | `vigilia:conventions` | Quick reference for the rules and traps below |
+| `vigilia:verify` | Checking work before committing — the full gauntlet, in the order that works |
 | `vigilia:code-review` | Reviewing a diff for what static analysis cannot see |
+| `vigilia:gate-evidence` | Re-capturing screenshots, or recording a gate measurement |
+| `vigilia:write-adr` | Recording a decision, or choosing between an ADR, a spec and a gate entry |
 | `vigilia:create-pr` | Opening a PR |
 | `vigilia:spec-driven-development` | Implementing a feature that has a spec |
 | `vigilia:create-skill` | Adding a skill |
@@ -86,9 +89,11 @@ npx tsc --noEmit -p packages/player/tsconfig.json
 npx tsc --noEmit -p packages/fake-source/tsconfig.json
 npx tsc --noEmit -p packages/editor/tsconfig.json
 npx vite build packages/player                   # display-only bundle
+npx vite build packages/editor                   # desktop authoring bundle
 node packages/player/scripts/check-size.mjs      # §47 budget gate; needs a build first
-npx playwright test                              # browser tests; builds are NOT automatic
+npx playwright test                              # browser tests; needs BOTH builds first
 npx vite dev packages/player                     # watch the demo dashboard live
+npx vite dev packages/editor                     # watch the editor live
 ```
 
 **Test counts are deliberately not recorded here.** They moved by hundreds
@@ -149,14 +154,20 @@ No command here requires infrastructure, and none is interactive.
 | `src/web/packages/player` | Display-only bundle for phones |
 | `src/web/packages/editor` | Desktop authoring: interaction and inspector layer over `renderer-core` (ADR-0005). **Do not add Fabric** |
 | `src/web/packages/fake-source` | **Fabricated** samples + the demo theme. Dev and test only |
-| `src/web/tests/e2e` | Playwright display tests |
+| `src/web/tests/e2e` | Playwright browser tests, one spec per surface |
 
 **Outside the npm workspace:** everything except the four `src/web/packages/*`
 entries. The workspace root is `src/web/`, not the repository root.
 
 Inside `renderer-core`, the split that matters is `scene/plan.ts` (pure —
 decides everything, unit-tested) versus `scene/mount.ts` (DOM — decides
-nothing). Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md).
+nothing). **The editor repeats that split deliberately:** `geometry.ts`,
+`hit-test.ts`, `selection.ts`, `snapping.ts`, `transform-gesture.ts`,
+`commands.ts` and `history.ts` are pure and unit-tested — what a click selects,
+what a drag does to a transform, what undo restores — and the DOM overlay wires
+events to them without deciding anything. Gesture maths in the overlay is the
+same mistake as a decision in `mount.ts`, and it fails the same way: untestable
+without a browser. Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md).
 Put a decision in the mount layer and it becomes untestable without a browser.
 
 `@vigilia/fake-source` fabricates readings, which §97 forbids presenting as
@@ -170,7 +181,7 @@ cannot supply — that case renders as a gap, by design.
 .NET 10 · ASP.NET Core + SignalR (MessagePack) · LibreHardwareMonitorLib
 **exactly `[0.9.6]`** · PawnIO (external, optional) · Vue-less TypeScript for
 `renderer-core` · ECharts 6.1.0 · Vite 8 · TypeScript 7.0.2 · vitest 5 ·
-Playwright 1.63 (21 display tests in `src/web/tests/e2e`).
+Playwright 1.63 (browser tests in `src/web/tests/e2e`).
 
 The editor foundation is **decided**: ADR-0005 rejects both Fabric candidates and
 builds the editor as an interaction and inspector layer over `renderer-core`.
@@ -308,10 +319,23 @@ bespoke tests. That suite is the definition of correct provider behaviour.
 
 - **Commit convention: Conventional Commits**, not currently enforced by any
   hook or CI check — there are no git hooks installed in this repo.
-- Target branch `main`. No remote yet, so there is no PR template and no CI has
-  ever run.
-- CI, once a remote exists (`.github/workflows/ci.yml`): frontend typecheck +
-  vitest + player build + bundle budget; .NET restore/build/test on Windows; a
-  licence-notice grep.
+- Target branch `main`, and `origin` now exists — pushing and opening a PR are
+  both real actions with external effect. There is no PR template.
+- CI (`.github/workflows/ci.yml`) runs on pushes to `main`, on pull requests and
+  on demand. Three jobs: **frontend** (four typechecks, vitest, player build,
+  the §47 size gate, Chromium browser tests, screenshots uploaded as an
+  artifact), **backend** (.NET restore/build/test on Windows — **paused via
+  `if: false`** until an SDK exists, so its steps are reviewable but never run),
+  and **licences** (a grep asserting each named dependency appears in
+  `THIRD-PARTY-NOTICES.md`).
+- **CI must build every bundle Playwright previews.** It starts every
+  `webServer` in the config regardless of which project runs, and `dist/` is
+  gitignored — so a new preview target needs its build step added to the
+  frontend job *in the same commit*, or CI fails on a server that never comes
+  up. The player and the editor are both built today for this reason.
+- **Assume you are not the only agent in this working tree.** Stage explicit
+  paths; never `git add -A` or `git commit -a`. Someone else's half-finished
+  work committed under your message is the one mistake here that is genuinely
+  expensive to unpick. `git status` before staging, every time.
 - Seek human review for schema breaks, major dependency changes, or scope
   expansion (§164).

@@ -64,7 +64,7 @@ src/
   web/
     packages/renderer-core/         Shared renderer. No editor deps, ever.
     packages/player/                Display-only bundle for phones.
-    packages/editor/                Desktop authoring. Foundation not yet chosen.
+    packages/editor/                Desktop authoring. Layer over the renderer (ADR-0005).
 tests/
   Vigilia.Contracts.Tests/   Provider conformance suite.
 schema/                             The owned theme format.

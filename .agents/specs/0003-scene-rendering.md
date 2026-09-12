@@ -121,7 +121,7 @@ is the likeliest way that happens by accident.
 - `fake-source/src/demo.test.ts` — the checked-in fixture validates, exercises
   all four families, reports exactly the one deliberately unmapped key, and
   produces a gap during the simulated outage.
-- `tests/e2e/display.spec.ts` — 21 browser tests: every node mounts, all four
+- `tests/e2e/display.spec.ts` — browser tests: every node mounts, all four
   families paint non-transparent pixels, the placeholder and status attribute
   appear, the artboard transform behaves at three viewport shapes, and chart
   canvases survive updates.

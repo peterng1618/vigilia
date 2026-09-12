@@ -12,15 +12,24 @@ Fast reference. Full detail: [`AGENTS.md`](../../../AGENTS.md).
 Frontend — **from `src/web/`**:
 
 ```bash
-npx vitest run                                   # 19 tests
+npx vitest run
 npx tsc --noEmit -p packages/renderer-core/tsconfig.json
 npx tsc --noEmit -p packages/player/tsconfig.json
+npx tsc --noEmit -p packages/fake-source/tsconfig.json
+npx tsc --noEmit -p packages/editor/tsconfig.json
 npx vite build packages/player
 node packages/player/scripts/check-size.mjs      # needs a build first
+npx playwright test                              # needs a build first, too
 ```
 
+Four typecheck projects, not two — CI checks all four. The full pre-commit
+order, and why it is that order, is `vigilia:verify`. For current *executed*
+figures run `node tools/dev-status.mjs` from the repository root; test counts
+are deliberately not written down anywhere, because they went stale by hundreds
+within single milestones.
+
 Backend — **from the repository root**, and **never yet run** (no .NET SDK
-installed):
+installed; the CI backend job is paused with `if: false` for the same reason):
 
 ```bash
 dotnet build Vigilia.slnx
@@ -40,6 +49,22 @@ still run; you get only an `EBADENGINE` warning. Do not chase it as a failure.
 
 **Vite 8 bundles with rolldown, not rollup.** `manualChunks` must be a
 **function**; the object form fails with `manualChunks is not a function`.
+
+**Playwright previews *built* bundles, and starts the preview servers itself.**
+Every bundle a suite exercises must be built first; an unbuilt one surfaces as a
+server that never comes up, which reads like a Playwright fault. Read
+`playwright.config.ts` for the current `webServer` list — do not assume there is
+only one.
+
+**Screenshot capture needs `VIGILIA_CAPTURE=1` *and* `--workers=1`.** Without
+the second, the desktop and phone projects write the same directory
+concurrently and Windows fails the open with `UNKNOWN`. See
+`vigilia:gate-evidence`.
+
+**You may not be the only agent in this working tree.** `git status --short`
+before you build, test or stage — a build writes `dist/` and the browser suite
+binds fixed ports, so a concurrent run's failures can look like yours. Stage
+explicit paths; never `git add -A` or `git commit -a`.
 
 **TypeScript 7 with `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess`:**
 an explicit `undefined` is a different type from an omitted key, and every
@@ -85,6 +110,14 @@ sides and produces wrong values at runtime. Same commit, both files.
 - **Player:** `renderer-core` and `player` must not depend on editor UI or a
   component framework. If `check-size.mjs` fails, find the leaked dependency —
   do not raise the budget.
+- **Editor:** an interaction and inspector layer *over* `renderer-core`
+  (ADR-0005). The scene is rendered once, by the renderer. **Do not add a Fabric
+  dependency** — both candidates were rejected as canvas editors, and adopting
+  one meant rendering the scene twice (§31 forbids it).
+- **Pure decides, DOM renders** — on both sides. `scene/plan.ts` versus
+  `scene/mount.ts` in the renderer; the editor's geometry, hit-test, selection,
+  snapping, gesture, command and history modules versus its overlay. Gesture
+  maths in the overlay is untestable without a browser.
 - **Providers acquire; the host schedules.** No timers, no history, no pushing
   from inside a provider.
 
