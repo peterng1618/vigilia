@@ -162,6 +162,10 @@
           "type": "boolean",
           "default": false
         },
+        "provenance": {
+          "description": "§138: where an inserted widget copy came from. V1 insertion embeds a copy with no automatic library-update propagation, so this records origin rather than maintaining a live link. Present only on the roots of an inserted subtree.",
+          "$ref": "#/$defs/widgetProvenance"
+        },
         "style": { "$ref": "#/$defs/styleMap" },
         "content": {
           "description": "Typed per node type. The validator selects the matching shape: chartContent, textContent, imageContent, videoContent, or rectangleContent.",
@@ -230,6 +234,18 @@
         "unitDisplay": { "enum": ["none", "short", "long"], "default": "short" },
         "scale": { "type": "number" },
         "offset": { "type": "number" }
+      }
+    },
+
+    "widgetProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["widgetId"],
+      "properties": {
+        "widgetId": { "$ref": "#/$defs/stableId" },
+        "widgetName": { "type": "string", "maxLength": 120 },
+        "widgetVersion": { "type": "string", "maxLength": 40 },
+        "insertedAt": { "type": "string", "format": "date-time" }
       }
     },
 

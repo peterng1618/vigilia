@@ -120,6 +120,7 @@ export type {
   ThemeNode,
   Transform,
   VideoContent,
+  WidgetProvenance,
 } from './theme/document.js';
 
 export {
@@ -140,6 +141,14 @@ export type { IssueCode, ValidationIssue, ValidationResult } from './theme/valid
 export { validateThemeDocument } from './theme/validate.js';
 
 export { serializeThemeDocument } from './theme/serialize.js';
+
+export type {
+  InstantiateWidgetOptions,
+  InstantiateWidgetResult,
+  WidgetIssue,
+} from './theme/widget.js';
+
+export { instantiateWidget } from './theme/widget.js';
 
 export type { SampleSource } from './data/source.js';
 

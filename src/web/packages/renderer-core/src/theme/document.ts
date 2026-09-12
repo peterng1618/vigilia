@@ -220,6 +220,24 @@ export interface VideoContent {
   readonly muted?: boolean;
 }
 
+/**
+ * Where an inserted subtree came from (§138).
+ *
+ * V1 insertion embeds a **copy** and there is no automatic library-update
+ * propagation, so this is a record of origin rather than a live link. It exists
+ * so an author can tell which elements arrived together — and so a future
+ * version can offer "update from library" as an explicit action instead of
+ * guessing.
+ */
+export interface WidgetProvenance {
+  readonly widgetId: string;
+  readonly widgetName?: string;
+  /** Widget version at insertion time, if the source declared one. */
+  readonly widgetVersion?: string;
+  /** ISO-8601. */
+  readonly insertedAt?: string;
+}
+
 interface NodeBase {
   readonly id: string;
   readonly name?: string;
@@ -227,6 +245,8 @@ interface NodeBase {
   readonly visible?: boolean;
   /** §61: inspectable in the tree but not transformable until unlocked. */
   readonly locked?: boolean;
+  /** Present only on the roots of an inserted widget copy. */
+  readonly provenance?: WidgetProvenance;
   readonly style?: StyleMap;
   readonly bindings?: readonly Binding[];
 }

@@ -177,6 +177,7 @@ describe('the validator knows exactly the keys the schema declares', () => {
     ['imageContent', 'imageContent'],
     ['videoContent', 'videoContent'],
     ['assetReference', 'assetReference'],
+    ['widgetProvenance', 'widgetProvenance'],
     ['gaugeSettings', 'gaugeSettings'],
     ['lineSettings', 'lineSettings'],
     ['barSettings', 'barSettings'],

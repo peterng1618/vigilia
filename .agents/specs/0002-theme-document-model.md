@@ -101,3 +101,53 @@ precision bounds) match the validator's. This is the drift guard the C# ↔
 **Not verified:** no document has been round-tripped through a file on disk, and
 no editor writes this format yet. The types are exercised only by tests and the
 player's demo theme.
+
+---
+
+## Addendum — serialisation and widget insertion (2026-09-12)
+
+### Canonical serialisation
+
+`serializeThemeDocument(document, indent?)` emits canonical JSON: schema key
+order first, unknown keys alphabetically after, `undefined` dropped, trailing
+newline. Idempotent and independent of the input object's key order, which is
+what §139's "save marks history clean without clearing it" needs — comparing
+objects by identity would mark a document dirty after a no-op edit.
+
+Unknown keys are **kept**. This is not a filter, and dropping a field a newer
+build wrote would make a load-and-save lossy.
+
+### Unknown-field rejection
+
+The validator rejects keys a shape does not declare, mirroring the schema's
+`additionalProperties: false`, and suggests the nearest known key. This catches
+the most common authoring mistake there is: `"visable": false` was previously
+valid, rendered, and left the author with nothing to look at.
+
+Forward compatibility is not what this trades away — a field a newer build
+introduces arrives with a `schemaVersion` bump, which is rejected earlier and
+more clearly.
+
+### Widget insertion (§138)
+
+`instantiateWidget(nodes, options)` embeds a **copy** with fresh IDs. There is
+no live link: §138 rules out automatic library-update propagation in v1, so
+provenance records origin for a future explicit "update from library" action.
+
+The part that is easy to get wrong, and the reason this is a module rather than a
+loop: fresh IDs are not only node IDs. A text run references a **binding ID**,
+so both are renamed through one map, allocated in a first pass so a run can be
+rewritten whether or not its binding appears earlier in document order.
+`semanticKey` is never renamed — a widget bound to `cpu.load` must still be bound
+to `cpu.load`, or it arrives showing nothing.
+
+Globals follow §77: an explicit mapping, or conversion to the widget's own
+literal, or a reported issue. Never a silent adoption of a same-named global in
+the destination, which may mean an entirely different colour.
+
+Offsets and provenance apply to inserted **roots** only. A child's coordinates
+are group-local (§57), so offsetting them too would shift every descendant twice.
+
+**Out of scope:** the widget package format (ZIP, manifest, preview, exported
+defaults), parameter declarations, and the library UI. This is the insertion
+primitive those will call.

@@ -122,6 +122,7 @@ const KNOWN_KEYS = {
     'transform',
     'visible',
     'locked',
+    'provenance',
     'style',
     'content',
     'bindings',
@@ -136,6 +137,7 @@ const KNOWN_KEYS = {
   imageContent: ['assetId', 'fit', 'monochrome'],
   videoContent: ['assetId', 'loop', 'muted'],
   assetReference: ['id', 'kind', 'path', 'sha256', 'sourceUrl', 'license'],
+  widgetProvenance: ['widgetId', 'widgetName', 'widgetVersion', 'insertedAt'],
   globalEntry: ['name', 'value'],
   gaugeSettings: [
     'startAngle',
@@ -599,11 +601,39 @@ function validateNode(
     }
   }
 
+  validateProvenance(issues, value['provenance'], `${path}/provenance`);
+
   validateStyleMap(issues, value['style'], `${path}/style`, context.globalKeys);
 
   const ownBindingIds = validateBindings(issues, value['bindings'], `${path}/bindings`, type, context);
 
   validateContent(issues, value, path, type, ownBindingIds, context, depth);
+}
+
+/**
+ * Checks an inserted widget's provenance stamp (§138).
+ *
+ * Only `widgetId` is required. A widget exported without a name or version is
+ * still a widget, and rejecting the stamp would lose the only record of where a
+ * subtree came from.
+ */
+function validateProvenance(issues: Issues, value: unknown, path: string): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!issues.object(value, path, 'provenance')) {
+    return;
+  }
+
+  issues.unknownKeys(value, path, 'widgetProvenance', 'A provenance stamp');
+  issues.stableId(value['widgetId'], `${path}/widgetId`, 'A provenance widgetId');
+
+  for (const key of ['widgetName', 'widgetVersion', 'insertedAt'] as const) {
+    if (value[key] !== undefined && typeof value[key] !== 'string') {
+      issues.add('wrong-type', `${path}/${key}`, `${key} must be a string.`);
+    }
+  }
 }
 
 function validateTransform(issues: Issues, value: unknown, path: string): void {
