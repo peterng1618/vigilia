@@ -797,3 +797,67 @@ test.describe('deterministic rendering', () => {
     expect(Buffer.compare(before, after)).toBe(0);
   });
 });
+
+test.describe('smooth animation', () => {
+  test('moves continuously between samples rather than jumping and resting', async ({ page }) => {
+    // The point of matching the transition duration to the sampling interval.
+    // ECharts' own default is a 300 ms ease-out, which on a 1 Hz feed produces
+    // one lunge and then two thirds of a second of stillness — a visible
+    // stutter. Continuous motion means the arc differs at EVERY sampled instant
+    // across the interval, not just at the start of it.
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=demo');
+    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+
+    // Settle the entrance animation, then let one data tick land so an update
+    // transition is in flight.
+    await page.clock.runFor(2000);
+
+    const gauge = page.locator('[data-node-id="cpu-gauge"]');
+    const frames: Buffer[] = [];
+
+    // Six samples across one second. If the value moved only at the start,
+    // later frames would be identical to each other.
+    for (let step = 0; step < 6; step++) {
+      frames.push(await gauge.screenshot());
+      await page.clock.runFor(160);
+    }
+
+    let moved = 0;
+    for (let index = 1; index < frames.length; index++) {
+      if (Buffer.compare(frames[index - 1]!, frames[index]!) !== 0) {
+        moved += 1;
+      }
+    }
+
+    // Every step should differ. Allowing one identical pair tolerates a frame
+    // landing exactly as a transition completes; requiring most of them is what
+    // distinguishes a glide from a jump.
+    expect(moved, `only ${moved} of 5 steps showed movement`).toBeGreaterThanOrEqual(4);
+  });
+
+  test('keeps the numeric readout stepping at the sample rate, not interpolated', async ({
+    page,
+  }) => {
+    // §122 permits local interpolation of animations; §97 forbids presenting a
+    // value that was never measured. Geometry may glide because nobody reads a
+    // number off an arc's position. Digits may not, because that is exactly how
+    // they are read — so the readout changes once per sample and holds.
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=demo');
+    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+    await page.clock.runFor(2000);
+
+    const readout = page.locator('[data-node-id="cpu-readout"]');
+    const values: string[] = [];
+
+    for (let step = 0; step < 5; step++) {
+      values.push((await readout.textContent()) ?? '');
+      await page.clock.runFor(150);
+    }
+
+    // Five samples inside one second: the text must be constant across them,
+    // even though the arc behind it is moving the whole time.
+    expect(new Set(values).size, `readout changed mid-interval: ${values.join(' → ')}`).toBe(1);
+  });
+});

@@ -1,5 +1,6 @@
 import type { Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import { resolveThresholdColor, toLinearGradient } from './fill.js';
 import type { EngineColor, LinearGradientColor } from './fill.js';
 
@@ -82,6 +83,8 @@ export interface LineSettings {
    * against real hardware rather than on assumption (§120).
    */
   readonly sampling?: 'lttb' | 'average' | 'none';
+  /** Omit for the continuous-glide default. */
+  readonly animation?: AnimationSettings;
 }
 
 /** Sensible starting point for a filled-area chart. */
@@ -113,8 +116,7 @@ export interface SeriesInput {
 }
 
 /** The emitted option shape. Local and explicit, like the gauge adapter's. */
-export interface LineOption {
-  readonly animation: boolean;
+export interface LineOption extends EngineAnimation {
   readonly grid: {
     readonly left: number;
     readonly right: number;
@@ -208,7 +210,7 @@ export function buildLineOption(
   const sampling = settings.sampling && settings.sampling !== 'none' ? settings.sampling : undefined;
 
   return {
-    animation: animate,
+    ...toEngineAnimation(settings.animation, animate),
     grid: {
       left: settings.showAxes ? 8 : 0,
       right: settings.showAxes ? 8 : 0,

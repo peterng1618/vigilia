@@ -1,5 +1,6 @@
 import type { Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import {
   normalizePosition,
   resolveFlatColor,
@@ -69,6 +70,8 @@ export interface BarSettings {
   readonly showAxes: boolean;
   /** Category names beside the bars. Independent of the value axis. */
   readonly showCategoryLabels: boolean;
+  /** Omit for the continuous-glide default. */
+  readonly animation?: AnimationSettings;
 }
 
 /** Sensible starting point for a horizontal progress bar. */
@@ -130,8 +133,7 @@ interface ValueAxis {
 }
 
 /** The emitted option shape. Local and explicit, like the other adapters'. */
-export interface BarOption {
-  readonly animation: boolean;
+export interface BarOption extends EngineAnimation {
   readonly grid: {
     readonly left: number;
     readonly right: number;
@@ -192,7 +194,7 @@ export function buildBarOption(
   };
 
   return {
-    animation: animate,
+    ...toEngineAnimation(settings.animation, animate),
     grid: {
       left: settings.showAxes || settings.showCategoryLabels ? 8 : 0,
       right: 0,

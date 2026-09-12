@@ -149,6 +149,7 @@ const KNOWN_KEYS = {
     'progress',
     'roundCap',
     'gradientSegments',
+    'animation',
   ],
   lineSettings: [
     'lineWidth',
@@ -165,6 +166,7 @@ const KNOWN_KEYS = {
     'max',
     'showAxes',
     'sampling',
+    'animation',
   ],
   barSettings: [
     'orientation',
@@ -177,6 +179,7 @@ const KNOWN_KEYS = {
     'track',
     'showAxes',
     'showCategoryLabels',
+    'animation',
   ],
   pieSettings: [
     'innerRadiusPercent',
@@ -189,6 +192,7 @@ const KNOWN_KEYS = {
     'remainderFill',
     'palette',
     'showLabels',
+    'animation',
   ],
 } as const satisfies Record<string, readonly string[]>;
 

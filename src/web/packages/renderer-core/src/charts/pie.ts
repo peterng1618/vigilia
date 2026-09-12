@@ -1,5 +1,6 @@
 import type { Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import { resolveFlatColor, type EngineColor } from './fill.js';
 
 /**
@@ -78,6 +79,8 @@ export interface PieSettings {
    * text elements (§91), which is the only way shared tokens apply.
    */
   readonly showLabels: boolean;
+  /** Omit for the continuous-glide default. */
+  readonly animation?: AnimationSettings;
 }
 
 /** Sensible starting point for a donut showing composition of a known whole. */
@@ -156,8 +159,7 @@ export interface PieDataItem {
 }
 
 /** The emitted option shape. Local and explicit, like the other adapters'. */
-export interface PieOption {
-  readonly animation: boolean;
+export interface PieOption extends EngineAnimation {
   readonly series: readonly [
     {
       readonly type: 'pie';
@@ -286,7 +288,7 @@ export function buildPieOption(
   }
 
   return {
-    animation: animate,
+    ...toEngineAnimation(settings.animation, animate),
     series: [
       {
         type: 'pie',

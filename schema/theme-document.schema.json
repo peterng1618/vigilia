@@ -237,6 +237,29 @@
       }
     },
 
+    "animationSettings": {
+      "description": "§122: phone animations interpolate locally and must not imply additional measured samples. Interpolating GEOMETRY between two real readings is honest; numeric text is deliberately not interpolated, because digits are read as values and §97 forbids presenting one that was never measured. Omit this object for the continuous-glide default: a transition as long as the sampling interval, with linear easing, so the value arrives exactly as the next sample does.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationMs", "easing", "appearMs", "appearEasing"],
+      "properties": {
+        "durationMs": {
+          "description": "Match the sampling interval for continuous motion. Shorter leaves the value resting between samples; longer makes the display visibly late, which is worse than visibly stepped.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "easing": { "$ref": "#/$defs/animationEasing" },
+        "appearMs": { "type": "number", "minimum": 0, "maximum": 5000 },
+        "appearEasing": { "$ref": "#/$defs/animationEasing" }
+      }
+    },
+
+    "animationEasing": {
+      "description": "Deliberately short. bounce, elastic and back are excluded: they would make a temperature appear to overshoot and spring back, which is a lie about the measurement.",
+      "enum": ["linear", "cubicOut", "cubicInOut", "quadraticInOut", "quinticInOut"]
+    },
+
     "widgetProvenance": {
       "type": "object",
       "additionalProperties": false,
@@ -398,7 +421,8 @@
           "type": "integer",
           "minimum": 2,
           "maximum": 256
-        }
+        },
+        "animation": { "$ref": "#/$defs/animationSettings" }
       }
     },
 
@@ -447,7 +471,8 @@
         "min": { "type": "number" },
         "max": { "type": "number" },
         "showAxes": { "type": "boolean" },
-        "sampling": { "enum": ["lttb", "average", "none"] }
+        "sampling": { "enum": ["lttb", "average", "none"] },
+        "animation": { "$ref": "#/$defs/animationSettings" }
       }
     },
 
@@ -477,7 +502,8 @@
           "$ref": "#/$defs/fill"
         },
         "showAxes": { "type": "boolean" },
-        "showCategoryLabels": { "type": "boolean" }
+        "showCategoryLabels": { "type": "boolean" },
+        "animation": { "$ref": "#/$defs/animationSettings" }
       }
     },
 
@@ -529,7 +555,8 @@
         "showLabels": {
           "description": "Engine-drawn labels. Off by default: typography is rendered by our own text elements (§91), which is the only way shared tokens apply.",
           "type": "boolean"
-        }
+        },
+        "animation": { "$ref": "#/$defs/animationSettings" }
       }
     },
 

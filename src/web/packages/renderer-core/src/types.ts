@@ -34,6 +34,13 @@ export function hasPlottableValue(sample: Sample | undefined): sample is Sample 
   return sample?.status === 'ok' && typeof sample.value === 'number' && Number.isFinite(sample.value);
 }
 
+// Imported the "wrong" way — a base types module reaching into charts/ — because
+// GaugeSettings lives here for historical reasons while the other three families
+// keep their settings beside their adapters. animation.ts imports nothing back,
+// so there is no cycle; moving GaugeSettings to charts/gauge.ts is the real fix
+// and is a separate change.
+import type { AnimationSettings } from './charts/animation.js';
+
 /** A colour stop in a gradient fill. */
 export interface GradientStop {
   /** Position along the gradient, 0–1. */
@@ -73,6 +80,8 @@ export interface GaugeSettings {
    * smoother and costlier; 64 is visually smooth at typical sizes.
    */
   readonly gradientSegments?: number;
+  /** Omit for the continuous-glide default (see charts/animation.ts). */
+  readonly animation?: AnimationSettings;
 }
 
 /** Sensible starting point for a progress gauge. */

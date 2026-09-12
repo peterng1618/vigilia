@@ -1,5 +1,6 @@
 import type { Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { toEngineAnimation, type EngineAnimation } from './animation.js';
 import {
   colorAt,
   mixHex,
@@ -80,8 +81,7 @@ export interface GaugeOption {
       detail: { show: false };
       data: { value: number }[];
       silent: true;
-      animation: boolean;
-    },
+    } & EngineAnimation,
   ];
 }
 
@@ -137,7 +137,9 @@ export function buildGaugeOption(
         detail: { show: false },
         data: [{ value: displayValue }],
         silent: true,
-        animation: animate,
+        // Series-level, because a gauge's animation is a property of the arc
+        // rather than of the chart around it.
+        ...toEngineAnimation(settings.animation, animate),
       },
     ],
   };
