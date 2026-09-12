@@ -409,6 +409,28 @@ test.describe('evidence', () => {
     expect(screenshot.byteLength).toBeGreaterThan(1000);
   });
 
+  test('captures the globals panel', async ({ page }, testInfo) => {
+    const directory =
+      process.env['VIGILIA_CAPTURE'] === undefined
+        ? 'test-results/screenshots'
+        : '../../docs/gates/screenshots';
+
+    await openEditor(page);
+    await page.locator('[data-vigilia-tab="theme"]').click();
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
+
+    const screenshot = await page.screenshot({
+      path: `${directory}/editor-globals-${testInfo.project.name}.png`,
+    });
+
+    await testInfo.attach(`editor-globals-${testInfo.project.name}.png`, {
+      body: screenshot,
+      contentType: 'image/png',
+    });
+
+    expect(screenshot.byteLength).toBeGreaterThan(1000);
+  });
+
   test('captures a grouped node with the inspector open', async ({ page }, testInfo) => {
     // The evidence for two things that are only observable together: handles
     // sitting on a node whose coordinates are group-relative, and §75 showing
@@ -679,5 +701,139 @@ test.describe('a child of a transformed group', () => {
 
     // Once, not twice. Moving the group already moves the child.
     expect((after?.x ?? 0) - (before?.x ?? 0)).toBeCloseTo(60, 0);
+  });
+});
+
+test.describe('the globals panel', () => {
+  async function openTheme_(page: Page): Promise<void> {
+    await openEditor(page);
+    await page.locator('[data-vigilia-tab="theme"]').click();
+    await expect(page.locator('[data-vigilia-globals="root"]')).toBeVisible();
+  }
+
+  test('lists every token with a use count', async ({ page }) => {
+    await openTheme_(page);
+
+    // Document-level, so it is populated with nothing selected — which is the
+    // reason it is a tab rather than a section of the inspector.
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
+    await expect(page.locator('[data-vigilia-global-uses="palette.panel"]')).toHaveText('5 uses');
+
+    // Empty groups are shown too: seeing "Spacing — None yet" with an add
+    // button is how an author discovers the group exists.
+    await expect(page.locator('[data-vigilia-globals-group="spacing"]')).toContainText('None yet.');
+  });
+
+  test('changing a token repaints every element that references it', async ({ page }) => {
+    await openTheme_(page);
+
+    const value = page.locator('[data-vigilia-global-value="palette.panel"]');
+    await value.fill('#ff0000');
+    await value.blur();
+
+    // Two nodes in different groups, both bound to the same token.
+    await expect(page.locator('[data-node-id="cpu-panel-bg"]')).toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 0)',
+    );
+    await expect(page.locator('[data-node-id="gpu-panel-bg"]')).toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 0)',
+    );
+
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('[data-node-id="cpu-panel-bg"]')).not.toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 0)',
+    );
+  });
+
+  test('renaming the display name leaves references intact (§75)', async ({ page }) => {
+    await openTheme_(page);
+
+    const name = page.locator('[data-vigilia-global-name="palette.panel"]');
+    await name.fill('Card surface');
+    await name.blur();
+
+    await expect(page.locator('#status')).toContainText('undo: Rename token');
+    // The key is what a reference uses, so the count cannot change.
+    await expect(page.locator('[data-vigilia-global-uses="palette.panel"]')).toHaveText('5 uses');
+  });
+
+  test('changing the key rewrites every reference', async ({ page }) => {
+    await openTheme_(page);
+
+    const key = page.locator('[data-vigilia-global-key="palette.panel"]');
+    await key.fill('surface');
+    await key.blur();
+
+    await expect(page.locator('#status')).toContainText('undo: Change token key');
+    // Same five references, now under the new key — not five broken ones.
+    await expect(page.locator('[data-vigilia-global-uses="palette.surface"]')).toHaveText('5 uses');
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toHaveCount(0);
+
+    // And the panel still renders: a dangling reference would show as a
+    // missing global in the inspector instead.
+    const box = page.locator('[data-node-id="cpu-panel-bg"]');
+    await expect(box).toBeVisible();
+  });
+
+  test('an invalid key is refused without touching the document', async ({ page }) => {
+    await openTheme_(page);
+
+    const before = await page.locator('#status').textContent();
+    const key = page.locator('[data-vigilia-global-key="palette.panel"]');
+    await key.fill('not a key');
+    await key.blur();
+
+    // No undo entry, and the field snaps back to the real key rather than
+    // leaving rejected input on screen.
+    await expect(page.locator('#status')).toHaveText(before ?? '');
+    await expect(page.locator('[data-vigilia-global-key="palette.panel"]')).toHaveValue('panel');
+  });
+
+  test('deleting a token inlines its value, so nothing changes visually', async ({ page }) => {
+    await openTheme_(page);
+
+    const box = page.locator('[data-node-id="cpu-panel-bg"]');
+    const painted = await box.evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    await page.locator('[data-vigilia-global-delete="palette.panel"]').click();
+
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toHaveCount(0);
+    // §75: "deletion requires reassignment or conversion to current literals".
+    // This is the conversion, and the element is pixel-identical after it.
+    await expect(box).toHaveCSS('background-color', painted);
+
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
+  });
+
+  test('adding a token gives it a free key, ready to rename', async ({ page }) => {
+    await openTheme_(page);
+
+    await page.locator('[data-vigilia-global-add="spacing"]').click();
+
+    await expect(page.locator('[data-vigilia-global="spacing.token"]')).toBeVisible();
+    await expect(page.locator('[data-vigilia-global-uses="spacing.token"]')).toHaveText('0 uses');
+    await expect(page.locator('#status')).toContainText('undo: Add token');
+  });
+
+  test('switching tabs keeps both panels working', async ({ page }) => {
+    await openTheme_(page);
+
+    await page.locator('[data-vigilia-tab="element"]').click();
+    await expect(page.locator('[data-vigilia-inspector="root"]')).toBeVisible();
+    await expect(page.locator('[data-vigilia-globals="root"]')).toBeHidden();
+
+    // A redraw guard that compared against the last rendered content would
+    // leave the re-shown panel stale, so this asserts it comes back populated.
+    await page.locator('[data-node-id="title"]').click();
+    await expect(page.locator('[data-vigilia-input="name"]')).toBeVisible();
+
+    await page.locator('[data-vigilia-tab="theme"]').click();
+    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
   });
 });

@@ -130,6 +130,7 @@ export {
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   NODE_TYPES,
+  STABLE_ID_PATTERN,
   SUPPORTED_SCHEMA_VERSION,
   requiredSemanticKeys,
   walkBindings,

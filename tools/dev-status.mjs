@@ -258,6 +258,14 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Globals are editable — §75 is now usable end to end',
+    why: 'A Theme tab beside the inspector lists every token with a live use count, and supports add, set value, rename, change-key (rewriting every reference) and delete. Deleting INLINES the token’s value at every site, which is §75’s “conversion to current literals”: nothing dangles and nothing changes visually. A global is referenced from five different places in the schema — artboard background and bars, node styles, text-run styles and image monochrome — and one walk serves counting, rekeying and inlining so they cannot disagree.',
+  },
+  {
+    what: 'Found: chart colours cannot follow the palette (needs a decision)',
+    why: 'The new use counts said palette.accent had 0 uses while both gauges were visibly accent-coloured. The count is right: a chart Fill’s colour is a plain string in the schema, so it cannot hold a reference. That blocks §170’s dark/light overrides for any theme with a chart. It is a schema change, so §164 wants a human: options and a recommendation are in docs/gates/gate-2.md as G2-D1.',
+  },
+  {
     what: 'Two selection bugs the new specs turned up',
     why: 'Dragging a node whose selection also contained an ancestor applied the delta twice — a 100 px drag moved the child 200 px and slid it out of its own group, compounding with nesting depth. Gestures now transform the outermost selected node only. And ctrl meant both “toggle selection” and “disable snapping”, so holding it to avoid a snap silently changed what was being dragged; shift toggles now, and ctrl means one thing.',
   },

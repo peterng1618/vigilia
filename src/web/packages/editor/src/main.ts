@@ -60,6 +60,16 @@ import { unionBounds } from './geometry.js';
 import { describeSelection } from './inspector-model.js';
 import { applyFieldChange, labelForField } from './inspector-apply.js';
 import { createInspector } from './inspector-panel.js';
+import {
+  addGlobal,
+  collectGlobalUsage,
+  deleteGlobal,
+  nextGlobalKey,
+  rekeyGlobal,
+  renameGlobal,
+  setGlobalValue,
+} from './globals-commands.js';
+import { createGlobalsPanel, seedForGroup, type GlobalAction } from './globals-panel.js';
 
 /**
  * The editor shell.
@@ -154,7 +164,45 @@ function start(): void {
   let handle: SceneHandle = mountScene({ host, plan: plan(visibleDocument(history)) });
   const overlay = createOverlay(host);
 
-  const inspector = createInspector(work, {
+  // One right-hand column with two tabs: the selection, and the theme's
+  // globals. Globals are document-level, so they cannot live inside the
+  // inspector — which says "nothing selected" exactly when an author most
+  // wants to look at the palette.
+  const panel = document.createElement('div');
+  panel.dataset['vigiliaPanel'] = 'root';
+  panel.style.cssText = [
+    'width:300px',
+    'flex:none',
+    'display:flex',
+    'flex-direction:column',
+    'min-height:0',
+    'background:#151922',
+    'border-left:1px solid #232a36',
+  ].join(';');
+  work.append(panel);
+
+  const tabs = document.createElement('div');
+  tabs.style.cssText = 'display:flex;flex:none;border-bottom:1px solid #232a36';
+  panel.append(tabs);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'flex:1;min-height:0;display:flex;padding:0 10px';
+  panel.append(body);
+
+  let tab: 'element' | 'theme' = 'element';
+
+  /**
+   * What each panel last rendered, so a redraw can be skipped.
+   *
+   * Declared here because the panels' own callbacks reset them — an edit that
+   * is refused changes no document and would otherwise skip the redraw that
+   * snaps the field back. See `drawInspector` and `drawGlobals` for why the
+   * guards exist at all.
+   */
+  let inspectorKey = '';
+  let globalsKey = '';
+
+  const inspector = createInspector(body, {
     onChange(key, change) {
       const document_ = history.current;
       const next = applyFieldChange(document_, selection.ids, key, change);
@@ -164,13 +212,80 @@ function start(): void {
       // would put an undo entry in history that does nothing.
       if (next !== document_) {
         history = commit(history, labelForField(key), next);
+      } else {
+        // Refused. The redraw guard compares against the last content
+        // rendered, and a refused edit changes nothing — so without this the
+        // panel skips the redraw and the author's rejected input stays on
+        // screen looking accepted. Clearing the key forces the field back to
+        // the real value.
+        inspectorKey = '';
       }
 
-      // Re-rendered either way, so a refused edit snaps the field back to the
-      // real value instead of leaving the author's rejected input on screen.
       render();
     },
   });
+
+  const globalsPanel = createGlobalsPanel(body, {
+    onAction(action) {
+      const document_ = history.current;
+      const next = applyGlobalAction(document_, action);
+
+      if (next !== document_) {
+        history = commit(history, labelForGlobalAction(action), next);
+      } else {
+        // See the inspector's `onChange`: a refused edit must snap back, and
+        // the guard would otherwise skip the redraw that does it. An invalid
+        // token key is the reachable case — `not a key` stayed in the field.
+        globalsKey = '';
+      }
+
+      render();
+    },
+  });
+
+  const drawTabs = (): void => {
+    tabs.textContent = '';
+
+    for (const [id, label] of [
+      ['element', 'Element'],
+      ['theme', 'Theme'],
+    ] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.dataset['vigiliaTab'] = id;
+      button.style.cssText = [
+        'flex:1',
+        'padding:6px 4px',
+        'background:none',
+        'border:none',
+        `border-bottom:2px solid ${tab === id ? '#4c9aff' : 'transparent'}`,
+        `color:${tab === id ? '#e8ecf3' : '#8a97ab'}`,
+        'font:11px/1.4 system-ui,sans-serif',
+        'text-transform:uppercase',
+        'letter-spacing:0.06em',
+        'cursor:pointer',
+      ].join(';');
+      button.addEventListener('click', () => {
+        if (tab === id) {
+          return;
+        }
+
+        tab = id;
+        // Forces both panels to redraw: their guards compare against the last
+        // content they rendered, and a hidden panel's content did not change.
+        inspectorKey = '';
+        globalsKey = '';
+        render();
+      });
+      tabs.append(button);
+    }
+
+    inspector.root.style.display = tab === 'element' ? 'block' : 'none';
+    globalsPanel.root.style.display = tab === 'theme' ? 'block' : 'none';
+    inspector.root.style.flex = '1';
+    globalsPanel.root.style.flex = '1';
+  };
 
   /**
    * Re-mounts the scene.
@@ -202,7 +317,9 @@ function start(): void {
 
     drawOverlay();
     drawStatus();
+    drawTabs();
     drawInspector();
+    drawGlobals();
   };
 
   const placed = (): PlacedNode[] => placeNodes(visibleDocument(history).nodes);
@@ -236,9 +353,11 @@ function start(): void {
    * committed document are what the panel depends on; live sample values are
    * not.
    */
-  let inspectorKey = '';
-
   const drawInspector = (): void => {
+    if (tab !== 'element') {
+      return;
+    }
+
     const document_ = history.current;
     const sections = describeSelection(document_, selection.ids);
     const key = JSON.stringify(sections);
@@ -249,6 +368,22 @@ function start(): void {
 
     inspectorKey = key;
     inspector.render(sections, document_.globals ?? {});
+  };
+
+  const drawGlobals = (): void => {
+    if (tab !== 'theme') {
+      return;
+    }
+
+    const usage = collectGlobalUsage(history.current);
+    const key = JSON.stringify(usage);
+
+    if (key === globalsKey) {
+      return;
+    }
+
+    globalsKey = key;
+    globalsPanel.render(usage);
   };
 
   const drawStatus = (): void => {
@@ -683,3 +818,50 @@ function arrowNudge(key: string): { x: number; y: number } | undefined {
 }
 
 start();
+
+/**
+ * Turns a globals-panel action into a document edit.
+ *
+ * Every case returns the document unchanged when the edit does not apply — an
+ * invalid key, a duplicate, an unknown token — so the caller skips the commit
+ * by identity and no undo entry appears that does nothing.
+ */
+function applyGlobalAction(document_: ThemeDocument, action: GlobalAction): ThemeDocument {
+  switch (action.kind) {
+    case 'add': {
+      const seed = seedForGroup(action.group);
+
+      return addGlobal(
+        document_,
+        action.group,
+        nextGlobalKey(document_, action.group, action.group === 'palette' ? 'colour' : 'token'),
+        seed,
+      );
+    }
+    case 'value':
+      return setGlobalValue(document_, action.group, action.key, action.value);
+    case 'name':
+      return renameGlobal(document_, action.group, action.key, action.name);
+    case 'key':
+      return rekeyGlobal(document_, action.group, action.key, action.nextKey);
+    case 'delete':
+      return deleteGlobal(document_, action.group, action.key);
+  }
+}
+
+function labelForGlobalAction(action: GlobalAction): string {
+  switch (action.kind) {
+    case 'add':
+      return 'Add token';
+    case 'value':
+      return `Set ${action.key}`;
+    case 'name':
+      return 'Rename token';
+    case 'key':
+      // Named differently from a display rename on purpose: this one rewrote
+      // every reference in the document, and the undo label should say so.
+      return 'Change token key';
+    case 'delete':
+      return 'Delete token';
+  }
+}

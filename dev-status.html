@@ -52,9 +52,9 @@
 <main>
   <h1>Vigilia — development status</h1>
   <p class="sub">
-    Generated 2026-09-12T11:48:18.084Z ·
+    Generated 2026-09-12T12:05:26.410Z ·
     branch <code>main</code> ·
-    commit <code>21a3559</code> · <strong>uncommitted changes present</strong>
+    commit <code>aa5a4e0</code> · <strong>uncommitted changes present</strong>
   </p>
 
   <div class="warn-banner">
@@ -68,21 +68,21 @@
   <div class="grid">
     <div class="card">
       <h3>Unit tests</h3>
-      <div class="big">701</div>
+      <div class="big">725</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">701 of 701 passing</div>
+      <div class="note">725 of 725 passing</div>
     </div>
     <div class="card">
       <h3>Browser tests</h3>
-      <div class="big">113</div>
+      <div class="big">122</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">113 passing, 33 skipped · just now</div>
+      <div class="note">122 passing, 42 skipped · 1 min ago</div>
     </div>
     <div class="card">
       <h3>Player bundle, gzip</h3>
       <div class="big">199.4 KB</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">199.4 KB of a 400 KB budget · built 41 min ago</div>
+      <div class="note">199.4 KB of a 400 KB budget · built 7 min ago</div>
     </div>
     <div class="card">
       <h3>Typechecks</h3>
@@ -96,6 +96,8 @@
   <table>
     <thead><tr><th>What</th><th>Why it mattered</th></tr></thead>
     <tbody>
+      <tr><td><strong>Globals are editable — §75 is now usable end to end</strong></td><td class="missing">A Theme tab beside the inspector lists every token with a live use count, and supports add, set value, rename, change-key (rewriting every reference) and delete. Deleting INLINES the token’s value at every site, which is §75’s “conversion to current literals”: nothing dangles and nothing changes visually. A global is referenced from five different places in the schema — artboard background and bars, node styles, text-run styles and image monochrome — and one walk serves counting, rekeying and inlining so they cannot disagree.</td></tr>
+      <tr><td><strong>Found: chart colours cannot follow the palette (needs a decision)</strong></td><td class="missing">The new use counts said palette.accent had 0 uses while both gauges were visibly accent-coloured. The count is right: a chart Fill’s colour is a plain string in the schema, so it cannot hold a reference. That blocks §170’s dark/light overrides for any theme with a chart. It is a schema change, so §164 wants a human: options and a recommendation are in docs/gates/gate-2.md as G2-D1.</td></tr>
       <tr><td><strong>Two selection bugs the new specs turned up</strong></td><td class="missing">Dragging a node whose selection also contained an ancestor applied the delta twice — a 100 px drag moved the child 200 px and slid it out of its own group, compounding with nesting depth. Gestures now transform the outermost selected node only. And ctrl meant both “toggle selection” and “disable snapping”, so holding it to avoid a snap silently changed what was being dragged; shift toggles now, and ctrl means one thing.</td></tr>
       <tr><td><strong>Editor specs written (0004–0006)</strong></td><td class="missing">Selection and gestures, document editing and history, and the inspector now have committed specs — the edge cases that were only encoded in test names. Each one ends with what has NOT been verified, which is the part worth reading: §139 is unit-tested but has no caller, no binding field has been clicked in a browser, and nothing has dragged a child of a rotated group through real pointer input.</td></tr>
       <tr><td><strong>Switching a property to a global no longer writes a broken document</strong></td><td class="missing">Clicking “use global” used to commit a placeholder reference immediately, so an unfinished click left the theme pointing at a token that does not exist — plus an undo entry for a choice nobody made. The pending row now lives in the panel; nothing is committed until a token is picked.</td></tr>
@@ -187,7 +189,7 @@
     </figure>
     <figure>
       <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
-      <figcaption>assets-phone-chromium.png · 5 min ago</figcaption>
+      <figcaption>assets-phone-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
@@ -195,11 +197,15 @@
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
-      <figcaption>demo-phone-chromium.png · 5 min ago</figcaption>
+      <figcaption>demo-phone-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/editor-desktop-chromium.png" alt="editor-desktop-chromium.png" loading="lazy" />
       <figcaption>editor-desktop-chromium.png · 6 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/editor-globals-desktop-chromium.png" alt="editor-globals-desktop-chromium.png" loading="lazy" />
+      <figcaption>editor-globals-desktop-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/editor-inspector-desktop-chromium.png" alt="editor-inspector-desktop-chromium.png" loading="lazy" />
@@ -211,7 +217,7 @@
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-phone-chromium.png · 5 min ago</figcaption>
+      <figcaption>portrait-cover-phone-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
@@ -219,12 +225,13 @@
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
-      <figcaption>stress-phone-chromium.png · 5 min ago</figcaption>
+      <figcaption>stress-phone-chromium.png · 6 min ago</figcaption>
     </figure>
   </div>
 
   <h2>Recent commits</h2>
   <ol class="log">
+    <li><code>aa5a4e0</code> fix(editor): a gesture moves the outermost selected node only, and ctrl means one thing<br /><span>2026-09-12 18:48:49 +0700</span></li>
     <li><code>21a3559</code> docs(specs): specs for the editor, and the §75 bug writing one exposed<br /><span>2026-09-12 18:30:48 +0700</span></li>
     <li><code>2061831</code> feat(editor): the inspector panel, and handles that understand groups<br /><span>2026-09-12 18:19:05 +0700</span></li>
     <li><code>916df53</code> fix(renderer): re-fit before paint, and stop resize killing chart animation<br /><span>2026-09-12 18:17:56 +0700</span></li>
@@ -249,7 +256,6 @@
     <li><code>072cff6</code> feat(theme): canonical serialisation and a byte-stable JSON round-trip<br /><span>2026-09-12 15:41:18 +0700</span></li>
     <li><code>c6cb293</code> docs: drop the commit count from the handoff<br /><span>2026-09-12 15:37:03 +0700</span></li>
     <li><code>be3d3e4</code> docs: rewrite the handoff and close out the styling matrix row<br /><span>2026-09-12 15:36:35 +0700</span></li>
-    <li><code>7bcdce9</code> feat(renderer): outlines, dashes and shadows — the empty matrix row<br /><span>2026-09-12 15:34:54 +0700</span></li>
   </ol>
 </main>
 </body>

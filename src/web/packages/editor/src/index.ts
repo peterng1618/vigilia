@@ -121,3 +121,19 @@ export {
   pruneSelection,
   setSelection,
 } from './selection.js';
+
+export {
+  addGlobal,
+  collectGlobalUsage,
+  deleteGlobal,
+  isValidGlobalKey,
+  nextGlobalKey,
+  referencesTo,
+  rekeyGlobal,
+  renameGlobal,
+  setGlobalValue,
+  type GlobalReference,
+  type GlobalUsage,
+} from './globals-commands.js';
+
+export { createGlobalsPanel, seedForGroup, type GlobalAction, type GlobalsPanel } from './globals-panel.js';
