@@ -96,9 +96,13 @@ export function mountScene(options: MountOptions): SceneHandle {
   const charts = new Map<string, MountedChart>();
   const texts = new Map<string, HTMLElement>();
   const media = new Map<string, HTMLImageElement | HTMLVideoElement>();
+  // Every node's own element, so an update can reach it without a DOM query.
+  const elements = new Map<string, HTMLElement>();
 
   for (const node of plan.nodes) {
-    artboard.append(createNode(node, charts, texts, media, options.chartRenderer ?? 'canvas'));
+    artboard.append(
+      createNode(node, charts, texts, media, elements, options.chartRenderer ?? 'canvas'),
+    );
   }
 
   function applyArtboard(): void {
@@ -133,7 +137,7 @@ export function mountScene(options: MountOptions): SceneHandle {
       applyArtboard();
 
       for (const node of walkPlan(next.nodes)) {
-        updateNode(node, charts, texts, media);
+        updateNode(node, charts, texts, media, elements);
       }
     },
 
@@ -154,6 +158,7 @@ export function mountScene(options: MountOptions): SceneHandle {
       charts.clear();
       texts.clear();
       media.clear();
+      elements.clear();
       host.textContent = '';
     },
   };
@@ -189,19 +194,20 @@ function createNode(
   charts: Map<string, MountedChart>,
   texts: Map<string, HTMLElement>,
   media: Map<string, HTMLImageElement | HTMLVideoElement>,
+  elements: Map<string, HTMLElement>,
   chartRenderer: 'canvas' | 'svg',
 ): HTMLElement {
   const element = document.createElement('div');
   element.dataset['nodeId'] = node.id;
+  elements.set(node.id, element);
   element.style.position = 'absolute';
   applyBox(element, node.box);
   applyCommonStyle(element, node.style, node.content.kind === 'text' ? 'text' : 'box');
-  element.style.display = node.visible ? 'block' : 'none';
 
   switch (node.content.kind) {
     case 'group':
       for (const child of node.children) {
-        element.append(createNode(child, charts, texts, media, chartRenderer));
+        element.append(createNode(child, charts, texts, media, elements, chartRenderer));
       }
       break;
 
@@ -271,7 +277,29 @@ function createNode(
     }
   }
 
+  // Visibility LAST, and never before the content switch. A text node's box is
+  // laid out with `display: flex` for alignment, and setting visibility first
+  // meant that flex overwrote `display: none` — a node marked
+  // `"visible": false` rendered anyway. Found by a stress fixture that carried
+  // a hidden element saying so.
+  applyVisibility(element, node);
+
   return element;
+}
+
+/**
+ * Shows or hides a node.
+ *
+ * `display` rather than `visibility`, because a hidden node must take no space
+ * and receive no hit-testing — and the value when visible depends on the
+ * content, so this cannot be a constant.
+ */
+function applyVisibility(element: HTMLElement, node: PlanNode): void {
+  element.style.display = node.visible
+    ? node.content.kind === 'text'
+      ? 'flex'
+      : 'block'
+    : 'none';
 }
 
 function updateNode(
@@ -279,7 +307,15 @@ function updateNode(
   charts: Map<string, MountedChart>,
   texts: Map<string, HTMLElement>,
   media: Map<string, HTMLImageElement | HTMLVideoElement>,
+  elements: Map<string, HTMLElement>,
 ): void {
+  // A later plan can change visibility — `assertSameScene` only pins node ids,
+  // so a document edit that hides a node must take effect on update too.
+  const mounted = elements.get(node.id);
+  if (mounted !== undefined) {
+    applyVisibility(mounted, node);
+  }
+
   if (node.content.kind === 'text') {
     const element = texts.get(node.id);
     if (element !== undefined) {
@@ -371,9 +407,14 @@ function applyBox(element: HTMLElement, box: PlanBox): void {
   }
 }
 
-/** The outer box: alignment within the authored rectangle. */
+/**
+ * The outer box: alignment within the authored rectangle.
+ *
+ * Deliberately does NOT set `display`. That belongs to
+ * {@link applyVisibility}, which is the only place allowed to write it —
+ * two writers is how a hidden node became visible.
+ */
 function applyTextBox(element: HTMLElement, layout: PlanTextLayout): void {
-  element.style.display = 'flex';
   element.style.justifyContent =
     layout.align === 'center' ? 'center' : layout.align === 'right' ? 'flex-end' : 'flex-start';
   element.style.alignItems =

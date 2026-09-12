@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "id": "portrait-cover",
+  "metadata": {
+    "name": "Portrait strip, cover",
+    "description": "Tall 9:19.5 artboard with fitMode cover — the §55 path the showcase theme never takes. On a landscape viewport this must FILL and crop, not letterbox. Deliberately places content near every edge so a crop that centres wrongly is visible."
+  },
+  "artboard": {
+    "width": 440,
+    "height": 956,
+    "fitMode": "cover",
+    "background": { "value": "#07090d" },
+    "barColor": { "value": "#ff00ff" }
+  },
+  "globals": {
+    "palette": {
+      "ink": { "name": "Ink", "value": "#e9eef7" },
+      "dim": { "name": "Dim", "value": "#5d6b80" },
+      "accent": { "name": "Accent", "value": "#4ade80" },
+      "edge": { "name": "Edge marker", "value": "#ff2d55" }
+    }
+  },
+  "nodes": [
+    {
+      "id": "edge-top",
+      "type": "rectangle",
+      "name": "Top edge marker",
+      "transform": { "x": 0, "y": 0, "width": 440, "height": 6 },
+      "style": { "fill": { "ref": "palette.edge" } }
+    },
+    {
+      "id": "edge-bottom",
+      "type": "rectangle",
+      "name": "Bottom edge marker",
+      "transform": { "x": 0, "y": 950, "width": 440, "height": 6 },
+      "style": { "fill": { "ref": "palette.edge" } }
+    },
+    {
+      "id": "edge-left",
+      "type": "rectangle",
+      "transform": { "x": 0, "y": 0, "width": 6, "height": 956 },
+      "style": { "fill": { "ref": "palette.edge" } }
+    },
+    {
+      "id": "edge-right",
+      "type": "rectangle",
+      "transform": { "x": 434, "y": 0, "width": 6, "height": 956 },
+      "style": { "fill": { "ref": "palette.edge" } }
+    },
+
+    {
+      "id": "header",
+      "type": "text",
+      "transform": { "x": 24, "y": 40, "width": 392, "height": 34 },
+      "style": {
+        "fontSize": { "value": 22 },
+        "fontWeight": { "value": 700 },
+        "color": { "ref": "palette.ink" }
+      },
+      "content": {
+        "verticalAlign": "middle",
+        "runs": [{ "kind": "literal", "text": "Rig" }]
+      }
+    },
+
+    {
+      "id": "strip-cpu",
+      "type": "group",
+      "transform": { "x": 24, "y": 96, "width": 392, "height": 96 },
+      "children": [
+        {
+          "id": "strip-cpu-label",
+          "type": "text",
+          "transform": { "x": 0, "y": 0, "width": 200, "height": 20 },
+          "style": { "fontSize": { "value": 13 }, "color": { "ref": "palette.dim" } },
+          "content": { "runs": [{ "kind": "literal", "text": "CPU" }] }
+        },
+        {
+          "id": "strip-cpu-value",
+          "type": "text",
+          "transform": { "x": 200, "y": 0, "width": 192, "height": 20 },
+          "style": {
+            "fontSize": { "value": 13 },
+            "color": { "ref": "palette.ink" },
+            "tabularNumerals": { "value": true }
+          },
+          "bindings": [{ "id": "pc-cpu-load", "semanticKey": "cpu.load", "precision": 0 }],
+          "content": {
+            "align": "right",
+            "runs": [{ "kind": "value", "bindingId": "pc-cpu-load" }]
+          }
+        },
+        {
+          "id": "strip-cpu-bar",
+          "type": "chart",
+          "transform": { "x": 0, "y": 26, "width": 392, "height": 14 },
+          "bindings": [{ "id": "pc-cpu-bar", "semanticKey": "cpu.load" }],
+          "content": {
+            "family": "bar",
+            "settings": {
+              "orientation": "horizontal",
+              "min": 0,
+              "max": 100,
+              "barWidth": 14,
+              "categoryGapPercent": 0,
+              "cornerRadius": 7,
+              "showAxes": false,
+              "showCategoryLabels": false,
+              "track": { "kind": "solid", "color": "#151b26" },
+              "fill": { "kind": "solid", "color": "#4ade80" }
+            }
+          }
+        },
+        {
+          "id": "strip-cpu-spark",
+          "type": "chart",
+          "transform": { "x": 0, "y": 48, "width": 392, "height": 44 },
+          "bindings": [{ "id": "pc-cpu-spark", "semanticKey": "cpu.load" }],
+          "content": {
+            "family": "line",
+            "settings": {
+              "lineWidth": 1.5,
+              "interpolation": "smooth",
+              "stroke": { "kind": "solid", "color": "#4ade8099" },
+              "showMarkers": false,
+              "markerSize": 0,
+              "windowSeconds": 120,
+              "maxPoints": 240,
+              "min": 0,
+              "max": 100,
+              "showAxes": false
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "strip-gpu",
+      "type": "group",
+      "transform": { "x": 24, "y": 208, "width": 392, "height": 96 },
+      "children": [
+        {
+          "id": "strip-gpu-label",
+          "type": "text",
+          "transform": { "x": 0, "y": 0, "width": 200, "height": 20 },
+          "style": { "fontSize": { "value": 13 }, "color": { "ref": "palette.dim" } },
+          "content": { "runs": [{ "kind": "literal", "text": "GPU" }] }
+        },
+        {
+          "id": "strip-gpu-value",
+          "type": "text",
+          "transform": { "x": 200, "y": 0, "width": 192, "height": 20 },
+          "style": {
+            "fontSize": { "value": 13 },
+            "color": { "ref": "palette.ink" },
+            "tabularNumerals": { "value": true }
+          },
+          "bindings": [{ "id": "pc-gpu-load", "semanticKey": "gpu.load", "precision": 0 }],
+          "content": {
+            "align": "right",
+            "runs": [{ "kind": "value", "bindingId": "pc-gpu-load" }]
+          }
+        },
+        {
+          "id": "strip-gpu-bar",
+          "type": "chart",
+          "transform": { "x": 0, "y": 26, "width": 392, "height": 14 },
+          "bindings": [{ "id": "pc-gpu-bar", "semanticKey": "gpu.load" }],
+          "content": {
+            "family": "bar",
+            "settings": {
+              "orientation": "horizontal",
+              "min": 0,
+              "max": 100,
+              "barWidth": 14,
+              "categoryGapPercent": 0,
+              "cornerRadius": 7,
+              "showAxes": false,
+              "showCategoryLabels": false,
+              "track": { "kind": "solid", "color": "#151b26" },
+              "fill": { "kind": "solid", "color": "#38bdf8" }
+            }
+          }
+        },
+        {
+          "id": "strip-gpu-spark",
+          "type": "chart",
+          "transform": { "x": 0, "y": 48, "width": 392, "height": 44 },
+          "bindings": [{ "id": "pc-gpu-spark", "semanticKey": "gpu.load" }],
+          "content": {
+            "family": "line",
+            "settings": {
+              "lineWidth": 1.5,
+              "interpolation": "smooth",
+              "stroke": { "kind": "solid", "color": "#38bdf899" },
+              "showMarkers": false,
+              "markerSize": 0,
+              "windowSeconds": 120,
+              "maxPoints": 240,
+              "min": 0,
+              "max": 100,
+              "showAxes": false
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "temps-ring",
+      "type": "chart",
+      "name": "Full-circle sweep",
+      "transform": { "x": 120, "y": 340, "width": 200, "height": 200 },
+      "bindings": [{ "id": "pc-cpu-temp", "semanticKey": "cpu.temp" }],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": 90,
+          "endAngle": -270,
+          "min": 20,
+          "max": 100,
+          "thickness": 12,
+          "roundCap": true,
+          "track": { "kind": "solid", "color": "#151b26" },
+          "progress": {
+            "kind": "thresholds",
+            "bands": [
+              { "offset": 0.6, "color": "#4ade80" },
+              { "offset": 0.8, "color": "#fbbf24" },
+              { "offset": 1, "color": "#ff2d55" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "temps-readout",
+      "type": "text",
+      "transform": { "x": 120, "y": 415, "width": 200, "height": 50 },
+      "style": {
+        "fontSize": { "value": 36 },
+        "fontWeight": { "value": 700 },
+        "color": { "ref": "palette.ink" },
+        "tabularNumerals": { "value": true }
+      },
+      "bindings": [{ "id": "pc-temp-text", "semanticKey": "cpu.temp", "precision": 0 }],
+      "content": {
+        "align": "center",
+        "verticalAlign": "middle",
+        "runs": [{ "kind": "value", "bindingId": "pc-temp-text" }]
+      }
+    },
+
+    {
+      "id": "footer",
+      "type": "text",
+      "transform": { "x": 24, "y": 900, "width": 392, "height": 20 },
+      "style": { "fontSize": { "value": 11 }, "color": { "ref": "palette.dim" } },
+      "content": {
+        "overflow": "ellipsis",
+        "runs": [
+          { "kind": "literal", "text": "cover mode · content at every edge · magenta bars must never show" }
+        ]
+      }
+    }
+  ]
+}

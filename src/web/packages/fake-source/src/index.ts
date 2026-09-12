@@ -43,6 +43,10 @@ export {
   loadDemoTheme,
 } from './demo.js';
 
+export type { InvalidThemeFixture, ValidThemeFixture } from './themes/index.js';
+
+export { INVALID_THEMES, VALID_THEMES, validThemeByName } from './themes/index.js';
+
 /** How a family of sensors behaves, chosen by the last segment of its key. */
 export interface SensorProfile {
   readonly unit: string;

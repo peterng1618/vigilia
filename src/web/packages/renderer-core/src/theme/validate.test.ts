@@ -579,3 +579,151 @@ describe('document walking', () => {
     ]);
   });
 });
+
+describe('unknown fields', () => {
+  /**
+   * The schema says `additionalProperties: false` everywhere; the validator used
+   * to ignore unknown keys entirely. That divergence meant a typo was valid: a
+   * node with `"visable": false` passed every check and rendered, and the author
+   * had nothing to look at.
+   */
+  it('rejects an unknown document property', () => {
+    expect(codes({ ...baseDocument(), nodez: [] })).toEqual(['unknown-field']);
+  });
+
+  it('rejects an unknown node property and suggests the intended one', () => {
+    const result = validateThemeDocument({
+      ...baseDocument(),
+      nodes: [{ id: 'r', type: 'rectangle', visable: false }],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues[0]!.code).toBe('unknown-field');
+      expect(result.issues[0]!.message).toContain('Did you mean "visible"');
+      expect(result.issues[0]!.path).toBe('/nodes/0/visable');
+    }
+  });
+
+  it('suggests nothing for a key that was never part of the format', () => {
+    const result = validateThemeDocument({
+      ...baseDocument(),
+      nodes: [{ id: 'r', type: 'rectangle', quantumFlux: 1 }],
+    });
+
+    if (!result.ok) {
+      expect(result.issues[0]!.message).not.toContain('Did you mean');
+    }
+  });
+
+  it('rejects unknown properties on a transform, a binding and a run', () => {
+    expect(
+      codes({ ...baseDocument(), nodes: [{ id: 'r', type: 'rectangle', transform: { z: 3 } }] }),
+    ).toEqual(['unknown-field']);
+
+    expect(
+      codes({
+        ...baseDocument(),
+        nodes: [{ ...gaugeNode(), bindings: [{ id: 'b', semanticKey: 'k', prescision: 2 }] }],
+      }),
+    ).toEqual(['unknown-field']);
+
+    expect(
+      codes({
+        ...baseDocument(),
+        nodes: [
+          { id: 't', type: 'text', content: { runs: [{ kind: 'literal', text: 'x', colour: 'red' }] } },
+        ],
+      }),
+    ).toEqual(['unknown-field']);
+  });
+
+  it('rejects an unknown chart setting, per family', () => {
+    // The settings shapes are where a typo is most expensive: `roundcap` reads
+    // as a styling choice that simply never applied.
+    const node = {
+      ...gaugeNode(),
+      content: { family: 'gauge', settings: { ...defaultGaugeSettings, roundcap: true } },
+    };
+
+    const result = validateThemeDocument({ ...baseDocument(), nodes: [node] });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues[0]!.code).toBe('unknown-field');
+      expect(result.issues[0]!.message).toContain('roundCap');
+    }
+  });
+
+  it('still allows editorMetadata to carry anything', () => {
+    // §64/§67: rulers, grid and guides are persisted but never rendered, and the
+    // schema leaves that object open on purpose.
+    expectValid({ ...baseDocument(), editorMetadata: { zoom: 2, guides: [1, 2], whatever: {} } });
+  });
+
+  it('accepts a document that uses every declared field', () => {
+    expectValid({
+      schemaVersion: SUPPORTED_SCHEMA_VERSION,
+      id: 'full',
+      metadata: {
+        name: 'Full',
+        author: 'A',
+        description: 'D',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+      artboard: {
+        width: 100,
+        height: 100,
+        fitMode: 'cover',
+        background: { value: '#000' },
+        barColor: { value: '#111' },
+      },
+      globals: { palette: { a: { name: 'A', value: '#fff' } } },
+      assets: [
+        {
+          id: 'asset1',
+          kind: 'image',
+          path: 'assets/a.png',
+          sha256: 'a'.repeat(64),
+          sourceUrl: 'https://example.test/a.png',
+          license: { name: 'CC0', url: 'https://example.test/l', attribution: 'x' },
+        },
+      ],
+      editorMetadata: {},
+      nodes: [
+        {
+          id: 'n1',
+          type: 'text',
+          name: 'Named',
+          transform: { x: 1, y: 2, width: 3, height: 4, rotation: 5, scaleX: 1, scaleY: 1 },
+          visible: true,
+          locked: false,
+          style: { fill: { ref: 'palette.a' } },
+          bindings: [
+            {
+              id: 'bind1',
+              semanticKey: 'cpu.load',
+              precision: 2,
+              unitDisplay: 'long',
+              scale: 2,
+              offset: 1,
+            },
+          ],
+          content: {
+            runs: [
+              { kind: 'literal', text: 'x', style: { color: { value: '#fff' } } },
+              { kind: 'value', bindingId: 'bind1', precision: 1, unitDisplay: 'none', style: {} },
+            ],
+            wrap: true,
+            overflow: 'ellipsis',
+            align: 'center',
+            verticalAlign: 'bottom',
+          },
+        },
+        { id: 'n2', type: 'image', content: { assetId: 'asset1', fit: 'cover', monochrome: { value: '#f00' } } },
+        { id: 'n3', type: 'video', content: { assetId: 'asset1', loop: false, muted: true } },
+      ],
+    });
+  });
+});

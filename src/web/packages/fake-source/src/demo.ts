@@ -1,6 +1,7 @@
 import { validateThemeDocument, type ThemeDocument } from '@vigilia/renderer-core';
 import demoThemeJson from './demo-theme.json' with { type: 'json' };
 import { FakeSampleSource, type FakeSourceOptions } from './index.js';
+import { validThemeByName } from './themes/index.js';
 
 /**
  * The development fixture: one dashboard document plus the source that feeds it.
@@ -28,20 +29,27 @@ import { FakeSampleSource, type FakeSourceOptions } from './index.js';
 export const demoSourceOptions: FakeSourceOptions = {
   sampleIntervalMs: 1000,
   outages: [{ semanticKey: 'gpu.temp', everySeconds: 24, forSeconds: 6, status: 'error' }],
-  unmappedKeys: ['disk.nvme.queue-depth'],
+  // Both keys exist only to be unmapped. Without listing them here the source
+  // would invent a value for each — it generates for ANY key — and the fixtures
+  // that exist to show the placeholder would silently show a number instead.
+  unmappedKeys: ['disk.nvme.queue-depth', 'nonexistent.sensor'],
   forcedStatus: { 'cpu.fan': 'unavailable' },
   textValues: { 'gpu.name': 'Reference GPU' },
 };
 
 /**
- * Parses and validates the demo theme.
+ * Parses and validates a development theme.
  *
- * @throws Error if the fixture does not validate. It is checked in, so an
- *   invalid fixture is a repository bug that should stop the build rather than
+ * @param name One of the {@link VALID_THEMES} fixture names. Defaults to the
+ *   showcase dashboard. An unknown name falls back to it rather than throwing,
+ *   because the caller is usually a URL a person typed.
+ * @throws Error if the fixture does not validate. Fixtures are checked in, so an
+ *   invalid one is a repository bug that should stop the build rather than
  *   degrade a demo into something misleading.
  */
-export function loadDemoTheme(): ThemeDocument {
-  const result = validateThemeDocument(demoThemeJson);
+export function loadDemoTheme(name = 'demo'): ThemeDocument {
+  const selected = validThemeByName(name) ?? demoThemeJson;
+  const result = validateThemeDocument(selected);
 
   if (!result.ok) {
     throw new Error(

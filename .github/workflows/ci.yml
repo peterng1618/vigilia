@@ -71,6 +71,16 @@ jobs:
 
   backend:
     name: Backend (.NET)
+    # PAUSED until backend work starts. Nothing under src/Vigilia.* has ever
+    # been compiled — there is no .NET SDK on the development machine, only the
+    # EOL 6.0.35 runtime — so this job would fail on every push and drown the
+    # frontend signal that is meaningful today.
+    #
+    # It is disabled rather than deleted so the steps stay reviewable and
+    # re-enabling is a one-line change: delete the `if:` below. Expect
+    # first-build errors when it runs for the first time; that is the point of
+    # having it ready.
+    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

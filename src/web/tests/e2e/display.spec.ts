@@ -16,6 +16,16 @@ import { expect, test, type Page } from '@playwright/test';
 const FIXED_TIME = new Date('2026-01-01T12:00:00Z');
 
 /**
+ * Every valid theme fixture, by name.
+ *
+ * The showcase theme proves the renderer works on the layout it was designed
+ * against — the weakest possible evidence. The others are deliberately
+ * different shapes: `stress` is hostile but valid, and `portrait-cover` is a
+ * tall artboard in cover mode.
+ */
+const FIXTURES = ['demo', 'stress', 'portrait-cover'] as const;
+
+/**
  * Opens the player on a controlled clock.
  *
  * `install` rather than `setFixedTime`, and then advanced rather than frozen,
@@ -228,15 +238,16 @@ test.describe('update behaviour', () => {
     await expect(canvas).toHaveAttribute('data-marked', 'yes');
   });
 
-  test('captures a screenshot for human review', async ({ page }, testInfo) => {
-    await openPlayer(page);
-
+  test('captures a screenshot of every fixture for human review', async ({ page }, testInfo) => {
     // Not a baseline comparison — see playwright.config.ts. This is evidence
     // for Gate 0 and for eyeballing a theming change.
     //
     // Ordinary runs write to the ignored test output. `VIGILIA_CAPTURE=1`
     // writes into the TRACKED docs/gates/screenshots/ instead, so refreshing
     // committed evidence is a deliberate act.
+    //
+    // Capture with `--workers=1`: the two projects otherwise write here
+    // concurrently and Windows intermittently fails the open with UNKNOWN.
     //
     // It has to be deliberate because these images are NOT byte-reproducible:
     // the data behind them is deterministic, but a capture lands mid-animation,
@@ -247,16 +258,24 @@ test.describe('update behaviour', () => {
         ? 'test-results/screenshots'
         : '../../docs/gates/screenshots';
 
-    const screenshot = await page.screenshot({
-      fullPage: false,
-      path: `${directory}/dashboard-${testInfo.project.name}.png`,
-    });
-    await testInfo.attach(`dashboard-${testInfo.project.name}.png`, {
-      body: screenshot,
-      contentType: 'image/png',
-    });
+    for (const fixture of FIXTURES) {
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto(`/?theme=${fixture}`);
+      await page.waitForSelector('[data-vigilia="artboard"]');
+      await page.clock.runFor(1500);
 
-    expect(screenshot.byteLength).toBeGreaterThan(1000);
+      const screenshot = await page.screenshot({
+        fullPage: false,
+        path: `${directory}/${fixture}-${testInfo.project.name}.png`,
+      });
+
+      await testInfo.attach(`${fixture}-${testInfo.project.name}.png`, {
+        body: screenshot,
+        contentType: 'image/png',
+      });
+
+      expect(screenshot.byteLength).toBeGreaterThan(1000);
+    }
   });
 });
 
@@ -417,5 +436,139 @@ test.describe('outlines, dashes and shadows (§81)', () => {
       expect(box.width).toBeCloseTo(306, 0);
       expect(box.height).toBeCloseTo(60, 0);
     }
+  });
+});
+
+test.describe('every fixture renders', () => {
+  for (const fixture of FIXTURES) {
+    test(`${fixture}: mounts, paints and reports no console error`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') {
+          errors.push(message.text());
+        }
+      });
+
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto(`/?theme=${fixture}`);
+      await page.waitForSelector('[data-vigilia="artboard"]');
+      await page.clock.runFor(1500);
+
+      // An artboard with no children means the document loaded and nothing
+      // rendered, which is the failure a "did it load" check would miss.
+      const nodes = await page.locator('[data-vigilia="artboard"] [data-node-id]').count();
+      expect(nodes, `${fixture} mounted no nodes`).toBeGreaterThan(0);
+
+      // Every chart must have painted. A blank canvas is how an option the
+      // engine silently rejects shows up.
+      const charts = page.locator('[data-node-id] canvas');
+      const chartCount = await charts.count();
+      expect(chartCount, `${fixture} has no charts`).toBeGreaterThan(0);
+
+      for (let index = 0; index < chartCount; index++) {
+        const painted = await charts.nth(index).evaluate((element) => {
+          const source = element as HTMLCanvasElement;
+          const context = source.getContext('2d');
+          if (context === null || source.width === 0 || source.height === 0) {
+            return false;
+          }
+          const { data } = context.getImageData(0, 0, source.width, source.height);
+          for (let i = 3; i < data.length; i += 4) {
+            if (data[i] !== 0) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        expect(painted, `${fixture}: chart ${index} drew no pixels`).toBe(true);
+      }
+
+      // Warnings are expected — the demo theme has a deliberately unmapped key.
+      // Errors are not.
+      expect(errors, `${fixture} logged errors`).toEqual([]);
+    });
+
+    test(`${fixture}: keeps the design inside the viewport`, async ({ page }) => {
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto(`/?theme=${fixture}`);
+      await page.waitForSelector('[data-vigilia="artboard"]');
+
+      const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
+      const viewport = page.viewportSize();
+
+      expect(box).not.toBeNull();
+      expect(viewport).not.toBeNull();
+
+      if (box === null || viewport === null) {
+        return;
+      }
+
+      // §51: one uniform scale, so the rendered aspect ratio always matches the
+      // artboard's. A non-uniform scale would distort strokes and glyphs.
+      const artboard = await page.evaluate(() => {
+        const element = document.querySelector<HTMLElement>('[data-vigilia="artboard"]');
+        return element === null
+          ? null
+          : { width: parseFloat(element.style.width), height: parseFloat(element.style.height) };
+      });
+
+      expect(artboard).not.toBeNull();
+      if (artboard !== null) {
+        expect(box.width / box.height).toBeCloseTo(artboard.width / artboard.height, 1);
+      }
+    });
+  }
+
+  test('cover mode fills the viewport rather than letterboxing (§55)', async ({ page }) => {
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=portrait-cover');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
+    const viewport = page.viewportSize();
+
+    if (box === null || viewport === null) {
+      return;
+    }
+
+    // Cover fills and crops: the scaled design must cover the viewport in BOTH
+    // axes. The fixture's bar colour is magenta precisely so a letterbox here
+    // would be unmissable in a screenshot.
+    expect(box.width).toBeGreaterThanOrEqual(viewport.width - 1);
+    expect(box.height).toBeGreaterThanOrEqual(viewport.height - 1);
+  });
+
+  test('an unknown theme name falls back instead of failing', async ({ page }) => {
+    // The selector is usually a URL a person typed.
+    await page.goto('/?theme=does-not-exist');
+    await expect(page.locator('[data-node-id="title"]')).toHaveCount(1);
+  });
+});
+
+test.describe('visibility', () => {
+  test('does not render a node marked invisible, text included', async ({ page }) => {
+    // Regression. Visibility was applied before the content switch, and a text
+    // node's box is laid out with `display: flex` — so the flex overwrote
+    // `display: none` and a node marked `"visible": false` rendered anyway. A
+    // stress fixture carrying a hidden element that says so is what caught it.
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=stress');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    const hidden = page.locator('[data-node-id="hidden-node"]');
+
+    await expect(hidden).toHaveCount(1);
+    await expect(hidden).toBeHidden();
+    await expect(hidden).toHaveCSS('display', 'none');
+    await expect(page.getByText('must not be visible')).toBeHidden();
+  });
+
+  test('renders a visible text node as a flex box', async ({ page }) => {
+    // The other half of the same rule: the visible value has to depend on the
+    // content kind, or alignment stops working.
+    await openPlayer(page);
+    await expect(page.locator('[data-node-id="cpu-readout"]')).toHaveCSS('display', 'flex');
   });
 });

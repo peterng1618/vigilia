@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { knownKeysFor, type KnownKeyShape } from './validate.js';
 import {
   ASSET_PATH_PATTERN,
   CHART_FAMILIES,
@@ -19,8 +20,8 @@ import {
  *
  * This is the same class of risk as `Vigilia.Contracts` ↔ `types.ts` — a drift
  * compiles cleanly on both sides and produces wrong behaviour at runtime. The
- * difference is that this one now fails a test. The C# mirror still does not;
- * see `contracts-mirror.test.ts` for the equivalent guard on that boundary.
+ * difference is that this one fails a test. The C# mirror has no equivalent
+ * guard yet; this file is the pattern to copy for it.
  *
  * Reading the file rather than importing it is deliberate: `renderer-core` sets
  * `rootDir: src`, so an import from outside `src/` would break the build, and
@@ -142,5 +143,70 @@ describe('theme schema is in sync with the validator', () => {
     for (const family of CHART_FAMILIES) {
       expect(() => definition(`${family}Settings`)).not.toThrow();
     }
+  });
+});
+
+describe('the validator knows exactly the keys the schema declares', () => {
+  /**
+   * The unknown-field check is only as good as its key lists. A field added to
+   * the schema but not to `KNOWN_KEYS` would be rejected as a typo — the worst
+   * possible failure, because the document is correct and the error blames the
+   * author. These assertions make that impossible to ship.
+   */
+  function schemaKeys(definition: string): string[] {
+    const properties = definition === 'document'
+      ? loadSchema().properties
+      : (definitionOf(definition)['properties'] as Record<string, unknown>);
+
+    return Object.keys(properties).sort();
+  }
+
+  function definitionOf(name: string): Record<string, unknown> {
+    return definition(name);
+  }
+
+  const shapes: [KnownKeyShape, string][] = [
+    ['document', 'document'],
+    ['artboard', 'artboard'],
+    ['transform', 'transform'],
+    ['node', 'node'],
+    ['binding', 'binding'],
+    ['textContent', 'textContent'],
+    ['chartContent', 'chartContent'],
+    ['rectangleContent', 'rectangleContent'],
+    ['imageContent', 'imageContent'],
+    ['videoContent', 'videoContent'],
+    ['assetReference', 'assetReference'],
+    ['gaugeSettings', 'gaugeSettings'],
+    ['lineSettings', 'lineSettings'],
+    ['barSettings', 'barSettings'],
+    ['pieSettings', 'pieSettings'],
+  ];
+
+  it.each(shapes)('%s', (shape, definitionName) => {
+    expect([...knownKeysFor(shape)].sort()).toEqual(schemaKeys(definitionName));
+  });
+
+  it('covers the document metadata shape', () => {
+    const metadata = loadSchema().properties['metadata'] as Record<string, unknown>;
+    const properties = metadata['properties'] as Record<string, unknown>;
+
+    expect([...knownKeysFor('metadata')].sort()).toEqual(Object.keys(properties).sort());
+  });
+
+  it('covers both text run variants', () => {
+    const branches = definition('textRun')['oneOf'] as Record<string, unknown>[];
+    const literal = Object.keys(branches[0]!['properties'] as Record<string, unknown>).sort();
+    const value = Object.keys(branches[1]!['properties'] as Record<string, unknown>).sort();
+
+    expect([...knownKeysFor('literalRun')].sort()).toEqual(literal);
+    expect([...knownKeysFor('valueRun')].sort()).toEqual(value);
+  });
+
+  it('covers a global entry', () => {
+    const entry = definition('globalGroup')['additionalProperties'] as Record<string, unknown>;
+    const properties = entry['properties'] as Record<string, unknown>;
+
+    expect([...knownKeysFor('globalEntry')].sort()).toEqual(Object.keys(properties).sort());
   });
 });

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "chart-arity",
+  "metadata": {
+    "description": "Arity and scope mistakes: a gauge reading two sensors (one value against one range has no second meaning), and a text run bound to a binding declared on a DIFFERENT node."
+  },
+  "artboard": {
+    "width": 400,
+    "height": 300
+  },
+  "nodes": [
+    {
+      "id": "two-headed-gauge",
+      "type": "chart",
+      "bindings": [
+        {
+          "id": "a",
+          "semanticKey": "cpu.load"
+        },
+        {
+          "id": "b",
+          "semanticKey": "gpu.load"
+        }
+      ],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": 225,
+          "endAngle": -45,
+          "min": 0,
+          "max": 100,
+          "thickness": 10,
+          "roundCap": true,
+          "track": {
+            "kind": "solid",
+            "color": "#222"
+          },
+          "progress": {
+            "kind": "solid",
+            "color": "#0bd"
+          }
+        }
+      }
+    },
+    {
+      "id": "borrowing-text",
+      "type": "text",
+      "content": {
+        "runs": [
+          {
+            "kind": "value",
+            "bindingId": "a"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "broken-references",
+  "metadata": {
+    "description": "Every reference-shaped mistake at once: a global that does not exist, a duplicate node id across nesting levels, a style value that declares both ref and value, and a binding on a node type that reads no data."
+  },
+  "artboard": {
+    "width": 400,
+    "height": 300
+  },
+  "globals": {
+    "palette": {
+      "real": {
+        "name": "Real",
+        "value": "#fff"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "twice",
+      "type": "rectangle",
+      "style": {
+        "fill": {
+          "ref": "palette.missing"
+        }
+      }
+    },
+    {
+      "id": "group",
+      "type": "group",
+      "children": [
+        {
+          "id": "twice",
+          "type": "ellipse"
+        },
+        {
+          "id": "ambiguous",
+          "type": "rectangle",
+          "style": {
+            "fill": {
+              "ref": "palette.real",
+              "value": "#000"
+            }
+          }
+        },
+        {
+          "id": "pointless-binding",
+          "type": "rectangle",
+          "bindings": [
+            {
+              "id": "unused",
+              "semanticKey": "cpu.load"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

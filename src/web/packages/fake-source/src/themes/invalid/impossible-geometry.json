@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "id": "impossible-geometry",
+  "metadata": {
+    "description": "Numerically valid JSON that cannot be drawn: a gauge whose range is a single point, a line with a zero-length window, and a donut whose ring has no width. Each would render as a blank element that looks like a broken build rather than an authoring mistake."
+  },
+  "artboard": {
+    "width": 400,
+    "height": 300
+  },
+  "nodes": [
+    {
+      "id": "flat-gauge",
+      "type": "chart",
+      "bindings": [
+        {
+          "id": "g",
+          "semanticKey": "cpu.load"
+        }
+      ],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": 225,
+          "endAngle": -45,
+          "min": 50,
+          "max": 50,
+          "thickness": 10,
+          "roundCap": true,
+          "track": {
+            "kind": "solid",
+            "color": "#222"
+          },
+          "progress": {
+            "kind": "solid",
+            "color": "#0bd"
+          }
+        }
+      }
+    },
+    {
+      "id": "no-window-line",
+      "type": "chart",
+      "bindings": [
+        {
+          "id": "l",
+          "semanticKey": "cpu.load"
+        }
+      ],
+      "content": {
+        "family": "line",
+        "settings": {
+          "lineWidth": 2,
+          "interpolation": "linear",
+          "stroke": {
+            "kind": "solid",
+            "color": "#0bd"
+          },
+          "showMarkers": false,
+          "markerSize": 0,
+          "windowSeconds": 0,
+          "maxPoints": 0,
+          "showAxes": false
+        }
+      }
+    },
+    {
+      "id": "flat-ring",
+      "type": "chart",
+      "bindings": [
+        {
+          "id": "p",
+          "semanticKey": "ram.used"
+        }
+      ],
+      "content": {
+        "family": "pie",
+        "settings": {
+          "innerRadiusPercent": 70,
+          "outerRadiusPercent": 70,
+          "startAngle": 90,
+          "padAngle": 0,
+          "cornerRadius": 0,
+          "showLabels": false,
+          "total": {
+            "kind": "sum"
+          },
+          "palette": []
+        }
+      }
+    }
+  ]
+}

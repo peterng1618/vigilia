@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 99,
+  "id": "from the future",
+  "metadata": {
+    "description": "Written by a future build. §141: import must fail WITHOUT changing the library, and report only the version — everything else here is also wrong on purpose, and none of it should be reported."
+  },
+  "artboard": {
+    "width": -5
+  },
+  "nodes": "not even an array"
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "asset-traversal",
+  "metadata": {
+    "description": "The asset path matches the schema's pattern — its character class permits dots — and still escapes the package. The validator's explicit '..' check is what rejects it."
+  },
+  "artboard": {
+    "width": 400,
+    "height": 300
+  },
+  "assets": [
+    {
+      "id": "escape",
+      "kind": "image",
+      "path": "assets/../../../etc/shadow"
+    },
+    {
+      "id": "absolute",
+      "kind": "image",
+      "path": "/var/secrets.png"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "img",
+      "type": "image",
+      "content": {
+        "assetId": "escape"
+      }
+    }
+  ]
+}

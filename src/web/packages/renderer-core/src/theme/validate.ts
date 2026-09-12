@@ -38,6 +38,7 @@ import {
 
 export type IssueCode =
   | 'not-an-object'
+  | 'unknown-field'
   | 'newer-schema-version'
   | 'unsupported-schema-version'
   | 'missing-field'
@@ -93,11 +94,146 @@ const CHART_BINDING_ARITY: Record<
   pie: { min: 1, max: 64 },
 };
 
+/**
+ * Known keys per shape, mirroring the schema's `additionalProperties: false`.
+ *
+ * These exist to catch the most common authoring mistake there is: a typo. A
+ * document with `"visable": true` is valid JSON, passes every other check, and
+ * silently renders a node the author believed they had hidden. Ignoring unknown
+ * keys makes that invisible; rejecting them names the line.
+ *
+ * Forward compatibility is *not* what this trades away. A field a newer build
+ * introduces comes with a `schemaVersion` bump, which is rejected earlier and
+ * with a clearer message (§141). Within one declared version, an unexpected
+ * field means something is wrong.
+ *
+ * `schema-sync.test.ts` asserts each of these against the schema's own
+ * `properties`, so the two cannot drift apart silently.
+ */
+const KNOWN_KEYS = {
+  document: ['schemaVersion', 'id', 'metadata', 'artboard', 'globals', 'nodes', 'assets', 'editorMetadata'],
+  metadata: ['name', 'author', 'description', 'createdAt', 'updatedAt'],
+  artboard: ['width', 'height', 'background', 'fitMode', 'barColor'],
+  transform: ['x', 'y', 'width', 'height', 'rotation', 'scaleX', 'scaleY'],
+  node: [
+    'id',
+    'type',
+    'name',
+    'transform',
+    'visible',
+    'locked',
+    'style',
+    'content',
+    'bindings',
+    'children',
+  ],
+  binding: ['id', 'semanticKey', 'precision', 'unitDisplay', 'scale', 'offset'],
+  textContent: ['runs', 'wrap', 'overflow', 'align', 'verticalAlign'],
+  literalRun: ['kind', 'text', 'style'],
+  valueRun: ['kind', 'bindingId', 'precision', 'unitDisplay', 'style'],
+  chartContent: ['family', 'settings'],
+  rectangleContent: ['cornerRadius'],
+  imageContent: ['assetId', 'fit', 'monochrome'],
+  videoContent: ['assetId', 'loop', 'muted'],
+  assetReference: ['id', 'kind', 'path', 'sha256', 'sourceUrl', 'license'],
+  globalEntry: ['name', 'value'],
+  gaugeSettings: [
+    'startAngle',
+    'endAngle',
+    'min',
+    'max',
+    'thickness',
+    'track',
+    'progress',
+    'roundCap',
+    'gradientSegments',
+  ],
+  lineSettings: [
+    'lineWidth',
+    'interpolation',
+    'dash',
+    'stroke',
+    'palette',
+    'area',
+    'showMarkers',
+    'markerSize',
+    'windowSeconds',
+    'maxPoints',
+    'min',
+    'max',
+    'showAxes',
+    'sampling',
+  ],
+  barSettings: [
+    'orientation',
+    'min',
+    'max',
+    'barWidth',
+    'categoryGapPercent',
+    'cornerRadius',
+    'fill',
+    'track',
+    'showAxes',
+    'showCategoryLabels',
+  ],
+  pieSettings: [
+    'innerRadiusPercent',
+    'outerRadiusPercent',
+    'startAngle',
+    'endAngle',
+    'padAngle',
+    'cornerRadius',
+    'total',
+    'remainderFill',
+    'palette',
+    'showLabels',
+  ],
+} as const satisfies Record<string, readonly string[]>;
+
+export type KnownKeyShape = keyof typeof KNOWN_KEYS;
+
+/** The key lists above, for the drift guard in `schema-sync.test.ts`. */
+export function knownKeysFor(shape: KnownKeyShape): readonly string[] {
+  return KNOWN_KEYS[shape];
+}
+
 class Issues {
   readonly list: ValidationIssue[] = [];
 
   add(code: IssueCode, path: string, message: string): void {
     this.list.push({ code, path, message });
+  }
+
+  /**
+   * Rejects keys the shape does not declare.
+   *
+   * The message suggests the nearest known key when there is an obvious one,
+   * because the whole value of this check is turning "my theme does nothing"
+   * into "line 14 says visable".
+   */
+  unknownKeys(
+    value: Record<string, unknown>,
+    path: string,
+    shape: KnownKeyShape,
+    what: string,
+  ): void {
+    const allowed = KNOWN_KEYS[shape];
+
+    for (const key of Object.keys(value)) {
+      if (allowed.includes(key as never)) {
+        continue;
+      }
+
+      const suggestion = nearestKey(key, allowed);
+
+      this.add(
+        'unknown-field',
+        `${path}/${key}`,
+        suggestion === undefined
+          ? `${what} has no "${key}" property.`
+          : `${what} has no "${key}" property. Did you mean "${suggestion}"?`,
+      );
+    }
   }
 
   /** True when `value` is a plain object; records an issue and returns false otherwise. */
@@ -156,6 +292,13 @@ export function validateThemeDocument(input: unknown): ValidationResult {
   const versionIssue = checkSchemaVersion(input['schemaVersion']);
   if (versionIssue) {
     return { ok: false, issues: [versionIssue] };
+  }
+
+  issues.unknownKeys(input, '', 'document', 'A theme document');
+
+  const metadata = input['metadata'];
+  if (metadata !== undefined && issues.object(metadata, '/metadata', 'metadata')) {
+    issues.unknownKeys(metadata, '/metadata', 'metadata', 'Document metadata');
   }
 
   if (!issues.stableId(input['id'], '/id', 'The document id')) {
@@ -217,6 +360,8 @@ function validateArtboard(issues: Issues, value: unknown): void {
     return;
   }
 
+  issues.unknownKeys(value, '/artboard', 'artboard', 'The artboard');
+
   for (const dimension of ['width', 'height'] as const) {
     const path = `/artboard/${dimension}`;
     const raw = value[dimension];
@@ -274,6 +419,8 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
         continue;
       }
 
+      issues.unknownKeys(entry, entryPath, 'globalEntry', 'A global entry');
+
       if (typeof entry['name'] !== 'string' || entry['name'].length === 0) {
         issues.add('missing-field', `${entryPath}/name`, 'A global entry needs a non-empty display name.');
       }
@@ -308,6 +455,8 @@ function validateAssets(issues: Issues, value: unknown): Set<string> {
     if (!issues.object(asset, path, 'An asset reference')) {
       continue;
     }
+
+    issues.unknownKeys(asset, path, 'assetReference', 'An asset reference');
 
     if (issues.stableId(asset['id'], `${path}/id`, 'An asset id')) {
       const id = asset['id'] as string;
@@ -420,6 +569,8 @@ function validateNode(
     return;
   }
 
+  issues.unknownKeys(value, path, 'node', 'A node');
+
   context.counter.nodes += 1;
   if (context.counter.nodes === MAX_NODE_COUNT + 1) {
     issues.add('too-many-nodes', path, `The document exceeds the maximum of ${MAX_NODE_COUNT} nodes.`);
@@ -463,6 +614,8 @@ function validateTransform(issues: Issues, value: unknown, path: string): void {
   if (!issues.object(value, path, 'transform')) {
     return;
   }
+
+  issues.unknownKeys(value, path, 'transform', 'A transform');
 
   for (const key of ['x', 'y', 'width', 'height', 'rotation', 'scaleX', 'scaleY'] as const) {
     const raw = value[key];
@@ -607,6 +760,8 @@ function validateBindings(
       continue;
     }
 
+    issues.unknownKeys(binding, bindingPath, 'binding', 'A binding');
+
     if (issues.stableId(binding['id'], `${bindingPath}/id`, 'A binding id')) {
       const id = binding['id'] as string;
       if (context.bindingIds.has(id)) {
@@ -684,6 +839,13 @@ function validateContent(
       if (!issues.object(content, `${path}/content`, `A ${type} node's content`)) {
         return;
       }
+
+      issues.unknownKeys(
+        content,
+        `${path}/content`,
+        type === 'image' ? 'imageContent' : 'videoContent',
+        `A ${type} node's content`,
+      );
       const assetId = content['assetId'];
       if (typeof assetId !== 'string') {
         issues.add('missing-field', `${path}/content/assetId`, `A ${type} node needs an assetId.`);
@@ -706,6 +868,8 @@ function validateContent(
       if (!issues.object(content, `${path}/content`, "A rectangle node's content")) {
         return;
       }
+
+      issues.unknownKeys(content, `${path}/content`, 'rectangleContent', "A rectangle's content");
       const radius = content['cornerRadius'];
       if (radius !== undefined) {
         if (issues.finiteNumber(radius, `${path}/content/cornerRadius`, 'cornerRadius') && radius < 0) {
@@ -732,6 +896,8 @@ function validateTextContent(
     return;
   }
 
+  issues.unknownKeys(value, path, 'textContent', "A text node's content");
+
   const runs = value['runs'];
 
   if (!Array.isArray(runs)) {
@@ -749,6 +915,13 @@ function validateTextContent(
     if (!issues.enumValue(run['kind'], ['literal', 'value'] as const, `${runPath}/kind`, 'A run kind')) {
       continue;
     }
+
+    issues.unknownKeys(
+      run,
+      runPath,
+      run['kind'] === 'literal' ? 'literalRun' : 'valueRun',
+      `A ${String(run['kind'])} run`,
+    );
 
     if (run['kind'] === 'literal') {
       if (typeof run['text'] !== 'string') {
@@ -786,6 +959,8 @@ function validateChartContent(
     return;
   }
 
+  issues.unknownKeys(value, path, 'chartContent', "A chart node's content");
+
   if (!issues.enumValue(value['family'], CHART_FAMILIES, `${path}/family`, 'A chart family')) {
     return;
   }
@@ -808,6 +983,8 @@ function validateChartContent(
   if (!issues.object(settings, `${path}/settings`, "A chart's settings")) {
     return;
   }
+
+  issues.unknownKeys(settings, `${path}/settings`, `${family}Settings`, `${family} settings`);
 
   validateSettingsRange(issues, settings, `${path}/settings`, family);
 }
@@ -867,6 +1044,50 @@ function validateSettingsRange(
   if (isRecord(total) && total['kind'] === 'fixed' && !Number.isFinite(total['value'])) {
     issues.add('wrong-type', `${path}/total/value`, 'A fixed total needs a finite value.');
   }
+}
+
+/**
+ * The known key closest to a misspelling, or undefined if none is close.
+ *
+ * Case-insensitive Levenshtein with a distance cap of 3, which catches
+ * `visable`, `strokewidth` and `cornerRadious` without inventing a suggestion
+ * for a key that was simply never part of the format.
+ */
+function nearestKey(key: string, allowed: readonly string[]): string | undefined {
+  let best: string | undefined;
+  let bestDistance = 4;
+
+  for (const candidate of allowed) {
+    const distance = editDistance(key.toLowerCase(), candidate.toLowerCase());
+
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+function editDistance(a: string, b: string): number {
+  // Single-row Levenshtein: the inputs are property names, so this runs on
+  // strings of a dozen characters and allocating a matrix would be wasteful.
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+
+    for (let j = 1; j <= b.length; j++) {
+      const substitution = previous[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1);
+      const insertion = current[j - 1]! + 1;
+      const deletion = previous[j]! + 1;
+      current.push(Math.min(substitution, insertion, deletion));
+    }
+
+    previous = current;
+  }
+
+  return previous[b.length]!;
 }
 
 function resolveOptional(container: unknown, key: string): unknown {

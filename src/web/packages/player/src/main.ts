@@ -63,8 +63,14 @@ const DATA_TICK_MS = 1000;
 function start(host: HTMLElement): void {
   let theme: ThemeDocument;
 
+  // SCAFFOLD: which fixture to render. The transport will deliver the assigned
+  // theme instead (§105 pairing), and this goes away with it — but until then a
+  // selector is how the display path gets exercised against more than one
+  // layout, which is what caught several rendering defects.
+  const requested = new URLSearchParams(window.location.search).get('theme') ?? 'demo';
+
   try {
-    theme = loadDemoTheme();
+    theme = loadDemoTheme(requested);
   } catch (error) {
     showFailure(host, error instanceof Error ? error.message : String(error));
     return;
@@ -87,7 +93,7 @@ function start(host: HTMLElement): void {
 
   reportIssues(first);
   reportMissingFonts(first);
-  showScaffoldBanner(requiredSemanticKeys(theme).length);
+  showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested);
 
   let timer: number | undefined;
 
@@ -194,9 +200,11 @@ function showFailure(host: HTMLElement, message: string): void {
  * never presenting a fabricated reading as a real one, and a convincing demo
  * screenshot is the most likely way that happens by accident.
  */
-function showScaffoldBanner(keyCount: number): void {
+function showScaffoldBanner(keyCount: number, themeName: string): void {
   const banner = document.createElement('div');
-  banner.textContent = `SYNTHETIC DATA — ${keyCount} semantic keys served by @vigilia/fake-source, not by hardware`;
+  banner.textContent =
+    `SYNTHETIC DATA — "${themeName}", ${keyCount} semantic keys served by ` +
+    '@vigilia/fake-source, not by hardware';
   banner.style.cssText =
     'position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;' +
     'background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em';

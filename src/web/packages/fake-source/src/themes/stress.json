@@ -1,0 +1,499 @@
+{
+  "schemaVersion": 1,
+  "id": "stress-edge-cases",
+  "metadata": {
+    "name": "Edge cases",
+    "description": "Hostile but VALID. Every element here is something a reasonable author could write and the showcase theme does not cover: extreme ranges, rotation, negative offsets, deep nesting, arbitrary sweeps, non-Latin scripts, every overflow mode, and values pushed outside their axis."
+  },
+  "artboard": {
+    "width": 1024,
+    "height": 768,
+    "fitMode": "contain",
+    "background": { "value": "#0a0a0c" }
+  },
+  "globals": {
+    "palette": {
+      "ink": { "name": "Ink", "value": "#f2f4f8" },
+      "dim": { "name": "Dim", "value": "#6b7280" },
+      "hot": { "name": "Hot", "value": "#ff5630" }
+    },
+    "fontSizes": {
+      "tiny": { "name": "Tiny", "value": 9 },
+      "huge": { "name": "Huge", "value": 64 }
+    }
+  },
+  "nodes": [
+    {
+      "id": "zero-size",
+      "type": "rectangle",
+      "name": "Zero-size node",
+      "transform": { "x": 0, "y": 0, "width": 0, "height": 0 },
+      "style": { "fill": { "value": "#ffffff" } }
+    },
+    {
+      "id": "rotated",
+      "type": "rectangle",
+      "name": "Rotated and scaled",
+      "transform": {
+        "x": 40,
+        "y": 40,
+        "width": 120,
+        "height": 40,
+        "rotation": -33.5,
+        "scaleX": 1.4,
+        "scaleY": 0.8
+      },
+      "style": {
+        "fill": { "value": "#22d3ee" },
+        "strokeColor": { "ref": "palette.ink" },
+        "strokeWidth": { "value": 2 },
+        "shadowColor": { "value": "#000000aa" },
+        "shadowBlur": { "value": 12 },
+        "shadowOffsetX": { "value": -4 },
+        "shadowOffsetY": { "value": 4 }
+      },
+      "content": { "cornerRadius": 999 }
+    },
+    {
+      "id": "nest-1",
+      "type": "group",
+      "name": "Nested transforms",
+      "transform": { "x": 240, "y": 30, "width": 300, "height": 140 },
+      "children": [
+        {
+          "id": "nest-2",
+          "type": "group",
+          "transform": { "x": 20, "y": 20, "rotation": 4 },
+          "children": [
+            {
+              "id": "nest-3",
+              "type": "group",
+              "transform": { "x": -10, "y": 10, "scaleX": 0.9, "scaleY": 0.9 },
+              "children": [
+                {
+                  "id": "nest-leaf",
+                  "type": "ellipse",
+                  "transform": { "x": 0, "y": 0, "width": 80, "height": 80 },
+                  "style": { "fill": { "value": "#a78bfa" }, "opacity": { "value": 0.75 } }
+                },
+                {
+                  "id": "nest-hairline",
+                  "type": "line",
+                  "name": "Line as a thin rotated rectangle",
+                  "transform": { "x": 0, "y": 100, "width": 200, "height": 1, "rotation": 12 },
+                  "style": { "fill": { "ref": "palette.dim" } }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "negative-offset",
+      "type": "rectangle",
+      "name": "Negative local offset, clipped by nothing",
+      "transform": { "x": -30, "y": 700, "width": 160, "height": 40 },
+      "style": { "fill": { "value": "#1f2937" } }
+    },
+
+    {
+      "id": "half-gauge",
+      "type": "chart",
+      "name": "Half sweep, non-zero minimum",
+      "transform": { "x": 600, "y": 30, "width": 200, "height": 120 },
+      "bindings": [{ "id": "s-temp", "semanticKey": "cpu.temp" }],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": 180,
+          "endAngle": 0,
+          "min": 30,
+          "max": 110,
+          "thickness": 14,
+          "roundCap": false,
+          "track": { "kind": "solid", "color": "#1f2937" },
+          "progress": {
+            "kind": "thresholds",
+            "bands": [
+              { "offset": 0.5, "color": "#34d399" },
+              { "offset": 0.75, "color": "#fbbf24" },
+              { "offset": 1, "color": "#ff5630" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "reverse-gauge",
+      "type": "chart",
+      "name": "Reverse sweep, gradient track",
+      "transform": { "x": 820, "y": 30, "width": 160, "height": 160 },
+      "bindings": [{ "id": "s-ratio", "semanticKey": "fan.ratio", "scale": 100 }],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": -45,
+          "endAngle": 225,
+          "min": 0,
+          "max": 100,
+          "thickness": 26,
+          "roundCap": true,
+          "gradientSegments": 8,
+          "track": {
+            "kind": "gradient",
+            "stops": [
+              { "offset": 0, "color": "#111827" },
+              { "offset": 1, "color": "#374151" }
+            ]
+          },
+          "progress": { "kind": "solid", "color": "#f472b6" }
+        }
+      }
+    },
+    {
+      "id": "over-range-gauge",
+      "type": "chart",
+      "name": "Value pushed past the axis by a scale",
+      "transform": { "x": 600, "y": 170, "width": 160, "height": 160 },
+      "bindings": [{ "id": "s-over", "semanticKey": "cpu.load", "scale": 3 }],
+      "content": {
+        "family": "gauge",
+        "settings": {
+          "startAngle": 225,
+          "endAngle": -45,
+          "min": 0,
+          "max": 100,
+          "thickness": 18,
+          "roundCap": true,
+          "track": { "kind": "solid", "color": "#1f2937" },
+          "progress": { "kind": "solid", "color": "#ff5630" }
+        }
+      }
+    },
+
+    {
+      "id": "step-line",
+      "type": "chart",
+      "name": "Stepped, dotted, no area, markers on",
+      "transform": { "x": 40, "y": 220, "width": 520, "height": 150 },
+      "bindings": [
+        { "id": "s-l1", "semanticKey": "cpu.load" },
+        { "id": "s-l2", "semanticKey": "gpu.temp" },
+        { "id": "s-l3", "semanticKey": "cpu.power" }
+      ],
+      "content": {
+        "family": "line",
+        "settings": {
+          "lineWidth": 1,
+          "interpolation": "step",
+          "dash": "dotted",
+          "stroke": { "kind": "solid", "color": "#f2f4f8" },
+          "palette": [
+            { "kind": "solid", "color": "#22d3ee" },
+            { "kind": "solid", "color": "#fbbf24" },
+            { "kind": "solid", "color": "#f472b6" }
+          ],
+          "showMarkers": true,
+          "markerSize": 3,
+          "windowSeconds": 15,
+          "maxPoints": 8,
+          "showAxes": true,
+          "sampling": "lttb"
+        }
+      }
+    },
+    {
+      "id": "sparkline",
+      "type": "chart",
+      "name": "Sparkline: no axes, edge to edge",
+      "transform": { "x": 40, "y": 386, "width": 240, "height": 44 },
+      "bindings": [{ "id": "s-spark", "semanticKey": "cpu.load" }],
+      "content": {
+        "family": "line",
+        "settings": {
+          "lineWidth": 1.5,
+          "interpolation": "linear",
+          "stroke": { "kind": "solid", "color": "#34d399" },
+          "area": {
+            "kind": "gradient",
+            "stops": [
+              { "offset": 0, "color": "#34d39988" },
+              { "offset": 1, "color": "#0a0a0c" }
+            ]
+          },
+          "showMarkers": false,
+          "markerSize": 0,
+          "windowSeconds": 300,
+          "maxPoints": 600,
+          "min": 0,
+          "max": 100,
+          "showAxes": false
+        }
+      }
+    },
+
+    {
+      "id": "single-vertical-bar",
+      "type": "chart",
+      "name": "One vertical bar, no track",
+      "transform": { "x": 300, "y": 386, "width": 60, "height": 120 },
+      "bindings": [{ "id": "s-bar1", "semanticKey": "cpu.load" }],
+      "content": {
+        "family": "bar",
+        "settings": {
+          "orientation": "vertical",
+          "min": 0,
+          "max": 100,
+          "categoryGapPercent": 0,
+          "cornerRadius": 0,
+          "showAxes": false,
+          "showCategoryLabels": false,
+          "fill": {
+            "kind": "gradient",
+            "stops": [
+              { "offset": 0, "color": "#22d3ee" },
+              { "offset": 1, "color": "#a78bfa" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "many-bars",
+      "type": "chart",
+      "name": "Eight categories with labels and axes",
+      "transform": { "x": 380, "y": 386, "width": 180, "height": 200 },
+      "bindings": [
+        { "id": "s-b1", "semanticKey": "core0.load" },
+        { "id": "s-b2", "semanticKey": "core1.load" },
+        { "id": "s-b3", "semanticKey": "core2.load" },
+        { "id": "s-b4", "semanticKey": "core3.load" },
+        { "id": "s-b5", "semanticKey": "core4.load" },
+        { "id": "s-b6", "semanticKey": "core5.load" },
+        { "id": "s-b7", "semanticKey": "core6.load" },
+        { "id": "s-b8", "semanticKey": "core7.load" }
+      ],
+      "content": {
+        "family": "bar",
+        "settings": {
+          "orientation": "horizontal",
+          "min": 0,
+          "max": 100,
+          "barWidth": 8,
+          "categoryGapPercent": 90,
+          "cornerRadius": 4,
+          "showAxes": true,
+          "showCategoryLabels": true,
+          "track": { "kind": "solid", "color": "#111827" },
+          "fill": { "kind": "solid", "color": "#22d3ee" }
+        }
+      }
+    },
+
+    {
+      "id": "sum-pie",
+      "type": "chart",
+      "name": "Sum total with one part missing",
+      "transform": { "x": 600, "y": 350, "width": 170, "height": 170 },
+      "bindings": [
+        { "id": "s-p1", "semanticKey": "cpu.power" },
+        { "id": "s-p2", "semanticKey": "gpu.power" },
+        { "id": "s-p3", "semanticKey": "cpu.fan" }
+      ],
+      "content": {
+        "family": "pie",
+        "settings": {
+          "innerRadiusPercent": 0,
+          "outerRadiusPercent": 96,
+          "startAngle": 0,
+          "endAngle": -180,
+          "padAngle": 0,
+          "cornerRadius": 0,
+          "showLabels": true,
+          "total": { "kind": "sum" },
+          "palette": [
+            { "kind": "solid", "color": "#22d3ee" },
+            { "kind": "solid", "color": "#fbbf24" },
+            { "kind": "solid", "color": "#f472b6" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "thin-ring",
+      "type": "chart",
+      "name": "Very thin ring, large pad angle",
+      "transform": { "x": 800, "y": 350, "width": 170, "height": 170 },
+      "bindings": [
+        { "id": "s-r1", "semanticKey": "ram.used" },
+        { "id": "s-r2", "semanticKey": "vram.used" }
+      ],
+      "content": {
+        "family": "pie",
+        "settings": {
+          "innerRadiusPercent": 92,
+          "outerRadiusPercent": 100,
+          "startAngle": 90,
+          "padAngle": 24,
+          "cornerRadius": 4,
+          "showLabels": false,
+          "total": { "kind": "fixed", "value": 40 },
+          "remainderFill": { "kind": "solid", "color": "#111827" },
+          "palette": [
+            { "kind": "solid", "color": "#a78bfa" },
+            { "kind": "solid", "color": "#22d3ee" }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "text-multilingual",
+      "type": "text",
+      "name": "Non-Latin scripts and a combining mark",
+      "transform": { "x": 40, "y": 530, "width": 240, "height": 90 },
+      "style": {
+        "fontSize": { "value": 16 },
+        "lineHeight": { "value": 1.5 },
+        "color": { "ref": "palette.ink" }
+      },
+      "content": {
+        "wrap": true,
+        "overflow": "visible",
+        "runs": [
+          { "kind": "literal", "text": "温度 83°C · メモリ 19,3 ГБ\n" },
+          { "kind": "literal", "text": "العربية 45% · हिन्दी · Ẅï̈d̈ë\n" },
+          { "kind": "literal", "text": "1234567890 tabular?" }
+        ]
+      }
+    },
+    {
+      "id": "text-clip",
+      "type": "text",
+      "name": "Unbroken string, clipped",
+      "transform": { "x": 40, "y": 628, "width": 200, "height": 24 },
+      "style": { "fontSize": { "value": 14 }, "color": { "ref": "palette.dim" } },
+      "content": {
+        "overflow": "clip",
+        "runs": [
+          { "kind": "literal", "text": "unbreakable_identifier_with_no_spaces_at_all_0123456789" }
+        ]
+      }
+    },
+    {
+      "id": "text-ellipsis-single",
+      "type": "text",
+      "name": "Single-line ellipsis",
+      "transform": { "x": 40, "y": 658, "width": 200, "height": 24 },
+      "style": { "fontSize": { "value": 14 }, "color": { "ref": "palette.dim" } },
+      "content": {
+        "overflow": "ellipsis",
+        "runs": [
+          { "kind": "literal", "text": "this line is far too long for two hundred pixels of box" }
+        ]
+      }
+    },
+    {
+      "id": "text-precision",
+      "type": "text",
+      "name": "Precision extremes and unit displays",
+      "transform": { "x": 300, "y": 530, "width": 260, "height": 120 },
+      "style": {
+        "fontSize": { "ref": "fontSizes.tiny" },
+        "lineHeight": { "value": 1.8 },
+        "color": { "ref": "palette.ink" },
+        "tabularNumerals": { "value": true }
+      },
+      "bindings": [
+        { "id": "s-p0", "semanticKey": "cpu.temp", "precision": 0 },
+        { "id": "s-p6", "semanticKey": "cpu.temp", "precision": 6 },
+        { "id": "s-pnone", "semanticKey": "cpu.temp", "unitDisplay": "none" },
+        { "id": "s-plong", "semanticKey": "cpu.power", "unitDisplay": "long" },
+        { "id": "s-poffset", "semanticKey": "cpu.temp", "scale": 1.8, "offset": 32 }
+      ],
+      "content": {
+        "wrap": true,
+        "overflow": "visible",
+        "runs": [
+          { "kind": "literal", "text": "p0 " },
+          { "kind": "value", "bindingId": "s-p0" },
+          { "kind": "literal", "text": "  p6 " },
+          { "kind": "value", "bindingId": "s-p6" },
+          { "kind": "literal", "text": "\nno unit " },
+          { "kind": "value", "bindingId": "s-pnone" },
+          { "kind": "literal", "text": "  long " },
+          { "kind": "value", "bindingId": "s-plong" },
+          { "kind": "literal", "text": "\nto °F " },
+          {
+            "kind": "value",
+            "bindingId": "s-poffset",
+            "precision": 1,
+            "style": { "color": { "ref": "palette.hot" } }
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-huge-outlined",
+      "type": "text",
+      "name": "Huge outlined text, clipped by a short box",
+      "transform": { "x": 600, "y": 540, "width": 380, "height": 60 },
+      "style": {
+        "fontSize": { "ref": "fontSizes.huge" },
+        "fontWeight": { "value": 800 },
+        "color": { "value": "#0a0a0c" },
+        "strokeColor": { "ref": "palette.ink" },
+        "strokeWidth": { "value": 2 },
+        "shadowColor": { "value": "#22d3ee66" },
+        "shadowBlur": { "value": 24 }
+      },
+      "bindings": [
+        { "id": "s-huge", "semanticKey": "cpu.load", "precision": 0, "unitDisplay": "none" }
+      ],
+      "content": {
+        "align": "right",
+        "verticalAlign": "middle",
+        "overflow": "clip",
+        "runs": [
+          { "kind": "value", "bindingId": "s-huge" },
+          { "kind": "literal", "text": "%" }
+        ]
+      }
+    },
+    {
+      "id": "text-all-missing",
+      "type": "text",
+      "name": "Every status, none of them ok",
+      "transform": { "x": 600, "y": 620, "width": 380, "height": 60 },
+      "style": {
+        "fontSize": { "value": 12 },
+        "lineHeight": { "value": 1.6 },
+        "color": { "ref": "palette.dim" }
+      },
+      "bindings": [
+        { "id": "s-unavail", "semanticKey": "cpu.fan" },
+        { "id": "s-unmapped", "semanticKey": "nonexistent.sensor" }
+      ],
+      "content": {
+        "wrap": true,
+        "overflow": "visible",
+        "runs": [
+          { "kind": "literal", "text": "unavailable " },
+          { "kind": "value", "bindingId": "s-unavail" },
+          { "kind": "literal", "text": "   unmapped " },
+          { "kind": "value", "bindingId": "s-unmapped" }
+        ]
+      }
+    },
+    {
+      "id": "hidden-node",
+      "type": "text",
+      "name": "Hidden, and locked",
+      "transform": { "x": 0, "y": 0, "width": 100, "height": 20 },
+      "visible": false,
+      "locked": true,
+      "content": { "runs": [{ "kind": "literal", "text": "must not be visible" }] }
+    }
+  ]
+}
