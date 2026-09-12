@@ -95,8 +95,10 @@ traversal path.
 `packages/renderer-core/src/theme/schema-sync.test.ts` reads
 `schema/theme-document.schema.json` off disk and asserts the shared constants
 (stable-ID pattern, artboard maximum, node types, chart families, global groups,
-precision bounds) match the validator's. This is the drift guard the C# ↔
-`types.ts` mirror still lacks.
+precision bounds, and every known-key list) match the validator's.
+
+`contracts-mirror.test.ts` since does the same for the C# ↔ `types.ts` mirror,
+so that boundary is no longer unguarded either.
 
 **Not verified:** no document has been round-tripped through a file on disk, and
 no editor writes this format yet. The types are exercised only by tests and the

@@ -4,6 +4,7 @@ import { GridComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import {
   buildScenePlan,
+  createAssetResolver,
   missingFontFamilies,
   mountScene,
   requiredSemanticKeys,
@@ -81,15 +82,31 @@ function start(host: HTMLElement): void {
   const fake = createDemoSource(Date.now());
   const source: SampleSource = fake;
 
+  // Assets are served from the site root here because the player's static
+  // files are laid out that way. The host will serve a per-revision prefix
+  // instead, so a published theme's assets are versioned and HTTP-cacheable
+  // (§122) — which is a change to this one line, not to the renderer.
+  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: '/' });
+
   const plan = () =>
     buildScenePlan({
       document: theme,
       source,
       nowMs: Date.now(),
+      resolveAsset,
     });
 
   const first = plan();
-  const handle = mountScene({ host, plan: first });
+  const handle = mountScene({
+    host,
+    plan: first,
+    onAssetError: (nodeId, src) => {
+      // Declared by the theme, absent from what the server actually serves.
+      // On the host this is a packaging bug; here it is a fact worth stating
+      // rather than a blank rectangle nobody can explain.
+      console.warn(`Vigilia: asset for node "${nodeId}" failed to load: ${src}`);
+    },
+  });
 
   reportIssues(first);
   reportMissingFonts(first);

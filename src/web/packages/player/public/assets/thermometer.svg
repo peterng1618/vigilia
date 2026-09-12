@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e8ecf3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Hand-written, not imported: §111's SVG importer is host-side and does not
+       exist yet, and a fixture needs an asset that is plainly safe to inline. -->
+  <path d="M14 14.76V4.5a2.5 2.5 0 0 0-5 0v10.26a4.5 4.5 0 1 0 5 0z" />
+  <path d="M11.5 8.5h2" />
+  <path d="M11.5 11.5h2" />
+</svg>

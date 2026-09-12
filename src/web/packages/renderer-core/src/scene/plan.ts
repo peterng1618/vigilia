@@ -120,6 +120,13 @@ export type PlanContent =
       /** Resolved by the caller's asset resolver. Undefined when unresolvable. */
       readonly src: string | undefined;
       readonly fit: 'contain' | 'cover' | 'stretch';
+      /**
+       * Recolour the artwork to one flat colour (§111).
+       *
+       * Opt-in, because §111 also requires multicolour originals to be
+       * preserved: an icon is only flattened when the author asks.
+       */
+      readonly monochrome?: string;
     }
   | {
       readonly kind: 'video';
@@ -276,7 +283,14 @@ function planContent(
 
     case 'image': {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
-      return { kind: 'image', src, fit: node.content.fit ?? 'contain' };
+      const monochrome = resolveStyleValue(node.content.monochrome, globals, node.id, issues);
+
+      return {
+        kind: 'image',
+        src,
+        fit: node.content.fit ?? 'contain',
+        ...(typeof monochrome === 'string' && monochrome.length > 0 ? { monochrome } : {}),
+      };
     }
 
     case 'video': {

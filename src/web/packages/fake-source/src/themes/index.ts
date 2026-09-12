@@ -1,6 +1,7 @@
 import demoTheme from '../demo-theme.json' with { type: 'json' };
 import stress from './stress.json' with { type: 'json' };
 import portraitCover from './portrait-cover.json' with { type: 'json' };
+import assets from './assets.json' with { type: 'json' };
 import invalidNewerVersion from './invalid/newer-version.json' with { type: 'json' };
 import invalidBrokenReferences from './invalid/broken-references.json' with { type: 'json' };
 import invalidAssetTraversal from './invalid/asset-traversal.json' with { type: 'json' };
@@ -22,6 +23,9 @@ import type { IssueCode } from '@vigilia/renderer-core';
  * - `portrait-cover` — a tall artboard in `cover` mode, which the showcase theme
  *   never exercises. Content sits at every edge, and the bar colour is magenta
  *   so a letterbox appearing in cover mode is unmissable.
+ * - `assets` — the image node type, which nothing else covers because nothing
+ *   resolved an asset ID to a URL until there was a resolver. Includes one
+ *   reference that is declared and deliberately not shipped.
  *
  * The invalid set is separate and is *expected* to fail. Each file carries one
  * family of mistake and states in its `metadata.description` what it is for, so
@@ -34,6 +38,15 @@ export interface ValidThemeFixture {
   readonly name: string;
   readonly document: unknown;
   readonly summary: string;
+  /**
+   * True when the fixture binds no sensors at all.
+   *
+   * Declared rather than inferred so the suite can assert in **both**
+   * directions: a data fixture that lost its bindings fails, and a static
+   * fixture that gained one fails too. Inferring it would make either change
+   * invisible.
+   */
+  readonly staticOnly?: boolean;
 }
 
 /** A theme fixture that must NOT validate, with the codes it should produce. */
@@ -61,6 +74,12 @@ export const VALID_THEMES: readonly ValidThemeFixture[] = [
     name: 'portrait-cover',
     document: portraitCover,
     summary: 'Tall 9:19.5 artboard in cover mode, with content at every edge.',
+  },
+  {
+    name: 'assets',
+    document: assets,
+    summary: 'Image nodes: three fit modes, monochrome recolouring, an SVG, and one unresolvable reference.',
+    staticOnly: true,
   },
 ];
 

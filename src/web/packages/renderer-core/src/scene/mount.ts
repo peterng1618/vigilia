@@ -59,6 +59,16 @@ export interface MountOptions {
   readonly host: HTMLElement;
   readonly plan: ScenePlan;
   /**
+   * Called when an asset resolves to a URL that then fails to load.
+   *
+   * This cannot be a plan issue, which was not obvious until a fixture proved
+   * it: a *declared* asset with a valid path always resolves, so
+   * `unresolved-asset` only fires when nothing is declared or the path is
+   * unsafe. "Declared in the document but absent from the package" is a fact
+   * only the network knows, and only this layer hears about it.
+   */
+  readonly onAssetError?: (nodeId: string, src: string) => void;
+  /**
    * Renderer for chart elements. Canvas is the default; SVG trades draw speed
    * for crisper scaling and is worth measuring on the reference phone (§157).
    */
@@ -101,7 +111,15 @@ export function mountScene(options: MountOptions): SceneHandle {
 
   for (const node of plan.nodes) {
     artboard.append(
-      createNode(node, charts, texts, media, elements, options.chartRenderer ?? 'canvas'),
+      createNode(
+        node,
+        charts,
+        texts,
+        media,
+        elements,
+        options.chartRenderer ?? 'canvas',
+        options.onAssetError,
+      ),
     );
   }
 
@@ -196,6 +214,7 @@ function createNode(
   media: Map<string, HTMLImageElement | HTMLVideoElement>,
   elements: Map<string, HTMLElement>,
   chartRenderer: 'canvas' | 'svg',
+  onAssetError: ((nodeId: string, src: string) => void) | undefined,
 ): HTMLElement {
   const element = document.createElement('div');
   element.dataset['nodeId'] = node.id;
@@ -207,7 +226,9 @@ function createNode(
   switch (node.content.kind) {
     case 'group':
       for (const child of node.children) {
-        element.append(createNode(child, charts, texts, media, elements, chartRenderer));
+        element.append(
+          createNode(child, charts, texts, media, elements, chartRenderer, onAssetError),
+        );
       }
       break;
 
@@ -246,12 +267,46 @@ function createNode(
     }
 
     case 'image': {
+      if (node.content.monochrome !== undefined) {
+        // §111's monochrome recolouring. A CSS mask rather than a filter: a
+        // filter would tint whatever colours the artwork already has, while a
+        // mask uses only its alpha, so the result is one flat colour regardless
+        // of the source. That is what "monochrome" has to mean for it to be
+        // predictable across a photo, a flat icon and a gradient.
+        //
+        // The trade-off is real and is why this is opt-in: the original's
+        // colours are discarded entirely, and §111 requires multicolour
+        // originals to survive unless the author asks for this.
+        element.style.backgroundColor = node.content.monochrome;
+        const size = node.content.fit === 'stretch' ? '100% 100%' : node.content.fit;
+        if (node.content.src !== undefined) {
+          const mask = `url("${encodeURI(node.content.src)}") center / ${size} no-repeat`;
+          element.style.setProperty('mask', mask);
+          element.style.setProperty('-webkit-mask', mask);
+        }
+        break;
+      }
+
       const img = document.createElement('img');
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = node.content.fit === 'stretch' ? 'fill' : node.content.fit;
-      if (node.content.src !== undefined) {
-        img.src = node.content.src;
+      // An asset is decorative here: the document has no alt-text field, and
+      // inventing one from a node name would put a designer's layer label into
+      // the accessibility tree.
+      img.alt = '';
+
+      const src = node.content.src;
+      if (src !== undefined) {
+        // A file declared by the document but absent from the package would
+        // otherwise draw the browser's broken-image glyph, which reads as a
+        // rendering failure rather than a missing file. Hide it and report.
+        img.addEventListener('error', () => {
+          img.style.display = 'none';
+          element.dataset['assetError'] = src;
+          onAssetError?.(node.id, src);
+        });
+        img.src = src;
       }
       media.set(node.id, img);
       element.append(img);

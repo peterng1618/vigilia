@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildScenePlan,
+  createAssetResolver,
   requiredSemanticKeys,
   serializeThemeDocument,
   validateThemeDocument,
@@ -35,7 +36,7 @@ function validated(document: unknown, name: string): ThemeDocument {
   return result.document;
 }
 
-describe.each(VALID_THEMES)('valid fixture: $name', ({ name, document, summary }) => {
+describe.each(VALID_THEMES)('valid fixture: $name', ({ name, document, summary, staticOnly }) => {
   it(`validates (${summary})`, () => {
     expect(validated(document, name)).toBeDefined();
   });
@@ -66,6 +67,20 @@ describe.each(VALID_THEMES)('valid fixture: $name', ({ name, document, summary }
     expect(planned).toBe(declared);
   });
 
+  it('resolves its declared assets through a resolver', () => {
+    // The assets fixture has one deliberately unshipped reference; every other
+    // declared asset must resolve to a URL.
+    const theme = validated(document, name);
+    const resolve = createAssetResolver(theme.assets, { baseUrl: '/' });
+
+    for (const asset of theme.assets ?? []) {
+      if (asset.id === 'absent') {
+        continue;
+      }
+      expect(resolve(asset.id), `asset ${asset.id} did not resolve`).toBe(`/${asset.path}`);
+    }
+  });
+
   it('resolves every global reference it uses', () => {
     // An unresolved global silently drops a colour. A fixture with one would
     // make every screenshot of it misleading.
@@ -80,8 +95,16 @@ describe.each(VALID_THEMES)('valid fixture: $name', ({ name, document, summary }
     expect(plan.issues.filter((issue) => issue.code === 'unresolved-global')).toEqual([]);
   });
 
-  it('declares at least one semantic key', () => {
-    expect(requiredSemanticKeys(validated(document, name)).length).toBeGreaterThan(0);
+  it(staticOnly === true ? 'declares no semantic keys' : 'declares at least one semantic key', () => {
+    // Asserted in both directions: a data fixture that lost its bindings and a
+    // static fixture that gained one are both changes worth failing on.
+    const keys = requiredSemanticKeys(validated(document, name));
+
+    if (staticOnly === true) {
+      expect(keys).toEqual([]);
+    } else {
+      expect(keys.length).toBeGreaterThan(0);
+    }
   });
 
   it('stays deterministic at a fixed instant', () => {
@@ -198,9 +221,18 @@ describe('the fixture set', () => {
     }
 
     expect([...families].sort()).toEqual(['bar', 'gauge', 'line', 'pie']);
-    // image and video are absent on purpose: nothing resolves an asset ID to a
-    // URL yet, so a fixture using them could not render.
-    expect([...types].sort()).toEqual(['chart', 'ellipse', 'group', 'line', 'rectangle', 'text']);
+    // `video` is still absent on purpose: nothing can synthesise a small valid
+    // video file in this repository, and a fixture referencing one that is not
+    // shipped would only ever demonstrate the unresolved path.
+    expect([...types].sort()).toEqual([
+      'chart',
+      'ellipse',
+      'group',
+      'image',
+      'line',
+      'rectangle',
+      'text',
+    ]);
   });
 
   it('has a distinct id per fixture', () => {

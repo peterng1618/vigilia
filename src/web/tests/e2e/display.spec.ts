@@ -23,7 +23,14 @@ const FIXED_TIME = new Date('2026-01-01T12:00:00Z');
  * different shapes: `stress` is hostile but valid, and `portrait-cover` is a
  * tall artboard in cover mode.
  */
-const FIXTURES = ['demo', 'stress', 'portrait-cover'] as const;
+const FIXTURES = [
+  { name: 'demo', charts: true },
+  { name: 'stress', charts: true },
+  { name: 'portrait-cover', charts: true },
+  // Static artwork only. Declared rather than inferred, so a regression that
+  // dropped every chart from a data fixture still fails.
+  { name: 'assets', charts: false },
+] as const;
 
 /**
  * Opens the player on a controlled clock.
@@ -260,16 +267,16 @@ test.describe('update behaviour', () => {
 
     for (const fixture of FIXTURES) {
       await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture}`);
+      await page.goto(`/?theme=${fixture.name}`);
       await page.waitForSelector('[data-vigilia="artboard"]');
       await page.clock.runFor(1500);
 
       const screenshot = await page.screenshot({
         fullPage: false,
-        path: `${directory}/${fixture}-${testInfo.project.name}.png`,
+        path: `${directory}/${fixture.name}-${testInfo.project.name}.png`,
       });
 
-      await testInfo.attach(`${fixture}-${testInfo.project.name}.png`, {
+      await testInfo.attach(`${fixture.name}-${testInfo.project.name}.png`, {
         body: screenshot,
         contentType: 'image/png',
       });
@@ -441,7 +448,7 @@ test.describe('outlines, dashes and shadows (§81)', () => {
 
 test.describe('every fixture renders', () => {
   for (const fixture of FIXTURES) {
-    test(`${fixture}: mounts, paints and reports no console error`, async ({ page }) => {
+    test(`${fixture.name}: mounts, paints and reports no console error`, async ({ page }) => {
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       page.on('console', (message) => {
@@ -451,20 +458,25 @@ test.describe('every fixture renders', () => {
       });
 
       await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture}`);
+      await page.goto(`/?theme=${fixture.name}`);
       await page.waitForSelector('[data-vigilia="artboard"]');
       await page.clock.runFor(1500);
 
       // An artboard with no children means the document loaded and nothing
       // rendered, which is the failure a "did it load" check would miss.
       const nodes = await page.locator('[data-vigilia="artboard"] [data-node-id]').count();
-      expect(nodes, `${fixture} mounted no nodes`).toBeGreaterThan(0);
+      expect(nodes, `${fixture.name} mounted no nodes`).toBeGreaterThan(0);
 
       // Every chart must have painted. A blank canvas is how an option the
       // engine silently rejects shows up.
       const charts = page.locator('[data-node-id] canvas');
       const chartCount = await charts.count();
-      expect(chartCount, `${fixture} has no charts`).toBeGreaterThan(0);
+
+      if (fixture.charts) {
+        expect(chartCount, `${fixture.name} has no charts`).toBeGreaterThan(0);
+      } else {
+        expect(chartCount, `${fixture.name} is declared chart-free`).toBe(0);
+      }
 
       for (let index = 0; index < chartCount; index++) {
         const painted = await charts.nth(index).evaluate((element) => {
@@ -482,17 +494,22 @@ test.describe('every fixture renders', () => {
           return false;
         });
 
-        expect(painted, `${fixture}: chart ${index} drew no pixels`).toBe(true);
+        expect(painted, `${fixture.name}: chart ${index} drew no pixels`).toBe(true);
       }
 
-      // Warnings are expected — the demo theme has a deliberately unmapped key.
-      // Errors are not.
-      expect(errors, `${fixture} logged errors`).toEqual([]);
+      // Warnings are expected — the demo theme has a deliberately unmapped key,
+      // and the assets theme has a deliberately absent file. Errors are not.
+      //
+      // A failed image request DOES log a browser network error, which is not
+      // ours and not something the page can suppress, so it is excluded by name
+      // rather than by widening the assertion.
+      const ours = errors.filter((message) => !message.includes('not-shipped.png'));
+      expect(ours, `${fixture.name} logged errors`).toEqual([]);
     });
 
-    test(`${fixture}: keeps the design inside the viewport`, async ({ page }) => {
+    test(`${fixture.name}: keeps the design inside the viewport`, async ({ page }) => {
       await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture}`);
+      await page.goto(`/?theme=${fixture.name}`);
       await page.waitForSelector('[data-vigilia="artboard"]');
 
       const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
@@ -570,5 +587,102 @@ test.describe('visibility', () => {
     // content kind, or alignment stops working.
     await openPlayer(page);
     await expect(page.locator('[data-node-id="cpu-readout"]')).toHaveCSS('display', 'flex');
+  });
+});
+
+test.describe('image assets (§111)', () => {
+  test('loads a declared asset and reports the one that is missing', async ({ page }) => {
+    const warnings: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'warning') {
+        warnings.push(message.text());
+      }
+    });
+
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=assets');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    // A loaded image has non-zero natural dimensions; a broken one does not.
+    // This is what distinguishes "the element exists" from "the bytes arrived".
+    const loaded = await page
+      .locator('[data-node-id="fit-contain"] img')
+      .evaluate((element) => {
+        const image = element as HTMLImageElement;
+        return { complete: image.complete, width: image.naturalWidth };
+      });
+
+    expect(loaded.complete).toBe(true);
+    expect(loaded.width).toBe(128);
+
+    // The deliberately unshipped asset RESOLVES — a declared asset with a valid
+    // path always does — so the miss surfaces as a load failure, which the
+    // mount layer reports. `unresolved-asset` is for an undeclared id or an
+    // unsafe path, and a validated document can contain neither.
+    await expect.poll(() => warnings.join('\n'), { timeout: 5000 }).toContain('failed to load');
+  });
+
+  test('applies each fit mode to the same artwork', async ({ page }) => {
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=assets');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    await expect(page.locator('[data-node-id="fit-contain"] img')).toHaveCSS(
+      'object-fit',
+      'contain',
+    );
+    await expect(page.locator('[data-node-id="fit-cover"] img')).toHaveCSS('object-fit', 'cover');
+    // `stretch` is the document's word; `fill` is CSS's for the same thing.
+    await expect(page.locator('[data-node-id="fit-stretch"] img')).toHaveCSS('object-fit', 'fill');
+  });
+
+  test('recolours a monochrome image with a mask, not a filter', async ({ page }) => {
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=assets');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    const mono = page.locator('[data-node-id="svg-mono"]');
+
+    // A mask uses only the artwork's alpha, so the result is one flat colour
+    // whatever the source contained. A filter would tint the existing colours.
+    await expect(mono).toHaveCSS('background-color', 'rgb(255, 171, 0)');
+    const mask = await mono.evaluate((element) => getComputedStyle(element).maskImage);
+    expect(mask).toContain('thermometer.svg');
+
+    // And it is NOT an <img>: the mask is on the element itself.
+    await expect(mono.locator('img')).toHaveCount(0);
+  });
+
+  test('leaves a non-monochrome image as real artwork', async ({ page }) => {
+    // §111 requires multicolour originals to be preserved unless the author
+    // explicitly recolours, so the default path must stay an <img>.
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=assets');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    await expect(page.locator('[data-node-id="svg-original"] img')).toHaveCount(1);
+    await expect(page.locator('[data-node-id="svg-original"]')).toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+  });
+
+  test('draws nothing for an unresolvable asset instead of a broken-image icon', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=assets');
+    await page.waitForSelector('[data-vigilia="artboard"]');
+
+    const node = page.locator('[data-node-id="absent-image"]');
+    const img = node.locator('img');
+
+    await expect(img).toHaveCount(1);
+    // The element stays — the document says something belongs here — but the
+    // failed image is hidden rather than left to draw the browser's
+    // broken-image glyph, which reads as a rendering failure instead of a
+    // missing package file. The node records what failed.
+    await expect(img).toBeHidden();
+    await expect(node).toHaveAttribute('data-asset-error', /not-shipped\.png/);
   });
 });
