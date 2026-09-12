@@ -58,6 +58,40 @@ export type { SnapGuide, SnapOptions, SnapResult, SnapTarget } from './snapping.
 
 export { collectSnapTargets, snapMove, thresholdInDocumentUnits } from './snapping.js';
 
+export type { ReorderTarget } from './commands.js';
+
+export {
+  collectIds,
+  deleteNodes,
+  findNode,
+  insertNodes,
+  renameNode,
+  reorderNode,
+  setNodeFlags,
+  updateStyle,
+  updateTransforms,
+} from './commands.js';
+
+export type { History, HistoryEntry } from './history.js';
+
+export {
+  DEFAULT_HISTORY_LIMIT,
+  canRedo,
+  canUndo,
+  cancelPreview,
+  commit,
+  createHistory,
+  isDirty,
+  markSaved,
+  preview,
+  redo,
+  redoLabel,
+  replaceDocument,
+  undo,
+  undoLabel,
+  visibleDocument,
+} from './history.js';
+
 export type { SelectionMode, SelectionState } from './selection.js';
 
 export {
