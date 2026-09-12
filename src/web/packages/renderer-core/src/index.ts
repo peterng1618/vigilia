@@ -36,6 +36,20 @@ export {
   viewportToDocument,
 } from './artboard.js';
 
+export type {
+  EngineColor,
+  GradientDirection,
+  LinearGradientColor,
+} from './charts/fill.js';
+
+export {
+  colorAt,
+  normalizePosition,
+  resolveFlatColor,
+  resolveThresholdColor,
+  toLinearGradient,
+} from './charts/fill.js';
+
 export type { GaugeOption } from './charts/gauge.js';
 
 export {
@@ -46,9 +60,7 @@ export {
 } from './charts/gauge.js';
 
 export type {
-  EngineColor,
   Interpolation,
-  LinearGradientColor,
   LineOption,
   LineSettings,
   SeriesInput,
@@ -61,3 +73,13 @@ export {
   toEngineColor,
   toSeriesPoints,
 } from './charts/line.js';
+
+export type {
+  BarDataItem,
+  BarInput,
+  BarOption,
+  BarOrientation,
+  BarSettings,
+} from './charts/bar.js';
+
+export { buildBarOption, defaultBarSettings, toBarColor, toBarDataItem } from './charts/bar.js';

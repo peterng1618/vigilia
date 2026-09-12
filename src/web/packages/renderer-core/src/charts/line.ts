@@ -1,5 +1,10 @@
-import type { Fill, GradientStop, Sample } from '../types.js';
+import type { Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { resolveThresholdColor, toLinearGradient } from './fill.js';
+import type { EngineColor, LinearGradientColor } from './fill.js';
+
+// Part of this module's surface before the shared resolution moved to fill.ts.
+export type { EngineColor, LinearGradientColor };
 
 /**
  * Typed settings → ECharts option for the line / filled-area / sparkline family
@@ -85,19 +90,6 @@ export interface SeriesInput {
   /** Legend label. Falls back to `sensorId`. */
   readonly label?: string;
 }
-
-/** An ECharts linear-gradient colour object, resolved in cartesian space. */
-export interface LinearGradientColor {
-  readonly type: 'linear';
-  readonly x: number;
-  readonly y: number;
-  readonly x2: number;
-  readonly y2: number;
-  readonly colorStops: readonly { readonly offset: number; readonly color: string }[];
-}
-
-/** A stroke or fill colour as the engine accepts it. */
-export type EngineColor = string | LinearGradientColor;
 
 /** The emitted option shape. Local and explicit, like the gauge adapter's. */
 export interface LineOption {
@@ -256,45 +248,13 @@ export function toEngineColor(fill: Fill, usage: 'stroke' | 'area'): EngineColor
       return fill.color;
 
     case 'gradient':
-      return toLinearGradient(fill.stops, usage);
+      // Vertical for an area fill, so it fades toward the axis; horizontal for a
+      // stroke, so a line gradient reads along the time axis instead.
+      return toLinearGradient(fill.stops, usage === 'area' ? 'to-bottom' : 'to-right');
 
-    case 'thresholds': {
-      const sorted = [...fill.bands].sort((a, b) => a.offset - b.offset);
-      return sorted.at(-1)?.color ?? 'transparent';
-    }
+    case 'thresholds':
+      // A line's colour is a property of the whole series, so the band at the
+      // top of the range stands in for all of them (see the doc comment).
+      return resolveThresholdColor(fill.bands, 1);
   }
-}
-
-/**
- * Builds a vertical gradient, top to bottom — the useful direction for an area
- * fill that fades toward the axis.
- */
-function toLinearGradient(
-  stops: readonly GradientStop[],
-  usage: 'stroke' | 'area',
-): EngineColor {
-  if (stops.length === 0) {
-    return 'transparent';
-  }
-
-  if (stops.length === 1) {
-    return stops[0]!.color;
-  }
-
-  return {
-    type: 'linear',
-    // Vertical for an area fill, so it fades toward the axis; horizontal for a
-    // stroke, so a line gradient reads along the time axis instead.
-    x: 0,
-    y: 0,
-    x2: usage === 'area' ? 0 : 1,
-    y2: usage === 'area' ? 1 : 0,
-    colorStops: [...stops]
-      .sort((a, b) => a.offset - b.offset)
-      .map((s) => ({ offset: clamp01(s.offset), color: s.color })),
-  };
-}
-
-function clamp01(value: number): number {
-  return Math.min(Math.max(value, 0), 1);
 }

@@ -1,5 +1,10 @@
 import type { Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
+import { colorAt, mixHex } from './fill.js';
+
+// Re-exported because it was part of this module's surface before the shared
+// resolution moved to fill.ts, and colour mixing is not gauge-specific.
+export { mixHex };
 
 /**
  * Translates typed gauge settings into an ECharts gauge option.
@@ -215,79 +220,6 @@ export function approximateGradient(
   }
 
   return segments;
-}
-
-/** Interpolates the gradient colour at a position, 0–1. */
-function colorAt(stops: { offset: number; color: string }[], position: number): string {
-  const first = stops[0]!;
-  const last = stops.at(-1)!;
-
-  if (position <= first.offset) {
-    return first.color;
-  }
-  if (position >= last.offset) {
-    return last.color;
-  }
-
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i]!;
-    const b = stops[i + 1]!;
-
-    if (position >= a.offset && position <= b.offset) {
-      const span = b.offset - a.offset;
-      const t = span === 0 ? 0 : (position - a.offset) / span;
-      return mixHex(a.color, b.color, t);
-    }
-  }
-
-  return last.color;
-}
-
-/**
- * Mixes two `#rgb`/`#rrggbb` colours in sRGB.
- *
- * Non-hex inputs cannot be interpolated here, so the nearer endpoint is returned
- * rather than emitting an invalid colour. The schema should restrict gradient
- * stops to hex for this reason.
- */
-export function mixHex(from: string, to: string, t: number): string {
-  const a = parseHex(from);
-  const b = parseHex(to);
-
-  if (!a || !b) {
-    return t < 0.5 ? from : to;
-  }
-
-  const r = Math.round(a[0] + (b[0] - a[0]) * t);
-  const g = Math.round(a[1] + (b[1] - a[1]) * t);
-  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-
-  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(bl)}`;
-}
-
-function parseHex(color: string): [number, number, number] | undefined {
-  const hex = color.trim().replace(/^#/, '');
-
-  if (hex.length === 3) {
-    const r = hex[0]!;
-    const g = hex[1]!;
-    const b = hex[2]!;
-    return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16)];
-  }
-
-  if (hex.length === 6) {
-    return [
-      parseInt(hex.slice(0, 2), 16),
-      parseInt(hex.slice(2, 4), 16),
-      parseInt(hex.slice(4, 6), 16),
-    ];
-  }
-
-  return undefined;
-}
-
-function toHexByte(value: number): string {
-  return Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0');
 }
 
 function progressItemStyle(fill: Fill): { itemStyle?: { color: string } } {
