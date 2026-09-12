@@ -258,6 +258,10 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Grouping, ungrouping, alignment and distribution',
+    why: 'Ctrl+G / Ctrl+Shift+G, six align edges and distribute on both axes. Grouping is structural and never visual — members stay on the same pixels, paint order survives, and the group takes the topmost member’s slot so nothing changes what covers what. Ungrouping is the one place a transform gets baked, and it REFUSES when the composition would be a shear (a non-uniformly scaled group holding a rotated child), because no rotation/scale pair expresses that and approximating it would move the author’s artwork.',
+  },
+  {
     what: 'Globals are editable — §75 is now usable end to end',
     why: 'A Theme tab beside the inspector lists every token with a live use count, and supports add, set value, rename, change-key (rewriting every reference) and delete. Deleting INLINES the token’s value at every site, which is §75’s “conversion to current literals”: nothing dangles and nothing changes visually. A global is referenced from five different places in the schema — artboard background and bars, node styles, text-run styles and image monochrome — and one walk serves counting, rekeying and inlining so they cannot disagree.',
   },
@@ -325,24 +329,24 @@ const RECENT = [
 
 const NEXT = [
   {
-    what: 'Editor specs',
-    why: 'The renderer half has .agents/specs/0003; the editor half has none, so the pure modules are the only contract. Writing 0004-0006 (selection and gestures, document editing and history, the inspector) pins down the edge cases that are currently only in test names.',
-  },
-  {
-    what: 'Globals surface',
-    why: 'An author can point a property at a token but cannot yet add, rename or recolour one. §75 is only half usable until the palette itself is editable.',
-  },
-  {
-    what: 'Grouping, alignment and multi-node resize',
-    why: 'Group/ungroup, align and distribute, and resizing several nodes at once. The last one is refused today rather than done wrongly: a proportional box scale is not expressible as a per-node width change for rotated children.',
+    what: 'Decision needed: can a chart colour reference a global?',
+    why: 'G2-D1 in docs/gates/gate-2.md. Chart colours are plain strings in the schema, so no chart can follow the palette and §170’s dark/light overrides are unreachable for any theme with a chart. Three options, a recommendation, and a schema change that §164 reserves for a human.',
   },
   {
     what: 'Open and save',
-    why: 'The editor loads a checked-in fixture and cannot persist. Needs the §139 rule that saving marks history clean without clearing it, so undo still reaches before the save.',
+    why: 'The editor still loads a checked-in fixture and cannot persist. §139’s rule — saving marks history clean without clearing it — is built and unit-tested but has never run, because nothing calls it.',
+  },
+  {
+    what: 'Visual style presets',
+    why: 'The last unstarted §159 item besides font fidelity. Named style bundles an author can apply to an element.',
   },
   {
     what: 'Theme packages (Gate 4)',
-    why: 'ZIP import and export with the §141 security rules: path traversal, absolute paths, symlinks and zip bombs all rejected, and no secret ever inside a package (§143).',
+    why: 'ZIP import and export under the §141 security rules: path traversal, absolute paths, symlinks and zip bombs all rejected, and no secret ever inside a package (§143).',
+  },
+  {
+    what: 'Font packaging and text metrics',
+    why: '§91’s multilingual, digit-width and baseline checks need real fonts packaged first. Currently the renderer detects a missing font by comparing metrics, which is the honest way but proves nothing about fidelity.',
   },
 ];
 

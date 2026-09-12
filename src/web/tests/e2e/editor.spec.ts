@@ -837,3 +837,141 @@ test.describe('the globals panel', () => {
     await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
   });
 });
+
+test.describe('grouping and alignment', () => {
+  test('Ctrl+G groups the selection and selects the new group', async ({ page }) => {
+    await openEditor(page);
+
+    // Two top-level panels, so they share a parent.
+    await page.locator('[data-node-id="cpu-panel"]').click({ position: { x: 4, y: 4 } });
+    await page.locator('[data-node-id="gpu-panel"]').click({
+      modifiers: ['Shift'],
+      position: { x: 4, y: 4 },
+    });
+    await expect(page.locator('#status')).toContainText('2 selected');
+
+    const before = await page.locator('[data-node-id="cpu-panel-bg"]').boundingBox();
+
+    await page.keyboard.press('Control+g');
+
+    await expect(page.locator('#status')).toContainText('undo: Group');
+    // Grouping is structural, never visual: the contents must not move a pixel.
+    expect(await page.locator('[data-node-id="cpu-panel-bg"]').boundingBox()).toEqual(before);
+
+    await page.keyboard.press('Control+z');
+
+    // Both panels are back at the document root. The selection is EMPTY, not
+    // restored to the two panels: the group it held no longer exists, and
+    // history stores documents rather than selections. Undo restoring the
+    // previous selection is a real gap, recorded in spec 0008 — asserted here
+    // so it is a decision rather than a surprise.
+    await expect(page.locator('[data-node-id="cpu-panel"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="gpu-panel"]')).toBeVisible();
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+  });
+
+  test('Ctrl+Shift+G ungroups, leaving the children where they were', async ({ page }) => {
+    await openEditor(page);
+    await page.locator('[data-node-id="cpu-panel"]').click({ position: { x: 4, y: 4 } });
+
+    const before = await page.locator('[data-node-id="cpu-gauge"]').boundingBox();
+
+    await page.keyboard.press('Control+Shift+g');
+
+    await expect(page.locator('#status')).toContainText('undo: Ungroup');
+    await expect(page.locator('[data-node-id="cpu-panel"]')).toHaveCount(0);
+    // The gauge's coordinates were group-relative and are now document-level.
+    // Same pixels either way, which is the only thing an author can see.
+    expect(await page.locator('[data-node-id="cpu-gauge"]').boundingBox()).toEqual(before);
+  });
+
+  test('grouping across two parents refuses, and says why', async ({ page }) => {
+    await openEditor(page);
+
+    await page.locator('[data-node-id="title"]').click();
+    // Enter the CPU panel and add one of its children, so the selection spans
+    // the document root and a group.
+    await selectPanelBackground(page);
+    await page.locator('[data-node-id="title"]').click({ modifiers: ['Shift'] });
+    await expect(page.locator('#status')).toContainText('2 selected');
+
+    await page.keyboard.press('Control+g');
+
+    await expect(page.locator('#status')).toContainText('Select elements from one group at a time');
+    // Refused means untouched: no undo entry, nothing renamed.
+    await expect(page.locator('#status')).not.toContainText('undo: Group');
+  });
+
+  test('align left moves the selection to its own leftmost edge', async ({ page }) => {
+    await openEditor(page);
+
+    await page.locator('[data-node-id="cpu-panel"]').click({ position: { x: 4, y: 4 } });
+    await page.locator('[data-node-id="gpu-panel"]').click({
+      modifiers: ['Shift'],
+      position: { x: 4, y: 4 },
+    });
+
+    const cpu = await page.locator('[data-node-id="cpu-panel"]').boundingBox();
+
+    await page.locator('[data-vigilia-arrange="align-left"]').click();
+
+    const gpu = await page.locator('[data-node-id="gpu-panel"]').boundingBox();
+
+    // To the selection's own bounds, not the artboard's: the left-most member
+    // does not move, and the other joins it.
+    expect(await page.locator('[data-node-id="cpu-panel"]').boundingBox()).toEqual(cpu);
+    expect(gpu?.x).toBeCloseTo(cpu?.x ?? 0, 0);
+  });
+
+  test('the toolbar says when a button is usable', async ({ page }) => {
+    await openEditor(page);
+
+    // Nothing selected: align needs two, distribute needs three.
+    await expect(page.locator('[data-vigilia-arrange="align-left"]')).toBeDisabled();
+
+    await page.locator('[data-node-id="cpu-panel"]').click({ position: { x: 4, y: 4 } });
+    await expect(page.locator('[data-vigilia-arrange="align-left"]')).toBeDisabled();
+
+    await page.locator('[data-node-id="gpu-panel"]').click({
+      modifiers: ['Shift'],
+      position: { x: 4, y: 4 },
+    });
+    await expect(page.locator('[data-vigilia-arrange="align-left"]')).toBeEnabled();
+    await expect(page.locator('[data-vigilia-arrange="distribute-x"]')).toBeDisabled();
+
+    await page.locator('[data-node-id="history-panel"]').click({
+      modifiers: ['Shift'],
+      position: { x: 4, y: 4 },
+    });
+    await expect(page.locator('[data-vigilia-arrange="distribute-x"]')).toBeEnabled();
+  });
+
+  test('distributing three panels equalises the gaps', async ({ page }) => {
+    await openEditor(page);
+
+    for (const [index, id] of ['cpu-panel', 'gpu-panel', 'history-panel'].entries()) {
+      await page.locator(`[data-node-id="${id}"]`).click({
+        ...(index === 0 ? {} : { modifiers: ['Shift' as const] }),
+        position: { x: 4, y: 4 },
+      });
+    }
+
+    await page.locator('[data-vigilia-arrange="distribute-x"]').click();
+
+    const boxes = await Promise.all(
+      ['cpu-panel', 'gpu-panel', 'history-panel'].map((id) =>
+        page.locator(`[data-node-id="${id}"]`).boundingBox(),
+      ),
+    );
+
+    const first = boxes[0]!;
+    const second = boxes[1]!;
+    const third = boxes[2]!;
+
+    // Equal GAPS, which with unequal widths is not equal centre spacing.
+    expect(second.x - (first.x + first.width)).toBeCloseTo(
+      third.x - (second.x + second.width),
+      0,
+    );
+  });
+});

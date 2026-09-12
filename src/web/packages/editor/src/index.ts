@@ -137,3 +137,16 @@ export {
 } from './globals-commands.js';
 
 export { createGlobalsPanel, seedForGroup, type GlobalAction, type GlobalsPanel } from './globals-panel.js';
+
+export {
+  alignNodes,
+  composeTransforms,
+  describeRefusal,
+  distributeNodes,
+  freeGroupId,
+  groupNodes,
+  ungroupNodes,
+  type AlignEdge,
+  type ArrangeRefusal,
+  type ArrangeResult,
+} from './arrange.js';

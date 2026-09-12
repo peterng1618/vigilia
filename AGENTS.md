@@ -172,9 +172,11 @@ without a browser.
 Specs: [`0003`](.agents/specs/0003-scene-rendering.md) covers the renderer half;
 [`0004`](.agents/specs/0004-editor-selection-and-gestures.md),
 [`0005`](.agents/specs/0005-editor-editing-and-history.md),
-[`0006`](.agents/specs/0006-editor-inspector.md) and
-[`0007`](.agents/specs/0007-editor-globals.md) cover selection and gestures,
-document editing and history, the inspector, and the globals surface. Each one's **"Not verified"**
+[`0006`](.agents/specs/0006-editor-inspector.md),
+[`0007`](.agents/specs/0007-editor-globals.md) and
+[`0008`](.agents/specs/0008-editor-arrange.md) cover selection and gestures,
+document editing and history, the inspector, the globals surface, and
+grouping/alignment. Each one's **"Not verified"**
 note is the honest edge of what has actually been observed — read it before
 trusting a criterion.
 

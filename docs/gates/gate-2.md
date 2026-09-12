@@ -11,8 +11,10 @@ Per §33, nothing here is complete until there is observable behaviour and a
 test. This file records what was **measured or observed**; what the editor is
 *supposed* to do lives in
 [`.agents/specs/0004`](../../.agents/specs/0004-editor-selection-and-gestures.md),
-[`0005`](../../.agents/specs/0005-editor-editing-and-history.md) and
-[`0006`](../../.agents/specs/0006-editor-inspector.md).
+[`0005`](../../.agents/specs/0005-editor-editing-and-history.md),
+[`0006`](../../.agents/specs/0006-editor-inspector.md),
+[`0007`](../../.agents/specs/0007-editor-globals.md) and
+[`0008`](../../.agents/specs/0008-editor-arrange.md).
 
 ---
 
@@ -93,7 +95,7 @@ phone project skips every editor test deliberately.
 | Globals inspector | **Observed.** Value, display name, key (rewriting references) and delete, with a live use count per token |
 | Global/local overrides | **Observed.** §75 as a per-row switch, both directions, in a browser |
 | Rename/delete of globals | **Observed.** Rename preserves links; delete inlines the value at every reference site so nothing dangles (§75's "conversion to current literals") |
-| Grouping and alignment | **Not started.** Group/ungroup, align, distribute |
+| Grouping and alignment | **Observed.** Group/ungroup (Ctrl+G / Ctrl+Shift+G), six align edges, distribute on both axes. Ungrouping **refuses** rather than baking a shear — see spec 0008 |
 | Visual style presets | **Not started** |
 | Complete chart/style matrices | **Partial.** Four families render; the styling matrix lives in [gate-0.md](gate-0.md) |
 | Font fidelity | **Not started.** §91's multilingual, digit-width and baseline checks need real font packaging |

@@ -70,6 +70,16 @@ import {
   setGlobalValue,
 } from './globals-commands.js';
 import { createGlobalsPanel, seedForGroup, type GlobalAction } from './globals-panel.js';
+import {
+  alignNodes,
+  describeRefusal,
+  distributeNodes,
+  freeGroupId,
+  groupNodes,
+  ungroupNodes,
+  type AlignEdge,
+  type ArrangeResult,
+} from './arrange.js';
 
 /**
  * The editor shell.
@@ -243,6 +253,88 @@ function start(): void {
     },
   });
 
+  /**
+   * A one-off message in the status bar.
+   *
+   * Arrange operations refuse for reasons an author cannot see from the
+   * selection — "these two are in different groups", "ungrouping this would
+   * shear a child". A refusal that silently does nothing reads as a broken
+   * shortcut, so the reason is said out loud. Cleared by the next gesture.
+   */
+  let notice: string | undefined;
+
+  const runArrange = (result: ArrangeResult, label: string): void => {
+    if (result.refused !== undefined) {
+      notice = describeRefusal(result.refused);
+      drawStatus();
+      return;
+    }
+
+    notice = undefined;
+
+    if (result.document !== history.current) {
+      history = commit(history, label, result.document);
+    }
+
+    if (result.select !== undefined) {
+      selection = setSelection(selection, result.select);
+    }
+
+    selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+    render();
+  };
+
+  const arrangeButtons: readonly (readonly [string, string, () => void])[] = [
+    ['align-left', '⇤', () => runArrange(alignNodes(history.current, selection.ids, 'left'), 'Align left')],
+    ['align-centre', '⇔', () => runArrange(alignNodes(history.current, selection.ids, 'centre'), 'Align centre')],
+    ['align-right', '⇥', () => runArrange(alignNodes(history.current, selection.ids, 'right'), 'Align right')],
+    ['align-top', '⇡', () => runArrange(alignNodes(history.current, selection.ids, 'top'), 'Align top')],
+    ['align-middle', '⇕', () => runArrange(alignNodes(history.current, selection.ids, 'middle'), 'Align middle')],
+    ['align-bottom', '⇣', () => runArrange(alignNodes(history.current, selection.ids, 'bottom'), 'Align bottom')],
+    ['distribute-x', '⋯', () => runArrange(distributeNodes(history.current, selection.ids, 'x'), 'Distribute horizontally')],
+    ['distribute-y', '⋮', () => runArrange(distributeNodes(history.current, selection.ids, 'y'), 'Distribute vertically')],
+  ];
+
+  const toolbar = document.createElement('div');
+  toolbar.dataset['vigiliaToolbar'] = 'arrange';
+  toolbar.style.cssText =
+    'display:flex;flex:none;gap:2px;padding:4px 8px;border-bottom:1px solid #232a36';
+  panel.insertBefore(toolbar, body);
+
+  for (const [id, glyph, run] of arrangeButtons) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = glyph;
+    button.title = id.replace('-', ' ');
+    button.dataset['vigiliaArrange'] = id;
+    button.style.cssText = [
+      'flex:1',
+      'height:22px',
+      'background:#1d2530',
+      'color:#8a97ab',
+      'border:1px solid #2a3242',
+      'border-radius:3px',
+      'cursor:pointer',
+      'font:12px/1 system-ui,sans-serif',
+    ].join(';');
+    button.addEventListener('click', run);
+    toolbar.append(button);
+  }
+
+  const drawToolbar = (): void => {
+    // Enabled by selection count, so the buttons say when they are usable
+    // rather than refusing after the fact. Distribute needs three; align needs
+    // two.
+    for (const button of toolbar.querySelectorAll('button')) {
+      const needs = button.dataset['vigiliaArrange']?.startsWith('distribute') === true ? 3 : 2;
+      const enabled = selection.ids.length >= needs;
+
+      button.disabled = !enabled;
+      button.style.opacity = enabled ? '1' : '0.4';
+      button.style.cursor = enabled ? 'pointer' : 'default';
+    }
+  };
+
   const drawTabs = (): void => {
     tabs.textContent = '';
 
@@ -317,6 +409,7 @@ function start(): void {
 
     drawOverlay();
     drawStatus();
+    drawToolbar();
     drawTabs();
     drawInspector();
     drawGlobals();
@@ -396,6 +489,7 @@ function start(): void {
       canUndo(history) ? `undo: ${undoLabel(history)}` : undefined,
       canRedo(history) ? 'redo available' : undefined,
       isDirty(history) ? 'unsaved' : 'saved',
+      notice,
     ]
       .filter((part) => part !== undefined)
       .join('  ·  ');
@@ -443,6 +537,9 @@ function start(): void {
     // dataset, so reading the target directly found nothing and every resize
     // silently became a move. The status bar said "Move element" while the
     // author dragged a resize handle.
+    // A new gesture supersedes whatever the last refusal was about.
+    notice = undefined;
+
     const grabbed = (event.target as HTMLElement | null)
       ?.closest('[data-vigilia-handle]')
       ?.getAttribute('data-vigilia-handle') as Handle | undefined;
@@ -691,6 +788,22 @@ function start(): void {
       selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
       event.preventDefault();
       render();
+      return;
+    }
+
+    // Ctrl+G / Ctrl+Shift+G, as every design tool binds them.
+    if (meta && event.key.toLowerCase() === 'g') {
+      event.preventDefault();
+
+      if (event.shiftKey) {
+        runArrange(ungroupNodes(history.current, selection.ids), 'Ungroup');
+      } else {
+        runArrange(
+          groupNodes(history.current, selection.ids, freeGroupId(history.current)),
+          'Group',
+        );
+      }
+
       return;
     }
 
