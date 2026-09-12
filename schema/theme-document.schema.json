@@ -115,6 +115,7 @@
     },
 
     "styleMap": {
+      "description": "Style properties, each a reference or a literal. The renderer writes a FIXED list of these and ignores the rest — the theme format owns its property names, and letting arbitrary keys reach CSS would make the format depend on whatever a browser happens to accept. Recognised today: fill, color, opacity, strokeColor, strokeWidth, strokeDash, shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight, tabularNumerals. Text ALIGNMENT is not a style property — it is layout, and lives on textContent.",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/styleValue" }
     },
@@ -401,6 +402,10 @@
       "properties": {
         "lineWidth": { "type": "number", "minimum": 0 },
         "interpolation": { "enum": ["linear", "smooth", "step"] },
+        "dash": {
+          "description": "Applies to every series. Per-series patterns are deliberately not offered: distinguishing series is the palette's job, and varying both reads as two encodings of one fact.",
+          "enum": ["solid", "dashed", "dotted"]
+        },
         "stroke": {
           "description": "Stroke for the first series, and the fallback for any series the palette does not cover.",
           "$ref": "#/$defs/fill"

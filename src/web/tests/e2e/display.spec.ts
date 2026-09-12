@@ -232,12 +232,24 @@ test.describe('update behaviour', () => {
     await openPlayer(page);
 
     // Not a baseline comparison — see playwright.config.ts. This is evidence
-    // for Gate 0 and for eyeballing a theming change. Written to a path as well
-    // as attached, because the list reporter does not persist attachments and
-    // the whole point is that a person can open the file.
+    // for Gate 0 and for eyeballing a theming change.
+    //
+    // Ordinary runs write to the ignored test output. `VIGILIA_CAPTURE=1`
+    // writes into the TRACKED docs/gates/screenshots/ instead, so refreshing
+    // committed evidence is a deliberate act.
+    //
+    // It has to be deliberate because these images are NOT byte-reproducible:
+    // the data behind them is deterministic, but a capture lands mid-animation,
+    // and how many frames the engine got differs slightly per run. Writing them
+    // on every run would dirty the working tree with diffs that mean nothing.
+    const directory =
+      process.env['VIGILIA_CAPTURE'] === undefined
+        ? 'test-results/screenshots'
+        : '../../docs/gates/screenshots';
+
     const screenshot = await page.screenshot({
       fullPage: false,
-      path: `test-results/screenshots/dashboard-${testInfo.project.name}.png`,
+      path: `${directory}/dashboard-${testInfo.project.name}.png`,
     });
     await testInfo.attach(`dashboard-${testInfo.project.name}.png`, {
       body: screenshot,
@@ -355,5 +367,55 @@ test.describe('typography (§89)', () => {
       'font-variant-numeric',
       'tabular-nums',
     );
+  });
+});
+
+test.describe('outlines, dashes and shadows (§81)', () => {
+  test('applies a box shadow to a shape and a text shadow to a run', async ({ page }) => {
+    await openPlayer(page);
+
+    // Two different CSS properties for one authored concept. Applying the wrong
+    // one produces nothing rather than an error, which is precisely the silent
+    // miss a rendered check catches.
+    const panel = page.locator('[data-node-id="cpu-panel-bg"]');
+    await expect(panel).not.toHaveCSS('box-shadow', 'none');
+    await expect(panel).toHaveCSS('box-shadow', /rgba\(0, 0, 0, 0\.4\)/);
+
+    const title = page.locator('[data-node-id="title"] span').first();
+    await expect(title).not.toHaveCSS('text-shadow', 'none');
+  });
+
+  test('does not put a box shadow on a text run, or a text shadow on a box', async ({ page }) => {
+    await openPlayer(page);
+
+    await expect(page.locator('[data-node-id="title"] span').first()).toHaveCSS(
+      'box-shadow',
+      'none',
+    );
+    await expect(page.locator('[data-node-id="cpu-panel-bg"]')).toHaveCSS('text-shadow', 'none');
+  });
+
+  test('draws a dashed outline without growing the authored box', async ({ page }, testInfo) => {
+    await openPlayer(page);
+
+    const outlined = page.locator('[data-node-id="memory-outline-demo"]');
+    await expect(outlined).toHaveCSS('border-style', 'dashed');
+
+    // box-sizing is what keeps the authored rectangle the OUTER rectangle. With
+    // content-box, a 1 px border would render this 2 px larger and shift
+    // everything inside it.
+    await expect(outlined).toHaveCSS('box-sizing', 'border-box');
+
+    // The measured check only holds where the artboard renders 1:1. On the
+    // phone the whole design is scaled down, so authored pixels are not CSS
+    // pixels — which is the artboard transform working, not a failure.
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'needs a 1:1 artboard');
+
+    const box = await outlined.boundingBox();
+    expect(box).not.toBeNull();
+    if (box !== null) {
+      expect(box.width).toBeCloseTo(306, 0);
+      expect(box.height).toBeCloseTo(60, 0);
+    }
   });
 });

@@ -49,7 +49,9 @@
         "fontFamily": { "ref": "fonts.ui" },
         "fontSize": { "ref": "fontSizes.title" },
         "fontWeight": { "value": 600 },
-        "color": { "ref": "palette.text" }
+        "color": { "ref": "palette.text" },
+        "shadowColor": { "value": "#00b8d955" },
+        "shadowBlur": { "value": 18 }
       },
       "content": {
         "verticalAlign": "middle",
@@ -77,7 +79,12 @@
           "id": "cpu-panel-bg",
           "type": "rectangle",
           "transform": { "width": 288, "height": 288 },
-          "style": { "fill": { "ref": "palette.panel" } },
+          "style": {
+            "fill": { "ref": "palette.panel" },
+            "shadowColor": { "value": "#00000066" },
+            "shadowBlur": { "value": 24 },
+            "shadowOffsetY": { "value": 6 }
+          },
           "content": { "cornerRadius": 18 }
         },
         {
@@ -172,7 +179,12 @@
           "id": "gpu-panel-bg",
           "type": "rectangle",
           "transform": { "width": 288, "height": 288 },
-          "style": { "fill": { "ref": "palette.panel" } },
+          "style": {
+            "fill": { "ref": "palette.panel" },
+            "shadowColor": { "value": "#00000066" },
+            "shadowBlur": { "value": 24 },
+            "shadowOffsetY": { "value": 6 }
+          },
           "content": { "cornerRadius": 18 }
         },
         {
@@ -267,7 +279,12 @@
           "id": "history-bg",
           "type": "rectangle",
           "transform": { "width": 576, "height": 288 },
-          "style": { "fill": { "ref": "palette.panel" } },
+          "style": {
+            "fill": { "ref": "palette.panel" },
+            "shadowColor": { "value": "#00000066" },
+            "shadowBlur": { "value": 24 },
+            "shadowOffsetY": { "value": 6 }
+          },
           "content": { "cornerRadius": 18 }
         },
         {
@@ -330,7 +347,12 @@
           "id": "thermals-bg",
           "type": "rectangle",
           "transform": { "width": 592, "height": 272 },
-          "style": { "fill": { "ref": "palette.panel" } },
+          "style": {
+            "fill": { "ref": "palette.panel" },
+            "shadowColor": { "value": "#00000066" },
+            "shadowBlur": { "value": 24 },
+            "shadowOffsetY": { "value": 6 }
+          },
           "content": { "cornerRadius": 18 }
         },
         {
@@ -437,7 +459,12 @@
           "id": "memory-bg",
           "type": "rectangle",
           "transform": { "width": 576, "height": 272 },
-          "style": { "fill": { "ref": "palette.panel" } },
+          "style": {
+            "fill": { "ref": "palette.panel" },
+            "shadowColor": { "value": "#00000066" },
+            "shadowBlur": { "value": 24 },
+            "shadowOffsetY": { "value": 6 }
+          },
           "content": { "cornerRadius": 18 }
         },
         {
@@ -499,6 +526,18 @@
               }
             ]
           }
+        },
+        {
+          "id": "memory-outline-demo",
+          "type": "rectangle",
+          "name": "Dashed outline",
+          "transform": { "x": 252, "y": 180, "width": 306, "height": 60 },
+          "style": {
+            "strokeColor": { "ref": "palette.track" },
+            "strokeWidth": { "value": 1 },
+            "strokeDash": { "value": "dashed" }
+          },
+          "content": { "cornerRadius": 8 }
         },
         {
           "id": "memory-overflow-demo",

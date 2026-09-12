@@ -388,3 +388,25 @@ describe('multi-series strokes', () => {
     expect(option.series[0]!.areaStyle).toBeDefined();
   });
 });
+
+describe('dash patterns (§81)', () => {
+  it('emits solid explicitly when none is authored', () => {
+    // Stated rather than left to the engine default, so the option says what it
+    // draws.
+    const option = buildLineOption(defaultLineSettings, [{ sensorId: 'a', samples: [] }], Date.now());
+    expect(option.series[0]!.lineStyle.type).toBe('solid');
+  });
+
+  it('passes a dash pattern through to every series', () => {
+    const option = buildLineOption(
+      { ...defaultLineSettings, dash: 'dashed' },
+      [
+        { sensorId: 'a', samples: [] },
+        { sensorId: 'b', samples: [] },
+      ],
+      Date.now(),
+    );
+
+    expect(option.series.map((s) => s.lineStyle.type)).toEqual(['dashed', 'dashed']);
+  });
+});

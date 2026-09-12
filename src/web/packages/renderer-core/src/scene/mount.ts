@@ -195,7 +195,7 @@ function createNode(
   element.dataset['nodeId'] = node.id;
   element.style.position = 'absolute';
   applyBox(element, node.box);
-  applyCommonStyle(element, node.style);
+  applyCommonStyle(element, node.style, node.content.kind === 'text' ? 'text' : 'box');
   element.style.display = node.visible ? 'block' : 'none';
 
   switch (node.content.kind) {
@@ -344,7 +344,7 @@ function renderText(element: HTMLElement, node: PlanNode): void {
       span.title = segment.message;
     }
 
-    applyCommonStyle(span, segment.style);
+    applyCommonStyle(span, segment.style, 'text');
     element.append(span);
   }
 }
@@ -425,6 +425,21 @@ function applyTextFlow(element: HTMLElement, layout: PlanTextLayout): void {
 // is pure and testable and only the measuring needs a browser.
 
 /**
+ * Whether an element is painted as a box or as text.
+ *
+ * Several authored properties mean different CSS depending on this — `fill` is a
+ * background or a colour, a shadow is a `box-shadow` or a `text-shadow`, an
+ * outline is a border or a text stroke.
+ *
+ * It is passed in rather than inferred from the element, because inferring it
+ * was wrong: a text node's container is a `<div>`, so a tag-name check gave it
+ * box semantics and a shadow authored on a text node became a `box-shadow`
+ * around its bounding box. It produced nothing visible and no error. Found by a
+ * browser test.
+ */
+type PaintMode = 'box' | 'text';
+
+/**
  * Writes the style properties this renderer understands.
  *
  * Deliberately a fixed list rather than a pass-through of every key onto
@@ -433,11 +448,11 @@ function applyTextFlow(element: HTMLElement, layout: PlanTextLayout): void {
  * the browser happens to accept. Unknown properties are ignored here and
  * reported by the validator, not applied.
  */
-function applyCommonStyle(element: HTMLElement, style: ResolvedStyle): void {
+function applyCommonStyle(element: HTMLElement, style: ResolvedStyle, mode: PaintMode): void {
   const fill = asCss(style['fill']);
   if (fill !== undefined) {
-    // A span takes a fill as its text colour; a box takes it as a background.
-    if (element.tagName === 'SPAN') {
+    // Text takes a fill as its colour; a box takes it as a background.
+    if (mode === 'text') {
       element.style.color = fill;
     } else {
       element.style.background = fill;
@@ -454,14 +469,8 @@ function applyCommonStyle(element: HTMLElement, style: ResolvedStyle): void {
     element.style.opacity = String(opacity);
   }
 
-  const strokeColor = asCss(style['strokeColor']);
-  const strokeWidth = asNumber(style['strokeWidth']);
-  if (strokeColor !== undefined && strokeWidth !== undefined && strokeWidth > 0) {
-    element.style.border = `${strokeWidth}px solid ${strokeColor}`;
-    // Keep the authored box the outer box: a border would otherwise grow the
-    // element beyond the geometry the artboard laid out.
-    element.style.boxSizing = 'border-box';
-  }
+  applyOutline(element, style, mode);
+  applyShadow(element, style, mode);
 
   const fontFamily = asCss(style['fontFamily']);
   if (fontFamily !== undefined) {
@@ -499,6 +508,77 @@ function applyCommonStyle(element: HTMLElement, style: ResolvedStyle): void {
     // ignores this, which is the correct degradation — nothing is substituted.
     element.style.fontVariantNumeric = 'tabular-nums';
   }
+}
+
+/**
+ * Outlines and dashes (§81's "outlines/dashes").
+ *
+ * A span takes an outline as a **text** stroke via `-webkit-text-stroke`, which
+ * a box cannot use; a box takes it as a border. Same authored property, two
+ * correct meanings — which is why this is not one shared line of CSS.
+ *
+ * `box-sizing: border-box` keeps the authored rectangle the *outer* rectangle.
+ * Without it a border grows the element past the geometry the artboard laid out,
+ * and a 2 px outline silently shifts everything inside by 2 px.
+ *
+ * A dash pattern applies to a box only. Dashed text strokes are not expressible
+ * in CSS, and §85 says to mark a gap rather than approximate it: an authored
+ * dash on a text element is ignored, and the validator is where that should
+ * eventually be reported.
+ */
+function applyOutline(element: HTMLElement, style: ResolvedStyle, mode: PaintMode): void {
+  const color = asCss(style['strokeColor']);
+  const width = asNumber(style['strokeWidth']);
+
+  if (color === undefined || width === undefined || width <= 0) {
+    return;
+  }
+
+  if (mode === 'text') {
+    // Paint the stroke behind the glyph so it reads as an outline rather than
+    // eating into the letterform.
+    element.style.setProperty('-webkit-text-stroke', `${width}px ${color}`);
+    element.style.setProperty('paint-order', 'stroke fill');
+    return;
+  }
+
+  const dash = style['strokeDash'];
+  const dashed = dash === 'dashed' || dash === 'dotted';
+
+  element.style.border = `${width}px ${dashed ? String(dash) : 'solid'} ${color}`;
+  element.style.boxSizing = 'border-box';
+}
+
+/**
+ * Shadows (§81's "shadows").
+ *
+ * A span needs `text-shadow` and a box needs `box-shadow`; applying the wrong
+ * one produces nothing at all rather than an error, which is exactly the kind of
+ * silent miss the screenshot pass exists to catch.
+ *
+ * Blur and offsets are in artboard pixels, so they scale with the artboard
+ * transform along with everything else (§51). A shadow expressed in viewport
+ * pixels would stay a fixed size while the design around it scaled.
+ */
+function applyShadow(element: HTMLElement, style: ResolvedStyle, mode: PaintMode): void {
+  const color = asCss(style['shadowColor']);
+
+  if (color === undefined) {
+    return;
+  }
+
+  const blur = asNumber(style['shadowBlur']) ?? 0;
+  const offsetX = asNumber(style['shadowOffsetX']) ?? 0;
+  const offsetY = asNumber(style['shadowOffsetY']) ?? 0;
+
+  const shadow = `${offsetX}px ${offsetY}px ${Math.max(0, blur)}px ${color}`;
+
+  if (mode === 'text') {
+    element.style.textShadow = shadow;
+    return;
+  }
+
+  element.style.boxShadow = shadow;
 }
 
 function asCss(value: unknown): string | undefined {

@@ -31,6 +31,9 @@ export type { EngineColor, LinearGradientColor };
 /** How a series is interpolated between points. */
 export type Interpolation = 'linear' | 'smooth' | 'step';
 
+/** Stroke dash pattern (§81). */
+export type DashPattern = 'solid' | 'dashed' | 'dotted';
+
 /** One data point: epoch milliseconds and a value, or `null` for a gap. */
 export type SeriesPoint = readonly [number, number | null];
 
@@ -49,6 +52,14 @@ export interface LineSettings {
    * single-series chart needs no palette at all.
    */
   readonly palette?: readonly Fill[];
+  /**
+   * Dash pattern for every series.
+   *
+   * Per-series patterns are deliberately not offered: distinguishing series is
+   * the palette's job, and a chart that varies both colour and dash per series
+   * reads as two encodings of one fact.
+   */
+  readonly dash?: DashPattern;
   /** Area fill under the line. Omit for a plain line — §83 wants this independent of the stroke. */
   readonly area?: Fill;
   readonly showMarkers: boolean;
@@ -132,7 +143,11 @@ export interface LineOption {
     readonly smooth: boolean;
     readonly step: 'end' | false;
     readonly connectNulls: false;
-    readonly lineStyle: { readonly width: number; readonly color: EngineColor };
+    readonly lineStyle: {
+      readonly width: number;
+      readonly color: EngineColor;
+      readonly type: DashPattern;
+    };
     readonly areaStyle?: { readonly color: EngineColor };
     readonly sampling?: 'lttb' | 'average';
     readonly silent: true;
@@ -230,6 +245,10 @@ export function buildLineOption(
       lineStyle: {
         width: settings.lineWidth,
         color: toEngineColor(strokeFor(settings, index), 'stroke'),
+        // ECharts names these exactly as CSS does, so no mapping is needed —
+        // but it is still emitted explicitly rather than left to the engine
+        // default, so the option says what it draws.
+        type: settings.dash ?? 'solid',
       },
       // Only the first series gets the area fill. Stacked translucent areas
       // turn into mud and hide the very crossings a multi-series chart exists
