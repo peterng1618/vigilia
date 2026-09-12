@@ -243,3 +243,39 @@ describe('toBarColor', () => {
     expect([vertical.y, vertical.y2]).toEqual([1, 0]);
   });
 });
+
+describe('category order', () => {
+  /**
+   * Regression test for a defect found by looking at a rendered screenshot.
+   *
+   * ECharts places category index 0 at the **bottom** of a y axis, so a
+   * horizontal chart drew the first authored bar last. On a dashboard whose
+   * labels are separate text elements, the bars read in the opposite order from
+   * their labels — the values were right and the pairing was wrong, which is
+   * worse than being obviously broken.
+   */
+  it('inverts the category axis for horizontal bars so authored order reads downward', () => {
+    const option = buildBarOption(defaultBarSettings, [
+      { sensorId: 'first', sample: sample(10) },
+      { sensorId: 'second', sample: sample(90) },
+    ]);
+
+    const axis = option.yAxis;
+    expect(axis.type).toBe('category');
+    if (axis.type === 'category') {
+      expect(axis.inverse).toBe(true);
+      expect(axis.data).toEqual(['first', 'second']);
+    }
+  });
+
+  it('does not invert a vertical chart, where index 0 is already leftmost', () => {
+    const option = buildBarOption({ ...defaultBarSettings, orientation: 'vertical' }, [
+      { sensorId: 'first', sample: sample(10) },
+    ]);
+
+    const axis = option.xAxis;
+    if (axis.type === 'category') {
+      expect(axis.inverse).toBe(false);
+    }
+  });
+});

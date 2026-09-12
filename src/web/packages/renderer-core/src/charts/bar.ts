@@ -108,6 +108,16 @@ interface CategoryAxis {
   readonly axisLabel: { readonly show: boolean };
   /** Bars must start at the axis, so the category axis cannot add half-slot padding. */
   readonly boundaryGap: true;
+  /**
+   * True for a horizontal chart.
+   *
+   * ECharts puts category index 0 at the **bottom** of a y axis, so the first
+   * authored bar rendered last and a dashboard's bars read in the opposite
+   * order from its labels. Inverting restores authored order as reading order —
+   * the same rule the pie family follows for slices. A vertical chart already
+   * puts index 0 at the left, which is correct, so this is false there.
+   */
+  readonly inverse: boolean;
 }
 
 interface ValueAxis {
@@ -156,6 +166,8 @@ export function buildBarOption(
   inputs: readonly BarInput[],
   animate = true,
 ): BarOption {
+  const horizontal = settings.orientation === 'horizontal';
+
   const categoryAxis: CategoryAxis = {
     type: 'category',
     show: settings.showAxes || settings.showCategoryLabels,
@@ -164,6 +176,7 @@ export function buildBarOption(
     axisLine: { show: false },
     axisLabel: { show: settings.showCategoryLabels },
     boundaryGap: true,
+    inverse: horizontal,
   };
 
   const valueAxis: ValueAxis = {
@@ -177,8 +190,6 @@ export function buildBarOption(
     axisLabel: { show: settings.showAxes },
     splitLine: { show: settings.showAxes },
   };
-
-  const horizontal = settings.orientation === 'horizontal';
 
   return {
     animation: animate,

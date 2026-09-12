@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { approximateGradient, buildGaugeOption, mixHex, toColorSegments } from './gauge.js';
-import { defaultGaugeSettings, type Sample, type SensorStatus } from '../types.js';
+import {
+  defaultGaugeSettings,
+  type GaugeSettings,
+  type Sample,
+  type SensorStatus,
+} from '../types.js';
 
 /** An ok sample carrying a plottable value. */
 function sample(value = 50): Sample {
@@ -173,5 +178,88 @@ describe('mixHex', () => {
     // emitting a malformed colour the engine would silently drop.
     expect(mixHex('rebeccapurple', '#ffffff', 0.2)).toBe('rebeccapurple');
     expect(mixHex('rebeccapurple', '#ffffff', 0.8)).toBe('#ffffff');
+  });
+});
+
+describe('the progress arc colour', () => {
+  /**
+   * Regression tests for a defect found by looking at a rendered screenshot.
+   *
+   * `progress.itemStyle` was left unset for a `thresholds` or `gradient` fill,
+   * on the reasoning that those are "expressed through axisLine segments". They
+   * are not — axisLine carries the track — so the arc fell through to ECharts'
+   * default blue and the authored fill was silently discarded. The emitted
+   * option was exactly what the adapter intended, which is why no unit test
+   * caught it.
+   */
+  const bands = [
+    { offset: 0.7, color: '#00b8d9' },
+    { offset: 0.9, color: '#ffab00' },
+    { offset: 1, color: '#ff5630' },
+  ];
+
+  function progressColor(fill: GaugeSettings['progress'], value: number): unknown {
+    return buildGaugeOption({ ...defaultGaugeSettings, progress: fill }, sample(value))
+      .series[0].progress.itemStyle.color;
+  }
+
+  it('always emits a colour, so nothing falls through to an engine default', () => {
+    for (const fill of [
+      { kind: 'solid' as const, color: '#123456' },
+      { kind: 'thresholds' as const, bands },
+      { kind: 'gradient' as const, stops: bands },
+    ]) {
+      expect(progressColor(fill, 50)).toBeDefined();
+    }
+  });
+
+  it('uses a solid fill directly', () => {
+    expect(progressColor({ kind: 'solid', color: '#123456' }, 50)).toBe('#123456');
+  });
+
+  it('picks the threshold band containing the current value', () => {
+    // The ring turns amber and then red as the value crosses each boundary —
+    // the same per-value resolution the bar family uses.
+    expect(progressColor({ kind: 'thresholds', bands }, 50)).toBe('#00b8d9');
+    expect(progressColor({ kind: 'thresholds', bands }, 80)).toBe('#ffab00');
+    expect(progressColor({ kind: 'thresholds', bands }, 95)).toBe('#ff5630');
+  });
+
+  it('resolves thresholds against the authored range, not a 0–100 assumption', () => {
+    const option = buildGaugeOption(
+      {
+        ...defaultGaugeSettings,
+        min: 0,
+        max: 200,
+        progress: { kind: 'thresholds', bands },
+      },
+      sample(80),
+    );
+
+    // 80 of 200 is 0.4 — the first band, where 80 of 100 was the second.
+    expect(option.series[0].progress.itemStyle.color).toBe('#00b8d9');
+  });
+
+  it('emits a real gradient object for a gradient fill', () => {
+    // A true gradient, but resolved across the ring's box rather than along the
+    // arc. The angular approximation stays on the track, because one axisLine
+    // cannot carry two fills — the §85 gap is unchanged.
+    const color = progressColor({ kind: 'gradient', stops: bands }, 50);
+
+    expect(color).toMatchObject({ type: 'linear', x: 0, y: 0, x2: 1, y2: 0 });
+  });
+
+  it('keeps the track fill independent of the progress fill', () => {
+    const option = buildGaugeOption(
+      {
+        ...defaultGaugeSettings,
+        track: { kind: 'solid', color: '#111111' },
+        progress: { kind: 'solid', color: '#eeeeee' },
+      },
+      sample(50),
+    );
+
+    expect(option.series[0].axisLine.lineStyle.color).toEqual([[1, '#111111']]);
+    expect(option.series[0].progress.itemStyle.color).toBe('#eeeeee');
   });
 });

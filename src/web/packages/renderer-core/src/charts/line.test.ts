@@ -326,3 +326,64 @@ describe('toEngineColor', () => {
     expect(toEngineColor({ kind: 'thresholds', bands: [] }, 'stroke')).toBe('transparent');
   });
 });
+
+describe('multi-series strokes', () => {
+  /**
+   * §81 calls for multi-series line charts. Before the palette, every series
+   * drew in `stroke` — two traces in one colour, which a rendered screenshot
+   * showed is not a multi-series chart in any useful sense.
+   */
+  const seriesOf = (count: number): SeriesInput[] =>
+    Array.from({ length: count }, (_, i) => ({ sensorId: `sensor.${i}`, samples: [] }));
+
+  it('falls back to stroke when no palette is set', () => {
+    const option = buildLineOption(defaultLineSettings, seriesOf(2), Date.now());
+
+    expect(option.series.map((s) => s.lineStyle.color)).toEqual(['#00b8d9', '#00b8d9']);
+  });
+
+  it('gives each series its own palette entry', () => {
+    const option = buildLineOption(
+      {
+        ...defaultLineSettings,
+        palette: [
+          { kind: 'solid', color: '#aaaaaa' },
+          { kind: 'solid', color: '#bbbbbb' },
+        ],
+      },
+      seriesOf(2),
+      Date.now(),
+    );
+
+    expect(option.series.map((s) => s.lineStyle.color)).toEqual(['#aaaaaa', '#bbbbbb']);
+  });
+
+  it('cycles a palette shorter than the series count', () => {
+    const option = buildLineOption(
+      { ...defaultLineSettings, palette: [{ kind: 'solid', color: '#aaaaaa' }] },
+      seriesOf(3),
+      Date.now(),
+    );
+
+    expect(option.series.map((s) => s.lineStyle.color)).toEqual(['#aaaaaa', '#aaaaaa', '#aaaaaa']);
+  });
+
+  it('ignores an empty palette rather than emitting no colour', () => {
+    const option = buildLineOption({ ...defaultLineSettings, palette: [] }, seriesOf(1), Date.now());
+
+    expect(option.series[0]!.lineStyle.color).toBe('#00b8d9');
+  });
+
+  it('fills the area under the first series only', () => {
+    // Stacked translucent areas turn into mud and hide the crossings a
+    // multi-series chart exists to show.
+    const option = buildLineOption(defaultLineSettings, seriesOf(3), Date.now());
+
+    expect(option.series.map((s) => s.areaStyle !== undefined)).toEqual([true, false, false]);
+  });
+
+  it('still fills a single-series chart', () => {
+    const option = buildLineOption(defaultLineSettings, seriesOf(1), Date.now());
+    expect(option.series[0]!.areaStyle).toBeDefined();
+  });
+});

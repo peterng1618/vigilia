@@ -295,6 +295,10 @@
               "lineWidth": 2,
               "interpolation": "smooth",
               "stroke": { "kind": "solid", "color": "#00b8d9" },
+              "palette": [
+                { "kind": "solid", "color": "#00b8d9" },
+                { "kind": "solid", "color": "#ffab00" }
+              ],
               "area": {
                 "kind": "gradient",
                 "stops": [

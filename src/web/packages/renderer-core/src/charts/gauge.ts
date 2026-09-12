@@ -1,6 +1,13 @@
 import type { Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
-import { colorAt, mixHex } from './fill.js';
+import {
+  colorAt,
+  mixHex,
+  normalizePosition,
+  resolveFlatColor,
+  toLinearGradient,
+  type EngineColor,
+} from './fill.js';
 
 // Re-exported because it was part of this module's surface before the shared
 // resolution moved to fill.ts, and colour mixing is not gauge-specific.
@@ -22,11 +29,16 @@ export { mixHex };
  *   `[[proportion, color], …]` pairs and produces *discrete colour segments*.
  *   Gradient objects are not documented for this property.
  *
- * The second point is the §85 "engine gap". The approach taken here is to
- * approximate an angular gradient with many small segments
+ * The second point is the §85 "engine gap". For the **track**, the approach is
+ * to approximate an angular gradient with many small segments
  * ({@link GaugeSettings.gradientSegments}), because it keeps one renderer and one
  * JSON representation for both editor and display. It is an approximation:
  * banding is visible at low segment counts and very large radii.
+ *
+ * The **progress** arc cannot use that path at all — `axisLine` is a single
+ * property and the track already owns it — so its fill is resolved by
+ * {@link progressItemStyle} instead. The gap therefore has two halves, and only
+ * a human can settle it (recorded in `docs/gates/gate-0.md`).
  *
  * If Gate 0 review rejects the approximation, the alternative is a shared native
  * overlay arc — which stays consistent with §91's rule that a native text/vector
@@ -59,7 +71,7 @@ export interface GaugeOption {
         show: boolean;
         width: number;
         roundCap: boolean;
-        itemStyle?: { color: string };
+        itemStyle: { color: EngineColor };
       };
       pointer: { show: false };
       axisTick: { show: false };
@@ -114,7 +126,7 @@ export function buildGaugeOption(
           show: plottable,
           width: settings.thickness,
           roundCap: settings.roundCap,
-          ...progressItemStyle(settings.progress),
+          ...progressItemStyle(settings.progress, settings, displayValue),
         },
         // Everything below is suppressed because typography is rendered by our
         // own text elements (§91), not by the chart engine.
@@ -222,10 +234,41 @@ export function approximateGradient(
   return segments;
 }
 
-function progressItemStyle(fill: Fill): { itemStyle?: { color: string } } {
-  // `progress.itemStyle` takes a single colour. A thresholds/gradient progress
-  // fill is expressed through axisLine segments instead, so leave it unset.
-  return fill.kind === 'solid' ? { itemStyle: { color: fill.color } } : {};
+/**
+ * Resolves the colour of the progress arc.
+ *
+ * This used to leave `itemStyle` unset for a `thresholds` or `gradient` fill, on
+ * the reasoning that such fills are "expressed through axisLine segments
+ * instead". They are not: `axisLine` carries the **track**, and the progress arc
+ * is drawn over it — so an unset colour fell through to ECharts' default blue
+ * and the authored fill was silently discarded. Found by looking at a rendered
+ * screenshot; no unit test could see it, because the emitted option was exactly
+ * what the adapter intended.
+ *
+ * - `solid` → the colour.
+ * - `thresholds` → the band containing the **current value**, so a ring turns
+ *   amber then red as the value crosses the boundaries. Native and exact, the
+ *   same resolution the bar family uses per item.
+ * - `gradient` → a real cartesian gradient object. It is a true gradient, but it
+ *   resolves left-to-right across the ring's box rather than following the arc.
+ *   The §85 engine gap is unchanged and still needs a human decision: the
+ *   angular segment approximation applies to the **track** only, because one
+ *   `axisLine` cannot carry two fills.
+ */
+function progressItemStyle(
+  fill: Fill,
+  settings: GaugeSettings,
+  value: number,
+): { itemStyle: { color: EngineColor } } {
+  if (fill.kind === 'gradient') {
+    return { itemStyle: { color: toLinearGradient(fill.stops, 'to-right') } };
+  }
+
+  return {
+    itemStyle: {
+      color: resolveFlatColor(fill, normalizePosition(value, settings.min, settings.max)),
+    },
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {

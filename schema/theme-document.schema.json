@@ -401,8 +401,20 @@
       "properties": {
         "lineWidth": { "type": "number", "minimum": 0 },
         "interpolation": { "enum": ["linear", "smooth", "step"] },
-        "stroke": { "$ref": "#/$defs/fill" },
-        "area": { "$ref": "#/$defs/fill" },
+        "stroke": {
+          "description": "Stroke for the first series, and the fallback for any series the palette does not cover.",
+          "$ref": "#/$defs/fill"
+        },
+        "palette": {
+          "description": "Per-series strokes, cycled by series index. Without it every series draws in `stroke`, which is not a multi-series chart in any useful sense.",
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/fill" }
+        },
+        "area": {
+          "description": "Area fill under the FIRST series only. Stacked translucent areas turn into mud and hide the crossings a multi-series chart exists to show.",
+          "$ref": "#/$defs/fill"
+        },
         "showMarkers": { "type": "boolean" },
         "markerSize": { "type": "number", "minimum": 0 },
         "windowSeconds": { "type": "number", "exclusiveMinimum": 0 },

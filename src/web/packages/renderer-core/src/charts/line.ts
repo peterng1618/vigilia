@@ -38,7 +38,17 @@ export type SeriesPoint = readonly [number, number | null];
 export interface LineSettings {
   readonly lineWidth: number;
   readonly interpolation: Interpolation;
+  /** Stroke for the first series, and the fallback for any series the palette does not cover. */
   readonly stroke: Fill;
+  /**
+   * Per-series strokes, cycled by series index.
+   *
+   * §81 calls for multi-series line charts, and without this every series drew
+   * in {@link LineSettings.stroke} — two traces in one colour, which is not a
+   * multi-series chart in any useful sense. Index 0 falls back to `stroke`, so a
+   * single-series chart needs no palette at all.
+   */
+  readonly palette?: readonly Fill[];
   /** Area fill under the line. Omit for a plain line — §83 wants this independent of the stroke. */
   readonly area?: Fill;
   readonly showMarkers: boolean;
@@ -207,7 +217,7 @@ export function buildLineOption(
       ...(settings.min === undefined ? {} : { min: settings.min }),
       ...(settings.max === undefined ? {} : { max: settings.max }),
     },
-    series: series.map((input) => ({
+    series: series.map((input, index) => ({
       type: 'line' as const,
       name: input.label ?? input.sensorId,
       data: toSeriesPoints(input.samples, settings, nowMs),
@@ -219,15 +229,29 @@ export function buildLineOption(
       connectNulls: false as const,
       lineStyle: {
         width: settings.lineWidth,
-        color: toEngineColor(settings.stroke, 'stroke'),
+        color: toEngineColor(strokeFor(settings, index), 'stroke'),
       },
-      ...(settings.area === undefined
+      // Only the first series gets the area fill. Stacked translucent areas
+      // turn into mud and hide the very crossings a multi-series chart exists
+      // to show; the lines stay distinguishable by palette instead.
+      ...(settings.area === undefined || index > 0
         ? {}
         : { areaStyle: { color: toEngineColor(settings.area, 'area') } }),
       ...(sampling === undefined ? {} : { sampling }),
       silent: true as const,
     })),
   };
+}
+
+/** The stroke for one series: the palette entry if there is one, else `stroke`. */
+export function strokeFor(settings: LineSettings, index: number): Fill {
+  const palette = settings.palette;
+
+  if (palette === undefined || palette.length === 0) {
+    return settings.stroke;
+  }
+
+  return palette[index % palette.length] ?? settings.stroke;
 }
 
 /**
