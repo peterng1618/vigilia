@@ -1,6 +1,6 @@
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
-import { computeArtboardTransform, toCssTransform } from '../artboard.js';
+import { computeArtboardTransform, toCssTransform, type ArtboardTransform } from '../artboard.js';
 import type {
   PlanBox,
   PlanNode,
@@ -41,6 +41,16 @@ import type {
 export interface SceneHandle {
   /** The artboard element. Positioned and scaled; do not restyle it. */
   readonly artboard: HTMLElement;
+  /**
+   * The current document→viewport mapping.
+   *
+   * Exposed for the editor, which has to place selection outlines and handles
+   * over the scene and therefore needs the same scale and offset the artboard
+   * is using. Recomputing it from the host's size would work until the two
+   * disagreed by a pixel, which is exactly the bug that is hardest to see and
+   * most annoying to use.
+   */
+  transform(): ArtboardTransform;
   /** Applies a new plan for the same scene. */
   update(plan: ScenePlan): void;
   /** Recomputes the artboard transform for the host's current size. */
@@ -108,6 +118,9 @@ export function mountScene(options: MountOptions): SceneHandle {
   const media = new Map<string, HTMLImageElement | HTMLVideoElement>();
   // Every node's own element, so an update can reach it without a DOM query.
   const elements = new Map<string, HTMLElement>();
+  // The plan node last written to the DOM, per id. Used to skip work when
+  // nothing about a node changed — see `updateNode`.
+  const applied = new Map<string, PlanNode>();
 
   for (const node of plan.nodes) {
     artboard.append(
@@ -123,7 +136,7 @@ export function mountScene(options: MountOptions): SceneHandle {
     );
   }
 
-  function applyArtboard(): void {
+  function applyArtboard(): ArtboardTransform {
     artboard.style.width = `${plan.artboard.width}px`;
     artboard.style.height = `${plan.artboard.height}px`;
     artboard.style.background = asCss(plan.artboard.background) ?? 'transparent';
@@ -142,25 +155,31 @@ export function mountScene(options: MountOptions): SceneHandle {
     // A degenerate transform means no visible area — a hidden element or a phone
     // mid-rotation. Nothing to draw, and charts must not be resized to zero.
     artboard.style.visibility = transform.isDegenerate ? 'hidden' : 'visible';
+
+    return transform;
   }
 
-  applyArtboard();
+  let currentTransform = applyArtboard();
 
   return {
     artboard,
 
+    transform(): ArtboardTransform {
+      return currentTransform;
+    },
+
     update(next: ScenePlan): void {
       assertSameScene(plan, next);
       plan = next;
-      applyArtboard();
+      currentTransform = applyArtboard();
 
       for (const node of walkPlan(next.nodes)) {
-        updateNode(node, charts, texts, media, elements);
+        updateNode(node, charts, texts, media, elements, applied);
       }
     },
 
     resize(): void {
-      applyArtboard();
+      currentTransform = applyArtboard();
       // Chart elements have fixed artboard-pixel sizes, so their own canvas size
       // never changes with the viewport — the artboard transform scales them.
       // This exists for the case where the artboard itself changed size.
@@ -177,6 +196,7 @@ export function mountScene(options: MountOptions): SceneHandle {
       texts.clear();
       media.clear();
       elements.clear();
+      applied.clear();
       host.textContent = '';
     },
   };
@@ -363,11 +383,34 @@ function updateNode(
   texts: Map<string, HTMLElement>,
   media: Map<string, HTMLImageElement | HTMLVideoElement>,
   elements: Map<string, HTMLElement>,
+  applied: Map<string, PlanNode>,
 ): void {
-  // A later plan can change visibility — `assertSameScene` only pins node ids,
-  // so a document edit that hides a node must take effect on update too.
   const mounted = elements.get(node.id);
+  const previous = applied.get(node.id);
+  applied.set(node.id, node);
+
   if (mounted !== undefined) {
+    // A later plan can change visibility, geometry or style — `assertSameScene`
+    // only pins node *ids*, so everything else about a node is fair game for an
+    // update.
+    //
+    // Geometry and style were originally applied at mount only, on the
+    // assumption that an update carries new DATA and nothing else. That holds
+    // for the player, whose layout never changes, and it is wrong the moment an
+    // editor moves something: the document changed, the plan changed, and the
+    // element stayed exactly where it was. Found by the first editor drag.
+    //
+    // Guarded by a comparison so the player's 1 Hz tick still writes nothing:
+    // the plan rebuilds these objects every frame, so identity says nothing and
+    // the fields have to be compared.
+    if (previous === undefined || !sameBox(previous.box, node.box)) {
+      applyBox(mounted, node.box);
+    }
+
+    if (previous === undefined || previous.style !== node.style) {
+      applyCommonStyle(mounted, node.style, node.content.kind === 'text' ? 'text' : 'box');
+    }
+
     applyVisibility(mounted, node);
   }
 
@@ -440,6 +483,19 @@ function renderText(element: HTMLElement, node: PlanNode): void {
   }
 }
 
+/** Field-by-field, because the plan builds a fresh box object every frame. */
+function sameBox(a: PlanBox, b: PlanBox): boolean {
+  return (
+    a.x === b.x &&
+    a.y === b.y &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.rotation === b.rotation &&
+    a.scaleX === b.scaleX &&
+    a.scaleY === b.scaleY
+  );
+}
+
 function applyBox(element: HTMLElement, box: PlanBox): void {
   element.style.left = `${box.x}px`;
   element.style.top = `${box.y}px`;
@@ -459,6 +515,11 @@ function applyBox(element: HTMLElement, box: PlanBox): void {
     // Rotate about the element's own centre, which is what a designer means by
     // rotation; the default origin would swing the element around its corner.
     element.style.transformOrigin = '50% 50%';
+  } else {
+    // Cleared explicitly. On an update this function may be re-applying a box
+    // that no longer rotates, and leaving the previous transform in place would
+    // keep a node visibly rotated after the author set it back to zero.
+    element.style.transform = '';
   }
 }
 

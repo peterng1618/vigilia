@@ -258,6 +258,10 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Editor: a working canvas',
+    why: 'Click, marquee, drag, resize, rotate, snap, nudge, delete, undo and redo — driven by real pointer input in 15 browser tests. It renders the LIVE dashboard through the same renderer the player uses, so ADR-0005 is now demonstrated rather than argued.',
+  },
+  {
     what: 'Editor foundation decided (ADR-0005)',
     why: 'Both Fabric candidates rejected: they are canvas editors, and this renderer is DOM plus ECharts. Adopting one meant rendering the scene twice, which §31 forbids and Gate 0 rejects outright. Unblocks Gate 2.',
   },
@@ -292,11 +296,6 @@ const RECENT = [
 ];
 
 const NEXT = [
-  {
-    what: 'Editor: selection, transform handles, undo',
-    why: 'The plan/mount split already renders what would be edited, and artboard.ts gives the exact viewport↔document mapping a handle needs. Overlays and a command stack are what is missing.',
-    blocked: false,
-  },
   {
     what: 'Editor: inspectors and the globals surface',
     why: 'Gate 2 wants global/local override behaviour, rename and delete with reassignment (§75). The document model enforces the rules already; this is the UI over it.',
@@ -342,9 +341,9 @@ const MILESTONES = [
   {
     gate: '2 — Authoring',
     state: 'started',
-    done: 'Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive. Foundation decided: ADR-0005 rejects both Fabric candidates and builds the editor on the shared renderer.',
+    done: 'Chart and style matrices, typography with styled runs and explicit overflow, widget insertion. Editor canvas working: selection, marquee, group entry, move/resize/rotate with snapping, nudge, delete, and gesture-scoped undo — all over the shared renderer (ADR-0005).',
     missing:
-      'The editor itself: selection, transform handles, gesture undo, inspectors, the globals surface, grouping, snapping, style presets.',
+      'Inspectors, the globals surface, grouping and ungrouping, style presets, multi-node resize, alignment and distribution tools, open and save.',
   },
   {
     gate: '4 — Reuse/packages',

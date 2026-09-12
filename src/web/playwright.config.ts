@@ -46,19 +46,33 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
 
-  webServer: {
-    // Preview the built bundle rather than the dev server: this is the artefact
-    // a phone would actually receive, including the chunking the size gate
-    // measures.
-    // --host 127.0.0.1 explicitly: without it Vite binds "localhost", which on
-    // Windows resolves to ::1 first, and the IPv4 baseURL below then never
-    // answers. Loopback only either way (§145) — nothing here needs a routable
-    // address.
-    command: 'npx vite preview packages/player --port 4173 --strictPort --host 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  // Two servers. The player is what `baseURL` points at; the editor is a
+  // separate bundle on its own port, and the editor spec uses absolute URLs
+  // rather than a second project with its own baseURL — both suites want the
+  // same browser projects, and splitting by baseURL would double the matrix for
+  // no benefit.
+  //
+  // Both preview the BUILT bundle rather than the dev server: that is the
+  // artefact a phone would actually receive, including the chunking the size
+  // gate measures.
+  //
+  // `--host 127.0.0.1` explicitly on both: without it Vite binds "localhost",
+  // which on Windows resolves to ::1 first, and an IPv4 URL then never answers.
+  // Loopback only either way (§145) — nothing here needs a routable address.
+  webServer: [
+    {
+      command: 'npx vite preview packages/player --port 4173 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      command: 'npx vite preview packages/editor --port 4174 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:4174',
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+  ],
 
   projects: [
     {

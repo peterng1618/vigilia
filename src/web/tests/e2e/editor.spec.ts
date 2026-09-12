@@ -1,0 +1,324 @@
+import { expect, test, type Locator, type Page } from '@playwright/test';
+
+/**
+ * The editor, driven by real pointer and keyboard input.
+ *
+ * The pure modules already prove the *decisions* are right — what a click
+ * selects, what a drag does to a transform, what undo restores. These tests
+ * prove the wiring: that a pointer event reaches those functions with the right
+ * coordinates, that the result reaches the renderer, and that the overlay ends
+ * up on top of the thing it is describing.
+ *
+ * Absolute URLs because `baseURL` belongs to the player; see the note in
+ * `playwright.config.ts`.
+ */
+
+const EDITOR = 'http://127.0.0.1:4174/';
+
+/** Desktop only: these are mouse gestures, and the editor is desktop-hosted. */
+test.beforeEach(async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+});
+
+async function openEditor(page: Page): Promise<void> {
+  await page.goto(EDITOR);
+  await page.waitForSelector('[data-vigilia="artboard"]');
+  await page.waitForSelector('[data-vigilia-overlay="root"]');
+  // The first chart canvas is a good "scene is up" signal.
+  await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+}
+
+/** Centre of a node's rendered box, in page coordinates. */
+async function centreOf(node: Locator): Promise<{ x: number; y: number }> {
+  const box = await node.boundingBox();
+
+  if (box === null) {
+    throw new Error('node has no box');
+  }
+
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function drag(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  steps = 8,
+): Promise<void> {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  // Several steps rather than one jump: a single move would not exercise the
+  // preview path, which is where §67's one-entry-per-gesture rule lives.
+  await page.mouse.move(to.x, to.y, { steps });
+  await page.mouse.up();
+}
+
+test.describe('selection', () => {
+  test('clicking a node selects it and draws an outline with handles', async ({ page }) => {
+    await openEditor(page);
+
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+
+    await page.mouse.click(...Object.values(await centreOf(page.locator('[data-node-id="title"]'))) as [number, number]);
+
+    await expect(page.locator('#status')).toContainText('title');
+    await expect(page.locator('[data-vigilia-overlay="outline"]')).toHaveCount(1);
+    // Eight resize handles plus rotate.
+    await expect(page.locator('[data-vigilia-handle]')).toHaveCount(9);
+  });
+
+  test('clicking a grouped node selects the group, not the leaf', async ({ page }) => {
+    await openEditor(page);
+
+    const gauge = await centreOf(page.locator('[data-node-id="cpu-gauge"]'));
+    await page.mouse.click(gauge.x, gauge.y);
+
+    // cpu-gauge lives inside cpu-panel; a widget should behave like one object.
+    await expect(page.locator('#status')).toContainText('cpu-panel');
+  });
+
+  test('double-clicking enters the group and selects what is under the cursor', async ({ page }) => {
+    await openEditor(page);
+
+    const gauge = await centreOf(page.locator('[data-node-id="cpu-gauge"]'));
+    await page.mouse.dblclick(gauge.x, gauge.y);
+
+    await expect(page.locator('#status')).toContainText('inside cpu-panel');
+    // The gauge's centre is also where the value readout sits, and the readout
+    // is painted on top — so the topmost node there is `cpu-readout`, not the
+    // gauge. That is the hit-test rule working (§137), and the first version of
+    // this test asserted the wrong node.
+    await expect(page.locator('#status')).toContainText('cpu-readout');
+    await expect(page.locator('#status')).not.toContainText('Nothing selected');
+  });
+
+  test('escape leaves the group and selects it', async ({ page }) => {
+    await openEditor(page);
+
+    const gauge = await centreOf(page.locator('[data-node-id="cpu-gauge"]'));
+    await page.mouse.dblclick(gauge.x, gauge.y);
+    await page.keyboard.press('Escape');
+
+    await expect(page.locator('#status')).toContainText('cpu-panel');
+    await expect(page.locator('#status')).not.toContainText('inside');
+  });
+
+  test('clicking empty canvas deselects', async ({ page }) => {
+    await openEditor(page);
+
+    await page.mouse.click(...Object.values(await centreOf(page.locator('[data-node-id="title"]'))) as [number, number]);
+    await expect(page.locator('#status')).toContainText('title');
+
+    // Bottom-right of the stage, well clear of the dashboard's content.
+    const stage = await page.locator('#stage').boundingBox();
+    await page.mouse.click(stage!.x + stage!.width - 12, stage!.y + stage!.height - 12);
+
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+    await expect(page.locator('[data-vigilia-overlay="outline"]')).toHaveCount(0);
+  });
+
+  test('a marquee selects several nodes', async ({ page }) => {
+    await openEditor(page);
+
+    const stage = (await page.locator('#stage').boundingBox())!;
+
+    // Drag across the whole artboard from a corner of empty canvas.
+    await drag(
+      page,
+      { x: stage.x + 4, y: stage.y + 4 },
+      { x: stage.x + stage.width - 4, y: stage.y + stage.height - 4 },
+    );
+
+    await expect(page.locator('#status')).toContainText('selected');
+    const outlines = await page.locator('[data-vigilia-overlay="outline"]').count();
+    expect(outlines).toBeGreaterThan(1);
+  });
+});
+
+test.describe('gestures', () => {
+  test('dragging moves the selected node, and it stays moved', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const before = (await title.boundingBox())!;
+    const centre = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+
+    await page.mouse.click(centre.x, centre.y);
+    await drag(page, centre, { x: centre.x + 120, y: centre.y + 60 });
+
+    const after = (await title.boundingBox())!;
+
+    // Approximate because snapping may pull the drop a few pixels onto an
+    // alignment — which is the feature working, not an error.
+    expect(after.x - before.x).toBeGreaterThan(100);
+    expect(after.y - before.y).toBeGreaterThan(40);
+  });
+
+  test('a drag is one undo step, not one per pointer move (§67)', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const before = (await title.boundingBox())!;
+    const centre = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+
+    await page.mouse.click(centre.x, centre.y);
+    // 20 intermediate moves. If each were recorded, one undo would step back a
+    // few pixels and the box would not return to where it started.
+    await drag(page, centre, { x: centre.x + 200, y: centre.y }, 20);
+
+    await expect(page.locator('#status')).toContainText('unsaved');
+
+    await page.keyboard.press('Control+z');
+
+    const after = (await title.boundingBox())!;
+    expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+    await expect(page.locator('#status')).toContainText('saved');
+  });
+
+  test('redo replays the move', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const before = (await title.boundingBox())!;
+    const centre = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+
+    await page.mouse.click(centre.x, centre.y);
+    await drag(page, centre, { x: centre.x + 150, y: centre.y });
+
+    const moved = (await title.boundingBox())!;
+
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+Shift+z');
+
+    const redone = (await title.boundingBox())!;
+    expect(Math.abs(redone.x - moved.x)).toBeLessThan(2);
+  });
+
+  test('a resize handle changes the size and keeps the opposite edge', async ({ page }) => {
+    await openEditor(page);
+
+    const panel = page.locator('[data-node-id="thermals-panel"]');
+    const before = (await panel.boundingBox())!;
+
+    await page.mouse.click(before.x + before.width / 2, before.y + 20);
+    await expect(page.locator('[data-vigilia-handle="e"]')).toHaveCount(1);
+
+    const handle = (await page.locator('[data-vigilia-handle="e"]').boundingBox())!;
+    await drag(
+      page,
+      { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 },
+      { x: handle.x + handle.width / 2 + 80, y: handle.y + handle.height / 2 },
+    );
+
+    const after = (await panel.boundingBox())!;
+
+    expect(after.width).toBeGreaterThan(before.width + 40);
+    // The west edge is the anchor for an east-handle drag.
+    expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+  });
+
+  test('arrow keys nudge the selection', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const before = (await title.boundingBox())!;
+
+    await page.mouse.click(before.x + before.width / 2, before.y + before.height / 2);
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+
+    const after = (await title.boundingBox())!;
+    expect(after.x - before.x).toBeGreaterThan(0.5);
+
+    // Shift nudges further.
+    await page.keyboard.press('Shift+ArrowDown');
+    const nudged = (await title.boundingBox())!;
+    expect(nudged.y - after.y).toBeGreaterThan(5);
+  });
+
+  test('escape cancels a drag in progress', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const before = (await title.boundingBox())!;
+    const centre = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+
+    await page.mouse.click(centre.x, centre.y);
+    await page.mouse.move(centre.x, centre.y);
+    await page.mouse.down();
+    await page.mouse.move(centre.x + 200, centre.y + 100, { steps: 6 });
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+
+    const after = (await title.boundingBox())!;
+
+    // Abandoned, not committed: the node is where it started and nothing is
+    // dirty.
+    expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+    await expect(page.locator('#status')).toContainText('saved');
+  });
+});
+
+test.describe('deletion', () => {
+  test('delete removes the selection and undo brings it back', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const box = (await title.boundingBox())!;
+
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.press('Delete');
+
+    await expect(title).toHaveCount(0);
+    await expect(page.locator('#status')).toContainText('unsaved');
+
+    await page.keyboard.press('Control+z');
+
+    // Back, and the scene was rebuilt to include it — which is the path
+    // `mountScene.update` deliberately refuses, since it is for new data rather
+    // than a new document.
+    await expect(page.locator('[data-node-id="title"]')).toHaveCount(1);
+  });
+});
+
+test.describe('the scene is the renderer\'s, not a placeholder', () => {
+  test('charts render live in the editor, exactly as in the player', async ({ page }) => {
+    // ADR-0005's decisive point: chart fidelity in the editor costs nothing
+    // here, because the editor mounts the same renderer the player does. If
+    // this ever fails, the editor has grown a second rendering path.
+    await openEditor(page);
+
+    for (const id of ['cpu-gauge', 'history-chart', 'thermals-bars', 'memory-donut']) {
+      const canvas = page.locator(`[data-node-id="${id}"] canvas`).first();
+      await expect(canvas, `chart ${id} is not rendered in the editor`).toBeVisible();
+
+      const painted = await canvas.evaluate((element) => {
+        const source = element as HTMLCanvasElement;
+        const context = source.getContext('2d');
+        if (context === null) {
+          return false;
+        }
+        const { data } = context.getImageData(0, 0, source.width, source.height);
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] !== 0) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      expect(painted, `chart ${id} drew no pixels in the editor`).toBe(true);
+    }
+  });
+
+  test('the overlay never swallows a click', async ({ page }) => {
+    // The overlay covers the whole stage. If it took pointer events, every node
+    // would be unselectable — so only the handle hit areas may.
+    await openEditor(page);
+
+    await expect(page.locator('[data-vigilia-overlay="root"]')).toHaveCSS(
+      'pointer-events',
+      'none',
+    );
+  });
+});

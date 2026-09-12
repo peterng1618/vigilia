@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Vigilia — editor</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0c0e13;
+        color: #e8ecf3;
+        font: 13px/1.5 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      /* The stage hosts the renderer's artboard AND the editor overlay. It must
+         be a positioned, clipping box: the artboard is absolutely positioned
+         inside it, and in cover mode the scaled design is larger than the box
+         on purpose. */
+      #stage {
+        position: relative;
+        flex: 1;
+        overflow: hidden;
+        /* No text selection while dragging — otherwise a drag across the canvas
+           selects the page's text and the gesture fights the browser. */
+        user-select: none;
+        touch-action: none;
+      }
+      #status {
+        flex: none;
+        padding: 6px 12px;
+        border-top: 1px solid #232a36;
+        background: #151922;
+        color: #8a97ab;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #scaffold {
+        flex: none;
+        padding: 6px 12px;
+        background: #4a2c00;
+        color: #ffc14d;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="scaffold">
+        SCAFFOLD — synthetic data, a checked-in fixture, no open or save.
+        Click to select · drag to move · handles to resize and rotate · shift constrains ·
+        alt resizes from centre · ctrl disables snapping · double-click enters a group ·
+        Esc leaves it · Delete removes · Ctrl+Z / Ctrl+Shift+Z undo and redo
+      </div>
+      <div id="stage"></div>
+      <div id="status">starting…</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -6,6 +6,9 @@
   "license": "MIT",
   "description": "Desktop authoring experience. Adds interaction overlays and inspectors on top of the shared renderer.",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -17,5 +20,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@vigilia/fake-source": "*"
   }
 }
