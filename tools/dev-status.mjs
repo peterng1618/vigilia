@@ -258,6 +258,10 @@ function commits() {
  */
 const RECENT = [
   {
+    what: 'Editor: the inspector panel, and handles that know about groups',
+    why: 'Every selected property is editable, and §75’s global-or-literal choice is a per-row control rather than something an author edits by hand: a style bound to a token shows the token and a swatch, with one button to detach it into a local value and one to put it back. Nine browser tests cover it. The panel immediately exposed a real bug — transform handles were placed from a node’s group-relative transform, so anything inside a group had its handles near the artboard origin while its outline was correct.',
+  },
+  {
     what: 'Re-fit before paint, and a resize that stops killing animation',
     why: 'The player now re-fits the artboard from a ResizeObserver, which runs after layout and BEFORE paint — so no frame is ever painted at the old scale when a window is dragged or a phone rotates. Charts are only re-laid-out when the artboard’s own size changes: chart.resize() interrupts a running animation, and an observer fires once on subscribe, so the unguarded version silently removed the appear animation. Two browser tests caught that within a minute.',
   },
@@ -301,29 +305,24 @@ const RECENT = [
 
 const NEXT = [
   {
-    what: 'Editor: inspectors and the globals surface',
-    why: 'Gate 2 wants global/local override behaviour, rename and delete with reassignment (§75). The document model enforces the rules already; this is the UI over it.',
-    blocked: false,
+    what: 'Editor specs',
+    why: 'The renderer half has .agents/specs/0003; the editor half has none, so the pure modules are the only contract. Writing 0004-0006 (selection and gestures, document editing and history, the inspector) pins down the edge cases that are currently only in test names.',
   },
   {
-    what: 'Visual style presets',
-    why: 'Gate 2 asks for them, and they are data rather than UI — a preset is a named bundle of typed settings, so it can be authored and tested before any inspector exists.',
-    blocked: false,
+    what: 'Globals surface',
+    why: 'An author can point a property at a token but cannot yet add, rename or recolour one. §75 is only half usable until the palette itself is editable.',
   },
   {
-    what: 'Theme packages: ZIP import and export',
-    why: 'Gate 4. The security rules are the substance (§141: traversal, decompression bombs, symlinks, executable content), and a hand-written reader can enforce them without a dependency.',
-    blocked: false,
+    what: 'Grouping, alignment and multi-node resize',
+    why: 'Group/ungroup, align and distribute, and resizing several nodes at once. The last one is refused today rather than done wrongly: a proportional box scale is not expressible as a per-node width change for rotated children.',
   },
   {
-    what: 'Font packaging and text metrics',
-    why: 'Gate 0 still wants a packaged font demonstrated, and §91 wants multilingual glyphs, digit widths and baselines verified at several artboard scales. Needs the asset pipeline first.',
-    blocked: false,
+    what: 'Open and save',
+    why: 'The editor loads a checked-in fixture and cannot persist. Needs the §139 rule that saving marks history clean without clearing it, so undo still reaches before the save.',
   },
   {
-    what: 'SignalR transport and the provider registry',
-    why: 'Deferred by ADR-0006. The wire format is the part that should not be invented against a server nobody can run — the C# ↔ TypeScript mirror is already the highest-risk edit here.',
-    blocked: true,
+    what: 'Theme packages (Gate 4)',
+    why: 'ZIP import and export with the §141 security rules: path traversal, absolute paths, symlinks and zip bombs all rejected, and no secret ever inside a package (§143).',
   },
 ];
 

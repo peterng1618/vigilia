@@ -24,9 +24,16 @@
          be a positioned, clipping box: the artboard is absolutely positioned
          inside it, and in cover mode the scaled design is larger than the box
          on purpose. */
+      /* Stage and inspector side by side; the status bar spans both. */
+      #work {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
       #stage {
         position: relative;
         flex: 1;
+        min-width: 0;
         overflow: hidden;
         /* No text selection while dragging — otherwise a drag across the canvas
            selects the page's text and the gesture fights the browser. */
@@ -64,7 +71,9 @@
         alt resizes from centre · ctrl disables snapping · double-click enters a group ·
         Esc leaves it · Delete removes · Ctrl+Z / Ctrl+Shift+Z undo and redo
       </div>
-      <div id="stage"></div>
+      <div id="work">
+        <div id="stage"></div>
+      </div>
       <div id="status">starting…</div>
     </div>
     <script type="module" src="/src/main.ts"></script>

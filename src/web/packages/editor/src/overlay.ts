@@ -4,7 +4,7 @@ import {
 } from '@vigilia/renderer-core';
 import type { Transform } from '@vigilia/renderer-core';
 import { corners, type PlacedNode } from './geometry.js';
-import { handlePosition, type Handle } from './transform-gesture.js';
+import { placedHandlePosition, type Handle } from './transform-gesture.js';
 import type { SnapGuide } from './snapping.js';
 
 /**
@@ -46,8 +46,15 @@ export interface OverlayInput {
   readonly transform: ArtboardTransform;
   /** Selected nodes, already placed in world space. */
   readonly selected: readonly PlacedNode[];
-  /** The single node whose handles are shown, if exactly one is selected. */
-  readonly handlesFor: { readonly id: string; readonly transform: Transform } | undefined;
+  /**
+   * The single node whose handles are shown, if exactly one is selected.
+   *
+   * A placement, not a transform: a transform is in the node's PARENT space, so
+   * using one here drew the handles of a grouped node near the artboard origin
+   * while its outline — which already used the composed matrix — sat correctly
+   * on the shape. The two must come from the same source.
+   */
+  readonly handlesFor: PlacedNode | undefined;
   readonly guides: readonly SnapGuide[];
   readonly artboard: { readonly width: number; readonly height: number };
   /** Marquee rectangle in viewport space, while dragging one. */
@@ -81,7 +88,7 @@ export function createOverlay(host: HTMLElement): OverlayElements {
 
       if (input.handlesFor !== undefined) {
         for (const handle of [...RESIZE_HANDLES, 'rotate' as Handle]) {
-          root.append(handleDot(input.handlesFor.transform, handle, input.transform));
+          root.append(handleDot(input.handlesFor, handle, input.transform));
         }
       }
 
@@ -137,11 +144,15 @@ function outline(node: PlacedNode, transform: ArtboardTransform): SVGSVGElement 
 
 /** One handle, centred on its position and sized in viewport pixels. */
 function handleDot(
-  nodeTransform: Transform,
+  placed: PlacedNode,
   handle: Handle,
   transform: ArtboardTransform,
 ): HTMLElement {
-  const world = handlePosition(nodeTransform, handle, ROTATE_OFFSET / Math.max(transform.scale, 0.0001));
+  const world = placedHandlePosition(
+    placed,
+    handle,
+    ROTATE_OFFSET / Math.max(transform.scale, 0.0001),
+  );
   const viewport = documentToViewport(transform, world);
 
   const element = document.createElement('div');

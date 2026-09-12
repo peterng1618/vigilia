@@ -53,6 +53,36 @@ async function drag(
   await page.mouse.up();
 }
 
+/**
+ * Selects `cpu-panel-bg`, a node INSIDE the CPU group.
+ *
+ * The interesting case for both the overlay and the inspector: its `x`/`y` are
+ * group-relative, so anything that confuses parent space with document space is
+ * wrong here and correct for every top-level node.
+ */
+async function selectPanelBackground(page: Page): Promise<void> {
+  const box = await page.locator('[data-node-id="cpu-panel-bg"]').boundingBox();
+
+  if (box === null) {
+    throw new Error('cpu-panel-bg has no box');
+  }
+
+  // Near the corner, not the centre: the gauge and the readout are painted
+  // above the background and fill the middle, so a centre click correctly
+  // selects `cpu-readout` instead (§137, topmost wins).
+  const spot = { x: box.x + 10, y: box.y + 10 };
+
+  // Two presses at the same spot: the first selects the group, the second
+  // enters it and takes the leaf under the cursor.
+  await page.mouse.click(spot.x, spot.y);
+  await page.mouse.click(spot.x, spot.y);
+
+  // The status bar names the selected node, so this asserts the leaf was
+  // reached rather than merely that something is selected — landing on the
+  // enclosing group would silently make every assertion below vacuous.
+  await expect(page.locator('#status')).toContainText('cpu-panel-bg');
+}
+
 test.describe('selection', () => {
   test('clicking a node selects it and draws an outline with handles', async ({ page }) => {
     await openEditor(page);
@@ -351,5 +381,178 @@ test.describe('evidence', () => {
     });
 
     expect(screenshot.byteLength).toBeGreaterThan(1000);
+  });
+
+  test('captures a grouped node with the inspector open', async ({ page }, testInfo) => {
+    // The evidence for two things that are only observable together: handles
+    // sitting on a node whose coordinates are group-relative, and §75 showing
+    // `style.fill` as the global token it points at rather than a raw colour.
+    const directory =
+      process.env['VIGILIA_CAPTURE'] === undefined
+        ? 'test-results/screenshots'
+        : '../../docs/gates/screenshots';
+
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    // The handles must be on the panel, not at the artboard origin — which is
+    // exactly the bug this capture was added after. Compared by CENTRE: a
+    // handle's element is a hit area centred on the corner, so its box origin
+    // sits half the hit size away and comparing origins fails by 9 px on a
+    // perfectly placed handle.
+    const handle = await page.locator('[data-vigilia-handle="nw"]').boundingBox();
+    const target = await page.locator('[data-node-id="cpu-panel-bg"]').boundingBox();
+
+    expect((handle?.x ?? 0) + (handle?.width ?? 0) / 2).toBeCloseTo(target?.x ?? 0, 0);
+    expect((handle?.y ?? 0) + (handle?.height ?? 0) / 2).toBeCloseTo(target?.y ?? 0, 0);
+
+    const screenshot = await page.screenshot({
+      path: `${directory}/editor-inspector-${testInfo.project.name}.png`,
+    });
+
+    await testInfo.attach(`editor-inspector-${testInfo.project.name}.png`, {
+      body: screenshot,
+      contentType: 'image/png',
+    });
+
+    expect(screenshot.byteLength).toBeGreaterThan(1000);
+  });
+});
+
+test.describe('the inspector', () => {
+  test('shows the selected node, and nothing before there is one', async ({ page }) => {
+    await openEditor(page);
+
+    const inspector = page.locator('[data-vigilia-inspector="root"]');
+    await expect(inspector).toContainText('Nothing selected.');
+
+    await page.locator('[data-node-id="title"]').click();
+
+    await expect(inspector).not.toContainText('Nothing selected.');
+    await expect(page.locator('[data-vigilia-input="name"]')).toBeVisible();
+    // Read-only: the id identifies the node in the document and in bindings.
+    await expect(page.locator('[data-vigilia-field="id"] input')).toBeDisabled();
+  });
+
+  test('typing a transform value moves the node', async ({ page }) => {
+    await openEditor(page);
+    await page.locator('[data-node-id="title"]').click();
+
+    const before = await page.locator('[data-node-id="title"]').boundingBox();
+    const x = page.locator('[data-vigilia-input="transform.x"]');
+
+    await x.fill('200');
+    // Committed on `change`, not on every keystroke: an edit per character
+    // would put 3 entries in the history for "200" and fight the 1 Hz redraw.
+    await x.blur();
+
+    await expect(page.locator('#status')).toContainText('undo: Set x');
+
+    const after = await page.locator('[data-node-id="title"]').boundingBox();
+    expect(after?.x).toBeGreaterThan(before?.x ?? 0);
+  });
+
+  test('rotation past the schema range wraps instead of failing to save', async ({ page }) => {
+    await openEditor(page);
+    await page.locator('[data-node-id="title"]').click();
+
+    const rotation = page.locator('[data-vigilia-input="transform.rotation"]');
+    await rotation.fill('400');
+    await rotation.blur();
+
+    // 400 is outside the schema's −360…360, so it is normalised rather than
+    // stored and rejected later by the validator.
+    await expect(rotation).toHaveValue('40');
+  });
+
+  test('a style bound to a global shows the token, not the colour (§75)', async ({ page }) => {
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    // The demo theme fills this panel from `palette.panel`.
+    const ref = page.locator('[data-vigilia-ref="style.fill"]');
+    await expect(ref).toBeVisible();
+    // And no literal input for the same property — §75 is a XOR, and showing
+    // both would invite an author to set a value that the ref then overrides.
+    await expect(page.locator('[data-vigilia-input="style.fill"]')).toHaveCount(0);
+  });
+
+  test('"make local" copies the resolved colour in, and "use global" puts it back', async ({ page }) => {
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    await page.locator('[data-vigilia-mode="literal:style.fill"]').click();
+
+    const input = page.locator('[data-vigilia-input="style.fill"]');
+    // Seeded with what the ref resolved to, so detaching does not change the
+    // rendering — the author sees the same pixels and can now edit them.
+    await expect(input).toHaveValue(/^#[0-9a-fA-F]{3,8}$/);
+    await expect(page.locator('[data-vigilia-ref="style.fill"]')).toHaveCount(0);
+
+    await page.locator('[data-vigilia-mode="ref:style.fill"]').click();
+    await expect(page.locator('[data-vigilia-ref="style.fill"]')).toBeVisible();
+  });
+
+  test('editing a literal colour repaints the node', async ({ page }) => {
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    await page.locator('[data-vigilia-mode="literal:style.fill"]').click();
+
+    const input = page.locator('[data-vigilia-input="style.fill"]');
+    await input.fill('#ff0000');
+    await input.blur();
+
+    await expect(page.locator('[data-node-id="cpu-panel-bg"]')).toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 0)',
+    );
+  });
+
+  test('clearing a property returns it to the default, and undo restores it', async ({ page }) => {
+    await openEditor(page);
+    await selectPanelBackground(page);
+
+    const shadow = page.locator('[data-vigilia-input="style.shadowColor"]');
+    await expect(shadow).toHaveValue('#00000066');
+
+    await page.locator('[data-vigilia-clear="style.shadowColor"]').click();
+    // Cleared means absent, which the panel shows as the placeholder rather
+    // than as an empty value that would round-trip as `shadowColor: ""`.
+    await expect(shadow).toHaveValue('');
+    await expect(shadow).toHaveAttribute('placeholder', 'default');
+
+    await page.keyboard.press('Control+z');
+    await expect(shadow).toHaveValue('#00000066');
+  });
+
+  test('a multi-selection shows shared values and marks the rest mixed', async ({ page }) => {
+    await openEditor(page);
+
+    await page.locator('[data-node-id="title"]').click();
+    await page.locator('[data-node-id="cpu-panel"]').click({ modifiers: ['Shift'] });
+
+    // Both sit at x 48 and differ in y. A field is only mixed when the values
+    // actually differ — showing "mixed" for an agreed value would be as
+    // misleading as showing one node's value for a disagreement.
+    await expect(page.locator('[data-vigilia-input="transform.x"]')).toHaveValue('48');
+    await expect(page.locator('[data-vigilia-input="transform.y"]')).toHaveValue('');
+    await expect(page.locator('[data-vigilia-input="transform.y"]')).toHaveAttribute(
+      'placeholder',
+      'mixed',
+    );
+  });
+
+  test('a locked node is inspectable but not transformable (§61)', async ({ page }) => {
+    await openEditor(page);
+    await page.locator('[data-node-id="title"]').click();
+
+    const locked = page.locator('[data-vigilia-input="locked"]');
+    await locked.check();
+
+    // §61: still selected, still inspectable — the panel stays populated.
+    await expect(page.locator('[data-vigilia-input="name"]')).toBeVisible();
+    // But the transform handles are gone, so it cannot be dragged.
+    await expect(page.locator('[data-vigilia-handle="se"]')).toHaveCount(0);
   });
 });

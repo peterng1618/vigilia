@@ -52,9 +52,9 @@
 <main>
   <h1>Vigilia — development status</h1>
   <p class="sub">
-    Generated 2026-09-12T11:17:25.683Z ·
+    Generated 2026-09-12T11:18:31.024Z ·
     branch <code>main</code> ·
-    commit <code>a1fbdbd</code> · <strong>uncommitted changes present</strong>
+    commit <code>916df53</code> · <strong>uncommitted changes present</strong>
   </p>
 
   <div class="warn-banner">
@@ -76,13 +76,13 @@
       <h3>Browser tests</h3>
       <div class="big">110</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">110 passing, 30 skipped · 1 min ago</div>
+      <div class="note">110 passing, 30 skipped · 2 min ago</div>
     </div>
     <div class="card">
       <h3>Player bundle, gzip</h3>
       <div class="big">199.4 KB</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">199.4 KB of a 400 KB budget · built 10 min ago</div>
+      <div class="note">199.4 KB of a 400 KB budget · built 11 min ago</div>
     </div>
     <div class="card">
       <h3>Typechecks</h3>
@@ -96,6 +96,7 @@
   <table>
     <thead><tr><th>What</th><th>Why it mattered</th></tr></thead>
     <tbody>
+      <tr><td><strong>Editor: the inspector panel, and handles that know about groups</strong></td><td class="missing">Every selected property is editable, and §75’s global-or-literal choice is a per-row control rather than something an author edits by hand: a style bound to a token shows the token and a swatch, with one button to detach it into a local value and one to put it back. Nine browser tests cover it. The panel immediately exposed a real bug — transform handles were placed from a node’s group-relative transform, so anything inside a group had its handles near the artboard origin while its outline was correct.</td></tr>
       <tr><td><strong>Re-fit before paint, and a resize that stops killing animation</strong></td><td class="missing">The player now re-fits the artboard from a ResizeObserver, which runs after layout and BEFORE paint — so no frame is ever painted at the old scale when a window is dragged or a phone rotates. Charts are only re-laid-out when the artboard’s own size changes: chart.resize() interrupts a running animation, and an observer fires once on subscribe, so the unguarded version silently removed the appear animation. Two browser tests caught that within a minute.</td></tr>
       <tr><td><strong>Editor: a working canvas</strong></td><td class="missing">Click, marquee, drag, resize, rotate, snap, nudge, delete, undo and redo — driven by real pointer input in 15 browser tests. It renders the LIVE dashboard through the same renderer the player uses, so ADR-0005 is now demonstrated rather than argued.</td></tr>
       <tr><td><strong>Editor foundation decided (ADR-0005)</strong></td><td class="missing">Both Fabric candidates rejected: they are canvas editors, and this renderer is DOM plus ECharts. Adopting one meant rendering the scene twice, which §31 forbids and Gate 0 rejects outright. Unblocks Gate 2.</td></tr>
@@ -114,11 +115,11 @@
   <table>
     <thead><tr><th>#</th><th>What</th><th>Why now</th><th>State</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td><strong>Editor: inspectors and the globals surface</strong></td><td class="missing">Gate 2 wants global/local override behaviour, rename and delete with reassignment (§75). The document model enforces the rules already; this is the UI over it.</td><td><span class="badge started">started</span></td></tr>
-      <tr><td>2</td><td><strong>Visual style presets</strong></td><td class="missing">Gate 2 asks for them, and they are data rather than UI — a preset is a named bundle of typed settings, so it can be authored and tested before any inspector exists.</td><td><span class="badge started">started</span></td></tr>
-      <tr><td>3</td><td><strong>Theme packages: ZIP import and export</strong></td><td class="missing">Gate 4. The security rules are the substance (§141: traversal, decompression bombs, symlinks, executable content), and a hand-written reader can enforce them without a dependency.</td><td><span class="badge started">started</span></td></tr>
-      <tr><td>4</td><td><strong>Font packaging and text metrics</strong></td><td class="missing">Gate 0 still wants a packaged font demonstrated, and §91 wants multilingual glyphs, digit widths and baselines verified at several artboard scales. Needs the asset pipeline first.</td><td><span class="badge started">started</span></td></tr>
-      <tr><td>5</td><td><strong>SignalR transport and the provider registry</strong></td><td class="missing">Deferred by ADR-0006. The wire format is the part that should not be invented against a server nobody can run — the C# ↔ TypeScript mirror is already the highest-risk edit here.</td><td><span class="badge blocked">blocked</span></td></tr>
+      <tr><td>1</td><td><strong>Editor specs</strong></td><td class="missing">The renderer half has .agents/specs/0003; the editor half has none, so the pure modules are the only contract. Writing 0004-0006 (selection and gestures, document editing and history, the inspector) pins down the edge cases that are currently only in test names.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>2</td><td><strong>Globals surface</strong></td><td class="missing">An author can point a property at a token but cannot yet add, rename or recolour one. §75 is only half usable until the palette itself is editable.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>3</td><td><strong>Grouping, alignment and multi-node resize</strong></td><td class="missing">Group/ungroup, align and distribute, and resizing several nodes at once. The last one is refused today rather than done wrongly: a proportional box scale is not expressible as a per-node width change for rotated children.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>4</td><td><strong>Open and save</strong></td><td class="missing">The editor loads a checked-in fixture and cannot persist. Needs the §139 rule that saving marks history clean without clearing it, so undo still reaches before the save.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>5</td><td><strong>Theme packages (Gate 4)</strong></td><td class="missing">ZIP import and export with the §141 security rules: path traversal, absolute paths, symlinks and zip bombs all rejected, and no secret ever inside a package (§143).</td><td><span class="badge started">started</span></td></tr>
     </tbody>
   </table>
 
@@ -179,48 +180,49 @@
   <div class="shots">
     <figure>
       <img src="docs/gates/screenshots/assets-desktop-chromium.png" alt="assets-desktop-chromium.png" loading="lazy" />
-      <figcaption>assets-desktop-chromium.png · 5 min ago</figcaption>
+      <figcaption>assets-desktop-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
-      <figcaption>assets-phone-chromium.png · 2 min ago</figcaption>
+      <figcaption>assets-phone-chromium.png · 3 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
-      <figcaption>demo-desktop-chromium.png · 5 min ago</figcaption>
+      <figcaption>demo-desktop-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
-      <figcaption>demo-phone-chromium.png · 2 min ago</figcaption>
+      <figcaption>demo-phone-chromium.png · 3 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/editor-desktop-chromium.png" alt="editor-desktop-chromium.png" loading="lazy" />
-      <figcaption>editor-desktop-chromium.png · 3 min ago</figcaption>
+      <figcaption>editor-desktop-chromium.png · 4 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/editor-inspector-desktop-chromium.png" alt="editor-inspector-desktop-chromium.png" loading="lazy" />
-      <figcaption>editor-inspector-desktop-chromium.png · 3 min ago</figcaption>
+      <figcaption>editor-inspector-desktop-chromium.png · 4 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-desktop-chromium.png" alt="portrait-cover-desktop-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-desktop-chromium.png · 5 min ago</figcaption>
+      <figcaption>portrait-cover-desktop-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-phone-chromium.png · 2 min ago</figcaption>
+      <figcaption>portrait-cover-phone-chromium.png · 3 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
-      <figcaption>stress-desktop-chromium.png · 5 min ago</figcaption>
+      <figcaption>stress-desktop-chromium.png · 6 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
-      <figcaption>stress-phone-chromium.png · 2 min ago</figcaption>
+      <figcaption>stress-phone-chromium.png · 3 min ago</figcaption>
     </figure>
   </div>
 
   <h2>Recent commits</h2>
   <ol class="log">
+    <li><code>916df53</code> fix(renderer): re-fit before paint, and stop resize killing chart animation<br /><span>2026-09-12 18:17:56 +0700</span></li>
     <li><code>a1fbdbd</code> docs(agents): drop a sentence the editor note made redundant<br /><span>2026-09-12 17:36:14 +0700</span></li>
     <li><code>fceea78</code> docs(agents): re-sync the agent guidance, and register three routine skills<br /><span>2026-09-12 17:35:37 +0700</span></li>
     <li><code>98f479d</code> feat(editor): the inspector model — §75's global-or-literal choice, as data<br /><span>2026-09-12 17:34:21 +0700</span></li>
@@ -245,7 +247,6 @@
     <li><code>7bcdce9</code> feat(renderer): outlines, dashes and shadows — the empty matrix row<br /><span>2026-09-12 15:34:54 +0700</span></li>
     <li><code>40d931a</code> feat(renderer): text layout, overflow and font diagnostics (§89)<br /><span>2026-09-12 15:25:19 +0700</span></li>
     <li><code>a1c2afe</code> docs: spec the scene renderer, and correct AGENTS.md against what was run<br /><span>2026-09-12 15:16:43 +0700</span></li>
-    <li><code>f47d3b5</code> docs(gates): record what the display path now demonstrates, and the matrix<br /><span>2026-09-12 15:15:06 +0700</span></li>
   </ol>
 </main>
 </body>

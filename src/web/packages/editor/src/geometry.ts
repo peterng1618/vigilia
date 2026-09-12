@@ -149,6 +149,15 @@ export interface PlacedNode {
   readonly type: ThemeNode['type'];
   /** Document→node matrix: use its inverse to bring a world point into node space. */
   readonly matrix: Matrix2D;
+  /**
+   * The composed matrix of this node's ancestors, without its own transform.
+   *
+   * Needed to convert a gesture: a node's `x`/`y` are expressed in its
+   * PARENT's space (§57), while a pointer delta arrives in document space. For
+   * a translation-only ancestor chain the two are the same, which is why a
+   * rotated group is where the difference shows up — the drag would go sideways.
+   */
+  readonly parentMatrix: Matrix2D;
   readonly width: number;
   readonly height: number;
   /** Depth in the tree; 0 for a root. */
@@ -187,6 +196,7 @@ export function placeNodes(nodes: readonly ThemeNode[]): PlacedNode[] {
         id: node.id,
         type: node.type,
         matrix,
+        parentMatrix,
         width: node.transform?.width ?? 0,
         height: node.transform?.height ?? 0,
         depth,

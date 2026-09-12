@@ -1,5 +1,5 @@
 import type { Transform } from '@vigilia/renderer-core';
-import { applyMatrix, invert, localMatrix, type Point } from './geometry.js';
+import { applyMatrix, invert, localMatrix, type Matrix2D, type Point } from './geometry.js';
 
 /**
  * Turning a drag into new transforms.
@@ -66,6 +66,15 @@ export interface GestureNode {
   readonly transform: Transform;
   /** §61: a locked node does not move. */
   readonly locked?: boolean;
+  /**
+   * The composed matrix of this node's ancestors — `PlacedNode.parentMatrix`.
+   *
+   * Omitted means the identity, which is correct for a top-level node. Supply
+   * it for a node inside a group, or a drag on a child of a rotated or scaled
+   * group travels at an angle to the pointer: the pointer delta arrives in
+   * document space, while `x`/`y` are written in the parent's space (§57).
+   */
+  readonly parentMatrix?: Matrix2D;
 }
 
 export interface GestureStart {
@@ -134,9 +143,12 @@ export function applyGesture(
   const delta = { x: pointer.x - start.origin.x, y: pointer.y - start.origin.y };
 
   if (start.handle === 'move') {
-    const constrained = modifiers.constrain === true ? constrainToAxis(delta) : delta;
-
     for (const node of movable) {
+      // Per node, because a multi-selection can span groups with different
+      // ancestors: one pointer delta is several different local deltas.
+      const local = toParentDelta(delta, node.parentMatrix);
+      const constrained = modifiers.constrain === true ? constrainToAxis(local) : local;
+
       result.set(node.id, {
         ...node.transform,
         x: (node.transform.x ?? 0) + constrained.x,
@@ -149,7 +161,18 @@ export function applyGesture(
 
   if (start.handle === 'rotate') {
     for (const node of movable) {
-      result.set(node.id, rotateNode(node.transform, start.origin, pointer, modifiers));
+      // The centre comes from the transform, so it is in parent space; the
+      // pointer is in document space. Both have to be in the same space before
+      // an angle between them means anything.
+      result.set(
+        node.id,
+        rotateNode(
+          node.transform,
+          toParentPoint(start.origin, node.parentMatrix),
+          toParentPoint(pointer, node.parentMatrix),
+          modifiers,
+        ),
+      );
     }
 
     return result;
@@ -162,7 +185,10 @@ export function applyGesture(
     return result;
   }
 
-  result.set(node.id, resizeNode(node.transform, start.handle, delta, modifiers));
+  result.set(
+    node.id,
+    resizeNode(node.transform, start.handle, toParentDelta(delta, node.parentMatrix), modifiers),
+  );
 
   return result;
 }
@@ -335,40 +361,109 @@ export function worldCentre(transform: Transform): Point {
 }
 
 /**
- * Where a handle sits in world space, for drawing it.
+ * Where a handle sits, for a transform taken on its own.
  *
- * The rotate handle is offset outside the top edge along the node's own rotated
- * "up", so it stays above the shape rather than above the screen.
+ * The result is in the transform's PARENT space, which equals document space
+ * only for a top-level node — use {@link placedHandlePosition} to draw handles.
+ * Kept because it is the natural primitive for reasoning about a single
+ * transform, and it delegates so the two can never disagree.
  */
 export function handlePosition(
   transform: Transform,
   handle: Handle,
   rotateOffset = 24,
 ): Point {
+  return placedHandlePosition(
+    {
+      matrix: localMatrix(transform),
+      width: transform.width ?? 0,
+      height: transform.height ?? 0,
+    },
+    handle,
+    rotateOffset,
+  );
+}
+
+/**
+ * Converts a document-space delta into a parent's space.
+ *
+ * A node's `x`/`y` live in its parent's coordinate system (§57), so a drag
+ * measured in document space has to be brought into that system before it can
+ * be added to them. Only the linear part matters — a delta is a direction and a
+ * distance, so the translation is irrelevant.
+ *
+ * For a translation-only ancestor chain this is the identity, which is exactly
+ * why the omission is easy to miss: every demo group is translation-only, and
+ * the bug only appears once someone rotates or scales a group and then drags a
+ * child inside it, at which point the child travels at an angle to the pointer.
+ */
+export function toParentDelta(delta: Point, parentMatrix: Matrix2D | undefined): Point {
+  if (parentMatrix === undefined) {
+    return delta;
+  }
+
+  const linear: Matrix2D = { ...parentMatrix, e: 0, f: 0 };
+  const inverse = invert(linear);
+
+  return inverse === undefined ? delta : applyMatrix(inverse, delta);
+}
+
+/** Brings a document-space point into a parent's space, translation included. */
+export function toParentPoint(point: Point, parentMatrix: Matrix2D | undefined): Point {
+  if (parentMatrix === undefined) {
+    return point;
+  }
+
+  const inverse = invert(parentMatrix);
+
+  return inverse === undefined ? point : applyMatrix(inverse, point);
+}
+
+/**
+ * Where a handle sits in world space for a PLACED node.
+ *
+ * The plain {@link handlePosition} takes a bare transform, which is in the
+ * node's parent space — correct for a top-level node and wrong for anything
+ * inside a group, where it puts every handle near the artboard origin. That was
+ * visible as handles scattered across the corner of the canvas while the
+ * selection outline sat correctly on the shape, because the outline was already
+ * using the composed matrix.
+ */
+export function placedHandlePosition(
+  placed: { readonly matrix: Matrix2D; readonly width: number; readonly height: number },
+  handle: Handle,
+  rotateOffset = 24,
+): Point {
+  const local = handleLocalPoint(placed.width, placed.height, handle);
+  const world = applyMatrix(placed.matrix, local);
+
+  if (handle !== 'rotate') {
+    return world;
+  }
+
+  const centre = applyMatrix(placed.matrix, { x: placed.width / 2, y: placed.height / 2 });
+  const dx = world.x - centre.x;
+  const dy = world.y - centre.y;
+  const length = Math.hypot(dx, dy);
+
+  return length === 0
+    ? world
+    : { x: world.x + (dx / length) * rotateOffset, y: world.y + (dy / length) * rotateOffset };
+}
+
+/** The unit-space point a handle sits on, in node coordinates. */
+function handleLocalPoint(width: number, height: number, handle: Handle): Point {
   if (handle === 'move') {
-    return worldCentre(transform);
+    return { x: width / 2, y: height / 2 };
   }
 
   if (handle === 'rotate') {
-    const matrix = localMatrix(transform);
-    const top = applyMatrix(matrix, { x: (transform.width ?? 0) / 2, y: 0 });
-    const centre = worldCentre(transform);
-
-    // Unit vector from centre toward the top edge, extended past it.
-    const dx = top.x - centre.x;
-    const dy = top.y - centre.y;
-    const length = Math.hypot(dx, dy);
-
-    if (length === 0) {
-      return top;
-    }
-
-    return { x: top.x + (dx / length) * rotateOffset, y: top.y + (dy / length) * rotateOffset };
+    return { x: width / 2, y: 0 };
   }
 
   const unit = { x: 1 - ANCHOR[handle].x, y: 1 - ANCHOR[handle].y };
 
-  return anchorWorld(transform, unit);
+  return { x: width * unit.x, y: height * unit.y };
 }
 
 /**

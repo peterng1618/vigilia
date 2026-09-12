@@ -30,6 +30,7 @@ import {
 import {
   applyGesture,
   type GestureModifiers,
+  type GestureNode,
   type GestureStart,
   type Handle,
 } from './transform-gesture.js';
@@ -56,6 +57,9 @@ import {
 } from './history.js';
 import { createOverlay } from './overlay.js';
 import { unionBounds } from './geometry.js';
+import { describeSelection } from './inspector-model.js';
+import { applyFieldChange, labelForField } from './inspector-apply.js';
+import { createInspector } from './inspector-panel.js';
 
 /**
  * The editor shell.
@@ -125,9 +129,10 @@ interface DragState {
 function start(): void {
   const host = document.querySelector<HTMLElement>('#stage');
   const status = document.querySelector<HTMLElement>('#status');
+  const work = document.querySelector<HTMLElement>('#work');
 
-  if (host === null || status === null) {
-    throw new Error('Editor shell is missing #stage or #status.');
+  if (host === null || status === null || work === null) {
+    throw new Error('Editor shell is missing #stage, #work or #status.');
   }
 
   const parameters = new URLSearchParams(window.location.search);
@@ -148,6 +153,24 @@ function start(): void {
 
   let handle: SceneHandle = mountScene({ host, plan: plan(visibleDocument(history)) });
   const overlay = createOverlay(host);
+
+  const inspector = createInspector(work, {
+    onChange(key, change) {
+      const document_ = history.current;
+      const next = applyFieldChange(document_, selection.ids, key, change);
+
+      // Identity: `applyFieldChange` returns the same document when a change
+      // did not apply — a refused value, an unknown key — and committing then
+      // would put an undo entry in history that does nothing.
+      if (next !== document_) {
+        history = commit(history, labelForField(key), next);
+      }
+
+      // Re-rendered either way, so a refused edit snaps the field back to the
+      // real value instead of leaving the author's rejected input on screen.
+      render();
+    },
+  });
 
   /**
    * Re-mounts the scene.
@@ -179,6 +202,7 @@ function start(): void {
 
     drawOverlay();
     drawStatus();
+    drawInspector();
   };
 
   const placed = (): PlacedNode[] => placeNodes(visibleDocument(history).nodes);
@@ -189,19 +213,42 @@ function start(): void {
   const drawOverlay = (): void => {
     const document_ = visibleDocument(history);
     const chosen = selectedPlacements();
-    const single = selection.ids.length === 1 ? findNode(document_.nodes, selection.ids[0]!) : undefined;
+    // From the same placements as the outline: handles derived from the raw
+    // transform land in the wrong place for anything inside a group.
+    const single = selection.ids.length === 1 ? chosen[0] : undefined;
 
     overlay.update({
       transform: handle.transform(),
       selected: chosen,
-      handlesFor:
-        single === undefined || single.locked === true
-          ? undefined
-          : { id: single.id, transform: single.transform ?? {} },
+      handlesFor: single === undefined || single.locked ? undefined : single,
       guides,
       artboard: document_.artboard,
       marquee,
     });
+  };
+
+  /**
+   * Redraws the inspector, but only when its content would differ.
+   *
+   * The panel is rebuilt wholesale, which loses focus — and `render()` also
+   * runs on every 1 Hz data tick, so redrawing unconditionally would steal
+   * focus from a field mid-typing once a second. The selection and the
+   * committed document are what the panel depends on; live sample values are
+   * not.
+   */
+  let inspectorKey = '';
+
+  const drawInspector = (): void => {
+    const document_ = history.current;
+    const sections = describeSelection(document_, selection.ids);
+    const key = JSON.stringify(sections);
+
+    if (key === inspectorKey) {
+      return;
+    }
+
+    inspectorKey = key;
+    inspector.render(sections, document_.globals ?? {});
   };
 
   const drawStatus = (): void => {
@@ -280,7 +327,7 @@ function start(): void {
         gesture: {
           handle: grabbed,
           origin: point,
-          nodes: gestureNodes(document_, selection.ids),
+          nodes: gestureNodes(document_, placed(), selection.ids),
         },
         doubleClickCandidate: undefined,
         moved: false,
@@ -316,7 +363,11 @@ function start(): void {
       kind: 'transform',
       pointerId: event.pointerId,
       viewportOrigin: { x: event.clientX, y: event.clientY },
-      gesture: { handle: 'move', origin: point, nodes: gestureNodes(document_, selection.ids) },
+      gesture: {
+        handle: 'move',
+        origin: point,
+        nodes: gestureNodes(document_, placed(), selection.ids),
+      },
       doubleClickCandidate: candidate,
       moved: false,
     };
@@ -533,7 +584,7 @@ function start(): void {
       const gesture: GestureStart = {
         handle: 'move',
         origin: { x: 0, y: 0 },
-        nodes: gestureNodes(document_, selection.ids),
+        nodes: gestureNodes(document_, placed(), selection.ids),
       };
 
       const transforms = applyGesture(gesture, { x: nudge.x * step, y: nudge.y * step });
@@ -557,17 +608,34 @@ function start(): void {
   render();
 }
 
-function gestureNodes(document_: ThemeDocument, ids: readonly string[]) {
+/**
+ * Snapshots the selected nodes for a gesture.
+ *
+ * Takes the placements as well as the document, because a gesture needs each
+ * node's ancestor matrix to convert a document-space pointer delta into the
+ * parent space its `x`/`y` are written in (§57).
+ */
+function gestureNodes(
+  document_: ThemeDocument,
+  placements: readonly PlacedNode[],
+  ids: readonly string[],
+): GestureNode[] {
   return ids
     .map((id) => {
       const node = findNode(document_.nodes, id);
-      return node === undefined
-        ? undefined
-        : {
-            id,
-            transform: (node.transform ?? {}) as Transform,
-            ...(node.locked === true ? { locked: true } : {}),
-          };
+
+      if (node === undefined) {
+        return undefined;
+      }
+
+      const placement = placements.find((candidate) => candidate.id === id);
+
+      return {
+        id,
+        transform: (node.transform ?? {}) as Transform,
+        ...(node.locked === true ? { locked: true } : {}),
+        ...(placement === undefined ? {} : { parentMatrix: placement.parentMatrix }),
+      };
     })
     .filter((node): node is NonNullable<typeof node> => node !== undefined);
 }
