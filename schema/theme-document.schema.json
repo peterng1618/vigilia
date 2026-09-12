@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://vigilia.local/schema/theme-document/1.json",
   "title": "Vigilia theme document",
-  "description": "The owned theme format (§134). Fabric JSON, DOM snapshots and raw ECharts options are explicitly NOT this format — they are engine details behind the renderer.",
+  "description": "The owned theme format (§134). Fabric JSON, DOM snapshots and raw ECharts options are explicitly NOT this format — they are engine details behind the renderer. This file is the published contract; the in-memory shape is src/web/packages/renderer-core/src/theme/document.ts, and schema-sync.test.ts asserts the shared constants match. Rules this schema language cannot express — reference resolution, ID uniqueness, tree depth and node count — are enforced by theme/validate.ts, which is the authority for import.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "artboard", "nodes"],
   "properties": {
     "schemaVersion": {
-      "description": "Integer document version. An unsupported version must fail import without changing the library (§141).",
+      "description": "Integer document version. An unsupported version must fail import without changing the library (§141). There are no migrations yet, so this build accepts exactly 1.",
       "type": "integer",
       "minimum": 1
     },
@@ -38,7 +38,7 @@
       }
     },
     "nodes": {
-      "description": "Ordered node tree. Child order alone determines stacking (§137) — there is no z-index.",
+      "description": "Ordered node tree. Child order alone determines stacking (§137) — there is no z-index. Depth and total count are bounded by the validator, not here.",
       "type": "array",
       "items": { "$ref": "#/$defs/node" }
     },
@@ -114,6 +114,11 @@
       ]
     },
 
+    "styleMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/styleValue" }
+    },
+
     "transform": {
       "description": "Group-local coordinates (§57). Grouping and ungrouping must preserve world appearance, so transforms compose rather than being baked.",
       "type": "object",
@@ -156,9 +161,17 @@
           "type": "boolean",
           "default": false
         },
-        "style": { "type": "object", "additionalProperties": { "$ref": "#/$defs/styleValue" } },
-        "content": { "type": "object", "additionalProperties": true },
-        "binding": { "$ref": "#/$defs/binding" },
+        "style": { "$ref": "#/$defs/styleMap" },
+        "content": {
+          "description": "Typed per node type. The validator selects the matching shape: chartContent, textContent, imageContent, videoContent, or rectangleContent.",
+          "type": "object"
+        },
+        "bindings": {
+          "description": "Ordered sensor bindings. A node type that reads no data must declare none — a binding nothing reads would silently do nothing. A text element may declare several so styled runs can show different live values (§89).",
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/binding" }
+        },
         "children": {
           "type": "array",
           "items": { "$ref": "#/$defs/node" }
@@ -171,7 +184,35 @@
         },
         {
           "if": { "properties": { "type": { "const": "chart" } }, "required": ["type"] },
-          "then": { "required": ["content"] }
+          "then": {
+            "required": ["content", "bindings"],
+            "properties": { "content": { "$ref": "#/$defs/chartContent" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] },
+          "then": {
+            "required": ["content"],
+            "properties": { "content": { "$ref": "#/$defs/textContent" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "image" } }, "required": ["type"] },
+          "then": {
+            "required": ["content"],
+            "properties": { "content": { "$ref": "#/$defs/imageContent" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "video" } }, "required": ["type"] },
+          "then": {
+            "required": ["content"],
+            "properties": { "content": { "$ref": "#/$defs/videoContent" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "rectangle" } }, "required": ["type"] },
+          "then": { "properties": { "content": { "$ref": "#/$defs/rectangleContent" } } }
         }
       ]
     },
@@ -180,13 +221,307 @@
       "description": "§93: themes bind to semantic keys, and a mapping layer resolves them to actual sensors — so changing providers must not require editing the theme. A theme therefore never stores a provider instance ID.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["semanticKey"],
+      "required": ["id", "semanticKey"],
       "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
         "semanticKey": { "type": "string", "minLength": 1, "maxLength": 120 },
         "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
         "unitDisplay": { "enum": ["none", "short", "long"], "default": "short" },
         "scale": { "type": "number" },
         "offset": { "type": "number" }
+      }
+    },
+
+    "rectangleContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cornerRadius": { "type": "number", "minimum": 0 }
+      }
+    },
+
+    "textContent": {
+      "description": "§89: styled runs, so a label, a live value and a unit can be styled differently inside one text box. Overflow is explicit — clipping and ellipsis are authored, never silent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs"],
+      "properties": {
+        "runs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/textRun" }
+        },
+        "wrap": { "type": "boolean", "default": false },
+        "overflow": { "enum": ["clip", "ellipsis", "visible"], "default": "clip" },
+        "align": { "enum": ["left", "center", "right"], "default": "left" },
+        "verticalAlign": { "enum": ["top", "middle", "bottom"], "default": "top" }
+      }
+    },
+
+    "textRun": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "text"],
+          "properties": {
+            "kind": { "const": "literal" },
+            "text": { "type": "string", "maxLength": 2000 },
+            "style": { "$ref": "#/$defs/styleMap" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bindingId"],
+          "properties": {
+            "kind": { "const": "value" },
+            "bindingId": {
+              "description": "Must name a binding declared on the SAME node. A run reading another node's binding would make this element depend on a node it has no relationship to.",
+              "$ref": "#/$defs/stableId"
+            },
+            "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
+            "unitDisplay": { "enum": ["none", "short", "long"] },
+            "style": { "$ref": "#/$defs/styleMap" }
+          }
+        }
+      ]
+    },
+
+    "chartContent": {
+      "description": "§87: typed chart settings translated into engine configuration. Raw executable options never appear here. The settings shapes are the same ones the renderer's adapters accept, so the format and the renderer cannot disagree about what a gauge is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "settings"],
+      "properties": {
+        "family": { "enum": ["gauge", "line", "bar", "pie"] },
+        "settings": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "family": { "const": "gauge" } }, "required": ["family"] },
+          "then": { "properties": { "settings": { "$ref": "#/$defs/gaugeSettings" } } }
+        },
+        {
+          "if": { "properties": { "family": { "const": "line" } }, "required": ["family"] },
+          "then": { "properties": { "settings": { "$ref": "#/$defs/lineSettings" } } }
+        },
+        {
+          "if": { "properties": { "family": { "const": "bar" } }, "required": ["family"] },
+          "then": { "properties": { "settings": { "$ref": "#/$defs/barSettings" } } }
+        },
+        {
+          "if": { "properties": { "family": { "const": "pie" } }, "required": ["family"] },
+          "then": { "properties": { "settings": { "$ref": "#/$defs/pieSettings" } } }
+        }
+      ]
+    },
+
+    "fill": {
+      "description": "Thresholds and gradients are deliberately distinct. Thresholds are discrete bands with semantic meaning ('above 80 °C is red'); a gradient is decorative. A band's offset is the UPPER bound of its span, consistently across every family.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "color"],
+          "properties": {
+            "kind": { "const": "solid" },
+            "color": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bands"],
+          "properties": {
+            "kind": { "const": "thresholds" },
+            "bands": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/gradientStop" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "stops"],
+          "properties": {
+            "kind": { "const": "gradient" },
+            "stops": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/gradientStop" } }
+          }
+        }
+      ]
+    },
+
+    "gradientStop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "color"],
+      "properties": {
+        "offset": { "type": "number", "minimum": 0, "maximum": 1 },
+        "color": {
+          "description": "Hex (#rgb or #rrggbb) is required wherever interpolation happens: a CSS colour keyword cannot be mixed, and the renderer falls back to an endpoint instead.",
+          "type": "string"
+        }
+      }
+    },
+
+    "gaugeSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startAngle", "endAngle", "min", "max", "thickness", "track", "progress", "roundCap"],
+      "properties": {
+        "startAngle": { "type": "number", "minimum": -360, "maximum": 360 },
+        "endAngle": { "type": "number", "minimum": -360, "maximum": 360 },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "track": { "$ref": "#/$defs/fill" },
+        "progress": { "$ref": "#/$defs/fill" },
+        "roundCap": { "type": "boolean" },
+        "gradientSegments": {
+          "description": "Segments used to approximate an angular gradient, which the engine cannot express natively on an arc (§85).",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 256
+        }
+      }
+    },
+
+    "lineSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineWidth",
+        "interpolation",
+        "stroke",
+        "showMarkers",
+        "markerSize",
+        "windowSeconds",
+        "maxPoints",
+        "showAxes"
+      ],
+      "properties": {
+        "lineWidth": { "type": "number", "minimum": 0 },
+        "interpolation": { "enum": ["linear", "smooth", "step"] },
+        "stroke": { "$ref": "#/$defs/fill" },
+        "area": { "$ref": "#/$defs/fill" },
+        "showMarkers": { "type": "boolean" },
+        "markerSize": { "type": "number", "minimum": 0 },
+        "windowSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "maxPoints": {
+          "description": "§122: retained points are bounded. When exceeded the oldest are dropped; nothing is averaged, so no value is invented.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "showAxes": { "type": "boolean" },
+        "sampling": { "enum": ["lttb", "average", "none"] }
+      }
+    },
+
+    "barSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orientation",
+        "min",
+        "max",
+        "categoryGapPercent",
+        "cornerRadius",
+        "fill",
+        "showAxes",
+        "showCategoryLabels"
+      ],
+      "properties": {
+        "orientation": { "enum": ["horizontal", "vertical"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "barWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "categoryGapPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "cornerRadius": { "type": "number", "minimum": 0 },
+        "fill": { "$ref": "#/$defs/fill" },
+        "track": {
+          "description": "Present makes this a progress bar; absent makes it a plain bar chart.",
+          "$ref": "#/$defs/fill"
+        },
+        "showAxes": { "type": "boolean" },
+        "showCategoryLabels": { "type": "boolean" }
+      }
+    },
+
+    "pieSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "innerRadiusPercent",
+        "outerRadiusPercent",
+        "startAngle",
+        "padAngle",
+        "cornerRadius",
+        "total",
+        "palette",
+        "showLabels"
+      ],
+      "properties": {
+        "innerRadiusPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "outerRadiusPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "startAngle": { "type": "number", "minimum": -360, "maximum": 360 },
+        "endAngle": { "type": "number", "minimum": -360, "maximum": 360 },
+        "padAngle": { "type": "number", "minimum": 0, "maximum": 90 },
+        "cornerRadius": { "type": "number", "minimum": 0 },
+        "total": {
+          "description": "How the whole is determined. 'sum' means the known parts ARE the whole; 'fixed' names an authored total whose unaccounted remainder is a real measured quantity. §83 requires pie composition to be distinguished from gauge progress, and this is where that distinction lives.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": { "kind": { "const": "sum" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "value"],
+              "properties": {
+                "kind": { "const": "fixed" },
+                "value": { "type": "number", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "remainderFill": {
+          "description": "Only ever drawn for a fixed total, because only then is the remainder measurable.",
+          "$ref": "#/$defs/fill"
+        },
+        "palette": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/fill" } },
+        "showLabels": {
+          "description": "Engine-drawn labels. Off by default: typography is rendered by our own text elements (§91), which is the only way shared tokens apply.",
+          "type": "boolean"
+        }
+      }
+    },
+
+    "imageContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/stableId" },
+        "fit": { "enum": ["contain", "cover", "stretch"], "default": "contain" },
+        "monochrome": {
+          "description": "§111: monochrome recolouring for imported SVG icons, which must preserve multicolour originals unless recoloured explicitly.",
+          "$ref": "#/$defs/styleValue"
+        }
+      }
+    },
+
+    "videoContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/stableId" },
+        "loop": { "type": "boolean", "default": true },
+        "muted": { "type": "boolean", "default": true }
       }
     },
 
@@ -198,7 +533,7 @@
         "id": { "$ref": "#/$defs/stableId" },
         "kind": { "enum": ["image", "svg", "gif", "video", "font"] },
         "path": {
-          "description": "Package-relative path under assets/. Absolute paths, traversal and symlinks are rejected at import (§141).",
+          "description": "Package-relative path under assets/. NOTE: this pattern permits dots, so it does NOT by itself reject '..' traversal — the validator rejects a '..' segment explicitly, and that check is the one that holds. Absolute paths and symlinks are rejected at import (§141).",
           "type": "string",
           "pattern": "^assets/[A-Za-z0-9._/-]{1,200}$"
         },

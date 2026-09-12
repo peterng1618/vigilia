@@ -95,3 +95,46 @@ export type {
 } from './charts/pie.js';
 
 export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
+
+export type {
+  Artboard,
+  AssetLicense,
+  AssetReference,
+  Binding,
+  ChartContent,
+  ChartFamily,
+  GlobalEntry,
+  GlobalGroup,
+  GlobalGroupName,
+  GlobalRef,
+  Globals,
+  ImageContent,
+  NodeType,
+  RectangleContent,
+  StyleMap,
+  StyleValue,
+  TextContent,
+  TextRun,
+  ThemeDocument,
+  ThemeMetadata,
+  ThemeNode,
+  Transform,
+  VideoContent,
+} from './theme/document.js';
+
+export {
+  CHART_FAMILIES,
+  GLOBAL_GROUPS,
+  MAX_ARTBOARD_DIMENSION,
+  MAX_NODE_COUNT,
+  MAX_NODE_DEPTH,
+  NODE_TYPES,
+  SUPPORTED_SCHEMA_VERSION,
+  requiredSemanticKeys,
+  walkBindings,
+  walkNodes,
+} from './theme/document.js';
+
+export type { IssueCode, ValidationIssue, ValidationResult } from './theme/validate.js';
+
+export { validateThemeDocument } from './theme/validate.js';
