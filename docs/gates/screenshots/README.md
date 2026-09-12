@@ -24,14 +24,19 @@ so without it you capture the previous build.
 
 Nothing compares against them, and nothing should:
 
-- **They are not byte-reproducible.** The data behind them is deterministic —
-  the fake source is a pure function of its clock — but a capture lands
-  mid-animation, and the number of frames the engine gets varies slightly per
-  run. Two runs of the same commit produce visibly identical, bitwise different
-  images.
+- **Any frame with a chart in it is not byte-reproducible.** Measured, not
+  assumed: with the clock frozen, animation disabled and a fresh page per
+  capture, the chart-free fixture reproduces exactly while every frame
+  containing an ECharts chart differs — on both the canvas and SVG renderers.
+  See the engine-gap section in [`../gate-0.md`](../gate-0.md).
 - **They are platform-specific.** CI renders on Linux and development happens on
   Windows; glyph rasterisation differs, so a committed PNG could never pass as a
   cross-platform assertion.
+
+Captures use `?static=1`, which disables animation — a real setting the player
+also applies when the viewer prefers reduced motion — and discard a warm-up
+frame, because the first render after a cold browser start differs from every
+render after it.
 
 What they are for: seeing what the renderer currently produces without running
 it, and noticing when a change alters the design in a way no assertion covers.

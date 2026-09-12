@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vigilia — development status</title>
+<!--
+  GENERATED FILE. Do not edit: run `node tools/dev-status.mjs` from the
+  repository root. Every number here comes from an execution or from git; the
+  milestone table is the one hand-maintained part and lives in that script.
+-->
+<style>
+  :root { color-scheme: dark light; --bg:#0c0e13; --panel:#151922; --line:#232a36;
+          --ink:#e8ecf3; --dim:#8a97ab; --ok:#36b37e; --bad:#ff5630; --warn:#ffab00; --accent:#00b8d9; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 system-ui, sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 24px 80px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:19px; margin:40px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  p.sub { color:var(--dim); margin:0 0 24px; }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .card h3 { margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); font-weight:600; }
+  .big { font-size:26px; font-weight:700; }
+  .note { color:var(--dim); font-size:13px; margin-top:4px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .badge.pass { background:#0d3b2a; color:var(--ok); }
+  .badge.fail { background:#45160f; color:var(--bad); }
+  .badge.unknown, .badge.skipped { background:#2a2f3a; color:var(--dim); }
+  .badge.blocked { background:#45160f; color:#ff8f73; }
+  .badge.nearly { background:#3b3410; color:var(--warn); }
+  .badge.started { background:#0d3242; color:var(--accent); }
+  .badge.not-started { background:#2a2f3a; color:var(--dim); }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  td.missing { color:var(--dim); }
+  code { font-family:ui-monospace, monospace; font-size:13px; background:#00000040; padding:1px 5px; border-radius:4px; }
+  .shots { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  figure { margin:0; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  figure img { display:block; width:100%; height:auto; background:#000; }
+  figcaption { padding:10px 12px; font-size:13px; color:var(--dim); }
+  ol.log { padding-left:20px; }
+  ol.log li { margin-bottom:6px; }
+  ol.log span { color:var(--dim); font-size:13px; }
+  .warn-banner { background:#3b3410; border:1px solid #6b5a15; color:var(--warn);
+                 padding:12px 16px; border-radius:10px; margin-bottom:24px; font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Vigilia — development status</h1>
+  <p class="sub">
+    Generated 2026-09-12T09:32:44.178Z ·
+    branch <code>main</code> ·
+    commit <code>011ab34</code> · <strong>uncommitted changes present</strong>
+  </p>
+
+  <div class="warn-banner">
+    <strong>No .NET code in this repository has ever been compiled.</strong>
+    There is no .NET SDK on the development machine, only the EOL 6.0.35 runtime, so everything
+    under <code>src/Vigilia.*</code> is authored-but-unbuilt and the backend CI job is paused.
+    The display path below is real and executed; the host is not.
+  </div>
+
+  <h2>Verified now</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Unit tests</h3>
+      <div class="big">472</div>
+      <div><span class="badge pass">passing</span></div>
+      <div class="note">472 of 472 passing</div>
+    </div>
+    <div class="card">
+      <h3>Browser tests</h3>
+      <div class="big">4</div>
+      <div><span class="badge pass">passing</span></div>
+      <div class="note">4 passing, 0 skipped · 1 min ago</div>
+    </div>
+    <div class="card">
+      <h3>Player bundle, gzip</h3>
+      <div class="big">199.1 KB</div>
+      <div><span class="badge pass">passing</span></div>
+      <div class="note">199.1 KB of a 400 KB budget · built 3 min ago</div>
+    </div>
+    <div class="card">
+      <h3>Typechecks</h3>
+      <div class="big">3/3</div>
+      <div><span class="badge pass">passing</span></div>
+      <div class="note">renderer-core: clean · player: clean · fake-source: clean</div>
+    </div>
+  </div>
+
+  <h2>Milestones</h2>
+  <table>
+    <thead><tr><th>Gate</th><th>State</th><th>Done</th><th>Missing</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>0 — Feasibility</strong></td>
+        <td><span class="badge blocked">blocked</span></td>
+        <td>Four chart families, minimal shapes, independent display bundle measured, styling matrix authored, licences inventoried, dependencies pinned.</td>
+        <td class="missing">Human-only: name reference hardware (§126), run the elevation and anti-cheat probes on real hardware, decide the two engine-gap alternatives (§85), approve the editor strategy (ADR-0001).</td>
+      </tr>
+      <tr>
+        <td><strong>1 — Document/rendering</strong></td>
+        <td><span class="badge nearly">nearly done</span></td>
+        <td>Schema, typed globals and references, shared renderer, contain/cover, nested transforms, byte-stable JSON round-trip, deterministic screenshot capture.</td>
+        <td class="missing">Screenshots are deterministic per platform but there are no committed pixel baselines — that waits on §126 reference hardware, since CI is Linux and development is Windows.</td>
+      </tr>
+      <tr>
+        <td><strong>2 — Authoring</strong></td>
+        <td><span class="badge blocked">blocked</span></td>
+        <td>Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive.</td>
+        <td class="missing">The editor itself: inspectors, globals UI, gesture undo, grouping, snapping. Blocked on ADR-0001, which must not be pre-empted by installing a candidate.</td>
+      </tr>
+      <tr>
+        <td><strong>3 — Live display</strong></td>
+        <td><span class="badge blocked">blocked</span></td>
+        <td>Client-side sample source contract, bounded history with reconnect replacement, deterministic fake source, unmapped-key and status handling end to end.</td>
+        <td class="missing">Everything host-side: provider registry, Windows and API providers, the custom-sensor wizard, pairing, the SignalR transport. Blocked on a .NET SDK — no .NET code in this repository has ever been compiled.</td>
+      </tr>
+      <tr>
+        <td><strong>4 — Reuse/packages</strong></td>
+        <td><span class="badge started">started</span></td>
+        <td>Widget insertion with fresh IDs, provenance and explicit global mapping (§77/§138).</td>
+        <td class="missing">Theme packs: the ZIP container, manifest, import staging, decompression-bomb and traversal limits, SVG importer (host-side), draft recovery.</td>
+      </tr>
+      <tr>
+        <td><strong>5 — Release</strong></td>
+        <td><span class="badge not-started">not started</span></td>
+        <td>Nothing.</td>
+        <td class="missing">Installer, tray, recovery, permissions review, soak and game benchmarks.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Rendered evidence</h2>
+  <p class="sub">
+    Captured from the built player bundle with a frozen clock and animation disabled, so a frame is a
+    pure function of the clock. These are <strong>evidence, not baselines</strong>: nothing compares
+    against them, and glyph rasterisation differs between this machine and CI.
+  </p>
+  <div class="shots">
+    <figure>
+      <img src="docs/gates/screenshots/assets-desktop-chromium.png" alt="assets-desktop-chromium.png" loading="lazy" />
+      <figcaption>assets-desktop-chromium.png · 18 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
+      <figcaption>assets-phone-chromium.png · 17 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
+      <figcaption>demo-desktop-chromium.png · 18 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
+      <figcaption>demo-phone-chromium.png · 17 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/portrait-cover-desktop-chromium.png" alt="portrait-cover-desktop-chromium.png" loading="lazy" />
+      <figcaption>portrait-cover-desktop-chromium.png · 18 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
+      <figcaption>portrait-cover-phone-chromium.png · 17 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
+      <figcaption>stress-desktop-chromium.png · 18 min ago</figcaption>
+    </figure>
+    <figure>
+      <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
+      <figcaption>stress-phone-chromium.png · 17 min ago</figcaption>
+    </figure>
+  </div>
+
+  <h2>Recent commits</h2>
+  <ol class="log">
+    <li><code>011ab34</code> feat(theme): asset resolution, image rendering and monochrome recolouring<br /><span>2026-09-12 16:16:17 +0700</span></li>
+    <li><code>7999066</code> feat(theme): widget insertion with fresh ids and provenance (§138)<br /><span>2026-09-12 16:04:57 +0700</span></li>
+    <li><code>90fa9ae</code> test(contracts): guard the C# ↔ TypeScript mirror against drift<br /><span>2026-09-12 16:00:43 +0700</span></li>
+    <li><code>facd835</code> docs: record that screenshot capture needs --workers=1<br /><span>2026-09-12 15:57:59 +0700</span></li>
+    <li><code>d0b9a0d</code> test(themes): add stress and portrait-cover fixtures, and fix what they found<br /><span>2026-09-12 15:57:22 +0700</span></li>
+    <li><code>072cff6</code> feat(theme): canonical serialisation and a byte-stable JSON round-trip<br /><span>2026-09-12 15:41:18 +0700</span></li>
+    <li><code>c6cb293</code> docs: drop the commit count from the handoff<br /><span>2026-09-12 15:37:03 +0700</span></li>
+    <li><code>be3d3e4</code> docs: rewrite the handoff and close out the styling matrix row<br /><span>2026-09-12 15:36:35 +0700</span></li>
+    <li><code>7bcdce9</code> feat(renderer): outlines, dashes and shadows — the empty matrix row<br /><span>2026-09-12 15:34:54 +0700</span></li>
+    <li><code>40d931a</code> feat(renderer): text layout, overflow and font diagnostics (§89)<br /><span>2026-09-12 15:25:19 +0700</span></li>
+    <li><code>a1c2afe</code> docs: spec the scene renderer, and correct AGENTS.md against what was run<br /><span>2026-09-12 15:16:43 +0700</span></li>
+    <li><code>f47d3b5</code> docs(gates): record what the display path now demonstrates, and the matrix<br /><span>2026-09-12 15:15:06 +0700</span></li>
+    <li><code>767f361</code> fix(renderer): three rendering defects the screenshot found<br /><span>2026-09-12 15:13:00 +0700</span></li>
+    <li><code>ae0ba95</code> feat(player): render the demo theme, and add a browser display harness<br /><span>2026-09-12 15:08:34 +0700</span></li>
+    <li><code>43ac4da</code> feat(renderer): add the scene plan, DOM mount and a deterministic fake source<br /><span>2026-09-12 14:48:56 +0700</span></li>
+    <li><code>4beff80</code> feat(theme): add the theme document model and import validation<br /><span>2026-09-12 14:37:32 +0700</span></li>
+    <li><code>9afcdf8</code> feat(renderer): add the pie / donut family<br /><span>2026-09-12 14:27:27 +0700</span></li>
+    <li><code>f492c69</code> feat(renderer): add the bar / progress-bar family<br /><span>2026-09-12 14:25:02 +0700</span></li>
+    <li><code>e75576e</code> docs: add a handoff document<br /><span>2026-09-12 14:10:37 +0700</span></li>
+    <li><code>5686a9a</code> feat(renderer): add the line / filled-area / sparkline family<br /><span>2026-09-12 14:09:29 +0700</span></li>
+    <li><code>5f2b090</code> feat(renderer): add the artboard fit/cover transform<br /><span>2026-09-12 14:05:52 +0700</span></li>
+    <li><code>c9362a2</code> chore: scaffold Vigilia, agent environment and verified dependency research<br /><span>2026-09-12 14:02:44 +0700</span></li>
+  </ol>
+</main>
+</body>
+</html>

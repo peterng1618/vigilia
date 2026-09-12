@@ -31,7 +31,13 @@ export default defineConfig({
   // A failure that only reproduces sometimes is worth seeing, not papering over.
   retries: 0,
   fullyParallel: true,
-  reporter: process.env['CI'] === undefined ? 'list' : 'github',
+  // A JSON summary alongside the human reporter, so `tools/dev-status.mjs` can
+  // state the browser-test result without re-running a minute of tests. It
+  // records when it was produced, which is what keeps the status page honest.
+  reporter: [
+    [process.env['CI'] === undefined ? 'list' : 'github'],
+    ['json', { outputFile: 'test-results/summary.json' }],
+  ],
 
   use: {
     baseURL: 'http://127.0.0.1:4173',

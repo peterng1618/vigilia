@@ -1,7 +1,7 @@
 import * as echarts from 'echarts/core';
 import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import {
   buildScenePlan,
   createAssetResolver,
@@ -39,7 +39,21 @@ import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 // staying a narrow list — never switch to the `echarts` default bundle here.
 // GridComponent is what the cartesian families (line, bar) need; the gauge and
 // pie families do not use it.
-echarts.use([GaugeChart, LineChart, BarChart, PieChart, GridComponent, CanvasRenderer]);
+// Both renderers are registered because §157 asks for the comparison to be
+// measured rather than assumed: SVG trades draw speed for crisper scaling, and
+// which wins depends on the reference phone. It also turns out to matter for
+// reproducibility — canvas rasterisation is not byte-stable across page loads,
+// SVG is — so `?renderer=svg` is how a deterministic capture of a chart is
+// possible at all.
+echarts.use([
+  GaugeChart,
+  LineChart,
+  BarChart,
+  PieChart,
+  GridComponent,
+  CanvasRenderer,
+  SVGRenderer,
+]);
 
 const artboardHost = document.querySelector<HTMLElement>('#artboard');
 
@@ -68,7 +82,24 @@ function start(host: HTMLElement): void {
   // theme instead (§105 pairing), and this goes away with it — but until then a
   // selector is how the display path gets exercised against more than one
   // layout, which is what caught several rendering defects.
-  const requested = new URLSearchParams(window.location.search).get('theme') ?? 'demo';
+  const parameters = new URLSearchParams(window.location.search);
+  const requested = parameters.get('theme') ?? 'demo';
+
+  // Animation is off when the viewer asks for less motion, or when the URL says
+  // so. Both are real settings rather than test hooks:
+  //
+  // - `prefers-reduced-motion` is an accessibility preference the OS reports,
+  //   and a dashboard that ignores it animates in someone's peripheral vision
+  //   all day.
+  // - `?static=1` is for a still capture — and it is what makes a screenshot
+  //   test deterministic, because a frame rendered without animation is a pure
+  //   function of the clock. With animation on, a capture lands wherever the
+  //   engine's transition happened to be.
+  //
+  // §124 also wants unnecessary rendering avoided, and transitions nobody
+  // watches are the cheapest thing to give up.
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  const animate = parameters.get('static') !== '1' && !reducedMotion;
 
   try {
     theme = loadDemoTheme(requested);
@@ -94,12 +125,16 @@ function start(host: HTMLElement): void {
       source,
       nowMs: Date.now(),
       resolveAsset,
+      animate,
     });
 
   const first = plan();
+  const chartRenderer = parameters.get('renderer') === 'svg' ? 'svg' : 'canvas';
+
   const handle = mountScene({
     host,
     plan: first,
+    chartRenderer,
     onAssetError: (nodeId, src) => {
       // Declared by the theme, absent from what the server actually serves.
       // On the host this is a packaging bug; here it is a fact worth stating

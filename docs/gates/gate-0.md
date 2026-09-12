@@ -190,6 +190,41 @@ line (cartesian) and not on a gauge (arc); thresholds work natively on a gauge
 (axis bands) and not on a line (whole-series colour). Neither family is strictly
 more capable — the matrix has to record both.
 
+### Known engine gap: ECharts frames are not byte-reproducible
+
+Measured 2026-09-12, and it decides whether pixel baselines are ever possible.
+
+With the clock frozen, animation disabled and a fresh page per capture:
+
+| What is captured | Byte-identical across runs? |
+| --- | --- |
+| Shapes, text, images — everything this renderer draws itself | **Yes**, every time |
+| Any frame containing an ECharts chart | **No**, on *both* the canvas and SVG renderers |
+
+The line chart differs on every page load. Not the data — the text content of the
+frame is identical, the fake source is a pure function of its clock, and the
+chart-free fixture reproduces perfectly. It is something inside the engine's
+own rendering, and it is present with `animation: false` and with SVG output, so
+it is not rasterisation mode and not a transition in flight.
+
+Consequences, which are the reason this is recorded here rather than in a
+comment:
+
+1. **Pixel baselines can never cover charts.** A committed PNG of a dashboard
+   would fail on every run. Baselines remain possible for typography and layout
+   fixtures only.
+2. Visual acceptance of charts has to be by human review of captured evidence,
+   or by structural assertions on the emitted option objects — which is what the
+   unit suite already does.
+3. Two Playwright tests pin both halves: our own rendering must stay
+   reproducible, and the chart case is asserted to *differ* so the limitation
+   cannot be quietly forgotten and then rediscovered as a flaky baseline.
+
+Also recorded while measuring this: **the first render after a cold browser
+start differs from every render after it**, and reloading one page never
+reproduces. A capture that matters uses a fresh page and discards a warm-up
+frame.
+
 ### Family × style matrix — first pass, 2026-09-12
 
 Authored from the implemented adapters. "Native" means the engine expresses it

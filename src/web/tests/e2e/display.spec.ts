@@ -253,21 +253,27 @@ test.describe('update behaviour', () => {
     // writes into the TRACKED docs/gates/screenshots/ instead, so refreshing
     // committed evidence is a deliberate act.
     //
+    // Captured with `?static=1` and a frozen clock, which together make the
+    // frame a pure function of the clock: no animation means no dependence on
+    // how many frames the engine happened to get. The images are therefore
+    // byte-reproducible on one platform — see the determinism test below.
+    //
     // Capture with `--workers=1`: the two projects otherwise write here
     // concurrently and Windows intermittently fails the open with UNKNOWN.
-    //
-    // It has to be deliberate because these images are NOT byte-reproducible:
-    // the data behind them is deterministic, but a capture lands mid-animation,
-    // and how many frames the engine got differs slightly per run. Writing them
-    // on every run would dirty the working tree with diffs that mean nothing.
     const directory =
       process.env['VIGILIA_CAPTURE'] === undefined
         ? 'test-results/screenshots'
         : '../../docs/gates/screenshots';
 
+    // Warm-up load, discarded. The first render after a cold browser start
+    // differs from every render after it — see the determinism test below — so
+    // without this the first fixture captured would never reproduce.
+    await page.goto('/?theme=demo&static=1');
+    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+
     for (const fixture of FIXTURES) {
       await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture.name}`);
+      await page.goto(`/?theme=${fixture.name}&static=1`);
       await page.waitForSelector('[data-vigilia="artboard"]');
       await page.clock.runFor(1500);
 
@@ -684,5 +690,110 @@ test.describe('image assets (§111)', () => {
     // missing package file. The node records what failed.
     await expect(img).toBeHidden();
     await expect(node).toHaveAttribute('data-asset-error', /not-shipped\.png/);
+  });
+});
+
+test.describe('deterministic rendering', () => {
+  test('renders our own elements byte-identically at a fixed clock', async ({ browser }) => {
+    // Gate 1 asks for deterministic screenshot tests. This is the part that is
+    // achievable, and the boundary was measured rather than guessed.
+    //
+    // DETERMINISTIC: shapes, text, images — everything this renderer draws
+    // itself. Three fresh pages of the chart-free `assets` fixture at a fixed
+    // clock produce byte-identical images, every time.
+    //
+    // NOT DETERMINISTIC: any frame containing an ECharts chart. The line chart
+    // differs on every page load, on BOTH the canvas and SVG renderers, with
+    // animation disabled and the clock frozen. That is an engine property we do
+    // not control, and it is recorded in docs/gates/gate-0.md because it decides
+    // whether pixel baselines can ever cover charts.
+    //
+    // Three conditions are still needed for the part that does work: a frozen
+    // clock, `static=1`, and a FRESH PAGE per capture — reloading one page never
+    // reproduces, which four successive captures confirmed.
+    const capture = async (): Promise<Buffer> => {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto('/?theme=assets&static=1');
+      await page.waitForSelector('[data-vigilia="artboard"]');
+      // Fonts before pixels: a face that realises after the shutter changes
+      // glyph rasterisation, which is a second source of drift and one the page
+      // CAN wait for.
+      await page.evaluate(() => document.fonts.ready);
+      await page.locator('[data-node-id="fit-contain"] img').waitFor();
+      const shot = await page.screenshot();
+      await page.close();
+      return shot;
+    };
+
+    await capture(); // warm-up, deliberately discarded
+
+    const first = await capture();
+    const second = await capture();
+
+    expect(Buffer.compare(first, second)).toBe(0);
+  });
+
+  test('a chart frame is NOT byte-reproducible, and that is recorded', async ({ browser }) => {
+    // Pinned as a test so the limitation cannot be quietly forgotten and then
+    // rediscovered as a flaky baseline. If this ever starts failing, ECharts
+    // became deterministic and pixel baselines are back on the table — which is
+    // worth knowing immediately.
+    const capture = async (): Promise<Buffer> => {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto('/?theme=demo&static=1');
+      await page.waitForSelector('[data-node-id="history-chart"] canvas');
+      await page.evaluate(() => document.fonts.ready);
+      await page.clock.runFor(1200);
+      const shot = await page.locator('[data-node-id="history-chart"]').screenshot();
+      await page.close();
+      return shot;
+    };
+
+    await capture();
+
+    const first = await capture();
+    const second = await capture();
+
+    expect(
+      Buffer.compare(first, second),
+      'ECharts became byte-reproducible — update gate-0.md and reconsider pixel baselines',
+    ).not.toBe(0);
+  });
+
+  test('animates by default, and not when static is asked for', async ({ page }) => {
+    // The flag has to actually reach the chart engine, or the determinism above
+    // would be an accident of timing rather than a property.
+    const animationOf = async (query: string): Promise<boolean> => {
+      await page.clock.install({ time: FIXED_TIME });
+      await page.goto(`/?theme=demo${query}`);
+      await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+
+      // Two captures a short way apart: an animating chart is still moving.
+      const before = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
+      await page.clock.runFor(120);
+      const after = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
+
+      return Buffer.compare(before, after) !== 0;
+    };
+
+    expect(await animationOf(''), 'default should animate').toBe(true);
+    expect(await animationOf('&static=1'), 'static should not animate').toBe(false);
+  });
+
+  test('honours prefers-reduced-motion', async ({ page }) => {
+    // An accessibility preference, not a test hook: a dashboard that ignores it
+    // animates in someone's peripheral vision all day.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.install({ time: FIXED_TIME });
+    await page.goto('/?theme=demo');
+    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+
+    const before = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
+    await page.clock.runFor(120);
+    const after = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
+
+    expect(Buffer.compare(before, after)).toBe(0);
   });
 });
