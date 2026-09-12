@@ -29,7 +29,7 @@ project name; that is intentional and not a bug to fix.
 | | |
 |---|---|
 | Package manager | **npm** (11.x). No `packageManager` field is pinned |
-| Node | **22.12+, 24, or 26+**. Odd releases such as 25 are rejected by vitest 5 |
+| Node | **22.12+, 24, or 26+** per vitest 5's `engines`. Node 25 is outside that range but **works** — verified 2026-09-12, full suite on v25.9.0. npm warns; nothing fails unless `engine-strict` is set. Do not waste time downgrading |
 | .NET SDK | **10.0.100**, pinned in `global.json` (ADR-0002) |
 | Default branch | `main`. **No remote is configured and there are no commits yet** |
 | Issue tracker | None. Keep skills tracker-agnostic |
@@ -80,12 +80,26 @@ Three planning locations exist and they do **not** overlap:
 
 ```bash
 npm install                                      # also regenerates package-lock.json
-npx vitest run                                   # unit tests (19 currently)
+npx vitest run                                   # unit tests (327 currently)
 npx tsc --noEmit -p packages/renderer-core/tsconfig.json
 npx tsc --noEmit -p packages/player/tsconfig.json
+npx tsc --noEmit -p packages/fake-source/tsconfig.json
 npx vite build packages/player                   # display-only bundle
 node packages/player/scripts/check-size.mjs      # §47 budget gate; needs a build first
+npx playwright test                              # 21 browser tests; builds are NOT automatic
+npx vite dev packages/player                     # watch the demo dashboard live
 ```
+
+**`npx playwright test` previews the *built* bundle**, so a source change is
+invisible until `npx vite build packages/player` runs again. It starts the
+preview server itself on `127.0.0.1:4173` — explicitly IPv4, because Vite
+otherwise binds `localhost`, which resolves to `::1` first on Windows and then
+never answers.
+
+If the browser is missing or its build is too old for the installed Playwright,
+`npx playwright install chromium` fixes it (~115 MB). The error message names a
+version directory such as `chromium_headless_shell-1243`; an older one present
+on disk will not be used.
 
 ### Backend — run from the repository root
 
@@ -119,16 +133,29 @@ No command here requires infrastructure, and none is interactive.
 | `src/web/packages/renderer-core` | Shared renderer. **No editor dependencies, ever** |
 | `src/web/packages/player` | Display-only bundle for phones |
 | `src/web/packages/editor` | Desktop authoring. Foundation not yet chosen (ADR-0001) |
+| `src/web/packages/fake-source` | **Fabricated** samples + the demo theme. Dev and test only |
+| `src/web/tests/e2e` | Playwright display tests |
 
-**Outside the npm workspace:** everything except the three `src/web/packages/*`
+**Outside the npm workspace:** everything except the four `src/web/packages/*`
 entries. The workspace root is `src/web/`, not the repository root.
+
+Inside `renderer-core`, the split that matters is `scene/plan.ts` (pure —
+decides everything, unit-tested) versus `scene/mount.ts` (DOM — decides
+nothing). Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md).
+Put a decision in the mount layer and it becomes untestable without a browser.
+
+`@vigilia/fake-source` fabricates readings, which §97 forbids presenting as
+real. It is currently imported by the player because no transport exists, and
+the page says so on screen. **Do not let it become a runtime dependency of
+anything shipped**, and do not reach for it to "fill in" a sensor the host
+cannot supply — that case renders as a gap, by design.
 
 ## 7. Technology stack
 
 .NET 10 · ASP.NET Core + SignalR (MessagePack) · LibreHardwareMonitorLib
 **exactly `[0.9.6]`** · PawnIO (external, optional) · Vue-less TypeScript for
 `renderer-core` · ECharts 6.1.0 · Vite 8 · TypeScript 7.0.2 · vitest 5 ·
-Playwright 1.63 (installed, no suite yet).
+Playwright 1.63 (21 display tests in `src/web/tests/e2e`).
 
 Where several solutions coexist: the editor foundation is **undecided** —
 `vue-fabric-editor` (Fabric 5) and `yft-design` (Fabric 6) are both under
@@ -177,6 +204,12 @@ evaluation, and building directly on Fabric 7 remains open (ADR-0001).
 and produces wrong values at runtime. **This is the highest-risk edit in the
 repository.** Change both, in the same commit.
 
+The theme format has the same shape of risk — `schema/theme-document.schema.json`
+against `renderer-core/src/theme/`— but that one has a guard:
+`theme/schema-sync.test.ts` reads the schema off disk and fails on drift. The C#
+mirror still has nothing equivalent, and that test is the pattern to copy when
+a .NET SDK exists.
+
 ### Blast radius, in order
 
 1. `Vigilia.Contracts` ↔ `renderer-core/src/types.ts` — the unenforced mirror above.
@@ -214,7 +247,7 @@ repository.** Change both, in the same commit.
 |---|---|---|
 | Renderer unit | `src/web/packages/*/src/**/*.test.ts` | `npx vitest run` from `src/web/` |
 | Provider conformance | `tests/Vigilia.Contracts.Tests` | `dotnet test` (unverified — no SDK) |
-| E2E / visual | not yet written | Playwright is installed |
+| E2E / visual | `src/web/tests/e2e/*.spec.ts` | `npx playwright test` from `src/web/`, **after a player build** |
 
 **Adding a provider means subclassing `SensorProviderContractTests`**, not writing
 bespoke tests. That suite is the definition of correct provider behaviour.
