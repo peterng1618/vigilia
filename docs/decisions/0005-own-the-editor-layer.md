@@ -107,3 +107,87 @@ Specifically:
 
 A candidate that renders through *our* document and *our* renderer, using Fabric
 only for gesture overlays. Neither does, and neither is structured to.
+
+---
+
+## Addendum — 2026-09-12: the fidelity constraint was relaxed, and the decision holds
+
+The user pushed back on the reasoning above, and the pushback was fair:
+
+> "I think it's ok if it's not a 100% match between the editor and the actual
+> display. charts & graphs can be pre-rendered out into placeholders during theme
+> editing. As long as the differences aren't misleading to the theme author to the
+> point they have to guess coordinates & sizes."
+
+That removes a constraint this ADR treated as absolute. §43's rejection trigger
+names "editor/display rendering that does not match", and the design document
+wins until a human says otherwise (§164) — a human has now said otherwise. The
+real requirement is narrower and better: **geometry must be faithful; appearance
+need not be.** An author must never guess a coordinate or a size.
+
+Re-deriving with that relaxation, the decision does not change — but the reason
+it does not change is different from the reason first given, which is worth
+being precise about.
+
+**Adopting a Fabric editor would not save what it appears to save.**
+
+1. **We would still ship our renderer.** The player needs it regardless. So
+   placeholders do not replace a rendering path, they *add* a second one — two
+   models to keep in agreement rather than one.
+2. **The saving is UI chrome, and the cost is a document seam.** Both candidates
+   are *applications*, not embeddable components: adoption means forking one and
+   grafting our schema into it. Our typed chart settings, sensor bindings, styled
+   text runs and global references have no Fabric equivalent, so each becomes
+   custom data hanging off a Fabric object. A lossy round-trip in that mapping is
+   a data-corruption bug class, not a cosmetic one.
+3. **Text would still need real fidelity.** Charts tolerate placeholders because
+   nobody positions a dashboard by the exact curve of a line. Text is the element
+   authors position most precisely, and §89's styled runs — a label, a live value
+   and a unit styled differently inside one box — do not exist in Fabric's text
+   model. A text placeholder is exactly the "guessing coordinates and sizes" the
+   relaxation rules out.
+4. **Toolchain conflict is unchanged.** Fabric 5.3.0 / 6.4.1 against a current
+   7.4.0; Vue 3.2 / 3.4 with Vite 4 / 5 on rollup against this scaffold's Vite 8
+   on rolldown and TypeScript 7.0.2.
+
+**And the decisive point, which the relaxation makes clearer rather than
+weaker:** chart fidelity in the editor costs us *nothing*. The renderer already
+draws real charts in a browser, under test, at 80 browser tests. Placeholders
+would be a workaround for a problem this project does not have.
+
+### What the relaxation is genuinely worth
+
+It is kept as a **fallback**, and it is a good one. If live charts in the editor
+ever become a performance or complexity problem — a dozen ECharts instances
+updating while an author drags a node — the sanctioned answer is now available:
+render a chart to a placeholder during interaction and restore the live render on
+release. Geometry stays exact, so the constraint that actually matters holds.
+That is a cheap optimisation to reach for later, and it no longer needs a
+decision.
+
+### The interaction layer: measured, not assumed
+
+The remaining "build it from scratch" cost is transform handles, marquee
+selection and snapping. The obvious libraries were checked rather than assumed:
+
+| | version | licence | unpacked | last published |
+|---|---|---|---|---|
+| `moveable` | 0.53.0 | MIT | 2.4 MB | **2023-12-03** |
+| `selecto` | 1.26.3 | MIT | 0.9 MB | **2023-12-03** |
+
+Both are MIT and both operate on **DOM** elements, which is exactly the right
+shape for this renderer — and both have been unpublished for nearly three years,
+with Moveable still pre-1.0. DOM transform handles are a stable problem and that
+code will not have rotted, but depending on an unmaintained package for the
+centre of the authoring experience is a real cost, and it is the kind of choice
+that is hard to reverse once inspectors are built on its event model.
+
+**Decision:** build the interaction layer here, over
+`computeArtboardTransform`, which already provides the exact viewport↔document
+mapping a handle needs and is tested. Keep it behind a narrow internal interface
+so Moveable remains a drop-in if hand-rolling proves worse than expected.
+
+**What would change *that*:** if the interaction layer's cost runs well past
+handles, snapping and marquee — into gesture edge cases, touch behaviour and
+accessibility — adopt Moveable for handles specifically. Adopting a whole editor
+application to get handles would still be the wrong trade.
