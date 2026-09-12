@@ -5,8 +5,9 @@ Point-in-time state. Durable conventions, commands and traps live in
 This file records **what is actually done, what is blocked on a human, and what
 to pick up next** — none of which is inferable from the code.
 
-Repository: 12 commits on `main`, pushed to `origin`
-(`github.com/peterng1618/vigilia`), working tree clean.
+Repository: `main`, pushed to `origin` (`github.com/peterng1618/vigilia`).
+A commit count is deliberately not recorded here — it goes stale on the next
+commit, and `git log` answers it.
 
 ---
 
