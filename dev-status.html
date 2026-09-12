@@ -28,6 +28,7 @@
   .badge.fail { background:#45160f; color:var(--bad); }
   .badge.unknown, .badge.skipped { background:#2a2f3a; color:var(--dim); }
   .badge.blocked { background:#45160f; color:#ff8f73; }
+  .badge.deferred { background:#2a2438; color:#b39ddb; }
   .badge.nearly { background:#3b3410; color:var(--warn); }
   .badge.started { background:#0d3242; color:var(--accent); }
   .badge.not-started { background:#2a2f3a; color:var(--dim); }
@@ -51,9 +52,9 @@
 <main>
   <h1>Vigilia — development status</h1>
   <p class="sub">
-    Generated 2026-09-12T09:33:33.367Z ·
+    Generated 2026-09-12T09:41:08.277Z ·
     branch <code>main</code> ·
-    commit <code>62c0e41</code> · <strong>uncommitted changes present</strong>
+    commit <code>cff028c</code> · <strong>uncommitted changes present</strong>
   </p>
 
   <div class="warn-banner">
@@ -73,15 +74,15 @@
     </div>
     <div class="card">
       <h3>Browser tests</h3>
-      <div class="big">2</div>
+      <div class="big">80</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">2 passing, 0 skipped · just now</div>
+      <div class="note">80 passing, 4 skipped · 1 min ago</div>
     </div>
     <div class="card">
       <h3>Player bundle, gzip</h3>
       <div class="big">199.1 KB</div>
       <div><span class="badge pass">passing</span></div>
-      <div class="note">199.1 KB of a 400 KB budget · built 4 min ago</div>
+      <div class="note">199.1 KB of a 400 KB budget · built 11 min ago</div>
     </div>
     <div class="card">
       <h3>Typechecks</h3>
@@ -91,7 +92,41 @@
     </div>
   </div>
 
+  <h2>Recently completed</h2>
+  <table>
+    <thead><tr><th>What</th><th>Why it mattered</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Editor foundation decided (ADR-0005)</strong></td><td class="missing">Both Fabric candidates rejected: they are canvas editors, and this renderer is DOM plus ECharts. Adopting one meant rendering the scene twice, which §31 forbids and Gate 0 rejects outright. Unblocks Gate 2.</td></tr>
+      <tr><td><strong>Host sequenced after the frontend (ADR-0006)</strong></td><td class="missing">No .NET code here has ever compiled, so a mid-sequence Gate 3 stalled three milestones that do not depend on it. Gate content is unchanged; only the queue order moved.</td></tr>
+      <tr><td><strong>Determinism boundary measured</strong></td><td class="missing">Our own rendering is byte-identical at a fixed clock; any frame containing an ECharts chart never is, on either renderer. Settles whether pixel baselines can cover charts — they cannot.</td></tr>
+      <tr><td><strong>Static rendering and reduced motion</strong></td><td class="missing">The player honours prefers-reduced-motion, and ?static=1 renders without animation. An accessibility requirement first, and what makes a reproducible capture possible second.</td></tr>
+      <tr><td><strong>Assets: resolver, image rendering, monochrome recolouring</strong></td><td class="missing">The image node type could be authored and validated but never drawn. Also revealed that a declared asset always resolves, so &quot;absent from the package&quot; is only detectable when the load fails.</td></tr>
+      <tr><td><strong>Widget insertion with fresh ids and provenance</strong></td><td class="missing">Renames node AND binding ids through one map, so a text run cannot end up pointing at a binding that no longer exists. Globals are mapped explicitly, never merged by name (§77).</td></tr>
+      <tr><td><strong>Four theme fixtures, five invalid ones</strong></td><td class="missing">One showcase theme only proves the renderer works on the layout it was designed against. The stress fixture immediately found a real bug: a node marked invisible rendered anyway.</td></tr>
+      <tr><td><strong>Unknown-field rejection and two drift guards</strong></td><td class="missing">A typo like &quot;visable&quot;: false used to be valid and silently did nothing. Schema↔validator and C#↔TypeScript now both fail a test on drift.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Next up</h2>
+  <p class="sub">In order. Anything marked blocked is waiting on something outside this repository.</p>
+  <table>
+    <thead><tr><th>#</th><th>What</th><th>Why now</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Editor: selection, transform handles, undo</strong></td><td class="missing">The plan/mount split already renders what would be edited, and artboard.ts gives the exact viewport↔document mapping a handle needs. Overlays and a command stack are what is missing.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>2</td><td><strong>Editor: inspectors and the globals surface</strong></td><td class="missing">Gate 2 wants global/local override behaviour, rename and delete with reassignment (§75). The document model enforces the rules already; this is the UI over it.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>3</td><td><strong>Visual style presets</strong></td><td class="missing">Gate 2 asks for them, and they are data rather than UI — a preset is a named bundle of typed settings, so it can be authored and tested before any inspector exists.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>4</td><td><strong>Theme packages: ZIP import and export</strong></td><td class="missing">Gate 4. The security rules are the substance (§141: traversal, decompression bombs, symlinks, executable content), and a hand-written reader can enforce them without a dependency.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>5</td><td><strong>Font packaging and text metrics</strong></td><td class="missing">Gate 0 still wants a packaged font demonstrated, and §91 wants multilingual glyphs, digit widths and baselines verified at several artboard scales. Needs the asset pipeline first.</td><td><span class="badge started">started</span></td></tr>
+      <tr><td>6</td><td><strong>SignalR transport and the provider registry</strong></td><td class="missing">Deferred by ADR-0006. The wire format is the part that should not be invented against a server nobody can run — the C# ↔ TypeScript mirror is already the highest-risk edit here.</td><td><span class="badge blocked">blocked</span></td></tr>
+    </tbody>
+  </table>
+
   <h2>Milestones</h2>
+  <p class="sub">
+    Listed in working order, which ADR-0006 re-sequenced: the gates whose content needs no .NET SDK
+    come first. Gate numbering and every gate's acceptance criteria are unchanged from the design
+    document — only the queue order moved.
+  </p>
   <table>
     <thead><tr><th>Gate</th><th>State</th><th>Done</th><th>Missing</th></tr></thead>
     <tbody>
@@ -109,21 +144,21 @@
       </tr>
       <tr>
         <td><strong>2 — Authoring</strong></td>
-        <td><span class="badge blocked">blocked</span></td>
-        <td>Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive.</td>
-        <td class="missing">The editor itself: inspectors, globals UI, gesture undo, grouping, snapping. Blocked on ADR-0001, which must not be pre-empted by installing a candidate.</td>
-      </tr>
-      <tr>
-        <td><strong>3 — Live display</strong></td>
-        <td><span class="badge blocked">blocked</span></td>
-        <td>Client-side sample source contract, bounded history with reconnect replacement, deterministic fake source, unmapped-key and status handling end to end.</td>
-        <td class="missing">Everything host-side: provider registry, Windows and API providers, the custom-sensor wizard, pairing, the SignalR transport. Blocked on a .NET SDK — no .NET code in this repository has ever been compiled.</td>
+        <td><span class="badge started">started</span></td>
+        <td>Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive. Foundation decided: ADR-0005 rejects both Fabric candidates and builds the editor on the shared renderer.</td>
+        <td class="missing">The editor itself: selection, transform handles, gesture undo, inspectors, the globals surface, grouping, snapping, style presets.</td>
       </tr>
       <tr>
         <td><strong>4 — Reuse/packages</strong></td>
         <td><span class="badge started">started</span></td>
         <td>Widget insertion with fresh IDs, provenance and explicit global mapping (§77/§138).</td>
         <td class="missing">Theme packs: the ZIP container, manifest, import staging, decompression-bomb and traversal limits, SVG importer (host-side), draft recovery.</td>
+      </tr>
+      <tr>
+        <td><strong>3 — Live display</strong></td>
+        <td><span class="badge deferred">deferred</span></td>
+        <td>Client-side sample source contract, bounded history with reconnect replacement, deterministic fake source, unmapped-key and status handling end to end.</td>
+        <td class="missing">Everything host-side: provider registry, Windows and API providers, the custom-sensor wizard, pairing, the SignalR transport. Re-sequenced after the frontend by ADR-0006, because no .NET code here has ever been compiled and a mid-sequence Gate 3 stalled three milestones that do not depend on it.</td>
       </tr>
       <tr>
         <td><strong>5 — Release</strong></td>
@@ -143,40 +178,41 @@
   <div class="shots">
     <figure>
       <img src="docs/gates/screenshots/assets-desktop-chromium.png" alt="assets-desktop-chromium.png" loading="lazy" />
-      <figcaption>assets-desktop-chromium.png · just now</figcaption>
+      <figcaption>assets-desktop-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/assets-phone-chromium.png" alt="assets-phone-chromium.png" loading="lazy" />
-      <figcaption>assets-phone-chromium.png · just now</figcaption>
+      <figcaption>assets-phone-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-desktop-chromium.png" alt="demo-desktop-chromium.png" loading="lazy" />
-      <figcaption>demo-desktop-chromium.png · just now</figcaption>
+      <figcaption>demo-desktop-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/demo-phone-chromium.png" alt="demo-phone-chromium.png" loading="lazy" />
-      <figcaption>demo-phone-chromium.png · just now</figcaption>
+      <figcaption>demo-phone-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-desktop-chromium.png" alt="portrait-cover-desktop-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-desktop-chromium.png · just now</figcaption>
+      <figcaption>portrait-cover-desktop-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/portrait-cover-phone-chromium.png" alt="portrait-cover-phone-chromium.png" loading="lazy" />
-      <figcaption>portrait-cover-phone-chromium.png · just now</figcaption>
+      <figcaption>portrait-cover-phone-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-desktop-chromium.png" alt="stress-desktop-chromium.png" loading="lazy" />
-      <figcaption>stress-desktop-chromium.png · just now</figcaption>
+      <figcaption>stress-desktop-chromium.png · 8 min ago</figcaption>
     </figure>
     <figure>
       <img src="docs/gates/screenshots/stress-phone-chromium.png" alt="stress-phone-chromium.png" loading="lazy" />
-      <figcaption>stress-phone-chromium.png · just now</figcaption>
+      <figcaption>stress-phone-chromium.png · 8 min ago</figcaption>
     </figure>
   </div>
 
   <h2>Recent commits</h2>
   <ol class="log">
+    <li><code>cff028c</code> chore(gates): re-capture screenshots in static mode<br /><span>2026-09-12 16:33:33 +0700</span></li>
     <li><code>62c0e41</code> feat(player): static rendering, reduced motion, and the determinism boundary<br /><span>2026-09-12 16:32:44 +0700</span></li>
     <li><code>011ab34</code> feat(theme): asset resolution, image rendering and monochrome recolouring<br /><span>2026-09-12 16:16:17 +0700</span></li>
     <li><code>7999066</code> feat(theme): widget insertion with fresh ids and provenance (§138)<br /><span>2026-09-12 16:04:57 +0700</span></li>

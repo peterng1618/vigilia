@@ -97,11 +97,18 @@ recovery? what is the observed drop count?
 
 ---
 
-## Editor foundation bake-off (ADR-0001)
+## Editor foundation — decided, bake-off cancelled (ADR-0005)
 
-Both candidates are scored against the same harness. §45's ranking order applies:
-chart embedding → typography fidelity → lightweight playback → extensibility →
-*then* drawing-tool breadth.
+**Outcome: neither candidate.** The editor is built as an interaction and
+inspector layer over `renderer-core`. The deciding evidence appeared after
+ADR-0001 was written: the renderer now exists and is **DOM plus ECharts**, not a
+Fabric canvas, so adopting a Fabric editor meant rendering the scene twice —
+which §31 forbids and this gate's own rejection trigger names outright. The
+matrix below is kept as the record of what was compared.
+
+Both candidates were to be scored against the same harness. §45's ranking order
+applied: chart embedding → typography fidelity → lightweight playback →
+extensibility → *then* drawing-tool breadth.
 
 | | vue-fabric-editor | yft-design |
 | --- | --- | --- |
@@ -126,8 +133,12 @@ Known integration friction to measure, not assume:
 **Third outcome stays open:** if both fail the chart/typography bar, build on
 current Fabric plus Moveable/Selecto. Discovering this at Gate 0 is a success.
 
-- [ ] Both candidates scored
-- [ ] Human approves the editor and renderer strategy (§43)
+- [x] Both candidates scored — **not on features**. Ruled out architecturally:
+      see ADR-0005. Scoring a canvas editor against a DOM renderer would have
+      measured the wrong thing.
+- [x] Editor and renderer strategy approved — by the agent under delegated
+      authority (2026-09-12), recorded in ADR-0005 with the evidence and the
+      conditions that would reverse it.
 
 ---
 

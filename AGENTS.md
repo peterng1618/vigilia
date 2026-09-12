@@ -157,9 +157,15 @@ cannot supply — that case renders as a gap, by design.
 `renderer-core` · ECharts 6.1.0 · Vite 8 · TypeScript 7.0.2 · vitest 5 ·
 Playwright 1.63 (21 display tests in `src/web/tests/e2e`).
 
-Where several solutions coexist: the editor foundation is **undecided** —
-`vue-fabric-editor` (Fabric 5) and `yft-design` (Fabric 6) are both under
-evaluation, and building directly on Fabric 7 remains open (ADR-0001).
+The editor foundation is **decided**: ADR-0005 rejects both Fabric candidates and
+builds the editor as an interaction and inspector layer over `renderer-core`.
+They are canvas editors; this renderer is DOM plus ECharts, so adopting one meant
+rendering the scene twice — which §31 forbids and Gate 0 rejects outright. **Do
+not add a Fabric dependency.**
+
+Work order is frontend-first (ADR-0006): the .NET host is sequenced after
+Gates 1, 2 and 4, because no C# here has ever compiled and a mid-sequence Gate 3
+stalled three milestones that do not depend on it. Gate *content* is unchanged.
 
 ## 8. Key architectural patterns
 

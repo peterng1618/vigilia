@@ -136,6 +136,22 @@ function browserTests() {
 
   walkSuites(summary.suites);
 
+  // A run narrowed by `-g` or a single project would otherwise report its own
+  // small total as the project's browser-test count, which looks like a
+  // regression and is worse than admitting the number is unknown. Playwright
+  // records the command line, so the filter is detectable.
+  const argv = summary.config?.argv ?? [];
+  const filters = ['-g', '--grep', '--project', '--shard'];
+  const filtered = argv.some((argument) => filters.some((flag) => argument.startsWith(flag)));
+
+  if (filtered) {
+    return {
+      state: 'unknown',
+      when: statSync(path).mtime,
+      detail: `the last run was filtered (${counts.passed} of the suite) — run npx playwright test`,
+    };
+  }
+
   return {
     state: counts.failed === 0 ? 'pass' : 'fail',
     ...counts,
@@ -240,6 +256,74 @@ function commits() {
  * changes the code — and each entry has to say what is *missing*, which is the
  * part a status page usually quietly drops.
  */
+const RECENT = [
+  {
+    what: 'Editor foundation decided (ADR-0005)',
+    why: 'Both Fabric candidates rejected: they are canvas editors, and this renderer is DOM plus ECharts. Adopting one meant rendering the scene twice, which §31 forbids and Gate 0 rejects outright. Unblocks Gate 2.',
+  },
+  {
+    what: 'Host sequenced after the frontend (ADR-0006)',
+    why: 'No .NET code here has ever compiled, so a mid-sequence Gate 3 stalled three milestones that do not depend on it. Gate content is unchanged; only the queue order moved.',
+  },
+  {
+    what: 'Determinism boundary measured',
+    why: 'Our own rendering is byte-identical at a fixed clock; any frame containing an ECharts chart never is, on either renderer. Settles whether pixel baselines can cover charts — they cannot.',
+  },
+  {
+    what: 'Static rendering and reduced motion',
+    why: 'The player honours prefers-reduced-motion, and ?static=1 renders without animation. An accessibility requirement first, and what makes a reproducible capture possible second.',
+  },
+  {
+    what: 'Assets: resolver, image rendering, monochrome recolouring',
+    why: 'The image node type could be authored and validated but never drawn. Also revealed that a declared asset always resolves, so "absent from the package" is only detectable when the load fails.',
+  },
+  {
+    what: 'Widget insertion with fresh ids and provenance',
+    why: 'Renames node AND binding ids through one map, so a text run cannot end up pointing at a binding that no longer exists. Globals are mapped explicitly, never merged by name (§77).',
+  },
+  {
+    what: 'Four theme fixtures, five invalid ones',
+    why: 'One showcase theme only proves the renderer works on the layout it was designed against. The stress fixture immediately found a real bug: a node marked invisible rendered anyway.',
+  },
+  {
+    what: 'Unknown-field rejection and two drift guards',
+    why: 'A typo like "visable": false used to be valid and silently did nothing. Schema↔validator and C#↔TypeScript now both fail a test on drift.',
+  },
+];
+
+const NEXT = [
+  {
+    what: 'Editor: selection, transform handles, undo',
+    why: 'The plan/mount split already renders what would be edited, and artboard.ts gives the exact viewport↔document mapping a handle needs. Overlays and a command stack are what is missing.',
+    blocked: false,
+  },
+  {
+    what: 'Editor: inspectors and the globals surface',
+    why: 'Gate 2 wants global/local override behaviour, rename and delete with reassignment (§75). The document model enforces the rules already; this is the UI over it.',
+    blocked: false,
+  },
+  {
+    what: 'Visual style presets',
+    why: 'Gate 2 asks for them, and they are data rather than UI — a preset is a named bundle of typed settings, so it can be authored and tested before any inspector exists.',
+    blocked: false,
+  },
+  {
+    what: 'Theme packages: ZIP import and export',
+    why: 'Gate 4. The security rules are the substance (§141: traversal, decompression bombs, symlinks, executable content), and a hand-written reader can enforce them without a dependency.',
+    blocked: false,
+  },
+  {
+    what: 'Font packaging and text metrics',
+    why: 'Gate 0 still wants a packaged font demonstrated, and §91 wants multilingual glyphs, digit widths and baselines verified at several artboard scales. Needs the asset pipeline first.',
+    blocked: false,
+  },
+  {
+    what: 'SignalR transport and the provider registry',
+    why: 'Deferred by ADR-0006. The wire format is the part that should not be invented against a server nobody can run — the C# ↔ TypeScript mirror is already the highest-risk edit here.',
+    blocked: true,
+  },
+];
+
 const MILESTONES = [
   {
     gate: '0 — Feasibility',
@@ -257,17 +341,10 @@ const MILESTONES = [
   },
   {
     gate: '2 — Authoring',
-    state: 'blocked',
-    done: 'Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive.',
+    state: 'started',
+    done: 'Chart and style matrices, typography with styled runs and explicit overflow, widget insertion primitive. Foundation decided: ADR-0005 rejects both Fabric candidates and builds the editor on the shared renderer.',
     missing:
-      'The editor itself: inspectors, globals UI, gesture undo, grouping, snapping. Blocked on ADR-0001, which must not be pre-empted by installing a candidate.',
-  },
-  {
-    gate: '3 — Live display',
-    state: 'blocked',
-    done: 'Client-side sample source contract, bounded history with reconnect replacement, deterministic fake source, unmapped-key and status handling end to end.',
-    missing:
-      'Everything host-side: provider registry, Windows and API providers, the custom-sensor wizard, pairing, the SignalR transport. Blocked on a .NET SDK — no .NET code in this repository has ever been compiled.',
+      'The editor itself: selection, transform handles, gesture undo, inspectors, the globals surface, grouping, snapping, style presets.',
   },
   {
     gate: '4 — Reuse/packages',
@@ -275,6 +352,13 @@ const MILESTONES = [
     done: 'Widget insertion with fresh IDs, provenance and explicit global mapping (§77/§138).',
     missing:
       'Theme packs: the ZIP container, manifest, import staging, decompression-bomb and traversal limits, SVG importer (host-side), draft recovery.',
+  },
+  {
+    gate: '3 — Live display',
+    state: 'deferred',
+    done: 'Client-side sample source contract, bounded history with reconnect replacement, deterministic fake source, unmapped-key and status handling end to end.',
+    missing:
+      'Everything host-side: provider registry, Windows and API providers, the custom-sensor wizard, pairing, the SignalR transport. Re-sequenced after the frontend by ADR-0006, because no .NET code here has ever been compiled and a mid-sequence Gate 3 stalled three milestones that do not depend on it.',
   },
   {
     gate: '5 — Release',
@@ -318,6 +402,7 @@ function badge(state) {
     unknown: 'not measured',
     skipped: 'skipped',
     blocked: 'blocked',
+    deferred: 'deferred',
     nearly: 'nearly done',
     started: 'started',
     'not started': 'not started',
@@ -359,6 +444,7 @@ function render(data) {
   .badge.fail { background:#45160f; color:var(--bad); }
   .badge.unknown, .badge.skipped { background:#2a2f3a; color:var(--dim); }
   .badge.blocked { background:#45160f; color:#ff8f73; }
+  .badge.deferred { background:#2a2438; color:#b39ddb; }
   .badge.nearly { background:#3b3410; color:var(--warn); }
   .badge.started { background:#0d3242; color:var(--accent); }
   .badge.not-started { background:#2a2f3a; color:var(--dim); }
@@ -422,7 +508,37 @@ function render(data) {
     </div>
   </div>
 
+  <h2>Recently completed</h2>
+  <table>
+    <thead><tr><th>What</th><th>Why it mattered</th></tr></thead>
+    <tbody>
+      ${RECENT.map(
+        (item) =>
+          `<tr><td><strong>${escapeHtml(item.what)}</strong></td><td class="missing">${escapeHtml(item.why)}</td></tr>`,
+      ).join('\n      ')}
+    </tbody>
+  </table>
+
+  <h2>Next up</h2>
+  <p class="sub">In order. Anything marked blocked is waiting on something outside this repository.</p>
+  <table>
+    <thead><tr><th>#</th><th>What</th><th>Why now</th><th>State</th></tr></thead>
+    <tbody>
+      ${NEXT.map(
+        (item, index) =>
+          `<tr><td>${index + 1}</td><td><strong>${escapeHtml(item.what)}</strong></td>` +
+          `<td class="missing">${escapeHtml(item.why)}</td>` +
+          `<td>${badge(item.blocked ? 'blocked' : 'started')}</td></tr>`,
+      ).join('\n      ')}
+    </tbody>
+  </table>
+
   <h2>Milestones</h2>
+  <p class="sub">
+    Listed in working order, which ADR-0006 re-sequenced: the gates whose content needs no .NET SDK
+    come first. Gate numbering and every gate's acceptance criteria are unchanged from the design
+    document — only the queue order moved.
+  </p>
   <table>
     <thead><tr><th>Gate</th><th>State</th><th>Done</th><th>Missing</th></tr></thead>
     <tbody>
