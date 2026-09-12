@@ -167,8 +167,11 @@ nothing). **The editor repeats that split deliberately:** `geometry.ts`,
 what a drag does to a transform, what undo restores — and the DOM overlay wires
 events to them without deciding anything. Gesture maths in the overlay is the
 same mistake as a decision in `mount.ts`, and it fails the same way: untestable
-without a browser. Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md).
-Put a decision in the mount layer and it becomes untestable without a browser.
+without a browser.
+
+Spec: [`.agents/specs/0003-scene-rendering.md`](.agents/specs/0003-scene-rendering.md)
+covers the renderer half. **The editor half has no spec yet** — the pure modules
+are the de facto contract.
 
 `@vigilia/fake-source` fabricates readings, which §97 forbids presenting as
 real. It is currently imported by the player because no transport exists, and
