@@ -19,9 +19,15 @@ These were verified on 2026-09-12 and are recorded with method in
 - **.NET 10 is the only sensible target** — 8 and 9 both EOL 2026-11-10 → ADR-0002.
 - **ECharts gauges support arbitrary sweep** but **cannot express a gradient along
   the ring** — see the styling matrix below.
-- **Display-only bundle measures 111.7 KB gzipped JS** with the ECharts gauge and
-  canvas renderer (measured via `npm run size -w @vigilia/player`). This is a
-  floor, not the final number — no transport, fonts, or media yet.
+- **Display-only bundle measures 184.1 KB gzipped JS** with all four chart
+  families, `GridComponent` and the canvas renderer (measured via
+  `npm run size -w @vigilia/player` on 2026-09-12; was 111.7 KB with the gauge
+  alone). Still a floor — no transport, fonts or media yet, and it includes the
+  synthetic sample source the player will drop.
+- **The display path renders in a browser.** 21 Playwright tests pass against
+  the built bundle on a 1280×720 desktop viewport and a Pixel 7 profile; see
+  "What the display path has demonstrated" below for exactly what that covers
+  and what it does not.
 
 ---
 
@@ -136,15 +142,30 @@ engine gaps to be marked explicitly with human agreement on the alternative.
 `axisLine.lineStyle.color` accepts only `[[proportion, color], …]` — discrete
 segments. Gradient objects are not documented for it.
 
-Implemented approach: approximate with N interpolated segments
+Implemented approach for the **track**: approximate with N interpolated segments
 ([`approximateGradient`](../../src/web/packages/renderer-core/src/charts/gauge.ts),
 default 64, capped at 256). Banding is visible at low counts and large radii.
 
-Alternatives if the approximation is rejected:
+**The gap has a second half, found on 2026-09-12 by looking at a rendered
+frame.** The *progress* arc cannot use that path at all: `axisLine` is a single
+property and the track already owns it. So a gradient progress fill now emits a
+real ECharts gradient object, which resolves **across the ring's bounding box
+rather than along the arc** — a true gradient, but not an angular one. This is
+visible in the demo dashboard's GPU gauge.
+
+The same bug also revealed that the progress arc previously fell through to
+ECharts' default blue for any non-solid fill, silently discarding what the theme
+asked for. Fixed; a threshold progress fill now resolves to the band containing
+the current value, which is exact and native.
+
+Alternatives if either approximation is rejected:
 
 1. Shared **native overlay arc** — consistent with §91, which permits a native
    overlay but never a bitmap substitute.
-2. Restrict gradients to non-gauge families.
+2. **Two series**: a full ring carrying the gradient segments, with a
+   track-coloured arc drawn over the remainder. Angular and exact, at the cost
+   of two series per gauge and a second place for the geometry to disagree.
+3. Restrict gradients to non-gauge families.
 
 ### Known engine gap: per-value thresholds on a line series
 
@@ -169,24 +190,97 @@ line (cartesian) and not on a gauge (arc); thresholds work natively on a gauge
 (axis bands) and not on a line (whole-series colour). Neither family is strictly
 more capable — the matrix has to record both.
 
+### Family × style matrix — first pass, 2026-09-12
+
+Authored from the implemented adapters. "Native" means the engine expresses it
+directly; "approximated" means we produce something defensible and the gap is
+recorded above; "n/a" means the combination has no meaning for that family.
+
+| | gauge | line | bar | pie |
+| --- | --- | --- | --- | --- |
+| Solid fill | native | native | native | native |
+| Linear gradient | approximated (box, not arc) | native | native | sampled per slice |
+| Thresholds by value | native (progress band) | **gap** (top band only) | native (per item) | per-slice share |
+| Arbitrary sweep / angles | native | n/a | n/a | native |
+| Ring thickness / inner radius | native | n/a | n/a | native |
+| Rounded caps | native | n/a | native (corner radius) | native (corner radius) |
+| Track / remainder | native | n/a | native (`showBackground`) | native (fixed total only) |
+| Independent area fill | n/a | native (first series) | n/a | n/a |
+| Per-series colour | n/a | native (palette) | native (per item) | native (palette) |
+| Width / spacing | thickness | line width | bar width + gap | pad angle |
+| Interpolation / markers | n/a | native | n/a | n/a |
+| Time window | n/a | native | n/a | n/a |
+| Missing sample → gap | track only | explicit `null` break | no bar drawn | slice absent |
+| Value clamped, raw preserved | native | native | native | n/a (shares) |
+| Outlines, dashes, shadows | **not implemented** | **not implemented** | **not implemented** | **not implemented** |
+| Engine-drawn labels / legends / axes | suppressed (§91) | axes native, labels ours | axes native, labels ours | suppressed (§91) |
+
+Every cell above has a **JSON representation** (the schema's per-family settings)
+and a **unit test**. What no cell has yet: an **inspector control** (no editor
+exists) or a **preset**. Visual fixtures exist only for the combinations the demo
+dashboard happens to use, listed below.
+
+Unverified engine behaviours, each marked at its use site in the code:
+
+- Whether `backgroundStyle` accepts a gradient object as well as a colour string.
+- Whether a bar's background is still painted for a `null` data item.
+- How `padAngle` behaves on a very small pie slice — whether the gap can consume
+  the slice entirely.
+
 - [ ] Human decision recorded on the gauge-gradient alternative
 - [ ] Human decision recorded on the line-thresholds alternative
-- [ ] Full family × style matrix authored
+- [x] Full family × style matrix authored — first pass above; needs review, and
+      the outlines/dashes/shadows row is a real release-scope hole (§85 calls
+      extensive styling release scope, not post-release polish)
 - [ ] Every applicable cell has control + JSON + preset + fixture
+
+### What the display path has demonstrated (2026-09-12)
+
+Rendered in Chromium against the built player bundle, at a desktop and a Pixel 7
+viewport. Screenshots are written to `src/web/test-results/screenshots/` and
+uploaded by CI; they are **not** pixel baselines, because CI is Linux and
+development is Windows and glyph rasterisation differs.
+
+Demonstrated, with a browser test asserting it:
+
+- All four chart families draw, each verified to have painted non-transparent
+  pixels rather than merely existing as an element.
+- A text element mixing a literal and a live value in separately styled runs.
+- An unmapped semantic key rendering as a placeholder, never a zero.
+- A simulated outage marking its span with a status attribute, so a theme can
+  style a failed reading — and showing a gap rather than a number.
+- The artboard transform: identity at an exactly matching viewport, letterboxed
+  and aspect-preserving on a taller phone, still aspect-preserving after a
+  resize.
+- Charts updating in place — the same canvas element survives several ticks,
+  which is the "update without recreating the scene" requirement.
+
+**Found because it was rendered, and unfindable from an option object:** a chart
+whose content is *entirely* animated draws nothing until its animation
+progresses. With a frozen clock the line chart and the donut were blank while
+the gauge and bars still showed, because their tracks are static. Anything that
+screenshots a fresh mount must advance the clock first.
 
 ### Gate 0 demonstration set (§43)
 
-- [ ] Richly styled live donut/radial gauge
-- [ ] Filled line chart
-- [ ] Editable sensor text with separately styled value and unit
+- [x] Richly styled live donut/radial gauge — threshold gauge, gradient gauge and
+      a fixed-total donut in the demo dashboard
+- [x] Filled line chart — two series, palette per series, area under the first
+- [ ] **Editable** sensor text with separately styled value and unit — the
+      *rendering* is demonstrated; editing needs the editor, which does not exist
 - [ ] Packaged font
 - [ ] Transparent artwork
 - [ ] GIF
 - [ ] Video
-- [ ] Rectangle, ellipse and line only — proving extensible node types
-- [ ] Gradients, outlines, shadows
+- [ ] Rectangle, ellipse and line only — proving extensible node types. Rectangle
+      is demonstrated; ellipse and line are implemented in the renderer but not
+      yet in any fixture
+- [ ] Gradients, outlines, shadows — gradients demonstrated; outlines and shadows
+      are not implemented at all
 - [ ] Font loading and metrics, with reserved boxes during load
-- [ ] Layering, undo, JSON round-trip — on desktop **and** phone
+- [ ] Layering, undo, JSON round-trip — on desktop **and** phone. Layering by
+      child order and JSON **load** are demonstrated on both viewports; there is
+      no save path and no undo, both of which need the editor
 
 ---
 
@@ -209,17 +303,28 @@ Placeholder budgets currently enforced in CI, to be replaced with measurements:
 
 | Budget | Placeholder | Enforced by |
 | --- | --- | --- |
-| Player JS, gzip | 400 KB | `scripts/check-size.mjs` (measuring 111.7 KB) |
+| Player JS, gzip | 400 KB | `scripts/check-size.mjs` (measuring 184.1 KB) |
 | Player CSS, gzip | 40 KB | same |
+
+Of that 184.1 KB, 176.7 KB is ECharts with four chart families, `GridComponent`
+and the canvas renderer; the application itself is 13.4 KB gzipped **including**
+the synthetic sample source and demo theme the player will eventually drop. If
+this budget ever comes under pressure, the engine is where the weight is — not
+our code.
 
 ---
 
 ## Compatibility floor
 
-- [ ] Minimum browser/WebView versions, tested not assumed (§124)
+- [ ] Minimum browser/WebView versions, tested not assumed (§124). The bundle
+      runs on Chromium 153 (the Playwright build) at both viewports; that is a
+      *recent* browser and says nothing about the floor
 - [ ] Feature detection and a clear compatibility screen
 - [ ] Confirm the `es2022` build target against the real low-end phone
-- [ ] Confirm service workers and newer performance APIs are **not** required
+- [x] Confirm service workers and newer performance APIs are **not** required —
+      the player registers no service worker and calls no performance API; it
+      uses `setInterval`, `visibilitychange`, `resize` and `orientationchange`
+      only. Re-check when the transport lands
 
 ## Exit criteria
 
