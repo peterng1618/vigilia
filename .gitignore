@@ -31,7 +31,9 @@ blob-report/
 
 # ---------- Runtime / local data ----------
 # SQLite metadata + managed asset files are user data, never committed.
-data/
+# Anchored to the repository root: a bare `data/` also matched source
+# directories such as renderer-core's `src/data/`, silently untracking them.
+/data/
 *.db
 *.db-shm
 *.db-wal

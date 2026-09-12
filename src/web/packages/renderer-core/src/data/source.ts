@@ -1,0 +1,22 @@
+import type { Sample } from '../types.js';
+
+/**
+ * Live data as the renderer sees it: a pull interface (§93, §116).
+ *
+ * Pull is what keeps acquisition off the display side — a source here never
+ * fetches, polls or subscribes; it answers `latest` and `history` when the
+ * plan builder asks. The transport fills a {@link SampleStore}; the plan
+ * builder only ever sees this.
+ */
+export interface SampleSource {
+  /** The newest sample for a semantic key, or undefined when nothing is mapped. */
+  latest(semanticKey: string): Sample | undefined;
+  /** Samples within the trailing window, oldest first. Empty when unmapped. */
+  history(semanticKey: string, windowSeconds: number): readonly Sample[];
+}
+
+/** A source that maps nothing. Unmapped keys report; they never invent. */
+export const emptySampleSource: SampleSource = {
+  latest: () => undefined,
+  history: () => [],
+};
