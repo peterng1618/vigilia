@@ -212,13 +212,24 @@ recorded above; "n/a" means the combination has no meaning for that family.
 | Time window | n/a | native | n/a | n/a |
 | Missing sample → gap | track only | explicit `null` break | no bar drawn | slice absent |
 | Value clamped, raw preserved | native | native | native | n/a (shares) |
-| Outlines, dashes, shadows | **not implemented** | **not implemented** | **not implemented** | **not implemented** |
+| Element outline + dash | native (border) | n/a | native | n/a |
+| Text outline | native (`-webkit-text-stroke`) | — | — | — |
+| Dashed text stroke | **gap** — not expressible in CSS; ignored | — | — | — |
+| Element shadow | native (`box-shadow` / `text-shadow`) | native | native | native |
+| Chart stroke dash | n/a | native (`lineStyle.type`) | n/a | n/a |
+| Chart-internal shadow (series glow) | **not implemented** | **not implemented** | **not implemented** | **not implemented** |
 | Engine-drawn labels / legends / axes | suppressed (§91) | axes native, labels ours | axes native, labels ours | suppressed (§91) |
+
+Element-level rows (outlines, shadows) are properties of the node the chart sits
+in, so they apply to every family — a chart element takes an outline and a
+shadow exactly as a rectangle does. "Chart-internal" means inside the drawing:
+a glow on a line series, for instance, which is not implemented.
 
 Every cell above has a **JSON representation** (the schema's per-family settings)
 and a **unit test**. What no cell has yet: an **inspector control** (no editor
 exists) or a **preset**. Visual fixtures exist only for the combinations the demo
-dashboard happens to use, listed below.
+dashboard happens to use — see
+[`screenshots/`](screenshots/) for what that currently covers.
 
 Unverified engine behaviours, each marked at its use site in the code:
 
@@ -229,9 +240,7 @@ Unverified engine behaviours, each marked at its use site in the code:
 
 - [ ] Human decision recorded on the gauge-gradient alternative
 - [ ] Human decision recorded on the line-thresholds alternative
-- [x] Full family × style matrix authored — first pass above; needs review, and
-      the outlines/dashes/shadows row is a real release-scope hole (§85 calls
-      extensive styling release scope, not post-release polish)
+- [x] Full family × style matrix authored — first pass above; needs review
 - [ ] Every applicable cell has control + JSON + preset + fixture
 
 ### What the display path has demonstrated (2026-09-12)
@@ -275,8 +284,8 @@ screenshots a fresh mount must advance the clock first.
 - [ ] Rectangle, ellipse and line only — proving extensible node types. Rectangle
       is demonstrated; ellipse and line are implemented in the renderer but not
       yet in any fixture
-- [ ] Gradients, outlines, shadows — gradients demonstrated; outlines and shadows
-      are not implemented at all
+- [x] Gradients, outlines, shadows — all three in the demo dashboard: gradient
+      gauge and area fill, a dashed outline, panel and text shadows
 - [ ] Font loading and metrics, with reserved boxes during load
 - [ ] Layering, undo, JSON round-trip — on desktop **and** phone. Layering by
       child order and JSON **load** are demonstrated on both viewports; there is
