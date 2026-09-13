@@ -96,6 +96,19 @@ export type {
 
 export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
 
+// Which settings each chart family accepts — the one owner of that question,
+// consumed by the editor's inspector. Previously it had four encodings (the
+// settings interfaces, the defaults, the validator, the schema) and the editor
+// had a fifth: none, which is why no chart setting was editable.
+export type { SettingsFieldDescriptor, SettingsFieldKind } from './charts/settings-fields.js';
+
+export {
+  CHART_SETTINGS_FIELDS,
+  NON_SCALAR_SETTINGS,
+  settingsFieldsFor,
+  settingsKeyFor,
+} from './charts/settings-fields.js';
+
 export type {
   Artboard,
   AssetLicense,
