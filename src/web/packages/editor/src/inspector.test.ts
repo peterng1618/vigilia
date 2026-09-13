@@ -31,7 +31,7 @@ const rect = (id: string, extra: Partial<ThemeNode> = {}): ThemeNode =>
     type: 'rectangle',
     transform: { x: 10, y: 20, width: 100, height: 50 },
     ...extra,
-  }) as unknown as ThemeNode;
+  }) as ThemeNode;
 
 const textNode = (id: string, extra: Partial<ThemeNode> = {}): ThemeNode =>
   ({
@@ -453,7 +453,7 @@ describe('applyFieldChange', () => {
     expect(applyFieldChange(base, [], 'transform.x', { kind: 'literal', value: 1 })).toBe(base);
   });
 
-  it('edits, validates and clears chart settings through the shared descriptors', () => {
+  it('edits and validates chart settings through the shared descriptors', () => {
     const chartDocument = document_([
       chartNode('g', 'gauge', {
         startAngle: 225,
