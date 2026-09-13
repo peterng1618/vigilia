@@ -11,9 +11,17 @@ the design document wrong until one of these is applied.
 AGENTS.md §164 says the design document wins until a human says otherwise. You
 have said otherwise; this file is the paperwork.
 
-If you'd rather keep the current wording, say so and I'll revise spec 0011
-instead — the third option in that decision ("keep literals as an escape hatch")
-is still available and costs nothing yet, because none of D2–D5 is implemented.
+> ## Status: all four APPROVED by the author, 2026-09-13
+>
+> §73 agreed · §170 agreed · §75 agreed, with removal forcing reassignment and
+> falling back to the no-fill value · §126 dropped.
+>
+> **What remains is the mechanical edit to
+> [`pc-stats-display-agent-plan.md`](pc-stats-display-agent-plan.md), which only
+> its author makes.** Until those paragraphs are pasted, the design document and
+> spec 0011 disagree — but the deviation is now *authorised* rather than
+> unresolved, which is the difference that matters when someone reads §164 and
+> finds the code doing something else.
 
 ---
 

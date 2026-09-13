@@ -36,12 +36,6 @@ Three failures, all observed:
 
 ## Decisions
 
-### D1 — Geometry is whole units *(decided, implemented)*
-
-Position, size and rotation are integers. `updateTransforms` rounds, because
-every transform write funnels through it. `scaleX`/`scaleY` are multipliers, not
-units, and are not rounded. Landed as `3b545c5`.
-
 ### D0 — Everything customisable is in the inspector
 
 **A global rule, and the one that settles every later argument about a row.** If
@@ -52,68 +46,11 @@ Its converse matters as much: a row that cannot do anything must not be drawn.
 The two together are what the capability matrix encodes — it is a statement of
 what *is* customisable per entity, not a UI preference.
 
-### D6 — The artboard is an entity in the inspector
+### D1 — Geometry is whole units *(decided, implemented)*
 
-The canvas itself is selectable and inspectable, with the rows it can honestly
-offer:
-
-| Artboard row | Editable |
-|---|---|
-| `width`, `height` | ✓ — **resizes the theme canvas after it was created**, which is the point of this decision |
-| `background` → palette ref | ✓ |
-| `barColor` → palette ref | ✓ |
-| `fitMode` | ✓ |
-| `x`, `y` | **absent.** Corrected 2026-09-13: an earlier draft had them editable and "moving the canvas". There is nothing to move the canvas *relative to* — the artboard defines the coordinate space, so an origin offset would either be a no-op or shift every node's effective position, which is a different operation with a different name |
-| `rotation` | shown, **locked** — nothing to rotate relative to, same reason |
-| `visible`, `locked` | shown, **locked** — a hidden canvas is not a state worth having |
-
-Resizing the canvas does **not** rescale its contents. Nodes keep their
-coordinates, so growing the artboard adds room and shrinking it can crop —
-which is what `fitMode` then governs on a display.
-
-Shown-but-locked rather than hidden, per D0: the author can see the property
-exists and that it is not theirs to change, which is different from wondering
-where it went.
-
-### D7 — A reserved, undeletable "none" colour
-
-With element literals gone (D3), "no fill" can no longer be expressed by
-clearing a property — every colour is a reference, so there must be a reference
-that means *nothing*.
-
-`palette.none` is reserved: fully transparent rgba, present in every theme,
-**not deletable and not renameable**. Clearing a fill assigns it.
-
-Two consequences worth stating:
-
-- It is the one palette entry `deleteGlobal` must refuse even when unreferenced,
-  which is a different rule from D3's "refuse while referenced" and needs its
-  own guard.
-- A theme that somehow lacks it gets it on load, because a document referencing
-  `palette.none` must resolve, and a missing reserved token would render as an
-  unresolved-global issue for something the author never touched.
-
-### D8 — One identifier per node, no separate display name
-
-`name` is removed. A node has an `id`, constrained to letters, numbers and
-dashes, unique within the document, and it is what the layer list and the
-inspector show.
-
-The reasoning that previously justified two fields does not apply to nodes.
-**Nothing inside the document references a node id** — verified against the
-schema and the document types: text runs reference a *binding* id (node-local),
-`WidgetProvenance` references a widget id, `editorMetadata` is opaque, and
-groups contain children by nesting. §75's "stable IDs plus editable names" sits
-in the theme-globals section, where a reference really is made from five places;
-nodes inherited the duality by analogy, not by need.
-
-And two fields can disagree. `id: "cpu-gauge"` with `name: "GPU temp"` is a
-document that lies about itself and nothing catches it — a misleading name is
-worse than a terse one (user, 2026-09-13).
-
-Renaming therefore rewrites the id. Where a reference to a node id is ever
-introduced, renaming rewrites it atomically — exactly what `rekeyGlobal`
-already does for globals, so the pattern exists rather than needing invention.
+Position, size and rotation are integers. `updateTransforms` rounds, because
+every transform write funnels through it. `scaleX`/`scaleY` are multipliers, not
+units, and are not rounded. Landed as `3b545c5`.
 
 ### D2 — A group is an editor entity, not a theme element
 
@@ -232,6 +169,85 @@ shape — a pack is a set of named tokens, so presets and palette entries must
 stay addressable by name and free of document-specific references. It does
 **not** justify building an import path now.
 
+### D5 — Each chart family exposes its own settings
+
+The inspector shows the settings for the selected chart's family, generated from
+a declaration in `renderer-core` beside the settings types — so the inspector,
+the validator and the schema stop being three encodings of one thing.
+
+### D6 — The artboard is an entity in the inspector
+
+The canvas itself is selectable and inspectable, with the rows it can honestly
+offer:
+
+| Artboard row | Editable |
+|---|---|
+| `width`, `height` | ✓ — **resizes the theme canvas after it was created**, which is the point of this decision |
+| `background` → palette ref | ✓ |
+| `barColor` → palette ref | ✓ |
+| `fitMode` | ✓ |
+| `x`, `y` | **absent.** Corrected 2026-09-13: an earlier draft had them editable and "moving the canvas". There is nothing to move the canvas *relative to* — the artboard defines the coordinate space, so an origin offset would either be a no-op or shift every node's effective position, which is a different operation with a different name |
+| `rotation` | shown, **locked** — nothing to rotate relative to, same reason |
+| `visible`, `locked` | shown, **locked** — a hidden canvas is not a state worth having |
+
+Resizing the canvas does **not** rescale its contents. Nodes keep their
+coordinates, so growing the artboard adds room and shrinking it can crop —
+which is what `fitMode` then governs on a display.
+
+Shown-but-locked rather than hidden, per D0: the author can see the property
+exists and that it is not theirs to change, which is different from wondering
+where it went.
+
+### D7 — A reserved, undeletable "none" colour
+
+With element literals gone (D3), "no fill" can no longer be expressed by
+clearing a property — every colour is a reference, so there must be a reference
+that means *nothing*.
+
+`palette.none` is reserved: fully transparent rgba, present in every theme,
+**not deletable and not renameable**. Clearing a fill assigns it.
+
+Two consequences worth stating:
+
+- It is the one palette entry `deleteGlobal` must refuse even when unreferenced,
+  which is a different rule from D3's "refuse while referenced" and needs its
+  own guard.
+- **It is the fallback when a referenced token is removed** (user, 2026-09-13).
+  Removal forces reassignment; if the author reassigns nothing, every reference
+  becomes `palette.none`. So deletion is permitted rather than refused, and the
+  result is still a *reference* — never an element literal, which is what D3
+  forbids.
+
+  **Implementation lags this.** `deleteGlobal` currently refuses outright
+  (`1b55107`), because `palette.none` does not exist until schema v2. The
+  refusal is the honest interim — it cannot silently produce a dangling
+  reference — but it is not the decided behaviour.
+- A theme that somehow lacks it gets it on load, because a document referencing
+  `palette.none` must resolve, and a missing reserved token would render as an
+  unresolved-global issue for something the author never touched.
+
+### D8 — One identifier per node, no separate display name
+
+`name` is removed. A node has an `id`, constrained to letters, numbers and
+dashes, unique within the document, and it is what the layer list and the
+inspector show.
+
+The reasoning that previously justified two fields does not apply to nodes.
+**Nothing inside the document references a node id** — verified against the
+schema and the document types: text runs reference a *binding* id (node-local),
+`WidgetProvenance` references a widget id, `editorMetadata` is opaque, and
+groups contain children by nesting. §75's "stable IDs plus editable names" sits
+in the theme-globals section, where a reference really is made from five places;
+nodes inherited the duality by analogy, not by need.
+
+And two fields can disagree. `id: "cpu-gauge"` with `name: "GPU temp"` is a
+document that lies about itself and nothing catches it — a misleading name is
+worse than a terse one (user, 2026-09-13).
+
+Renaming therefore rewrites the id. Where a reference to a node id is ever
+introduced, renaming rewrites it atomically — exactly what `rekeyGlobal`
+already does for globals, so the pattern exists rather than needing invention.
+
 ### D9 — The gradient model
 
 A gradient is a theme-level token (D3) with:
@@ -269,11 +285,22 @@ whole thing moves from element style into the palette.
 `thresholds` — the third `Fill` kind — is **not** a gradient and stays distinct:
 discrete bands selected by value, which is a data mapping rather than a paint.
 
-### D5 — Each chart family exposes its own settings
+### D10 — Grouping makes its children contiguous, and that moves paint order
 
-The inspector shows the settings for the selected chart's family, generated from
-a declaration in `renderer-core` beside the settings types — so the inspector,
-the validator and the schema stop being three encodings of one thing.
+Grouping collects the selection into adjacent positions in the order tree, and
+since **child order alone determines stacking** (§137) that changes paint order
+for anything that was interleaved between them.
+
+**This ratifies behaviour that already exists** rather than commissioning work:
+`arrange.ts` keeps the members' relative paint order and inserts the group where
+the **topmost** member was (`arrange.ts:87`, `:126`). Recorded because the
+consequence is easy to be surprised by and nothing else states it — grouping two
+panels with an unselected label between them lifts or drops that label relative
+to both, and no amount of care in the grouping code avoids it. It is inherent to
+a single ordered child list.
+
+Inserting at the topmost member's index is the choice that disturbs least: the
+group ends up where the frontmost thing an author selected already was.
 
 ## The capability matrix
 
