@@ -1,7 +1,7 @@
 # 0011 — The editor property model
 
-- **Status:** proposed — **two decisions below need a human**, and one of them
-  contradicts the user-authored design document
+- **Status:** accepted — the three open decisions were resolved by the user on
+  2026-09-13; see [Resolutions](#resolutions). Implementation has started
 - **Design document sections:** §57, §61, §73, §75, §137, §141, §164, §170
 - **Supersedes in part:** [0006](0006-editor-inspector.md) (which properties the
   inspector shows), [0007](0007-editor-globals.md) (the globals groups)
@@ -138,8 +138,8 @@ table says it does.
 | Stroke (colour → palette ref, width, dash) | — | ✓ | ✓ | — | — | — |
 | Shadow (colour → palette ref, blur, offset) | — | ✓ | ✓ | ✓ | — | — |
 | Corner radius | — | ✓ | — | — | — | — |
-| Type preset ref | — | — | — | ✓ | — | — |
-| Text colour → palette ref | — | — | — | ✓ | — | — |
+| Type preset ref | — | — | — | ✓ (element, and per run — R3) | — | — |
+| Text colour → palette ref | — | — | — | ✓ (element, and per run — R3) | — | — |
 | Text content / runs | — | — | — | ✓ | — | — |
 | Image source, fit | — | — | — | — | ✓ | — |
 | Bindings (semantic keys) | — | — | — | ✓ | — | ✓ |
@@ -192,15 +192,40 @@ issue), `schema-sync.test.ts`, and later the add-element UI's defaults.
   is a change to a designed feature.
 
 §164 says the design document wins until a human says otherwise. The user has
-said otherwise in conversation; this spec records it, and the design document
-should be amended by its author so the two stop disagreeing.
+said otherwise, and chose the resolution below.
+
+## Resolutions
+
+Decided by the user on 2026-09-13.
+
+### R1 — The design document is amended by its author, from a draft
+
+Spec 0011 governs implementation. The conflicting wording is **not** edited by
+an agent: proposed replacements for §73 and §170 live in
+[`docs/proposed-design-doc-amendments.md`](../../docs/proposed-design-doc-amendments.md)
+for the author to paste or discard. Until they are pasted, the design document
+and this spec disagree **knowingly**, and this section is the record of why.
+
+### R2 — `schemaVersion` becomes 2, and v1 is refused
+
+Per §141: bump and fail cleanly rather than carry a migration path forever. A v1
+theme meets a message naming both versions. The five in-repo fixtures are
+rewritten by hand — 6 group transforms, 25 colour/font literals.
+
+This is chosen on the basis that **no theme has been saved outside this
+repository**. If one has, it is lost, and that is the cost of the simpler
+option.
+
+### R3 — A text run may override its type preset *and* its colour
+
+Both as references, both inheriting from the element when absent. This keeps the
+demo's three-colour `"GPU core {gpu.temp} (outage simulated…)"` label
+expressible, and it is what makes multi-run text tractable under D4: a run picks
+a *preset*, not five independent typographic fields.
 
 ## Open questions
 
-| | Question | Why it cannot be settled here |
-|---|---|---|
-| **O1** | Migrate v1 themes, or bump `schemaVersion` to 2 and refuse them? | AGENTS.md §9 says themes already saved must keep loading, and §141 says bump and fail unsupported versions — those pull in opposite directions. Migration is ~25 colour/font literals and 6 group transforms across the fixtures, so either is cheap *here*; the question is whether any theme has been saved outside the repo |
-| **O2** | Does a value run inside a text element pick its own type preset, or inherit the element's? | Decides whether multi-run text keeps per-run styling at all |
+None outstanding. R1–R3 closed the three that were.
 
 ## Acceptance
 
