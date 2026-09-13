@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // renderer-core is consumed as source, so the program spans two workspace
+    // packages and rootDir has to cover both or TS6059 fires for every shared
+    // file. Same arrangement as the player and fake-source.
+    "rootDir": "../..",
+    // This package runs in Node, not a browser. DOM stays in `lib` from the
+    // base config and is harmless — but `types` must include node, or every
+    // `node:` import is unresolved.
+    "types": ["node"],
+    "paths": {
+      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

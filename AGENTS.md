@@ -15,9 +15,12 @@ desktop browser runs a full design editor; phones each display one assigned
 dashboard. Windows-first, MIT, **personal-use-first** — optimise for development
 speed over release polish.
 
-Polyglot: **C# (.NET 10)** for the host, providers and platform adapters;
-**TypeScript** for the shared renderer, display-only player and editor. The
-frontend is an npm workspace at `src/web/`.
+**TypeScript throughout** — shared renderer, display-only player, editor *and*
+the host. One npm workspace at `src/web/`. The host was C# (.NET 10), then
+briefly a Python draft; [ADR-0007](docs/decisions/0007-host-in-node-shipped-as-a-cli.md)
+settled it as Node/TypeScript shipped as a `vigilia` CLI, and the `src/Vigilia.*`
+C# tree is slated for deletion. **Do not install a .NET SDK or Python to unblock
+anything** — neither is required any more.
 
 **The design document is the spec:** [`docs/pc-stats-display-agent-plan.md`](docs/pc-stats-display-agent-plan.md)
 (revision 9). Section markers throughout the code — `§93`, `§122` — point into
@@ -88,8 +91,11 @@ npx tsc --noEmit -p packages/renderer-core/tsconfig.json
 npx tsc --noEmit -p packages/player/tsconfig.json
 npx tsc --noEmit -p packages/fake-source/tsconfig.json
 npx tsc --noEmit -p packages/editor/tsconfig.json
+npx tsc --noEmit -p packages/host/tsconfig.json
 npx vite build packages/player                   # display-only bundle
 npx vite build packages/editor                   # desktop authoring bundle
+npx vite build packages/host                     # Node bundle for the CLI
+node packages/host/bin/vigilia.js --no-browser   # run the host; needs all three builds
 node packages/player/scripts/check-size.mjs      # §47 budget gate; needs a build first
 npx playwright test                              # browser tests; needs BOTH builds first
 npx vite dev packages/player                     # watch the demo dashboard live
@@ -103,9 +109,15 @@ figures — it runs the unit suite, measures the bundle on disk, and prints "not
 measured" for anything it cannot establish rather than carrying a number
 forward. `vigilia:verify` is the routine to run before committing.
 
-**There are four typecheck projects, not three.** `packages/editor` is one of
-them; CI checks all four, so omitting it locally means CI finds the error
-instead of you.
+**There are five typecheck projects.** `packages/editor` and `packages/host`
+are both easy to forget; CI checks all five, so omitting one locally means CI
+finds the error instead of you.
+
+**The host is built, and it refuses to start unbuilt.** `bin/vigilia.js` is a
+shim over `dist/main.js`. Node 23.6+ can strip TypeScript, but stripping is not
+resolution — `renderer-core` is consumed as source and imports with `.js`
+specifiers, which Node cannot resolve from `.ts` files. `packages/host/vite.config.ts`
+says so at length; do not "simplify" it away.
 
 **`npx playwright test` previews *built* bundles**, so a source change is
 invisible until the bundle is rebuilt — and **every bundle a suite exercises
@@ -121,18 +133,21 @@ If the browser is missing or its build is too old for the installed Playwright,
 version directory such as `chromium_headless_shell-1243`; an older one present
 on disk will not be used.
 
-### Backend — run from the repository root
+### Host — also from `src/web/`
+
+The host is part of the npm workspace, so there is no second toolchain and no
+separate build root. It binds `127.0.0.1:5227` by default.
 
 ```bash
-dotnet restore Vigilia.slnx
-dotnet build Vigilia.slnx --configuration Release
-dotnet test Vigilia.slnx
-dotnet run --project src/Vigilia.Host            # binds 127.0.0.1:5227
+node packages/host/bin/vigilia.js --help
+node packages/host/bin/vigilia.js --no-browser           # loopback only
+node packages/host/bin/vigilia.js --host 0.0.0.0         # let phones connect
 ```
 
-**No .NET SDK is currently installed** — only the EOL 6.0.35 runtime. Every
-`dotnet` command above is **unverified and has never been run**. See the trap
-below for the misleading error you will get.
+**The `dotnet` commands that used to be here are gone**, along with the reason
+they never worked. `Vigilia.slnx` and `src/Vigilia.*` are still on disk and
+still have never compiled; they are slated for deletion per ADR-0007. Do not
+install an SDK to revive them.
 
 No command here requires infrastructure, and none is interactive.
 
@@ -154,6 +169,7 @@ No command here requires infrastructure, and none is interactive.
 | `src/web/packages/player` | Display-only bundle for phones |
 | `src/web/packages/editor` | Desktop authoring: interaction and inspector layer over `renderer-core` (ADR-0005). **Do not add Fabric** |
 | `src/web/packages/fake-source` | **Fabricated** samples + the demo theme. Dev and test only |
+| `src/web/packages/host` | The PC host: CLI launcher, serving, SSE transport, providers |
 | `src/web/tests/e2e` | Playwright browser tests, one spec per surface |
 
 **Outside the npm workspace:** everything except the four `src/web/packages/*`
@@ -188,10 +204,20 @@ cannot supply — that case renders as a gap, by design.
 
 ## 7. Technology stack
 
-.NET 10 · ASP.NET Core + SignalR (MessagePack) · LibreHardwareMonitorLib
-**exactly `[0.9.6]`** · PawnIO (external, optional) · Vue-less TypeScript for
-`renderer-core` · ECharts 6.1.0 · Vite 8 · TypeScript 7.0.2 · vitest 5 ·
-Playwright 1.63 (browser tests in `src/web/tests/e2e`).
+Node 22+ · Vue-less TypeScript everywhere · ECharts 6.1.0 · Vite 8 ·
+TypeScript 7.0.2 · vitest 5 · Playwright 1.63 (browser tests in
+`src/web/tests/e2e`) · LibreHardwareMonitor as an **external prebuilt
+executable** read over HTTP, not a linked library · PawnIO (external, optional).
+
+**The host has no runtime dependencies** beyond `renderer-core`: `node:http` to
+serve, Server-Sent Events for the sample stream, `node:os` for baseline
+telemetry. SSE rather than a WebSocket because telemetry is push-only, so a
+`ws` dependency's bidirectionality would go unused. Adding any runtime
+dependency needs a `THIRD-PARTY-NOTICES.md` entry first.
+
+Gone with ADR-0007: .NET 10, ASP.NET Core, SignalR, MessagePack, and the
+`LibreHardwareMonitorLib [0.9.6]` NuGet pin — ADR-0003's *stability* reasoning
+survives, its packaging does not.
 
 The editor foundation is **decided**: ADR-0005 rejects both Fabric candidates and
 builds the editor as an interaction and inspector layer over `renderer-core`.
@@ -238,29 +264,33 @@ stalled three milestones that do not depend on it. Gate *content* is unchanged.
 | `docs/pc-stats-display-agent-plan.md` | User-authored spec. Propose changes; do not rewrite |
 | `docs/agent-environment-setup.md` | User-authored methodology. Same |
 
-### Not generated, but must be changed in pairs — nothing warns you
+### The mirror is gone — do not recreate it
 
-`src/Vigilia.Contracts/*.cs` is **hand-mirrored** in
-`src/web/packages/renderer-core/src/types.ts`. A change to `Sample`,
-`SensorStatus` or `SensorDescriptor` on one side compiles cleanly on the other
-and produces wrong values at runtime. **This is the highest-risk edit in the
-repository.** Change both, in the same commit.
+`src/Vigilia.Contracts/*.cs` was hand-mirrored in
+`renderer-core/src/types.ts`, and this file used to call it the highest-risk
+edit in the repository. **ADR-0007 removed the mirror rather than guarding it
+better**: the host is TypeScript and imports `types.ts` directly, so the class
+of bug — a change that compiles cleanly on both sides and produces wrong values
+at runtime — no longer has anywhere to live.
 
-Two guards now fail on drift instead of leaving it to discipline:
+Two consequences worth knowing:
 
-- `renderer-core/src/contracts-mirror.test.ts` parses the `.cs` files and
-  `types.ts` as text and compares member names. Narrow on purpose — names only,
-  not types — because that is the drift that actually happens. It cannot see
-  `DateTimeOffset` versus an ISO string, which is intentional and asserted.
-- `renderer-core/src/theme/schema-sync.test.ts` does the same for
-  `schema/theme-document.schema.json` against the validator.
-
-Neither replaces generating one side from the other, which needs a .NET SDK to
-exist first. A guard that runs today beats a better one that does not.
+- **The wire contract lives in the shared library**, at
+  `renderer-core/src/data/protocol.ts`, because the host *and* every display
+  import it. Do not define a message shape in `packages/host` and a reader for
+  it in a display — that is the mirror again, rebuilt.
+- `renderer-core/src/contracts-mirror.test.ts` still parses the `.cs` files and
+  passes. **Its subject is dead code**; delete it with the C# tree.
+  `theme/schema-sync.test.ts` is unaffected and still earns its place — it
+  guards `schema/theme-document.schema.json` against the validator, and that
+  schema is a persisted format with real old files behind it.
 
 ### Blast radius, in order
 
-1. `Vigilia.Contracts` ↔ `renderer-core/src/types.ts` — the unenforced mirror above.
+1. `renderer-core/src/types.ts` and `data/protocol.ts` — the sample and wire
+   contracts, now single-sourced and imported by the host, both displays and
+   the editor. Compiler-checked, so a break is loud; but it is still the
+   widest-reaching file here.
 2. `schema/theme-document.schema.json` — the persisted format. Themes already
    saved must keep loading; bump `schemaVersion` and fail unsupported versions
    without touching the library (§141).

@@ -90,6 +90,26 @@ reuse rights — record source, hash and supplied licence for every imported ass
 
 ---
 
+## @types/node — MIT
+
+`@types/node` 22.10.2, a devDependency of `@vigilia/host`. Licence verified
+from the package's own `package.json` (`"license": "MIT"`) and its bundled
+`LICENSE` file (MIT, Copyright (c) Microsoft Corporation), on 2026-09-13.
+
+**Type declarations only.** Nothing from this package exists at runtime — `tsc`
+erases it — so it cannot appear in a distributed bundle and carries no notice
+obligation into one. Recorded here because `AGENTS.md` requires every declared
+dependency to be listed, not because it ships.
+
+The host itself has **no runtime dependencies** beyond `@vigilia/renderer-core`
+(this repository): serving is `node:http`, the sample stream is Server-Sent
+Events over that same server, and baseline telemetry is `node:os`
+([ADR-0007](docs/decisions/0007-host-in-node-shipped-as-a-cli.md)). Adding one —
+`systeminformation` is the intended source for disk and network counters — needs
+an entry here first.
+
+---
+
 ## Maintenance rule
 
 Any new dependency must be added here **with its licence verified from the

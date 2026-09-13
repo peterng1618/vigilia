@@ -163,6 +163,29 @@ export type { SampleStoreOptions } from './data/store.js';
 
 export { SampleStore, defaultSampleStoreOptions } from './data/store.js';
 
+// The host↔display wire contract. Exported from the shared library because
+// both ends import it — one definition, compiler-checked on both sides, rather
+// than the hand-mirrored pair ADR-0007 replaced.
+export type { DecodeResult, SampleBatch, SampleEntry } from './data/protocol.js';
+
+export {
+  PROTOCOL_VERSION,
+  SAMPLE_EVENT,
+  SAMPLE_STREAM_PATH,
+  createBatch,
+  decodeBatch,
+  formatSseEvent,
+} from './data/protocol.js';
+
+export type {
+  EventSourceLike,
+  LiveSourceHandle,
+  LiveSourceOptions,
+  LiveSourceStatus,
+} from './data/live-source.js';
+
+export { createLiveSource } from './data/live-source.js';
+
 export type {
   PlanBox,
   PlanContent,

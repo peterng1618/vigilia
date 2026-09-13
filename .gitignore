@@ -1,6 +1,16 @@
 # ---------- .NET ----------
-bin/
-obj/
+# ANCHORED to the C# trees. A bare `bin/` matches at any depth and silently
+# untracked `src/web/packages/host/bin/vigilia.js` -- the `vigilia` CLI entry
+# point, i.e. the one file `npx vigilia` cannot start without. Exactly the same
+# failure as the bare `data/` that untracked renderer-core's src/data/.
+#
+# Re-including is not an option once a parent directory is excluded (git does
+# not descend into an ignored directory), so these must stay anchored rather
+# than negated with `!`.
+src/Vigilia.*/bin/
+src/Vigilia.*/obj/
+tests/Vigilia.*/bin/
+tests/Vigilia.*/obj/
 [Dd]ebug/
 [Rr]elease/
 artifacts/

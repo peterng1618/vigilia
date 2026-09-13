@@ -34,11 +34,14 @@ jobs:
       - run: npm ci
 
       - name: Typecheck
+        # Five projects, not four. The host joined them in ADR-0007; omitting it
+        # here means CI finds a host type error only when someone runs the CLI.
         run: |
           npx tsc --noEmit -p packages/renderer-core/tsconfig.json
           npx tsc --noEmit -p packages/player/tsconfig.json
           npx tsc --noEmit -p packages/fake-source/tsconfig.json
           npx tsc --noEmit -p packages/editor/tsconfig.json
+          npx tsc --noEmit -p packages/host/tsconfig.json
 
       - name: Unit tests
         run: npx vitest run
@@ -52,6 +55,12 @@ jobs:
         # `vite preview` on an unbuilt package cannot start. `dist/` is
         # gitignored, so a fresh checkout has nothing until this step runs.
         run: npx vite build packages/editor
+
+      - name: Build host
+        # Not previewed by Playwright, so this is not the webServer trap — but
+        # the bin shim refuses to start without dist/, so a build break here is
+        # invisible until someone runs `vigilia`.
+        run: npx vite build packages/host
 
       - name: Enforce display-only bundle budget (§47)
         # Fails if an editor dependency leaks into the player.

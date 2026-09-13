@@ -1,0 +1,29 @@
+{
+  "name": "@vigilia/host",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "PC host: CLI launcher, static serving, sample transport and hardware providers.",
+  "bin": {
+    "vigilia": "./bin/vigilia.js"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vigilia/renderer-core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "//": "ZERO RUNTIME DEPENDENCIES BEYOND THE RENDERER'S TYPES, deliberately. Serving is node:http, the sample stream is Server-Sent Events over that same server rather than a `ws` dependency (telemetry is push-only, so WebSocket's bidirectionality would be unused), and baseline telemetry is node:os. @types/node is types-only and never ships. Adding a runtime dependency here needs a THIRD-PARTY-NOTICES.md entry first (AGENTS.md §2)."
+}

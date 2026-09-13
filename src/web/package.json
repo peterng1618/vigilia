@@ -9,7 +9,8 @@
     "packages/renderer-core",
     "packages/player",
     "packages/editor",
-    "packages/fake-source"
+    "packages/fake-source",
+    "packages/host"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

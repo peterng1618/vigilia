@@ -3,11 +3,15 @@ import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent } from 'echarts/components';
 import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import {
+  SAMPLE_STREAM_PATH,
   buildScenePlan,
   createAssetResolver,
+  createLiveSource,
   missingFontFamilies,
   mountScene,
   requiredSemanticKeys,
+  type LiveSourceHandle,
+  type LiveSourceStatus,
   type SampleSource,
   type ScenePlan,
   type SceneHandle,
@@ -108,10 +112,37 @@ function start(host: HTMLElement): void {
     return;
   }
 
-  // The two lines that become the transport. Everything below is unaware of
-  // where samples come from: it only ever sees a SampleSource.
-  const fake = createDemoSource(Date.now());
-  const source: SampleSource = fake;
+  // Where samples come from. Everything below is unaware: it only ever sees a
+  // SampleSource.
+  //
+  // `?data=live` opens the host's stream; anything else uses the fake. The
+  // choice is **explicit in both directions and never inferred**, because the
+  // tempting behaviour — try the host, fall back to synthetic when it is not
+  // there — is precisely what §97 forbids. A dashboard that quietly swaps in
+  // invented numbers when the host dies is worse than one that shows gaps,
+  // and it is indistinguishable from working.
+  //
+  // The host redirects `/` to `?data=live`, so a phone pointed at the PC gets
+  // real hardware; a bare `vite preview` keeps the fake, which is what the
+  // browser tests and screenshots run against.
+  const live = parameters.get('data') === 'live';
+  const fake = live ? undefined : createDemoSource(Date.now());
+  let source: SampleSource;
+  let liveHandle: LiveSourceHandle | undefined;
+
+  if (fake === undefined) {
+    // Only the keys this theme actually binds (§111): the host polls the union
+    // across connected displays, so asking for less genuinely acquires less.
+    const keys = requiredSemanticKeys(theme);
+
+    liveHandle = createLiveSource({
+      url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
+      onStatus: (status, detail) => showConnectionState(status, keys.length, detail),
+    });
+    source = liveHandle.source;
+  } else {
+    source = fake;
+  }
 
   // Assets are served from the site root here because the player's static
   // files are laid out that way. The host will serve a per-revision prefix
@@ -145,14 +176,20 @@ function start(host: HTMLElement): void {
 
   reportIssues(first);
   reportMissingFonts(first);
-  showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested);
+
+  if (fake === undefined) {
+    showConnectionState('connecting', requiredSemanticKeys(theme).length);
+  } else {
+    showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested);
+  }
 
   let timer: number | undefined;
 
   const tick = (): void => {
-    // Only the fake needs its clock pushed forward; a real source is advanced
-    // by arriving samples, so this line goes away with the transport.
-    fake.setNow(Date.now());
+    // Only the fake needs its clock pushed forward. A live source is advanced
+    // by arriving samples — the render loop stays on its own cadence, which is
+    // §111's "keep sampling, transmission and animation rates separate".
+    fake?.setNow(Date.now());
     handle.update(plan());
   };
 
@@ -200,8 +237,14 @@ function start(host: HTMLElement): void {
     window.setTimeout(() => handle.resize(), 200);
   });
 
+  // Close the stream when the page goes away. §111 bounds per-client state on
+  // the host, and a connection the browser has abandoned but not closed keeps
+  // its keys in the polling union — so a phone navigating away would keep the
+  // PC acquiring sensors nobody is looking at.
+  window.addEventListener('pagehide', () => liveHandle?.close());
+
   run();
-  exposeForDiagnostics(handle);
+  exposeForDiagnostics(handle, liveHandle);
 }
 
 /**
@@ -273,13 +316,64 @@ function showScaffoldBanner(keyCount: number, themeName: string): void {
 }
 
 /**
+ * Shows the live connection's state, and only ever the truth about it.
+ *
+ * The counterpart to {@link showScaffoldBanner}: that one exists so synthetic
+ * data can never be mistaken for real, and this one exists so a *stopped* host
+ * can never be mistaken for a working one. A dashboard frozen on its last good
+ * reading looks exactly like a dashboard that is up to date, which is the
+ * failure §83 and §97 are both circling — so the state is on screen, not in
+ * the console.
+ *
+ * `live` is the one state that says nothing: a working dashboard should be the
+ * dashboard, not a dashboard with a badge on it.
+ */
+function showConnectionState(
+  status: LiveSourceStatus,
+  keyCount: number,
+  detail?: string,
+): void {
+  const id = 'vigilia-connection';
+  const existing = document.getElementById(id);
+
+  if (status === 'live') {
+    existing?.remove();
+    return;
+  }
+
+  const message: Record<Exclude<LiveSourceStatus, 'live'>, string> = {
+    connecting: `Connecting to the host — ${keyCount} sensors requested`,
+    reconnecting: 'Lost the host. Values shown are the last received, not current.',
+    refused: `The host is not compatible with this display${detail === undefined ? '' : `: ${detail}`}`,
+  };
+
+  const banner = existing ?? document.createElement('div');
+
+  banner.id = id;
+  banner.textContent = message[status];
+  banner.style.cssText =
+    'position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;' +
+    'font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em;' +
+    (status === 'refused'
+      ? 'background:#4a0000;color:#ff9a9a'
+      : 'background:#003a4a;color:#7fdce9');
+
+  if (existing === null) {
+    document.body.append(banner);
+  }
+}
+
+/**
  * Exposes the scene handle for manual poking in a browser console.
  *
  * Read-only convenience for development. Nothing in the app reads it, and it
  * carries no data a page could not already see.
  */
-function exposeForDiagnostics(handle: SceneHandle): void {
-  Reflect.set(window, 'vigilia', { handle });
+function exposeForDiagnostics(handle: SceneHandle, live?: LiveSourceHandle): void {
+  // `live` is included so a browser test — and a person on a phone with a
+  // remote console — can ask whether batches are actually arriving, rather
+  // than inferring it from whether the numbers look plausible.
+  Reflect.set(window, 'vigilia', { handle, live });
 }
 
 start(artboardHost);
