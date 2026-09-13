@@ -123,20 +123,32 @@ A group exists to move things together and to organise the layer list. It is
 | `visible` | `bindings` |
 | Order among its siblings | An identifier separate from its id (D8) |
 
-**Its transform is derived, and editable anyway.** This is the correction to a
-first reading of this decision that removed the transform rows altogether —
-wrong, because per D0 moving and rotating a group *is* customisable, so it must
-be in the inspector. What changes is where the value lives, not whether an
-author can set it:
+**No transform rows at all, and the route to that took three passes** — worth
+recording, because the end state looks identical to the first attempt and is
+reached for a different reason:
 
-| Group row | Shown from | Editing it |
-|---|---|---|
-| `x`, `y` | union of child world bounds | applies the delta to every child's `x`/`y` |
-| `width`, `height` | same | scales the children (`resize-children.ts`) |
-| `rotation` | always 0 — a group stores none | rotates children about the derived centre |
+1. *No rows* — wrong. Moving a group is an author operation, and D0 says every
+   operation is reachable from the inspector.
+2. *Position and rotation, derived from the children's bounds and applied back
+   as a delta.* Correct, and still a leaky abstraction: the numbers are not the
+   group's own, rotation could not be implemented honestly, and size had to be
+   excluded by hand.
+3. *Structural only.* A group's transform **is** its children's values — there
+   is no property of its own to show, and showing one invites an author to
+   believe the group holds geometry.
 
-A group therefore has no coordinate space of its own: its children are in the
-group's parent space, and the group is a selection and a layer-list entry.
+D0 is satisfied by the **operation** existing, not by a row restating it:
+moving and rotating a group is a canvas gesture that translates directly into
+child values. So a group has no coordinate space of its own, and is a selection
+plus a layer-list entry.
+
+Two consequences:
+
+- **A group offers no resize handles on the canvas either.** Resizing a group is
+  not an operation, so the canvas must not offer what the inspector denies —
+  D0's converse. This makes `resize-children.ts` dead code.
+- The `position`/`size`/`rotation` capability split survives and earns its keep
+  regardless: the artboard (D6) needs exactly that granularity.
 
 Consequences that follow, and each is a real behaviour change:
 
@@ -313,9 +325,28 @@ demo's three-colour `"GPU core {gpu.temp} (outage simulated…)"` label
 expressible, and it is what makes multi-run text tractable under D4: a run picks
 a *preset*, not five independent typographic fields.
 
+## Known defect this spec does not fix
+
+**A hidden element cannot be reselected, so it is effectively lost** (user,
+2026-09-13). `hitTest` skips hidden nodes — correct, since an invisible thing
+should not intercept clicks — but with no other route to a node, hiding one and
+clicking away removes it from the author's reach entirely. Only undo recovers
+it, and only if it is still in the history.
+
+A **layer panel** is the fix, not a change to hit-testing: the tree is the
+non-visual route to a node, which is what a hidden element needs. Recorded here
+because it makes the layer panel a correctness feature rather than a
+convenience, and because the visibility toggle is the thing that creates the
+trap.
+
+It also makes the "suspected only" finding from the gesture audit reachable:
+`ungroupNodes` drops a hidden group's `visible: false` and would reveal its
+children. Unreachable today precisely *because* a hidden group cannot be
+selected — a layer panel removes that accidental protection.
+
 ## Open questions
 
-None outstanding. R1–R3 closed the three that were.
+None outstanding for this spec. R1–R3 closed the three that were.
 
 ## Acceptance
 

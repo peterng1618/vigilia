@@ -41,30 +41,22 @@ describe('the capability matrix', () => {
 });
 
 describe('a group is an editor entity, not a drawable (spec 0011 D2)', () => {
-  it('stores no geometry, but still presents position and rotation', () => {
-    // Removing the transform rows outright was wrong: moving and rotating a
-    // group is something an author does, so per D0 it belongs in the inspector.
-    // What changed is the storage — the value is derived from the children and
-    // editing it rewrites them.
-    expect(hasCapability('group', 'position')).toBe(true);
-    expect(hasCapability('group', 'rotation')).toBe(true);
-    expect(isDerivedCapability('group', 'position')).toBe(true);
-    expect(isDerivedCapability('group', 'rotation')).toBe(true);
+  it('presents no geometry at all', () => {
+    // Its transform IS its children's values, so a row would restate something
+    // the group does not own. Moving and rotating a group is still done — on
+    // the canvas, where the gesture translates into child values. D0 is
+    // satisfied by the operation existing, not by a row repeating it.
+    for (const group of ['position', 'size', 'rotation'] as const) {
+      expect(hasCapability('group', group)).toBe(false);
+    }
+
+    expect(transformPropertiesFor('group')).toEqual([]);
   });
 
-  it('offers NO size — resizing a group is not an operation', () => {
-    // This is why `transform` had to be split into three capabilities: as one
-    // it could not express "offers position but not size", and the first
-    // attempt swung between giving a group everything and giving it nothing.
-    expect(hasCapability('group', 'size')).toBe(false);
-    expect(transformPropertiesFor('group')).toEqual(['x', 'y', 'rotation']);
-  });
-
-  it('is the only entity with a derived capability', () => {
+  it('has no derived capabilities either, now that the transform rows are gone', () => {
     for (const type of NODE_TYPES) {
-      if (type !== 'group') {
-        expect(isDerivedCapability(type, 'position')).toBe(false);
-        expect(isDerivedCapability(type, 'rotation')).toBe(false);
+      for (const group of ['position', 'size', 'rotation'] as const) {
+        expect(isDerivedCapability(type, group)).toBe(false);
       }
     }
   });

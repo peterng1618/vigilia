@@ -76,15 +76,25 @@ export type CapabilityGroup =
  * each absence, because an absence is a decision.
  */
 export const NODE_CAPABILITIES: Readonly<Record<NodeType, readonly CapabilityGroup[]>> = {
-  // Position and rotation only, both DERIVED from its children rather than
-  // stored — see `DERIVED_CAPABILITIES`.
+  // Structural only — no geometry and no paint.
   //
-  // **No `size`.** Moving and rotating a group is something an author does;
-  // resizing one is not (user, 2026-09-13). This is why `transform` had to be
-  // split into three: as one capability it could not express "offers position
-  // but not size", and the first attempt swung between offering a group
-  // everything and offering it nothing.
-  group: ['identity', 'flags', 'position', 'rotation'],
+  // This landed in three passes and the reasoning is worth keeping, because the
+  // end state looks like the first attempt and is not:
+  //
+  // 1. No transform rows — wrong, because moving a group *is* an author
+  //    operation and D0 says every operation is in the inspector.
+  // 2. Position and rotation, derived from the children's bounds and applied
+  //    back as a delta. Correct, and still a leaky abstraction: the numbers are
+  //    not the group's, rotation could not be implemented honestly, and size
+  //    had to be excluded by hand.
+  // 3. Structural only, which is where it belongs. A group's transform *is*
+  //    its children's values — there is no property of its own to show, so
+  //    showing one invites an author to believe the group holds geometry.
+  //
+  // Moving and rotating a group is still done, on the canvas, where the gesture
+  // translates directly into child values. D0 is satisfied by the operation
+  // existing, not by a row restating it.
+  group: ['identity', 'flags'],
   rectangle: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow', 'cornerRadius'],
   // No corner radius: an ellipse has no corners to round.
   ellipse: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow'],
@@ -115,7 +125,9 @@ export const NODE_CAPABILITIES: Readonly<Record<NodeType, readonly CapabilityGro
 export const DERIVED_CAPABILITIES: Readonly<
   Partial<Record<NodeType, readonly CapabilityGroup[]>>
 > = {
-  group: ['position', 'rotation'],
+  // Empty today. Kept because the distinction is real and the next entity to
+  // need it is the artboard (spec 0011 D6), whose position affects the canvas
+  // rather than any node.
 };
 
 /** Whether `type` presents `group` as a derived value rather than a stored one. */

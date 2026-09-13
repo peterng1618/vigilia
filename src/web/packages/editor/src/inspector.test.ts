@@ -133,7 +133,7 @@ describe('§75: a style value is a reference OR a literal, and the row says whic
     expect(field(sections, 'style.fontSize')).toBeUndefined();
   });
 
-  it('shows a group position and rotation, but never size (spec 0011 D2)', () => {
+  it('shows a group only identity and flags (spec 0011 D2)', () => {
     // No stored transform on the group — that is the point of D2. Its box is
     // the union of its children, so it reads from `inner` at (10, 20).
     const grouped: ThemeNode = {
@@ -143,14 +143,12 @@ describe('§75: a style value is a reference OR a literal, and the row says whic
     } as ThemeNode;
     const sections = describeSelection(document_([grouped]), ['g']);
 
-    // Moving and rotating a group IS something an author does, so those rows
-    // exist — read from the children's union, since a group stores no
-    // transform. Resizing a group is not an operation, so size does not.
-    expect(field(sections, 'transform.x')?.value).toBe(10);
-    expect(field(sections, 'transform.y')?.value).toBe(20);
-    expect(field(sections, 'transform.rotation')).toBeDefined();
-    expect(field(sections, 'transform.width')).toBeUndefined();
-    expect(field(sections, 'transform.height')).toBeUndefined();
+    // No geometry: a group's transform is its children's values, so a row
+    // would restate something it does not own. Moving and rotating a group is
+    // a canvas gesture, which translates directly into child values.
+    for (const key of ['transform.x', 'transform.y', 'transform.width', 'transform.height', 'transform.rotation']) {
+      expect(field(sections, key)).toBeUndefined();
+    }
 
     // No paint of any kind: a group is not a drawable.
     expect(field(sections, 'style.fill')).toBeUndefined();

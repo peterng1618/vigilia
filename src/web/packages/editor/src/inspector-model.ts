@@ -10,7 +10,6 @@ import {
   type ThemeNode,
 } from '@vigilia/renderer-core';
 import { findNode } from './commands.js';
-import { groupTransformOf } from './group-transform.js';
 
 /**
  * What the inspector shows, as data.
@@ -225,7 +224,7 @@ export function describeSelection(
 
   return [
     identitySection(nodes, readOnly),
-    ...(anyHasCapability(types, 'position') ? [transformSection(document_, nodes, readOnly)] : []),
+    ...(anyHasCapability(types, 'position') ? [transformSection(nodes, readOnly)] : []),
     styleSection(nodes, document_.globals ?? {}, readOnly),
     ...(anyHasCapability(types, 'bindings') ? bindingSections(nodes, readOnly) : []),
   ].filter((section) => section.fields.length > 0);
@@ -283,22 +282,15 @@ function identitySection(nodes: readonly ThemeNode[], readOnly: boolean): Inspec
 }
 
 function transformSection(
-  document_: ThemeDocument,
   nodes: readonly ThemeNode[],
   readOnly: boolean,
 ): InspectorSection {
-  // A group's transform is DERIVED from its children, so it is read from
-  // `groupTransformOf` rather than from `node.transform` — which a group does
-  // not have. Reading the absent transform showed zeros, inviting an author to
-  // type into a field that then moved nothing.
+  // Which rows exist comes from the capability matrix. A group offers none of
+  // these: its transform *is* its children's values, so a row would restate
+  // something it does not own (spec 0011 D2).
   const read = (node: ThemeNode, property: 'x' | 'y' | 'width' | 'height' | 'rotation'): number =>
-    node.type === 'group'
-      ? (groupTransformOf(document_, node.id)?.[property] ?? 0)
-      : (node.transform?.[property] ?? 0);
+    node.transform?.[property] ?? 0;
 
-  // Which rows exist at all comes from the capability matrix: a group offers
-  // position and rotation and NOT size, because resizing a group is not an
-  // operation.
   const offered = new Set(nodes.flatMap((node) => transformPropertiesFor(node.type)));
 
   const field = (
