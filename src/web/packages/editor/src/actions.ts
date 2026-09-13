@@ -48,6 +48,12 @@ export type ActionId =
   | 'arrange.align-bottom'
   | 'arrange.distribute-x'
   | 'arrange.distribute-y'
+  | 'layer.reorder-front'
+  | 'layer.reorder-back'
+  | 'layer.reorder-forward'
+  | 'layer.reorder-backward'
+  | 'layer.toggle-visibility'
+  | 'layer.toggle-lock'
   | 'navigate.escape'
   | 'navigate.nudge-left'
   | 'navigate.nudge-right'
@@ -65,7 +71,7 @@ export type ActionId =
  * items — and a menu builder shows the groups it wants rather than every
  * action declared here.
  */
-export type ActionGroup = 'file' | 'edit' | 'object' | 'arrange' | 'navigate';
+export type ActionGroup = 'file' | 'edit' | 'object' | 'arrange' | 'layer' | 'navigate';
 
 export interface ActionShortcut {
   /** As `KeyboardEvent.key`, matched case-insensitively for letters. */
@@ -239,6 +245,52 @@ export const ACTIONS: readonly EditorActionSpec[] = [
     glyph: '⋮',
     requires: 'three or more elements',
     enabled: atLeast(3),
+  },
+  {
+    id: 'layer.reorder-front',
+    label: 'Bring to front',
+    group: 'layer',
+    shortcut: { key: ']', meta: true, shift: true },
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
+  },
+  {
+    id: 'layer.reorder-forward',
+    label: 'Bring forward',
+    group: 'layer',
+    shortcut: { key: ']', meta: true, shift: false },
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
+  },
+  {
+    id: 'layer.reorder-backward',
+    label: 'Send backward',
+    group: 'layer',
+    shortcut: { key: '[', meta: true, shift: false },
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
+  },
+  {
+    id: 'layer.reorder-back',
+    label: 'Send to back',
+    group: 'layer',
+    shortcut: { key: '[', meta: true, shift: true },
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
+  },
+  {
+    id: 'layer.toggle-visibility',
+    label: 'Toggle visibility',
+    group: 'layer',
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
+  },
+  {
+    id: 'layer.toggle-lock',
+    label: 'Toggle lock',
+    group: 'layer',
+    requires: 'one selected element',
+    enabled: (context) => context.selectionCount === 1,
   },
   {
     id: 'navigate.escape',

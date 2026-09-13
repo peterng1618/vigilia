@@ -280,6 +280,28 @@ describe('ungroupNodes', () => {
 
     expect(next.nodes.map((node) => node.id)).toEqual(['under', 'a', 'over']);
   });
+
+  it('preserves hidden state so ungrouping a hidden group does not reveal children', () => {
+    const document_ = doc([
+      {
+        id: 'hidden-group',
+        type: 'group',
+        visible: false,
+        transform: { x: 0, y: 0, width: 10, height: 10 },
+        children: [
+          rect('child-default', { x: 0, y: 0, width: 5, height: 5 }),
+          { ...rect('child-explicit-visible', { x: 5, y: 5, width: 5, height: 5 }), visible: true },
+          { ...rect('child-already-hidden', { x: 2, y: 2, width: 5, height: 5 }), visible: false },
+        ],
+      },
+    ]);
+
+    const { document: next } = ungroupNodes(document_, ['hidden-group']);
+
+    expect(findNode(next.nodes, 'child-default')?.visible).toBe(false);
+    expect(findNode(next.nodes, 'child-explicit-visible')?.visible).toBe(false);
+    expect(findNode(next.nodes, 'child-already-hidden')?.visible).toBe(false);
+  });
 });
 
 describe('composeTransforms', () => {

@@ -53,7 +53,14 @@ import {
   thresholdInDocumentUnits,
   type SnapGuide,
 } from './snapping.js';
-import { collectIds, deleteNodes, findNode, updateTransforms } from './commands.js';
+import {
+  collectIds,
+  deleteNodes,
+  findNode,
+  reorderNode,
+  setNodeFlags,
+  updateTransforms,
+} from './commands.js';
 import {
   canRedo,
   canUndo,
@@ -75,6 +82,10 @@ import { unionBounds } from './geometry.js';
 import { describeSelection } from './inspector-model.js';
 import { applyFieldChange, labelForField } from './inspector-apply.js';
 import { createInspector } from './inspector-panel.js';
+import { createLayersPanel, type LayerPanelAction } from './layers-panel.js';
+import { buildLayerTree } from './layers-model.js';
+import { createButton } from './button.js';
+import { nodeLabel } from './node-label.js';
 import {
   addGlobal,
   collectGlobalUsage,
@@ -196,10 +207,22 @@ function start(): void {
   let handle: SceneHandle = mountScene({ host, plan: plan(visibleDocument(history)) });
   const overlay = createOverlay(host);
 
-  // One right-hand column with two tabs: the selection, and the theme's
-  // globals. Globals are document-level, so they cannot live inside the
-  // inspector — which says "nothing selected" exactly when an author most
-  // wants to look at the palette.
+  // Left sidebar: theme-level globals (palette, fonts, etc.), always visible.
+  const leftPanel = document.createElement('div');
+  leftPanel.dataset['vigiliaPanel'] = 'theme';
+  leftPanel.style.cssText = [
+    'width:220px',
+    'flex:none',
+    'display:flex',
+    'flex-direction:column',
+    'min-height:0',
+    'background:var(--vigilia-panel-bg)',
+    'border-right:1px solid var(--vigilia-panel-border)',
+    'padding:0 8px',
+  ].join(';');
+  work.insertBefore(leftPanel, host);
+
+  // Right sidebar: element inspector on top, document layer tree below.
   const panel = document.createElement('div');
   panel.dataset['vigiliaPanel'] = 'root';
   panel.style.cssText = [
@@ -208,30 +231,20 @@ function start(): void {
     'display:flex',
     'flex-direction:column',
     'min-height:0',
-    'background:#151922',
-    'border-left:1px solid #232a36',
+    'background:var(--vigilia-panel-bg)',
+    'border-left:1px solid var(--vigilia-panel-border)',
   ].join(';');
   work.append(panel);
 
-  const tabs = document.createElement('div');
-  tabs.style.cssText = 'display:flex;flex:none;border-bottom:1px solid #232a36';
-  panel.append(tabs);
-
   const body = document.createElement('div');
-  body.style.cssText = 'flex:1;min-height:0;display:flex;padding:0 10px';
+  body.style.cssText = 'flex:1;min-height:0;display:flex;flex-direction:column;padding:0 10px;overflow-y:auto';
   panel.append(body);
-
-  let tab: 'element' | 'theme' = 'element';
 
   /**
    * What each panel last rendered, so a redraw can be skipped.
-   *
-   * Declared here because the panels' own callbacks reset them — an edit that
-   * is refused changes no document and would otherwise skip the redraw that
-   * snaps the field back. See `drawInspector` and `drawGlobals` for why the
-   * guards exist at all.
    */
   let inspectorKey = '';
+  let layersKey = '';
   let globalsKey = '';
 
   /**
@@ -266,7 +279,7 @@ function start(): void {
     },
   });
 
-  const globalsPanel = createGlobalsPanel(body, {
+  const globalsPanel = createGlobalsPanel(leftPanel, {
     onAction(action) {
       const document_ = history.current;
       const next = applyGlobalAction(document_, action);
@@ -291,6 +304,48 @@ function start(): void {
         }
       }
 
+      render();
+    },
+  });
+
+  const layersPanel = createLayersPanel(panel, {
+    onAction(action: LayerPanelAction) {
+      if (action.kind === 'select') {
+        selection = applyClick(selection, action.id, action.mode);
+        render();
+        return;
+      }
+
+      if (action.kind === 'enter') {
+        selection = enterGroup(selection, action.id);
+        render();
+        return;
+      }
+
+      const document_ = history.current;
+      const target = findNode(document_.nodes, action.targetId);
+
+      if (target === undefined) {
+        return;
+      }
+
+      if (action.id === 'layer.toggle-visibility') {
+        const next = target.visible === false;
+        history = commit(
+          history,
+          `${next ? 'Show' : 'Hide'} ${nodeLabel(target)}`,
+          setNodeFlags(document_, target.id, { visible: next }),
+        );
+        render();
+        return;
+      }
+
+      const nextLocked = target.locked !== true;
+      history = commit(
+        history,
+        `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(target)}`,
+        setNodeFlags(document_, target.id, { locked: nextLocked }),
+      );
       render();
     },
   });
@@ -467,6 +522,64 @@ function start(): void {
         return;
       }
 
+      case 'layer.reorder-front':
+      case 'layer.reorder-back':
+      case 'layer.reorder-forward':
+      case 'layer.reorder-backward': {
+        const targetId = selection.ids[0];
+        if (targetId === undefined) {
+          return;
+        }
+
+        const target = id.slice('layer.reorder-'.length) as 'front' | 'back' | 'forward' | 'backward';
+        const document_ = history.current;
+        const next = reorderNode(document_, targetId, target);
+
+        if (next !== document_) {
+          history = commit(history, action?.label ?? 'Reorder layer', next);
+          render();
+        }
+        return;
+      }
+
+      case 'layer.toggle-visibility': {
+        const targetId = selection.ids[0];
+        const document_ = history.current;
+        const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
+
+        if (node === undefined) {
+          return;
+        }
+
+        const next = node.visible === false;
+        history = commit(
+          history,
+          `${next ? 'Show' : 'Hide'} ${nodeLabel(node)}`,
+          setNodeFlags(document_, node.id, { visible: next }),
+        );
+        render();
+        return;
+      }
+
+      case 'layer.toggle-lock': {
+        const targetId = selection.ids[0];
+        const document_ = history.current;
+        const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
+
+        if (node === undefined) {
+          return;
+        }
+
+        const nextLocked = node.locked !== true;
+        history = commit(
+          history,
+          `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(node)}`,
+          setNodeFlags(document_, node.id, { locked: nextLocked }),
+        );
+        render();
+        return;
+      }
+
       case 'navigate.escape':
         // Cancelling a gesture keeps the selection. Discarding it as well was
         // extra punishment for an author who changed their mind mid-drag, and
@@ -533,6 +646,7 @@ function start(): void {
       notice = `Opened ${file.name}`;
       lastIds = '';
       inspectorKey = '';
+      layersKey = '';
       globalsKey = '';
       render();
     });
@@ -580,47 +694,31 @@ function start(): void {
   panel.insertBefore(fileBar, toolbar);
 
   for (const action of actionsInGroup('file')) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    // Label and shortcut both from the registry: the tooltip used to spell
-    // "(Ctrl+O)" by hand next to a handler that bound the key independently.
-    button.textContent = action.label.replace('…', '');
-    button.title = `${action.label} (${shortcutLabel(action.shortcut)})`;
-    button.dataset['vigiliaFile'] = action.id.slice('file.'.length);
-    button.style.cssText = [
-      'flex:none',
-      'height:22px',
-      'padding:0 8px',
-      'background:#1d2530',
-      'color:#8a97ab',
-      'border:1px solid #2a3242',
-      'border-radius:3px',
-      'cursor:pointer',
-      'font:11px/1 system-ui,sans-serif',
-    ].join(';');
-    button.addEventListener('click', () => runAction(action.id));
+    const button = createButton({
+      text: action.label.replace('…', ''),
+      title: `${action.label} (${shortcutLabel(action.shortcut)})`,
+      dataset: {
+        vigiliaFile: action.id.slice('file.'.length),
+        vigiliaAction: action.id,
+      },
+      onClick: () => runAction(action.id),
+    });
     fileBar.append(button);
   }
 
   for (const action of actionsInGroup('arrange')) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = action.glyph ?? '?';
-    button.title = action.label;
-    button.dataset['vigiliaArrange'] = action.id.slice('arrange.'.length);
-    button.dataset['vigiliaAction'] = action.id;
-    button.style.cssText = [
-      'flex:1 1 22px',
-      'min-width:0',
-      'height:22px',
-      'background:#1d2530',
-      'color:#8a97ab',
-      'border:1px solid #2a3242',
-      'border-radius:3px',
-      'cursor:pointer',
-      'font:12px/1 system-ui,sans-serif',
-    ].join(';');
-    button.addEventListener('click', () => runAction(action.id));
+    const button = createButton({
+      text: action.glyph ?? '?',
+      title: action.label,
+      dataset: {
+        vigiliaArrange: action.id.slice('arrange.'.length),
+        vigiliaAction: action.id,
+      },
+      flex: '1 1 22px',
+      fontSize: '12px',
+      padding: '0',
+      onClick: () => runAction(action.id),
+    });
     toolbar.append(button);
   }
 
@@ -655,50 +753,6 @@ function start(): void {
     }
   };
 
-  const drawTabs = (): void => {
-    tabs.textContent = '';
-
-    for (const [id, label] of [
-      ['element', 'Element'],
-      ['theme', 'Theme'],
-    ] as const) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label;
-      button.dataset['vigiliaTab'] = id;
-      button.style.cssText = [
-        'flex:1',
-        'padding:6px 4px',
-        'background:none',
-        'border:none',
-        `border-bottom:2px solid ${tab === id ? '#4c9aff' : 'transparent'}`,
-        `color:${tab === id ? '#e8ecf3' : '#8a97ab'}`,
-        'font:11px/1.4 system-ui,sans-serif',
-        'text-transform:uppercase',
-        'letter-spacing:0.06em',
-        'cursor:pointer',
-      ].join(';');
-      button.addEventListener('click', () => {
-        if (tab === id) {
-          return;
-        }
-
-        tab = id;
-        // Forces both panels to redraw: their guards compare against the last
-        // content they rendered, and a hidden panel's content did not change.
-        inspectorKey = '';
-        globalsKey = '';
-        render();
-      });
-      tabs.append(button);
-    }
-
-    inspector.root.style.display = tab === 'element' ? 'block' : 'none';
-    globalsPanel.root.style.display = tab === 'theme' ? 'block' : 'none';
-    inspector.root.style.flex = '1';
-    globalsPanel.root.style.flex = '1';
-  };
-
   /**
    * Re-mounts the scene.
    *
@@ -728,8 +782,8 @@ function start(): void {
     drawOverlay();
     drawStatus();
     drawToolbar();
-    drawTabs();
     drawInspector();
+    drawLayers();
     drawGlobals();
   };
 
@@ -765,10 +819,6 @@ function start(): void {
    * not.
    */
   const drawInspector = (): void => {
-    if (tab !== 'element') {
-      return;
-    }
-
     const document_ = history.current;
     const sections = describeSelection(document_, selection.ids);
     const key = JSON.stringify(sections);
@@ -781,11 +831,20 @@ function start(): void {
     inspector.render(sections, document_.globals ?? {});
   };
 
-  const drawGlobals = (): void => {
-    if (tab !== 'theme') {
+  const drawLayers = (): void => {
+    const document_ = visibleDocument(history);
+    const rows = buildLayerTree(document_.nodes, selection);
+    const key = JSON.stringify(rows);
+
+    if (key === layersKey) {
       return;
     }
 
+    layersKey = key;
+    layersPanel.render(rows);
+  };
+
+  const drawGlobals = (): void => {
     const usage = collectGlobalUsage(history.current);
     const key = JSON.stringify(usage);
 

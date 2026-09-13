@@ -1,4 +1,5 @@
 import type { Globals } from '@vigilia/renderer-core';
+import { buttonStyle, inputStyle, sectionHeadingStyle } from './button.js';
 import type { FieldChange } from './inspector-apply.js';
 import {
   globalOptions,
@@ -171,14 +172,7 @@ function renderSection(
 
   const heading = document.createElement('h2');
   heading.textContent = section.title;
-  heading.style.cssText = [
-    'margin:10px 2px 6px',
-    'font-size:11px',
-    'text-transform:uppercase',
-    'letter-spacing:0.06em',
-    'color:#8a97ab',
-    'font-weight:600',
-  ].join(';');
+  heading.style.cssText = sectionHeadingStyle();
 
   wrapper.append(heading);
 
@@ -434,16 +428,7 @@ function modeButton(
   button.title = text;
   button.dataset['vigiliaMode'] = `${target}:${field.key}`;
   button.disabled = field.readOnly === true;
-  button.style.cssText = [
-    'flex:none',
-    'width:22px',
-    'height:22px',
-    'background:#1d2530',
-    'color:#8a97ab',
-    'border:1px solid #2a3242',
-    'border-radius:3px',
-    'cursor:pointer',
-  ].join(';');
+  button.style.cssText = buttonStyle({ width: '22px', padding: '0' });
 
   button.addEventListener('click', () => {
     if (target === 'literal') {
@@ -480,35 +465,13 @@ function clearButton(field: FieldDescriptor, callbacks: InspectorCallbacks): HTM
   button.textContent = '×';
   button.title = 'Clear — back to the default';
   button.dataset['vigiliaClear'] = field.key;
-  button.style.cssText = [
-    'flex:none',
-    'width:20px',
-    'height:22px',
-    'background:none',
-    'color:#8a97ab',
-    'border:1px solid #2a3242',
-    'border-radius:3px',
-    'cursor:pointer',
-  ].join(';');
+  button.style.cssText = buttonStyle({ width: '20px', padding: '0', variant: 'ghost' });
 
   button.addEventListener('click', () => {
     callbacks.onChange(field.key, { kind: 'unset' });
   });
 
   return button;
-}
-
-function inputStyle(): string {
-  return [
-    'flex:1',
-    'min-width:0',
-    'background:#0c0e13',
-    'color:#e8ecf3',
-    'border:1px solid #2a3242',
-    'border-radius:3px',
-    'padding:2px 5px',
-    'font:12px/1.4 ui-monospace,monospace',
-  ].join(';');
 }
 
 /**

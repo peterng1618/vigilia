@@ -150,3 +150,20 @@ export {
   type ArrangeRefusal,
   type ArrangeResult,
 } from './arrange.js';
+
+export { nodeLabel } from './node-label.js';
+export {
+  buttonStyle,
+  createButton,
+  inputStyle,
+  sectionHeadingStyle,
+  type ButtonOptions,
+} from './button.js';
+export { buildLayerTree, type LayerRow } from './layers-model.js';
+export {
+  createLayersPanel,
+  type LayerPanelAction,
+  type LayersPanel,
+  type LayersPanelCallbacks,
+} from './layers-panel.js';
+

@@ -9,6 +9,7 @@ import {
   type ThemeDocument,
   type ThemeNode,
 } from '@vigilia/renderer-core';
+import { nodeLabel } from './node-label.js';
 
 /**
  * Editing the theme's globals (§73, §75).
@@ -362,7 +363,7 @@ function mapStyleValues(document_: ThemeDocument, visitor: StyleVisitor): ThemeD
   };
 
   const mapNode = (node: ThemeNode): ThemeNode => {
-    const label = node.name ?? node.id;
+    const label = nodeLabel(node);
     let next = node;
 
     const style = mapMap(node.style, { nodeId: node.id, where: label });

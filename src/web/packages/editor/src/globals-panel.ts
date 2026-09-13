@@ -1,4 +1,5 @@
 import { GLOBAL_GROUPS, type GlobalGroupName } from '@vigilia/renderer-core';
+import { buttonStyle, inputStyle, sectionHeadingStyle } from './button.js';
 import type { GlobalUsage } from './globals-commands.js';
 
 /**
@@ -59,7 +60,7 @@ export function createGlobalsPanel(
     'overflow-y:auto',
     'padding:2px 0 24px',
     'font:12px/1.5 system-ui,sans-serif',
-    'color:#e8ecf3',
+    'color:var(--vigilia-text)',
   ].join(';');
 
   host.append(root);
@@ -105,15 +106,7 @@ function renderGroup(
 
   const title = document.createElement('h2');
   title.textContent = meta.label;
-  title.style.cssText = [
-    'margin:0',
-    'flex:1',
-    'font-size:11px',
-    'text-transform:uppercase',
-    'letter-spacing:0.06em',
-    'color:#8a97ab',
-    'font-weight:600',
-  ].join(';');
+  title.style.cssText = `${sectionHeadingStyle('0')};flex:1`;
   heading.append(title);
 
   const add = document.createElement('button');
@@ -121,7 +114,7 @@ function renderGroup(
   add.textContent = '+';
   add.title = `Add a ${meta.label.toLowerCase()} token`;
   add.dataset['vigiliaGlobalAdd'] = group;
-  add.style.cssText = buttonStyle();
+  add.style.cssText = buttonStyle({ width: '22px', padding: '0' });
   add.addEventListener('click', () => callbacks.onAction({ kind: 'add', group }));
   heading.append(add);
 
@@ -169,7 +162,7 @@ function renderRow(
   keyInput.value = key;
   keyInput.dataset['vigiliaGlobalKey'] = id;
   keyInput.title = `${id} — editing this rewrites every reference`;
-  keyInput.style.cssText = inputStyle();
+  keyInput.style.cssText = inputStyle('inherit');
   keyInput.addEventListener('change', () => {
     if (keyInput.value !== key) {
       callbacks.onAction({ kind: 'key', group, key, nextKey: keyInput.value });
@@ -181,7 +174,7 @@ function renderRow(
   value.type = kind === 'number' ? 'number' : 'text';
   value.value = entry.value === undefined ? '' : String(entry.value);
   value.dataset['vigiliaGlobalValue'] = id;
-  value.style.cssText = inputStyle();
+  value.style.cssText = inputStyle('inherit');
   value.addEventListener('change', () => {
     callbacks.onAction({
       kind: 'value',
@@ -221,7 +214,7 @@ function renderRow(
     usage.references.length === 0
       ? 'Delete — unused'
       : `Delete — its value is copied into ${describeUses(usage.references.length)}`;
-  remove.style.cssText = buttonStyle();
+  remove.style.cssText = buttonStyle({ width: '22px', padding: '0' });
   remove.addEventListener('click', () => callbacks.onAction({ kind: 'delete', group, key }));
   row.append(remove);
 
@@ -234,7 +227,7 @@ function renderRow(
   name.dataset['vigiliaGlobalName'] = id;
   name.title = 'Display name — references use the key, so this is always safe to change';
   name.placeholder = 'display name';
-  name.style.cssText = `${inputStyle()};flex:1`;
+  name.style.cssText = inputStyle('inherit');
   name.addEventListener('change', () => {
     if (name.value !== entry.name) {
       callbacks.onAction({ kind: 'name', group, key, name: name.value });
@@ -256,31 +249,6 @@ function renderRow(
 
 function describeUses(count: number): string {
   return count === 1 ? '1 use' : `${count} uses`;
-}
-
-function inputStyle(): string {
-  return [
-    'min-width:0',
-    'background:#0f131a',
-    'color:#e8ecf3',
-    'border:1px solid #2a3242',
-    'border-radius:3px',
-    'padding:2px 5px',
-    'font:inherit',
-  ].join(';');
-}
-
-function buttonStyle(): string {
-  return [
-    'flex:none',
-    'width:22px',
-    'height:22px',
-    'background:#1d2530',
-    'color:#8a97ab',
-    'border:1px solid #2a3242',
-    'border-radius:3px',
-    'cursor:pointer',
-  ].join(';');
 }
 
 /** What a new token in a group starts as. */

@@ -133,6 +133,9 @@ are about to add resembles a row, import it instead.
 | Document edits | `editor/src/commands.ts`, `arrange.ts` |
 | **Every editor action** — label, shortcut, glyph, enablement | `editor/src/actions.ts` |
 | What a focused control keeps | `editor/src/keyboard.ts` |
+| **Node display label fallback** | `editor/src/node-label.ts` (`nodeLabel`) |
+| **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
+| **Layer panel tree projection** | `editor/src/layers-model.ts` (`buildLayerTree`) |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |
 | Inspector field types and ranges; numeric parsing | `editor/src/inspector-model.ts` |
@@ -149,8 +152,6 @@ before building anything that would add another copy.
 | Concept | Currently spelled in | Why it matters |
 |---|---|---|
 | New-node defaults | nowhere | The add-element UI needs "what does a new rect/text start with". `capabilities.ts` is where it belongs, so this is now a small addition rather than a sixth copy |
-| Layer operations as actions | `commands.ts` has `reorderNode`/`setNodeFlags`, but `actions.ts` has no ids for them | A layer panel would hard-code its own labels and enablement — the bug `actions.ts` was built to remove |
-| Panel chrome and colour tokens | ~5 copies of button styling, 2 of `inputStyle()` (already divergent), plus `index.html` CSS | Each new surface is another copy |
 | `?keys=` and `?data=live` handshakes | host route **and** display client, independently | Rename either side and the display shows gaps forever, or silently shows fabricated data |
 | Hex colour parsing | `charts/fill.ts`, `inspector-panel.ts`, `globals-panel.ts` | Already divergent: `#0cf` renders correctly but shows black in the inspector |
 | Asset path safety | `document.ts` pattern, `validate.ts`, `assets.ts` | Already divergent on `.`; blames the author for the wrong thing |

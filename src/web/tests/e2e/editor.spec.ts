@@ -528,7 +528,6 @@ test.describe('evidence', () => {
         : '../../.agents/screenshots';
 
     await openEditor(page);
-    await page.locator('[data-vigilia-tab="theme"]').click();
     await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
 
     const screenshot = await page.screenshot({
@@ -848,7 +847,6 @@ test.describe('a child of a transformed group', () => {
 test.describe('the globals panel', () => {
   async function openTheme_(page: Page): Promise<void> {
     await openEditor(page);
-    await page.locator('[data-vigilia-tab="theme"]').click();
     await expect(page.locator('[data-vigilia-globals="root"]')).toBeVisible();
   }
 
@@ -977,19 +975,15 @@ test.describe('the globals panel', () => {
     await expect(page.locator('#status')).toContainText('undo: Add token');
   });
 
-  test('switching tabs keeps both panels working', async ({ page }) => {
+  test('both globals and inspector remain visible and active together', async ({ page }) => {
     await openTheme_(page);
 
-    await page.locator('[data-vigilia-tab="element"]').click();
     await expect(page.locator('[data-vigilia-inspector="root"]')).toBeVisible();
-    await expect(page.locator('[data-vigilia-globals="root"]')).toBeHidden();
+    await expect(page.locator('[data-vigilia-globals="root"]')).toBeVisible();
 
-    // A redraw guard that compared against the last rendered content would
-    // leave the re-shown panel stale, so this asserts it comes back populated.
+    // Selecting a node populates the inspector while the globals panel stays visible.
     await page.locator('[data-node-id="title"]').click();
     await expect(page.locator('[data-vigilia-input="name"]')).toBeVisible();
-
-    await page.locator('[data-vigilia-tab="theme"]').click();
     await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
   });
 });
@@ -1251,9 +1245,7 @@ test.describe('open and save', () => {
   test('an edited theme survives a save and reopen unchanged', async ({ page }) => {
     await openEditor(page);
 
-    // Recolour a global, which touches the part of the format most likely to
-    // be dropped by a serialiser: the globals map.
-    await page.locator('[data-vigilia-tab="theme"]').click();
+    // Recolour a global in the left panel, touching globals map.
     const value = page.locator('[data-vigilia-global-value="palette.panel"]');
     await value.fill('#010203');
     await value.blur();
@@ -1280,3 +1272,53 @@ test.describe('open and save', () => {
     );
   });
 });
+
+test.describe('the layer panel', () => {
+  test('allows selecting and unhiding an element that hit-testing ignores (§61, spec 0012)', async ({ page }) => {
+    await openEditor(page);
+
+    // 1. Select a top-level element and hide it via inspector checkbox.
+    await page.locator('[data-node-id="title"]').click();
+    const titleCentre = await centreOf(page.locator('[data-node-id="title"]'));
+    const visibleInput = page.locator('[data-vigilia-input="visible"]');
+    await visibleInput.uncheck();
+    await expect(page.locator('#status')).toContainText('Set visible');
+
+    // 2. Click empty canvas: selection clears, node is invisible on canvas.
+    // Bottom-right of the stage, well clear of content (mirrors the deselect test).
+    const stage = await page.locator('#stage').boundingBox();
+    await page.mouse.click(stage!.x + stage!.width - 12, stage!.y + stage!.height - 12);
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+
+    // Clicking where title was cannot select it: hitTest correctly ignores invisible elements.
+    // The node stays in the DOM (hidden); the click must still select nothing.
+    await page.mouse.click(titleCentre.x, titleCentre.y);
+    await expect(page.locator('#status')).toContainText('Nothing selected');
+
+    // 3. Layer panel lists the hidden element; clicking its row re-selects it.
+    const row = page.locator('[data-vigilia-layer="title"]');
+    await expect(row).toBeVisible();
+    await row.click();
+    await expect(page.locator('#status')).toContainText('title');
+
+    // 4. The inspector reflects the selected hidden node, and visibility can be restored.
+    await expect(page.locator('[data-vigilia-input="name"]')).toHaveValue('Title');
+    await page.locator('[data-vigilia-layer-visibility="title"]').click();
+    await expect(page.locator('#status')).toContainText('Show Title');
+    await expect(page.locator('[data-node-id="title"]')).toBeVisible();
+  });
+
+  test('toggling lock on a layer row prevents deletion (§61)', async ({ page }) => {
+    await openEditor(page);
+
+    // Lock title element via layer row button
+    await page.locator('[data-vigilia-layer-lock="title"]').click();
+    await expect(page.locator('#status')).toContainText('Lock Title');
+
+    // Select it and press Delete: §61 says locked elements cannot be deleted
+    await page.locator('[data-vigilia-layer="title"]').click();
+    await page.keyboard.press('Delete');
+    await expect(page.locator('[data-vigilia-layer="title"]')).toBeVisible();
+  });
+});
+

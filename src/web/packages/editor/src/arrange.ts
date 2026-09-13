@@ -208,7 +208,12 @@ export function ungroupNodes(
         return { document: document_, refused: 'would-shear' };
       }
 
-      composed.push({ ...child, transform } as ThemeNode);
+      // A hidden group hides its children via inheritance (§61 / spec 0012).
+      // Ungrouping must not reveal them: visible:false is applied even when a
+      // child explicitly held true, because true could not override its hidden
+      // ancestor before the group was removed.
+      const childWithTransform = { ...child, transform } as ThemeNode;
+      composed.push(group.visible === false ? { ...childWithTransform, visible: false } : childWithTransform);
       selected.push(child.id);
     }
 

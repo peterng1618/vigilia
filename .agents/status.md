@@ -27,11 +27,12 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,035 passed across 41 files |
+| Unit tests | 1,045 passed across 42 files |
 | Typechecks | five projects, clean |
-| Browser tests | 137 passed, 59 skipped, 2 animation-timing failures; both passed a subsequent isolated run with one worker |
-| §47 size gate | 201.1 KB gzip / 400 KB |
-| Host bundle | 34.26 kB, zero runtime deps |
+| Browser tests (editor, desktop) | 57 passed with 2 workers (10-worker parallel run had 2 timing flakes that pass in isolation) |
+| Browser tests (display, desktop) | 43 passed, 1 skipped |
+| §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
+| Host bundle | 34.36 kB, zero runtime deps |
 
 Style-name validation now rejects unknown properties on nodes and both text run
 variants using the existing capabilities vocabulary. The schema enum is checked
@@ -47,20 +48,16 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**1 — A layer panel.** This is a **correctness** feature: a hidden element
-cannot be reselected, so hiding one and clicking away loses it (only undo
-recovers it). `hitTest` skipping hidden nodes is right; the tree is the
-non-visual route a hidden node needs.
-
-Extend `ACTIONS` first — `commands.ts` has `reorderNode`, `setNodeFlags` and
-`insertNodes`, but `actions.ts` has no ids for them, so a panel built today
-would hard-code its own labels and enablement. Also worth doing first: an
-`actionButton()` factory and shared chrome (button styling is copied five
-times).
-
-Unlocks a latent bug: `ungroupNodes` drops a hidden group's `visible: false`
-and would reveal its children — unreachable today only because a hidden group
-can't be selected.
+**1 — A layer panel.** DONE 2026-09-13, uncommitted. Bottom-right panel below
+the inspector (theme tab moved left); pure `buildLayerTree` over
+`placeNodes` for effective visibility/lock, topmost-first; eye + lock toggles,
+reorder via `layer.reorder-*` actions + shortcuts; hidden nodes reselectable
+outside hit-testing. `ungroupNodes` now preserves `visible: false` (latent bug
+fixed, tested). Shared chrome in `button.ts`, `nodeLabel` owner, colour tokens
+in `index.html` CSS vars. Spec: [0012](specs/0012-editor-layer-panel.md).
+Verified: 5 typechecks clean, 1,045 unit tests pass, editor+player+host build,
+2/2 layer E2E pass; full editor E2E 55/57 under 10 workers with the 2 failures
+passing in isolation (known timing-flake class).
 
 **2 — Schema v2, as one change.** Everything breaking together, so there's one
 migration: group loses its stored transform; palette becomes rgba; gradients

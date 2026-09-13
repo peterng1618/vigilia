@@ -6,12 +6,28 @@
     <meta name="color-scheme" content="dark" />
     <title>Vigilia — editor</title>
     <style>
+      :root {
+        --vigilia-canvas-bg: #0c0e13;
+        --vigilia-text: #e8ecf3;
+        --vigilia-panel-bg: #151922;
+        --vigilia-panel-border: #232a36;
+        --vigilia-control-bg: #1d2530;
+        --vigilia-control-border: #2a3242;
+        --vigilia-input-bg: #0f131a;
+        --vigilia-muted: #8a97ab;
+        --vigilia-subdued: #5c6878;
+        --vigilia-selection-bg: #233750;
+        --vigilia-accent: #00b8d9;
+        --vigilia-guide: #ff5630;
+        --vigilia-scaffold-bg: #4a2c00;
+        --vigilia-scaffold-text: #ffc14d;
+      }
       html,
       body {
         margin: 0;
         height: 100%;
-        background: #0c0e13;
-        color: #e8ecf3;
+        background: var(--vigilia-canvas-bg);
+        color: var(--vigilia-text);
         font: 13px/1.5 system-ui, sans-serif;
         overflow: hidden;
       }
@@ -43,9 +59,9 @@
       #status {
         flex: none;
         padding: 6px 12px;
-        border-top: 1px solid #232a36;
-        background: #151922;
-        color: #8a97ab;
+        border-top: 1px solid var(--vigilia-panel-border);
+        background: var(--vigilia-panel-bg);
+        color: var(--vigilia-muted);
         font-family: ui-monospace, monospace;
         font-size: 12px;
         white-space: nowrap;
@@ -55,8 +71,8 @@
       #scaffold {
         flex: none;
         padding: 6px 12px;
-        background: #4a2c00;
-        color: #ffc14d;
+        background: var(--vigilia-scaffold-bg);
+        color: var(--vigilia-scaffold-text);
         font-family: ui-monospace, monospace;
         font-size: 12px;
         text-align: center;

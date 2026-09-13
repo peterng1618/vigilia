@@ -208,4 +208,26 @@ describe('actionsInGroup', () => {
       }
     }
   });
+
+  it('keeps the six layer actions together and in order', () => {
+    expect(actionsInGroup('layer').map((action) => action.id)).toEqual([
+      'layer.reorder-front',
+      'layer.reorder-forward',
+      'layer.reorder-backward',
+      'layer.reorder-back',
+      'layer.toggle-visibility',
+      'layer.toggle-lock',
+    ]);
+  });
+
+  it('needs exactly one selected element for layer actions', () => {
+    expect(actionById('layer.reorder-front')?.enabled(nothing)).toBe(false);
+    expect(actionById('layer.toggle-visibility')?.enabled(context({ selectionCount: 1 }))).toBe(true);
+    expect(actionById('layer.toggle-lock')?.enabled(context({ selectionCount: 2 }))).toBe(false);
+  });
+
+  it('binds reorder shortcuts to Ctrl+[ and Ctrl+]', () => {
+    expect(actionForShortcut({ key: ']', meta: true, shift: false })?.id).toBe('layer.reorder-forward');
+    expect(actionForShortcut({ key: '[', meta: true, shift: true })?.id).toBe('layer.reorder-back');
+  });
 });
