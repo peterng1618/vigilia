@@ -422,13 +422,15 @@ None outstanding for this spec. R1–R3 closed the three that were.
 
 ## Acceptance
 
-Not started. Criteria, so "done" is observable rather than asserted:
+Partially implemented. Criteria, so "done" is observable rather than asserted:
 
 - Selecting a group shows **only** identity, visible, locked and order — no
   transform, no style. Verified in a browser, not by reading the model.
 - A rectangle offers no type preset row; a text element offers no fill row.
 - An unknown style property name produces a validation **issue** rather than
-  being silently dropped — the gap that makes `"strokewidth"` invisible today.
+  being silently dropped. Implemented: `validate.test.ts` covers node styles
+  and both text run variants; `schema-sync.test.ts` binds schema names to the
+  canonical vocabulary. Unit tests pass; current results are in status.md.
 - Every chart family's settings are editable, and editing one repaints.
 - A palette entry is rgba, and an element cannot hold a literal colour: the
   inspector offers a reference and no literal input.
@@ -436,6 +438,8 @@ Not started. Criteria, so "done" is observable rather than asserted:
 - Moving a group moves its children and leaves no group transform behind;
   rotating one rotates about the derived centre.
 
-**Not verified — nothing in this spec is implemented** beyond D1. Every row of
+**Partial implementation:** D1, the D2 inspector restrictions, D5 and unknown
+style-name rejection are implemented; see status.md for verification limits.
+Every row of
 the capability matrix is a claim about intended behaviour, not observed
 behaviour, until the acceptance criteria above are ticked with evidence.

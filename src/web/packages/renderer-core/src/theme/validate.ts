@@ -1,3 +1,4 @@
+import { isKnownStyleProperty } from './capabilities.js';
 import {
   ASSET_PATH_PATTERN,
   CHART_FAMILIES,
@@ -686,6 +687,10 @@ function validateStyleMap(
   }
 
   for (const [property, styleValue] of Object.entries(value)) {
+    if (!isKnownStyleProperty(property)) {
+      issues.add('unknown-field', `${path}/${property}`, `Unknown style property "${property}".`);
+      continue;
+    }
     validateStyleValue(issues, styleValue, `${path}/${property}`, globalKeys);
   }
 }

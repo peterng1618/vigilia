@@ -10,6 +10,7 @@ import { defaultGaugeSettings } from '../types.js';
 import { defaultLineSettings } from '../charts/line.js';
 import { defaultBarSettings } from '../charts/bar.js';
 import { defaultPieSettings } from '../charts/pie.js';
+import { STYLE_PROPERTIES } from './capabilities.js';
 
 /** A minimal valid document. Tests mutate clones of this. */
 function baseDocument(): Record<string, unknown> {
@@ -109,6 +110,41 @@ describe('style values (§75)', () => {
 
   it('accepts a local literal', () => {
     expectValid(withStyle({ fill: { value: '#ff0000' } }));
+  });
+
+  it.each(STYLE_PROPERTIES)('accepts the known style name %s', (property) => {
+    expectValid(withStyle({ [property]: { value: 1 } }));
+  });
+
+  it('reports a misspelled property at its node path', () => {
+    expect(validateThemeDocument(withStyle({ strokewidth: { value: 2 } }))).toMatchObject({
+      ok: false,
+      issues: [{ code: 'unknown-field', path: '/nodes/0/style/strokewidth' }],
+    });
+  });
+
+  it('checks nested nodes and both text run variants while accumulating known-value issues', () => {
+    const document = {
+      ...baseDocument(),
+      nodes: [{ id: 'group', type: 'group', children: [{
+        id: 'text', type: 'text',
+        bindings: [{ id: 'reading', semanticKey: 'cpu.load' }],
+        style: { opacity: {} },
+        content: { runs: [
+          { kind: 'literal', text: 'CPU', style: { fontsize: { value: 12 } } },
+          { kind: 'value', bindingId: 'reading', style: { colour: { value: 'red' } } },
+        ] },
+      }] }],
+    };
+    const result = validateThemeDocument(document);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.map(({ code, path }) => ({ code, path }))).toEqual([
+        { code: 'style-value-ambiguous', path: '/nodes/0/children/0/style/opacity' },
+        { code: 'unknown-field', path: '/nodes/0/children/0/content/runs/0/style/fontsize' },
+        { code: 'unknown-field', path: '/nodes/0/children/0/content/runs/1/style/colour' },
+      ]);
+    }
   });
 
   it('rejects a reference and a literal together', () => {

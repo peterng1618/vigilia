@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { knownKeysFor, type KnownKeyShape } from './validate.js';
+import { STYLE_PROPERTIES } from './capabilities.js';
 import {
   ASSET_PATH_PATTERN,
   CHART_FAMILIES,
@@ -66,6 +67,10 @@ function definition(name: string): Record<string, unknown> {
 }
 
 describe('theme schema is in sync with the validator', () => {
+  it('restricts style names to the canonical vocabulary and validates their values', () => {
+    expect(definition('styleMap')['propertyNames']).toEqual({ enum: [...STYLE_PROPERTIES] });
+    expect(definition('styleMap')['additionalProperties']).toEqual({ $ref: '#/$defs/styleValue' });
+  });
   it('resolves the schema file at all', () => {
     // A silently unresolvable path would make every assertion below vacuous.
     expect(loadSchema().$defs).toBeTypeOf('object');

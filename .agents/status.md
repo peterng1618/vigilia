@@ -27,11 +27,23 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,016 across 41 files |
+| Unit tests | 1,035 passed across 41 files |
 | Typechecks | five projects, clean |
-| Browser tests | 0 executed; 143 launch failures, 55 skipped — Chromium 1243 was absent and its download returned an empty/truncated archive |
-| §47 size gate | 201.0 KB gzip / 400 KB |
-| Host bundle | 34.4 KB, zero runtime deps |
+| Browser tests | 137 passed, 59 skipped, 2 animation-timing failures; both passed a subsequent isolated run with one worker |
+| §47 size gate | 201.1 KB gzip / 400 KB |
+| Host bundle | 34.26 kB, zero runtime deps |
+
+Style-name validation now rejects unknown properties on nodes and both text run
+variants using the existing capabilities vocabulary. The schema enum is checked
+against that owner. All five typechecks, 1,035 unit tests, all three builds and
+the size gate passed on 2026-09-13. No schema version bump: this rejects
+previously ignored unknown names while retaining the v1 property vocabulary.
+
+Chromium 1243 installed successfully, clearing the prior launch blocker. The
+full browser run had two desktop timing failures: "animates by default, and not
+when static is asked for" and "keeps the numeric readout stepping at the sample
+rate, not interpolated". Both passed an isolated one-worker rerun. The full
+suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
@@ -90,9 +102,6 @@ THIRD-PARTY-NOTICES entry *first*) · a tray.
 - **No pixel baselines**, deliberately — CI is Linux, development is Windows.
   Committed screenshots are *evidence*, refreshed with `VIGILIA_CAPTURE=1`; a
   capture lands mid-animation so they are never byte-reproducible.
-- **`isKnownStyleProperty` exists but the validator doesn't call it**, so
-  `{"strokewidth": …}` still passes schema *and* validation and is dropped at
-  render time. The owner exists; the guard doesn't.
 - **Spec 0011 D0, D4, D6–D10 are specified, not implemented.** D1, D2 and D5
   have landed.
 - **~25 editor defects confirmed by audit remain open**, each

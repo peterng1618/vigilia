@@ -115,8 +115,11 @@
     },
 
     "styleMap": {
-      "description": "Style properties, each a reference or a literal. The renderer writes a FIXED list of these and ignores the rest — the theme format owns its property names, and letting arbitrary keys reach CSS would make the format depend on whatever a browser happens to accept. Recognised today: fill, color, opacity, strokeColor, strokeWidth, strokeDash, shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight, tabularNumerals. Text ALIGNMENT is not a style property — it is layout, and lives on textContent.",
+      "description": "Style properties, each a reference or a literal. Unknown names are rejected. propertyNames is checked against the canonical vocabulary in theme/capabilities.ts by schema-sync.test.ts. Text alignment is layout and lives on textContent.",
       "type": "object",
+      "propertyNames": {
+        "enum": ["opacity", "fill", "strokeColor", "strokeWidth", "strokeDash", "shadowColor", "shadowBlur", "shadowOffsetX", "shadowOffsetY", "color", "fontFamily", "fontSize", "fontWeight", "letterSpacing", "lineHeight", "tabularNumerals"]
+      },
       "additionalProperties": { "$ref": "#/$defs/styleValue" }
     },
 

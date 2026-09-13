@@ -11,14 +11,13 @@ import { NODE_TYPES, type NodeType } from './document.js';
  *
  * "Which properties does a node type have" previously had five answers and no
  * owner: `scene/mount.ts` read style keys as strings, `scene/plan.ts` read two
- * more, `scene/fonts.ts` a third, the JSON schema described the list as **prose
- * inside a `description`** (its `styleMap` accepts any name), and the editor's
- * `STYLE_FIELDS` plus `TEXT_ONLY` declared it twice more. `validateStyleMap`
- * validates each *value's* shape and never looks at the property *name*.
+ * more, `scene/fonts.ts` a third, the JSON schema described the list as prose,
+ * and the editor's `STYLE_FIELDS` plus `TEXT_ONLY` declared it twice more.
+ * `validateStyleMap` now checks names against this vocabulary; the schema's
+ * property-name enum is bound to it by `schema-sync.test.ts`.
  *
- * The consequence was silent: `{"strokewidth": {"value": 2}}` passes the
- * schema, passes validation with zero issues, and is dropped by the renderer. A
- * comment in `mount.ts` claimed the validator caught it. It did not.
+ * The consequence was silent: `{"strokewidth": {"value": 2}}` used to pass
+ * validation and be dropped by the renderer. It now reports an unknown field.
  *
  * ## Two rules encoded here
  *

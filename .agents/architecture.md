@@ -134,7 +134,7 @@ are about to add resembles a row, import it instead.
 | **Every editor action** — label, shortcut, glyph, enablement | `editor/src/actions.ts` |
 | What a focused control keeps | `editor/src/keyboard.ts` |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
-| **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty` |
+| **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |
 | Inspector field types and ranges; numeric parsing | `editor/src/inspector-model.ts` |
 | URL path safety, mount trailing slash | `host/src/serve/static-path.ts` |
 | Slow-client policy | `host/src/transport/keep-latest.ts` |
@@ -148,7 +148,6 @@ before building anything that would add another copy.
 
 | Concept | Currently spelled in | Why it matters |
 |---|---|---|
-| Unknown style property names are still not *rejected* | `capabilities.ts` now owns the vocabulary and `isKnownStyleProperty` exists, but `validate.ts` does not call it yet | `{"strokewidth": …}` still passes the schema and the validator and is dropped at render time. The owner exists; the guard does not |
 | New-node defaults | nowhere | The add-element UI needs "what does a new rect/text start with". `capabilities.ts` is where it belongs, so this is now a small addition rather than a sixth copy |
 | Layer operations as actions | `commands.ts` has `reorderNode`/`setNodeFlags`, but `actions.ts` has no ids for them | A layer panel would hard-code its own labels and enablement — the bug `actions.ts` was built to remove |
 | Panel chrome and colour tokens | ~5 copies of button styling, 2 of `inputStyle()` (already divergent), plus `index.html` CSS | Each new surface is another copy |
