@@ -73,7 +73,7 @@ State the trigger conditions, not a summary of the contents.
 
 ## Don't
 
-- Restate what CI or the compiler already enforces — `TreatWarningsAsErrors`
+- Restate what CI or the compiler already enforces — `exactOptionalPropertyTypes`
   covers style; write what static analysis cannot see.
 - Duplicate substance between the canonical and pointer files.
 - Introduce a symlink.

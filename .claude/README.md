@@ -48,7 +48,7 @@ Bash permissions.
 ### Optional — fewer prompts for the routine commands
 
 Add this `permissions` block **only if** you want these to stop prompting. Each
-rule is a prefix wildcard, so `Bash(dotnet build *)` also matches
+rule is a prefix wildcard, so `Bash(npx vite build *)` also matches
 `dotnet build Vigilia.slnx --configuration Release`. Review them individually;
 `npx` and `dotnet` rules are broader than they look, since both can run arbitrary
 project code.
@@ -61,7 +61,7 @@ project code.
       "Bash(npx vite build *)",
       "Bash(node packages/player/scripts/check-size.mjs)",
       "Bash(dotnet restore *)",
-      "Bash(dotnet build *)",
+      "Bash(npx vite build *)",
       "Bash(dotnet test *)",
       "Bash(git status *)",
       "Bash(git diff *)",

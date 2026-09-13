@@ -21,6 +21,7 @@
 | LHM extended provider | **not implemented** — contract only |
 | Theme storage, starter theme, editor save-to-host | **not implemented** |
 | Pairing codes, LAN opt-in | **not implemented** — binds loopback; `--host` is the only opt-in |
+| C# removal | done — the tree, its solution, `global.json` and the CI backend job are deleted |
 
 ## Problem
 
@@ -204,13 +205,14 @@ malformed data, it goes unavailable/error while the baseline provider keeps
 running. Last-known values may be briefly `stale`, then `missing`. **Zero is
 never substituted for unavailable data** (§83).
 
-### C# removal
+### C# removal — **done, 2026-09-13**
 
-The Node host replaces rather than wraps the C# scaffold. Removed with it:
+The Node host replaced rather than wrapped the C# scaffold. Removed with it
+(26 tracked files, none of which had ever compiled):
 `Vigilia.Host`, `Vigilia.Core`, `Vigilia.Contracts`, the C# provider and
-platform projects, `Vigilia.slnx` and the `Directory.Build.props` platform
-enforcement, the paused `backend` CI job, and `contracts-mirror.test.ts` —
-whose subject ceases to exist.
+platform projects, `Vigilia.slnx`, `global.json`, the `Directory.Build.props`
+platform enforcement, the paused `backend` CI job, and
+`contracts-mirror.test.ts` — whose subject no longer exists.
 
 Behavioural ideas from the scaffold may be reimplemented; the unexecuted code is
 not a compatibility target. `renderer-core`'s TypeScript types are now the

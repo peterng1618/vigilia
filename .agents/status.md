@@ -11,14 +11,17 @@ Durable rules are in [`AGENTS.md`](../AGENTS.md), structure in
 ## Works, end to end
 
 A Node CLI host (`vigilia-dashboard`) serves real hardware telemetry over SSE to
-the player, and the editor loads, edits and saves a theme. Observed on this
+the player, and the editor loads, edits and saves a theme. **TypeScript only** —
+the C# tree, its solution, `global.json` and the paused CI backend job were
+deleted on 2026-09-13 (26 files that had never compiled), along with
+`contracts-mirror.test.ts`, whose subject no longer existed. Observed on this
 machine: four baseline sensors, real readings, `cpu.load` reporting `missing`
 with a reason on the first cycle and `ok` after, and an unsupplied `gpu.temp`
 absent from the batch rather than zeroed.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,018 across 42 files |
+| Unit tests | 1,012 across 41 files |
 | Typechecks | five projects, clean |
 | Browser tests | 98 passed, 1 skipped (desktop) |
 | §47 size gate | 201.0 KB gzip / 400 KB |

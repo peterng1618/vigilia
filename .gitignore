@@ -1,29 +1,3 @@
-# ---------- .NET ----------
-# ANCHORED to the C# trees. A bare `bin/` matches at any depth and silently
-# untracked `src/web/packages/host/bin/vigilia.js` -- the `vigilia` CLI entry
-# point, i.e. the one file `npx vigilia` cannot start without. Exactly the same
-# failure as the bare `data/` that untracked renderer-core's src/data/.
-#
-# Re-including is not an option once a parent directory is excluded (git does
-# not descend into an ignored directory), so these must stay anchored rather
-# than negated with `!`.
-src/Vigilia.*/bin/
-src/Vigilia.*/obj/
-tests/Vigilia.*/bin/
-tests/Vigilia.*/obj/
-[Dd]ebug/
-[Rr]elease/
-artifacts/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-.vs/
-project.lock.json
-project.fragment.lock.json
-*.nupkg
-*.snupkg
-
 # ---------- Node / frontend ----------
 node_modules/
 dist/
@@ -49,26 +23,24 @@ blob-report/
 *.db-wal
 assets-store/
 secrets.local.json
-appsettings.Local.json
 
-# ---------- Gate evidence (large binaries) ----------
+# ---------- Screenshot evidence ----------
 # Commit the written results; keep raw captures local.
-docs/gates/**/evidence/raw/
+.agents/screenshots/**/raw/
 
 # ---------- Agent environment ----------
 # Personal overrides; the committed .claude/settings.json is the shared one.
 .claude/settings.local.json
 # Throwaway implementation plans are not repository content. Tracked specs live
-# in .agents/specs/ instead (see that directory's README).
+# in .agents/specs/ instead.
 .claude/plans/
 
 # Credentials, at any depth. A Claude Code process launched with a cwd inside
-# this repo and a home that did not resolve once created a whole config home at
-# docs/gates/screenshots/.claude/ — 78 MB holding live OAuth access tokens,
-# untracked and NOT ignored, one `git add -A` from a credential leak. The fifth
-# handoff records this as fixed; it was not, and the directory reappeared. The
-# repo's convention against `git add -A` was the only thing standing between
-# that and a push, and a convention with no hook behind it is not a control.
+# this repo and a home that did not resolve once created a whole config home
+# under the screenshots directory — 78 MB holding live OAuth access tokens,
+# untracked and NOT ignored, one `git add -A` from a credential leak. A previous
+# revision recorded this as fixed when it was not. A convention with no hook
+# behind it is not a control.
 **/.credentials.json
 # A nested .claude/ is always a stray config home. Anchored with a leading
 # directory so the repo's OWN root .claude/ — twelve tracked plugin files —

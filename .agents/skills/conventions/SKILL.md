@@ -32,19 +32,12 @@ the author happened to be looking at.
 The full pre-commit order, and why it is that order, is `vigilia:verify`. Current figures live in `.agents/status.md`; test counts are deliberately not written down anywhere, because they went
 stale by hundreds within single milestones.
 
-**There is no backend toolchain.** ADR-0007 moved the host into TypeScript in
-this same workspace, and `src/Vigilia.*` is slated for deletion. Run the host
+**There is no backend toolchain**, and no C# tree — it was deleted. Run the host
 with `node packages/host/bin/vigilia.js`. The published binary is
 **`vigilia-dashboard`**, never plain `vigilia` — that name belongs to an
 unrelated package on the registry and fetches a stranger's CLI.
 
 ## The traps
-
-**`dotnet` exists but has no SDK, and that no longer matters.** The error reads
-like a broken command rather than a missing SDK
-(`"The application '--version' does not exist"`). **Do not install a .NET SDK
-to unblock anything** — nothing in the product needs one any more, and the CI
-backend job is paused with `if: false` for the same reason.
 
 **Node 25 is installed and vitest 5 rejects it** (`^22.12 || ^24 || >=26`). Tests
 still run; you get only an `EBADENGINE` warning. Do not chase it as a failure.
@@ -75,19 +68,6 @@ indexed access needs `!` when the index is known good.
 **`URL.pathname` on Windows** yields `/D:/...` and silently breaks `fs`. Use
 `fileURLToPath`.
 
-**`string.GetHashCode()` is randomized per process.** Never use it where
-determinism matters — `FakeSensorProvider.StableHash` exists for exactly this.
-
-**`TreatWarningsAsErrors=true` repo-wide**, and `CA1416` is escalated to an
-error. Windows types compile only in projects setting
-`IsWindowsPlatformProject=true`.
-
-**`ISensorProvider` is `IAsyncDisposable` only** — synchronous `using` does not
-compile. Use `await using`.
-
-**LibreHardwareMonitorLib is exact-pinned `[0.9.6]`.** Floating it selects one of
-735 prereleases.
-
 **No symlinks work here** (`core.symlinks=false`; `ln -s` silently copies). Never
 introduce one.
 
@@ -102,13 +82,10 @@ introduce one.
 
 ## The mirror is gone — do not recreate it
 
-This section used to say `src/Vigilia.Contracts/*.cs` was hand-mirrored in
-`renderer-core/src/types.ts` and told you to edit both in one commit.
-**ADR-0007 deleted the mirror instead of guarding it better**: the host is
-TypeScript and imports `types.ts` directly, so a change that compiles cleanly
-on both sides and produces wrong values at runtime has nowhere left to live.
-
-What replaced it is the rule worth carrying:
+A C# contract was once hand-mirrored into `renderer-core/src/types.ts`, and a
+change could compile on both sides while producing wrong values at runtime. The
+host is TypeScript now and imports those types directly, so that defect class
+has nowhere left to live. The rule it left behind:
 
 - **A shape both ends read belongs in the shared library**, not in one end with
   a reader in the other. The wire contract lives in
@@ -123,7 +100,6 @@ What replaced it is the rule worth carrying:
 
 ## Boundaries
 
-- **Platform:** `Contracts`, `Core` and the renderer must not touch Windows types.
 - **Player:** `renderer-core` and `player` must not depend on editor UI or a
   component framework. If `check-size.mjs` fails, find the leaked dependency —
   do not raise the budget.
@@ -144,4 +120,5 @@ What replaced it is the rule worth carrying:
 - Never fabricate a reading; report `Unavailable` with an actionable reason.
 - Secrets go through `ISecretStore`, redacted in errors, absent from responses
   and packages.
-- Adding a provider means subclassing `SensorProviderContractTests`.
+- Adding a provider means extending the host's provider tests, and asserting a
+  non-`ok` sample carries no `value` key at all.

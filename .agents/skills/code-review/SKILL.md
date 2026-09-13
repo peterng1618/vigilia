@@ -13,8 +13,11 @@ Order findings by blast radius, most severe first.
 
 ## 1. Contract mirror drift — the highest-risk defect here
 
-`src/Vigilia.Contracts/*.cs` is hand-mirrored in
-`src/web/packages/renderer-core/src/types.ts`. Nothing enforces agreement.
+A shape both the host and a display read lives in the shared library —
+`renderer-core/src/data/protocol.ts` for the wire contract,
+`data/semantic-keys.ts` for the vocabulary. A message shape defined in
+`packages/host` with a reader in a display is the old C#/TypeScript mirror
+rebuilt: it compiles on both sides and produces wrong values at runtime.
 
 **If the diff touches `Sample`, `SensorStatus`, `SensorValueType`,
 `SensorDescriptor` or the wire shape on either side, verify the other side
@@ -90,7 +93,7 @@ If `schema/theme-document.schema.json` changed:
 
 ## 7. Tests that assert nothing
 
-- A provider added without subclassing `SensorProviderContractTests` has skipped
+- A provider added without extending the host's provider tests has skipped
   the conformance definition entirely.
 - A test that only asserts a call did not throw. What is the observable
   behaviour?

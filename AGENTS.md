@@ -16,11 +16,10 @@ dashboard. Windows-first, MIT, **personal-use-first** — optimise for developme
 speed over release polish.
 
 **TypeScript throughout** — shared renderer, display-only player, editor *and*
-the host. One npm workspace at `src/web/`. The host was C# (.NET 10), then
-briefly a Python draft; [ADR-0007](.agents/decisions.md)
-settled it as Node/TypeScript shipped as the `vigilia-dashboard` CLI, and the `src/Vigilia.*`
-C# tree is slated for deletion. **Do not install a .NET SDK or Python to unblock
-anything** — neither is required any more.
+the host. One npm workspace at `src/web/`, and nothing else. The host was
+briefly C# and then a Python draft; both are gone, along with every file they
+needed — see [`.agents/decisions.md`](.agents/decisions.md). **There is no
+second toolchain: do not install a .NET SDK or Python to unblock anything.**
 
 **The design document is the spec:** [`.agents/design/plan.md`](.agents/design/plan.md)
 (revision 9). Section markers throughout the code — `§93`, `§122` — point into
@@ -33,7 +32,6 @@ project name; that is intentional and not a bug to fix.
 |---|---|
 | Package manager | **npm** (11.x). No `packageManager` field is pinned |
 | Node | **22.12+, 24, or 26+** per vitest 5's `engines`. Node 25 is outside that range but **works** — verified 2026-09-12, full suite on v25.9.0. npm warns; nothing fails unless `engine-strict` is set. Do not waste time downgrading |
-| .NET SDK | **10.0.100**, pinned in `global.json` (ADR-0002) |
 | Default branch | `main`, pushed to `origin` (`github.com/peterng1618/vigilia`). History exists; `git log` is authoritative |
 | Issue tracker | None. Keep skills tracker-agnostic |
 | Source headers | None. Do not add licence headers to files |
@@ -192,10 +190,10 @@ node packages/host/bin/vigilia.js --no-browser           # loopback only
 node packages/host/bin/vigilia.js --host 0.0.0.0         # let phones connect
 ```
 
-**The `dotnet` commands that used to be here are gone**, along with the reason
-they never worked. `Vigilia.slnx` and `src/Vigilia.*` are still on disk and
-still have never compiled; they are slated for deletion per ADR-0007. Do not
-install an SDK to revive them.
+**The `dotnet` commands that used to be here are gone, and so is the C# tree
+they ran against.** Deleted 2026-09-13: `src/Vigilia.*`, `tests/Vigilia.*`,
+`Vigilia.slnx`, `global.json`, `Directory.Build.props` and the paused CI backend
+job. None of it ever compiled. Do not reintroduce a second toolchain.
 
 No command here requires infrastructure, and none is interactive.
 
@@ -211,8 +209,6 @@ The short version: one npm workspace at `src/web/` with five packages.
 display-only; `editor` adds interaction over the renderer; `host` is the Node
 CLI; `fake-source` is dev-and-test only and must never become a runtime
 dependency of anything shipped.
-
-**`src/Vigilia.*` is dead** — never compiled, slated for deletion, needs no SDK.
 
 Node 22+ · TypeScript 7.0.2, no component framework · ECharts 6.1.0 · Vite 8 ·
 vitest 5 · Playwright 1.63. **The host has no runtime dependencies**: `node:http`
@@ -247,24 +243,20 @@ Four rules that outrank convenience:
 
 ### The mirror is gone — do not recreate it
 
-`src/Vigilia.Contracts/*.cs` was hand-mirrored in
-`renderer-core/src/types.ts`, and this file used to call it the highest-risk
-edit in the repository. **ADR-0007 removed the mirror rather than guarding it
-better**: the host is TypeScript and imports `types.ts` directly, so the class
-of bug — a change that compiles cleanly on both sides and produces wrong values
-at runtime — no longer has anywhere to live.
+A C# `Sample`/`SensorDescriptor` pair was once hand-mirrored into
+`renderer-core/src/types.ts`, and a change could compile cleanly on both sides
+while producing wrong values at runtime. The host is TypeScript now and imports
+those types directly, so that defect class has nowhere left to live.
 
 Two consequences worth knowing:
 
-- **The wire contract lives in the shared library**, at
+- **A shape both ends read lives in the shared library.** The wire contract is
   `renderer-core/src/data/protocol.ts`, because the host *and* every display
   import it. Do not define a message shape in `packages/host` and a reader for
-  it in a display — that is the mirror again, rebuilt.
-- `renderer-core/src/contracts-mirror.test.ts` still parses the `.cs` files and
-  passes. **Its subject is dead code**; delete it with the C# tree.
-  `theme/schema-sync.test.ts` is unaffected and still earns its place — it
-  guards `schema/theme-document.schema.json` against the validator, and that
-  schema is a persisted format with real old files behind it.
+  it in a display — that is the mirror, rebuilt.
+- `theme/schema-sync.test.ts` still earns its place: it guards
+  `schema/theme-document.schema.json` against the validator, and that schema is
+  a persisted format with real saved files behind it.
 
 ### Blast radius, in order
 
@@ -277,7 +269,8 @@ Two consequences worth knowing:
    without touching the library (§141).
 3. `renderer-core` — shared by editor *and* player; a stray dependency breaks the
    player's budget.
-4. `ISensorProvider` — every provider plus the conformance suite.
+4. `host/src/providers/provider.ts` — the provider contract, and every
+   provider behind it.
 
 ### TypeScript
 
@@ -304,14 +297,12 @@ bespoke ones — and asserting a non-`ok` sample carries no `value` key at all.
 1. If a shape changes, change it **once**, in the shared library. The wire
    contract is `renderer-core/src/data/protocol.ts` and the semantic key
    vocabulary is `renderer-core/src/data/semantic-keys.ts`; the host and every
-   display import both. Do not add a second declaration — see §9's "The mirror
-   is gone", which this step used to contradict by telling you to edit
-   `src/Vigilia.Contracts` and `types.ts` together.
+   display import both. Never add a second declaration.
 2. If persisted, update `schema/theme-document.schema.json` and decide whether
    `schemaVersion` must bump.
 3. Implement behind the provider or renderer boundary it belongs to.
 4. Add tests at the layer above; for providers, extend the conformance suite.
-5. Run the frontend commands in §5; run the .NET ones if an SDK exists.
+5. Run the commands in §5.
 6. Record measurements in `.agents/decisions.md`, decisions in `.agents/decisions.md`.
 
 ## 8. Design principles
@@ -342,10 +333,9 @@ bespoke ones — and asserting a non-`ok` sample carries no `value` key at all.
 - CI (`.github/workflows/ci.yml`) runs on pushes to `main`, on pull requests and
   on demand. Three jobs: **frontend** (five typechecks, vitest, player build,
   the §47 size gate, Chromium browser tests, screenshots uploaded as an
-  artifact), **backend** (.NET restore/build/test on Windows — **paused via
-  `if: false`** until an SDK exists, so its steps are reviewable but never run),
-  and **licences** (a grep asserting each named dependency appears in
-  `THIRD-PARTY-NOTICES.md`).
+  artifact) and **licences**, which now derives the dependency list from the
+  workspace manifests rather than checking a hardcoded set of three — two of
+  which were not dependencies at all.
 - **CI must build every bundle Playwright previews.** It starts every
   `webServer` in the config regardless of which project runs, and `dist/` is
   gitignored — so a new preview target needs its build step added to the

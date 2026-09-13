@@ -21,10 +21,10 @@ and `SensorDescriptor` into TypeScript, where a change compiles cleanly on both
 sides and produces wrong values at runtime. That defect class no longer has
 anywhere to live.
 
-`src/Vigilia.*`, `Vigilia.slnx` and `global.json` are dead and slated for
-deletion. **Do not install a .NET SDK or Python to unblock anything.** `dotnet`
-exists with only an EOL 6.0.35 runtime and its error reads like a broken command
-rather than a missing SDK.
+The C# tree, its solution file, `global.json`, `Directory.Build.props` and the
+paused CI backend job were **deleted on 2026-09-13** — 26 files that had never
+compiled. **There is no second toolchain: do not install a .NET SDK or Python to
+unblock anything.**
 
 Plain `vigilia` on npm is an unrelated package — `npx vigilia` fetches a
 stranger's CLI and crashes.

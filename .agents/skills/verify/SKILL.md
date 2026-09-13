@@ -81,12 +81,6 @@ budget.** That gate is the mechanical half of the player/editor boundary; an
 editor dependency reaching `renderer-core` or `player` is exactly what it is
 there to catch.
 
-**Do not run `dotnet` anything and report a result.** There is no .NET SDK on
-this machine, only the EOL 6.0.35 runtime, and the failure message
-(`The application '--version' does not exist`) reads like a broken command
-rather than a missing SDK. Everything under `src/Vigilia.*` is
-authored-but-unbuilt; say so rather than implying otherwise.
-
 **Node 25 warns and works.** vitest 5 declares `^22.12 || ^24 || >=26`; you get
 `EBADENGINE` and a passing suite. Not a failure — do not downgrade.
 

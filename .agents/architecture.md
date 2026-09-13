@@ -21,9 +21,9 @@ Scope, so this file does not become a fourth copy of something:
 
 ## 1. The shape
 
-One npm workspace at `src/web/`, five packages, TypeScript throughout. The
-`src/Vigilia.*` C# tree is dead and slated for deletion ([ADR-0007](decisions.md));
-it has never compiled and needs no SDK.
+One npm workspace at `src/web/`, five packages, TypeScript throughout — and
+nothing else. The C# tree was deleted on 2026-09-13 (see
+[`decisions.md`](decisions.md)); there is no second toolchain.
 
 ```text
                         ┌───────────────────────┐

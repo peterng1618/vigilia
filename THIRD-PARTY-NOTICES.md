@@ -65,22 +65,6 @@ Apache-2.0 requires preserving the licence, copyright and NOTICE file contents,
 and stating significant changes. Import per-series from `echarts/core` for
 tree-shaking rather than the default bundle.
 
-## Fabric.js — MIT
-
-- Source: <https://github.com/fabricjs/fabric.js> · Latest: **7.4.0**
-- License: MIT
-
-Version reached via the chosen editor foundation — see ADR-0001. Candidate
-baselines differ materially: `vue-fabric-editor` hard-pins `5.3.0`,
-`yft-design` uses `^6.4.1`.
-
-## Editor foundation candidates — MIT
-
-| Project | License | Note |
-| --- | --- | --- |
-| [vue-fabric-editor](https://github.com/ikuaitu/vue-fabric-editor) | MIT | **Open-source build is frontend-only**; a separate paid edition adds backend/admin. Only OSS features may be relied upon (§37). No semver tags exist — pin by commit SHA. |
-| [yft-design](https://github.com/dromara/yft-design) | MIT | Fabric 6 / Vite 5 baseline. |
-
 ## Fonts, icons and imported assets
 
 Packaged fonts and imported SVG icons carry their own licences and must ship with
@@ -89,6 +73,25 @@ terms: <https://fontawesome.com/license/free>. A URL alone does not establish
 reuse rights — record source, hash and supplied licence for every imported asset.
 
 ---
+
+## TypeScript — Apache-2.0
+
+Compiler and type checker. **Build-time only**; nothing from it is bundled, and
+no TypeScript runtime ships. Licence read from the installed package's own
+`package.json`.
+
+## Vitest — MIT
+
+Unit test runner. Test-time only; never bundled.
+
+## Playwright (`@playwright/test`) — Apache-2.0
+
+Browser test runner. Test-time only; never bundled. Downloads its own Chromium
+build, which carries its own licences and is not redistributed by Vigilia.
+
+## Vite — MIT
+
+Bundler and dev server. Build-time only.
 
 ## @types/node — MIT
 
