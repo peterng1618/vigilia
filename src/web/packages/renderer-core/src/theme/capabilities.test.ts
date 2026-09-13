@@ -7,8 +7,10 @@ import {
   allowsStyleProperty,
   anyHasCapability,
   hasCapability,
+  isDerivedCapability,
   isKnownStyleProperty,
   stylePropertiesFor,
+  transformPropertiesFor,
 } from './capabilities.js';
 
 describe('the capability matrix', () => {
@@ -39,10 +41,38 @@ describe('the capability matrix', () => {
 });
 
 describe('a group is an editor entity, not a drawable (spec 0011 D2)', () => {
-  it('has no geometry', () => {
-    // Selecting a group used to offer X/Y/width/height, which either did
-    // nothing or moved the outline without the contents.
-    expect(hasCapability('group', 'transform')).toBe(false);
+  it('stores no geometry, but still presents position and rotation', () => {
+    // Removing the transform rows outright was wrong: moving and rotating a
+    // group is something an author does, so per D0 it belongs in the inspector.
+    // What changed is the storage — the value is derived from the children and
+    // editing it rewrites them.
+    expect(hasCapability('group', 'position')).toBe(true);
+    expect(hasCapability('group', 'rotation')).toBe(true);
+    expect(isDerivedCapability('group', 'position')).toBe(true);
+    expect(isDerivedCapability('group', 'rotation')).toBe(true);
+  });
+
+  it('offers NO size — resizing a group is not an operation', () => {
+    // This is why `transform` had to be split into three capabilities: as one
+    // it could not express "offers position but not size", and the first
+    // attempt swung between giving a group everything and giving it nothing.
+    expect(hasCapability('group', 'size')).toBe(false);
+    expect(transformPropertiesFor('group')).toEqual(['x', 'y', 'rotation']);
+  });
+
+  it('is the only entity with a derived capability', () => {
+    for (const type of NODE_TYPES) {
+      if (type !== 'group') {
+        expect(isDerivedCapability(type, 'position')).toBe(false);
+        expect(isDerivedCapability(type, 'rotation')).toBe(false);
+      }
+    }
+  });
+
+  it('leaves every drawable a full stored transform', () => {
+    for (const type of ['rectangle', 'ellipse', 'line', 'text', 'image', 'video', 'chart'] as const) {
+      expect(transformPropertiesFor(type)).toEqual(['x', 'y', 'width', 'height', 'rotation']);
+    }
   });
 
   it('has no paint of any kind', () => {

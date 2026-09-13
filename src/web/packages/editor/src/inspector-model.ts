@@ -1,6 +1,7 @@
 import {
   allowsStyleProperty,
   anyHasCapability,
+  transformPropertiesFor,
   GLOBAL_GROUPS,
   type GlobalGroupName,
   type Globals,
@@ -9,6 +10,7 @@ import {
   type ThemeNode,
 } from '@vigilia/renderer-core';
 import { findNode } from './commands.js';
+import { groupTransformOf } from './group-transform.js';
 
 /**
  * What the inspector shows, as data.
@@ -223,7 +225,7 @@ export function describeSelection(
 
   return [
     identitySection(nodes, readOnly),
-    ...(anyHasCapability(types, 'transform') ? [transformSection(nodes, readOnly)] : []),
+    ...(anyHasCapability(types, 'position') ? [transformSection(document_, nodes, readOnly)] : []),
     styleSection(nodes, document_.globals ?? {}, readOnly),
     ...(anyHasCapability(types, 'bindings') ? bindingSections(nodes, readOnly) : []),
   ].filter((section) => section.fields.length > 0);
@@ -280,7 +282,25 @@ function identitySection(nodes: readonly ThemeNode[], readOnly: boolean): Inspec
   };
 }
 
-function transformSection(nodes: readonly ThemeNode[], readOnly: boolean): InspectorSection {
+function transformSection(
+  document_: ThemeDocument,
+  nodes: readonly ThemeNode[],
+  readOnly: boolean,
+): InspectorSection {
+  // A group's transform is DERIVED from its children, so it is read from
+  // `groupTransformOf` rather than from `node.transform` — which a group does
+  // not have. Reading the absent transform showed zeros, inviting an author to
+  // type into a field that then moved nothing.
+  const read = (node: ThemeNode, property: 'x' | 'y' | 'width' | 'height' | 'rotation'): number =>
+    node.type === 'group'
+      ? (groupTransformOf(document_, node.id)?.[property] ?? 0)
+      : (node.transform?.[property] ?? 0);
+
+  // Which rows exist at all comes from the capability matrix: a group offers
+  // position and rotation and NOT size, because resizing a group is not an
+  // operation.
+  const offered = new Set(nodes.flatMap((node) => transformPropertiesFor(node.type)));
+
   const field = (
     key: string,
     label: string,
@@ -301,15 +321,15 @@ function transformSection(nodes: readonly ThemeNode[], readOnly: boolean): Inspe
       // Whole units, by decision: geometry is integral, so `step` stays 1 and
       // `updateTransforms` rounds. A fraction typed here lands on the nearest
       // unit rather than being refused.
-      field('x', 'X', (node) => node.transform?.x ?? 0),
-      field('y', 'Y', (node) => node.transform?.y ?? 0),
-      field('width', 'Width', (node) => node.transform?.width ?? 0, { min: 0 }),
-      field('height', 'Height', (node) => node.transform?.height ?? 0, { min: 0 }),
-      field('rotation', 'Rotation', (node) => node.transform?.rotation ?? 0, {
+      field('x', 'X', (node) => read(node, 'x')),
+      field('y', 'Y', (node) => read(node, 'y')),
+      field('width', 'Width', (node) => read(node, 'width'), { min: 0 }),
+      field('height', 'Height', (node) => read(node, 'height'), { min: 0 }),
+      field('rotation', 'Rotation', (node) => read(node, 'rotation'), {
         min: -360,
         max: 360,
       }),
-    ],
+    ].filter((descriptor) => offered.has(descriptor.key.slice('transform.'.length))),
   };
 }
 

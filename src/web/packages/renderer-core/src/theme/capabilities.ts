@@ -42,8 +42,12 @@ export type CapabilityGroup =
   | 'identity'
   /** `visible` and `locked`. Everything has these. */
   | 'flags'
-  /** Position, size and rotation, in whole artboard units. */
-  | 'transform'
+  /** `x` and `y`, in whole artboard units. */
+  | 'position'
+  /** `width` and `height`, in whole artboard units. */
+  | 'size'
+  /** `rotation`, in whole degrees. */
+  | 'rotation'
   /** Element-level `opacity` — an instance property, never a token. */
   | 'opacity'
   /** `fill`, as a palette reference. */
@@ -72,26 +76,52 @@ export type CapabilityGroup =
  * each absence, because an absence is a decision.
  */
 export const NODE_CAPABILITIES: Readonly<Record<NodeType, readonly CapabilityGroup[]>> = {
-  // Structural only. This is the row that fixes the group inspector.
-  group: ['identity', 'flags'],
-  rectangle: ['identity', 'flags', 'transform', 'opacity', 'fill', 'stroke', 'shadow', 'cornerRadius'],
+  // Position and rotation only, both DERIVED from its children rather than
+  // stored — see `DERIVED_CAPABILITIES`.
+  //
+  // **No `size`.** Moving and rotating a group is something an author does;
+  // resizing one is not (user, 2026-09-13). This is why `transform` had to be
+  // split into three: as one capability it could not express "offers position
+  // but not size", and the first attempt swung between offering a group
+  // everything and offering it nothing.
+  group: ['identity', 'flags', 'position', 'rotation'],
+  rectangle: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow', 'cornerRadius'],
   // No corner radius: an ellipse has no corners to round.
-  ellipse: ['identity', 'flags', 'transform', 'opacity', 'fill', 'stroke', 'shadow'],
+  ellipse: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow'],
   // No `fill`: text has a colour, and the renderer maps `fill` to `color` in
   // text mode and then overwrites it — so offering both showed two rows for one
   // property and editing one appeared to do nothing.
-  text: ['identity', 'flags', 'transform', 'opacity', 'shadow', 'typography', 'textContent', 'bindings'],
+  text: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'shadow', 'typography', 'textContent', 'bindings'],
   // A stroked path with no interior, so it has a stroke and no fill.
-  line: ['identity', 'flags', 'transform', 'opacity', 'stroke', 'shadow'],
+  line: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'stroke', 'shadow'],
   // No fill or stroke: tinting a bitmap is not something this format does, and
   // §170 forbids auto-inverting bitmap colours.
-  image: ['identity', 'flags', 'transform', 'opacity', 'image'],
+  image: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'image'],
   // Same reasoning as `image`, with playback rather than fit.
-  video: ['identity', 'flags', 'transform', 'opacity', 'video'],
+  video: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'video'],
   // Paint comes from the family's settings, not from element style — otherwise
   // a chart has two colour systems.
-  chart: ['identity', 'flags', 'transform', 'opacity', 'bindings', 'chartSettings'],
+  chart: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'bindings', 'chartSettings'],
 };
+
+/**
+ * Capabilities an entity presents but does not **store**.
+ *
+ * Editing one of these rewrites something else — a group's `x` applies a delta
+ * to every child. The distinction matters to the apply layer, which must not
+ * write a transform onto a node that has no business holding one, and to the
+ * inspector, which may want to say so.
+ */
+export const DERIVED_CAPABILITIES: Readonly<
+  Partial<Record<NodeType, readonly CapabilityGroup[]>>
+> = {
+  group: ['position', 'rotation'],
+};
+
+/** Whether `type` presents `group` as a derived value rather than a stored one. */
+export function isDerivedCapability(type: NodeType, group: CapabilityGroup): boolean {
+  return (DERIVED_CAPABILITIES[type] ?? []).includes(group);
+}
 
 /** Whether `type` carries the given property group. */
 export function hasCapability(type: NodeType, group: CapabilityGroup): boolean {
@@ -140,6 +170,30 @@ export const STYLE_PROPERTIES_BY_GROUP: Readonly<
     'tabularNumerals',
   ],
 };
+
+/**
+ * Which transform fields each geometry capability covers.
+ *
+ * Declared here rather than in the inspector so "a group has x/y but not
+ * width/height" is one fact in one place — the inspector reads it, and so can
+ * the gesture layer when deciding whether to draw resize handles.
+ */
+export const TRANSFORM_PROPERTIES_BY_GROUP: Readonly<
+  Partial<Record<CapabilityGroup, readonly string[]>>
+> = {
+  position: ['x', 'y'],
+  size: ['width', 'height'],
+  rotation: ['rotation'],
+};
+
+/** The transform fields `type` may present, in inspector order. */
+export function transformPropertiesFor(type: NodeType): readonly string[] {
+  const order: readonly CapabilityGroup[] = ['position', 'size', 'rotation'];
+
+  return order
+    .filter((group) => hasCapability(type, group))
+    .flatMap((group) => TRANSFORM_PROPERTIES_BY_GROUP[group] ?? []);
+}
 
 /** Every style property the renderer understands, in no particular order. */
 export const STYLE_PROPERTIES: readonly string[] = Object.values(

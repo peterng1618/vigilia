@@ -1,9 +1,10 @@
-import type { GlobalRef, ThemeDocument, ThemeNode } from '@vigilia/renderer-core';
+import type { GlobalRef, ThemeDocument, ThemeNode, Transform } from '@vigilia/renderer-core';
 import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from './commands.js';
 import { normalizeDegrees } from './transform-gesture.js';
 // Applying an edit consults the same declaration that built the control, so a
 // numeric field cannot be rendered as a number input and stored as a string.
 import { parseNumeric, styleFieldFor } from './inspector-model.js';
+import { applyGroupTransform } from './group-transform.js';
 
 /**
  * Turning an inspector edit into a document edit.
@@ -119,9 +120,29 @@ function applyTransformField(
         ? Math.max(0, raw)
         : raw;
 
-  const transforms = new Map(
-    nodes.map((node) => [node.id, { ...(node.transform ?? {}), [property]: value }]),
-  );
+  // A group stores no transform: its rows are derived from its children, so an
+  // edit is applied to the children instead. Writing `transform` onto the group
+  // would put geometry on an entity the renderer ignores — the value would
+  // stick in the document and change nothing on screen.
+  const transforms = new Map<string, Transform>();
+
+  for (const node of nodes) {
+    if (node.type === 'group') {
+      if (property === 'x' || property === 'y' || property === 'rotation') {
+        for (const [id, transform] of applyGroupTransform(document_, node.id, property, value)) {
+          transforms.set(id, transform);
+        }
+      }
+
+      continue;
+    }
+
+    transforms.set(node.id, { ...(node.transform ?? {}), [property]: value });
+  }
+
+  if (transforms.size === 0) {
+    return document_;
+  }
 
   return updateTransforms(document_, transforms);
 }

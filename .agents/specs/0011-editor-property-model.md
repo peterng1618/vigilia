@@ -42,6 +42,75 @@ Position, size and rotation are integers. `updateTransforms` rounds, because
 every transform write funnels through it. `scaleX`/`scaleY` are multipliers, not
 units, and are not rounded. Landed as `3b545c5`.
 
+### D0 — Everything customisable is in the inspector
+
+**A global rule, and the one that settles every later argument about a row.** If
+an author can change it, the inspector shows it. There is no such thing as a
+property that is editable but only reachable by editing the file.
+
+Its converse matters as much: a row that cannot do anything must not be drawn.
+The two together are what the capability matrix encodes — it is a statement of
+what *is* customisable per entity, not a UI preference.
+
+### D6 — The artboard is an entity in the inspector
+
+The canvas itself is selectable and inspectable, with the rows it can honestly
+offer:
+
+| Artboard row | Editable |
+|---|---|
+| `width`, `height` | ✓ — the canvas size |
+| `x`, `y` | ✓ — moves the canvas |
+| `background` → palette ref | ✓ |
+| `barColor` → palette ref | ✓ |
+| `fitMode` | ✓ |
+| `rotation` | shown, **locked** — there is nothing to rotate relative to |
+| `visible`, `locked` | shown, **locked** — a hidden canvas is not a state worth having |
+
+Shown-but-locked rather than hidden, per D0: the author can see the property
+exists and that it is not theirs to change, which is different from wondering
+where it went.
+
+### D7 — A reserved, undeletable "none" colour
+
+With element literals gone (D3), "no fill" can no longer be expressed by
+clearing a property — every colour is a reference, so there must be a reference
+that means *nothing*.
+
+`palette.none` is reserved: fully transparent rgba, present in every theme,
+**not deletable and not renameable**. Clearing a fill assigns it.
+
+Two consequences worth stating:
+
+- It is the one palette entry `deleteGlobal` must refuse even when unreferenced,
+  which is a different rule from D3's "refuse while referenced" and needs its
+  own guard.
+- A theme that somehow lacks it gets it on load, because a document referencing
+  `palette.none` must resolve, and a missing reserved token would render as an
+  unresolved-global issue for something the author never touched.
+
+### D8 — One identifier per node, no separate display name
+
+`name` is removed. A node has an `id`, constrained to letters, numbers and
+dashes, unique within the document, and it is what the layer list and the
+inspector show.
+
+The reasoning that previously justified two fields does not apply to nodes.
+**Nothing inside the document references a node id** — verified against the
+schema and the document types: text runs reference a *binding* id (node-local),
+`WidgetProvenance` references a widget id, `editorMetadata` is opaque, and
+groups contain children by nesting. §75's "stable IDs plus editable names" sits
+in the theme-globals section, where a reference really is made from five places;
+nodes inherited the duality by analogy, not by need.
+
+And two fields can disagree. `id: "cpu-gauge"` with `name: "GPU temp"` is a
+document that lies about itself and nothing catches it — a misleading name is
+worse than a terse one (user, 2026-09-13).
+
+Renaming therefore rewrites the id. Where a reference to a node id is ever
+introduced, renaming rewrites it atomically — exactly what `rekeyGlobal`
+already does for globals, so the pattern exists rather than needing invention.
+
 ### D2 — A group is an editor entity, not a theme element
 
 A group exists to move things together and to organise the layer list. It is
@@ -49,10 +118,25 @@ A group exists to move things together and to organise the layer list. It is
 
 | A group has | A group does not have |
 |---|---|
-| `children` | `transform` — no x, y, width, height, rotation, scale |
+| `children` | A **stored** transform |
 | `locked` | `style` — no fill, stroke, shadow, opacity, typography |
 | `visible` | `bindings` |
-| Order among its siblings | A name that affects rendering |
+| Order among its siblings | An identifier separate from its id (D8) |
+
+**Its transform is derived, and editable anyway.** This is the correction to a
+first reading of this decision that removed the transform rows altogether —
+wrong, because per D0 moving and rotating a group *is* customisable, so it must
+be in the inspector. What changes is where the value lives, not whether an
+author can set it:
+
+| Group row | Shown from | Editing it |
+|---|---|---|
+| `x`, `y` | union of child world bounds | applies the delta to every child's `x`/`y` |
+| `width`, `height` | same | scales the children (`resize-children.ts`) |
+| `rotation` | always 0 — a group stores none | rotates children about the derived centre |
+
+A group therefore has no coordinate space of its own: its children are in the
+group's parent space, and the group is a selection and a layer-list entry.
 
 Consequences that follow, and each is a real behaviour change:
 
@@ -127,23 +211,29 @@ the validator and the schema stop being three encodings of one thing.
 **This table is the definition.** An inspector row exists if and only if this
 table says it does.
 
-| Property group | group | rectangle | ellipse | text | image | chart |
-|---|---|---|---|---|---|---|
-| Identity (`id` read-only, `name`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `visible`, `locked` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Order among siblings | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Transform (x, y, w, h, rotation — integers) | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `opacity` (element-level number) | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Fill → palette ref | — | ✓ | ✓ | — | — | — |
-| Stroke (colour → palette ref, width, dash) | — | ✓ | ✓ | — | — | — |
-| Shadow (colour → palette ref, blur, offset) | — | ✓ | ✓ | ✓ | — | — |
-| Corner radius | — | ✓ | — | — | — | — |
-| Type preset ref | — | — | — | ✓ (element, and per run — R3) | — | — |
-| Text colour → palette ref | — | — | — | ✓ (element, and per run — R3) | — | — |
-| Text content / runs | — | — | — | ✓ | — | — |
-| Image source, fit | — | — | — | — | ✓ | — |
-| Bindings (semantic keys) | — | — | — | ✓ | — | ✓ |
-| Chart family settings | — | — | — | — | — | ✓ (per family) |
+Legend: **✓** stored on the entity · **~** shown and editable but *derived*
+(editing it rewrites something else) · **L** shown but locked · **—** absent.
+
+| Property group | artboard | group | rectangle | ellipse | line | text | image | video | chart |
+|---|---|---|---|---|---|---|---|---|---|
+| Identity (`id`, editable, unique — D8) | L | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `visible`, `locked` | L | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Order among siblings | — | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Transform (x, y, w, h — integers) | ✓ | ~ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Rotation | L | ~ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Background, bar colour → palette ref | ✓ | — | — | — | — | — | — | — | — |
+| `fitMode` | ✓ | — | — | — | — | — | — | — | — |
+| `opacity` (element-level number) | — | — | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Fill → palette ref | — | — | ✓ | ✓ | — | — | — | — | — |
+| Stroke (colour → palette ref, width, dash) | — | — | ✓ | ✓ | ✓ | — | — | — | — |
+| Shadow (colour → palette ref, blur, offset) | — | — | ✓ | ✓ | ✓ | ✓ | — | — | — |
+| Corner radius | — | — | ✓ | — | — | — | — | — | — |
+| Type preset ref (element + per run — R3) | — | — | — | — | — | ✓ | — | — | — |
+| Text colour → palette ref (element + per run) | — | — | — | — | — | ✓ | — | — | — |
+| Text content / runs | — | — | — | — | — | ✓ | — | — | — |
+| Media source, fit / playback | — | — | — | — | — | — | ✓ | ✓ | — |
+| Bindings (semantic keys) | — | — | — | — | — | ✓ | — | — | ✓ |
+| Chart family settings | — | — | — | — | — | — | — | — | ✓ (per family) |
 
 Notes on the empty cells, since an absence is a decision:
 

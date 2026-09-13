@@ -935,7 +935,7 @@ test.describe('the globals panel', () => {
     await expect(page.locator('[data-vigilia-global-key="palette.panel"]')).toHaveValue('panel');
   });
 
-  test('deleting a token inlines its value, so nothing changes visually', async ({ page }) => {
+  test('deleting a referenced token is refused, and says how many use it', async ({ page }) => {
     await openTheme_(page);
 
     const box = page.locator('[data-node-id="cpu-panel-bg"]');
@@ -943,13 +943,28 @@ test.describe('the globals panel', () => {
 
     await page.locator('[data-vigilia-global-delete="palette.panel"]').click();
 
-    await expect(page.locator('[data-vigilia-global="palette.panel"]')).toHaveCount(0);
-    // §75: "deletion requires reassignment or conversion to current literals".
-    // This is the conversion, and the element is pixel-identical after it.
-    await expect(box).toHaveCSS('background-color', painted);
-
-    await page.keyboard.press('Control+z');
+    // This test previously asserted the opposite: that deletion INLINED the
+    // resolved value into every reference, leaving the element pixel-identical.
+    // Spec 0011 D3 removed the premise — an element cannot hold a literal
+    // colour any more, so inlining would write exactly the document the format
+    // forbids. §75's "deletion requires reassignment or conversion to current
+    // literals" keeps only the reassignment half.
     await expect(page.locator('[data-vigilia-global="palette.panel"]')).toBeVisible();
+    await expect(page.locator('#status')).toContainText('reassign');
+    // Nothing changed, so nothing to undo.
+    await expect(page.locator('#status')).not.toContainText('undo: Delete token');
+    await expect(box).toHaveCSS('background-color', painted);
+  });
+
+  test('deleting an unreferenced token works', async ({ page }) => {
+    await openTheme_(page);
+
+    // Added tokens start at 0 uses, so one can always be removed again.
+    await page.locator('[data-vigilia-global-add="spacing"]').click();
+    await expect(page.locator('[data-vigilia-global="spacing.token"]')).toBeVisible();
+
+    await page.locator('[data-vigilia-global-delete="spacing.token"]').click();
+    await expect(page.locator('[data-vigilia-global="spacing.token"]')).toHaveCount(0);
   });
 
   test('adding a token gives it a free key, ready to rename', async ({ page }) => {

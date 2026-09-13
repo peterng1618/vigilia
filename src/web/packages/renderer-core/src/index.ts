@@ -206,14 +206,18 @@ export { createLiveSource } from './data/live-source.js';
 export type { CapabilityGroup } from './theme/capabilities.js';
 
 export {
+  DERIVED_CAPABILITIES,
   NODE_CAPABILITIES,
   STYLE_PROPERTIES,
   STYLE_PROPERTIES_BY_GROUP,
+  TRANSFORM_PROPERTIES_BY_GROUP,
   allowsStyleProperty,
   anyHasCapability,
   hasCapability,
+  isDerivedCapability,
   isKnownStyleProperty,
   stylePropertiesFor,
+  transformPropertiesFor,
 } from './theme/capabilities.js';
 
 // The semantic key vocabulary (§93). Shared for the same reason the wire

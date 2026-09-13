@@ -133,24 +133,30 @@ describe('§75: a style value is a reference OR a literal, and the row says whic
     expect(field(sections, 'style.fontSize')).toBeUndefined();
   });
 
-  it('shows a group only its identity and flags (spec 0011 D2)', () => {
+  it('shows a group position and rotation, but never size (spec 0011 D2)', () => {
+    // No stored transform on the group — that is the point of D2. Its box is
+    // the union of its children, so it reads from `inner` at (10, 20).
     const grouped: ThemeNode = {
       id: 'g',
       type: 'group',
-      transform: { x: 10, y: 10, width: 100, height: 100 },
       children: [rect('inner')],
     } as ThemeNode;
     const sections = describeSelection(document_([grouped]), ['g']);
 
-    // A group is an editor entity, not a drawable. It used to offer
-    // X/Y/width/height — which moved its outline without its contents — and
-    // fill, which painted nothing.
-    expect(field(sections, 'transform.x')).toBeUndefined();
+    // Moving and rotating a group IS something an author does, so those rows
+    // exist — read from the children's union, since a group stores no
+    // transform. Resizing a group is not an operation, so size does not.
+    expect(field(sections, 'transform.x')?.value).toBe(10);
+    expect(field(sections, 'transform.y')?.value).toBe(20);
+    expect(field(sections, 'transform.rotation')).toBeDefined();
     expect(field(sections, 'transform.width')).toBeUndefined();
+    expect(field(sections, 'transform.height')).toBeUndefined();
+
+    // No paint of any kind: a group is not a drawable.
     expect(field(sections, 'style.fill')).toBeUndefined();
     expect(field(sections, 'style.opacity')).toBeUndefined();
 
-    // What it does keep.
+    // What it keeps.
     expect(field(sections, 'name')).toBeDefined();
     expect(field(sections, 'visible')).toBeDefined();
     expect(field(sections, 'locked')).toBeDefined();
