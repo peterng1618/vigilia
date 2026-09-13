@@ -273,6 +273,47 @@ test.describe('gestures', () => {
     expect(Math.abs(after.x - before.x)).toBeLessThan(2);
   });
 
+  test('resizing a group scales its contents, not just the outline', async ({ page }) => {
+    await openEditor(page);
+
+    // This asserts what the test above cannot: `thermals-panel` is a group, and
+    // a group's width/height is only its own box — `plan.ts` lays children out
+    // from their own transforms. Measuring the group alone passed while every
+    // child kept its old size, so the outline grew around unchanged contents.
+    const panel = page.locator('[data-node-id="thermals-panel"]');
+    const bg = page.locator('[data-node-id="thermals-bg"]');
+    const bars = page.locator('[data-node-id="thermals-bars"]');
+
+    const panelBefore = (await panel.boundingBox())!;
+    const bgBefore = (await bg.boundingBox())!;
+    const barsBefore = (await bars.boundingBox())!;
+
+    await page.mouse.click(panelBefore.x + panelBefore.width / 2, panelBefore.y + 20);
+    const handle = (await page.locator('[data-vigilia-handle="e"]').boundingBox())!;
+    await drag(
+      page,
+      { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 },
+      { x: handle.x + handle.width / 2 + 80, y: handle.y + handle.height / 2 },
+    );
+
+    const bgAfter = (await bg.boundingBox())!;
+    const barsAfter = (await bars.boundingBox())!;
+
+    expect(bgAfter.width).toBeGreaterThan(bgBefore.width + 40);
+    expect(barsAfter.width).toBeGreaterThan(barsBefore.width + 40);
+
+    // Proportional: the chart grew by the same ratio as the panel.
+    const panelAfter = (await panel.boundingBox())!;
+    expect(barsAfter.width / barsBefore.width).toBeCloseTo(
+      panelAfter.width / panelBefore.width,
+      1,
+    );
+
+    // §67: still exactly one undo entry for the whole gesture.
+    await page.keyboard.press('Control+z');
+    expect((await bg.boundingBox())!.width).toBeCloseTo(bgBefore.width, 0);
+  });
+
   test('arrow keys nudge the selection', async ({ page }) => {
     await openEditor(page);
 

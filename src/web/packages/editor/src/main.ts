@@ -16,6 +16,7 @@ import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { outermostOnly, placeNodes, type PlacedNode } from './geometry.js';
 import { hitTest, hitTestInside, marqueeSelect } from './hit-test.js';
 import { deferToTarget } from './keyboard.js';
+import { withScaledDescendants } from './resize-children.js';
 import {
   addToSelection,
   applyClick,
@@ -817,8 +818,12 @@ function start(): void {
     }
 
     if (transforms.size > 0) {
+      // A group's children are a consequence of resizing it, not part of the
+      // gesture: without this the outline grows around unchanged contents.
+      const withChildren = withScaledDescendants(committed, transforms, drag.gesture.handle);
+
       // A preview, not a commit: §67 wants one undo entry per gesture.
-      history = preview(history, updateTransforms(committed, transforms));
+      history = preview(history, updateTransforms(committed, withChildren));
       render();
     }
   });
