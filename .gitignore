@@ -62,6 +62,19 @@ docs/gates/**/evidence/raw/
 # in .agents/specs/ instead (see that directory's README).
 .claude/plans/
 
+# Credentials, at any depth. A Claude Code process launched with a cwd inside
+# this repo and a home that did not resolve once created a whole config home at
+# docs/gates/screenshots/.claude/ — 78 MB holding live OAuth access tokens,
+# untracked and NOT ignored, one `git add -A` from a credential leak. The fifth
+# handoff records this as fixed; it was not, and the directory reappeared. The
+# repo's convention against `git add -A` was the only thing standing between
+# that and a push, and a convention with no hook behind it is not a control.
+**/.credentials.json
+# A nested .claude/ is always a stray config home. Anchored with a leading
+# directory so the repo's OWN root .claude/ — twelve tracked plugin files —
+# stays tracked.
+**/*/.claude/
+
 # ---------- Editors / OS ----------
 .idea/
 *.swp

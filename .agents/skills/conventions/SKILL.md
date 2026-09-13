@@ -13,36 +13,40 @@ Frontend — **from `src/web/`**:
 
 ```bash
 npx vitest run
-npx tsc --noEmit -p packages/renderer-core/tsconfig.json
-npx tsc --noEmit -p packages/player/tsconfig.json
-npx tsc --noEmit -p packages/fake-source/tsconfig.json
-npx tsc --noEmit -p packages/editor/tsconfig.json
+npm run typecheck                                # all five projects
 npx vite build packages/player
+npx vite build packages/editor
+npx vite build packages/host
 node packages/player/scripts/check-size.mjs      # needs a build first
-npx playwright test                              # needs a build first, too
+npx playwright test                              # needs BOTH display builds
+node packages/host/bin/vigilia.js --no-browser   # needs all three builds
 ```
 
-Four typecheck projects, not two — CI checks all four. The full pre-commit
-order, and why it is that order, is `vigilia:verify`. For current *executed*
-figures run `node tools/dev-status.mjs` from the repository root; test counts
-are deliberately not written down anywhere, because they went stale by hundreds
-within single milestones.
+**Five typecheck projects, not four** — `packages/editor` and `packages/host`
+are the two that get forgotten, and CI checks all five. Prefer
+`npm run typecheck`, which derives the list from the workspace, over a
+hand-written set of `tsc` invocations: the hand-written list has now been wrong
+in four separate files at once, because adding a package updates whichever copy
+the author happened to be looking at.
 
-Backend — **from the repository root**, and **never yet run** (no .NET SDK
-installed; the CI backend job is paused with `if: false` for the same reason):
+The full pre-commit order, and why it is that order, is `vigilia:verify`. For
+current *executed* figures run `node tools/dev-status.mjs` from the repository
+root; test counts are deliberately not written down anywhere, because they went
+stale by hundreds within single milestones.
 
-```bash
-dotnet build Vigilia.slnx
-dotnet test Vigilia.slnx
-dotnet run --project src/Vigilia.Host            # 127.0.0.1:5227
-```
+**There is no backend toolchain.** ADR-0007 moved the host into TypeScript in
+this same workspace, and `src/Vigilia.*` is slated for deletion. Run the host
+with `node packages/host/bin/vigilia.js`, never `npx vigilia` — that name
+belongs to an unrelated package on the public registry and fetches a stranger's
+CLI.
 
 ## The traps
 
-**`dotnet` exists but has no SDK.** The error is
-`"The command could not be loaded... The application '--version' does not exist"`,
-which reads like a broken command rather than a missing SDK. Only the EOL 6.0.35
-*runtime* is present. Install the .NET 10 SDK.
+**`dotnet` exists but has no SDK, and that no longer matters.** The error reads
+like a broken command rather than a missing SDK
+(`"The application '--version' does not exist"`). **Do not install a .NET SDK
+to unblock anything** — nothing in the product needs one any more, and the CI
+backend job is paused with `if: false` for the same reason.
 
 **Node 25 is installed and vitest 5 rejects it** (`^22.12 || ^24 || >=26`). Tests
 still run; you get only an `EBADENGINE` warning. Do not chase it as a failure.
@@ -98,11 +102,26 @@ introduce one.
 | `docs/pc-stats-display-agent-plan.md` | User-authored spec — propose, don't rewrite |
 | `docs/agent-environment-setup.md` | User-authored — same |
 
-## Change these in pairs — nothing warns you
+## The mirror is gone — do not recreate it
 
-`src/Vigilia.Contracts/*.cs` is **hand-mirrored** in
-`src/web/packages/renderer-core/src/types.ts`. Drift compiles cleanly on both
-sides and produces wrong values at runtime. Same commit, both files.
+This section used to say `src/Vigilia.Contracts/*.cs` was hand-mirrored in
+`renderer-core/src/types.ts` and told you to edit both in one commit.
+**ADR-0007 deleted the mirror instead of guarding it better**: the host is
+TypeScript and imports `types.ts` directly, so a change that compiles cleanly
+on both sides and produces wrong values at runtime has nowhere left to live.
+
+What replaced it is the rule worth carrying:
+
+- **A shape both ends read belongs in the shared library**, not in one end with
+  a reader in the other. The wire contract lives in
+  `renderer-core/src/data/protocol.ts`; the semantic key vocabulary lives in
+  `renderer-core/src/data/semantic-keys.ts`; editor actions live in
+  `packages/editor/src/actions.ts`. Each exists because the concept previously
+  had two homes.
+- **An owner nothing imports is not an owner.** `semantic-keys.ts` was created
+  and the host kept its own hand-typed copy of the same four keys, which had
+  already drifted on a label. If you introduce an owner, point every consumer
+  at it in the same commit and add a test that binds them.
 
 ## Boundaries
 

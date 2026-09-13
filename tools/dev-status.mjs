@@ -165,7 +165,11 @@ function typechecks() {
     return [{ name: 'all', state: 'skipped', detail: 'not run for this page' }];
   }
 
-  return ['renderer-core', 'player', 'fake-source', 'editor'].map((name) => {
+  // Five projects, not four. This list previously omitted `packages/host`, so
+  // the summary rendered "Typechecks 4/4 · pass" against its own denominator
+  // and a host type error read as a complete green — in the one tool AGENTS.md
+  // tells you to trust for executed figures.
+  return ['renderer-core', 'player', 'fake-source', 'editor', 'host'].map((name) => {
     const { output } = runNodeTool(
       'typescript/bin/tsc',
       ['--noEmit', '-p', `packages/${name}/tsconfig.json`],

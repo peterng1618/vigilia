@@ -325,15 +325,19 @@ Two consequences worth knowing:
 |---|---|---|
 | Renderer unit | `src/web/packages/*/src/**/*.test.ts` | `npx vitest run` from `src/web/` |
 | Provider conformance | `tests/Vigilia.Contracts.Tests` | `dotnet test` (unverified — no SDK) |
-| E2E / visual | `src/web/tests/e2e/*.spec.ts` | `npx playwright test` from `src/web/`, **after a player build** |
+| E2E / visual | `src/web/tests/e2e/*.spec.ts` | `npx playwright test` from `src/web/`, **after the player *and* editor builds** |
 
 **Adding a provider means subclassing `SensorProviderContractTests`**, not writing
 bespoke tests. That suite is the definition of correct provider behaviour.
 
 ### Implementing a feature, in dependency order
 
-1. If the shape changes, update `src/Vigilia.Contracts` **and** the
-   `renderer-core/src/types.ts` mirror together.
+1. If a shape changes, change it **once**, in the shared library. The wire
+   contract is `renderer-core/src/data/protocol.ts` and the semantic key
+   vocabulary is `renderer-core/src/data/semantic-keys.ts`; the host and every
+   display import both. Do not add a second declaration — see §9's "The mirror
+   is gone", which this step used to contradict by telling you to edit
+   `src/Vigilia.Contracts` and `types.ts` together.
 2. If persisted, update `schema/theme-document.schema.json` and decide whether
    `schemaVersion` must bump.
 3. Implement behind the provider or renderer boundary it belongs to.
@@ -362,7 +366,7 @@ bespoke tests. That suite is the definition of correct provider behaviour.
 - Target branch `main`, and `origin` now exists — pushing and opening a PR are
   both real actions with external effect. There is no PR template.
 - CI (`.github/workflows/ci.yml`) runs on pushes to `main`, on pull requests and
-  on demand. Three jobs: **frontend** (four typechecks, vitest, player build,
+  on demand. Three jobs: **frontend** (five typechecks, vitest, player build,
   the §47 size gate, Chromium browser tests, screenshots uploaded as an
   artifact), **backend** (.NET restore/build/test on Windows — **paused via
   `if: false`** until an SDK exists, so its steps are reviewable but never run),
