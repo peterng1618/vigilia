@@ -273,6 +273,77 @@ test.describe('gestures', () => {
     expect(Math.abs(after.x - before.x)).toBeLessThan(2);
   });
 
+  test('a keystroke mid-drag is refused rather than corrupting the gesture', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const start = (await title.boundingBox())!;
+
+    // Commit one move, so there is a history entry available to destroy.
+    await page.mouse.click(start.x + start.width / 2, start.y + start.height / 2);
+    await drag(
+      page,
+      { x: start.x + start.width / 2, y: start.y + start.height / 2 },
+      { x: start.x + start.width / 2 + 80, y: start.y + start.height / 2 },
+    );
+
+    const afterFirst = (await title.boundingBox())!;
+    expect(afterFirst.x).toBeGreaterThan(start.x + 40);
+
+    // Now start a second drag and press Ctrl+Z in the middle of it. The gesture
+    // holds a snapshot from when it began; an undo committing underneath it made
+    // the next pointer move re-apply that stale snapshot on top of the undone
+    // document — landing the node 180 px out instead of 100, and taking the
+    // first entry out of the history with it.
+    const from = { x: afterFirst.x + afterFirst.width / 2, y: afterFirst.y + afterFirst.height / 2 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 50, from.y + 25, { steps: 4 });
+
+    // Measured mid-drag, immediately after the keystroke and before the pointer
+    // moves again. This is the observable signature: an undo that is *applied*
+    // here repaints the node back at its pre-first-move position, which the
+    // author sees happen underneath a gesture they are still holding. A refused
+    // one leaves it where the drag has dragged it.
+    const midDragBefore = (await title.boundingBox())!;
+    await page.keyboard.press('Control+z');
+    const midDragAfter = (await title.boundingBox())!;
+
+    expect(midDragAfter.x).toBeCloseTo(midDragBefore.x, 0);
+    // Specifically: it did NOT snap back to where it was before the first move.
+    expect(Math.abs(midDragAfter.x - start.x)).toBeGreaterThan(40);
+
+    await page.mouse.move(from.x + 100, from.y + 50, { steps: 4 });
+    await page.mouse.up();
+
+    // The first entry also still exists: two undos return to the start.
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    expect((await title.boundingBox())!.x).toBeCloseTo(start.x, 0);
+  });
+
+  test('Escape cancels a drag without discarding the selection', async ({ page }) => {
+    await openEditor(page);
+
+    const title = page.locator('[data-node-id="title"]');
+    const start = (await title.boundingBox())!;
+
+    await page.mouse.click(start.x + start.width / 2, start.y + start.height / 2);
+    await expect(page.locator('[data-vigilia-handle="e"]')).toHaveCount(1);
+
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(start.x + start.width / 2 + 60, start.y + start.height / 2, { steps: 4 });
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+
+    // The gesture is gone and the node is back where it started...
+    expect((await title.boundingBox())!.x).toBeCloseTo(start.x, 0);
+    // ...but the node is still selected. Discarding the selection too was extra
+    // punishment for changing your mind mid-drag.
+    await expect(page.locator('[data-vigilia-handle="e"]')).toHaveCount(1);
+  });
+
   test('resizing a group scales its contents, not just the outline', async ({ page }) => {
     await openEditor(page);
 

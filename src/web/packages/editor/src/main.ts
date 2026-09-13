@@ -455,7 +455,14 @@ function start(): void {
       }
 
       case 'navigate.escape':
-        selection = drag === undefined ? exitGroup(selection) : clearSelection(selection);
+        // Cancelling a gesture keeps the selection. Discarding it as well was
+        // extra punishment for an author who changed their mind mid-drag, and
+        // spec 0005 asks only that the gesture "vanishes with no trace in the
+        // history". Outside a gesture, Escape steps out of an entered group.
+        if (drag === undefined) {
+          selection = exitGroup(selection);
+        }
+
         history = cancelPreview(history);
         drag = undefined;
         marquee = undefined;
@@ -1109,6 +1116,29 @@ function start(): void {
     // fall through to the browser's "save page" just because the action is
     // currently unavailable.
     event.preventDefault();
+
+    // Nothing but Escape may run while a gesture is live.
+    //
+    // A live drag holds a snapshot of the nodes as they were when it started
+    // (`GestureStart.nodes`) and re-applies it against `history.current` on
+    // every pointer move. An action that commits meanwhile moves that ground
+    // out from under it, and the next move re-applies the stale snapshot on top
+    // of the new document. Observed three ways: Ctrl+Z mid-drag put the node
+    // 180 px out instead of 100 and **destroyed the earlier history entry**;
+    // Ctrl+G mid-drag moved a panel 165 px for 120 px of travel, because
+    // grouping rebased the children while the gesture still held their old
+    // absolute positions; Delete mid-drag left a phantom "Move 0 elements"
+    // entry that made the following undo look dead.
+    //
+    // Refusing is the honest option — the alternative, silently cancelling the
+    // author's gesture to service a keystroke, throws away work they can see on
+    // screen. Escape is exempt because cancelling is precisely what it means.
+    if (drag !== undefined && action.id !== 'navigate.escape') {
+      notice = 'Finish or cancel the drag first (Esc cancels)';
+      drawStatus();
+      return;
+    }
+
     runAction(action.id);
   });
 
