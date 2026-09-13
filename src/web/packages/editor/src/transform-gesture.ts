@@ -451,6 +451,123 @@ export function placedHandlePosition(
     : { x: world.x + (dx / length) * rotateOffset, y: world.y + (dy / length) * rotateOffset };
 }
 
+/** Corners first in priority: they resize both axes, so they can always recover. */
+const CORNER_HANDLES: readonly Handle[] = ['nw', 'ne', 'se', 'sw'];
+
+/** The outward direction of each resize handle, in the node's own space. */
+const HANDLE_DIRECTION: Record<string, { readonly x: number; readonly y: number }> = {
+  nw: { x: -1, y: -1 },
+  n: { x: 0, y: -1 },
+  ne: { x: 1, y: -1 },
+  e: { x: 1, y: 0 },
+  se: { x: 1, y: 1 },
+  s: { x: 0, y: 1 },
+  sw: { x: -1, y: 1 },
+  w: { x: -1, y: 0 },
+};
+
+/**
+ * Pushes a handle outward so that handles on a tiny box can still be told apart.
+ *
+ * Keeping the corners for a collapsed node is pointless if they all land inside
+ * one 18 px hit area — measured on a 2x2 box, grabbing `se` resolved to `sw`,
+ * and the node could still not be dragged back to a usable size.
+ *
+ * The direction comes from the handle's own side in the node's space and is
+ * then rotated by the node's matrix, so it stays correct for a rotated node and
+ * stays defined for a box of zero size — where the corner positions themselves
+ * are all the same point and give no usable direction.
+ *
+ * @param minRadiusPx How far from the centre each handle must sit. A handle
+ *   already further out than this is left exactly where it was, so this changes
+ *   nothing for boxes of ordinary size.
+ */
+export function spreadHandlesBy(
+  world: Point,
+  centre: Point,
+  direction: Point,
+  minRadiusPx: number,
+): Point {
+  const dx = world.x - centre.x;
+  const dy = world.y - centre.y;
+
+  if (Math.hypot(dx, dy) >= minRadiusPx) {
+    return world;
+  }
+
+  const length = Math.hypot(direction.x, direction.y);
+
+  // A direction of zero would be the 'move' handle, which sits at the centre by
+  // definition and must not be pushed anywhere.
+  if (length === 0) {
+    return world;
+  }
+
+  return {
+    x: centre.x + (direction.x / length) * minRadiusPx,
+    y: centre.y + (direction.y / length) * minRadiusPx,
+  };
+}
+
+/** A handle's outward direction in world space, for {@link spreadHandlesBy}. */
+export function handleWorldDirection(matrix: Matrix2D, handle: Handle): Point {
+  const local = HANDLE_DIRECTION[handle] ?? { x: 0, y: 0 };
+
+  if (local.x === 0 && local.y === 0) {
+    return local;
+  }
+
+  // Directions rotate and scale but do not translate, so the origin is
+  // subtracted back off.
+  const origin = applyMatrix(matrix, { x: 0, y: 0 });
+  const tip = applyMatrix(matrix, local);
+
+  return { x: tip.x - origin.x, y: tip.y - origin.y };
+}
+
+/**
+ * Which resize handles are safe to offer for a box this size on screen.
+ *
+ * A handle's hit area is a constant size in viewport pixels, so on a thin node
+ * the opposing edge handles land on top of each other. Hit-testing then
+ * resolved by z-order — whichever was appended last — and five of the eight
+ * handles acted on the wrong edge: grabbing north resized from the south.
+ *
+ * The worse consequence was unrecoverable. A node dragged down to the `MIN_SIZE`
+ * floor had all eight hit areas collapsed onto one point, `w` won every press,
+ * and dragging east with `w` is already floored — so the node could never be
+ * resized back up and only undo recovered it. `MIN_SIZE` exists to stop a
+ * gesture leaving "nothing to grab and no way back"; it did not achieve that,
+ * because the *handles* collapsed even though the box did not.
+ *
+ * So an edge handle is dropped on the axis the box is too thin to disambiguate.
+ * Corners are always kept, because a corner resizes both axes and is therefore
+ * what makes a collapsed node recoverable — but keeping them is not enough on
+ * its own: on a 2x2 box all four corners are inside one hit area too, and
+ * grabbing `se` got `sw`. {@link spreadHandlesBy} is the other half, pushing
+ * them far enough apart to be told apart. Offering a control that cannot work
+ * is worse than offering fewer.
+ *
+ * @param widthPx  The box's width **on screen**, not in document units.
+ * @param heightPx The box's height on screen.
+ */
+export function visibleResizeHandles(
+  widthPx: number,
+  heightPx: number,
+  hitSizePx: number,
+): readonly Handle[] {
+  const roomVertically = Math.abs(heightPx) >= hitSizePx;
+  const roomHorizontally = Math.abs(widthPx) >= hitSizePx;
+
+  return [
+    ...CORNER_HANDLES,
+    // `n`/`s` are separated along the vertical axis, so it is the height that
+    // decides whether they can be told apart.
+    ...(roomVertically ? (['n', 's'] as const) : []),
+    ...(roomHorizontally ? (['e', 'w'] as const) : []),
+  ];
+}
+
 /** The unit-space point a handle sits on, in node coordinates. */
 function handleLocalPoint(width: number, height: number, handle: Handle): Point {
   if (handle === 'move') {

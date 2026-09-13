@@ -12,6 +12,9 @@ import {
   worldCentre,
   type GestureStart,
   type Handle,
+  visibleResizeHandles,
+  spreadHandlesBy,
+  handleWorldDirection,
 } from './transform-gesture.js';
 import { applyMatrix, localMatrix, multiply } from './geometry.js';
 import type { Transform } from '@vigilia/renderer-core';
@@ -473,5 +476,129 @@ describe('nodes inside a group', () => {
     ).get('n');
 
     expect(result?.rotation).toBeCloseTo(90, 6);
+  });
+});
+
+describe('visibleResizeHandles', () => {
+  it('offers all eight on a box with room for them', () => {
+    expect([...visibleResizeHandles(200, 120, 18)].sort()).toEqual(
+      ['e', 'n', 'ne', 'nw', 's', 'se', 'sw', 'w'].sort(),
+    );
+  });
+
+  it('drops the north/south pair on a box too thin to tell them apart', () => {
+    // A 200x1 divider: `n` and `s` sit 1 px apart while their hit areas are 18
+    // px, so hit-testing resolved by z-order and grabbing north resized from
+    // the south.
+    const handles = visibleResizeHandles(200, 1, 18);
+
+    expect(handles).not.toContain('n');
+    expect(handles).not.toContain('s');
+    expect(handles).toContain('e');
+    expect(handles).toContain('w');
+  });
+
+  it('drops the east/west pair on a box too narrow', () => {
+    const handles = visibleResizeHandles(1, 200, 18);
+
+    expect(handles).not.toContain('e');
+    expect(handles).not.toContain('w');
+    expect(handles).toContain('n');
+    expect(handles).toContain('s');
+  });
+
+  it('always keeps the corners, which is what makes a collapsed node recoverable', () => {
+    // At the MIN_SIZE floor every hit area used to collapse onto one point, `w`
+    // won every press, and dragging east with `w` is already floored — so the
+    // node could never be resized back up and only undo recovered it.
+    for (const [w, h] of [
+      [1, 1],
+      [0, 0],
+      [200, 1],
+      [1, 200],
+    ] as const) {
+      const handles = visibleResizeHandles(w, h, 18);
+
+      for (const corner of ['nw', 'ne', 'se', 'sw'] as const) {
+        expect(handles).toContain(corner);
+      }
+    }
+  });
+
+  it('judges on screen size, so zoom decides — not document units', () => {
+    // A 2-unit-tall node is ambiguous at 1x and fine at 20x.
+    expect(visibleResizeHandles(400, 2, 18)).not.toContain('n');
+    expect(visibleResizeHandles(400, 40, 18)).toContain('n');
+  });
+
+  it('is unfazed by a negative dimension from a flipped box', () => {
+    expect(visibleResizeHandles(-200, -120, 18)).toContain('n');
+  });
+});
+
+describe('spreadHandlesBy', () => {
+  const centre = { x: 100, y: 100 };
+
+  it('leaves a handle on an ordinary box exactly where it was', () => {
+    const world = { x: 180, y: 40 };
+
+    expect(spreadHandlesBy(world, centre, { x: 1, y: -1 }, 14)).toBe(world);
+  });
+
+  it('pushes a collapsed box\u2019s handles apart along their own direction', () => {
+    // On a 2x2 box all four corners sit inside one 18 px hit area, and grabbing
+    // `se` resolved to `sw` — so keeping the corners was not on its own enough
+    // to make a collapsed node recoverable.
+    const se = spreadHandlesBy({ x: 101, y: 101 }, centre, { x: 1, y: 1 }, 14);
+    const nw = spreadHandlesBy({ x: 99, y: 99 }, centre, { x: -1, y: -1 }, 14);
+
+    expect(Math.hypot(se.x - centre.x, se.y - centre.y)).toBeCloseTo(14, 5);
+    expect(Math.hypot(se.x - nw.x, se.y - nw.y)).toBeGreaterThan(14);
+  });
+
+  it('separates all four corners of a zero-size box', () => {
+    const at = (direction: { x: number; y: number }) =>
+      spreadHandlesBy(centre, centre, direction, 14);
+    const placed = [
+      at({ x: -1, y: -1 }),
+      at({ x: 1, y: -1 }),
+      at({ x: 1, y: 1 }),
+      at({ x: -1, y: 1 }),
+    ];
+
+    // Every pair far enough apart to be told apart by hit-testing.
+    for (let i = 0; i < placed.length; i += 1) {
+      for (let j = i + 1; j < placed.length; j += 1) {
+        const a = placed[i]!;
+        const b = placed[j]!;
+
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(14);
+      }
+    }
+  });
+
+  it('does not move a handle with no direction, which is the centre by definition', () => {
+    const world = { x: 100, y: 100 };
+
+    expect(spreadHandlesBy(world, centre, { x: 0, y: 0 }, 14)).toBe(world);
+  });
+});
+
+describe('handleWorldDirection', () => {
+  it('points outward for each side under the identity matrix', () => {
+    expect(handleWorldDirection({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, 'e')).toEqual({ x: 1, y: 0 });
+    expect(handleWorldDirection({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, 'n')).toEqual({ x: 0, y: -1 });
+  });
+
+  it('ignores translation, because a direction is not a position', () => {
+    expect(handleWorldDirection({ a: 1, b: 0, c: 0, d: 1, e: 500, f: 500 }, 'e')).toEqual({ x: 1, y: 0 });
+  });
+
+  it('rotates with the node, so a rotated box spreads along its own axes', () => {
+    // A quarter turn sends the east side to the south.
+    const rotated = handleWorldDirection({ a: 0, b: 1, c: -1, d: 0, e: 0, f: 0 }, 'e');
+
+    expect(rotated.x).toBeCloseTo(0, 5);
+    expect(rotated.y).toBeCloseTo(1, 5);
   });
 });

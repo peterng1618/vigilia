@@ -4,7 +4,13 @@ import {
 } from '@vigilia/renderer-core';
 import type { Transform } from '@vigilia/renderer-core';
 import { corners, type PlacedNode } from './geometry.js';
-import { placedHandlePosition, type Handle } from './transform-gesture.js';
+import {
+  handleWorldDirection,
+  placedHandlePosition,
+  spreadHandlesBy,
+  visibleResizeHandles,
+  type Handle,
+} from './transform-gesture.js';
 import type { SnapGuide } from './snapping.js';
 
 /**
@@ -87,7 +93,18 @@ export function createOverlay(host: HTMLElement): OverlayElements {
       }
 
       if (input.handlesFor !== undefined) {
-        for (const handle of [...RESIZE_HANDLES, 'rotate' as Handle]) {
+        // Only the handles this box is big enough to tell apart on screen —
+        // `visibleResizeHandles` explains why offering the rest was worse than
+        // offering fewer. Document units scaled by the artboard transform give
+        // the on-screen size the constant-size hit areas compete in.
+        const scale = input.transform.scale;
+        const handles = visibleResizeHandles(
+          input.handlesFor.width * scale,
+          input.handlesFor.height * scale,
+          HANDLE_HIT_SIZE,
+        );
+
+        for (const handle of [...handles, 'rotate' as Handle]) {
           root.append(handleDot(input.handlesFor, handle, input.transform));
         }
       }
@@ -153,7 +170,20 @@ function handleDot(
     handle,
     ROTATE_OFFSET / Math.max(transform.scale, 0.0001),
   );
-  const viewport = documentToViewport(transform, world);
+
+  // Spread applied in VIEWPORT pixels, because the hit areas it is separating
+  // are a constant size in viewport pixels — doing it in document units would
+  // make the separation depend on zoom, which is the bug it exists to fix.
+  const centreWorld = placedHandlePosition(placed, 'move');
+  const viewport =
+    handle === 'rotate'
+      ? documentToViewport(transform, world)
+      : spreadHandlesBy(
+          documentToViewport(transform, world),
+          documentToViewport(transform, centreWorld),
+          handleWorldDirection(placed.matrix, handle),
+          HANDLE_HIT_SIZE * 0.8,
+        );
 
   const element = document.createElement('div');
   element.dataset['vigiliaHandle'] = handle;
