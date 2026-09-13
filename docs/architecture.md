@@ -133,6 +133,8 @@ are about to add resembles a row, import it instead.
 | Document edits | `editor/src/commands.ts`, `arrange.ts` |
 | **Every editor action** — label, shortcut, glyph, enablement | `editor/src/actions.ts` |
 | What a focused control keeps | `editor/src/keyboard.ts` |
+| **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
+| **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty` |
 | Inspector field types and ranges; numeric parsing | `editor/src/inspector-model.ts` |
 | URL path safety, mount trailing slash | `host/src/serve/static-path.ts` |
 | Slow-client policy | `host/src/transport/keep-latest.ts` |
@@ -146,9 +148,8 @@ before building anything that would add another copy.
 
 | Concept | Currently spelled in | Why it matters |
 |---|---|---|
-| **Style property vocabulary** | `mount.ts`, `plan.ts`, `fonts.ts`, the schema (as *prose*), `editor/inspector-model.ts` `STYLE_FIELDS`, and `TEXT_ONLY` | `validateStyleMap` checks values, never property *names*, so `"strokewidth"` passes schema **and** validation and is silently dropped. The comment in `mount.ts` claiming the validator covers this is false. An add-element UI would make this a sixth home. **Owner designed in [spec 0011](../.agents/specs/0011-editor-property-model.md) — `theme/capabilities.ts`, keyed by `NodeType`** |
-| Which entity may carry which property | nowhere — the capability matrix is spread across the renderer, the inspector model, the schema's prose and the validator | A group currently offers transform and style rows it should not have. Specified in [spec 0011](../.agents/specs/0011-editor-property-model.md); not yet implemented |
-| New-node defaults | nowhere | The add-element UI needs "what does a new rect/text start with"; the obvious place is a copy of the row above |
+| Unknown style property names are still not *rejected* | `capabilities.ts` now owns the vocabulary and `isKnownStyleProperty` exists, but `validate.ts` does not call it yet | `{"strokewidth": …}` still passes the schema and the validator and is dropped at render time. The owner exists; the guard does not |
+| New-node defaults | nowhere | The add-element UI needs "what does a new rect/text start with". `capabilities.ts` is where it belongs, so this is now a small addition rather than a sixth copy |
 | Layer operations as actions | `commands.ts` has `reorderNode`/`setNodeFlags`, but `actions.ts` has no ids for them | A layer panel would hard-code its own labels and enablement — the bug `actions.ts` was built to remove |
 | Panel chrome and colour tokens | ~5 copies of button styling, 2 of `inputStyle()` (already divergent), plus `index.html` CSS | Each new surface is another copy |
 | `?keys=` and `?data=live` handshakes | host route **and** display client, independently | Rename either side and the display shows gaps forever, or silently shows fabricated data |
