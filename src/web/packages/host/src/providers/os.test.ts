@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { describeSemanticKey, isKnownSemanticKey } from '@vigilia/renderer-core';
 import {
   cpuLoadBetween,
   OS_DESCRIPTORS,
@@ -183,6 +184,55 @@ describe('OsSensorProvider', () => {
   it('prefixes every sensor id with the provider id', () => {
     for (const descriptor of OS_DESCRIPTORS) {
       expect(descriptor.sensorId.startsWith('os:')).toBe(true);
+    }
+  });
+
+  it('describes only keys the shared vocabulary declares', () => {
+    // The binding that makes `semantic-keys.ts` an owner rather than a second
+    // copy. This provider previously hand-wrote every label, unit and tier, and
+    // had drifted to 'CPU load (all cores)' against the vocabulary's
+    // 'CPU load'.
+    for (const descriptor of OS_DESCRIPTORS) {
+      expect(isKnownSemanticKey(descriptor.semanticKey)).toBe(true);
+      expect(descriptor.label).toBe(describeSemanticKey(descriptor.semanticKey)?.label);
+      expect(descriptor.unit).toBe(describeSemanticKey(descriptor.semanticKey)?.unit);
+    }
+  });
+
+  it('declares nothing it cannot sample, and samples nothing it does not declare', () => {
+    // Two homes for "which keys this provider supplies" — the descriptor list
+    // and the `wanted.has(...)` chain. Adding a key to one only meant either a
+    // sensor advertised by /api/sensors that the stream never carries, or a
+    // reading invisible to discovery.
+    const declared = OS_DESCRIPTORS.map((descriptor) => descriptor.semanticKey).sort();
+    const sampled = samplesFromReadings(
+      { idleTicks: 0, totalTicks: 0, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+      { idleTicks: 100, totalTicks: 400, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+      NOW,
+      declared,
+    )
+      .map((entry) => entry.semanticKey)
+      .sort();
+
+    expect(sampled).toEqual(declared);
+  });
+
+  it('carries the unit its own descriptor declares', () => {
+    const byKey = new Map(
+      samplesFromReadings(
+        { idleTicks: 0, totalTicks: 0, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+        { idleTicks: 100, totalTicks: 400, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+        NOW,
+        ['ram.used', 'ram.used.percent', 'ram.total'],
+      ).map((entry) => [entry.semanticKey, entry.sample]),
+    );
+
+    for (const descriptor of OS_DESCRIPTORS) {
+      const sample = byKey.get(descriptor.semanticKey);
+
+      if (sample?.status === 'ok') {
+        expect(sample.unit).toBe(descriptor.unit);
+      }
     }
   });
 

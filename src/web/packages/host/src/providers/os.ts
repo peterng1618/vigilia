@@ -1,5 +1,6 @@
 import os from 'node:os';
 import type { Sample, SampleEntry } from '@vigilia/renderer-core';
+import { describeSemanticKey } from '@vigilia/renderer-core';
 import type { ProviderHealth, SensorDescriptor, SensorProvider } from './provider.js';
 
 /**
@@ -110,39 +111,55 @@ function missing(sensorId: string, timestamp: string, message: string): Sample {
   return { sensorId, timestamp, status: 'missing', message };
 }
 
+/**
+ * The semantic keys this provider reads, in discovery order.
+ *
+ * The list of keys is the only thing declared here. Their labels, units and
+ * tiers come from `semantic-keys.ts`, which owns the vocabulary — this file
+ * used to restate all three, and had already drifted: `'CPU load (all cores)'`
+ * against the vocabulary's `'CPU load'`, with each unit written a third time
+ * inside `samplesFromReadings`. An owner nothing imports is not an owner.
+ */
+const OS_KEYS = ['cpu.load', 'ram.used', 'ram.used.percent', 'ram.total'] as const;
+
 /** Every semantic key this provider can produce. */
-export const OS_DESCRIPTORS: readonly SensorDescriptor[] = [
-  {
-    sensorId: `${OS_PROVIDER_ID}:cpu.load`,
-    semanticKey: 'cpu.load',
-    label: 'CPU load (all cores)',
-    unit: '%',
-    tier: 'baseline',
-  },
-  {
-    sensorId: `${OS_PROVIDER_ID}:ram.used`,
-    semanticKey: 'ram.used',
-    label: 'RAM used',
-    unit: 'GB',
-    tier: 'baseline',
-  },
-  {
-    sensorId: `${OS_PROVIDER_ID}:ram.used.percent`,
-    semanticKey: 'ram.used.percent',
-    label: 'RAM used (share of total)',
-    unit: '%',
-    tier: 'baseline',
-  },
-  {
-    sensorId: `${OS_PROVIDER_ID}:ram.total`,
-    semanticKey: 'ram.total',
-    label: 'RAM total',
-    unit: 'GB',
-    tier: 'baseline',
-  },
-];
+export const OS_DESCRIPTORS: readonly SensorDescriptor[] = OS_KEYS.map((key) => {
+  const declared = describeSemanticKey(key);
+
+  if (declared === undefined) {
+    // Unreachable while `os.test.ts` asserts every key is in the vocabulary,
+    // and a loud failure is the right response if that ever stops being true:
+    // a descriptor with an invented label is how the two copies drifted before.
+    throw new Error(`${key} is not in the semantic key vocabulary`);
+  }
+
+  return {
+    sensorId: `${OS_PROVIDER_ID}:${key}`,
+    semanticKey: key,
+    label: declared.label,
+    // `exactOptionalPropertyTypes`: omit the key rather than pass undefined.
+    ...(declared.unit === undefined ? {} : { unit: declared.unit }),
+    // This provider needs no driver and no elevation, so everything it reads is
+    // baseline by construction — asserted against the vocabulary in the tests
+    // rather than copied from it, since availability is the provider's to
+    // report (ADR-0004).
+    tier: 'baseline' as const,
+  };
+});
 
 const BYTES_PER_GB = 1024 ** 3;
+
+/**
+ * The unit a key is declared in.
+ *
+ * Read from the vocabulary rather than written at each `ok(...)` call, where
+ * every unit previously appeared a third time — so a sample could carry a unit
+ * its own descriptor disagreed with, and a display would label it wrongly with
+ * nothing to notice.
+ */
+function unitFor(key: (typeof OS_KEYS)[number]): string {
+  return describeSemanticKey(key)?.unit ?? '';
+}
 
 /**
  * Turns two snapshots into samples. Pure — the whole decision surface.
@@ -171,7 +188,7 @@ export function samplesFromReadings(
       sample:
         load === undefined
           ? missing(sensorId, timestamp, 'waiting for a second reading to measure load against')
-          : ok(sensorId, load, '%', timestamp),
+          : ok(sensorId, load, unitFor('cpu.load'), timestamp),
     });
   }
 
@@ -180,7 +197,12 @@ export function samplesFromReadings(
   if (wanted.has('ram.used')) {
     entries.push({
       semanticKey: 'ram.used',
-      sample: ok(`${OS_PROVIDER_ID}:ram.used`, usedBytes / BYTES_PER_GB, 'GB', timestamp),
+      sample: ok(
+        `${OS_PROVIDER_ID}:ram.used`,
+        usedBytes / BYTES_PER_GB,
+        unitFor('ram.used'),
+        timestamp,
+      ),
     });
   }
 
@@ -191,7 +213,7 @@ export function samplesFromReadings(
       semanticKey: 'ram.used.percent',
       sample:
         next.totalMemBytes > 0
-          ? ok(sensorId, (usedBytes / next.totalMemBytes) * 100, '%', timestamp)
+          ? ok(sensorId, (usedBytes / next.totalMemBytes) * 100, unitFor('ram.used.percent'), timestamp)
           : missing(sensorId, timestamp, 'total memory reported as zero'),
     });
   }
@@ -202,7 +224,7 @@ export function samplesFromReadings(
       sample: ok(
         `${OS_PROVIDER_ID}:ram.total`,
         next.totalMemBytes / BYTES_PER_GB,
-        'GB',
+        unitFor('ram.total'),
         timestamp,
       ),
     });
