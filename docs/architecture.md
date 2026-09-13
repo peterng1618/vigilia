@@ -146,7 +146,8 @@ before building anything that would add another copy.
 
 | Concept | Currently spelled in | Why it matters |
 |---|---|---|
-| **Style property vocabulary** | `mount.ts`, `plan.ts`, `fonts.ts`, the schema (as *prose*), `editor/inspector-model.ts` `STYLE_FIELDS`, and `TEXT_ONLY` | `validateStyleMap` checks values, never property *names*, so `"strokewidth"` passes schema **and** validation and is silently dropped. The comment in `mount.ts` claiming the validator covers this is false. An add-element UI would make this a sixth home |
+| **Style property vocabulary** | `mount.ts`, `plan.ts`, `fonts.ts`, the schema (as *prose*), `editor/inspector-model.ts` `STYLE_FIELDS`, and `TEXT_ONLY` | `validateStyleMap` checks values, never property *names*, so `"strokewidth"` passes schema **and** validation and is silently dropped. The comment in `mount.ts` claiming the validator covers this is false. An add-element UI would make this a sixth home. **Owner designed in [spec 0011](../.agents/specs/0011-editor-property-model.md) — `theme/capabilities.ts`, keyed by `NodeType`** |
+| Which entity may carry which property | nowhere — the capability matrix is spread across the renderer, the inspector model, the schema's prose and the validator | A group currently offers transform and style rows it should not have. Specified in [spec 0011](../.agents/specs/0011-editor-property-model.md); not yet implemented |
 | New-node defaults | nowhere | The add-element UI needs "what does a new rect/text start with"; the obvious place is a copy of the row above |
 | Layer operations as actions | `commands.ts` has `reorderNode`/`setNodeFlags`, but `actions.ts` has no ids for them | A layer panel would hard-code its own labels and enablement — the bug `actions.ts` was built to remove |
 | Panel chrome and colour tokens | ~5 copies of button styling, 2 of `inputStyle()` (already divergent), plus `index.html` CSS | Each new surface is another copy |
