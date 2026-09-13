@@ -1,4 +1,4 @@
-# Handoff — 2026-09-12 (fourth revision)
+# Handoff — 2026-09-13 (fifth revision)
 
 Point-in-time state. Durable conventions, commands and traps live in
 [`AGENTS.md`](../AGENTS.md); gate criteria in [`gates/gate-0.md`](gates/gate-0.md).
@@ -6,235 +6,237 @@ This file records **what is actually done, what is blocked on a human, and what
 to pick up next** — none of which is inferable from the code.
 
 Repository: `main`, pushed to `origin` (`github.com/peterng1618/vigilia`).
-A commit count is deliberately not recorded here — it goes stale on the next
-commit, and `git log` answers it.
+A commit count is deliberately not recorded here — `git log` answers it.
 
-This revision supersedes the third revision. It keeps §1–§2 intact and updates
-§§3–5 for new spec
-[`0009-python-telemetry-host-and-sensor-providers.md`](../.agents/specs/0009-python-telemetry-host-and-sensor-providers.md)
-(draft): the backend direction is now a Python host (`psutil` baseline +
-prebuilt-LHM-exe extended sensors), replacing the unbuilt C# scaffold. No
-Python host code exists yet; the C# tree is still on disk and is now slated for
-removal once equivalent Python contracts and tests exist.
+This revision supersedes the fourth. The headline: **the product works end to
+end for the first time.** A Node CLI host serves real hardware telemetry to the
+player over a transport. The fourth revision's backend direction (a Python
+host) is superseded by
+[ADR-0007](decisions/0007-host-in-node-shipped-as-a-cli.md) before any Python
+was written.
+
+**Three commits landed this session, none of them pushed yet.** `ba59bbd`
+(editor open/save), `17a5fdf` (ADR-0007), `460bc5c` (the host). Pushing is a
+real action with external effect and was not requested — decide deliberately,
+and expect CI's first run to exercise the new host build step.
 
 ---
 
 ## 1. What is real and verified
 
-Verified means *executed*, not inspected.
+Verified means **executed this session**, not inspected. Unlike the fourth
+revision, every figure below was printed by a command that ran.
 
-**Nothing was executed this session.** Every Bash call was rejected — the
-permission classifier (`oc/muse-spark-1.3-contributor-free`) was unavailable, so
-no `npm install`, typecheck, vitest, build, Playwright, `git` write, or CI check
-ran. Do not quote test counts, bundle sizes, or typecheck results from this
-session; there are none. The figures in the previous revision (349 unit, 38
-browser, 185.2 KB bundle) are stale by several editor milestones — do not carry
-them forward. Next session: run `vigilia:verify` (or `node tools/dev-status.mjs`
-from the root) and record only what it actually prints.
+| Check | Result |
+|---|---|
+| Unit tests | **887 passed**, 36 files |
+| Typechecks | **five** projects, all clean |
+| Player + editor + host builds | all pass |
+| §47 size gate | **200.5 KB** JS gzip / 400 KB budget |
+| Browser tests | **134 passed**, 54 skipped (editor specs on phone, by design) |
+| Host bundle | 29.7 KB, zero runtime dependencies |
 
-What exists, by reading (not by running):
+The fourth revision's stale figures (349 unit / 38 browser / 185.2 KB) are
+gone. The CI blocker it described — missing `renderer-core/src/data/` files
+causing TS2307 — **is resolved**; those files are committed and the suite is
+green.
 
-- **Charts** — all four v1 families (§81): `charts/gauge.ts`, `line.ts`,
-  `bar.ts`, `pie.ts`, with shared `Fill` resolution in `charts/fill.ts`.
-- **Theme format** — `theme/document.ts` (types) and `theme/validate.ts`
-  (import validation), guarded against the published schema by
-  `theme/schema-sync.test.ts`. `contracts-mirror.test.ts` still guards dead
-  C# ↔ `types.ts` names-only mirror; spec 0009 keeps TS
-  `Sample`/`SampleSource`/theme contracts as compatibility boundary, C# side
-  dies with tree. Spec:
-  [`0002-theme-document-model.md`](../.agents/specs/0002-theme-document-model.md).
-- **Rendering** — `scene/plan.ts` (pure: every decision, unit-tested) and
-  `scene/mount.ts` (DOM: decides nothing), plus `scene/fonts.ts`. Spec:
-  [`0003-scene-rendering.md`](../.agents/specs/0003-scene-rendering.md).
-- **Data** — restored in the working tree this session, **unverified and
-  uncommitted** (see §2, task 1): `data/source.ts` (pull interface),
-  `data/store.ts` (bounded history), `data/store.test.ts`.
-- **`@vigilia/fake-source`** — deterministic synthetic samples and the demo
-  theme fixture. Dev and test only.
-- **Editor** — real and substantial, contrary to the old revision: shell
-  (`editor/src/main.ts`), inspector (`inspector-panel/model/apply`),
-  globals panel + commands, history, overlay, geometry/hit-test/snapping/
-  gestures (pure, unit-tested), arrange (group/align/distribute). Specs
-  [`0004`](../.agents/specs/0004-editor-selection-and-gestures.md) through
-  [`0008`](../.agents/specs/0008-editor-arrange.md). Gate 2 in progress
-  (`docs/gates/gate-2.md`), with open decision **G2-D1** (chart colours).
-- **Decisions since the old revision** — ADR-0005 (editor is an interaction +
-  inspector layer over `renderer-core`; no Fabric, ever), ADR-0006
-  (frontend-first; .NET host sequenced after Gates 1, 2, 4), now joined by
-  draft spec
-  [`0009`](../.agents/specs/0009-python-telemetry-host-and-sensor-providers.md):
-  backend moves to a Python host (`psutil` + prebuilt LHM exe, plain WebSocket
-  keep-latest, no SignalR), C# scaffold slated for removal. ADR-0006's
-  sequencing rationale (unbuilt C# blocking frontend gates) still holds; its
-  ".NET host later" outcome is superseded by "Python host instead". No Python
-  code exists yet. Key spec constraints for build time: `psutil` owns
-  CPU-load/memory/disk/network even on overlap, LHM owns temp/fan/voltage/
-  power/clocks/board; one full LHM tree read per cycle, never per sensor;
-  provider tree position is not identity — use strongest stable ID; LHM
-  attach-to-running or launch-configured, stop only if Vigilia started it;
-  LHM failure isolates, `psutil` continues, keys go stale-then-missing, never
-  zero; Windows install needs prebuilt wheels only, no compiler/SDK; TS
-  `Sample`/`SampleSource`/theme contracts stay boundary, C# ideas reusable
-  but not compatibility target; HWiNFO/AIDA64/Afterburner, fan control,
-  plugins, auto-download LHM all out of scope.
+### The host, and what was observed rather than asserted
 
-## 2. In progress — three findings, one at a time
+`npx vigilia` (today: `node packages/host/bin/vigilia.js`) binds
+`127.0.0.1:5227`, waits until the port answers, prints the dashboard and editor
+URLs, and opens a browser. Run against this machine:
 
-Agreed order: finish one (docs + full tests + commit + push) before starting
-the next. Task 1 is mid-flight; tasks 2–3 untouched.
+- `/api/sensors` listed four baseline descriptors with their provider id.
+- The SSE stream delivered **real readings** — 63.68 GB total memory, ~61%
+  used, CPU load varying 5–15% across cycles.
+- The **first cycle reported `cpu.load` as `missing` with a reason and no
+  value**, then `ok` from the second on. §83 observed, not claimed.
+- `gpu.temp`, requested but unsupplied, was **absent from the batch** — a gap,
+  never a zero (§97).
+- `/api/health` reported `{displays: 1, polling: ["cpu.load"]}` — the union is
+  only what connected displays asked for (§111).
+- A headless browser at `/` was redirected to `?data=live`, reached
+  `status: live`, and read history through the pull interface.
+- `/editor` served to loopback; an encoded traversal got 403; `POST` got 405.
 
-### Task 1 — Renderer `data/` files missing (CI blocker). FILES WRITTEN, NOT VERIFIED.
+### Architecture that changed, and why it matters to your next edit
 
-- Cause: `.gitignore` line 34 `data/` matched at any depth, silently untracking
-  `renderer-core/src/data/`. Fixed in working tree to anchored `/data/` with a
-  comment saying why.
-- Created, uncommitted: `src/web/packages/renderer-core/src/data/source.ts`
-  (`SampleSource` pull interface + `emptySampleSource`),
-  `src/web/packages/renderer-core/src/data/store.ts` (`SampleStore` bounded by
-  age and per-key count, `ingest`/`latest`/`history`/`reset`,
-  `defaultSampleStoreOptions`, `SampleStoreOptions`), and
-  `src/web/packages/renderer-core/src/data/store.test.ts` (empty source,
-  latest-per-key, age windowing, count cap, age-bound prune, reset).
-- API matches the only call sites: `plan.test.ts` (`new SampleStore()`,
-  `ingest(entries, NOW)`, `SampleStore | typeof emptySampleSource`),
-  `plan.ts` (`latest`, `history(key, windowSeconds)`), `fonts.test.ts`
-  (`emptySampleSource`). Defaults (300 s / 600 per key) cover the widest
-  shipped window (300 s) at the 1 s baseline and match the line adapter cap.
-- Next session, in order: `git status --short`; `git check-ignore -v`
-  the two data files (expect no output); `npm install` from `src/web/`;
-  four typechecks (renderer-core, player, fake-source, **editor** — four, not
-  three); `npx vitest run`; both `vite build`s; `check-size.mjs`;
-  `npx playwright test`. Then stage explicit paths only
-  (`.gitignore` + the three data files — never `git add -A`), commit, push.
-  Suggested message: `fix(build): un-ignore renderer data dir and restore
-  SampleSource store` with the `Co-Authored-By: Claude Sonnet 5
-  <noreply@anthropic.com>` trailer.
+- **The C# ↔ TypeScript mirror is gone.** `AGENTS.md` used to call it the
+  highest-risk edit here. The host is TypeScript and imports `types.ts`
+  directly, so the bug class has nowhere left to live. The wire contract is in
+  `renderer-core/src/data/protocol.ts` — **in the shared library, imported by
+  both ends.** Do not define a message shape in `packages/host` and a reader in
+  a display; that is the mirror rebuilt.
+- **`contracts-mirror.test.ts` still passes against dead code.** Delete it with
+  the C# tree. `theme/schema-sync.test.ts` is unaffected and still earns its
+  place.
+- **Five typecheck projects, not four.** `packages/host` joined; CI checks all
+  five.
+- **The host is built and refuses to start unbuilt.** Node 23.6+ strips types
+  but does not *resolve* `renderer-core`'s `.js` specifiers from `.ts` source,
+  so `vite build packages/host` is required. `vite.config.ts` explains this at
+  length — do not "simplify" it away.
 
-### Task 2 — Editor shortcuts fire while typing in the inspector. UNTOUCHED.
+## 2. Next — the MVP's last gap, in order
 
-- `editor/src/main.ts:775` window-level `keydown` has no editable-target guard;
-  `inspector-panel.ts` / `globals-panel.ts` do not stop propagation. Backspace
-  deletes selection (`main.ts:820`), arrows nudge (`main.ts:839`), Ctrl+Z undoes
-  (`main.ts:778`) mid-edit. Source-level finding, not browser-reproduced.
-- Fix direction: single early return in the window handler when
-  `event.target` is `input`/`textarea`/`select` or `isContentEditable`.
+### Task 1 — A starter theme. THE thing between this and a usable product.
 
-### Task 3 — Chart colours ignore globals (G2-D1). UNTOUCHED, USER DIRECTION RECORDED.
+The transport works; the **dashboard still shows mostly dashes**, and renaming
+a key will not fix it.
 
-- `Fill` / `GradientStop.color` are plain strings (`types.ts:45-63`, schema
-  `$defs/fill`); `globals-commands.ts` `mapStyleValues` never walks chart
-  fills; `GLOBAL_GROUPS` has no gradients group.
-- User decision this session: globals cover pre-defined gradients (editable
-  stop count, distribution, rgba colours, angle); every fill-capable element
-  (shapes, static text at minimum, SVG overlay if feasible) takes gradient or
-  solid via the global-or-literal model; gradient is a JSON object, not a
-  string; breaking changes acceptable (prototype). Still needs a schema design
-  (gradient def shape, `Fill`-level vs colour-level refs, new `gradients`
-  group, `schemaVersion` bump with clean old-reader rejection) before code.
-- Caveats found by reading, for the design: `fill.ts mixHex` interpolates hex
-  only (rgba needs real interpolation or a hex-only rule); angle is meaningless
-  on the gauge-arc approximation (document the fallback); keep value-run text
-  solid; SVG-overlay gradients come after monochrome.
+`demo-theme.json` binds eight semantic keys: `cpu.load` (supplied),
+`ram.used` (the same quantity under a *different name* from spec 0010's
+`memory.used`), five extended-tier keys needing LHM, and one deliberately
+unmapped. It also **hardcodes "32 GB installed"** with a fixed pie total of 32
+— so pointing it at real memory would render "63.7 / 32 GB" on this machine,
+a dashboard lying about the hardware. That is worse than a gap and precisely
+what §97 exists to prevent. **Do not take the shortcut.**
+
+Two pieces, and the first is a decision:
+
+1. **The semantic key vocabulary needs one owner.** `ram.used` versus
+   `memory.used` is a naming split between the fixtures and spec 0010 with no
+   authority to resolve it. `AGENTS.md` pattern 3 says a mapping layer resolves
+   semantic keys to providers; **that layer does not exist yet**, and this
+   belongs in it.
+2. **A starter theme built for real baseline keys**, served by the host, with
+   no hardcoded capacities. The demo fixture stays what it is — a showcase of
+   gap, outage and overflow cases for the renderer.
+
+This pulls in host theme storage (`%APPDATA%/vigilia/`) and turns the editor's
+Save from a download into a real save, which spec 0009 already anticipated.
+
+### Task 2 — Editor shortcuts fire while typing. STILL UNTOUCHED, now confirmed.
+
+Carried from the fourth revision and re-checked today: `editor/src/main.ts:907`
+has a window-level `keydown` with **no editable-target guard** (the line moved
+from 775; the gap did not). Backspace deletes the selection, arrows nudge,
+Ctrl+Z undoes — mid-edit in an inspector field. Fix is one early return when
+`event.target` is `input`/`textarea`/`select` or `isContentEditable`.
+Source-level finding, not browser-reproduced.
+
+### Task 3 — Chart colours ignore globals (G2-D1). UNTOUCHED, user direction recorded.
+
+Unchanged from the fourth revision. `Fill` / `GradientStop.color` are plain
+strings; `globals-commands.ts` `mapStyleValues` never walks chart fills;
+`GLOBAL_GROUPS` has no gradients group. User decision stands: globals cover
+pre-defined gradients (editable stop count, distribution, rgba, angle); every
+fill-capable element takes gradient or solid via global-or-literal; gradient is
+a JSON object, not a string; breaking changes acceptable. Still needs a schema
+design before code. Caveats found by reading: `fill.ts mixHex` interpolates hex
+only; angle is meaningless on the gauge-arc approximation; keep value-run text
+solid; SVG-overlay gradients come after monochrome.
+
+### Then, in order
+
+LAN opt-in with pairing codes (§7) · the LHM extended provider · disk and
+network in the baseline provider (needs `systeminformation`, and a
+THIRD-PARTY-NOTICES entry *before* it is added) · a tray. 9router's
+PowerShell-`NotifyIcon`-with-JSON-over-stdio tray is worth copying — it is a
+real Windows tray with **no shipped binary**, which sidesteps the antivirus
+false positives an unsigned Go binary attracts.
 
 ## 3. What is NOT verified — do not report these as working
 
-- **No backend exists in any language.** Spec
-  [`0009`](../.agents/specs/0009-python-telemetry-host-and-sensor-providers.md)
-  (draft) replaces the C# scaffold with a Python host (`psutil` baseline +
-  prebuilt-LHM-exe extended sensors, plain WebSocket keep-latest transport, no
-  SignalR) — but no Python host code has been written. The C# tree under
-  `src/Vigilia.*` is still on disk, still never compiled (no .NET SDK here,
-  only the EOL 6.0.35 runtime), and is now slated for removal once equivalent
-  Python contracts and tests exist. Do not install a .NET SDK to unblock it;
-  the SDK requirement dies with the C# tree.
+- **No LAN bind has ever been exercised.** `--host`, the LAN address print, and
+  the editor's 403 for a non-loopback peer are **source-level only**, tested
+  from loopback alone. The §7 story is written, not proven.
+- **No pairing, no short-lived codes, no revocable sessions.** `--host` is the
+  only opt-in that exists.
 - **Nothing has run on a real phone.** A Pixel 7 *viewport* is not a Pixel 7.
+- **Keep-latest has never met a genuinely slow socket.** It is unit-tested
+  against a fake, and the backpressure path in `transport/sse.ts` (`write`
+  returning false, then `drain`) has not been driven by a real one.
+- **The LHM extended tier is a contract with no implementation.** Every
+  temperature, fan, power and clock key is unsupplied today.
 - **No pixel baselines.** Browser assertions are structural on purpose — CI is
-  Linux, development is Windows, and glyph rasterisation differs.
-- **No transport.** The player renders invented numbers and says so on screen.
-- **CI status is second-hand this session.** The review reported TS2307 on the
-  latest run with five consecutive failures, consistent with the missing
-  `data/` files — but with no shell, no log was inspected. Confirm via CI logs
-  after the task-1 push; do not assert it until then.
-- Spec "Not verified" notes still hold: `fonts`/`assets` global groups never
-  edited in a browser, no real authoring session, no open/save in-product,
-  trackpad/high-DPI unverified.
+  Linux, development is Windows, glyph rasterisation differs.
+- **Sample cadence is chosen, not measured.** 1 s matches what `SampleStore` is
+  sized for; §126 still has no named reference hardware, so no budget exists to
+  compare it against.
+- **CI has not run since the host landed.** It gained a fifth typecheck and a
+  host build step; both are unexercised on the runner.
+- **One browser test is flaky under parallel load**, not broken:
+  `display.spec.ts` "keeps the numeric readout stepping at the sample rate"
+  failed once in a full run, then passed 3/3 in isolation and on a full re-run.
+  It uses `page.clock` with 150 ms polls inside a 1 s sample window. If it
+  fails again, suspect the timing margin, not the readout.
 
-## 4. Blocked on a human — four items
+## 4. Blocked on a human — three items
 
 | | What is needed | Why it cannot be done autonomously |
 |---|---|---|
-| **Spec 0009 decisions** | Resolve before backend work starts: LHM-exe sourcing/bundling, launch-vs-attach default, stop-on-shutdown policy, WebSocket message + versioning shape, tray/autostart/secrets mechanism in Python | Draft spec defers these; implementing the host without them repeats the C#-scaffold mistake (authored-but-unbuilt, guessed protocol) |
 | **Reference hardware** | Name the PC and phones, incl. one deliberately low-end | §126 requires budgets "on named reference PCs/phones" and names none. Blocks Gate 0 sign-off, and pixel baselines with it |
 | **Gate 0 probes G0-P1 / G0-P2** | Run on real hardware with real games | Per-sensor elevation breakdown and anti-cheat coexistence cannot be established from documentation. See [`gates/gate-0.md`](gates/gate-0.md) |
 | **Two engine-gap decisions** | Choose an alternative for each | §85 requires explicit human agreement. Gauge gradients and line thresholds — both in `gate-0.md` |
 
-Resolved since the old revision: the editor foundation (ADR-0005, no Fabric)
-is decided; G2-D1 has user direction (§2 task 3) and is a design task, not a
-blocked question. ADR-0006's sequencing rationale (unbuilt C# stalling
-frontend gates) still holds but its ".NET host later" outcome is superseded by
-spec 0009 ("Python host instead"). Dropped as stale: `.claude/settings.json`
-(skills load as `vigilia:*` now) and "CI has never run" (it has — currently
-reported failing, see §3). Deliberately not pursued: installing a .NET SDK —
-the SDK requirement dies with the C# tree per spec 0009.
+**Resolved since the fourth revision:** the five spec-0009 backend questions
+are moot — ADR-0007 chose the runtime, and LHM sourcing, launch-vs-attach,
+stop-on-shutdown and the wire shape are now either settled in spec 0010 or
+scoped to the unimplemented LHM provider. The wire format is no longer
+"invented against an unbuilt server": it is built, running, and versioned with
+a tested refusal path.
 
 ## 5. Context you cannot infer
 
-**One hard boundary is mechanically enforced; the other dies with the C#
-tree.** Player-vs-editor (the bundle budget gate) stays: if the budget fails,
-find the leaked editor dependency; do not raise the number. The platform
-boundary (`CA1416` as an error, `IsWindowsPlatformProject` opt-in) enforced
-C#-side isolation — spec 0009 removes the C# tree, so that enforcement goes
-with it. Whatever isolation the Python host needs (provider-vs-host,
-host-vs-frontend) must be designed with the host, not assumed from the old
-projects.
+**Bare ignore rules match at any depth, and this repo has now been bitten
+twice.** The fourth revision fixed `data/` untracking
+`renderer-core/src/data/`. This session found `bin/` at `.gitignore:2`
+silently untracking **`packages/host/bin/vigilia.js`** — the CLI entry point,
+the one file `npx vigilia` cannot start without. Both are now anchored.
+`obj/`, `[Dd]ebug/`, `[Rr]elease/` and `artifacts/` are **still bare**; suspect
+them the same way the moment anything lands in a directory with those names.
 
-**The TS side of the mirror is now the source of truth.** `Vigilia.Contracts`
-↔ `renderer-core/src/types.ts` was hand-mirrored with a names-only guard
-(`contracts-mirror.test.ts`); per spec 0009 the C# side dies with the tree, so
-stop changing both — change `types.ts` and record the Python contract to match
-it when the host is built. The theme format's twin guard
-(`theme/schema-sync.test.ts`) is unaffected. A Python↔TS drift guard is owed
-with the host implementation; until then the wire shape is unguarded, so do not
-invent protocol against an unbuilt server (ADR-0006 rule 1 applies to Python
-equally).
+**A stray Claude Code config home was deleted from
+`docs/gates/screenshots/.claude/`.** 78 MB, accumulating since 22 Aug, holding
+live OAuth access tokens, untracked and **not** gitignored — one `git add -A`
+from a credential leak. `CLAUDE_CONFIG_DIR` is unset and nothing in the repo
+sets it, so the cause was external: a Claude Code process launched with its cwd
+there and a home that did not resolve. The same two MCP authorisations exist in
+the real `~/.claude`, so deleting cost nothing. `.gitignore` now blocks that
+path and `**/.credentials.json`, anchored so the repo's **own** twelve tracked
+`.claude/plugins/vigilia/` files stay tracked. If it reappears, the launcher is
+the problem, not the repo.
 
-**`plan.ts` decides; `mount.ts` does not.** Everything that could be wrong about
-a frame is computed in pure, Node-testable code. The editor repeats the split:
-`geometry/history/commands` decide; the overlay wires events. Gesture maths in
-the overlay is the same mistake as a decision in `mount.ts`.
+**Never auto-fall-back to fabricated data.** The player chooses its source
+explicitly: `?data=live` for the host, otherwise `@vigilia/fake-source`. The
+host redirects `/` to `?data=live`, so a phone pointed at the PC gets hardware
+while a bare `vite preview` keeps the fake for tests and screenshots. The
+tempting behaviour — try the host, fall back to synthetic — is what §97
+forbids: a dashboard that quietly swaps in invented numbers when the host dies
+is indistinguishable from one that works.
 
-**Bare ignore rules match at any depth.** `data/` untracked
-`renderer-core/src/data/` with no warning — that was task 1. Anchor runtime
-dir rules (`/data/`). Suspect any bare directory rule the same way.
-
-**Four typechecks, not three** — renderer-core, player, fake-source, editor.
-CI runs all four; omitting editor locally means CI finds it instead of you.
-
-**Playwright previews built bundles.** Rebuild every bundle the suite serves
-(player *and* editor — read `playwright.config.ts`) or a missing build reads as
-a Playwright fault. `check-size.mjs` measures `dist/` on disk: build first.
+**`plan.ts` decides; `mount.ts` does not.** The editor repeats the split
+(`geometry`/`history`/`commands` decide; the overlay wires events) and **so does
+the host**: `args.ts`, `protocol.ts`, `keep-latest.ts`, `registry.ts`,
+`static-path.ts` and the `os.ts` arithmetic are pure and unit-tested; `net.ts`,
+`server.ts`, `sse.ts` and `main.ts` only do I/O. Gesture maths in the overlay,
+a decision in `mount.ts`, and path-safety logic inline in a request handler are
+all the same mistake.
 
 **Committed screenshots are evidence, not baselines**, refreshed deliberately
 with `VIGILIA_CAPTURE=1`. A capture lands mid-animation, so they are never
-byte-reproducible; do not write them on every run.
+byte-reproducible. This session refreshed only the three editor screenshots
+(the toolbar genuinely changed) and **reverted the five player ones**, whose
+~50-byte drift was animation-phase noise, not evidence.
 
-**Four defects one session were invisible to unit tests** and found only by
-rendering — the emitted object was exactly what the code intended, and the
-intent was wrong (`mountScene` host positioning, gauge `progress.itemStyle`,
-horizontal bar order, text/box style sniffing). When in doubt, render.
+**Four defects in one session were invisible to unit tests** and found only by
+rendering. That happened again here in a new form: every host unit test passed
+while the *dashboard* showed dashes, because the fixture and the provider
+disagree about key names. When in doubt, render — and look at it.
 
 **`document.fonts.check()` cannot answer "is this font available".** Chromium
-returns true for a never-declared family. Font availability is metric
-comparison; see `scene/fonts.ts`.
+returns true for a never-declared family. Availability is metric comparison;
+see `scene/fonts.ts`.
 
 **A chart whose content is entirely animated draws nothing until its animation
 progresses.** Screenshots of a fresh mount must advance the clock first.
 
 **Two documents in `docs/` are user-authored** and must not be rewritten:
 `pc-stats-display-agent-plan.md` (the spec — it still carries the old project
-name, intentionally) and `agent-environment-setup.md` (the methodology the agent
-environment was built from).
+name, intentionally) and `agent-environment-setup.md`.
 
 **The design document is revision 9 and is the spec.** Section markers in code
-(`§93`, `§122`) point into it. When code and design document disagree, the design
-document wins until a human says otherwise (§164).
+(`§93`, `§122`) point into it. When code and design document disagree, the
+design document wins until a human says otherwise (§164).
