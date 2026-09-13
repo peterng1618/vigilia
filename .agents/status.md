@@ -19,24 +19,23 @@ machine: four baseline sensors, real readings, `cpu.load` reporting `missing`
 with a reason on the first cycle and `ok` after, and an unsupplied `gpu.temp`
 absent from the batch rather than zeroed.
 
+The editor now exposes scalar chart settings for all four chart families. Rows
+come from `renderer-core/src/charts/settings-fields.ts`; the inspector does not
+re-list them. Same-family multi-selections show shared or mixed values, edits
+are range-checked through the same descriptors, and mixed families show no
+incompatible settings section.
+
 | Check | Result |
 |---|---|
-| Unit tests | 1,012 across 41 files |
+| Unit tests | 1,016 across 41 files |
 | Typechecks | five projects, clean |
-| Browser tests | 98 passed, 1 skipped (desktop) |
+| Browser tests | 0 executed; 143 launch failures, 55 skipped — Chromium 1243 was absent and its download returned an empty/truncated archive |
 | §47 size gate | 201.0 KB gzip / 400 KB |
 | Host bundle | 34.4 KB, zero runtime deps |
 
 ## Next, in order
 
-**1 — Chart settings rows.** The owner exists
-(`renderer-core/src/charts/settings-fields.ts`, with coverage tests asserting
-every real settings property is either declared or explicitly excluded). What's
-missing is the inspector section generated from it. Build from the declaration;
-don't re-list the fields. Paint is excluded on purpose — those are all `Fill`,
-and colour is theme-level, so they land with schema v2.
-
-**2 — A layer panel.** This is a **correctness** feature: a hidden element
+**1 — A layer panel.** This is a **correctness** feature: a hidden element
 cannot be reselected, so hiding one and clicking away loses it (only undo
 recovers it). `hitTest` skipping hidden nodes is right; the tree is the
 non-visual route a hidden node needs.
@@ -51,7 +50,7 @@ Unlocks a latent bug: `ungroupNodes` drops a hidden group's `visible: false`
 and would reveal its children — unreachable today only because a hidden group
 can't be selected.
 
-**3 — Schema v2, as one change.** Everything breaking together, so there's one
+**2 — Schema v2, as one change.** Everything breaking together, so there's one
 migration: group loses its stored transform; palette becomes rgba; gradients
 become palette tokens; `fonts`/`fontSizes` become `typePresets`; a reserved
 undeletable `palette.none`; `name` removed in favour of `id`; artboard
@@ -63,7 +62,7 @@ canvas (size isn't a group operation), which makes `resize-children.ts` dead
 code; and `deleteGlobal` switches from refusing to reassigning with a
 `palette.none` fallback.
 
-**4 — The starter theme, and host theme storage.** Still the thing between this
+**3 — The starter theme, and host theme storage.** Still the thing between this
 and a usable product: the dashboard shows mostly dashes. `demo-theme.json` binds
 five extended-tier keys needing LHM and hardcodes "32 GB installed" with a fixed
 pie total of 32 — pointing it at real memory would render "63.7 / 32 GB", a
@@ -94,8 +93,8 @@ THIRD-PARTY-NOTICES entry *first*) · a tray.
 - **`isKnownStyleProperty` exists but the validator doesn't call it**, so
   `{"strokewidth": …}` still passes schema *and* validation and is dropped at
   render time. The owner exists; the guard doesn't.
-- **Spec 0011 D0, D4, D6–D10 are specified, not implemented.** Only D1, D2 and
-  D5's owner have landed.
+- **Spec 0011 D0, D4, D6–D10 are specified, not implemented.** D1, D2 and D5
+  have landed.
 - **~25 editor defects confirmed by audit remain open**, each
   browser-reproduced: an entered group is never left by clicking outside it; a
   locked node can be grouped then moved through its group; snapping is computed

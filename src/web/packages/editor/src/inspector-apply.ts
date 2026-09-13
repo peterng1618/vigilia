@@ -1,4 +1,11 @@
-import type { GlobalRef, ThemeDocument, ThemeNode, Transform } from '@vigilia/renderer-core';
+import {
+  settingsFieldsFor,
+  type ChartFamily,
+  type GlobalRef,
+  type ThemeDocument,
+  type ThemeNode,
+  type Transform,
+} from '@vigilia/renderer-core';
 import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from './commands.js';
 import { normalizeDegrees } from './transform-gesture.js';
 // Applying an edit consults the same declaration that built the control, so a
@@ -79,6 +86,10 @@ export function applyFieldChange(
 
   if (key.startsWith('style.')) {
     return applyStyleField(document_, nodes, key.slice('style.'.length), change);
+  }
+
+  if (key.startsWith('chart.')) {
+    return applyChartField(document_, nodes, key, change);
   }
 
   if (key.startsWith('binding.')) {
@@ -183,6 +194,75 @@ function applyStyleField(
 
     return updateStyle(current, node.id, { [property]: { value: change.value } });
   }, document_);
+}
+
+function applyChartField(
+  document_: ThemeDocument,
+  nodes: readonly ThemeNode[],
+  key: string,
+  change: FieldChange,
+): ThemeDocument {
+  const [, familyValue, property] = key.split('.');
+
+  if (!isChartFamily(familyValue) || property === undefined || change.kind !== 'literal') {
+    return document_;
+  }
+
+  const definition = settingsFieldsFor(familyValue).find((field) => field.property === property);
+
+  if (definition === undefined) {
+    return document_;
+  }
+
+  let value: unknown;
+
+  if (definition.kind === 'number') {
+    value = parseNumeric(change.value, definition);
+    if (value === undefined) {
+      return document_;
+    }
+  } else if (definition.kind === 'boolean') {
+    if (typeof change.value !== 'boolean') {
+      return document_;
+    }
+    value = change.value;
+  } else {
+    if (
+      typeof change.value !== 'string' ||
+      !definition.options?.some((option) => option.value === change.value)
+    ) {
+      return document_;
+    }
+    value = change.value;
+  }
+
+  let changed = false;
+  const nextNodes = nodes.reduce((current, node) => {
+    if (node.type !== 'chart' || node.content.family !== familyValue) {
+      return current;
+    }
+
+    const settings: Record<string, unknown> = { ...node.content.settings };
+    const previous = settings[property];
+
+    settings[property] = value;
+
+    if (Object.is(previous, value)) {
+      return current;
+    }
+
+    changed = true;
+    return replaceNode(current, node.id, () => ({
+      ...node,
+      content: { ...node.content, settings },
+    }) as unknown as ThemeNode);
+  }, document_.nodes);
+
+  return changed ? { ...document_, nodes: nextNodes } : document_;
+}
+
+function isChartFamily(value: string | undefined): value is ChartFamily {
+  return value === 'gauge' || value === 'line' || value === 'bar' || value === 'pie';
 }
 
 /**
@@ -295,6 +375,9 @@ export function labelForField(key: string): string {
   }
   if (key.startsWith('binding.')) {
     return 'Edit binding';
+  }
+  if (key.startsWith('chart.')) {
+    return `Set ${key.split('.').at(-1)}`;
   }
 
   return `Set ${key}`;

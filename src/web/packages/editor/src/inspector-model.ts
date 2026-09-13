@@ -1,7 +1,9 @@
 import {
   allowsStyleProperty,
   anyHasCapability,
+  settingsFieldsFor,
   transformPropertiesFor,
+  type ChartFamily,
   GLOBAL_GROUPS,
   type GlobalGroupName,
   type Globals,
@@ -226,6 +228,7 @@ export function describeSelection(
     identitySection(nodes, readOnly),
     ...(anyHasCapability(types, 'position') ? [transformSection(nodes, readOnly)] : []),
     styleSection(nodes, document_.globals ?? {}, readOnly),
+    ...chartSettingsSections(nodes, readOnly),
     ...(anyHasCapability(types, 'bindings') ? bindingSections(nodes, readOnly) : []),
   ].filter((section) => section.fields.length > 0);
 }
@@ -367,6 +370,67 @@ function styleSection(
   }
 
   return { title: 'Style', fields };
+}
+
+/**
+ * Chart settings for a selection whose charts all have the same family.
+ *
+ * The rows are generated from renderer-core's declaration rather than listing
+ * chart properties here. Mixed chart families have no compatible settings
+ * surface, so they deliberately show no chart section.
+ */
+function chartSettingsSections(
+  nodes: readonly ThemeNode[],
+  readOnly: boolean,
+): InspectorSection[] {
+  if (nodes.length === 0 || !nodes.every((node) => node.type === 'chart')) {
+    return [];
+  }
+
+  const charts = nodes.filter(
+    (node): node is Extract<ThemeNode, { type: 'chart' }> => node.type === 'chart',
+  );
+  const family = charts[0]!.content.family;
+
+  if (!charts.every((node) => node.content.family === family)) {
+    return [];
+  }
+
+  return [{
+    title: `${chartFamilyLabel(family)} settings`,
+    fields: settingsFieldsFor(family).map((definition) => {
+      const values = charts.map(
+        (node) =>
+          (node.content.settings as unknown as Record<string, unknown>)[definition.property],
+      );
+      const shared = commonValues(values);
+
+      return {
+        key: `chart.${family}.${definition.property}`,
+        label: definition.label,
+        kind: definition.kind,
+        value: shared.value,
+        ...(definition.options === undefined ? {} : { options: definition.options }),
+        ...(definition.min === undefined ? {} : { min: definition.min }),
+        ...(definition.max === undefined ? {} : { max: definition.max }),
+        ...(definition.step === undefined ? {} : { step: definition.step }),
+        ...(shared.mixed === true ? { mixed: true } : {}),
+        readOnly,
+      };
+    }),
+  }];
+}
+
+function chartFamilyLabel(family: ChartFamily): string {
+  return family[0]!.toUpperCase() + family.slice(1);
+}
+
+function commonValues(values: readonly unknown[]): { value: unknown; mixed?: true } {
+  const first = values[0];
+
+  return values.every((value) => Object.is(value, first))
+    ? { value: first }
+    : { value: undefined, mixed: true };
 }
 
 /**

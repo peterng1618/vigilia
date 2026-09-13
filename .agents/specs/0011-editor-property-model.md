@@ -164,11 +164,15 @@ shape — a pack is a set of named tokens, so presets and palette entries must
 stay addressable by name and free of document-specific references. It does
 **not** justify building an import path now.
 
-### D5 — Each chart family exposes its own settings
+### D5 — Each chart family exposes its own settings *(implemented)*
 
 The inspector shows the settings for the selected chart's family, generated from
 a declaration in `renderer-core` beside the settings types — so the inspector,
 the validator and the schema stop being three encodings of one thing.
+
+Same-family multi-selections show shared and mixed values. Mixed families show
+no incompatible settings section. Landed as part of the chart-settings task on
+2026-09-13.
 
 ### D6 — The artboard is an entity in the inspector
 
