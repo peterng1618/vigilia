@@ -15,6 +15,7 @@ import {
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { outermostOnly, placeNodes, type PlacedNode } from './geometry.js';
 import { hitTest, hitTestInside, marqueeSelect } from './hit-test.js';
+import { deferToTarget } from './keyboard.js';
 import {
   addToSelection,
   applyClick,
@@ -906,6 +907,25 @@ function start(): void {
 
   window.addEventListener('keydown', (event: KeyboardEvent) => {
     const meta = event.ctrlKey || event.metaKey;
+
+    // These are bound on `window`, so they also see everything typed into an
+    // inspector field. `keyboard.ts` decides what a focused control keeps.
+    const target = event.target;
+
+    if (
+      target instanceof HTMLElement &&
+      deferToTarget(
+        {
+          tagName: target.tagName,
+          type: target.getAttribute('type') ?? undefined,
+          isContentEditable: target.isContentEditable,
+        },
+        event.key,
+        meta,
+      )
+    ) {
+      return;
+    }
 
     if (meta && event.key.toLowerCase() === 'z') {
       history = event.shiftKey ? redo(history) : undo(history);

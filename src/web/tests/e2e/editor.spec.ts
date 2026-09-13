@@ -482,6 +482,35 @@ test.describe('the inspector', () => {
     await expect(page.locator('[data-vigilia-field="id"] input')).toBeDisabled();
   });
 
+  test('editing keys typed into a field do not reach the document', async ({ page }) => {
+    await openEditor(page);
+    await page.locator('[data-node-id="title"]').click();
+
+    const node = page.locator('[data-node-id="title"]');
+    const before = await node.boundingBox();
+    const name = page.locator('[data-vigilia-input="name"]');
+
+    await name.click();
+    await name.fill('Heading');
+
+    // The shortcuts are bound on `window`, so without a guard this Backspace
+    // deletes the selected element rather than a character, and these arrows
+    // nudge it rather than moving the caret.
+    await page.keyboard.press('Backspace');
+    await expect(name).toHaveValue('Headin');
+
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowUp');
+
+    await expect(node).toBeVisible();
+    const after = await node.boundingBox();
+    expect(after?.x).toBeCloseTo(before?.x ?? 0, 1);
+    expect(after?.y).toBeCloseTo(before?.y ?? 0, 1);
+    // Nothing was committed, so the history is still where it started.
+    await expect(page.locator('#status')).not.toContainText('undo: Nudge');
+    await expect(page.locator('#status')).not.toContainText('undo: Delete');
+  });
+
   test('typing a transform value moves the node', async ({ page }) => {
     await openEditor(page);
     await page.locator('[data-node-id="title"]').click();
