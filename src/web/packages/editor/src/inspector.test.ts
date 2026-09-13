@@ -31,7 +31,7 @@ const rect = (id: string, extra: Partial<ThemeNode> = {}): ThemeNode =>
     type: 'rectangle',
     transform: { x: 10, y: 20, width: 100, height: 50 },
     ...extra,
-  }) as ThemeNode;
+  }) as unknown as ThemeNode;
 
 const textNode = (id: string, extra: Partial<ThemeNode> = {}): ThemeNode =>
   ({
@@ -41,6 +41,19 @@ const textNode = (id: string, extra: Partial<ThemeNode> = {}): ThemeNode =>
     content: { runs: [{ kind: 'literal', text: 'hi' }] },
     ...extra,
   }) as ThemeNode;
+
+const chartNode = (
+  id: string,
+  family: 'gauge' | 'line' | 'bar' | 'pie' = 'gauge',
+  settings: Record<string, unknown> = {},
+): ThemeNode =>
+  ({
+    id,
+    type: 'chart',
+    transform: { x: 0, y: 0, width: 100, height: 100 },
+    bindings: [{ id: `${id}-value`, semanticKey: 'cpu.load' }],
+    content: { family, settings },
+  }) as unknown as ThemeNode;
 
 /** Finds a field by key across all sections. */
 function field(sections: ReturnType<typeof describeSelection>, key: string) {
@@ -78,6 +91,41 @@ describe('describeSelection', () => {
     const text = describeSelection(document_([textNode('t')]), ['t']);
     expect(field(text, 'style.fontSize')).toBeDefined();
     expect(field(text, 'style.color')).toBeDefined();
+  });
+
+  it('generates the selected chart family settings from the shared declaration', () => {
+    const sections = describeSelection(
+      document_([chartNode('g', 'gauge', { min: 10, roundCap: true })]),
+      ['g'],
+    );
+    const chart = sections.find((section) => section.title === 'Gauge settings');
+
+    expect(chart?.fields.map((entry) => entry.key)).toEqual([
+      'chart.gauge.startAngle',
+      'chart.gauge.endAngle',
+      'chart.gauge.min',
+      'chart.gauge.max',
+      'chart.gauge.thickness',
+      'chart.gauge.roundCap',
+      'chart.gauge.gradientSegments',
+    ]);
+    expect(field(sections, 'chart.gauge.min')).toMatchObject({ kind: 'number', value: 10 });
+    expect(field(sections, 'chart.gauge.min')?.source).toBeUndefined();
+    expect(field(sections, 'chart.gauge.gradientSegments')).toMatchObject({ value: undefined });
+  });
+
+  it('shows mixed values for same-family charts and no settings for mixed families', () => {
+    const same = document_([
+      chartNode('a', 'bar', { showAxes: true }),
+      chartNode('b', 'bar', { showAxes: false }),
+    ]);
+    expect(field(describeSelection(same, ['a', 'b']), 'chart.bar.showAxes')).toMatchObject({
+      mixed: true,
+      value: undefined,
+    });
+
+    const mixed = document_([chartNode('a', 'bar'), chartNode('b', 'line')]);
+    expect(describeSelection(mixed, ['a', 'b']).some((section) => section.title.endsWith('settings'))).toBe(false);
   });
 });
 
@@ -404,6 +452,55 @@ describe('applyFieldChange', () => {
   it('leaves the document alone for an empty selection', () => {
     expect(applyFieldChange(base, [], 'transform.x', { kind: 'literal', value: 1 })).toBe(base);
   });
+
+  it('edits, validates and clears chart settings through the shared descriptors', () => {
+    const chartDocument = document_([
+      chartNode('g', 'gauge', {
+        startAngle: 225,
+        endAngle: -45,
+        min: 0,
+        max: 100,
+        thickness: 18,
+        track: { kind: 'solid', color: '#222835' },
+        progress: { kind: 'solid', color: '#00b8d9' },
+        roundCap: false,
+      }),
+    ]);
+    const numbered = applyFieldChange(chartDocument, ['g'], 'chart.gauge.gradientSegments', {
+      kind: 'literal',
+      value: '999',
+    });
+    const toggled = applyFieldChange(numbered, ['g'], 'chart.gauge.roundCap', {
+      kind: 'literal',
+      value: true,
+    });
+    const settings = (
+      findNode(toggled.nodes, 'g') as Extract<ThemeNode, { type: 'chart' }>
+    ).content.settings as unknown as Record<string, unknown>;
+
+    expect(
+      ((findNode(numbered.nodes, 'g') as Extract<ThemeNode, { type: 'chart' }>).content
+        .settings as unknown as Record<string, unknown>).gradientSegments,
+    ).toBe(256);
+    expect(settings.gradientSegments).toBe(256);
+    expect(settings.roundCap).toBe(true);
+    expect(validateThemeDocument(toggled).ok).toBe(true);
+  });
+
+  it('accepts declared select values and refuses mismatched families or values', () => {
+    const lineDocument = document_([chartNode('l', 'line')]);
+    const valid = applyFieldChange(lineDocument, ['l'], 'chart.line.interpolation', {
+      kind: 'literal',
+      value: 'smooth',
+    });
+
+    expect(
+      ((findNode(valid.nodes, 'l') as Extract<ThemeNode, { type: 'chart' }>).content
+        .settings as unknown as Record<string, unknown>).interpolation,
+    ).toBe('smooth');
+    expect(applyFieldChange(valid, ['l'], 'chart.line.interpolation', { kind: 'literal', value: 'wobbly' })).toBe(valid);
+    expect(applyFieldChange(valid, ['l'], 'chart.bar.orientation', { kind: 'literal', value: 'vertical' })).toBe(valid);
+  });
 });
 
 describe('binding edits', () => {
@@ -492,6 +589,7 @@ describe('labelForField', () => {
     expect(labelForField('style.fill')).toBe('Set fill');
     expect(labelForField('transform.rotation')).toBe('Set rotation');
     expect(labelForField('binding.b1.precision')).toBe('Edit binding');
+    expect(labelForField('chart.gauge.startAngle')).toBe('Set startAngle');
     expect(labelForField('name')).toBe('Set name');
   });
 });
