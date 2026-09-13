@@ -36,9 +36,9 @@ stale by hundreds within single milestones.
 
 **There is no backend toolchain.** ADR-0007 moved the host into TypeScript in
 this same workspace, and `src/Vigilia.*` is slated for deletion. Run the host
-with `node packages/host/bin/vigilia.js`, never `npx vigilia` — that name
-belongs to an unrelated package on the public registry and fetches a stranger's
-CLI.
+with `node packages/host/bin/vigilia.js`. The published binary is
+**`vigilia-dashboard`**, never plain `vigilia` — that name belongs to an
+unrelated package on the registry and fetches a stranger's CLI.
 
 ## The traps
 

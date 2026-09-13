@@ -52,7 +52,7 @@ export type ArgsResult =
   /** Print to stderr and exit non-zero. */
   | { readonly kind: 'error'; readonly message: string };
 
-export const HELP_TEXT = `Usage: vigilia [options]
+export const HELP_TEXT = `Usage: vigilia-dashboard [options]
 
 Options:
   -p, --port <port>   Port to listen on (default: ${DEFAULT_PORT})

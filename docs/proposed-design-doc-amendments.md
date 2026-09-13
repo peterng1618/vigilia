@@ -83,7 +83,52 @@ the "explicit literals remain literal" exception — which would have made a
 light mode silently skip any element an author had customised — has nothing to
 apply to.
 
-## 3. Not proposed, but worth your eye
+## 3. §75 — one identifier per node
+
+### Currently
+
+> Use stable IDs plus editable names. […] renaming preserves links […]
+
+### Proposed addition
+
+> For **theme globals**, a stable key and an editable display name are separate,
+> because a reference is made from five places and renaming must not break one.
+>
+> For **nodes**, there is one identifier: an editable `id` of letters, numbers
+> and dashes, unique within the document. Nothing inside the document references
+> a node id, so the second field bought nothing and could disagree with the
+> first — an element whose `id` and `name` tell different stories is a document
+> lying about itself.
+
+### What changes, concretely
+
+`name` is removed from every node. The layer list and the inspector show the
+`id`. Renaming rewrites any reference atomically if one is ever introduced,
+which is what `rekeyGlobal` already does for globals.
+
+## 4. §126 — performance budgets on named reference hardware
+
+### Currently
+
+> …budgets on named reference PCs/phones…
+
+### Proposed
+
+> Record budgets when there is a measured cost to bound. Until then, state the
+> shape of the work instead: one poll per cycle for the union of keys active
+> displays need, a bounded history buffer, and a bounded node count.
+
+### What changes, concretely
+
+Gate 0's performance section is dropped (see
+[`gates/gate-0.md`](gates/gate-0.md)) on the grounds that nothing built so far
+is resource intensive. **This is the amendment I am least comfortable drafting**,
+because a budget's purpose is to catch the regression nobody predicted — so if
+you would rather keep §126 as written, the gate entry should be reinstated as
+blocked rather than dropped. Your call, and the gate file records the caveat
+either way.
+
+## 5. Not proposed, but worth your eye
 
 Two further passages are consistent with 0011 and need no change; noting them so
 you know they were checked rather than missed:

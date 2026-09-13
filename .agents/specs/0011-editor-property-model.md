@@ -59,13 +59,17 @@ offer:
 
 | Artboard row | Editable |
 |---|---|
-| `width`, `height` | ✓ — the canvas size |
-| `x`, `y` | ✓ — moves the canvas |
+| `width`, `height` | ✓ — **resizes the theme canvas after it was created**, which is the point of this decision |
 | `background` → palette ref | ✓ |
 | `barColor` → palette ref | ✓ |
 | `fitMode` | ✓ |
-| `rotation` | shown, **locked** — there is nothing to rotate relative to |
+| `x`, `y` | **absent.** Corrected 2026-09-13: an earlier draft had them editable and "moving the canvas". There is nothing to move the canvas *relative to* — the artboard defines the coordinate space, so an origin offset would either be a no-op or shift every node's effective position, which is a different operation with a different name |
+| `rotation` | shown, **locked** — nothing to rotate relative to, same reason |
 | `visible`, `locked` | shown, **locked** — a hidden canvas is not a state worth having |
+
+Resizing the canvas does **not** rescale its contents. Nodes keep their
+coordinates, so growing the artboard adds room and shrinking it can crop —
+which is what `fitMode` then governs on a display.
 
 Shown-but-locked rather than hidden, per D0: the author can see the property
 exists and that it is not theirs to change, which is different from wondering
@@ -172,10 +176,16 @@ and drops the group's transform. This is lossless for translation, rotation and
 scale, because the child transforms can express the composed result — see
 **Open question O1** for whether we migrate or refuse.
 
-### D3 — Colour is theme-level only, in rgba
+### D3 — Colour is theme-level only, in rgba — **solids and gradients alike**
 
 `palette` entries hold **rgba** values. An element references a palette entry;
-it may not carry a literal colour.
+it may not carry a literal colour. **This covers gradients** (user,
+2026-09-13): a gradient is a named theme-level token exactly as a solid is, and
+an element references it. See D9 for the gradient's own shape.
+
+The reason given is worth recording because it decides future work too: a
+dark/light switch then swaps **tokens**, not elements. Any element literal — solid
+or gradient — would be a value the switch cannot reach.
 
 | | |
 |---|---|
@@ -211,6 +221,53 @@ and bundling collapses five inspector rows to one dropdown. It also makes the
 multi-run text case tractable, which is the reason it came up: a run picks a
 preset, so per-run styling stays expressible without giving a run five
 independent style fields.
+
+**The vocabulary is author-defined, not fixed** (user, 2026-09-13). A theme
+ships with whatever presets its author wrote; nothing in the format reserves
+`title` or `caption`. The same holds for the palette.
+
+**Anticipated, not built:** importing a palette pack or a preset pack as a unit,
+the way a theme or a widget is imported. Named here because it constrains the
+shape — a pack is a set of named tokens, so presets and palette entries must
+stay addressable by name and free of document-specific references. It does
+**not** justify building an import path now.
+
+### D9 — The gradient model
+
+A gradient is a theme-level token (D3) with:
+
+| | |
+|---|---|
+| `stops` | An **author-editable list** — stops can be added and removed |
+| `stops[].color` | rgba |
+| `stops[].position` | Where the stop sits along the gradient bar, 0–1 |
+| `rotation` | The gradient's angle |
+
+**`rotation` is a property of the gradient, not of a stop.** The instruction
+read "each stop has rgba color, position and rotation value"; a per-stop angle
+has no geometric meaning — a linear gradient has exactly one direction — so it
+is placed on the gradient. Flagged rather than silently reinterpreted, in case a
+per-stop angle was meant for something this does not yet cover.
+
+#### Where a gradient is painted
+
+**Over the element's rectangular bounding box, not its visible filled area**
+(user, 2026-09-13). So an ellipse, a rounded rectangle or a text glyph run is
+filled from a gradient spanning its full box, and the shape clips it.
+
+This matters because the alternative is what most engines do by default for some
+primitives, and it makes two identically-styled elements of different shapes
+show visibly different gradients — the ellipse compressing the ramp into its
+inscribed area. Boundary-box geometry keeps a token looking the same wherever it
+is used, which is the entire reason colour is a token.
+
+The existing `Fill` union already carries `kind: 'gradient'` with `stops`, so
+this is a change of *ownership and geometry*, not a new concept: `GradientStop`
+gains rgba and a documented position, the angle moves onto the gradient, and the
+whole thing moves from element style into the palette.
+
+`thresholds` — the third `Fill` kind — is **not** a gradient and stays distinct:
+discrete bands selected by value, which is a data mapping rather than a paint.
 
 ### D5 — Each chart family exposes its own settings
 

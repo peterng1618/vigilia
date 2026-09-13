@@ -39,13 +39,15 @@ existing workspace, shipped as an npm CLI.
 One command starts everything:
 
 ```bash
-node packages/host/bin/vigilia.js    # from src/web/
+npx vigilia-dashboard                # once published
+node packages/host/bin/vigilia.js    # from src/web/, today
 ```
 
-**Not `npx vigilia`.** That name belongs to an unrelated package on the public
-registry, so `npx vigilia` fetches a stranger's CLI and crashes. Shipping under
-a name that is actually available — `@vigilia/cli`, or a different binary name —
-is an open decision; nothing is published today (`@vigilia/host` is `private`).
+**The binary is `vigilia-dashboard`** (decided 2026-09-13). Plain `vigilia`
+belongs to an unrelated package on the public registry, so `npx vigilia` fetches
+a stranger's CLI and crashes on Windows with `spawn man ENOENT` — which a user
+hit. Nothing is published yet (`@vigilia/host` is `private`), so the repo-local
+command above is what works today.
 
 It resolves a port, starts the HTTP and WebSocket server, waits until the port
 actually accepts a TCP connection — not a fixed sleep — and only then opens the

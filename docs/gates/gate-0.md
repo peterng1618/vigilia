@@ -33,10 +33,22 @@ These were verified on 2026-09-12 and are recorded with method in
 
 ## Probes
 
-### G0-P1 — Per-sensor tier and elevation breakdown
+### G0-P1 — Per-sensor tier and elevation breakdown — **DROPPED 2026-09-13**
 
-**Question:** exactly which sensors are readable (a) with no driver, (b) with
-PawnIO installed but unelevated, (c) with PawnIO installed and elevated.
+> **Dropped by the user.** Tiering is "now the sensor provider concern": a
+> provider reports what it can actually read on the machine it is running on,
+> per ADR-0004's rule that tiers are *discovered and reported, never
+> hardcoded*. A probe answering the question up-front for one machine would
+> produce a table the provider then has to contradict at runtime.
+>
+> The obligation does not vanish, it moves: an extended provider must report
+> each sensor's availability with a reason, and `Unavailable` must never be
+> presented as a reading (§97). That is a provider acceptance criterion, not a
+> gate probe.
+
+**Original question:** exactly which sensors are readable (a) with no driver,
+(b) with PawnIO installed but unelevated, (c) with PawnIO installed and
+elevated.
 
 **Why it matters:** ADR-0004's tiered design assumes a meaningful Tier 1 exists.
 If temperature turns out to be the only thing gated, the opt-in is cheap; if load
@@ -55,10 +67,20 @@ replaces the "UNVERIFIED" entry in the research doc.
 - [ ] Driver installed, process elevated
 - [ ] Catalog diffs committed
 
-### G0-P2 — Anti-cheat coexistence
+### G0-P2 — Anti-cheat coexistence — **DROPPED 2026-09-13**
 
-**Question:** does PawnIO being loaded cause problems with Vanguard, EAC or
-BattlEye?
+> **Dropped by the user**, on the same reasoning as G0-P1: whether PawnIO can be
+> loaded is the extended provider's problem to detect and report, not a
+> precondition to be established before the provider exists. A provider that
+> cannot load its driver reports itself unavailable with a reason, which is the
+> behaviour §97 requires anyway.
+>
+> **What this does not do** is make the risk disappear. If PawnIO turns out to
+> conflict with an anti-cheat, the consequence lands on a user's machine rather
+> than in this checklist. Recorded so that outcome is not a surprise.
+
+**Original question:** does PawnIO being loaded cause problems with Vanguard,
+EAC or BattlEye?
 
 **Why it matters:** §111 names gamers as the target user. Being signed and
 blocklist-clean is *necessary but not sufficient* — anti-cheat vendors maintain
@@ -341,11 +363,24 @@ screenshots a fresh mount must advance the clock first.
 
 ## Performance budgets
 
-> **BLOCKED.** §126 requires budgets "on named reference PCs/phones". No hardware
-> has been named. An agent cannot resolve this — it needs the actual machines.
+> **DROPPED 2026-09-13.** The user's reasoning: "nothing we do so far is
+> resource intensive." The host polls `node:os` once per second for a handful of
+> keys and pushes an SSE frame; the display renders a bounded scene from a
+> bounded buffer. There is no measured problem for a budget to guard against.
+>
+> **This is a deviation from the design document**, which requires budgets on
+> named reference hardware (§126). That file is user-authored and is not edited
+> by an agent, so the two disagree knowingly — see
+> [`../proposed-design-doc-amendments.md`](../proposed-design-doc-amendments.md).
+>
+> The honest caveat: a budget's job is to catch the regression you did not
+> predict. Dropping it means a future change that *is* expensive — the LHM
+> provider reading a full sensor tree every cycle, a 600-point line chart on a
+> low-end phone — will be noticed by a person rather than by a check. Reinstate
+> it the moment anything here starts costing something.
 
-- [ ] **Name the reference PC** (CPU, GPU, RAM)
-- [ ] **Name the reference phone(s)**, including one deliberately low-end/older (§47)
+- [x] ~~Name the reference PC~~ — dropped
+- [x] ~~Name the reference phone(s)~~ — dropped
 - [ ] CPU budget, idle and active
 - [ ] Memory budget, with a bounded-growth assertion
 - [ ] Network budget per client at 1 Hz

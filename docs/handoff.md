@@ -43,9 +43,9 @@ green.
 
 ### The host, and what was observed rather than asserted
 
-`node packages/host/bin/vigilia.js`, run from `src/web/` — **not `npx vigilia`,
-which fetches an unrelated package of that name off the registry; see §4** —
-binds
+`node packages/host/bin/vigilia.js`, run from `src/web/` — the published binary
+is **`vigilia-dashboard`**, never plain `vigilia`, which fetches an unrelated
+package off the registry — binds
 `127.0.0.1:5227`, waits until the port answers, prints the dashboard and editor
 URLs, and opens a browser. Run against this machine:
 
@@ -189,7 +189,7 @@ false positives an unsigned Go binary attracts.
 | **Reference hardware** | Name the PC and phones, incl. one deliberately low-end | §126 requires budgets "on named reference PCs/phones" and names none. Blocks Gate 0 sign-off, and pixel baselines with it |
 | **Gate 0 probes G0-P1 / G0-P2** | Run on real hardware with real games | Per-sensor elevation breakdown and anti-cheat coexistence cannot be established from documentation. See [`gates/gate-0.md`](gates/gate-0.md) |
 | **Two engine-gap decisions** | Choose an alternative for each | §85 requires explicit human agreement. Gauge gradients and line thresholds — both in `gate-0.md` |
-| **The CLI's published name** | Pick a scoped name or a different binary | **`vigilia` on npm is taken** — an unrelated file-watcher by Gibran Malheiros, last published 2022. `npx vigilia` fetches *that* and dies with `spawn man ENOENT`; the user hit it this session. ADR-0007 and this file both wrote `npx vigilia` as the way to run the host, which is why the mistake was inviting. Nothing is published (`@vigilia/host` is `private`, `0.0.0`), so only the docs are wrong today — but `@vigilia/cli` or a new binary name is a product choice, not an in-scope one |
+| ~~The CLI's published name~~ | **Resolved 2026-09-13: `vigilia-dashboard`** | Plain `vigilia` on npm is an unrelated file-watcher by Gibran Malheiros. `npx vigilia` fetched *that* and died with `spawn man ENOENT`. The `bin` entry and `--help` now say `vigilia-dashboard`; nothing is published yet |
 
 **Resolved since the fourth revision:** the five spec-0009 backend questions
 are moot — ADR-0007 chose the runtime, and LHM sourcing, launch-vs-attach,

@@ -41,7 +41,7 @@ workspace, and ship it as a `bin` CLI.
 
 Five reasons, in the order that decided it:
 
-1. **The endorsed distribution model is intrinsically Node.** `npx vigilia`
+1. **The endorsed distribution model is intrinsically Node.** `npx vigilia-dashboard`
    cannot front a Python host without shipping a Node launcher that spawns
    Python — two runtimes for a user to install, and two for us to debug. The
    thing the user liked is not separable from the runtime it is built on.
