@@ -16,11 +16,12 @@ so run them in this order and stop at the first failure.
 From `src/web/`:
 
 ```bash
-# 1. Typechecks — four projects, not three.
+# 1. Typechecks — five projects, not four. CI checks all five.
 npx tsc --noEmit -p packages/renderer-core/tsconfig.json
 npx tsc --noEmit -p packages/player/tsconfig.json
 npx tsc --noEmit -p packages/fake-source/tsconfig.json
 npx tsc --noEmit -p packages/editor/tsconfig.json
+npx tsc --noEmit -p packages/host/tsconfig.json
 
 # 2. Unit tests — seconds, and where a logic break shows up first.
 npx vitest run
@@ -28,6 +29,7 @@ npx vitest run
 # 3. Build. Required before 4 and 5; they measure and preview the BUILT output.
 npx vite build packages/player
 npx vite build packages/editor
+npx vite build packages/host
 
 # 4. The §47 display-only budget gate.
 node packages/player/scripts/check-size.mjs
@@ -53,6 +55,29 @@ only the player is served.
 
 **`check-size.mjs` measures `dist/` on disk.** Without step 3 it either fails on
 a missing directory or, worse, passes against a stale build.
+
+**Rebuild after *reverting* an experiment, too.** Temporarily breaking a guard
+to prove a test catches it is worth doing — and leaves `dist/` holding the
+broken build. Restoring the source is not enough; the next Playwright run
+previews the sabotaged bundle and fails somewhere unrelated to what you are
+working on, which reads like a flake. Rebuild, then re-run.
+
+**The browser suite does not exercise the host.** Playwright previews each
+bundle directly on its own port, so nothing in steps 1–5 ever asks the host to
+serve them. A serving bug — a mount prefix, an asset path, a redirect — is
+invisible to a fully green gauntlet. This is not hypothetical: the editor
+shipped unable to boot through the host while all five checks passed, because
+its absolute `/assets/…` resolved against the player's dist. After changing
+the host's serving, the editor's Vite `base`, or either bundle's output layout,
+start the host and load both surfaces:
+
+```bash
+node packages/host/bin/vigilia.js --port 5231 --no-browser   # then open both
+```
+
+and confirm the editor reaches an artboard rather than a status bar stuck on
+"starting…". Checking the HTTP status of the *document* is not enough — the
+HTML arrives either way.
 
 **If the size gate fails, find the leaked dependency — do not raise the
 budget.** That gate is the mechanical half of the player/editor boundary; an
