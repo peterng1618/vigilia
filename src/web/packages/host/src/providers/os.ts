@@ -120,23 +120,23 @@ export const OS_DESCRIPTORS: readonly SensorDescriptor[] = [
     tier: 'baseline',
   },
   {
-    sensorId: `${OS_PROVIDER_ID}:memory.used`,
-    semanticKey: 'memory.used',
-    label: 'Memory used',
+    sensorId: `${OS_PROVIDER_ID}:ram.used`,
+    semanticKey: 'ram.used',
+    label: 'RAM used',
     unit: 'GB',
     tier: 'baseline',
   },
   {
-    sensorId: `${OS_PROVIDER_ID}:memory.used.percent`,
-    semanticKey: 'memory.used.percent',
-    label: 'Memory used',
+    sensorId: `${OS_PROVIDER_ID}:ram.used.percent`,
+    semanticKey: 'ram.used.percent',
+    label: 'RAM used (share of total)',
     unit: '%',
     tier: 'baseline',
   },
   {
-    sensorId: `${OS_PROVIDER_ID}:memory.total`,
-    semanticKey: 'memory.total',
-    label: 'Memory total',
+    sensorId: `${OS_PROVIDER_ID}:ram.total`,
+    semanticKey: 'ram.total',
+    label: 'RAM total',
     unit: 'GB',
     tier: 'baseline',
   },
@@ -177,18 +177,18 @@ export function samplesFromReadings(
 
   const usedBytes = next.totalMemBytes - next.freeMemBytes;
 
-  if (wanted.has('memory.used')) {
+  if (wanted.has('ram.used')) {
     entries.push({
-      semanticKey: 'memory.used',
-      sample: ok(`${OS_PROVIDER_ID}:memory.used`, usedBytes / BYTES_PER_GB, 'GB', timestamp),
+      semanticKey: 'ram.used',
+      sample: ok(`${OS_PROVIDER_ID}:ram.used`, usedBytes / BYTES_PER_GB, 'GB', timestamp),
     });
   }
 
-  if (wanted.has('memory.used.percent')) {
-    const sensorId = `${OS_PROVIDER_ID}:memory.used.percent`;
+  if (wanted.has('ram.used.percent')) {
+    const sensorId = `${OS_PROVIDER_ID}:ram.used.percent`;
 
     entries.push({
-      semanticKey: 'memory.used.percent',
+      semanticKey: 'ram.used.percent',
       sample:
         next.totalMemBytes > 0
           ? ok(sensorId, (usedBytes / next.totalMemBytes) * 100, '%', timestamp)
@@ -196,11 +196,11 @@ export function samplesFromReadings(
     });
   }
 
-  if (wanted.has('memory.total')) {
+  if (wanted.has('ram.total')) {
     entries.push({
-      semanticKey: 'memory.total',
+      semanticKey: 'ram.total',
       sample: ok(
-        `${OS_PROVIDER_ID}:memory.total`,
+        `${OS_PROVIDER_ID}:ram.total`,
         next.totalMemBytes / BYTES_PER_GB,
         'GB',
         timestamp,

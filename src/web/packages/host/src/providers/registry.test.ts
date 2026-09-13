@@ -63,10 +63,10 @@ describe('unionOfKeys', () => {
   it('merges what several displays need into one set', () => {
     expect(
       unionOfKeys([
-        ['cpu.load', 'memory.used'],
+        ['cpu.load', 'ram.used'],
         ['cpu.load', 'gpu.temp'],
       ]),
-    ).toEqual(['cpu.load', 'gpu.temp', 'memory.used']);
+    ).toEqual(['cpu.load', 'gpu.temp', 'ram.used']);
   });
 
   it('is empty when nothing is displayed, so nothing gets polled (§111)', () => {

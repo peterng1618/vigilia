@@ -1,4 +1,4 @@
-import type { SampleEntry } from '@vigilia/renderer-core';
+import type { SampleEntry, SensorTier } from '@vigilia/renderer-core';
 
 /**
  * The provider boundary: **providers acquire, the host schedules** (§116).
@@ -19,8 +19,12 @@ import type { SampleEntry } from '@vigilia/renderer-core';
  * Tiers are **discovered and reported, never hardcoded**: a machine without
  * the driver reports its extended sensors unavailable rather than pretending
  * the tier does not exist.
+ *
+ * Re-exported from the shared library rather than declared here, because
+ * displays read it off a descriptor too — two declarations of the same union
+ * is the mirror ADR-0007 removed, in miniature.
  */
-export type SensorTier = 'baseline' | 'extended';
+export type { SensorTier };
 
 /** What a provider says it can read. */
 export interface SensorDescriptor {

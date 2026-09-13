@@ -186,6 +186,23 @@ export type {
 
 export { createLiveSource } from './data/live-source.js';
 
+// The semantic key vocabulary (§93). Shared for the same reason the wire
+// contract is: the host declares which keys it can read and the editor offers
+// them to an author, so the spelling must have one owner.
+export type {
+  SemanticFamily,
+  SemanticKeyDescriptor,
+  SensorTier,
+} from './data/semantic-keys.js';
+
+export {
+  SEMANTIC_KEYS,
+  describeSemanticKey,
+  isKnownSemanticKey,
+  labelForSemanticKey,
+  semanticKeysByFamily,
+} from './data/semantic-keys.js';
+
 export type {
   PlanBox,
   PlanContent,

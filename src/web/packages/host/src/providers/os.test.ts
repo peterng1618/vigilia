@@ -129,15 +129,15 @@ describe('samplesFromReadings', () => {
 
   it('converts memory to GB and percent from the same byte readings', () => {
     const entries = samplesFromReadings(previous, next, NOW, [
-      'memory.used',
-      'memory.used.percent',
-      'memory.total',
+      'ram.used',
+      'ram.used.percent',
+      'ram.total',
     ]);
     const byKey = new Map(entries.map((entry) => [entry.semanticKey, entry.sample]));
 
-    expect(byKey.get('memory.used')?.value).toBeCloseTo(8);
-    expect(byKey.get('memory.used.percent')?.value).toBeCloseTo(50);
-    expect(byKey.get('memory.total')?.value).toBeCloseTo(16);
+    expect(byKey.get('ram.used')?.value).toBeCloseTo(8);
+    expect(byKey.get('ram.used.percent')?.value).toBeCloseTo(50);
+    expect(byKey.get('ram.total')?.value).toBeCloseTo(16);
   });
 
   it('refuses a percentage when total memory reads as zero', () => {
@@ -145,7 +145,7 @@ describe('samplesFromReadings', () => {
       previous,
       readings({ idleTicks: 50, totalTicks: 100, totalMemBytes: 0, freeMemBytes: 0 }),
       NOW,
-      ['memory.used.percent'],
+      ['ram.used.percent'],
     );
 
     expect(entries[0]?.sample.status).toBe('missing');
@@ -153,7 +153,7 @@ describe('samplesFromReadings', () => {
   });
 
   it('stamps every sample with the passed clock, not the wall clock', () => {
-    const entries = samplesFromReadings(previous, next, NOW, ['memory.total']);
+    const entries = samplesFromReadings(previous, next, NOW, ['ram.total']);
 
     expect(entries[0]?.sample.timestamp).toBe('2026-01-01T00:00:10.000Z');
   });
@@ -161,9 +161,9 @@ describe('samplesFromReadings', () => {
   it('carries a unit on every ok sample, so the display need not guess', () => {
     const entries = samplesFromReadings(previous, next, NOW, [
       'cpu.load',
-      'memory.used',
-      'memory.used.percent',
-      'memory.total',
+      'ram.used',
+      'ram.used.percent',
+      'ram.total',
     ]);
 
     for (const entry of entries) {
@@ -218,12 +218,12 @@ describe('OsSensorProvider', () => {
 
   it('reads real memory from the machine it runs on', async () => {
     const provider = new OsSensorProvider();
-    const entries = await provider.sample(['memory.total', 'memory.used.percent'], NOW);
+    const entries = await provider.sample(['ram.total', 'ram.used.percent'], NOW);
     const byKey = new Map(entries.map((entry) => [entry.semanticKey, entry.sample]));
 
     // A real machine has more than zero and less than 100% of its memory used.
-    expect(byKey.get('memory.total')?.value).toBeGreaterThan(0);
-    expect(byKey.get('memory.used.percent')?.value).toBeGreaterThan(0);
-    expect(byKey.get('memory.used.percent')?.value).toBeLessThan(100);
+    expect(byKey.get('ram.total')?.value).toBeGreaterThan(0);
+    expect(byKey.get('ram.used.percent')?.value).toBeGreaterThan(0);
+    expect(byKey.get('ram.used.percent')?.value).toBeLessThan(100);
   });
 });

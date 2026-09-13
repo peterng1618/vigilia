@@ -15,7 +15,7 @@
 | CLI launcher | implemented |
 | HTTP server and bundle serving | implemented |
 | SSE transport, keep-latest | implemented |
-| OS baseline provider — **CPU and memory only** | implemented |
+| OS baseline provider — **CPU and RAM only** | implemented |
 | OS baseline provider — disk and network | **not implemented** |
 | Provider contract and registry | implemented |
 | LHM extended provider | **not implemented** — contract only |
@@ -39,8 +39,13 @@ existing workspace, shipped as an npm CLI.
 One command starts everything:
 
 ```bash
-npx vigilia
+node packages/host/bin/vigilia.js    # from src/web/
 ```
+
+**Not `npx vigilia`.** That name belongs to an unrelated package on the public
+registry, so `npx vigilia` fetches a stranger's CLI and crashes. Shipping under
+a name that is actually available — `@vigilia/cli`, or a different binary name —
+is an open decision; nothing is published today (`@vigilia/host` is `private`).
 
 It resolves a port, starts the HTTP and WebSocket server, waits until the port
 actually accepts a TCP connection — not a fixed sleep — and only then opens the
@@ -128,7 +133,7 @@ identifier the provider exposes — position shifts when hardware is added.
 ```text
 cpu.load          cpu.temp.package   cpu.power.package
 gpu.0.load        gpu.0.temp         gpu.0.power
-memory.used       network.download
+ram.used          network.download
 ```
 
 Changing the source behind a semantic key must not require editing a theme.
@@ -138,9 +143,9 @@ Changing the source behind a semantic key must not require editing a theme.
 The default provider. Needs no separate monitoring application, no driver and
 no elevation.
 
-**Implemented: CPU load and memory**, from Node built-ins — `os.cpus()` diffed
+**Implemented: CPU load and RAM**, from Node built-ins — `os.cpus()` diffed
 across an interval, `os.totalmem`/`freemem`. Semantic keys `cpu.load`,
-`memory.used`, `memory.used.percent`, `memory.total`.
+`ram.used`, `ram.used.percent`, `ram.total`.
 
 `os.cpus()` reports **cumulative** tick counters, not a rate, so load is the
 change in busy ticks over the change in total ticks between two cycles. The
@@ -260,25 +265,36 @@ Executed 2026-09-13 against `npx vite build packages/host` on Node 25.9.0:
 
 **The only bundled theme is a dev fixture, and it renders almost entirely as
 gaps against real baseline data.** `demo-theme.json` binds eight keys: one
-(`cpu.load`) the OS provider supplies, one (`ram.used`) that is the same
-quantity under a *different name* from this spec's `memory.used`, five
+(`cpu.load`) the OS provider supplies, one (`ram.used`) that was the same
+quantity under a *different name* from this spec's original `memory.used`, five
 extended-tier keys needing LHM, and one deliberately unmapped.
 
-It also **hardcodes "32 GB installed"** with a fixed pie total of 32. So simply
-renaming its key to `memory.used` would not fix the first run — it would render
-"63.7 / 32 GB" on this machine, which is a dashboard lying about the hardware.
-That is worse than a gap and exactly what §97 exists to prevent.
+It also **hardcodes "32 GB installed"** with a fixed pie total of 32, so a key
+rename alone would not fix the first run — it would render "63.7 / 32 GB" on
+this machine, a dashboard lying about the hardware. That is worse than a gap
+and exactly what §97 exists to prevent.
 
-Two things follow, and they are the next increment:
+Two things followed, and both are now done:
 
-1. **The semantic key vocabulary needs one owner.** `ram.used` versus
-   `memory.used` is a naming split between the fixtures and this spec with no
-   authority to resolve it. Pattern 3 in `AGENTS.md` says a mapping layer
-   resolves semantic keys to providers; that layer does not exist yet, and it
-   is where this belongs.
+1. **The semantic key vocabulary has one owner**, at
+   `renderer-core/src/data/semantic-keys.ts`. The split is resolved in favour
+   of **`ram`**, by user decision on 2026-09-13: `ram` and `vram` are separate
+   families, so neither needs a qualifier to stay unambiguous, whereas
+   `memory.*` would need one the moment video memory arrived. The fixtures
+   already used `ram.used` and `vram.used`, so the host was renamed to agree
+   with them rather than the reverse. This spec's earlier `memory.*` spelling
+   is superseded throughout.
+
+   The vocabulary declares **names, not availability** — an unsupplied key
+   still renders as a gap (§97), and `expectedTier` is a hint for an author,
+   not a claim about the current machine.
 2. **A starter theme built for real baseline keys**, served by the host, with
    no hardcoded capacities. The demo fixture stays what it is — a showcase of
    gap, outage and overflow cases for the renderer.
+
+**Still undecided:** how to address a second device of the same family. The
+`gpu.0.load` form sketched above is illustrative only; no indexed form is
+declared until a provider needs one.
 
 **Not verified.** Nothing has run on a real phone — a viewport is not a device.
 The LHM provider is a contract with no implementation, so every extended-tier

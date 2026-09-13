@@ -42,7 +42,7 @@ export interface EventSourceLike {
 }
 
 export interface LiveSourceOptions {
-  /** The host's sample stream, e.g. `/ws?keys=cpu.load,memory.used`. */
+  /** The host's sample stream, e.g. `/ws?keys=cpu.load,ram.used`. */
   readonly url: string;
   /** Reuse an existing store; a fresh bounded one is created otherwise. */
   readonly store?: SampleStore;
