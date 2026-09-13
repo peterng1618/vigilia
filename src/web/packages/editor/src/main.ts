@@ -18,6 +18,15 @@ import { hitTest, hitTestInside, marqueeSelect } from './hit-test.js';
 import { deferToTarget } from './keyboard.js';
 import { withScaledDescendants } from './resize-children.js';
 import {
+  type ActionContext,
+  type ActionId,
+  actionById,
+  actionForShortcut,
+  actionsInGroup,
+  disabledReason,
+  shortcutLabel,
+} from './actions.js';
+import {
   addToSelection,
   applyClick,
   clearSelection,
@@ -304,16 +313,160 @@ function start(): void {
     render();
   };
 
-  const arrangeButtons: readonly (readonly [string, string, () => void])[] = [
-    ['align-left', '⇤', () => runArrange(alignNodes(history.current, selection.ids, 'left'), 'Align left')],
-    ['align-centre', '⇔', () => runArrange(alignNodes(history.current, selection.ids, 'centre'), 'Align centre')],
-    ['align-right', '⇥', () => runArrange(alignNodes(history.current, selection.ids, 'right'), 'Align right')],
-    ['align-top', '⇡', () => runArrange(alignNodes(history.current, selection.ids, 'top'), 'Align top')],
-    ['align-middle', '⇕', () => runArrange(alignNodes(history.current, selection.ids, 'middle'), 'Align middle')],
-    ['align-bottom', '⇣', () => runArrange(alignNodes(history.current, selection.ids, 'bottom'), 'Align bottom')],
-    ['distribute-x', '⋯', () => runArrange(distributeNodes(history.current, selection.ids, 'x'), 'Distribute horizontally')],
-    ['distribute-y', '⋮', () => runArrange(distributeNodes(history.current, selection.ids, 'y'), 'Distribute vertically')],
-  ];
+  /** §61: a locked node is not deleted, and a wholly locked selection is a no-op. */
+  const deleteSelection = (): void => {
+    const document_ = history.current;
+    const removable = selection.ids.filter((id) => findNode(document_.nodes, id)?.locked !== true);
+
+    if (removable.length === 0) {
+      return;
+    }
+
+    history = commit(
+      history,
+      `Delete ${removable.length} element${removable.length === 1 ? '' : 's'}`,
+      deleteNodes(document_, new Set(removable)),
+    );
+    selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+    render();
+  };
+
+  /** Moves the selection by one step, or {@link NUDGE_LARGE} with shift held. */
+  const nudge = (id: ActionId): void => {
+    const direction = NUDGE_DIRECTIONS[id];
+
+    if (direction === undefined) {
+      return;
+    }
+
+    const step = id.endsWith('-large') ? NUDGE_LARGE : NUDGE;
+    const document_ = history.current;
+    const gesture: GestureStart = {
+      handle: 'move',
+      origin: { x: 0, y: 0 },
+      nodes: gestureNodes(document_, placed(), selection.ids),
+    };
+
+    const transforms = applyGesture(gesture, {
+      x: direction.x * step,
+      y: direction.y * step,
+    });
+
+    if (transforms.size > 0) {
+      // A nudge is a completed gesture in itself, so it commits immediately.
+      // Coalescing a held arrow key into one entry would be nicer and needs a
+      // timer; one entry per press is at least predictable.
+      history = commit(history, 'Nudge', updateTransforms(document_, transforms));
+      render();
+    }
+  };
+
+  /**
+   * The enablement snapshot every surface asks about.
+   *
+   * Built here because it reads the mutable editor state; the *rules* live in
+   * `actions.ts`, so a toolbar, a menu and the keyboard cannot disagree about
+   * whether something is available.
+   */
+  const actionContext = (): ActionContext => {
+    const document_ = visibleDocument(history);
+    const selected = selection.ids.map((id) => findNode(document_.nodes, id));
+
+    return {
+      selectionCount: selection.ids.length,
+      canUndo: canUndo(history),
+      canRedo: canRedo(history),
+      hasGroupSelected: selected.some((node) => node?.type === 'group'),
+      allSelectedLocked:
+        selection.ids.length > 0 && selected.every((node) => node?.locked === true),
+    };
+  };
+
+  /**
+   * The one place an action is performed.
+   *
+   * Every surface — keyboard, toolbars, menu bar, layer panel — routes here by
+   * id, so there is exactly one body per action. Adding a surface adds no
+   * behaviour, which is the whole point of `actions.ts`.
+   */
+  const runAction = (id: ActionId): void => {
+    const action = actionById(id);
+
+    // A disabled action is not an error: a surface may show it, and a keystroke
+    // may reach it. Saying why beats doing nothing silently.
+    if (action !== undefined && !action.enabled(actionContext())) {
+      notice = disabledReason(action, actionContext());
+      drawStatus();
+      return;
+    }
+
+    switch (id) {
+      case 'file.open':
+        filePicker.click();
+        return;
+
+      case 'file.save':
+        saveTheme();
+        return;
+
+      case 'edit.undo':
+      case 'edit.redo':
+        history = id === 'edit.undo' ? undo(history) : redo(history);
+        selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+        render();
+        return;
+
+      case 'edit.delete':
+        deleteSelection();
+        return;
+
+      case 'object.group':
+        runArrange(
+          groupNodes(history.current, selection.ids, freeGroupId(history.current)),
+          'Group',
+        );
+        return;
+
+      case 'object.ungroup':
+        runArrange(ungroupNodes(history.current, selection.ids), 'Ungroup');
+        return;
+
+      case 'arrange.align-left':
+      case 'arrange.align-centre':
+      case 'arrange.align-right':
+      case 'arrange.align-top':
+      case 'arrange.align-middle':
+      case 'arrange.align-bottom': {
+        const edge = id.slice('arrange.align-'.length) as AlignEdge;
+
+        runArrange(alignNodes(history.current, selection.ids, edge), action?.label ?? 'Align');
+        return;
+      }
+
+      case 'arrange.distribute-x':
+      case 'arrange.distribute-y': {
+        const axis = id.endsWith('-x') ? 'x' : 'y';
+
+        runArrange(
+          distributeNodes(history.current, selection.ids, axis),
+          action?.label ?? 'Distribute',
+        );
+        return;
+      }
+
+      case 'navigate.escape':
+        selection = drag === undefined ? exitGroup(selection) : clearSelection(selection);
+        history = cancelPreview(history);
+        drag = undefined;
+        marquee = undefined;
+        guides = [];
+        render();
+        return;
+
+      default:
+        nudge(id);
+    }
+  };
 
   /**
    * Opening and saving.
@@ -406,17 +559,14 @@ function start(): void {
   fileBar.style.cssText = 'display:flex;flex:none;gap:4px;padding:4px 8px 0';
   panel.insertBefore(fileBar, toolbar);
 
-  const fileButtons: readonly (readonly [string, string, string, () => void])[] = [
-    ['open', 'Open', 'Open a theme file (Ctrl+O)', () => filePicker.click()],
-    ['save', 'Save', 'Download this theme (Ctrl+S)', saveTheme],
-  ];
-
-  for (const [id, label, title, run] of fileButtons) {
+  for (const action of actionsInGroup('file')) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = label;
-    button.title = title;
-    button.dataset['vigiliaFile'] = id;
+    // Label and shortcut both from the registry: the tooltip used to spell
+    // "(Ctrl+O)" by hand next to a handler that bound the key independently.
+    button.textContent = action.label.replace('…', '');
+    button.title = `${action.label} (${shortcutLabel(action.shortcut)})`;
+    button.dataset['vigiliaFile'] = action.id.slice('file.'.length);
     button.style.cssText = [
       'flex:none',
       'height:22px',
@@ -428,16 +578,17 @@ function start(): void {
       'cursor:pointer',
       'font:11px/1 system-ui,sans-serif',
     ].join(';');
-    button.addEventListener('click', run);
+    button.addEventListener('click', () => runAction(action.id));
     fileBar.append(button);
   }
 
-  for (const [id, glyph, run] of arrangeButtons) {
+  for (const action of actionsInGroup('arrange')) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = glyph;
-    button.title = id.replace('-', ' ');
-    button.dataset['vigiliaArrange'] = id;
+    button.textContent = action.glyph ?? '?';
+    button.title = action.label;
+    button.dataset['vigiliaArrange'] = action.id.slice('arrange.'.length);
+    button.dataset['vigiliaAction'] = action.id;
     button.style.cssText = [
       'flex:1 1 22px',
       'min-width:0',
@@ -449,25 +600,38 @@ function start(): void {
       'cursor:pointer',
       'font:12px/1 system-ui,sans-serif',
     ].join(';');
-    button.addEventListener('click', run);
+    button.addEventListener('click', () => runAction(action.id));
     toolbar.append(button);
   }
 
+  /**
+   * Enablement, asked of the registry rather than inferred from the view.
+   *
+   * The previous version read the rule off each button's own id — "starts with
+   * distribute means it needs three" — and scoped it with a DOM selector. One
+   * word too broad disabled Open and Save until two nodes were selected, which
+   * timed out two browser tests. Now every button carries its action id and the
+   * rule has one home.
+   */
   const drawToolbar = (): void => {
-    // Enabled by selection count, so the buttons say when they are usable
-    // rather than refusing after the fact. Distribute needs three; align needs
-    // two.
-    // Scoped to the arrange buttons. Selecting every button in the toolbar also
-    // caught Open and Save, which then sat disabled until two nodes were
-    // selected — two browser tests timed out clicking Save before this line
-    // was narrowed.
-    for (const button of toolbar.querySelectorAll<HTMLButtonElement>('[data-vigilia-arrange]')) {
-      const needs = button.dataset['vigiliaArrange']?.startsWith('distribute') === true ? 3 : 2;
-      const enabled = selection.ids.length >= needs;
+    const context = actionContext();
+
+    for (const button of panel.querySelectorAll<HTMLButtonElement>('[data-vigilia-action]')) {
+      const id = button.dataset['vigiliaAction'] as ActionId | undefined;
+      const action = id === undefined ? undefined : actionById(id);
+
+      if (action === undefined) {
+        continue;
+      }
+
+      const enabled = action.enabled(context);
 
       button.disabled = !enabled;
       button.style.opacity = enabled ? '1' : '0.4';
       button.style.cursor = enabled ? 'pointer' : 'default';
+      button.title = enabled
+        ? action.label
+        : `${action.label} — ${disabledReason(action, context) ?? ''}`;
     }
   };
 
@@ -932,103 +1096,20 @@ function start(): void {
       return;
     }
 
-    if (meta && event.key.toLowerCase() === 'z') {
-      history = event.shiftKey ? redo(history) : undo(history);
-      selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
-      event.preventDefault();
-      render();
+    // Backspace is a second binding for Delete, kept here rather than in the
+    // registry so the menu shows one canonical key.
+    const key = event.key === 'Backspace' ? 'Delete' : event.key;
+    const action = actionForShortcut({ key, meta, shift: event.shiftKey });
+
+    if (action === undefined) {
       return;
     }
 
-    if (meta && event.key.toLowerCase() === 'y') {
-      history = redo(history);
-      selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
-      event.preventDefault();
-      render();
-      return;
-    }
-
-    if (meta && event.key.toLowerCase() === 's') {
-      // Ctrl+S is the browser's "save page", which is never what an author
-      // means with an editor focused.
-      event.preventDefault();
-      saveTheme();
-      return;
-    }
-
-    if (meta && event.key.toLowerCase() === 'o') {
-      event.preventDefault();
-      filePicker.click();
-      return;
-    }
-
-    // Ctrl+G / Ctrl+Shift+G, as every design tool binds them.
-    if (meta && event.key.toLowerCase() === 'g') {
-      event.preventDefault();
-
-      if (event.shiftKey) {
-        runArrange(ungroupNodes(history.current, selection.ids), 'Ungroup');
-      } else {
-        runArrange(
-          groupNodes(history.current, selection.ids, freeGroupId(history.current)),
-          'Group',
-        );
-      }
-
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      selection = drag === undefined ? exitGroup(selection) : clearSelection(selection);
-      history = cancelPreview(history);
-      drag = undefined;
-      marquee = undefined;
-      guides = [];
-      render();
-      return;
-    }
-
-    if ((event.key === 'Delete' || event.key === 'Backspace') && selection.ids.length > 0) {
-      const document_ = history.current;
-      const removable = selection.ids.filter(
-        (id) => findNode(document_.nodes, id)?.locked !== true,
-      );
-
-      if (removable.length > 0) {
-        history = commit(
-          history,
-          `Delete ${removable.length} element${removable.length === 1 ? '' : 's'}`,
-          deleteNodes(document_, new Set(removable)),
-        );
-        selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
-        event.preventDefault();
-        render();
-      }
-      return;
-    }
-
-    const nudge = arrowNudge(event.key);
-
-    if (nudge !== undefined && selection.ids.length > 0) {
-      const step = event.shiftKey ? NUDGE_LARGE : NUDGE;
-      const document_ = history.current;
-      const gesture: GestureStart = {
-        handle: 'move',
-        origin: { x: 0, y: 0 },
-        nodes: gestureNodes(document_, placed(), selection.ids),
-      };
-
-      const transforms = applyGesture(gesture, { x: nudge.x * step, y: nudge.y * step });
-
-      if (transforms.size > 0) {
-        // A nudge is a completed gesture in itself, so it commits immediately.
-        // Coalescing a held arrow key into one entry would be nicer and needs a
-        // timer; one entry per press is at least predictable.
-        history = commit(history, 'Nudge', updateTransforms(document_, transforms));
-        event.preventDefault();
-        render();
-      }
-    }
+    // Claimed before running, and before the enablement check: Ctrl+S must not
+    // fall through to the browser's "save page" just because the action is
+    // currently unavailable.
+    event.preventDefault();
+    runAction(action.id);
   });
 
   window.addEventListener('resize', () => {
@@ -1086,20 +1167,23 @@ function labelFor(handle: Handle, count: number): string {
   return `Resize ${subject}`;
 }
 
-function arrowNudge(key: string): { x: number; y: number } | undefined {
-  switch (key) {
-    case 'ArrowLeft':
-      return { x: -1, y: 0 };
-    case 'ArrowRight':
-      return { x: 1, y: 0 };
-    case 'ArrowUp':
-      return { x: 0, y: -1 };
-    case 'ArrowDown':
-      return { x: 0, y: 1 };
-    default:
-      return undefined;
-  }
-}
+/**
+ * Which way each nudge action moves.
+ *
+ * Keyed by action id rather than by key name, because `actions.ts` now owns
+ * which key is bound — this table would otherwise be a second place where
+ * ArrowUp could be wired to the wrong axis.
+ */
+const NUDGE_DIRECTIONS: Partial<Record<ActionId, { readonly x: number; readonly y: number }>> = {
+  'navigate.nudge-left': { x: -1, y: 0 },
+  'navigate.nudge-left-large': { x: -1, y: 0 },
+  'navigate.nudge-right': { x: 1, y: 0 },
+  'navigate.nudge-right-large': { x: 1, y: 0 },
+  'navigate.nudge-up': { x: 0, y: -1 },
+  'navigate.nudge-up-large': { x: 0, y: -1 },
+  'navigate.nudge-down': { x: 0, y: 1 },
+  'navigate.nudge-down-large': { x: 0, y: 1 },
+};
 
 start();
 
