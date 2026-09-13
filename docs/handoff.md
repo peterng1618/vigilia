@@ -29,11 +29,11 @@ revision, every figure below was printed by a command that ran.
 
 | Check | Result |
 |---|---|
-| Unit tests | **887 passed**, 36 files |
+| Unit tests | **908 passed**, 37 files (re-run in the sixth session) |
 | Typechecks | **five** projects, all clean |
 | Player + editor + host builds | all pass |
 | §47 size gate | **200.5 KB** JS gzip / 400 KB budget |
-| Browser tests | **134 passed**, 54 skipped (editor specs on phone, by design) |
+| Browser tests | **135 passed**, 55 skipped (editor specs on phone, by design) |
 | Host bundle | 29.7 KB, zero runtime dependencies |
 
 The fourth revision's stale figures (349 unit / 38 browser / 185.2 KB) are
@@ -43,7 +43,9 @@ green.
 
 ### The host, and what was observed rather than asserted
 
-`npx vigilia` (today: `node packages/host/bin/vigilia.js`) binds
+`node packages/host/bin/vigilia.js`, run from `src/web/` — **not `npx vigilia`,
+which fetches an unrelated package of that name off the registry; see §4** —
+binds
 `127.0.0.1:5227`, waits until the port answers, prints the dashboard and editor
 URLs, and opens a browser. Run against this machine:
 
@@ -59,6 +61,19 @@ URLs, and opens a browser. Run against this machine:
 - A headless browser at `/` was redirected to `?data=live`, reached
   `status: live`, and read history through the pull interface.
 - `/editor` served to loopback; an encoded traversal got 403; `POST` got 405.
+
+**Correction, sixth session: "`/editor` served to loopback" was the HTML only,
+and the editor could not boot through the host at all.** Its bundle was built
+with Vite's default absolute base, so the page asked for `/assets/index-*.js`,
+which under the host resolves against the *player's* dist and 404'd — a blank
+stage with the status stuck on "starting…". Fixed in `c7ada73` with a relative
+base plus a `/editor` → `/editor/` redirect, and verified by rendering: the
+artboard mounts, 29 nodes draw, no console errors.
+
+The lesson generalises, and is now in `vigilia:verify`: **the browser suite
+never exercises the host.** Playwright previews each bundle on its own port, so
+a serving bug is invisible to a fully green gauntlet. Checking the document's
+HTTP status is not enough — the HTML arrives either way.
 
 ### Architecture that changed, and why it matters to your next edit
 
@@ -107,14 +122,18 @@ Two pieces, and the first is a decision:
 This pulls in host theme storage (`%APPDATA%/vigilia/`) and turns the editor's
 Save from a download into a real save, which spec 0009 already anticipated.
 
-### Task 2 — Editor shortcuts fire while typing. STILL UNTOUCHED, now confirmed.
+### Task 2 — Editor shortcuts fire while typing. DONE (`339e37a`).
 
-Carried from the fourth revision and re-checked today: `editor/src/main.ts:907`
-has a window-level `keydown` with **no editable-target guard** (the line moved
-from 775; the gap did not). Backspace deletes the selection, arrows nudge,
-Ctrl+Z undoes — mid-edit in an inspector field. Fix is one early return when
-`event.target` is `input`/`textarea`/`select` or `isContentEditable`.
-Source-level finding, not browser-reproduced.
+`keyboard.ts` decides what a focused control keeps; the handler reads three
+fields off the event target and decides nothing. Browser-reproduced before
+fixing — with the guard disabled the test fails by the name input *vanishing*,
+because Backspace deleted the node the inspector was showing.
+
+Two judgements are recorded in the commit message rather than here: Ctrl+S and
+Ctrl+O survive typing (their browser defaults are actively wrong in an editor),
+and checkbox/radio/button inputs are not treated as keyboard-consuming, so
+Delete still deletes after ticking a box. `<select>` and `range` do keep the
+keys, because the arrows change their value.
 
 ### Task 3 — Chart colours ignore globals (G2-D1). UNTOUCHED, user direction recorded.
 
@@ -170,6 +189,7 @@ false positives an unsigned Go binary attracts.
 | **Reference hardware** | Name the PC and phones, incl. one deliberately low-end | §126 requires budgets "on named reference PCs/phones" and names none. Blocks Gate 0 sign-off, and pixel baselines with it |
 | **Gate 0 probes G0-P1 / G0-P2** | Run on real hardware with real games | Per-sensor elevation breakdown and anti-cheat coexistence cannot be established from documentation. See [`gates/gate-0.md`](gates/gate-0.md) |
 | **Two engine-gap decisions** | Choose an alternative for each | §85 requires explicit human agreement. Gauge gradients and line thresholds — both in `gate-0.md` |
+| **The CLI's published name** | Pick a scoped name or a different binary | **`vigilia` on npm is taken** — an unrelated file-watcher by Gibran Malheiros, last published 2022. `npx vigilia` fetches *that* and dies with `spawn man ENOENT`; the user hit it this session. ADR-0007 and this file both wrote `npx vigilia` as the way to run the host, which is why the mistake was inviting. Nothing is published (`@vigilia/host` is `private`, `0.0.0`), so only the docs are wrong today — but `@vigilia/cli` or a new binary name is a product choice, not an in-scope one |
 
 **Resolved since the fourth revision:** the five spec-0009 backend questions
 are moot — ADR-0007 chose the runtime, and LHM sourcing, launch-vs-attach,
