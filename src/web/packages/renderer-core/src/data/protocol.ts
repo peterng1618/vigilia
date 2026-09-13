@@ -11,7 +11,7 @@ import type { Sample } from '../types.js';
  * since a change on one side compiles cleanly on the other and produces wrong
  * values at runtime. Putting the wire shape in the shared library means there
  * is exactly one definition, checked by the compiler on both ends
- * ([ADR-0007](../../../../../docs/decisions/0007-host-in-node-shipped-as-a-cli.md)).
+ * ([ADR-0007](../../../../../.agents/decisions.md)).
  *
  * Pure: strings and objects, no socket, no `EventSource`, no `http`. The host
  * formats what this returns and the display parses with it; neither transport

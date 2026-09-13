@@ -79,7 +79,7 @@ Whether both sides of the contract mirror changed.
 - [ ] Contract mirror changed on **both** sides if either changed
 - [ ] New dependency added to `THIRD-PARTY-NOTICES.md` with its licence verified from the package's own metadata
 - [ ] `schemaVersion` considered if the theme schema changed
-- [ ] Measurements recorded in `docs/gates/`, decisions in `docs/decisions/`
+- [ ] Measurements recorded in `.agents/decisions.md`, and screenshots in `.agents/screenshots/`
 
 ## Hygiene
 

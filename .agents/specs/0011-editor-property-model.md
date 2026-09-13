@@ -64,24 +64,19 @@ A group exists to move things together and to organise the layer list. It is
 | `visible` | `bindings` |
 | Order among its siblings | An identifier separate from its id (D8) |
 
-**No transform rows at all, and the route to that took three passes** — worth
-recording, because the end state looks identical to the first attempt and is
-reached for a different reason:
+**No transform rows.** A group's transform *is* its children's values, so there
+is no property of its own to show — and showing one invites an author to believe
+the group holds geometry.
 
-1. *No rows* — wrong. Moving a group is an author operation, and D0 says every
-   operation is reachable from the inspector.
-2. *Position and rotation, derived from the children's bounds and applied back
-   as a delta.* Correct, and still a leaky abstraction: the numbers are not the
-   group's own, rotation could not be implemented honestly, and size had to be
-   excluded by hand.
-3. *Structural only.* A group's transform **is** its children's values — there
-   is no property of its own to show, and showing one invites an author to
-   believe the group holds geometry.
+This does not violate D0. Moving and rotating a group is an author operation and
+remains one; it is a **canvas gesture** that translates directly into child
+values. D0 is satisfied by the operation existing, not by an inspector row
+restating it. A derived-and-editable row was tried and rejected as a leaky
+abstraction: the numbers are not the group's own, rotation cannot be implemented
+honestly at the group level (see below), and size had to be excluded by hand.
 
-D0 is satisfied by the **operation** existing, not by a row restating it:
-moving and rotating a group is a canvas gesture that translates directly into
-child values. So a group has no coordinate space of its own, and is a selection
-plus a layer-list entry.
+So a group has no coordinate space of its own. It is a selection and a
+layer-list entry.
 
 Two consequences:
 
@@ -186,7 +181,7 @@ offer:
 | `background` → palette ref | ✓ |
 | `barColor` → palette ref | ✓ |
 | `fitMode` | ✓ |
-| `x`, `y` | **absent.** Corrected 2026-09-13: an earlier draft had them editable and "moving the canvas". There is nothing to move the canvas *relative to* — the artboard defines the coordinate space, so an origin offset would either be a no-op or shift every node's effective position, which is a different operation with a different name |
+| `x`, `y` | **absent.** There is nothing to move the canvas *relative to* — the artboard defines the coordinate space, so an origin offset is either a no-op or a rename of "shift every node", which is a different operation |
 | `rotation` | shown, **locked** — nothing to rotate relative to, same reason |
 | `visible`, `locked` | shown, **locked** — a hidden canvas is not a state worth having |
 
@@ -388,7 +383,7 @@ Decided by the user on 2026-09-13.
 
 Spec 0011 governs implementation. The conflicting wording is **not** edited by
 an agent: proposed replacements for §73 and §170 live in
-[`docs/proposed-design-doc-amendments.md`](../../docs/proposed-design-doc-amendments.md)
+[`.agents/status.md`](../status.md)
 for the author to paste or discard. Until they are pasted, the design document
 and this spec disagree **knowingly**, and this section is the record of why.
 

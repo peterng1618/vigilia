@@ -39,7 +39,7 @@ export { mixHex };
  * The **progress** arc cannot use that path at all — `axisLine` is a single
  * property and the track already owns it — so its fill is resolved by
  * {@link progressItemStyle} instead. The gap therefore has two halves, and only
- * a human can settle it (recorded in `docs/gates/gate-0.md`).
+ * a human can settle it (recorded in `.agents/decisions.md`).
  *
  * If Gate 0 review rejects the approximation, the alternative is a shared native
  * overlay arc — which stays consistent with §91's rule that a native text/vector

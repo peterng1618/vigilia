@@ -10,7 +10,7 @@ file convention and for how specs differ from gate evidence and ADRs.
 
 ## The precedence order
 
-1. **The design document** — [`docs/pc-stats-display-agent-plan.md`](../../../docs/pc-stats-display-agent-plan.md).
+1. **The design document** — [`.agents/design/plan.md`](../../../.agents/design/plan.md).
    User-authored, revision 9, the top-level spec. It wins.
 2. **A spec in `.agents/specs/`** — refines the design document for one feature.
    It never contradicts it.
@@ -55,7 +55,7 @@ When implementation diverges:
   Do not delete it; the reasoning stays useful.
 - **Engine or platform cannot do what the spec requires** → this is a §85-style
   gap. Record the gap explicitly, propose alternatives, and get human agreement
-  before committing to one. The gauge-gradient gap in `docs/gates/gate-0.md` is
+  before committing to one. The gauge-gradient gap in `.agents/decisions.md` is
   the worked example.
 
 ## Verifying code against a spec

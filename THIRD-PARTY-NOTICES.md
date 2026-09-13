@@ -5,7 +5,7 @@ components below. **All notices here must be reproduced in distributed packages*
 (§132, §161 of the design document).
 
 Licensing facts in this file were verified against primary sources on
-**2026-09-12**; see [docs/research/verified-dependency-findings.md](docs/research/verified-dependency-findings.md)
+**2026-09-12**; see [.agents/dependency-licences.md](.agents/dependency-licences.md)
 for how each was checked. Re-verify before any public release.
 
 ---
@@ -104,7 +104,7 @@ dependency to be listed, not because it ships.
 The host itself has **no runtime dependencies** beyond `@vigilia/renderer-core`
 (this repository): serving is `node:http`, the sample stream is Server-Sent
 Events over that same server, and baseline telemetry is `node:os`
-([ADR-0007](docs/decisions/0007-host-in-node-shipped-as-a-cli.md)). Adding one —
+([ADR-0007](.agents/decisions.md)). Adding one —
 `systeminformation` is the intended source for disk and network counters — needs
 an entry here first.
 

@@ -17,12 +17,12 @@ speed over release polish.
 
 **TypeScript throughout** — shared renderer, display-only player, editor *and*
 the host. One npm workspace at `src/web/`. The host was C# (.NET 10), then
-briefly a Python draft; [ADR-0007](docs/decisions/0007-host-in-node-shipped-as-a-cli.md)
-settled it as Node/TypeScript shipped as a `vigilia` CLI, and the `src/Vigilia.*`
+briefly a Python draft; [ADR-0007](.agents/decisions.md)
+settled it as Node/TypeScript shipped as the `vigilia-dashboard` CLI, and the `src/Vigilia.*`
 C# tree is slated for deletion. **Do not install a .NET SDK or Python to unblock
 anything** — neither is required any more.
 
-**The design document is the spec:** [`docs/pc-stats-display-agent-plan.md`](docs/pc-stats-display-agent-plan.md)
+**The design document is the spec:** [`.agents/design/plan.md`](.agents/design/plan.md)
 (revision 9). Section markers throughout the code — `§93`, `§122` — point into
 it. It is **user-authored: do not rewrite its prose.** It still uses the old
 project name; that is intentional and not a bug to fix.
@@ -62,7 +62,7 @@ property, default value or helper:
 2. **If it exists, import it.** If it exists but is unexported or in the wrong
    package, move it and point the existing caller at it — in the same commit.
 3. **If it is genuinely new, decide its owner before writing it**, and record
-   that owner in [`docs/architecture.md`](docs/architecture.md)'s ownership
+   that owner in [`.agents/architecture.md`](.agents/architecture.md)'s ownership
    registry.
 
 Two corollaries, both learned the hard way:
@@ -80,12 +80,12 @@ Two corollaries, both learned the hard way:
 
 The severity axis is **whether anything catches it**. Duplicated but
 compiler-checked is usually fine; duplicated, stringly-typed and unguarded is
-the real thing. [`docs/architecture.md`](docs/architecture.md) records which
+the real thing. [`.agents/architecture.md`](.agents/architecture.md) records which
 concepts have owners today and which known gaps remain.
 
 ## 3. Agent skills
 
-Canonical content lives in [`.agents/skills/`](.agents/skills/) so any harness
+Canonical content lives in [`.agents/skills/`](.agents/skills) so any harness
 reads the same files. Claude Code additionally loads them through a plugin at
 `.claude/plugins/vigilia/` purely to obtain the `vigilia:` namespace.
 
@@ -106,20 +106,28 @@ Layout and editing rules: [`.agents/skills/AGENTS.md`](.agents/skills/AGENTS.md)
 **Each skill has two files** (canonical + plugin pointer) because symlinks do not
 work here. Edit the canonical one.
 
-## 4. Specs
+## 4. Where the writing lives
 
-Tracked specs live in [`.agents/specs/`](.agents/specs/). A spec is durable and
-committed; a plan is throwaway. See that directory's README for the convention
-and how specs relate to the gate checklists.
+**All of it is in [`.agents/`](.agents).** There is no `docs/` directory and no
+user-facing documentation — Vigilia is personal-use-first and far too immature
+for either. Five files and three directories, each with one job:
 
-Three planning locations exist and they do **not** overlap:
+| Location | Holds | Goes stale? |
+|---|---|---|
+| `.agents/status.md` | Current state, next work, what is **not** verified | **Yes, on purpose.** Every figure must come from a command that ran |
+| `.agents/architecture.md` | How the pieces fit, and **which file owns which concept** | No |
+| `.agents/specs/` | Per-feature intended behaviour, kept in sync with the code | No |
+| `.agents/specs/archive/` | Specs whose feature is done and closed | Frozen |
+| `.agents/decisions.md` | ADRs — a decision, its context, its consequences | Immutable once accepted |
+| `.agents/decisions.md` | Gate evidence — measurements and observations, append-only | No |
+| `.agents/lessons.md` | What cost time here, as rules rather than anecdotes | No |
+| `.agents/design/` | The product spec and environment notes, **user-authored** | Not ours to edit |
+| `.agents/skills/` | Agent skills, invoked as `vigilia:<name>` | No |
 
-| Location | Holds |
-|---|---|
-| `.agents/specs/` | Per-feature intended behaviour, kept in sync with the code |
-| `docs/gates/` | Gate acceptance evidence — measurements and observations |
-| `docs/decisions/` | ADRs — a decision, its context, its consequences |
-| `docs/architecture.md` | How the pieces fit, and **which file owns which concept** |
+A spec is durable and committed; a plan is throwaway. A **superseded** decision
+keeps its file as a stub naming what replaced it, with the dead reasoning
+removed rather than left to read as current guidance — and where a decision
+changed several times, only the final position and its reasoning are recorded.
 
 ## 5. Essential commands
 
@@ -144,11 +152,10 @@ npx vite dev packages/editor                     # watch the editor live
 ```
 
 **Test counts are deliberately not recorded here.** They moved by hundreds
-within single milestones and every stale number invited a wrong conclusion. Run
-`node tools/dev-status.mjs` from the repository root for current, *executed*
-figures — it runs the unit suite, measures the bundle on disk, and prints "not
-measured" for anything it cannot establish rather than carrying a number
-forward. `vigilia:verify` is the routine to run before committing.
+within single milestones and every stale number invited a wrong conclusion. The
+current figures live in [`.agents/status.md`](.agents/status.md), and every one
+of them must have been printed by a command that ran. `vigilia:verify` is the
+routine to run before committing.
 
 **There are five typecheck projects.** `packages/editor` and `packages/host`
 are both easy to forget; CI checks all five, so omitting one locally means CI
@@ -192,108 +199,41 @@ install an SDK to revive them.
 
 No command here requires infrastructure, and none is interactive.
 
-## 6. Architecture
+## 6. Architecture and stack
 
-| Path | Purpose |
-|---|---|
-| `src/Vigilia.Contracts` | Provider interface, `Sample`, `SensorDescriptor`. **No Windows types** |
-| `src/Vigilia.Core` | Registry, scheduling, normalization, bounded history, sensor mapping |
-| `src/Vigilia.Host` | ASP.NET Core + SignalR. Loopback-only by default |
-| `src/Vigilia.Platform.Abstractions` | `ISecretStore` and other platform-neutral interfaces |
-| `src/Vigilia.Platform.Windows` | Tray, secrets, startup, firewall |
-| `src/Vigilia.Providers.Fake` | Deterministic provider for contract and visual tests |
-| `src/Vigilia.Providers.Http` | Custom API sensors (§99) |
-| `src/Vigilia.Providers.Windows` | LibreHardwareMonitor + PawnIO driver probe |
-| `tests/Vigilia.Contracts.Tests` | Provider conformance suite |
-| `schema/` | The owned theme format |
-| `src/web/packages/renderer-core` | Shared renderer. **No editor dependencies, ever** |
-| `src/web/packages/player` | Display-only bundle for phones |
-| `src/web/packages/editor` | Desktop authoring: interaction and inspector layer over `renderer-core` (ADR-0005). **Do not add Fabric** |
-| `src/web/packages/fake-source` | **Fabricated** samples + the demo theme. Dev and test only |
-| `src/web/packages/host` | The PC host: CLI launcher, serving, SSE transport, providers |
-| `src/web/tests/e2e` | Playwright browser tests, one spec per surface |
+**Structure, boundaries and the ownership registry are in
+[`.agents/architecture.md`](.agents/architecture.md).** Read it before adding
+any type, constant or rule — that is where §2's "does this already have a home"
+gets answered.
 
-**Outside the npm workspace:** everything except the four `src/web/packages/*`
-entries. The workspace root is `src/web/`, not the repository root.
+The short version: one npm workspace at `src/web/` with five packages.
+`renderer-core` is shared and owns every shape both ends read; `player` is
+display-only; `editor` adds interaction over the renderer; `host` is the Node
+CLI; `fake-source` is dev-and-test only and must never become a runtime
+dependency of anything shipped.
 
-Inside `renderer-core`, the split that matters is `scene/plan.ts` (pure —
-decides everything, unit-tested) versus `scene/mount.ts` (DOM — decides
-nothing). **The editor repeats that split deliberately:** `geometry.ts`,
-`hit-test.ts`, `selection.ts`, `snapping.ts`, `transform-gesture.ts`,
-`commands.ts` and `history.ts` are pure and unit-tested — what a click selects,
-what a drag does to a transform, what undo restores — and the DOM overlay wires
-events to them without deciding anything. Gesture maths in the overlay is the
-same mistake as a decision in `mount.ts`, and it fails the same way: untestable
-without a browser.
+**`src/Vigilia.*` is dead** — never compiled, slated for deletion, needs no SDK.
 
-Specs: [`0003`](.agents/specs/0003-scene-rendering.md) covers the renderer half;
-[`0004`](.agents/specs/0004-editor-selection-and-gestures.md),
-[`0005`](.agents/specs/0005-editor-editing-and-history.md),
-[`0006`](.agents/specs/0006-editor-inspector.md),
-[`0007`](.agents/specs/0007-editor-globals.md) and
-[`0008`](.agents/specs/0008-editor-arrange.md) cover selection and gestures,
-document editing and history, the inspector, the globals surface, and
-grouping/alignment. Each one's **"Not verified"**
-note is the honest edge of what has actually been observed — read it before
-trusting a criterion.
+Node 22+ · TypeScript 7.0.2, no component framework · ECharts 6.1.0 · Vite 8 ·
+vitest 5 · Playwright 1.63. **The host has no runtime dependencies**: `node:http`
+to serve, SSE for the stream, `node:os` for telemetry. LibreHardwareMonitor is an
+external prebuilt executable read over HTTP, not a linked library.
 
-`@vigilia/fake-source` fabricates readings, which §97 forbids presenting as
-real. It is currently imported by the player because no transport exists, and
-the page says so on screen. **Do not let it become a runtime dependency of
-anything shipped**, and do not reach for it to "fill in" a sensor the host
-cannot supply — that case renders as a gap, by design.
+Four rules that outrank convenience:
 
-## 7. Technology stack
+1. **Providers acquire; the host schedules.** No timers, no cached history, no
+   pushing from inside a provider — that is what makes "a second phone must not
+   double upstream polling" (§111) a property of one scheduler.
+2. **Themes bind to semantic keys, never to provider instances** (§93).
+3. **Typed chart settings only.** Raw ECharts options never enter the theme
+   format. There is exactly one engine-boundary cast, in `player/src/main.ts`;
+   if it appears in feature code the boundary has been breached.
+4. **Status before value.** A non-`Ok` sample carries no value, and a missing
+   one renders as a **gap, never a zero** (§83).
 
-Node 22+ · Vue-less TypeScript everywhere · ECharts 6.1.0 · Vite 8 ·
-TypeScript 7.0.2 · vitest 5 · Playwright 1.63 (browser tests in
-`src/web/tests/e2e`) · LibreHardwareMonitor as an **external prebuilt
-executable** read over HTTP, not a linked library · PawnIO (external, optional).
 
-**The host has no runtime dependencies** beyond `renderer-core`: `node:http` to
-serve, Server-Sent Events for the sample stream, `node:os` for baseline
-telemetry. SSE rather than a WebSocket because telemetry is push-only, so a
-`ws` dependency's bidirectionality would go unused. Adding any runtime
-dependency needs a `THIRD-PARTY-NOTICES.md` entry first.
+## 7. Key development patterns
 
-Gone with ADR-0007: .NET 10, ASP.NET Core, SignalR, MessagePack, and the
-`LibreHardwareMonitorLib [0.9.6]` NuGet pin — ADR-0003's *stability* reasoning
-survives, its packaging does not.
-
-The editor foundation is **decided**: ADR-0005 rejects both Fabric candidates and
-builds the editor as an interaction and inspector layer over `renderer-core`.
-They are canvas editors; this renderer is DOM plus ECharts, so adopting one meant
-rendering the scene twice — which §31 forbids and Gate 0 rejects outright. **Do
-not add a Fabric dependency.**
-
-Work order is frontend-first (ADR-0006): the .NET host is sequenced after
-Gates 1, 2 and 4, because no C# here has ever compiled and a mid-sequence Gate 3
-stalled three milestones that do not depend on it. Gate *content* is unchanged.
-
-## 8. Key architectural patterns
-
-1. **Two hard boundaries, both mechanically enforced.** Platform: `Contracts`,
-   `Core` and the renderer must not reference Windows types; projects that
-   legitimately do set `IsWindowsPlatformProject=true` (see
-   `Directory.Build.props`), and `CA1416` is an error everywhere else. Player vs
-   editor: `renderer-core` and `player` must not depend on editor UI or a
-   component framework, and `check-size.mjs` fails the build if one leaks.
-2. **Providers acquire; the host schedules.** A provider must never start a
-   timer, cache history, or push samples. It answers `SampleAsync` when asked
-   (`src/Vigilia.Contracts/ISensorProvider.cs`).
-3. **Themes bind to semantic keys, never to provider instances**, so changing
-   providers requires no theme edit (§93). A mapping layer resolves them.
-4. **Typed chart settings only.** Raw ECharts options never cross into the theme
-   format. There is exactly one engine-boundary cast, in
-   `packages/player/src/main.ts` — if that cast appears in feature code, the
-   boundary has been breached.
-5. **Two sensor tiers.** Baseline works with no driver and no elevation; extended
-   needs PawnIO and may legitimately be unavailable (ADR-0004). Tiers are
-   *discovered and reported*, never hardcoded.
-6. **Status before value, always.** A non-`Ok` sample carries no value, and a
-   missing sample renders as a **gap, never a zero** (§83).
-
-## 9. Key development patterns
 
 ### Files you must not hand-edit, and what to edit instead
 
@@ -302,8 +242,8 @@ stalled three milestones that do not depend on it. Gate *content* is unchanged.
 | `src/web/package-lock.json` | Change `package.json`, then run `npm install` |
 | `src/web/packages/player/dist/**` | Build output. Gitignored |
 | `.claude/plugins/vigilia/skills/*/SKILL.md` | Pointer files. Edit `.agents/skills/<name>/SKILL.md` |
-| `docs/pc-stats-display-agent-plan.md` | User-authored spec. Propose changes; do not rewrite |
-| `docs/agent-environment-setup.md` | User-authored methodology. Same |
+| `.agents/design/plan.md` | User-authored spec. Propose changes; do not rewrite |
+| `.agents/design/environment-setup.md` | User-authored methodology. Same |
 
 ### The mirror is gone — do not recreate it
 
@@ -339,17 +279,6 @@ Two consequences worth knowing:
    player's budget.
 4. `ISensorProvider` — every provider plus the conformance suite.
 
-### C#
-
-- `Nullable` and `ImplicitUsings` are on; **`TreatWarningsAsErrors=true`**. Any
-  warning fails the build.
-- `ISensorProvider` is `IAsyncDisposable` only. `using` (synchronous) on it does
-  not compile — use `await using`.
-- Never use `string.GetHashCode()` where determinism matters: .NET randomizes
-  string hashing **per process**. `FakeSensorProvider.StableHash` exists for this
-  reason; using `GetHashCode` there would silently break screenshot tests across
-  runs.
-
 ### TypeScript
 
 `tsconfig.base.json` enables `exactOptionalPropertyTypes` and
@@ -365,11 +294,10 @@ Two consequences worth knowing:
 | Layer | Location | Command |
 |---|---|---|
 | Renderer unit | `src/web/packages/*/src/**/*.test.ts` | `npx vitest run` from `src/web/` |
-| Provider conformance | `tests/Vigilia.Contracts.Tests` | `dotnet test` (unverified — no SDK) |
 | E2E / visual | `src/web/tests/e2e/*.spec.ts` | `npx playwright test` from `src/web/`, **after the player *and* editor builds** |
 
-**Adding a provider means subclassing `SensorProviderContractTests`**, not writing
-bespoke tests. That suite is the definition of correct provider behaviour.
+**Adding a provider means extending the host's provider tests**, not writing
+bespoke ones — and asserting a non-`ok` sample carries no `value` key at all.
 
 ### Implementing a feature, in dependency order
 
@@ -384,9 +312,9 @@ bespoke tests. That suite is the definition of correct provider behaviour.
 3. Implement behind the provider or renderer boundary it belongs to.
 4. Add tests at the layer above; for providers, extend the conformance suite.
 5. Run the frontend commands in §5; run the .NET ones if an SDK exists.
-6. Record measurements in `docs/gates/`, decisions in `docs/decisions/`.
+6. Record measurements in `.agents/decisions.md`, decisions in `.agents/decisions.md`.
 
-## 10. Design principles
+## 8. Design principles
 
 - **Report untested behaviour.** A ticked checkbox without observable behaviour
   and a test is not a pass (§33). Say plainly what you did not verify.
@@ -400,8 +328,13 @@ bespoke tests. That suite is the definition of correct provider behaviour.
   notices to survive into distributed packages. Do not modify vendored
   MPL/LGPL files.
 
-## 11. VCS guidelines
+## 9. VCS guidelines
 
+- **Update [`.agents/status.md`](.agents/status.md) before every commit and
+  push.** Figures, what is next, what is not verified. This replaced a tool that
+  generated a status page: two places recording the same thing drifted, and the
+  generated one was a frozen snapshot that read as current. One file, updated by
+  whoever is about to push, with numbers from a run they actually did.
 - **Commit convention: Conventional Commits**, not currently enforced by any
   hook or CI check — there are no git hooks installed in this repo.
 - Target branch `main`, and `origin` now exists — pushing and opening a PR are

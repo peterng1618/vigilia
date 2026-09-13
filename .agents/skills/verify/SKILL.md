@@ -38,11 +38,8 @@ node packages/player/scripts/check-size.mjs
 npx playwright test
 ```
 
-Then, from the repository root, for figures worth quoting:
-
-```bash
-node tools/dev-status.mjs
-```
+Then update [`.agents/status.md`](../../status.md) with the figures you just
+produced — before committing.
 
 ## The traps, in the order you will hit them
 

@@ -6,7 +6,7 @@
   (`0009-python-telemetry-host-and-sensor-providers.md`). Its provider contract,
   semantic-key rules, LHM handling, mapping ownership and failure isolation are
   **kept verbatim in intent**; only the runtime changed. See
-  [ADR-0007](../../docs/decisions/0007-host-in-node-shipped-as-a-cli.md).
+  [ADR-0007](../decisions/0007-host-in-node-shipped-as-a-cli.md).
 
 **Implementation state**, because this spec is wider than one milestone:
 

@@ -261,7 +261,7 @@ test.describe('update behaviour', () => {
     // for Gate 0 and for eyeballing a theming change.
     //
     // Ordinary runs write to the ignored test output. `VIGILIA_CAPTURE=1`
-    // writes into the TRACKED docs/gates/screenshots/ instead, so refreshing
+    // writes into the TRACKED .agents/screenshots/ instead, so refreshing
     // committed evidence is a deliberate act.
     //
     // Captured with `?static=1` and a frozen clock, which together make the
@@ -274,7 +274,7 @@ test.describe('update behaviour', () => {
     const directory =
       process.env['VIGILIA_CAPTURE'] === undefined
         ? 'test-results/screenshots'
-        : '../../docs/gates/screenshots';
+        : '../../.agents/screenshots';
 
     // Warm-up load, discarded. The first render after a cold browser start
     // differs from every render after it — see the determinism test below — so
@@ -716,7 +716,7 @@ test.describe('deterministic rendering', () => {
     // NOT DETERMINISTIC: any frame containing an ECharts chart. The line chart
     // differs on every page load, on BOTH the canvas and SVG renderers, with
     // animation disabled and the clock frozen. That is an engine property we do
-    // not control, and it is recorded in docs/gates/gate-0.md because it decides
+    // not control, and it is recorded in .agents/decisions.md because it decides
     // whether pixel baselines can ever cover charts.
     //
     // Three conditions are still needed for the part that does work: a frozen

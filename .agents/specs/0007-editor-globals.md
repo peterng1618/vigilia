@@ -108,7 +108,7 @@ styles top-level rectangles cannot catch this.
   accent-coloured gauges report `palette.accent` as unused. That is a gap
   against §73 and blocks §170 for any theme containing a chart. It needs a
   schema change and therefore a human decision (§164), recorded as **G2-D1** in
-  [`docs/gates/gate-2.md`](../../docs/gates/gate-2.md).
+  [`.agents/decisions.md`](../decisions.md).
 - **Reassignment on delete** — the other half of §75's sentence. Inlining is
   implemented; "reassign every use to a different token" is not, and is more
   useful once a token picker exists outside the inspector.

@@ -1,6 +1,6 @@
 ---
 name: vigilia:gate-evidence
-description: Re-captures Vigilia's dashboard screenshots and records gate acceptance evidence in docs/gates. Use when refreshing or capturing screenshots, recording a measurement or probe result, updating the styling matrix, claiming a gate criterion is met, or when asked where a measurement belongs.
+description: Re-captures Vigilia's dashboard screenshots and records gate acceptance evidence in .agents/screenshots. Use when refreshing or capturing screenshots, recording a measurement or probe result, updating the styling matrix, claiming a gate criterion is met, or when asked where a measurement belongs.
 ---
 
 The canonical content for this skill is [`.agents/skills/gate-evidence/SKILL.md`](../../../../../.agents/skills/gate-evidence/SKILL.md).

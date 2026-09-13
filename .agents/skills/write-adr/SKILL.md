@@ -1,11 +1,11 @@
 ---
 name: vigilia:write-adr
-description: Writes a Vigilia architecture decision record in docs/decisions, and decides whether a change is an ADR at all rather than a spec or a gate entry. Use when recording a decision, choosing between options with lasting consequences, revisiting or superseding an earlier decision, or when asked why something was chosen.
+description: Writes a Vigilia architecture decision record in .agents/decisions, and decides whether a change is an ADR at all rather than a spec or a gate entry. Use when recording a decision, choosing between options with lasting consequences, revisiting or superseding an earlier decision, or when asked why something was chosen.
 ---
 
 # Writing an ADR
 
-`docs/decisions/` holds one decision per file: what was decided, the context
+`.agents/decisions.md` holds one decision per file: what was decided, the context
 that forced it, and what it costs. An ADR is **immutable once accepted** —
 correct it by superseding it, never by rewriting it.
 
@@ -13,14 +13,14 @@ correct it by superseding it, never by rewriting it.
 
 | You are recording | Write it in |
 |---|---|
-| A decision with lasting consequences, and the alternatives rejected | `docs/decisions/` |
+| A decision with lasting consequences, and the alternatives rejected | `.agents/decisions.md` |
 | What a feature should do, and its edge cases | `.agents/specs/` |
-| A measurement or observation | `docs/gates/` (`vigilia:gate-evidence`) |
+| A measurement or observation | `.agents/decisions.md` (`vigilia:gate-evidence`) |
 
 If the answer to "what would change this?" is "nothing, it is just how the code
 works", it is not an ADR. Do not write one for a choice the diff explains.
 
-The design document (`docs/pc-stats-display-agent-plan.md`) outranks every ADR
+The design document (`.agents/design/plan.md`) outranks every ADR
 and is **user-authored — do not rewrite its prose**. An ADR may supersede its
 *sequencing* (ADR-0006 did) but never its content or acceptance criteria without
 a human decision.

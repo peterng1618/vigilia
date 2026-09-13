@@ -29,9 +29,7 @@ hand-written set of `tsc` invocations: the hand-written list has now been wrong
 in four separate files at once, because adding a package updates whichever copy
 the author happened to be looking at.
 
-The full pre-commit order, and why it is that order, is `vigilia:verify`. For
-current *executed* figures run `node tools/dev-status.mjs` from the repository
-root; test counts are deliberately not written down anywhere, because they went
+The full pre-commit order, and why it is that order, is `vigilia:verify`. Current figures live in `.agents/status.md`; test counts are deliberately not written down anywhere, because they went
 stale by hundreds within single milestones.
 
 **There is no backend toolchain.** ADR-0007 moved the host into TypeScript in
@@ -99,8 +97,8 @@ introduce one.
 |---|---|
 | `src/web/package-lock.json` | Edit `package.json`, run `npm install` |
 | `.claude/plugins/vigilia/skills/*/SKILL.md` | Edit `.agents/skills/<name>/SKILL.md` |
-| `docs/pc-stats-display-agent-plan.md` | User-authored spec — propose, don't rewrite |
-| `docs/agent-environment-setup.md` | User-authored — same |
+| `.agents/design/plan.md` | User-authored spec — propose, don't rewrite |
+| `.agents/design/environment-setup.md` | User-authored — same |
 
 ## The mirror is gone — do not recreate it
 

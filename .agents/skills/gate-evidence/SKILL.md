@@ -1,11 +1,11 @@
 ---
 name: vigilia:gate-evidence
-description: Re-captures Vigilia's dashboard screenshots and records gate acceptance evidence in docs/gates. Use when refreshing or capturing screenshots, recording a measurement or probe result, updating the styling matrix, claiming a gate criterion is met, or when asked where a measurement belongs.
+description: Re-captures Vigilia's dashboard screenshots and records gate acceptance evidence in .agents/screenshots. Use when refreshing or capturing screenshots, recording a measurement or probe result, updating the styling matrix, claiming a gate criterion is met, or when asked where a measurement belongs.
 ---
 
 # Gate evidence
 
-`docs/gates/` is an **append-only record of what was measured**, not a plan and
+`.agents/decisions.md` is an **append-only record of what was measured**, not a plan and
 not a design. One rule governs everything here: an entry describes an
 observation someone actually made. §33 — a ticked checkbox without observable
 behaviour and a test is not a pass.
@@ -14,9 +14,9 @@ behaviour and a test is not a pass.
 
 | Content | Location |
 |---|---|
-| What we measured or observed | `docs/gates/` |
+| What we measured or observed | `.agents/decisions.md` |
 | What a feature should do | `.agents/specs/` |
-| Why we chose this | `docs/decisions/` (see `vigilia:write-adr`) |
+| Why we chose this | `.agents/decisions.md` (see `vigilia:write-adr`) |
 
 Duplicating between them is the failure mode: content belongs in exactly one,
 and the others link to it.
@@ -36,7 +36,7 @@ Both flags are load-bearing:
   otherwise write into the same directory concurrently and Windows
   intermittently fails the open with `UNKNOWN`. Ordinary runs are unaffected —
   they write per-project directories under `test-results/`.
-- **`VIGILIA_CAPTURE=1` is what writes into `docs/gates/screenshots/`.** Without
+- **`VIGILIA_CAPTURE=1` is what writes into `.agents/screenshots/screenshots/`.** Without
   it captures go to ignored test output. Writing on every run would dirty the
   tree with meaningless diffs, which is the point of the opt-in.
 - **The build is not optional.** The harness previews the built bundle, so
@@ -66,7 +66,7 @@ Write the number, the date, and how it was obtained. A measurement whose method
 is unrecorded cannot be re-checked and will be re-litigated.
 
 - **Never carry a figure forward from another document.** Re-measure, or write
-  "not measured". `node tools/dev-status.mjs` prints executed figures and
+  "not measured". `.agents/status.md` carries the executed figures, and
   refuses to guess — mirror that discipline in prose.
 - Record what the measurement does **not** establish. A Pixel 7 viewport is not
   a Pixel 7; a structural browser assertion is not a visual pass.

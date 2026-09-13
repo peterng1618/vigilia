@@ -1,0 +1,139 @@
+# Status — 2026-09-13
+
+A snapshot, and the one file here that goes stale on purpose. Every figure below
+must have been printed by a command that ran — **update this file before every
+commit and push** (AGENTS.md §9).
+
+Durable rules are in [`AGENTS.md`](../AGENTS.md), structure in
+[`architecture.md`](architecture.md), decisions in
+[`decisions.md`](decisions.md), lessons in [`lessons.md`](lessons.md).
+
+## Works, end to end
+
+A Node CLI host (`vigilia-dashboard`) serves real hardware telemetry over SSE to
+the player, and the editor loads, edits and saves a theme. Observed on this
+machine: four baseline sensors, real readings, `cpu.load` reporting `missing`
+with a reason on the first cycle and `ok` after, and an unsupplied `gpu.temp`
+absent from the batch rather than zeroed.
+
+| Check | Result |
+|---|---|
+| Unit tests | 1,018 across 42 files |
+| Typechecks | five projects, clean |
+| Browser tests | 98 passed, 1 skipped (desktop) |
+| §47 size gate | 201.0 KB gzip / 400 KB |
+| Host bundle | 34.4 KB, zero runtime deps |
+
+## Next, in order
+
+**1 — Chart settings rows.** The owner exists
+(`renderer-core/src/charts/settings-fields.ts`, with coverage tests asserting
+every real settings property is either declared or explicitly excluded). What's
+missing is the inspector section generated from it. Build from the declaration;
+don't re-list the fields. Paint is excluded on purpose — those are all `Fill`,
+and colour is theme-level, so they land with schema v2.
+
+**2 — A layer panel.** This is a **correctness** feature: a hidden element
+cannot be reselected, so hiding one and clicking away loses it (only undo
+recovers it). `hitTest` skipping hidden nodes is right; the tree is the
+non-visual route a hidden node needs.
+
+Extend `ACTIONS` first — `commands.ts` has `reorderNode`, `setNodeFlags` and
+`insertNodes`, but `actions.ts` has no ids for them, so a panel built today
+would hard-code its own labels and enablement. Also worth doing first: an
+`actionButton()` factory and shared chrome (button styling is copied five
+times).
+
+Unlocks a latent bug: `ungroupNodes` drops a hidden group's `visible: false`
+and would reveal its children — unreachable today only because a hidden group
+can't be selected.
+
+**3 — Schema v2, as one change.** Everything breaking together, so there's one
+migration: group loses its stored transform; palette becomes rgba; gradients
+become palette tokens; `fonts`/`fontSizes` become `typePresets`; a reserved
+undeletable `palette.none`; `name` removed in favour of `id`; artboard
+`width`/`height` editable. v1 is **refused, not migrated** (§141) — the five
+in-repo fixtures get rewritten by hand. See [spec 0011](specs/0011-editor-property-model.md).
+
+Two consequences to handle in the same change: group resize handles come off the
+canvas (size isn't a group operation), which makes `resize-children.ts` dead
+code; and `deleteGlobal` switches from refusing to reassigning with a
+`palette.none` fallback.
+
+**4 — The starter theme, and host theme storage.** Still the thing between this
+and a usable product: the dashboard shows mostly dashes. `demo-theme.json` binds
+five extended-tier keys needing LHM and hardcodes "32 GB installed" with a fixed
+pie total of 32 — pointing it at real memory would render "63.7 / 32 GB", a
+dashboard lying about the hardware. **Don't take that shortcut** (§97). Needs a
+starter theme on real baseline keys, storage in `%APPDATA%/vigilia/`, and a menu
+bar for open/save/activate.
+
+**Then:** LAN opt-in with pairing codes (§7) · the LHM provider · disk and
+network in the baseline provider (needs `systeminformation`, and a
+THIRD-PARTY-NOTICES entry *first*) · a tray.
+
+## Not verified — don't report these as working
+
+- **No LAN bind has ever been exercised.** `--host`, the LAN address print and
+  the editor's 403 for a non-loopback peer are source-level only.
+- **No pairing, no revocable sessions.** `--host` is the only opt-in.
+- **Nothing has run on a real phone.** A Pixel 7 viewport is not a Pixel 7.
+- **Keep-latest has never met a slow socket.** Unit-tested against a fake; the
+  `drain` path in `transport/sse.ts` is undriven.
+- **The LHM tier is a contract with no implementation.** Every temperature, fan,
+  power and clock key is unsupplied.
+- **The browser suite never exercises the host.** Playwright previews each
+  bundle on its own port; there is no HTTP test of the host at all. This is how
+  the editor once shipped unable to boot while all five checks passed.
+- **No pixel baselines**, deliberately — CI is Linux, development is Windows.
+  Committed screenshots are *evidence*, refreshed with `VIGILIA_CAPTURE=1`; a
+  capture lands mid-animation so they are never byte-reproducible.
+- **`isKnownStyleProperty` exists but the validator doesn't call it**, so
+  `{"strokewidth": …}` still passes schema *and* validation and is dropped at
+  render time. The owner exists; the guard doesn't.
+- **Spec 0011 D0, D4, D6–D10 are specified, not implemented.** Only D1, D2 and
+  D5's owner have landed.
+- **~25 editor defects confirmed by audit remain open**, each
+  browser-reproduced: an entered group is never left by clicking outside it; a
+  locked node can be grouped then moved through its group; snapping is computed
+  from the selection rather than what will move; a multi-selection can't be
+  rotated; distribute's refusal names the wrong number; every inspector edit
+  commits even a no-op; invalid global values are accepted while the canvas
+  keeps painting the old one; unsaved work is discarded silently on open; the
+  editor never ticks, so binding readouts are frozen while authoring.
+- **CI has not run since the host landed** until the most recent push.
+
+## Needs a human: paste four approved amendments
+
+[`design/plan.md`](design/plan.md) is user-authored and no agent edits it. Four
+paragraphs there now contradict [spec 0011](specs/0011-editor-property-model.md).
+All four replacements are **approved**; what remains is the paste. Until then
+§164 tells a reader the design document wins.
+
+**§73** — replace the global-or-literal paragraph with:
+
+> Provide named, typed constants for palette colors, type presets, spacing and
+> asset references. Palette entries are rgba. A type preset bundles font family,
+> size, weight, letter spacing and line height as one named unit. **Colour and
+> typography are theme-level only:** a compatible property references a global
+> and carries no literal of its own. Inspectors show the token name, not the
+> resolved value. Genuinely per-instance properties — element opacity, geometry,
+> stroke width — stay on the element.
+
+**§170** — overrides apply to globals only; delete "Explicit element literals
+remain literal unless the author adds a mode override." With no element
+literals, dual-mode has one override layer instead of two.
+
+**§75** — add: for nodes there is one identifier, an editable dash-cased `id`,
+unique in the document. Nothing inside the document references a node id, so a
+second field bought nothing and could disagree with the first. Also: deleting a
+referenced token requires **reassignment** — conversion to a literal is no
+longer possible — and falls back to the no-fill token.
+
+**§126** — budgets are recorded when there is a measured cost to bound; see the
+caveat in [`decisions.md`](decisions.md).
+
+---
+
+Durable lessons from past sessions are in [`lessons.md`](lessons.md), not here —
+this file is a snapshot and that one is not.
