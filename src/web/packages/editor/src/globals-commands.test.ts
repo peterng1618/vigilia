@@ -199,32 +199,31 @@ describe('rekeyGlobal', () => {
 });
 
 describe('deleteGlobal', () => {
-  it('inlines the value everywhere it was referenced', () => {
-    const next = deleteGlobal(document_, 'palette', 'accent');
+  it('refuses to delete a token that is still referenced', () => {
+    // Spec 0011 D3: an element cannot hold a literal colour any more, so
+    // inlining — the previous behaviour — would write exactly the document the
+    // format forbids, silently, on every referencing node. Deletion demands
+    // reassignment instead.
+    expect(deleteGlobal(document_, 'palette', 'accent')).toBe(document_);
+    expect(referencesTo(document_, 'palette.accent').length).toBeGreaterThan(0);
+  });
 
-    expect(next.globals?.palette?.['accent']).toBeUndefined();
-    expect(referencesTo(next, 'palette.accent')).toEqual([]);
+  it('checks all five reference sites, not just node styles', () => {
+    // The fixture references `accent` from the artboard background and bar
+    // colour, a node style, a text RUN style, an image monochrome and a node
+    // inside a group. A narrower walk would miss the last three and allow a
+    // dangling reference — which is why this uses `referencesTo`, the single
+    // walk that knows all five.
+    const sites = referencesTo(document_, 'palette.accent').map((site) => site.where);
 
-    // Nothing changed visually: every site now holds its own copy of what the
-    // token was.
-    expect(next.artboard.background).toEqual({ value: '#ff5630' });
-    expect(next.artboard.barColor).toEqual({ value: '#ff5630' });
+    expect(sites.length).toBeGreaterThanOrEqual(5);
+    expect(deleteGlobal(document_, 'palette', 'accent')).toBe(document_);
+  });
 
-    const box = next.nodes[0];
-    expect(box?.style?.['fill']).toEqual({ value: '#ff5630' });
+  it('deletes an unreferenced token', () => {
+    const next = deleteGlobal(document_, 'fontSizes', 'body');
 
-    const label = next.nodes[1];
-    expect(label?.type === 'text' && label.content.runs[0]?.style?.['color']).toEqual({
-      value: '#ff5630',
-    });
-
-    const icon = next.nodes[2];
-    expect(icon?.type === 'image' && icon.content.monochrome).toEqual({ value: '#ff5630' });
-
-    const wrapper = next.nodes[3];
-    expect(
-      wrapper?.type === 'group' && wrapper.children[0]?.style?.['fill'],
-    ).toEqual({ value: '#ff5630' });
+    expect(next.globals?.fontSizes?.['body']).toBeUndefined();
   });
 
   it('leaves other tokens and unrelated literals alone', () => {
@@ -244,11 +243,22 @@ describe('deleteGlobal', () => {
   });
 
   it('drops the group when its last token goes, and globals when the last group does', () => {
+    // Every token must be unreferenced first, now that deletion refuses while
+    // referenced — so the references are reassigned away before deleting.
     let next = deleteGlobal(document_, 'fontSizes', 'body');
     expect(next.globals?.fontSizes).toBeUndefined();
 
-    next = deleteGlobal(next, 'palette', 'accent');
-    next = deleteGlobal(next, 'palette', 'ink');
+    // A document whose tokens nothing references, so both can go.
+    const unreferenced: ThemeDocument = {
+      schemaVersion: 1,
+      id: 'unreferenced',
+      artboard: { width: 100, height: 100 },
+      globals: { palette: { a: { name: 'A', value: '#000000' }, b: { name: 'B', value: '#ffffff' } } },
+      nodes: [],
+    };
+
+    next = deleteGlobal(unreferenced, 'palette', 'a');
+    next = deleteGlobal(next, 'palette', 'b');
 
     // `"palette": {}` is valid and says nothing; absence is honest.
     expect(next.globals).toBeUndefined();

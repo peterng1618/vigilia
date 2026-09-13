@@ -229,20 +229,27 @@ export function rekeyGlobal(
 }
 
 /**
- * Removes a token, **inlining** its current value everywhere it was used.
+ * Removes an **unreferenced** token, and refuses a referenced one.
  *
- * Three options existed and only this one is defensible:
+ * ## This behaviour changed, and the old reasoning is worth keeping
  *
- * - *Refuse while referenced* makes removing a token a manual hunt through the
- *   document, and there is no UI that lists the sites.
- * - *Delete and leave the references* writes a theme that renders wrong — §75's
- *   whole point is that a reference resolves.
- * - *Inline the resolved value*, which is what this does: nothing changes
- *   visually, nothing dangles, and the properties that followed the token now
- *   hold their own copy of what it was.
+ * It used to *inline* the token's resolved value into every reference, argued
+ * as the only defensible option of three: refusing made removal "a manual hunt
+ * through the document, and there is no UI that lists the sites", and deleting
+ * without inlining writes a theme that renders wrong.
  *
- * It is exactly the inspector's "make local", applied to every site at once, so
- * an author who understands one understands the other.
+ * Spec 0011 D3 removed the premise. Colour and typography are theme-level only,
+ * so an element **cannot** hold a literal colour — inlining would now write
+ * exactly the document the format forbids, silently, on every referencing node.
+ * So: **deletion demands reassignment** (user, 2026-09-13).
+ *
+ * The old objection is also no longer true. `collectGlobalUsage` gives every
+ * token its reference count and the globals panel shows it, so an author can
+ * see what is blocking a deletion before attempting it.
+ *
+ * Refusing is the more honest failure too: inlining *looked* like nothing
+ * happened, because the rendering is identical by design, while quietly
+ * detaching every element from the token an author was reorganising.
  */
 export function deleteGlobal(
   document_: ThemeDocument,
@@ -256,14 +263,19 @@ export function deleteGlobal(
     return document_;
   }
 
-  const ref = `${group}.${key}` as GlobalRef;
-  const inlined = mapStyleValues(document_, (value) =>
-    value.ref === ref ? { value: existing.value } : value,
-  );
+  // `referencesTo` rather than a local walk. A global is referenced from FIVE
+  // sites — artboard background and bar colour, node styles, text run styles
+  // and image monochrome — and `visitStyleValues` is the single walk that knows
+  // all five. A second, narrower walk here would have missed run styles and
+  // monochrome, allowing exactly the dangling reference this guard exists to
+  // prevent.
+  if (referencesTo(document_, `${group}.${key}` as GlobalRef).length > 0) {
+    return document_;
+  }
 
   const { [key]: _removed, ...rest } = entries;
 
-  return withGroup(inlined, group, rest);
+  return withGroup(document_, group, rest);
 }
 
 /** Replaces one global group, dropping it entirely when it becomes empty. */

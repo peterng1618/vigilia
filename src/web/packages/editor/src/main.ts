@@ -7,6 +7,7 @@ import {
   createAssetResolver,
   mountScene,
   viewportToDocument,
+  type GlobalRef,
   type SampleSource,
   type SceneHandle,
   type ThemeDocument,
@@ -78,6 +79,7 @@ import {
   addGlobal,
   collectGlobalUsage,
   deleteGlobal,
+  referencesTo,
   nextGlobalKey,
   rekeyGlobal,
   renameGlobal,
@@ -276,6 +278,17 @@ function start(): void {
         // the guard would otherwise skip the redraw that does it. An invalid
         // token key is the reachable case — `not a key` stayed in the field.
         globalsKey = '';
+
+        // A refused deletion needs a reason. Spec 0011 D3 means a referenced
+        // token cannot be inlined away, so the author has to reassign first —
+        // and "nothing happened" is the least useful way to say that.
+        if (action.kind === 'delete') {
+          const uses = referencesTo(document_, `${action.group}.${action.key}` as GlobalRef).length;
+
+          if (uses > 0) {
+            notice = `${action.key} is used ${uses} time${uses === 1 ? '' : 's'} — reassign those first`;
+          }
+        }
       }
 
       render();
