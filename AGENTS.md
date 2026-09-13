@@ -43,6 +43,46 @@ project name; that is intentional and not a bug to fix.
 licence verified from the package's own metadata or LICENSE file — not from a
 search summary. CI fails if a known dependency is missing there.
 
+### The one rule above the others: nothing is declared twice
+
+**Every concept has exactly one home. Search before you add.**
+
+A name, shape, rule, constant, default or list must exist in one place, and
+every consumer must import it from there. This is not a style preference — it
+is the defect class that has cost this project more than all others combined,
+and it always presents the same way: two declarations agree at the moment they
+are written, drift later, and nothing warns anyone. The compiler cannot see it,
+tests keep passing on both sides, and the symptom surfaces somewhere unrelated.
+
+Before adding a type, constant, enum, label, shortcut, route, key name, style
+property, default value or helper:
+
+1. **Grep for it.** By name, by value, and by the concept's other likely
+   spellings. A duplicate almost always already exists under a different name.
+2. **If it exists, import it.** If it exists but is unexported or in the wrong
+   package, move it and point the existing caller at it — in the same commit.
+3. **If it is genuinely new, decide its owner before writing it**, and record
+   that owner in [`docs/architecture.md`](docs/architecture.md)'s ownership
+   registry.
+
+Two corollaries, both learned the hard way:
+
+- **An owner nothing imports is not an owner.** Creating a module that declares
+  the canonical vocabulary, while a consumer keeps its own hand-typed copy,
+  achieves nothing — the two had already drifted on a label within the hour.
+  Point every consumer at a new owner in the same commit, and add a test that
+  binds them. Until that test exists, the work is not done.
+- **Prefer a mechanism to a reminder.** A comment saying "keep these in sync" is
+  the defect, not the guard. Derive one from the other, key a `Record` by the
+  union so the compiler forces exhaustiveness, or add an assertion — the
+  patterns already here are `theme/schema-sync.test.ts` and
+  `npm run typecheck`'s workspace-derived project list.
+
+The severity axis is **whether anything catches it**. Duplicated but
+compiler-checked is usually fine; duplicated, stringly-typed and unguarded is
+the real thing. [`docs/architecture.md`](docs/architecture.md) records which
+concepts have owners today and which known gaps remain.
+
 ## 3. Agent skills
 
 Canonical content lives in [`.agents/skills/`](.agents/skills/) so any harness
@@ -79,6 +119,7 @@ Three planning locations exist and they do **not** overlap:
 | `.agents/specs/` | Per-feature intended behaviour, kept in sync with the code |
 | `docs/gates/` | Gate acceptance evidence — measurements and observations |
 | `docs/decisions/` | ADRs — a decision, its context, its consequences |
+| `docs/architecture.md` | How the pieces fit, and **which file owns which concept** |
 
 ## 5. Essential commands
 
