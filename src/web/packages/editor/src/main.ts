@@ -216,9 +216,11 @@ function start(): void {
     'display:flex',
     'flex-direction:column',
     'min-height:0',
+    'min-width:0',
+    'overflow:hidden',
     'background:var(--vigilia-panel-bg)',
     'border-right:1px solid var(--vigilia-panel-border)',
-    'padding:0 8px',
+    'padding:0',
   ].join(';');
   work.insertBefore(leftPanel, host);
 
@@ -231,13 +233,23 @@ function start(): void {
     'display:flex',
     'flex-direction:column',
     'min-height:0',
+    'min-width:0',
+    'overflow:hidden',
     'background:var(--vigilia-panel-bg)',
     'border-left:1px solid var(--vigilia-panel-border)',
   ].join(';');
   work.append(panel);
 
   const body = document.createElement('div');
-  body.style.cssText = 'flex:1;min-height:0;display:flex;flex-direction:column;padding:0 10px;overflow-y:auto';
+  body.style.cssText = [
+    'flex:1',
+    'min-height:0',
+    'min-width:0',
+    'display:flex',
+    'flex-direction:column',
+    'padding:0',
+    'overflow:hidden',
+  ].join(';');
   panel.append(body);
 
   /**
@@ -682,15 +694,15 @@ function start(): void {
   toolbar.style.cssText = [
     'display:flex',
     'flex:none',
-    'gap:2px',
-    'padding:4px 8px',
-    'border-bottom:1px solid #232a36',
+    'gap:6px',
+    'padding:10px 14px',
+    'border-bottom:1px solid var(--vigilia-panel-border)',
   ].join(';');
   panel.insertBefore(toolbar, body);
 
   const fileBar = document.createElement('div');
   fileBar.dataset['vigiliaToolbar'] = 'file';
-  fileBar.style.cssText = 'display:flex;flex:none;gap:4px;padding:4px 8px 0';
+  fileBar.style.cssText = 'display:flex;flex:none;gap:8px;padding:10px 14px 0';
   panel.insertBefore(fileBar, toolbar);
 
   for (const action of actionsInGroup('file')) {

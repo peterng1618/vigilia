@@ -1,5 +1,5 @@
 import type { Globals } from '@vigilia/renderer-core';
-import { buttonStyle, inputStyle, sectionHeadingStyle } from './button.js';
+import { buttonStyle, inputStyle, scrollAreaStyle, sectionHeadingStyle } from './button.js';
 import type { FieldChange } from './inspector-apply.js';
 import {
   globalOptions,
@@ -74,14 +74,13 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
   const root = document.createElement('div');
   root.dataset['vigiliaInspector'] = 'root';
   root.style.cssText = [
-    'width:280px',
-    'flex:none',
-    'overflow-y:auto',
-    'background:#151922',
-    'border-left:1px solid #232a36',
-    'padding:8px 10px 24px',
+    'width:100%',
+    'flex:1',
+    scrollAreaStyle(),
+    'background:var(--vigilia-panel-bg)',
+    'padding:14px 6px 36px 14px',
     'font:12px/1.5 system-ui,sans-serif',
-    'color:#e8ecf3',
+    'color:var(--vigilia-text)',
   ].join(';');
 
   host.append(root);
@@ -100,7 +99,7 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
     if (sections.length === 0) {
       const empty = document.createElement('p');
       empty.textContent = 'Nothing selected.';
-      empty.style.cssText = 'color:#8a97ab;margin:8px 2px';
+      empty.style.cssText = 'color:var(--vigilia-muted);margin:8px 0';
       root.append(empty);
       return;
     }
@@ -168,7 +167,7 @@ function renderSection(
 ): HTMLElement {
   const wrapper = document.createElement('section');
   wrapper.dataset['vigiliaSection'] = section.title;
-  wrapper.style.cssText = 'margin-bottom:14px';
+  wrapper.style.cssText = 'margin-bottom:22px';
 
   const heading = document.createElement('h2');
   heading.textContent = section.title;
@@ -191,11 +190,11 @@ function renderField(
 ): HTMLElement {
   const row = document.createElement('div');
   row.dataset['vigiliaField'] = field.key;
-  row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;min-height:24px';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:7px 0;min-height:28px;min-width:0';
 
   const label = document.createElement('label');
   label.textContent = field.label;
-  label.style.cssText = 'flex:0 0 92px;color:#8a97ab;overflow:hidden;text-overflow:ellipsis';
+  label.style.cssText = 'flex:0 0 92px;min-width:0;color:var(--vigilia-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
   row.append(label);
 
   // A reference shows the token it points at, and the value it resolves to, so
@@ -274,7 +273,7 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
   }
 
   const group = document.createElement('div');
-  group.style.cssText = 'flex:1;display:flex;gap:4px;align-items:center;min-width:0';
+  group.style.cssText = 'flex:1;display:flex;gap:6px;align-items:center;min-width:0';
 
   const input = document.createElement('input');
   input.type = field.kind === 'number' ? 'number' : 'text';
@@ -332,7 +331,7 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
     well.type = 'color';
     well.dataset['vigiliaColour'] = field.key;
     well.value = toHexOrDefault(field.value);
-    well.style.cssText = 'width:26px;height:22px;padding:0;border:1px solid #2a3242;background:none';
+    well.style.cssText = 'width:26px;height:22px;flex:none;padding:0;border:1px solid var(--vigilia-control-border);background:none';
     well.addEventListener('change', () => {
       callbacks.onChange(field.key, { kind: 'literal', value: well.value });
     });
@@ -353,7 +352,7 @@ function referencePicker(
   pending: PendingRefs,
 ): HTMLElement {
   const group = document.createElement('div');
-  group.style.cssText = 'flex:1;display:flex;gap:4px;align-items:center;min-width:0';
+  group.style.cssText = 'flex:1;display:flex;gap:6px;align-items:center;min-width:0';
 
   const select = document.createElement('select');
   select.dataset['vigiliaRef'] = field.key;
@@ -406,7 +405,7 @@ function referencePicker(
       'width:20px',
       'height:20px',
       'flex:none',
-      'border:1px solid #2a3242',
+      'border:1px solid var(--vigilia-control-border)',
       `background:${field.value}`,
     ].join(';');
     group.append(swatch);

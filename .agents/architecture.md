@@ -134,7 +134,7 @@ are about to add resembles a row, import it instead.
 | **Every editor action** — label, shortcut, glyph, enablement | `editor/src/actions.ts` |
 | What a focused control keeps | `editor/src/keyboard.ts` |
 | **Node display label fallback** | `editor/src/node-label.ts` (`nodeLabel`) |
-| **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
+| **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `scrollAreaStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
 | **Layer panel tree projection** | `editor/src/layers-model.ts` (`buildLayerTree`) |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |

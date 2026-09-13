@@ -18,9 +18,39 @@
         --vigilia-subdued: #5c6878;
         --vigilia-selection-bg: #233750;
         --vigilia-accent: #00b8d9;
+        --vigilia-accent-dim: #00b8d922;
         --vigilia-guide: #ff5630;
         --vigilia-scaffold-bg: #4a2c00;
         --vigilia-scaffold-text: #ffc14d;
+        --vigilia-scrollbar-thumb: #2a3242;
+        --vigilia-scrollbar-thumb-hover: #3a4458;
+        --vigilia-scrollbar-track: transparent;
+      }
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+      /* One scrollbar treatment: thin overlay-safe bar in panel token colors.
+         Every scroll container below sets overflow-x:hidden + scrollbar-gutter
+         so a vertical bar reserves space instead of covering content, and no
+         panel ever grows a horizontal bar. */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--vigilia-scrollbar-track);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--vigilia-scrollbar-thumb);
+        border-radius: 5px;
+        border: 2px solid var(--vigilia-panel-bg);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--vigilia-scrollbar-thumb-hover);
+      }
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track);
       }
       html,
       body {

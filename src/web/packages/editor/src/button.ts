@@ -70,7 +70,26 @@ export function inputStyle(font = '12px/1.4 ui-monospace,monospace'): string {
   ].join(';');
 }
 
-export function sectionHeadingStyle(margin = '10px 2px 6px'): string {
+/**
+ * The one scroll-container treatment. A vertical bar reserves space via
+ * `scrollbar-gutter` instead of covering content, and `overflow-x:hidden`
+ * guarantees no panel ever grows a horizontal bar. Colours come from the
+ * `--vigilia-scrollbar-*` tokens in `index.html`; nothing here names a hex.
+ */
+export function scrollAreaStyle(extra = ''): string {
+  return [
+    'overflow-y:auto',
+    'overflow-x:hidden',
+    'scrollbar-gutter:stable',
+    'min-height:0',
+    'min-width:0',
+    extra,
+  ]
+    .filter((part) => part !== '')
+    .join(';');
+}
+
+export function sectionHeadingStyle(margin = '14px 2px 10px'): string {
   return [
     `margin:${margin}`,
     'font-size:11px',

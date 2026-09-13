@@ -148,7 +148,9 @@ function outline(node: PlacedNode, transform: ArtboardTransform): SVGSVGElement 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   polygon.setAttribute('points', points);
   polygon.setAttribute('fill', 'none');
-  polygon.setAttribute('stroke', '#00b8d9');
+  // Accent via style, not a `stroke` attribute: presentation attributes do not
+  // resolve `var()`, inline style does.
+  polygon.style.stroke = 'var(--vigilia-accent)';
   // Constant on screen, like the handles: an outline that thins out as you zoom
   // in is harder to see exactly when precision matters most.
   polygon.setAttribute('stroke-width', '1.5');
@@ -213,8 +215,8 @@ function handleDot(
     // Never the event target: the wrapper is the hit area, and the gesture
     // layer identifies a handle from the element it was pressed on.
     'pointer-events:none',
-    'background:#0c0e13',
-    'border:1.5px solid #00b8d9',
+    'background:var(--vigilia-canvas-bg)',
+    'border:1.5px solid var(--vigilia-accent)',
     handle === 'rotate' ? 'border-radius:50%' : 'border-radius:2px',
     'box-sizing:border-box',
   ].join(';');
@@ -278,7 +280,7 @@ function guideLine(
       `top:${start.y}px`,
       'width:1px',
       `height:${end.y - start.y}px`,
-      'background:#ff5630',
+      'background:var(--vigilia-guide)',
       'pointer-events:none',
     ].join(';');
   } else {
@@ -291,7 +293,7 @@ function guideLine(
       `top:${start.y}px`,
       `width:${end.x - start.x}px`,
       'height:1px',
-      'background:#ff5630',
+      'background:var(--vigilia-guide)',
       'pointer-events:none',
     ].join(';');
   }
@@ -313,8 +315,8 @@ function marqueeBox(box: {
     `top:${box.y}px`,
     `width:${box.width}px`,
     `height:${box.height}px`,
-    'border:1px solid #00b8d9',
-    'background:#00b8d922',
+    'border:1px solid var(--vigilia-accent)',
+    'background:var(--vigilia-accent-dim)',
     'pointer-events:none',
   ].join(';');
 

@@ -156,6 +156,7 @@ export {
   buttonStyle,
   createButton,
   inputStyle,
+  scrollAreaStyle,
   sectionHeadingStyle,
   type ButtonOptions,
 } from './button.js';

@@ -1,6 +1,6 @@
 import type { NodeType } from '@vigilia/renderer-core';
 import { actionById, shortcutLabel, type ActionId } from './actions.js';
-import { createButton, sectionHeadingStyle } from './button.js';
+import { createButton, scrollAreaStyle, sectionHeadingStyle } from './button.js';
 import type { LayerRow } from './layers-model.js';
 import type { SelectionMode } from './selection.js';
 
@@ -52,7 +52,7 @@ export function createLayersPanel(
     'display:flex',
     'align-items:center',
     'gap:8px',
-    'padding:6px 10px',
+    'padding:12px 8px 12px 14px',
     'border-bottom:1px solid var(--vigilia-panel-border)',
     'flex:none',
   ].join(';');
@@ -75,7 +75,7 @@ export function createLayersPanel(
   list.setAttribute('role', 'listbox');
   list.setAttribute('aria-label', 'Document layers');
   list.setAttribute('aria-multiselectable', 'true');
-  list.style.cssText = 'flex:1;min-height:0;overflow-y:auto;padding:3px 0 12px';
+  list.style.cssText = `${scrollAreaStyle()};flex:1;padding:8px 0 20px`;
 
   root.append(header, list);
   host.append(root);
@@ -89,7 +89,7 @@ export function createLayersPanel(
       if (rows.length === 0) {
         const empty = document.createElement('p');
         empty.textContent = 'No layers.';
-        empty.style.cssText = 'color:#8a97ab;margin:8px 10px';
+        empty.style.cssText = 'color:var(--vigilia-muted);margin:8px 14px';
         list.append(empty);
         return;
       }
@@ -114,9 +114,10 @@ function renderRow(row: LayerRow, callbacks: LayersPanelCallbacks): HTMLElement 
   element.style.cssText = [
     'display:flex',
     'align-items:center',
-    'gap:4px',
-    'height:26px',
-    `padding:0 6px 0 ${6 + row.depth * 14}px`,
+    'gap:8px',
+    'height:32px',
+    'min-width:0',
+    `padding:0 8px 0 ${14 + row.depth * 14}px`,
     `background:${row.selected ? 'var(--vigilia-selection-bg)' : 'transparent'}`,
     `color:${row.visible ? 'var(--vigilia-text)' : 'var(--vigilia-subdued)'}`,
     'cursor:pointer',

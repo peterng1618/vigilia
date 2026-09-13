@@ -40,6 +40,15 @@ against that owner. All five typechecks, 1,035 unit tests, all three builds and
 the size gate passed on 2026-09-13. No schema version bump: this rejects
 previously ignored unknown names while retaining the v1 property vocabulary.
 
+Panel scrollbars no longer cover content and no panel grows a horizontal bar
+(uncommitted, this session). One `scrollAreaStyle` owner in `button.ts`
+(`overflow-y:auto` + `overflow-x:hidden` + `scrollbar-gutter:stable`); themed
+thin bars via `--vigilia-scrollbar-*` tokens in `index.html`; overlay hexes now
+reference panel tokens. Content padding moved from the sidebar shells onto the
+scroll containers (14px leading, 6px trailing) so the bar sits close to the
+panel edge. Verified: five typechecks clean, 1,045 unit tests pass,
+editor+player+host build, desktop Chromium 100 passed / 1 skipped.
+
 Chromium 1243 installed successfully, clearing the prior launch blocker. The
 full browser run had two desktop timing failures: "animates by default, and not
 when static is asked for" and "keeps the numeric readout stepping at the sample

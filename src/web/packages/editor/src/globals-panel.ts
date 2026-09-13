@@ -1,5 +1,5 @@
 import { GLOBAL_GROUPS, type GlobalGroupName } from '@vigilia/renderer-core';
-import { buttonStyle, inputStyle, sectionHeadingStyle } from './button.js';
+import { buttonStyle, inputStyle, scrollAreaStyle, sectionHeadingStyle } from './button.js';
 import type { GlobalUsage } from './globals-commands.js';
 
 /**
@@ -57,8 +57,9 @@ export function createGlobalsPanel(
   const root = document.createElement('div');
   root.dataset['vigiliaGlobals'] = 'root';
   root.style.cssText = [
-    'overflow-y:auto',
-    'padding:2px 0 24px',
+    'flex:1',
+    scrollAreaStyle(),
+    'padding:10px 6px 36px 14px',
     'font:12px/1.5 system-ui,sans-serif',
     'color:var(--vigilia-text)',
   ].join(';');
@@ -99,10 +100,10 @@ function renderGroup(
   const meta = GROUP_META[group];
   const section = document.createElement('section');
   section.dataset['vigiliaGlobalsGroup'] = group;
-  section.style.cssText = 'margin-bottom:14px';
+  section.style.cssText = 'margin-bottom:22px';
 
   const heading = document.createElement('div');
-  heading.style.cssText = 'display:flex;align-items:center;gap:6px;margin:10px 2px 6px';
+  heading.style.cssText = 'display:flex;align-items:center;gap:8px;margin:14px 2px 10px';
 
   const title = document.createElement('h2');
   title.textContent = meta.label;
@@ -123,7 +124,7 @@ function renderGroup(
   if (entries.length === 0) {
     const empty = document.createElement('p');
     empty.textContent = 'None yet.';
-    empty.style.cssText = 'color:#5c6878;margin:2px 2px 6px';
+    empty.style.cssText = 'color:var(--vigilia-subdued);margin:2px 0 6px';
     section.append(empty);
 
     return section;
@@ -148,10 +149,11 @@ function renderRow(
   row.dataset['vigiliaGlobal'] = id;
   row.style.cssText = [
     'display:grid',
-    'grid-template-columns:1fr 1fr auto auto',
-    'gap:4px',
+    'grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto',
+    'gap:6px',
     'align-items:center',
-    'margin:3px 0',
+    'margin:7px 0',
+    'min-width:0',
   ].join(';');
 
   // The KEY, not the display name, in the first column. References are
@@ -197,7 +199,7 @@ function renderRow(
       well.value = entry.value;
     }
 
-    well.style.cssText = 'width:22px;height:22px;padding:0;border:1px solid #2a3242;background:none';
+    well.style.cssText = 'width:22px;height:22px;padding:0;border:1px solid var(--vigilia-control-border);background:none';
     well.addEventListener('change', () => {
       callbacks.onAction({ kind: 'value', group, key, value: well.value });
     });
@@ -219,7 +221,7 @@ function renderRow(
   row.append(remove);
 
   const meta = document.createElement('div');
-  meta.style.cssText = 'grid-column:1 / -1;display:flex;gap:6px;align-items:center;margin:0 0 4px';
+  meta.style.cssText = 'grid-column:1 / -1;display:flex;gap:8px;align-items:center;margin:2px 0 10px';
 
   const name = document.createElement('input');
   name.type = 'text';
@@ -239,7 +241,7 @@ function renderRow(
   uses.dataset['vigiliaGlobalUses'] = id;
   uses.textContent = describeUses(usage.references.length);
   uses.title = usage.references.map((reference) => reference.where).join('\n');
-  uses.style.cssText = `flex:none;color:${usage.references.length === 0 ? '#5c6878' : '#8a97ab'}`;
+  uses.style.cssText = `flex:none;color:${usage.references.length === 0 ? 'var(--vigilia-subdued)' : 'var(--vigilia-muted)'}`;
   meta.append(uses);
 
   row.append(meta);
