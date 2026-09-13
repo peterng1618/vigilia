@@ -21,7 +21,8 @@ If the answer to "what would change this?" is "nothing, it is just how the code
 works", it is not an ADR. Do not write one for a choice the diff explains.
 
 The design document (`.agents/design/plan.md`) outranks every ADR
-and is **user-authored — do not rewrite its prose**. An ADR may supersede its
+and is **agent-owned** as of revision 10 — keep it current rather than
+proposing changes to it. An ADR may supersede its
 *sequencing* (ADR-0006 did) but never its content or acceptance criteria without
 a human decision.
 

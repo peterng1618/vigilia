@@ -15,7 +15,7 @@ Scope, so this file does not become a fourth copy of something:
 | What a feature is *supposed* to do | [`../.agents/specs/`](../.agents/specs/) |
 | Why a decision was made | [`decisions.md`](decisions.md) |
 | Current state, what is next | [`handoff.md`](handoff.md) |
-| The product spec | [`pc-stats-display-agent-plan.md`](pc-stats-display-agent-plan.md) — user-authored |
+| What the product should do | [`design/plan.md`](design/plan.md) — goals from the user, the rest agent-owned |
 
 ---
 

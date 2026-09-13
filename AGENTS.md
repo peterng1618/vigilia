@@ -21,10 +21,18 @@ briefly C# and then a Python draft; both are gone, along with every file they
 needed — see [`.agents/decisions.md`](.agents/decisions.md). **There is no
 second toolchain: do not install a .NET SDK or Python to unblock anything.**
 
-**The design document is the spec:** [`.agents/design/plan.md`](.agents/design/plan.md)
-(revision 9). Section markers throughout the code — `§93`, `§122` — point into
-it. It is **user-authored: do not rewrite its prose.** It still uses the old
-project name; that is intentional and not a bug to fix.
+**The plan is the spec:** [`.agents/design/plan.md`](.agents/design/plan.md)
+(revision 10), and it is **agent-owned**. The user supplies goals and intent;
+architecture, sequencing, format design and trade-offs are yours to decide and
+to keep true. Keep it current — a plan that has drifted is worse than none,
+because it is read as authority.
+
+`§N` markers throughout the code — `§93`, `§122` — are **stable labels written
+into that document**, not line numbers. Code cites 43 of them 443 times. Add a
+new requirement with the next free number; **never renumber**. They were line
+numbers until revision 10, which froze the document: any edit shifted every
+marker below it, so it went unmaintained and still mandated Vue, Fabric,
+ASP.NET Core and SignalR long after all four were gone.
 
 ## 2. General guidelines
 
@@ -119,7 +127,8 @@ for either. Five files and three directories, each with one job:
 | `.agents/decisions.md` | ADRs — a decision, its context, its consequences | Immutable once accepted |
 | `.agents/decisions.md` | Gate evidence — measurements and observations, append-only | No |
 | `.agents/lessons.md` | What cost time here, as rules rather than anecdotes | No |
-| `.agents/design/` | The product spec and environment notes, **user-authored** | Not ours to edit |
+| `.agents/design/plan.md` | The product plan — goals from the user, everything else agent-owned | Keep it current |
+| `.agents/design/environment-setup.md` | Environment notes, **user-authored** | Not ours to edit |
 | `.agents/skills/` | Agent skills, invoked as `vigilia:<name>` | No |
 
 A spec is durable and committed; a plan is throwaway. A **superseded** decision
@@ -238,8 +247,7 @@ Four rules that outrank convenience:
 | `src/web/package-lock.json` | Change `package.json`, then run `npm install` |
 | `src/web/packages/player/dist/**` | Build output. Gitignored |
 | `.claude/plugins/vigilia/skills/*/SKILL.md` | Pointer files. Edit `.agents/skills/<name>/SKILL.md` |
-| `.agents/design/plan.md` | User-authored spec. Propose changes; do not rewrite |
-| `.agents/design/environment-setup.md` | User-authored methodology. Same |
+| `.agents/design/environment-setup.md` | User-authored methodology. Propose changes; do not rewrite |
 
 ### The mirror is gone — do not recreate it
 
@@ -345,5 +353,6 @@ bespoke ones — and asserting a non-`ok` sample carries no `value` key at all.
   paths; never `git add -A` or `git commit -a`. Someone else's half-finished
   work committed under your message is the one mistake here that is genuinely
   expensive to unpick. `git status` before staging, every time.
-- Seek human review for schema breaks, major dependency changes, or scope
-  expansion (§164).
+- Seek human review for **scope expansion, anything with external effect**
+  (publishing, LAN exposure, the licence) **and product taste**. Architecture,
+  schema design and sequencing do not need it — those are yours (§157).

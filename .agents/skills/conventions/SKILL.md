@@ -77,7 +77,6 @@ introduce one.
 |---|---|
 | `src/web/package-lock.json` | Edit `package.json`, run `npm install` |
 | `.claude/plugins/vigilia/skills/*/SKILL.md` | Edit `.agents/skills/<name>/SKILL.md` |
-| `.agents/design/plan.md` | User-authored spec — propose, don't rewrite |
 | `.agents/design/environment-setup.md` | User-authored — same |
 
 ## The mirror is gone — do not recreate it

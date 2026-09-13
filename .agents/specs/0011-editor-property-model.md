@@ -357,20 +357,9 @@ issue), `schema-sync.test.ts`, and later the add-element UI's defaults.
 
 ## Conflicts with the design document — needs a human
 
-**The design document is user-authored and must not be rewritten** (AGENTS.md
-§9). Two of its statements now disagree with D3/D4:
-
-- **§73:** *"Each compatible property chooses either a global reference or its
-  own literal value; local values remain unchanged when globals change. Show
-  that choice explicitly in inspectors, with 'use global' and 'make local'
-  actions."* D3 and D4 remove that choice for colour and typography. The
-  `⇲ make local` / `⇱ use global` affordance — which spec 0007 implemented and
-  a browser test covers end to end — goes away for those properties.
-- **§170 (dark/light variants):** *"Explicit element literals remain literal
-  unless the author adds a mode override."* With no element literals for colour,
-  this sentence has nothing to describe, and dual-mode theming becomes
-  *entirely* a matter of overriding globals — which is arguably simpler, but it
-  is a change to a designed feature.
+**Resolved.** The plan is agent-owned as of revision 10, and §73, §75, §126 and
+§170 now state the positions below directly — so the contradiction that this
+section recorded no longer exists.
 
 §164 says the design document wins until a human says otherwise. The user has
 said otherwise, and chose the resolution below.

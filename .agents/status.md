@@ -106,35 +106,14 @@ THIRD-PARTY-NOTICES entry *first*) · a tray.
   editor never ticks, so binding readouts are frozen while authoring.
 - **CI has not run since the host landed** until the most recent push.
 
-## Needs a human: paste four approved amendments
+## Needs a human
 
-[`design/plan.md`](design/plan.md) is user-authored and no agent edits it. Four
-paragraphs there now contradict [spec 0011](specs/0011-editor-property-model.md).
-All four replacements are **approved**; what remains is the paste. Until then
-§164 tells a reader the design document wins.
+**Nothing.** The four design-document amendments that were blocking are written
+into [`design/plan.md`](design/plan.md) directly — that document is agent-owned
+as of revision 10, so approved changes no longer wait on a paste.
 
-**§73** — replace the global-or-literal paragraph with:
-
-> Provide named, typed constants for palette colors, type presets, spacing and
-> asset references. Palette entries are rgba. A type preset bundles font family,
-> size, weight, letter spacing and line height as one named unit. **Colour and
-> typography are theme-level only:** a compatible property references a global
-> and carries no literal of its own. Inspectors show the token name, not the
-> resolved value. Genuinely per-instance properties — element opacity, geometry,
-> stroke width — stay on the element.
-
-**§170** — overrides apply to globals only; delete "Explicit element literals
-remain literal unless the author adds a mode override." With no element
-literals, dual-mode has one override layer instead of two.
-
-**§75** — add: for nodes there is one identifier, an editable dash-cased `id`,
-unique in the document. Nothing inside the document references a node id, so a
-second field bought nothing and could disagree with the first. Also: deleting a
-referenced token requires **reassignment** — conversion to a literal is no
-longer possible — and falls back to the no-fill token.
-
-**§126** — budgets are recorded when there is a measured cost to bound; see the
-caveat in [`decisions.md`](decisions.md).
+What is still wanted from the user is **goals, product taste, scope, and any
+decision with external effect** — not architecture. See the plan's preamble.
 
 ---
 
