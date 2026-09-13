@@ -1,6 +1,29 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { contentTypeFor, resolveStaticPath } from './static-path.js';
+import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './static-path.js';
+
+describe('needsTrailingSlash', () => {
+  it('redirects the bare mount, whose relative assets would resolve one level up', () => {
+    expect(needsTrailingSlash('/editor', '/editor')).toBe(true);
+  });
+
+  it('leaves the slashed form alone, so the redirect cannot loop', () => {
+    expect(needsTrailingSlash('/editor/', '/editor')).toBe(false);
+  });
+
+  it('leaves assets inside the mount alone', () => {
+    expect(needsTrailingSlash('/editor/assets/index-abc.js', '/editor')).toBe(false);
+    expect(needsTrailingSlash('/editor/index.html', '/editor')).toBe(false);
+  });
+
+  it('ignores a query string, which does not change which directory the document is in', () => {
+    expect(needsTrailingSlash('/editor?theme=showcase', '/editor')).toBe(true);
+  });
+
+  it('does not match a sibling whose name merely begins with the mount', () => {
+    expect(needsTrailingSlash('/editorial', '/editor')).toBe(false);
+  });
+});
 
 const ROOT = path.resolve('/srv/player');
 

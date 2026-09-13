@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { SAMPLE_STREAM_PATH, createBatch } from '@vigilia/renderer-core';
-import { contentTypeFor, resolveStaticPath } from './serve/static-path.js';
+import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './serve/static-path.js';
 import { ProviderRegistry, unionOfKeys } from './providers/registry.js';
 import { SseConnection } from './transport/sse.js';
 
@@ -163,6 +163,20 @@ export function createHostServer(options: HostServerOptions): HostServer {
       // are different questions, and only the peer answers this one.
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
         sendText(response, 403, 'The editor is available on this PC only.');
+        return;
+      }
+
+      // The editor's assets are relative, so they only resolve inside this
+      // mount when the document has a trailing slash. Without it the browser
+      // asks the *player's* dist for the editor's bundle and gets a 404, and
+      // the editor hangs on "starting…" with nothing in the stage.
+      if (needsTrailingSlash(url.pathname, '/editor')) {
+        const query = url.search;
+        response.writeHead(302, {
+          location: `/editor/${query}`,
+          'cache-control': 'no-store',
+        });
+        response.end();
         return;
       }
 

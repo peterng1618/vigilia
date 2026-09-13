@@ -44,6 +44,26 @@ export function contentTypeFor(filePath: string): string {
 }
 
 /**
+ * Whether a request for a bundle mounted at `mount` still needs its trailing
+ * slash.
+ *
+ * The editor bundle is built with a **relative** base, because it is served
+ * from two different places: `vite preview` (and the browser suite) put it at
+ * the root, while this host mounts it under `/editor`. A relative base is the
+ * only one correct in both, but it resolves against the *document's directory*
+ * — so `/editor` asks for `/assets/…` (the player's, a 404) whereas `/editor/`
+ * asks for `/editor/assets/…` (its own). One redirect removes the difference.
+ *
+ * This is the whole reason the editor booted to a blank stage with its status
+ * stuck on "starting…": the HTML arrived, its module script did not.
+ */
+export function needsTrailingSlash(urlPath: string, mount: string): boolean {
+  const withoutQuery = urlPath.split('?')[0] ?? '';
+
+  return withoutQuery === mount;
+}
+
+/**
  * Resolves a URL path inside `root`.
  *
  * @returns An absolute path inside `root`, or `undefined` when the request
