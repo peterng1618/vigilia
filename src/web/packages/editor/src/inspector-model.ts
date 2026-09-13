@@ -1,4 +1,6 @@
 import {
+  allowsStyleProperty,
+  anyHasCapability,
   GLOBAL_GROUPS,
   type GlobalGroupName,
   type Globals,
@@ -194,17 +196,6 @@ function clamp(
   return range.max === undefined ? lower : Math.min(range.max, lower);
 }
 
-/** Typography fields are only worth showing on something that draws text. */
-const TEXT_ONLY = new Set([
-  'color',
-  'fontFamily',
-  'fontSize',
-  'fontWeight',
-  'letterSpacing',
-  'lineHeight',
-  'tabularNumerals',
-]);
-
 /**
  * Describes the inspector for a selection.
  *
@@ -224,13 +215,17 @@ export function describeSelection(
   }
 
   const readOnly = nodes.some((node) => node.locked === true);
-  const anyText = nodes.some((node) => node.type === 'text' || node.type === 'chart');
+  // Which rows exist is decided by the capability matrix in `renderer-core`,
+  // not by ad-hoc type checks here. A group therefore shows identity and flags
+  // and nothing else — it used to offer X/Y/width/height and fill, properties
+  // that either did nothing or moved its outline without its contents.
+  const types = nodes.map((node) => node.type);
 
   return [
     identitySection(nodes, readOnly),
-    transformSection(nodes, readOnly),
-    styleSection(nodes, document_.globals ?? {}, anyText, readOnly),
-    ...bindingSections(nodes, readOnly),
+    ...(anyHasCapability(types, 'transform') ? [transformSection(nodes, readOnly)] : []),
+    styleSection(nodes, document_.globals ?? {}, readOnly),
+    ...(anyHasCapability(types, 'bindings') ? bindingSections(nodes, readOnly) : []),
   ].filter((section) => section.fields.length > 0);
 }
 
@@ -321,13 +316,15 @@ function transformSection(nodes: readonly ThemeNode[], readOnly: boolean): Inspe
 function styleSection(
   nodes: readonly ThemeNode[],
   globals: Globals,
-  includeText: boolean,
   readOnly: boolean,
 ): InspectorSection {
   const fields: FieldDescriptor[] = [];
 
   for (const definition of STYLE_FIELDS) {
-    if (!includeText && TEXT_ONLY.has(definition.property)) {
+    // One question, one owner: may any selected type carry this property? The
+    // old `TEXT_ONLY` set was a second declaration of the same fact, and a typo
+    // in it showed typography rows on a rectangle.
+    if (!nodes.some((node) => allowsStyleProperty(node.type, definition.property))) {
       continue;
     }
 

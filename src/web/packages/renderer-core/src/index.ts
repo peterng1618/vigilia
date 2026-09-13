@@ -186,6 +186,23 @@ export type {
 
 export { createLiveSource } from './data/live-source.js';
 
+// The capability matrix (spec 0011) — which entity may carry which property,
+// and the single owner of the style property vocabulary. Shared because the
+// renderer paints these properties and the editor offers them, and the list
+// previously had five homes with nothing relating them.
+export type { CapabilityGroup } from './theme/capabilities.js';
+
+export {
+  NODE_CAPABILITIES,
+  STYLE_PROPERTIES,
+  STYLE_PROPERTIES_BY_GROUP,
+  allowsStyleProperty,
+  anyHasCapability,
+  hasCapability,
+  isKnownStyleProperty,
+  stylePropertiesFor,
+} from './theme/capabilities.js';
+
 // The semantic key vocabulary (§93). Shared for the same reason the wire
 // contract is: the host declares which keys it can read and the editor offers
 // them to an author, so the spelling must have one owner.

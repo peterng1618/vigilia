@@ -113,10 +113,47 @@ describe('§75: a style value is a reference OR a literal, and the row says whic
   it('offers the group a property may reference', () => {
     const sections = describeSelection(document_([textNode('t')]), ['t']);
 
-    expect(field(sections, 'style.fill')?.globalGroup).toBe('palette');
+    // Text has a COLOUR, not a fill — spec 0011's capability matrix. The
+    // renderer maps `fill` to `color` in text mode and then overwrites it two
+    // lines later, so offering both rows showed two controls for one property
+    // and editing the fill appeared to do nothing.
+    expect(field(sections, 'style.color')?.globalGroup).toBe('palette');
+    expect(field(sections, 'style.fill')).toBeUndefined();
+
     expect(field(sections, 'style.fontSize')?.globalGroup).toBe('fontSizes');
     // Opacity is a plain number with no token group, so no picker.
     expect(field(sections, 'style.opacity')?.globalGroup).toBeUndefined();
+  });
+
+  it('offers fill on a shape, where it is the real property', () => {
+    const sections = describeSelection(document_([rect('r')]), ['r']);
+
+    expect(field(sections, 'style.fill')?.globalGroup).toBe('palette');
+    // ...and no typography on a shape, which was a `TEXT_ONLY` typo away.
+    expect(field(sections, 'style.fontSize')).toBeUndefined();
+  });
+
+  it('shows a group only its identity and flags (spec 0011 D2)', () => {
+    const grouped: ThemeNode = {
+      id: 'g',
+      type: 'group',
+      transform: { x: 10, y: 10, width: 100, height: 100 },
+      children: [rect('inner')],
+    } as ThemeNode;
+    const sections = describeSelection(document_([grouped]), ['g']);
+
+    // A group is an editor entity, not a drawable. It used to offer
+    // X/Y/width/height — which moved its outline without its contents — and
+    // fill, which painted nothing.
+    expect(field(sections, 'transform.x')).toBeUndefined();
+    expect(field(sections, 'transform.width')).toBeUndefined();
+    expect(field(sections, 'style.fill')).toBeUndefined();
+    expect(field(sections, 'style.opacity')).toBeUndefined();
+
+    // What it does keep.
+    expect(field(sections, 'name')).toBeDefined();
+    expect(field(sections, 'visible')).toBeDefined();
+    expect(field(sections, 'locked')).toBeDefined();
   });
 
   it('resolves a dangling reference to undefined rather than inventing a value', () => {
