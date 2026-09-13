@@ -21,6 +21,7 @@ import {
   clearSelection,
   emptySelection,
   enterGroup,
+  exitAllGroups,
   exitGroup,
   pruneSelection,
   setSelection,
@@ -48,6 +49,8 @@ import {
   commit,
   createHistory,
   isDirty,
+  markSaved,
+  replaceDocument,
   preview,
   redo,
   undo,
@@ -70,6 +73,12 @@ import {
   setGlobalValue,
 } from './globals-commands.js';
 import { createGlobalsPanel, seedForGroup, type GlobalAction } from './globals-panel.js';
+import {
+  describeIssues,
+  fileNameFor,
+  parseThemeFile,
+  serializeForFile,
+} from './persist.js';
 import {
   alignNodes,
   describeRefusal,
@@ -212,6 +221,15 @@ function start(): void {
   let inspectorKey = '';
   let globalsKey = '';
 
+  /**
+   * The node ids the scene was last mounted with.
+   *
+   * `mountScene.update` refuses a plan whose ids differ — it is for new data,
+   * not a new document — so a change to the set means a remount. Opening a file
+   * clears this, because every id changed at once.
+   */
+  let lastIds = [...collectIds(visibleDocument(history).nodes)].join(',');
+
   const inspector = createInspector(body, {
     onChange(key, change) {
       const document_ = history.current;
@@ -295,11 +313,122 @@ function start(): void {
     ['distribute-y', '⋮', () => runArrange(distributeNodes(history.current, selection.ids, 'y'), 'Distribute vertically')],
   ];
 
+  /**
+   * Opening and saving.
+   *
+   * A hidden `<input type=file>` and a generated download rather than the File
+   * System Access API: there is no host to save *to* yet (ADR-0006), so this is
+   * a stopgap either way, and a picker-plus-download round trip is one a test
+   * can actually drive.
+   */
+  const filePicker = document.createElement('input');
+  filePicker.type = 'file';
+  filePicker.accept = 'application/json,.json';
+  filePicker.dataset['vigiliaOpen'] = 'input';
+  filePicker.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none';
+  panel.append(filePicker);
+
+  filePicker.addEventListener('change', () => {
+    const file = filePicker.files?.[0];
+
+    if (file === undefined) {
+      return;
+    }
+
+    void file.text().then((text) => {
+      const result = parseThemeFile(text);
+
+      // The picker is reset either way, or choosing the same file twice in a
+      // row fires no change event and looks like a dead button.
+      filePicker.value = '';
+
+      if (!result.ok) {
+        // Loudly, and without touching the open document: a theme that fails
+        // validation is exactly the case §141 exists for, and silently keeping
+        // half of it would be worse than refusing.
+        notice = `Could not open: ${describeIssues(result.issues)}`;
+        drawStatus();
+        return;
+      }
+
+      // A new file is a new history. An undo that crossed a file boundary would
+      // restore half of another theme.
+      history = replaceDocument(history, result.document);
+      selection = clearSelection(exitAllGroups(selection));
+      notice = `Opened ${file.name}`;
+      lastIds = '';
+      inspectorKey = '';
+      globalsKey = '';
+      render();
+    });
+  });
+
+  const saveTheme = (): void => {
+    const document_ = history.current;
+    const blob = new Blob([serializeForFile(document_)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+
+    anchor.href = url;
+    anchor.download = fileNameFor(document_);
+    anchor.click();
+
+    URL.revokeObjectURL(url);
+
+    // §139: saving marks the history clean WITHOUT clearing it, so undo still
+    // reaches edits from before the save. This is the first caller — the rule
+    // has been unit-tested since the history module existed and until now had
+    // never run in the product.
+    history = markSaved(history);
+    notice = `Saved ${anchor.download}`;
+    render();
+  };
+
   const toolbar = document.createElement('div');
   toolbar.dataset['vigiliaToolbar'] = 'arrange';
-  toolbar.style.cssText =
-    'display:flex;flex:none;gap:2px;padding:4px 8px;border-bottom:1px solid #232a36';
+  // Two rows, not one wrapped row. Ten controls do not fit one 300 px row: the
+  // first version clipped the last align button off the panel's edge, and
+  // wrapping then left it orphaned on a line of its own. Both were visible in
+  // the committed screenshot, which is what committing them is for.
+  toolbar.style.cssText = [
+    'display:flex',
+    'flex:none',
+    'gap:2px',
+    'padding:4px 8px',
+    'border-bottom:1px solid #232a36',
+  ].join(';');
   panel.insertBefore(toolbar, body);
+
+  const fileBar = document.createElement('div');
+  fileBar.dataset['vigiliaToolbar'] = 'file';
+  fileBar.style.cssText = 'display:flex;flex:none;gap:4px;padding:4px 8px 0';
+  panel.insertBefore(fileBar, toolbar);
+
+  const fileButtons: readonly (readonly [string, string, string, () => void])[] = [
+    ['open', 'Open', 'Open a theme file (Ctrl+O)', () => filePicker.click()],
+    ['save', 'Save', 'Download this theme (Ctrl+S)', saveTheme],
+  ];
+
+  for (const [id, label, title, run] of fileButtons) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = title;
+    button.dataset['vigiliaFile'] = id;
+    button.style.cssText = [
+      'flex:none',
+      'height:22px',
+      'padding:0 8px',
+      'background:#1d2530',
+      'color:#8a97ab',
+      'border:1px solid #2a3242',
+      'border-radius:3px',
+      'cursor:pointer',
+      'font:11px/1 system-ui,sans-serif',
+    ].join(';');
+    button.addEventListener('click', run);
+    fileBar.append(button);
+  }
 
   for (const [id, glyph, run] of arrangeButtons) {
     const button = document.createElement('button');
@@ -308,7 +437,8 @@ function start(): void {
     button.title = id.replace('-', ' ');
     button.dataset['vigiliaArrange'] = id;
     button.style.cssText = [
-      'flex:1',
+      'flex:1 1 22px',
+      'min-width:0',
       'height:22px',
       'background:#1d2530',
       'color:#8a97ab',
@@ -325,7 +455,11 @@ function start(): void {
     // Enabled by selection count, so the buttons say when they are usable
     // rather than refusing after the fact. Distribute needs three; align needs
     // two.
-    for (const button of toolbar.querySelectorAll('button')) {
+    // Scoped to the arrange buttons. Selecting every button in the toolbar also
+    // caught Open and Save, which then sat disabled until two nodes were
+    // selected — two browser tests timed out clicking Save before this line
+    // was narrowed.
+    for (const button of toolbar.querySelectorAll<HTMLButtonElement>('[data-vigilia-arrange]')) {
       const needs = button.dataset['vigiliaArrange']?.startsWith('distribute') === true ? 3 : 2;
       const enabled = selection.ids.length >= needs;
 
@@ -393,8 +527,6 @@ function start(): void {
     handle = mountScene({ host, plan: plan(visibleDocument(history)) });
     host.append(overlay.root);
   };
-
-  let lastIds = [...collectIds(visibleDocument(history).nodes)].join(',');
 
   const render = (): void => {
     const document_ = visibleDocument(history);
@@ -788,6 +920,20 @@ function start(): void {
       selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
       event.preventDefault();
       render();
+      return;
+    }
+
+    if (meta && event.key.toLowerCase() === 's') {
+      // Ctrl+S is the browser's "save page", which is never what an author
+      // means with an editor focused.
+      event.preventDefault();
+      saveTheme();
+      return;
+    }
+
+    if (meta && event.key.toLowerCase() === 'o') {
+      event.preventDefault();
+      filePicker.click();
       return;
     }
 

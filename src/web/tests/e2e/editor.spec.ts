@@ -975,3 +975,152 @@ test.describe('grouping and alignment', () => {
     );
   });
 });
+
+test.describe('open and save', () => {
+  test('saving downloads the theme, and marks history clean without clearing it (§139)', async ({
+    page,
+  }) => {
+    await openEditor(page);
+
+    // Make an edit, so "clean" is something that had to be established rather
+    // than the initial state.
+    await page.locator('[data-node-id="title"]').click();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#status')).toContainText('unsaved');
+
+    const download = page.waitForEvent('download');
+    await page.keyboard.press('Control+s');
+    const saved = await download;
+
+    expect(saved.suggestedFilename()).toMatch(/\.json$/);
+    await expect(page.locator('#status')).toContainText('saved');
+    await expect(page.locator('#status')).not.toContainText('unsaved');
+
+    // §139: the history is NOT cleared, so undo still reaches before the save.
+    await expect(page.locator('#status')).toContainText('undo:');
+    await page.keyboard.press('Control+z');
+    // And undoing away from the saved document makes it dirty again.
+    await expect(page.locator('#status')).toContainText('unsaved');
+  });
+
+  test('the saved file is a valid theme that round-trips', async ({ page }) => {
+    await openEditor(page);
+
+    const download = page.waitForEvent('download');
+    await page.locator('[data-vigilia-file="save"]').click();
+    const stream = await (await download).createReadStream();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+
+    const text = Buffer.concat(chunks).toString('utf8');
+    const parsed = JSON.parse(text) as { schemaVersion: number; nodes: unknown[] };
+
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.nodes.length).toBeGreaterThan(0);
+    // Canonical output, ending in exactly one newline.
+    expect(text.endsWith('}\n')).toBe(true);
+    expect(text.endsWith('\n\n')).toBe(false);
+  });
+
+  test('opening a file replaces the document and resets the history', async ({ page }) => {
+    await openEditor(page);
+
+    await page.locator('[data-node-id="title"]').click();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#status')).toContainText('undo:');
+
+    await page.locator('[data-vigilia-open="input"]').setInputFiles({
+      name: 'tiny.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        JSON.stringify({
+          schemaVersion: 1,
+          id: 'tiny',
+          artboard: { width: 200, height: 100, background: { value: '#123456' } },
+          nodes: [
+            {
+              id: 'only',
+              type: 'rectangle',
+              transform: { x: 10, y: 10, width: 50, height: 50 },
+              style: { fill: { value: '#ff0000' } },
+            },
+          ],
+        }),
+      ),
+    });
+
+    await expect(page.locator('[data-node-id="only"]')).toBeVisible();
+    // The old document is gone, scene and all.
+    await expect(page.locator('[data-node-id="cpu-gauge"]')).toHaveCount(0);
+    // An undo that crossed a file boundary would restore half of another theme,
+    // so opening resets the history rather than appending to it.
+    await expect(page.locator('#status')).not.toContainText('undo:');
+    await expect(page.locator('#status')).toContainText('Opened tiny.json');
+  });
+
+  test('a file that is not a theme is refused, and the open document survives', async ({
+    page,
+  }) => {
+    await openEditor(page);
+
+    await page.locator('[data-vigilia-open="input"]').setInputFiles({
+      name: 'broken.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"schemaVersion":1,"id":"x"}'),
+    });
+
+    await expect(page.locator('#status')).toContainText('Could not open');
+    // Still the demo theme: §141's refusal must not half-apply.
+    await expect(page.locator('[data-node-id="cpu-gauge"]')).toBeVisible();
+  });
+
+  test('a newer schema version is refused on the version alone (§141)', async ({ page }) => {
+    await openEditor(page);
+
+    await page.locator('[data-vigilia-open="input"]').setInputFiles({
+      name: 'future.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"schemaVersion":99,"id":"x","artboard":{"width":1,"height":1},"nodes":[]}'),
+    });
+
+    // The message is about the version, not about the rest of the document —
+    // anything else said about a format we do not understand is speculation.
+    await expect(page.locator('#status')).toContainText('Could not open');
+    await expect(page.locator('#status')).toContainText('version');
+  });
+
+  test('an edited theme survives a save and reopen unchanged', async ({ page }) => {
+    await openEditor(page);
+
+    // Recolour a global, which touches the part of the format most likely to
+    // be dropped by a serialiser: the globals map.
+    await page.locator('[data-vigilia-tab="theme"]').click();
+    const value = page.locator('[data-vigilia-global-value="palette.panel"]');
+    await value.fill('#010203');
+    await value.blur();
+
+    const download = page.waitForEvent('download');
+    await page.locator('[data-vigilia-file="save"]').click();
+    const stream = await (await download).createReadStream();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+
+    await page.locator('[data-vigilia-open="input"]').setInputFiles({
+      name: 'roundtrip.json',
+      mimeType: 'application/json',
+      buffer: Buffer.concat(chunks),
+    });
+
+    await expect(page.locator('#status')).toContainText('Opened roundtrip.json');
+    await expect(page.locator('[data-node-id="cpu-panel-bg"]')).toHaveCSS(
+      'background-color',
+      'rgb(1, 2, 3)',
+    );
+  });
+});
