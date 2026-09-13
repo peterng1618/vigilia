@@ -43,6 +43,41 @@ describe('updateTransforms', () => {
     expect(findNode(next.nodes, 'b')?.transform).toEqual({ x: 5, y: 5, width: 20, height: 20 });
   });
 
+  it('rounds away floating-point dirt from the gesture maths', () => {
+    // Dragging a node 37 px wrote 89.99999999999994 into the document, because
+    // every gesture composes and inverts matrices and the error survives. The
+    // inspector then showed a fourteen-digit number in a 60 px field and a
+    // re-save produced a noisy diff for a drag that had visually landed round.
+    const next = updateTransforms(
+      document_,
+      new Map([['b', { x: 89.99999999999994, y: 59.99999999999999, rotation: 14.999999999 }]]),
+    );
+
+    expect(findNode(next.nodes, 'b')?.transform).toEqual({ x: 90, y: 60, rotation: 15 });
+  });
+
+  it('rounds a typed fraction to the nearest whole unit', () => {
+    // Geometry is integral by decision, so a fraction lands on a unit rather
+    // than being refused — the author gets 121, not an error.
+    const next = updateTransforms(document_, new Map([['b', { x: 120.75, y: 0.4 }]]));
+
+    expect(findNode(next.nodes, 'b')?.transform).toEqual({ x: 121, y: 0 });
+  });
+
+  it('leaves scale alone, because a multiplier is not a unit', () => {
+    // Rounding scaleX to 1 would silently discard an authored 0.9.
+    const next = updateTransforms(document_, new Map([['b', { scaleX: 0.9, scaleY: 1.4 }]]));
+
+    expect(findNode(next.nodes, 'b')?.transform).toEqual({ scaleX: 0.9, scaleY: 1.4 });
+  });
+
+  it('never writes -0, which would serialise into the document', () => {
+    const next = updateTransforms(document_, new Map([['b', { x: -0.0001, y: -0 }]]));
+
+    expect(Object.is(findNode(next.nodes, 'b')?.transform?.x, -0)).toBe(false);
+    expect(Object.is(findNode(next.nodes, 'b')?.transform?.y, -0)).toBe(false);
+  });
+
   it('updates several at once', () => {
     const next = updateTransforms(
       document_,

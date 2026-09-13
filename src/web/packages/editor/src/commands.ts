@@ -38,8 +38,50 @@ export function updateTransforms(
     ...document,
     nodes: mapNodes(document.nodes, (node) => {
       const transform = transforms.get(node.id);
-      return transform === undefined ? node : { ...node, transform };
+      return transform === undefined ? node : { ...node, transform: quantise(transform) };
     }),
+  };
+}
+
+/**
+ * Rounds a transform to whole artboard units.
+ *
+ * **Geometry here is integral by decision** — positions, sizes and rotation are
+ * whole numbers, so the inspector's controls step by 1 and a typed fraction
+ * lands on the nearest unit. A dashboard is laid out on a pixel grid at a fixed
+ * artboard size; sub-unit placement buys nothing and costs legibility.
+ *
+ * It also removes a real defect. Every gesture composes and inverts matrices,
+ * and floating-point error survives that arithmetic: dragging a node 37 px
+ * wrote `89.99999999999994` into the document rather than `90`. The inspector
+ * showed a fourteen-digit number in a 60 px field, saved themes carried the
+ * dirt, and a re-save produced a noisy diff for a drag that had visually landed
+ * on a round number.
+ *
+ * Applied here because **every** transform write goes through
+ * `updateTransforms` — the gesture layer, the arrange commands, the nudge and
+ * the group-resize scaling all funnel into it. Rounding at each of those
+ * instead would be four places to forget.
+ *
+ * `scaleX`/`scaleY` are deliberately **not** rounded: they are multipliers, not
+ * units, and a scale of 0.9 is a legitimate authored value that rounding to 1
+ * would silently discard.
+ */
+function quantise(transform: Transform): Transform {
+  const round = (value: number): number => {
+    // `-0` would otherwise serialise into the document as `-0`.
+    const rounded = Math.round(value);
+
+    return rounded === 0 ? 0 : rounded;
+  };
+
+  return {
+    ...transform,
+    ...(transform.x === undefined ? {} : { x: round(transform.x) }),
+    ...(transform.y === undefined ? {} : { y: round(transform.y) }),
+    ...(transform.width === undefined ? {} : { width: round(transform.width) }),
+    ...(transform.height === undefined ? {} : { height: round(transform.height) }),
+    ...(transform.rotation === undefined ? {} : { rotation: round(transform.rotation) }),
   };
 }
 

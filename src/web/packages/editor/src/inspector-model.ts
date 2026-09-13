@@ -65,7 +65,13 @@ export interface FieldDescriptor {
   readonly options?: readonly FieldOption[];
   readonly min?: number;
   readonly max?: number;
-  readonly step?: number;
+  /**
+   * Spinner/arrow increment. `'any'` means the control accepts any precision,
+   * which is what a geometry field needs: a fixed `step` of 1 made every
+   * fractional value a `stepMismatch`, so the input sat permanently `:invalid`
+   * and the arrows could only move in whole units.
+   */
+  readonly step?: number | 'any';
   /** The selected nodes disagree. Distinct from unset — see the module note. */
   readonly mixed?: boolean;
   /** §61: a locked node's fields are shown but not editable. */
@@ -284,7 +290,7 @@ function transformSection(nodes: readonly ThemeNode[], readOnly: boolean): Inspe
     key: string,
     label: string,
     read: (node: ThemeNode) => number,
-    extra: { min?: number; max?: number; step?: number } = {},
+    extra: { min?: number; max?: number; step?: number | 'any' } = {},
   ): FieldDescriptor => ({
     key: `transform.${key}`,
     label,
@@ -297,6 +303,9 @@ function transformSection(nodes: readonly ThemeNode[], readOnly: boolean): Inspe
   return {
     title: 'Transform',
     fields: [
+      // Whole units, by decision: geometry is integral, so `step` stays 1 and
+      // `updateTransforms` rounds. A fraction typed here lands on the nearest
+      // unit rather than being refused.
       field('x', 'X', (node) => node.transform?.x ?? 0),
       field('y', 'Y', (node) => node.transform?.y ?? 0),
       field('width', 'Width', (node) => node.transform?.width ?? 0, { min: 0 }),
