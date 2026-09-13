@@ -77,8 +77,8 @@ export interface InspectorSection {
   readonly fields: readonly FieldDescriptor[];
 }
 
-/** Style properties the renderer understands, with how to edit each. */
-const STYLE_FIELDS: readonly {
+/** One style property's type and range. */
+export interface StyleFieldDefinition {
   readonly property: string;
   readonly label: string;
   readonly kind: FieldKind;
@@ -87,7 +87,10 @@ const STYLE_FIELDS: readonly {
   readonly max?: number;
   readonly step?: number;
   readonly options?: readonly FieldOption[];
-}[] = [
+}
+
+/** Style properties the renderer understands, with how to edit each. */
+const STYLE_FIELDS: readonly StyleFieldDefinition[] = [
   { property: 'fill', label: 'Fill', kind: 'colour', globalGroup: 'palette' },
   { property: 'color', label: 'Text colour', kind: 'colour', globalGroup: 'palette' },
   { property: 'opacity', label: 'Opacity', kind: 'number', min: 0, max: 1, step: 0.05 },
@@ -114,6 +117,76 @@ const STYLE_FIELDS: readonly {
   { property: 'lineHeight', label: 'Line height', kind: 'number', min: 0.5, step: 0.05 },
   { property: 'tabularNumerals', label: 'Tabular figures', kind: 'boolean' },
 ];
+
+const STYLE_FIELDS_BY_PROPERTY = new Map(
+  STYLE_FIELDS.map((definition) => [definition.property, definition]),
+);
+
+/**
+ * The definition for a style property, or `undefined` if the renderer has no
+ * such property.
+ *
+ * Exported so that **applying** an edit consults the same declaration that
+ * built the control. It previously did not, and half the Style panel was inert
+ * as a result: the panel rendered a number input, this table declared
+ * `min`/`max`, and the apply step stored `input.value` verbatim — a string.
+ * `mount.ts`'s `asNumber` requires a real number, so opacity, outline width,
+ * shadow blur, font size, letter spacing and line height all silently did
+ * nothing while the field showed the typed value and the history recorded an
+ * edit.
+ */
+export function styleFieldFor(property: string): StyleFieldDefinition | undefined {
+  return STYLE_FIELDS_BY_PROPERTY.get(property);
+}
+
+/**
+ * Parses what a numeric control hands back, or refuses it.
+ *
+ * **A number input's `.value` is the empty string whenever its content is not
+ * a valid number** — including a half-typed `1e` — and `Number('') === 0`. So
+ * the obvious `Number(raw)` turned a clumsy keystroke into a committed zero:
+ * width 0 made an element vanish, and clearing a numeric global rendered the
+ * title at `0px`. Refusing is the only safe reading of "not a number".
+ *
+ * @returns The clamped number, or `undefined` when the input is not a number
+ *   and the edit should be refused rather than coerced.
+ */
+export function parseNumeric(
+  raw: unknown,
+  range: { readonly min?: number; readonly max?: number } = {},
+): number | undefined {
+  // `unknown` because a `FieldChange` carries whatever produced it: the DOM
+  // sends a string, and callers in code send a number.
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) ? clamp(raw, range) : undefined;
+  }
+
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return undefined;
+  }
+
+  const parsed = Number(raw);
+
+  if (!Number.isFinite(parsed)) {
+    return undefined;
+  }
+
+  return clamp(parsed, range);
+}
+
+/**
+ * Clamped rather than refused: an author typing past a limit means the limit,
+ * and spec 0006 promises an edit cannot produce a document that then fails to
+ * save.
+ */
+function clamp(
+  value: number,
+  range: { readonly min?: number; readonly max?: number },
+): number {
+  const lower = range.min === undefined ? value : Math.max(range.min, value);
+
+  return range.max === undefined ? lower : Math.min(range.max, lower);
+}
 
 /** Typography fields are only worth showing on something that draws text. */
 const TEXT_ONLY = new Set([

@@ -311,6 +311,19 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
   }
 
   input.addEventListener('change', () => {
+    // A number input reports `.value` as the empty string for ANY content it
+    // cannot parse, so a half-typed `1e` is indistinguishable from a cleared
+    // field by value alone — and treating it as empty committed a zero, which
+    // made elements vanish and rendered text at 0px. `validity.badInput` is
+    // the one signal that separates the two: garbage is refused here, while a
+    // genuinely empty field still means "clear this property".
+    if (field.kind === 'number' && input.validity.badInput) {
+      // Snap back to what the document holds, so the rejected text does not
+      // sit on screen looking accepted.
+      input.value = field.value === undefined ? '' : String(field.value);
+      return;
+    }
+
     callbacks.onChange(field.key, { kind: 'literal', value: input.value });
   });
 

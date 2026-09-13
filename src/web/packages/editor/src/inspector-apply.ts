@@ -1,6 +1,9 @@
 import type { GlobalRef, ThemeDocument, ThemeNode } from '@vigilia/renderer-core';
 import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from './commands.js';
 import { normalizeDegrees } from './transform-gesture.js';
+// Applying an edit consults the same declaration that built the control, so a
+// numeric field cannot be rendered as a number input and stored as a string.
+import { parseNumeric, styleFieldFor } from './inspector-model.js';
 
 /**
  * Turning an inspector edit into a document edit.
@@ -96,9 +99,12 @@ function applyTransformField(
     return document_;
   }
 
-  const raw = Number(change.value);
+  // `Number('')` is 0, and a number input reports the empty string for any
+  // content it cannot parse — so the obvious `Number(change.value)` turned a
+  // half-typed `1e` into a committed zero, which made the element vanish.
+  const raw = parseNumeric(change.value);
 
-  if (!Number.isFinite(raw)) {
+  if (raw === undefined) {
     return document_;
   }
 
@@ -143,6 +149,26 @@ function applyStyleField(
     // the document may as well say so.
     if (change.value === '' || change.value === undefined) {
       return updateStyle(current, node.id, { [property]: undefined });
+    }
+
+    const definition = styleFieldFor(property);
+
+    // Numeric properties must be stored as NUMBERS. Storing the control's
+    // string put `{"value":"0.25"}` in the document, and `mount.ts`'s
+    // `asNumber` requires `typeof === 'number'` — so opacity, outline width,
+    // shadow blur, font size, letter spacing and line height all silently did
+    // nothing while the field showed the typed value and the history recorded
+    // an edit. Outline was worse: a failed width parse discarded the colour
+    // too, leaving `border: 0px none`.
+    if (definition?.kind === 'number') {
+      const parsed = parseNumeric(change.value, definition);
+
+      // Refused rather than coerced: see `parseNumeric`.
+      if (parsed === undefined) {
+        return current;
+      }
+
+      return updateStyle(current, node.id, { [property]: { value: parsed } });
     }
 
     return updateStyle(current, node.id, { [property]: { value: change.value } });

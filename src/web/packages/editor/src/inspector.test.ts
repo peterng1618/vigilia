@@ -227,6 +227,54 @@ describe('applyFieldChange', () => {
     expect(findNode(next.nodes, 'a')?.transform?.y).toBe(35);
   });
 
+  it('refuses the empty string instead of committing a zero', () => {
+    // A number input reports '' for ANY content it cannot parse, including a
+    // half-typed `1e`. `Number('')` is 0, so the obvious reading turned a
+    // clumsy keystroke into width 0 and the element vanished.
+    for (const value of ['', '   ', '1e', '-', 'abc']) {
+      expect(applyFieldChange(base, ['a'], 'transform.width', { kind: 'literal', value })).toBe(
+        base,
+      );
+    }
+  });
+
+  it('stores a numeric STYLE property as a number, not a string', () => {
+    // The renderer's `asNumber` requires `typeof === 'number'`, so storing the
+    // control's string made opacity, outline width, shadow blur, font size,
+    // letter spacing and line height all silently do nothing.
+    const next = applyFieldChange(base, ['a'], 'style.opacity', {
+      kind: 'literal',
+      value: '0.25',
+    });
+
+    expect(findNode(next.nodes, 'a')?.style?.['opacity']).toEqual({ value: 0.25 });
+  });
+
+  it('clamps a numeric style property to its declared range', () => {
+    const low = applyFieldChange(base, ['a'], 'style.opacity', { kind: 'literal', value: '-5' });
+    const high = applyFieldChange(base, ['a'], 'style.opacity', { kind: 'literal', value: '9' });
+
+    expect(findNode(low.nodes, 'a')?.style?.['opacity']).toEqual({ value: 0 });
+    expect(findNode(high.nodes, 'a')?.style?.['opacity']).toEqual({ value: 1 });
+  });
+
+  it('refuses an unparseable numeric style value rather than deleting the property', () => {
+    const styled = document_([rect('a', { style: { strokeWidth: { value: 4 } } })]);
+
+    expect(
+      applyFieldChange(styled, ['a'], 'style.strokeWidth', { kind: 'literal', value: '1e' }),
+    ).toBe(styled);
+  });
+
+  it('still stores a non-numeric style property as the string it is', () => {
+    const next = applyFieldChange(base, ['a'], 'style.fill', {
+      kind: 'literal',
+      value: '#0cf',
+    });
+
+    expect(findNode(next.nodes, 'a')?.style?.['fill']).toEqual({ value: '#0cf' });
+  });
+
   it('ignores an unparseable number rather than writing NaN', () => {
     // NaN in a transform would render nothing and fail validation on save.
     expect(applyFieldChange(base, ['a'], 'transform.x', { kind: 'literal', value: 'abc' })).toBe(base);
