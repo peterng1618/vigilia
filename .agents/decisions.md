@@ -46,6 +46,47 @@ so there is one renderer and no editor/display drift.
 The durable lesson from that evaluation: test a foundation against the
 constraint that would disqualify it, first.
 
+### The editor is a manager architecture over that layer
+
+**Decided by:** the user, 2026-09-14, naming `fabricjs-image-editor` as the
+architecture to follow and its separation of concerns as the reason.
+
+`packages/editor/src/main.ts` had reached **1,349 lines** holding nine unrelated
+concerns in one closure: every piece of mutable state as a `let`, all panel DOM
+construction, a 130-line action switch with command bodies in the case arms, the
+pointer and keyboard listeners, file I/O, and ~25 hand-placed `render()` calls
+guarded by four `JSON.stringify` cache keys. None of it was reachable from
+outside, so none of it was unit-testable, and the next four things the product
+needs — creation tools, a clipboard, zoom/pan, a live tick — had nowhere to
+attach. Two actions were already implemented twice, and enablement was painted
+by querying the DOM for buttons.
+
+So: **one manager per domain behind a composition root**, modelled on
+`fabricjs-image-editor` — a class holding every manager as a typed field, an
+ordered registration table driving `init()` and its reverse `destroy()`, a typed
+event map replacing manual redraw calls, and config-object registries as the
+extension point. The contract is written in
+[`architecture.md`](architecture.md) §4.
+
+**What is *not* adopted is the canvas.** That repo is a Fabric editor; adopting
+Fabric would render the scene twice, which §31 forbids and which the decision
+above already settled. `renderer-core`'s `plan.ts`/`mount.ts` stays the only
+renderer. Also rejected: its `jsondiffpatch` snapshot-diff history — this
+document is immutable with structural sharing, so whole-document snapshots are
+already cheap and reference equality already powers the dirty check, and the
+dependency would buy nothing. **The refactor adds no dependency, runtime or
+dev.**
+
+The costs, stated plainly: a large diff across a package with no unit tests on
+its DOM half, where the only safety net is `tests/e2e/editor.spec.ts`'s 57
+structural assertions — so no `data-vigilia-*` hook may be renamed while the
+restructure is in flight. And it delays schema v2, which was next.
+
+**What would reopen this:** a manager graph that needs a real dependency-
+injection container to stay acyclic, or a UI surface complex enough that hand-
+written DOM stops paying — either means the "no component framework" position
+should be re-argued, not worked around.
+
 ### Two sensor tiers, discovered and never hardcoded
 
 Baseline works with no driver and no elevation. Extended needs PawnIO and may

@@ -14,7 +14,7 @@ Scope, so this file does not become a fourth copy of something:
 | Commands, traps, conventions | [`../AGENTS.md`](../AGENTS.md) |
 | What a feature is *supposed* to do | [`../.agents/specs/`](../.agents/specs/) |
 | Why a decision was made | [`decisions.md`](decisions.md) |
-| Current state, what is next | [`handoff.md`](handoff.md) |
+| Current state, what is next | [`status.md`](status.md) |
 | What the product should do | [`design/plan.md`](design/plan.md) — goals from the user, the rest agent-owned |
 
 ---
@@ -103,7 +103,102 @@ Gesture maths in the overlay, a decision in `mount.ts`, and path-safety logic
 inline in a request handler are all the same mistake, and they fail the same
 way.
 
-## 4. Ownership registry
+## 4. Editor module conventions
+
+The editor is organised as **one manager per domain behind a composition root**
+(ADR: *the editor is a manager architecture over the renderer*). The rules below
+are what make that shape hold; they apply to `packages/editor` and are worth
+copying anywhere else that grows a second stateful surface.
+
+### The manager contract
+
+Every manager is one class in `src/<domain>/index.ts`:
+
+```ts
+export class SelectionManager {
+  public readonly editor: EditorCore;
+  constructor({ editor }: { editor: EditorCore }) { … }
+  public destroy(): void { … }
+  private _bindEvents(): void { … }
+}
+```
+
+- **Uniform construction.** `new XManager({ editor })` — an object literal, never
+  positional arguments. New APIs follow suit; existing pure functions keep their
+  signatures rather than being churned.
+- **Peers at runtime, types at compile time.** Reach a peer as
+  `this.editor.selection`; import the root as `import type`. A manager that
+  imports a peer's *class* has created a cycle the next refactor pays for.
+  Shared **contracts** may be imported directly; implementations may not.
+- **Sub-controllers get a narrowed bag.** A controller receives
+  `{ dependencies: { … } }` listing what it actually uses, not the root, so it
+  unit-tests without an editor. Where construction order forbids resolving a
+  peer eagerly, pass a lazy `resolveX: () => this.editor.x` thunk and make the
+  cycle explicit.
+- **`destroy()` mirrors construction**, and order is structural: managers are
+  listed once in `core/registrations.ts`, `init()` walks that table forward and
+  `destroy()` walks it in reverse. The table is keyed by a union of manager
+  names, so adding a manager without registering it is a compile error — there
+  is no second list and no order test to drift.
+- **Events, not callbacks.** Managers emit through `core/events.ts`'s typed map;
+  the UI subscribes. A panel redraws because something it draws changed, not
+  because a caller remembered to ask.
+
+### Three kinds of state, never confused
+
+Every change must say which of these it touches, in code and in its tests:
+
+| Kind | Lives in | Example |
+|---|---|---|
+| **Persisted** | the `ThemeDocument`, reachable only through `DocumentManager` | a node's transform |
+| **Derived** | computed on demand from persisted state | a layer tree, an enablement snapshot |
+| **Transient** | private on the manager owning the interaction | the live drag, snap guides, a marquee |
+
+Transient state that reaches the document is the defect this taxonomy exists to
+catch; it survives an undo and cannot be explained.
+
+### Folder roles
+
+A manager large enough to split uses **role folders**, named for what the code
+*is*, never for what bucket it fell into:
+
+`domain/` the shape of the thing, lookup, invariants · `mutation/` public
+changes and the commit pipeline · `gesture/` live interaction · `layout/` sizes
+and placement · `events/` subscriptions and routing · `lifecycle/` creation and
+teardown.
+
+**`helpers/`, `common/`, `utils/`, `internal/` and `shared/` are not used.** If a
+generic word is the only name that fits, the file's role has not been decided
+yet. Do not leave re-export wrapper files behind after a move, and do not add a
+barrel to shorten an import — import from the file that owns the thing. The one
+sanctioned barrel is a package's public surface (`editor/src/index.ts`).
+
+### Filename vocabulary
+
+The suffix says why the file exists, so a tree reads as a design:
+
+| Suffix | Means |
+|---|---|
+| `factory` | creates one object |
+| `pipeline` | assembles the whole next state before anything is applied |
+| `commit` / `apply` | applies an already-prepared result |
+| `controller` | owns one area of behaviour |
+| `session` | holds the transient state of a single gesture |
+| `reference` | resolves a target — by id, by selection, by hit |
+| `runtime` | restores invariants after create, clone or load |
+| `model` | projects state into what a surface draws |
+
+### Size
+
+**500 lines is a signal, 800 is a stop.** A file over 500 should be re-read for
+a second responsibility; one at 800 may not grow further without being split. A
+test enforces the ceiling with an explicit allowlist —
+`renderer-core/src/theme/validate.ts` and `scene/mount.ts` are the recorded
+exceptions, both long by nature rather than by tangle. The ceiling exists
+because `main.ts` reached 1,349 lines holding nine unrelated concerns and
+nothing objected.
+
+## 5. Ownership registry
 
 **Search here first.** Each row is a concept with exactly one home. If what you
 are about to add resembles a row, import it instead.
@@ -159,7 +254,7 @@ before building anything that would add another copy.
 | Theme enums (`fitMode`, asset `kind`, `unitDisplay`, …) | schema + `document.ts` union + `validate.ts` array, unguarded | A value added to two of three is rejected on import with a misleading error |
 | Licence check | CI greps a fixed list of three names | Four real dev dependencies have no notice entry and CI is green |
 
-## 5. Patterns worth copying
+## 6. Patterns worth copying
 
 1. **Providers acquire; the host schedules.** A provider never starts a timer,
    caches history, or pushes. That is what makes "a second phone must not double
@@ -180,7 +275,7 @@ before building anything that would add another copy.
    elements vanish. `parseNumeric` refuses; `validity.badInput` distinguishes
    garbage from a deliberate clear.
 
-## 6. What the tests actually cover
+## 7. What the tests actually cover
 
 Worth knowing before trusting a green run:
 

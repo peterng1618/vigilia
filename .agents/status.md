@@ -1,4 +1,4 @@
-# Status — 2026-09-13
+# Status — 2026-09-14
 
 A snapshot, and the one file here that goes stale on purpose. Every figure below
 must have been printed by a command that ran — **update this file before every
@@ -41,7 +41,7 @@ the size gate passed on 2026-09-13. No schema version bump: this rejects
 previously ignored unknown names while retaining the v1 property vocabulary.
 
 Panel scrollbars no longer cover content and no panel grows a horizontal bar
-(uncommitted, this session). One `scrollAreaStyle` owner in `button.ts`
+(committed as `6f3b628`). One `scrollAreaStyle` owner in `button.ts`
 (`overflow-y:auto` + `overflow-x:hidden` + `scrollbar-gutter:stable`); themed
 thin bars via `--vigilia-scrollbar-*` tokens in `index.html`; overlay hexes now
 reference panel tokens. Content padding moved from the sidebar shells onto the
@@ -57,7 +57,27 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**1 — A layer panel.** DONE 2026-09-13, uncommitted. Bottom-right panel below
+**1 — The editor manager refactor.** IN PROGRESS, started 2026-09-14. Restructure
+`packages/editor` as one manager per domain behind a composition root, modelled
+on `fabricjs-image-editor`'s separation of concerns — see
+[`decisions.md`](decisions.md) and the contract in
+[`architecture.md`](architecture.md) §4. Adds no dependency. Seven phases: 0
+conventions · 1 the `EditorCore` seam · 2 actions gain bodies · 3 a manager per
+existing domain · 4 the DOM half · 5 the empty slots (tools, clipboard, file,
+tick) · 6 the duplications the new rules forbid.
+
+**Phase 0 is done and is documentation only** — the manager contract, the
+persisted/derived/transient taxonomy, folder roles, the filename vocabulary and
+a 500-signal/800-stop size ceiling, plus the decision record. **No code has
+moved yet, and none of the four binding tests named in the plan exists yet**
+(import direction, registration completeness, action coverage, the size
+ceiling); until they do, every rule in §4 is a reminder rather than a mechanism.
+
+The safety net for phases 1–4 is `tests/e2e/editor.spec.ts`'s 57 structural
+assertions, so **no `data-vigilia-*` hook may be renamed while they are in
+flight**.
+
+**DONE 2026-09-13 — a layer panel** (`8ede8d8`). Bottom-right panel below
 the inspector (theme tab moved left); pure `buildLayerTree` over
 `placeNodes` for effective visibility/lock, topmost-first; eye + lock toggles,
 reorder via `layer.reorder-*` actions + shortcuts; hidden nodes reselectable
@@ -68,7 +88,9 @@ Verified: 5 typechecks clean, 1,045 unit tests pass, editor+player+host build,
 2/2 layer E2E pass; full editor E2E 55/57 under 10 workers with the 2 failures
 passing in isolation (known timing-flake class).
 
-**2 — Schema v2, as one change.** Everything breaking together, so there's one
+**2 — Schema v2, as one change.** Sequenced *after* the refactor deliberately, so
+it lands where the document model, globals and inspector each have one owner —
+and so `resize-children.ts` is deleted rather than moved twice. Everything breaking together, so there's one
 migration: group loses its stored transform; palette becomes rgba; gradients
 become palette tokens; `fonts`/`fontSizes` become `typePresets`; a reserved
 undeletable `palette.none`; `name` removed in favour of `id`; artboard
