@@ -1,6 +1,8 @@
 import { GLOBAL_GROUPS, type GlobalGroupName } from '@vigilia/renderer-core';
 import { buttonStyle, inputStyle, scrollAreaStyle, sectionHeadingStyle } from './button.js';
-import type { GlobalUsage } from './globals-commands.js';
+import type { GlobalUsage } from './globals/commands.js';
+import type { GlobalAction } from './globals/domain/global-action.js';
+import { GLOBAL_GROUP_META } from './globals/domain/groups.js';
 
 /**
  * The theme's globals, as an editable list (§73, §75).
@@ -21,13 +23,6 @@ import type { GlobalUsage } from './globals-commands.js';
  */
 
 /** What the author did. */
-export type GlobalAction =
-  | { readonly kind: 'add'; readonly group: GlobalGroupName }
-  | { readonly kind: 'value'; readonly group: GlobalGroupName; readonly key: string; readonly value: unknown }
-  | { readonly kind: 'name'; readonly group: GlobalGroupName; readonly key: string; readonly name: string }
-  | { readonly kind: 'key'; readonly group: GlobalGroupName; readonly key: string; readonly nextKey: string }
-  | { readonly kind: 'delete'; readonly group: GlobalGroupName; readonly key: string };
-
 export interface GlobalsPanel {
   readonly root: HTMLElement;
   render(usage: readonly GlobalUsage[]): void;
@@ -39,17 +34,6 @@ export interface GlobalsCallbacks {
 }
 
 /** Group labels and what a new token in each one starts as. */
-const GROUP_META: Record<
-  GlobalGroupName,
-  { readonly label: string; readonly kind: 'colour' | 'number' | 'text'; readonly seed: unknown }
-> = {
-  palette: { label: 'Palette', kind: 'colour', seed: '#8a97ab' },
-  fonts: { label: 'Fonts', kind: 'text', seed: 'system-ui, sans-serif' },
-  fontSizes: { label: 'Font sizes', kind: 'number', seed: 16 },
-  spacing: { label: 'Spacing', kind: 'number', seed: 8 },
-  assets: { label: 'Assets', kind: 'text', seed: '' },
-};
-
 export function createGlobalsPanel(
   host: HTMLElement,
   callbacks: GlobalsCallbacks,
@@ -97,7 +81,7 @@ function renderGroup(
   entries: readonly GlobalUsage[],
   callbacks: GlobalsCallbacks,
 ): HTMLElement {
-  const meta = GROUP_META[group];
+  const meta = GLOBAL_GROUP_META[group];
   const section = document.createElement('section');
   section.dataset['vigiliaGlobalsGroup'] = group;
   section.style.cssText = 'margin-bottom:22px';
@@ -254,6 +238,3 @@ function describeUses(count: number): string {
 }
 
 /** What a new token in a group starts as. */
-export function seedForGroup(group: GlobalGroupName): { name: string; value: unknown } {
-  return { name: GROUP_META[group].label.replace(/s$/, ''), value: GROUP_META[group].seed };
-}

@@ -9,7 +9,7 @@ import {
   type ThemeDocument,
   type ThemeNode,
 } from '@vigilia/renderer-core';
-import { nodeLabel } from './node-label.js';
+import { nodeLabel } from '../node-label.js';
 
 /**
  * Editing the theme's globals (§73, §75).

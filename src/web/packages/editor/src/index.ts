@@ -134,9 +134,12 @@ export {
   setGlobalValue,
   type GlobalReference,
   type GlobalUsage,
-} from './globals-commands.js';
+} from './globals/commands.js';
 
-export { createGlobalsPanel, seedForGroup, type GlobalAction, type GlobalsPanel } from './globals-panel.js';
+export { createGlobalsPanel, type GlobalsPanel } from './globals-panel.js';
+export { GlobalsManager } from './globals/index.js';
+export type { GlobalAction } from './globals/domain/global-action.js';
+export { GLOBAL_GROUP_META, seedForGroup } from './globals/domain/groups.js';
 
 export {
   alignNodes,

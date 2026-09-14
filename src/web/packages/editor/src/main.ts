@@ -58,17 +58,7 @@ import { createLayersPanel, type LayerPanelAction } from './layers-panel.js';
 import { buildLayerTree } from './layers-model.js';
 import { createButton } from './button.js';
 import { nodeLabel } from './node-label.js';
-import {
-  addGlobal,
-  collectGlobalUsage,
-  deleteGlobal,
-  referencesTo,
-  nextGlobalKey,
-  rekeyGlobal,
-  renameGlobal,
-  setGlobalValue,
-} from './globals-commands.js';
-import { createGlobalsPanel, seedForGroup, type GlobalAction } from './globals-panel.js';
+import { createGlobalsPanel } from './globals-panel.js';
 import {
   describeIssues,
   fileNameFor,
@@ -264,26 +254,16 @@ function start(): void {
 
   const globalsPanel = createGlobalsPanel(leftPanel, {
     onAction(action) {
-      const document_ = editor.document.current;
-      const next = applyGlobalAction(document_, action);
-
-      if (next !== document_) {
-        editor.document.commit(labelForGlobalAction(action), next);
-      } else {
+      if (!editor.globals.apply(action)) {
         // See the inspector's `onChange`: a refused edit must snap back, and
         // the guard would otherwise skip the redraw that does it. An invalid
         // token key is the reachable case — `not a key` stayed in the field.
         globalsKey = '';
 
-        // A refused deletion needs a reason. Spec 0011 D3 means a referenced
-        // token cannot be inlined away, so the author has to reassign first —
-        // and "nothing happened" is the least useful way to say that.
-        if (action.kind === 'delete') {
-          const uses = referencesTo(document_, `${action.group}.${action.key}` as GlobalRef).length;
+        const reason = editor.globals.refusalReason(action);
 
-          if (uses > 0) {
-            editor.notice.show(`${action.key} is used ${uses} time${uses === 1 ? '' : 's'} — reassign those first`);
-          }
+        if (reason !== undefined) {
+          editor.notice.show(reason);
         }
       }
 
@@ -823,7 +803,7 @@ function start(): void {
   };
 
   const drawGlobals = (): void => {
-    const usage = collectGlobalUsage(editor.document.current);
+    const usage = editor.globals.usage();
     const key = JSON.stringify(usage);
 
     if (key === globalsKey) {
@@ -1256,50 +1236,3 @@ const NUDGE_DIRECTIONS: Partial<Record<ActionId, { readonly x: number; readonly 
 };
 
 start();
-
-/**
- * Turns a globals-panel action into a document edit.
- *
- * Every case returns the document unchanged when the edit does not apply — an
- * invalid key, a duplicate, an unknown token — so the caller skips the commit
- * by identity and no undo entry appears that does nothing.
- */
-function applyGlobalAction(document_: ThemeDocument, action: GlobalAction): ThemeDocument {
-  switch (action.kind) {
-    case 'add': {
-      const seed = seedForGroup(action.group);
-
-      return addGlobal(
-        document_,
-        action.group,
-        nextGlobalKey(document_, action.group, action.group === 'palette' ? 'colour' : 'token'),
-        seed,
-      );
-    }
-    case 'value':
-      return setGlobalValue(document_, action.group, action.key, action.value);
-    case 'name':
-      return renameGlobal(document_, action.group, action.key, action.name);
-    case 'key':
-      return rekeyGlobal(document_, action.group, action.key, action.nextKey);
-    case 'delete':
-      return deleteGlobal(document_, action.group, action.key);
-  }
-}
-
-function labelForGlobalAction(action: GlobalAction): string {
-  switch (action.kind) {
-    case 'add':
-      return 'Add token';
-    case 'value':
-      return `Set ${action.key}`;
-    case 'name':
-      return 'Rename token';
-    case 'key':
-      // Named differently from a display rename on purpose: this one rewrote
-      // every reference in the document, and the undo label should say so.
-      return 'Change token key';
-    case 'delete':
-      return 'Delete token';
-  }
-}

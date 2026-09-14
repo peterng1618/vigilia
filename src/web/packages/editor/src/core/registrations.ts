@@ -1,4 +1,5 @@
 import { DocumentManager } from '../document/index.js';
+import { GlobalsManager } from '../globals/index.js';
 import { NoticeManager } from '../notice/index.js';
 import { SelectionManager } from '../selection/index.js';
 import type { EditorCore } from './editor.js';
@@ -34,6 +35,7 @@ import type { EditorCore } from './editor.js';
  * 2. `document` — reads `options.document`, and every later manager reads the
  *    document.
  * 3. `selection` — prunes itself against the document, so it needs one.
+ * 4. `globals` — reads and edits the document through its manager.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -47,6 +49,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'selection',
     create: (editor: EditorCore) => new SelectionManager({ editor }),
+  },
+  {
+    key: 'globals',
+    create: (editor: EditorCore) => new GlobalsManager({ editor }),
   },
 ] as const;
 

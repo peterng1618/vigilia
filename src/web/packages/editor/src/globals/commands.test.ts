@@ -10,7 +10,7 @@ import {
   rekeyGlobal,
   renameGlobal,
   setGlobalValue,
-} from './globals-commands.js';
+} from './commands.js';
 
 /**
  * A document that references `palette.accent` from **every** site the schema

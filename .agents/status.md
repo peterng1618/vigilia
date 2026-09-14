@@ -27,10 +27,9 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,045 passed across 42 files |
+| Unit tests | 1,097 passed across 49 files (2026-09-14) |
 | Typechecks | five projects, clean |
-| Browser tests (editor, desktop) | 57 passed with 2 workers (10-worker parallel run had 2 timing flakes that pass in isolation) |
-| Browser tests (display, desktop) | 43 passed, 1 skipped |
+| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
 | Host bundle | 34.36 kB, zero runtime deps |
 
@@ -82,7 +81,7 @@ Three of the four binding tests exist (`core/boundaries.test.ts`,
 `core/editor.test.ts`): a manager may not import a peer's module, `core/` may
 not reach a manager except through the table, the table must match the
 filesystem, and no file may exceed 800 lines. The size rule is a **ratchet** —
-`main.ts` is recorded at its current 1,328 and may not grow, and the entry is
+`main.ts` is recorded at its current size and may not grow, and the entry is
 deleted when it drops under the limit. Action coverage waits for Phase 2. **The
 ceiling is editor-only so far**; it widens to every package in Phase 6, once
 `renderer-core/src/theme/validate.ts` (1,138) is split.
@@ -112,9 +111,23 @@ toolbar enablement walks the buttons the toolbars built rather than
 Phase 3** — most action bodies need arrange, transform and file managers that
 do not exist yet, and moving them now would mean two dispatch paths.
 
-**Not claimed:** `main.ts` is only modestly smaller (1,349 → 1,306), and the
-size ratchet was **raised once by five lines** to let the toggle de-duplication
-land; the reason is recorded next to the entry. Phase 3 must take it back down. Phase 1
+**Phase 3 — in progress.** `GlobalsManager` is the first domain manager.
+`applyGlobalAction` and `labelForGlobalAction` had been stranded at the bottom
+of `main.ts`, *below* the `start()` call and three hundred lines from the panel
+callback that used them; they are now the manager's `apply` and its label
+table. The dependency that put them there is inverted too: `GlobalAction` and
+the group metadata were declared in `globals-panel.ts`, the DOM module that
+emits them, so the pure half depended on a panel's vocabulary. They now live in
+`globals/domain/`, and the panel imports the contract.
+
+Refusing a deletion also stops being the shell's problem — `refusalReason`
+counts what still references a token, because "reassign those first" is part of
+what refusing means (spec 0011 D3), not something a call site should recompose.
+
+**Not claimed:** the ratchet was **raised once by five lines** during the
+Phase 2 work, before `GlobalsManager` took `main.ts` down to 1,238 (from
+1,349); the raise is recorded next to the entry. The ratchet's measurement now
+agrees with `wc -l`, which it did not for the first two updates. Phase 1
 built the seam; the shrinking happens in Phases 2–4. The event map has exactly
 one event in it, deliberately — events are added in the commit that adds their
 first subscriber, so the other ~25 redraws are still explicit `render()` calls.

@@ -140,13 +140,7 @@ describe('peers are reached through the root, not by importing each other', () =
  * `validate/` role files, and this test widens to every package then.
  */
 const RATCHET: Readonly<Record<string, number>> = {
-  // Raised once, deliberately: removing the duplicated layer-toggle bodies
-  // cost five net lines, because what replaced them is a target-resolution
-  // helper and the comment explaining why enablement is skipped for an
-  // explicitly named target. A raise should have to argue for itself, and
-  // this is the argument. Phase 3 takes it back down by hundreds when the
-  // action bodies move to their managers.
-  'main.ts': 1306,
+  'main.ts': 1238,
 };
 
 const MAX_LINES = 800;
@@ -154,7 +148,10 @@ const MAX_LINES = 800;
 describe('the size ceiling', () => {
   const measured = sourceFiles().map((file) => ({
     path: relativeToSource(file),
-    lines: readFileSync(file, 'utf8').split('\n').length,
+    // Trailing newline dropped first, so this agrees with `wc -l`. Otherwise
+    // every ratchet update is off by one against the number you just measured,
+    // which is exactly how it went the first two times.
+    lines: readFileSync(file, 'utf8').replace(/\n$/, '').split('\n').length,
   }));
 
   it('holds for every file that is not on the ratchet', () => {
