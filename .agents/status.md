@@ -27,7 +27,7 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,110 passed across 51 files (2026-09-14) |
+| Unit tests | 1,115 passed across 52 files (2026-09-15) |
 | Typechecks | five projects, clean |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
@@ -151,8 +151,15 @@ should be treated as unproven rather than fixed. The regression test stays,
 reframed to pin the resolver's real guarantee, and it was confirmed to fail
 when that guarantee is disabled.
 
+`LayersManager` is the fourth, and deliberately thin: it owns one projection.
+There is no layer state — a row's indentation, selectedness and effective
+visibility are computed from the document and the selection every time they
+are asked for, and the rows come from the **visible** document so the panel
+tracks a drag rather than lagging a commit behind the canvas. Caching them is
+how a layer panel ends up confidently stale.
+
 **Not claimed:** the ratchet was **raised once by five lines** during the
-Phase 2 work, before the domain managers took `main.ts` down to 1,194 (from
+Phase 2 work, before the domain managers took `main.ts` down to 1,192 (from
 1,349); the raise is recorded next to the entry. The ratchet's measurement now
 agrees with `wc -l`, which it did not for the first two updates. Phase 1
 built the seam; the shrinking happens in Phases 2–4. The event map has exactly

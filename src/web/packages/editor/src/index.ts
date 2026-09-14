@@ -165,7 +165,8 @@ export {
   sectionHeadingStyle,
   type ButtonOptions,
 } from './button.js';
-export { buildLayerTree, type LayerRow } from './layers-model.js';
+export { buildLayerTree, type LayerRow } from './layers/tree.js';
+export { LayersManager } from './layers/index.js';
 export {
   createLayersPanel,
   type LayerPanelAction,

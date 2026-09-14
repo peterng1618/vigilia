@@ -1,6 +1,7 @@
 import { ArrangeManager } from '../arrange/index.js';
 import { DocumentManager } from '../document/index.js';
 import { GlobalsManager } from '../globals/index.js';
+import { LayersManager } from '../layers/index.js';
 import { NoticeManager } from '../notice/index.js';
 import { SelectionManager } from '../selection/index.js';
 import { SnappingManager } from '../snapping/index.js';
@@ -41,6 +42,7 @@ import type { EditorCore } from './editor.js';
  * 5. `arrange` — uses notice, document and selection, so it comes after all
  *    three.
  * 6. `snapping` — measures against the document.
+ * 7. `layers` — projects document and selection into rows.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -66,6 +68,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'snapping',
     create: (editor: EditorCore) => new SnappingManager({ editor }),
+  },
+  {
+    key: 'layers',
+    create: (editor: EditorCore) => new LayersManager({ editor }),
   },
 ] as const;
 

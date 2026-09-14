@@ -49,7 +49,6 @@ import { describeSelection } from './inspector-model.js';
 import { applyFieldChange, labelForField } from './inspector-apply.js';
 import { createInspector } from './inspector-panel.js';
 import { createLayersPanel, type LayerPanelAction } from './layers-panel.js';
-import { buildLayerTree } from './layers-model.js';
 import { createButton } from './button.js';
 import { nodeLabel } from './node-label.js';
 import { createGlobalsPanel } from './globals-panel.js';
@@ -753,8 +752,7 @@ function start(): void {
   };
 
   const drawLayers = (): void => {
-    const document_ = editor.document.visible;
-    const rows = buildLayerTree(document_.nodes, editor.selection.state);
+    const rows = editor.layers.rows();
     const key = JSON.stringify(rows);
 
     if (key === layersKey) {

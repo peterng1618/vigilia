@@ -1,7 +1,7 @@
 import type { ThemeNode } from '@vigilia/renderer-core';
-import { placeNodes } from './geometry.js';
-import { nodeLabel } from './node-label.js';
-import type { SelectionState } from './selection/domain/selection-state.js';
+import { placeNodes } from '../geometry.js';
+import { nodeLabel } from '../node-label.js';
+import type { SelectionState } from '../selection/domain/selection-state.js';
 
 /**
  * A single row in the layer panel tree.
