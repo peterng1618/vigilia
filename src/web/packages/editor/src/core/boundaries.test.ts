@@ -140,7 +140,7 @@ describe('peers are reached through the root, not by importing each other', () =
  * `validate/` role files, and this test widens to every package then.
  */
 const RATCHET: Readonly<Record<string, number>> = {
-  'main.ts': 1238,
+  'main.ts': 1211,
 };
 
 const MAX_LINES = 800;

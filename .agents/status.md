@@ -27,7 +27,7 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,097 passed across 49 files (2026-09-14) |
+| Unit tests | 1,104 passed across 50 files (2026-09-14) |
 | Typechecks | five projects, clean |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
@@ -124,8 +124,16 @@ Refusing a deletion also stops being the shell's problem — `refusalReason`
 counts what still references a token, because "reassign those first" is part of
 what refusing means (spec 0011 D3), not something a call site should recompose.
 
+`ArrangeManager` is the second. `commands.ts` still answers only "what
+document does this produce, or why not"; what the manager adds is the
+five-step sequence four call sites each performed by hand — show the refusal,
+commit, apply the new selection, prune, redraw. Getting one step of that
+wrong is silent, and the order matters: the selection is applied *before*
+pruning, or an operation that creates a group selects an id the prune then
+removes.
+
 **Not claimed:** the ratchet was **raised once by five lines** during the
-Phase 2 work, before `GlobalsManager` took `main.ts` down to 1,238 (from
+Phase 2 work, before the domain managers took `main.ts` down to 1,211 (from
 1,349); the raise is recorded next to the entry. The ratchet's measurement now
 agrees with `wc -l`, which it did not for the first two updates. Phase 1
 built the seam; the shrinking happens in Phases 2–4. The event map has exactly

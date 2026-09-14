@@ -65,16 +65,7 @@ import {
   parseThemeFile,
   serializeForFile,
 } from './persist.js';
-import {
-  alignNodes,
-  describeRefusal,
-  distributeNodes,
-  freeGroupId,
-  groupNodes,
-  ungroupNodes,
-  type AlignEdge,
-  type ArrangeResult,
-} from './arrange.js';
+import type { AlignEdge } from './arrange/commands.js';
 
 /**
  * The editor shell.
@@ -293,26 +284,6 @@ function start(): void {
     },
   });
 
-  const runArrange = (result: ArrangeResult, label: string): void => {
-    if (result.refused !== undefined) {
-      editor.notice.show(describeRefusal(result.refused));
-      return;
-    }
-
-    editor.notice.clear();
-
-    if (result.document !== editor.document.current) {
-      editor.document.commit(label, result.document);
-    }
-
-    if (result.select !== undefined) {
-      editor.selection.set(result.select);
-    }
-
-    editor.selection.pruneToDocument();
-    render();
-  };
-
   /** §61: a locked node is not deleted, and a wholly locked selection is a no-op. */
   const deleteSelection = (): void => {
     const document_ = editor.document.current;
@@ -440,14 +411,15 @@ function start(): void {
         return;
 
       case 'object.group':
-        runArrange(
-          groupNodes(editor.document.current, editor.selection.ids, freeGroupId(editor.document.current)),
-          'Group',
-        );
+        if (editor.arrange.group('Group')) {
+          render();
+        }
         return;
 
       case 'object.ungroup':
-        runArrange(ungroupNodes(editor.document.current, editor.selection.ids), 'Ungroup');
+        if (editor.arrange.ungroup('Ungroup')) {
+          render();
+        }
         return;
 
       case 'arrange.align-left':
@@ -458,7 +430,9 @@ function start(): void {
       case 'arrange.align-bottom': {
         const edge = id.slice('arrange.align-'.length) as AlignEdge;
 
-        runArrange(alignNodes(editor.document.current, editor.selection.ids, edge), action?.label ?? 'Align');
+        if (editor.arrange.align(edge, action?.label ?? 'Align')) {
+          render();
+        }
         return;
       }
 
@@ -466,10 +440,9 @@ function start(): void {
       case 'arrange.distribute-y': {
         const axis = id.endsWith('-x') ? 'x' : 'y';
 
-        runArrange(
-          distributeNodes(editor.document.current, editor.selection.ids, axis),
-          action?.label ?? 'Distribute',
-        );
+        if (editor.arrange.distribute(axis, action?.label ?? 'Distribute')) {
+          render();
+        }
         return;
       }
 

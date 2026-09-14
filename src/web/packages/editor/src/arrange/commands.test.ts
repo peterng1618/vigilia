@@ -7,9 +7,9 @@ import {
   freeGroupId,
   groupNodes,
   ungroupNodes,
-} from './arrange.js';
-import { applyMatrix, localMatrix, multiply, placeNodes, worldBounds } from './geometry.js';
-import { findNode } from './commands.js';
+} from './commands.js';
+import { applyMatrix, localMatrix, multiply, placeNodes, worldBounds } from '../geometry.js';
+import { findNode } from '../commands.js';
 
 function rect(id: string, transform: Transform): ThemeNode {
   return { id, type: 'rectangle', transform };

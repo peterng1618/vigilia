@@ -10,8 +10,8 @@ import {
   type Bounds,
   type Matrix2D,
   type PlacedNode,
-} from './geometry.js';
-import { collectIds, deleteNodes, findNode, insertNodes, updateTransforms } from './commands.js';
+} from '../geometry.js';
+import { collectIds, deleteNodes, findNode, insertNodes, updateTransforms } from '../commands.js';
 
 /**
  * Grouping, ungrouping, alignment and distribution.

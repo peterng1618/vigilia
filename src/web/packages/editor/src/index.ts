@@ -152,7 +152,8 @@ export {
   type AlignEdge,
   type ArrangeRefusal,
   type ArrangeResult,
-} from './arrange.js';
+} from './arrange/commands.js';
+export { ArrangeManager } from './arrange/index.js';
 
 export { nodeLabel } from './node-label.js';
 export {

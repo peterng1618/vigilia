@@ -1,3 +1,4 @@
+import { ArrangeManager } from '../arrange/index.js';
 import { DocumentManager } from '../document/index.js';
 import { GlobalsManager } from '../globals/index.js';
 import { NoticeManager } from '../notice/index.js';
@@ -36,6 +37,8 @@ import type { EditorCore } from './editor.js';
  *    document.
  * 3. `selection` — prunes itself against the document, so it needs one.
  * 4. `globals` — reads and edits the document through its manager.
+ * 5. `arrange` — uses notice, document and selection, so it comes after all
+ *    three.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -53,6 +56,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'globals',
     create: (editor: EditorCore) => new GlobalsManager({ editor }),
+  },
+  {
+    key: 'arrange',
+    create: (editor: EditorCore) => new ArrangeManager({ editor }),
   },
 ] as const;
 
