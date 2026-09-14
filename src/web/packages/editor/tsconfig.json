@@ -11,5 +11,9 @@
       "@vigilia/fake-source": ["../fake-source/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts"]
+  // The second entry is the shared narrow Node typings, owned by
+  // renderer-core. The architecture tests in src/core walk the source tree,
+  // and `@types/node` is deliberately absent so `fs` cannot type-check inside
+  // a browser bundle. See that file's header.
+  "include": ["src/**/*.ts", "../renderer-core/src/node-builtins.d.ts"]
 }

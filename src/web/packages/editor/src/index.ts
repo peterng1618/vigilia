@@ -73,7 +73,7 @@ export {
   updateTransforms,
 } from './commands.js';
 
-export type { History, HistoryEntry } from './history.js';
+export type { History, HistoryEntry } from './document/history.js';
 
 export {
   DEFAULT_HISTORY_LIMIT,
@@ -91,7 +91,7 @@ export {
   undo,
   undoLabel,
   visibleDocument,
-} from './history.js';
+} from './document/history.js';
 
 export type {
   FieldDescriptor,

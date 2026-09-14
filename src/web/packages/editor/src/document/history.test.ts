@@ -16,7 +16,7 @@ import {
   undoLabel,
   visibleDocument,
 } from './history.js';
-import { updateTransforms } from './commands.js';
+import { updateTransforms } from '../commands.js';
 import type { ThemeDocument } from '@vigilia/renderer-core';
 
 const base: ThemeDocument = {

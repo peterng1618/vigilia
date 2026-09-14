@@ -61,22 +61,7 @@ import {
   setNodeFlags,
   updateTransforms,
 } from './commands.js';
-import {
-  canRedo,
-  canUndo,
-  cancelPreview,
-  commit,
-  createHistory,
-  isDirty,
-  markSaved,
-  replaceDocument,
-  preview,
-  redo,
-  undo,
-  undoLabel,
-  visibleDocument,
-  type History,
-} from './history.js';
+import { EditorCore } from './core/editor.js';
 import { createOverlay } from './overlay.js';
 import { unionBounds } from './geometry.js';
 import { describeSelection } from './inspector-model.js';
@@ -191,7 +176,7 @@ function start(): void {
   const parameters = new URLSearchParams(window.location.search);
   const theme = loadDemoTheme(parameters.get('theme') ?? 'demo');
 
-  let history: History = createHistory(theme);
+  const editor = new EditorCore({ document: theme });
   let selection: SelectionState = emptySelection;
   let drag: DragState | undefined;
   let guides: readonly SnapGuide[] = [];
@@ -204,7 +189,7 @@ function start(): void {
   const plan = (document_: ThemeDocument) =>
     buildScenePlan({ document: document_, source, nowMs: Date.now(), resolveAsset });
 
-  let handle: SceneHandle = mountScene({ host, plan: plan(visibleDocument(history)) });
+  let handle: SceneHandle = mountScene({ host, plan: plan(editor.document.visible) });
   const overlay = createOverlay(host);
 
   // Left sidebar: theme-level globals (palette, fonts, etc.), always visible.
@@ -266,18 +251,18 @@ function start(): void {
    * not a new document — so a change to the set means a remount. Opening a file
    * clears this, because every id changed at once.
    */
-  let lastIds = [...collectIds(visibleDocument(history).nodes)].join(',');
+  let lastIds = [...collectIds(editor.document.visible.nodes)].join(',');
 
   const inspector = createInspector(body, {
     onChange(key, change) {
-      const document_ = history.current;
+      const document_ = editor.document.current;
       const next = applyFieldChange(document_, selection.ids, key, change);
 
       // Identity: `applyFieldChange` returns the same document when a change
       // did not apply — a refused value, an unknown key — and committing then
       // would put an undo entry in history that does nothing.
       if (next !== document_) {
-        history = commit(history, labelForField(key), next);
+        editor.document.commit(labelForField(key), next);
       } else {
         // Refused. The redraw guard compares against the last content
         // rendered, and a refused edit changes nothing — so without this the
@@ -293,11 +278,11 @@ function start(): void {
 
   const globalsPanel = createGlobalsPanel(leftPanel, {
     onAction(action) {
-      const document_ = history.current;
+      const document_ = editor.document.current;
       const next = applyGlobalAction(document_, action);
 
       if (next !== document_) {
-        history = commit(history, labelForGlobalAction(action), next);
+        editor.document.commit(labelForGlobalAction(action), next);
       } else {
         // See the inspector's `onChange`: a refused edit must snap back, and
         // the guard would otherwise skip the redraw that does it. An invalid
@@ -311,7 +296,7 @@ function start(): void {
           const uses = referencesTo(document_, `${action.group}.${action.key}` as GlobalRef).length;
 
           if (uses > 0) {
-            notice = `${action.key} is used ${uses} time${uses === 1 ? '' : 's'} — reassign those first`;
+            editor.notice.show(`${action.key} is used ${uses} time${uses === 1 ? '' : 's'} — reassign those first`);
           }
         }
       }
@@ -334,7 +319,7 @@ function start(): void {
         return;
       }
 
-      const document_ = history.current;
+      const document_ = editor.document.current;
       const target = findNode(document_.nodes, action.targetId);
 
       if (target === undefined) {
@@ -343,8 +328,7 @@ function start(): void {
 
       if (action.id === 'layer.toggle-visibility') {
         const next = target.visible === false;
-        history = commit(
-          history,
+        editor.document.commit(
           `${next ? 'Show' : 'Hide'} ${nodeLabel(target)}`,
           setNodeFlags(document_, target.id, { visible: next }),
         );
@@ -353,8 +337,7 @@ function start(): void {
       }
 
       const nextLocked = target.locked !== true;
-      history = commit(
-        history,
+      editor.document.commit(
         `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(target)}`,
         setNodeFlags(document_, target.id, { locked: nextLocked }),
       );
@@ -362,52 +345,40 @@ function start(): void {
     },
   });
 
-  /**
-   * A one-off message in the status bar.
-   *
-   * Arrange operations refuse for reasons an author cannot see from the
-   * selection — "these two are in different groups", "ungrouping this would
-   * shear a child". A refusal that silently does nothing reads as a broken
-   * shortcut, so the reason is said out loud. Cleared by the next gesture.
-   */
-  let notice: string | undefined;
-
   const runArrange = (result: ArrangeResult, label: string): void => {
     if (result.refused !== undefined) {
-      notice = describeRefusal(result.refused);
-      drawStatus();
+      editor.notice.show(describeRefusal(result.refused));
       return;
     }
 
-    notice = undefined;
+    editor.notice.clear();
 
-    if (result.document !== history.current) {
-      history = commit(history, label, result.document);
+    if (result.document !== editor.document.current) {
+      editor.document.commit(label, result.document);
     }
 
     if (result.select !== undefined) {
       selection = setSelection(selection, result.select);
     }
 
-    selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+    selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
     render();
   };
 
   /** §61: a locked node is not deleted, and a wholly locked selection is a no-op. */
   const deleteSelection = (): void => {
-    const document_ = history.current;
+    const document_ = editor.document.current;
     const removable = selection.ids.filter((id) => findNode(document_.nodes, id)?.locked !== true);
 
     if (removable.length === 0) {
       return;
     }
 
-    history = commit(
-      history,
+    editor.document.commit(
       `Delete ${removable.length} element${removable.length === 1 ? '' : 's'}`,
       deleteNodes(document_, new Set(removable)),
     );
-    selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+    selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
     render();
   };
 
@@ -420,7 +391,7 @@ function start(): void {
     }
 
     const step = id.endsWith('-large') ? NUDGE_LARGE : NUDGE;
-    const document_ = history.current;
+    const document_ = editor.document.current;
     const gesture: GestureStart = {
       handle: 'move',
       origin: { x: 0, y: 0 },
@@ -436,7 +407,7 @@ function start(): void {
       // A nudge is a completed gesture in itself, so it commits immediately.
       // Coalescing a held arrow key into one entry would be nicer and needs a
       // timer; one entry per press is at least predictable.
-      history = commit(history, 'Nudge', updateTransforms(document_, transforms));
+      editor.document.commit('Nudge', updateTransforms(document_, transforms));
       render();
     }
   };
@@ -449,13 +420,13 @@ function start(): void {
    * whether something is available.
    */
   const actionContext = (): ActionContext => {
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const selected = selection.ids.map((id) => findNode(document_.nodes, id));
 
     return {
       selectionCount: selection.ids.length,
-      canUndo: canUndo(history),
-      canRedo: canRedo(history),
+      canUndo: editor.document.canUndo,
+      canRedo: editor.document.canRedo,
       hasGroupSelected: selected.some((node) => node?.type === 'group'),
       allSelectedLocked:
         selection.ids.length > 0 && selected.every((node) => node?.locked === true),
@@ -474,9 +445,13 @@ function start(): void {
 
     // A disabled action is not an error: a surface may show it, and a keystroke
     // may reach it. Saying why beats doing nothing silently.
-    if (action !== undefined && !action.enabled(actionContext())) {
-      notice = disabledReason(action, actionContext());
-      drawStatus();
+    const context = actionContext();
+
+    if (action !== undefined && !action.enabled(context)) {
+      // Non-null: `disabledReason` returns undefined only for an action that
+      // is enabled, and this branch is the one where it is not.
+      editor.notice.show(disabledReason(action, context)!);
+
       return;
     }
 
@@ -491,8 +466,12 @@ function start(): void {
 
       case 'edit.undo':
       case 'edit.redo':
-        history = id === 'edit.undo' ? undo(history) : redo(history);
-        selection = pruneSelection(selection, collectIds(visibleDocument(history).nodes));
+        if (id === 'edit.undo') {
+          editor.document.undo();
+        } else {
+          editor.document.redo();
+        }
+        selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
         render();
         return;
 
@@ -502,13 +481,13 @@ function start(): void {
 
       case 'object.group':
         runArrange(
-          groupNodes(history.current, selection.ids, freeGroupId(history.current)),
+          groupNodes(editor.document.current, selection.ids, freeGroupId(editor.document.current)),
           'Group',
         );
         return;
 
       case 'object.ungroup':
-        runArrange(ungroupNodes(history.current, selection.ids), 'Ungroup');
+        runArrange(ungroupNodes(editor.document.current, selection.ids), 'Ungroup');
         return;
 
       case 'arrange.align-left':
@@ -519,7 +498,7 @@ function start(): void {
       case 'arrange.align-bottom': {
         const edge = id.slice('arrange.align-'.length) as AlignEdge;
 
-        runArrange(alignNodes(history.current, selection.ids, edge), action?.label ?? 'Align');
+        runArrange(alignNodes(editor.document.current, selection.ids, edge), action?.label ?? 'Align');
         return;
       }
 
@@ -528,7 +507,7 @@ function start(): void {
         const axis = id.endsWith('-x') ? 'x' : 'y';
 
         runArrange(
-          distributeNodes(history.current, selection.ids, axis),
+          distributeNodes(editor.document.current, selection.ids, axis),
           action?.label ?? 'Distribute',
         );
         return;
@@ -544,11 +523,11 @@ function start(): void {
         }
 
         const target = id.slice('layer.reorder-'.length) as 'front' | 'back' | 'forward' | 'backward';
-        const document_ = history.current;
+        const document_ = editor.document.current;
         const next = reorderNode(document_, targetId, target);
 
         if (next !== document_) {
-          history = commit(history, action?.label ?? 'Reorder layer', next);
+          editor.document.commit(action?.label ?? 'Reorder layer', next);
           render();
         }
         return;
@@ -556,7 +535,7 @@ function start(): void {
 
       case 'layer.toggle-visibility': {
         const targetId = selection.ids[0];
-        const document_ = history.current;
+        const document_ = editor.document.current;
         const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
 
         if (node === undefined) {
@@ -564,8 +543,7 @@ function start(): void {
         }
 
         const next = node.visible === false;
-        history = commit(
-          history,
+        editor.document.commit(
           `${next ? 'Show' : 'Hide'} ${nodeLabel(node)}`,
           setNodeFlags(document_, node.id, { visible: next }),
         );
@@ -575,7 +553,7 @@ function start(): void {
 
       case 'layer.toggle-lock': {
         const targetId = selection.ids[0];
-        const document_ = history.current;
+        const document_ = editor.document.current;
         const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
 
         if (node === undefined) {
@@ -583,8 +561,7 @@ function start(): void {
         }
 
         const nextLocked = node.locked !== true;
-        history = commit(
-          history,
+        editor.document.commit(
           `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(node)}`,
           setNodeFlags(document_, node.id, { locked: nextLocked }),
         );
@@ -601,7 +578,7 @@ function start(): void {
           selection = exitGroup(selection);
         }
 
-        history = cancelPreview(history);
+        editor.document.cancelPreview();
         drag = undefined;
         marquee = undefined;
         guides = [];
@@ -646,16 +623,15 @@ function start(): void {
         // Loudly, and without touching the open document: a theme that fails
         // validation is exactly the case §141 exists for, and silently keeping
         // half of it would be worse than refusing.
-        notice = `Could not open: ${describeIssues(result.issues)}`;
-        drawStatus();
+        editor.notice.show(`Could not open: ${describeIssues(result.issues)}`);
         return;
       }
 
       // A new file is a new history. An undo that crossed a file boundary would
       // restore half of another theme.
-      history = replaceDocument(history, result.document);
+      editor.document.replace(result.document);
       selection = clearSelection(exitAllGroups(selection));
-      notice = `Opened ${file.name}`;
+      editor.notice.show(`Opened ${file.name}`);
       lastIds = '';
       inspectorKey = '';
       layersKey = '';
@@ -665,7 +641,7 @@ function start(): void {
   });
 
   const saveTheme = (): void => {
-    const document_ = history.current;
+    const document_ = editor.document.current;
     const blob = new Blob([serializeForFile(document_)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -680,8 +656,8 @@ function start(): void {
     // reaches edits from before the save. This is the first caller — the rule
     // has been unit-tested since the history module existed and until now had
     // never run in the product.
-    history = markSaved(history);
-    notice = `Saved ${anchor.download}`;
+    editor.document.markSaved();
+    editor.notice.show(`Saved ${anchor.download}`);
     render();
   };
 
@@ -776,12 +752,12 @@ function start(): void {
   const remount = (): void => {
     handle.dispose();
     overlay.root.remove();
-    handle = mountScene({ host, plan: plan(visibleDocument(history)) });
+    handle = mountScene({ host, plan: plan(editor.document.visible) });
     host.append(overlay.root);
   };
 
   const render = (): void => {
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const ids = [...collectIds(document_.nodes)].join(',');
 
     if (ids === lastIds) {
@@ -799,13 +775,13 @@ function start(): void {
     drawGlobals();
   };
 
-  const placed = (): PlacedNode[] => placeNodes(visibleDocument(history).nodes);
+  const placed = (): PlacedNode[] => placeNodes(editor.document.visible.nodes);
 
   const selectedPlacements = (): PlacedNode[] =>
     placed().filter((node) => selection.ids.includes(node.id));
 
   const drawOverlay = (): void => {
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const chosen = selectedPlacements();
     // From the same placements as the outline: handles derived from the raw
     // transform land in the wrong place for anything inside a group.
@@ -831,7 +807,7 @@ function start(): void {
    * not.
    */
   const drawInspector = (): void => {
-    const document_ = history.current;
+    const document_ = editor.document.current;
     const sections = describeSelection(document_, selection.ids);
     const key = JSON.stringify(sections);
 
@@ -844,7 +820,7 @@ function start(): void {
   };
 
   const drawLayers = (): void => {
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const rows = buildLayerTree(document_.nodes, selection);
     const key = JSON.stringify(rows);
 
@@ -857,7 +833,7 @@ function start(): void {
   };
 
   const drawGlobals = (): void => {
-    const usage = collectGlobalUsage(history.current);
+    const usage = collectGlobalUsage(editor.document.current);
     const key = JSON.stringify(usage);
 
     if (key === globalsKey) {
@@ -875,10 +851,10 @@ function start(): void {
     status.textContent = [
       count === 0 ? 'Nothing selected' : count === 1 ? selection.ids[0] : `${count} selected`,
       inside === undefined ? undefined : `inside ${inside}`,
-      canUndo(history) ? `undo: ${undoLabel(history)}` : undefined,
-      canRedo(history) ? 'redo available' : undefined,
-      isDirty(history) ? 'unsaved' : 'saved',
-      notice,
+      editor.document.canUndo ? `undo: ${editor.document.undoLabel}` : undefined,
+      editor.document.canRedo ? 'redo available' : undefined,
+      editor.document.isDirty ? 'unsaved' : 'saved',
+      editor.notice.message,
     ]
       .filter((part) => part !== undefined)
       .join('  ·  ');
@@ -927,13 +903,13 @@ function start(): void {
     // silently became a move. The status bar said "Move element" while the
     // author dragged a resize handle.
     // A new gesture supersedes whatever the last refusal was about.
-    notice = undefined;
+    editor.notice.clear();
 
     const grabbed = (event.target as HTMLElement | null)
       ?.closest('[data-vigilia-handle]')
       ?.getAttribute('data-vigilia-handle') as Handle | undefined;
 
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const point = toDocument(event);
     const hitNow = hitTest(document_.nodes, point, { enteredGroups: selection.enteredGroups });
 
@@ -1036,7 +1012,7 @@ function start(): void {
       return;
     }
 
-    const committed = history.current;
+    const committed = editor.document.current;
     const pointer = toDocument(event);
     const modifiers = modifiersOf(event);
 
@@ -1078,7 +1054,7 @@ function start(): void {
       const withChildren = withScaledDescendants(committed, transforms, drag.gesture.handle);
 
       // A preview, not a commit: §67 wants one undo entry per gesture.
-      history = preview(history, updateTransforms(committed, withChildren));
+      editor.document.preview(updateTransforms(committed, withChildren));
       render();
     }
   });
@@ -1094,7 +1070,7 @@ function start(): void {
 
     if (finished.kind === 'marquee') {
       if (marquee !== undefined && (marquee.width > 2 || marquee.height > 2)) {
-        const document_ = visibleDocument(history);
+        const document_ = editor.document.visible;
         const rect = host.getBoundingClientRect();
         const from = viewportToDocument(handle.transform(), {
           x: finished.viewportOrigin.x - rect.left,
@@ -1123,17 +1099,12 @@ function start(): void {
     // sub-pixel movement happened between the two clicks is not an edit.
     if (!finished.moved && finished.doubleClickCandidate !== undefined) {
       lastDown = undefined;
-      history = cancelPreview(history);
+      editor.document.cancelPreview();
       enterGroupAt(finished.doubleClickCandidate.id, finished.doubleClickCandidate.point);
       return;
     }
 
-    const previewed = history.preview;
-
-    history =
-      previewed === undefined
-        ? cancelPreview(history)
-        : commit(history, labelFor(finished.gesture.handle, selection.ids.length), previewed);
+    editor.document.commitPreview(labelFor(finished.gesture.handle, selection.ids.length));
 
     render();
   };
@@ -1148,7 +1119,7 @@ function start(): void {
    * there is nothing to enter, and the first click's selection already stands.
    */
   function enterGroupAt(outerId: string, point: { x: number; y: number }): void {
-    const document_ = visibleDocument(history);
+    const document_ = editor.document.visible;
     const node = findNode(document_.nodes, outerId);
 
     if (node?.type !== 'group') {
@@ -1204,7 +1175,7 @@ function start(): void {
     // Nothing but Escape may run while a gesture is live.
     //
     // A live drag holds a snapshot of the nodes as they were when it started
-    // (`GestureStart.nodes`) and re-applies it against `history.current` on
+    // (`GestureStart.nodes`) and re-applies it against `editor.document.current` on
     // every pointer move. An action that commits meanwhile moves that ground
     // out from under it, and the next move re-applies the stale snapshot on top
     // of the new document. Observed three ways: Ctrl+Z mid-drag put the node
@@ -1218,8 +1189,7 @@ function start(): void {
     // author's gesture to service a keystroke, throws away work they can see on
     // screen. Escape is exempt because cancelling is precisely what it means.
     if (drag !== undefined && action.id !== 'navigate.escape') {
-      notice = 'Finish or cancel the drag first (Esc cancels)';
-      drawStatus();
+      editor.notice.show('Finish or cancel the drag first (Esc cancels)');
       return;
     }
 
@@ -1229,6 +1199,14 @@ function start(): void {
   window.addEventListener('resize', () => {
     handle.resize();
     drawOverlay();
+  });
+
+  // The status bar repaints because the message changed, not because each of
+  // the six sites that set one remembered to ask. Two of them did not: the
+  // pointerdown that clears a stale refusal returns early for a resize handle,
+  // so the old explanation used to sit there for the whole of the next drag.
+  editor.events.on('notice:changed', () => {
+    drawStatus();
   });
 
   render();

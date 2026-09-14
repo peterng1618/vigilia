@@ -192,11 +192,26 @@ The suffix says why the file exists, so a tree reads as a design:
 
 **500 lines is a signal, 800 is a stop.** A file over 500 should be re-read for
 a second responsibility; one at 800 may not grow further without being split. A
-test enforces the ceiling with an explicit allowlist —
-`renderer-core/src/theme/validate.ts` and `scene/mount.ts` are the recorded
-exceptions, both long by nature rather than by tangle. The ceiling exists
-because `main.ts` reached 1,349 lines holding nine unrelated concerns and
-nothing objected.
+test enforces the ceiling with an explicit allowlist. The ceiling exists because
+`main.ts` reached 1,349 lines holding nine unrelated concerns and nothing
+objected.
+
+Measured 2026-09-14, only two files are over 800: `editor/src/main.ts` (1,349 —
+the subject of the restructure) and `renderer-core/src/theme/validate.ts`
+(1,138). **Prefer splitting to allowlisting** — an entry on that list should
+have to argue for itself, and "the format it validates is large" is an argument
+for `validate/` role files, not for an exception. `scene/mount.ts` (767) and
+`scene/plan.ts` (687) are over the signal and under the stop: worth re-reading,
+not worth splitting today.
+
+### Where this does *not* apply
+
+`renderer-core` is stateless — pure functions plus one `mountScene`. It has no
+interactions, no lifecycle and no cross-domain mutable state, so it has nothing
+for a manager to own, and wrapping its modules in classes would be the pattern
+worn as costume. What applies there is everything in this section *except* the
+manager contract: the size ceiling, the folder roles, the filename vocabulary,
+the ban on re-export facades, and one owner per concept.
 
 ## 5. Ownership registry
 

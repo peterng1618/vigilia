@@ -66,12 +66,41 @@ conventions · 1 the `EditorCore` seam · 2 actions gain bodies · 3 a manager p
 existing domain · 4 the DOM half · 5 the empty slots (tools, clipboard, file,
 tick) · 6 the duplications the new rules forbid.
 
-**Phase 0 is done and is documentation only** — the manager contract, the
+**Phase 0 — done, documentation only.** The manager contract, the
 persisted/derived/transient taxonomy, folder roles, the filename vocabulary and
-a 500-signal/800-stop size ceiling, plus the decision record. **No code has
-moved yet, and none of the four binding tests named in the plan exists yet**
-(import direction, registration completeness, action coverage, the size
-ceiling); until they do, every rule in §4 is a reminder rather than a mechanism.
+a 500-signal/800-stop size ceiling, plus the decision record.
+
+**Phase 1 — done.** `EditorCore` is the composition root, with `NoticeManager`
+and `DocumentManager` behind it; `history.ts` moved to `document/` unchanged
+and stayed pure. `MANAGER_REGISTRATIONS` is the single declaration — the key
+union, the root's typed fields and construction order are all derived from it,
+so adding a manager is one array entry. `destroy()` walks it in reverse, and a
+manager that throws during `init()` unwinds what was already built.
+
+Three of the four binding tests exist (`core/boundaries.test.ts`,
+`core/editor.test.ts`): a manager may not import a peer's module, `core/` may
+not reach a manager except through the table, the table must match the
+filesystem, and no file may exceed 800 lines. The size rule is a **ratchet** —
+`main.ts` is recorded at its current 1,328 and may not grow, and the entry is
+deleted when it drops under the limit. Action coverage waits for Phase 2. **The
+ceiling is editor-only so far**; it widens to every package in Phase 6, once
+`renderer-core/src/theme/validate.ts` (1,138) is split.
+
+Two defects closed as a side effect: a stale refusal message no longer survives
+into the next drag (the status bar repaints on a `notice:changed` event rather
+than at six call sites, two of which returned early), and the identity-refusal
+rule that decides whether an edit becomes an undo entry now has one home in
+`DocumentManager.commit` instead of being re-implemented per call site.
+
+Verified 2026-09-14: 1,078 unit tests across 47 files, five typechecks clean,
+editor + player builds, §47 gate 201.1 KB of 400 KB, `npx playwright test
+--workers=2` 141 passed / 61 skipped / **0 failed**. The teardown-unwind test
+was confirmed by disabling the unwind and watching it fail.
+
+**Not claimed:** `main.ts` is barely smaller (1,349 → 1,327). Phase 1 built the
+seam; the shrinking happens in Phases 2–4. The event map has exactly one event
+in it, deliberately — events are added in the commit that adds their first
+subscriber, so the other ~25 redraws are still explicit `render()` calls.
 
 The safety net for phases 1–4 is `tests/e2e/editor.spec.ts`'s 57 structural
 assertions, so **no `data-vigilia-*` hook may be renamed while they are in
