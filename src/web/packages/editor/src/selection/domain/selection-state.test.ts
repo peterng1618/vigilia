@@ -10,7 +10,7 @@ import {
   isSelected,
   pruneSelection,
   setSelection,
-} from './selection.js';
+} from './selection-state.js';
 
 describe('applyClick', () => {
   it('replaces the selection on a plain click', () => {

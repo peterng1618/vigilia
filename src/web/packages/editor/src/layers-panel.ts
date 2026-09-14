@@ -2,7 +2,7 @@ import type { NodeType } from '@vigilia/renderer-core';
 import { actionById, shortcutLabel, type ActionId } from './actions.js';
 import { createButton, scrollAreaStyle, sectionHeadingStyle } from './button.js';
 import type { LayerRow } from './layers-model.js';
-import type { SelectionMode } from './selection.js';
+import type { SelectionMode } from './selection/domain/selection-state.js';
 
 /** What the author did in the layer panel. */
 export type LayerPanelAction =

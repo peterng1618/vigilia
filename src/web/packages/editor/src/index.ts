@@ -37,9 +37,9 @@ export {
   worldBounds,
 } from './geometry.js';
 
-export type { HitTestOptions, MarqueeOptions } from './hit-test.js';
+export type { HitTestOptions, MarqueeOptions } from './selection/domain/hit-test.js';
 
-export { hitTest, hitTestDeep, hitTestInside, marqueeSelect, normalizeBounds } from './hit-test.js';
+export { hitTest, hitTestDeep, hitTestInside, marqueeSelect, normalizeBounds } from './selection/domain/hit-test.js';
 
 export type { GestureModifiers, GestureNode, GestureStart, Handle } from './transform-gesture.js';
 
@@ -107,7 +107,7 @@ export type { FieldChange } from './inspector-apply.js';
 
 export { applyFieldChange, labelForField } from './inspector-apply.js';
 
-export type { SelectionMode, SelectionState } from './selection.js';
+export type { SelectionMode, SelectionState } from './selection/domain/selection-state.js';
 
 export {
   addToSelection,
@@ -120,7 +120,7 @@ export {
   isSelected,
   pruneSelection,
   setSelection,
-} from './selection.js';
+} from './selection/domain/selection-state.js';
 
 export {
   addGlobal,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ThemeNode } from '@vigilia/renderer-core';
-import { emptySelection, setSelection } from './selection.js';
+import { emptySelection, setSelection } from './selection/domain/selection-state.js';
 import { buildLayerTree } from './layers-model.js';
 
 function rect(id: string, overrides: Partial<ThemeNode> = {}): ThemeNode {

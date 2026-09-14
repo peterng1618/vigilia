@@ -30,13 +30,19 @@ function sourceFiles(directory: string = SOURCE_ROOT): string[] {
 
 const relativeToSource = (file: string): string => relative(SOURCE_ROOT, file).replaceAll('\\', '/');
 
+interface ImportRecord {
+  readonly specifier: string;
+  /** Written as `import type …`, so it vanishes at runtime. */
+  readonly typeOnly: boolean;
+}
+
 /** The specifiers a module imports, as written. */
-function importsOf(file: string): string[] {
+function importsOf(file: string): ImportRecord[] {
   const source = readFileSync(file, 'utf8');
 
-  return [...source.matchAll(/(?:^|\n)\s*(?:import|export)[^'"\n]*?from\s*['"]([^'"]+)['"]/g)].map(
-    (match) => match[1]!,
-  );
+  return [
+    ...source.matchAll(/(?:^|\n)\s*(?:import|export)(\s+type)?\b[^'"\n]*?from\s*['"]([^'"]+)['"]/g),
+  ].map((match) => ({ specifier: match[2]!, typeOnly: match[1] !== undefined }));
 }
 
 describe('the registration table matches the filesystem', () => {
@@ -53,11 +59,15 @@ describe('the registration table matches the filesystem', () => {
 });
 
 describe('peers are reached through the root, not by importing each other', () => {
-  it('no manager imports another manager module', () => {
+  it('no manager imports a peer manager at runtime', () => {
     // The rule that keeps the manager graph acyclic: runtime access is
-    // `this.editor.<peer>`, and the only compile-time edge is `import type` of
-    // EditorCore. A manager that imports a peer's class has created a cycle
-    // that the next refactor pays for.
+    // `this.editor.<peer>`, and the only compile-time edge is `import type`.
+    //
+    // A peer's **facade** (`<peer>/index.ts`) is off limits either way — that
+    // is the implementation, and importing it is the cycle. A peer's domain
+    // modules hold contracts, which architecture.md §4 permits, but only as
+    // `import type`: a value import of one is a runtime edge wearing a
+    // contract's clothes.
     const managerFolders = MANAGER_REGISTRATIONS.map((registration) => registration.key);
     const offences: string[] = [];
 
@@ -69,13 +79,24 @@ describe('peers are reached through the root, not by importing each other', () =
         continue;
       }
 
-      for (const specifier of importsOf(file)) {
+      for (const { specifier, typeOnly } of importsOf(file)) {
         const peer = managerFolders.find(
           (folder) => folder !== owner && specifier.includes(`../${folder}/`),
         );
 
-        if (peer !== undefined) {
-          offences.push(`${path} imports ${peer}/ — reach it as editor.${peer} instead`);
+        if (peer === undefined) {
+          continue;
+        }
+
+        if (specifier.endsWith(`../${peer}/index.js`)) {
+          offences.push(`${path} imports the ${peer} facade — reach it as editor.${peer} instead`);
+          continue;
+        }
+
+        if (!typeOnly) {
+          offences.push(
+            `${path} value-imports ${specifier} — a peer's contract may only be an "import type"`,
+          );
         }
       }
     }
@@ -96,7 +117,7 @@ describe('peers are reached through the root, not by importing each other', () =
         continue;
       }
 
-      for (const specifier of importsOf(file)) {
+      for (const { specifier } of importsOf(file)) {
         if (managerFolders.some((folder) => specifier.includes(`../${folder}/`))) {
           offences.push(`${path} imports ${specifier} — register it instead`);
         }
@@ -119,7 +140,7 @@ describe('peers are reached through the root, not by importing each other', () =
  * `validate/` role files, and this test widens to every package then.
  */
 const RATCHET: Readonly<Record<string, number>> = {
-  'main.ts': 1328,
+  'main.ts': 1301,
 };
 
 const MAX_LINES = 800;

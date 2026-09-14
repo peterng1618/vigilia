@@ -15,7 +15,6 @@ import {
 } from '@vigilia/renderer-core';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { outermostOnly, placeNodes, type PlacedNode } from './geometry.js';
-import { hitTest, hitTestInside, marqueeSelect } from './hit-test.js';
 import { deferToTarget } from './keyboard.js';
 import { withScaledDescendants } from './resize-children.js';
 import {
@@ -27,19 +26,6 @@ import {
   disabledReason,
   shortcutLabel,
 } from './actions.js';
-import {
-  addToSelection,
-  applyClick,
-  clearSelection,
-  emptySelection,
-  enterGroup,
-  exitAllGroups,
-  exitGroup,
-  pruneSelection,
-  setSelection,
-  type SelectionMode,
-  type SelectionState,
-} from './selection.js';
 import {
   applyGesture,
   type GestureModifiers,
@@ -177,7 +163,6 @@ function start(): void {
   const theme = loadDemoTheme(parameters.get('theme') ?? 'demo');
 
   const editor = new EditorCore({ document: theme });
-  let selection: SelectionState = emptySelection;
   let drag: DragState | undefined;
   let guides: readonly SnapGuide[] = [];
   let marquee: { x: number; y: number; width: number; height: number } | undefined;
@@ -256,7 +241,7 @@ function start(): void {
   const inspector = createInspector(body, {
     onChange(key, change) {
       const document_ = editor.document.current;
-      const next = applyFieldChange(document_, selection.ids, key, change);
+      const next = applyFieldChange(document_, editor.selection.ids, key, change);
 
       // Identity: `applyFieldChange` returns the same document when a change
       // did not apply — a refused value, an unknown key — and committing then
@@ -308,13 +293,13 @@ function start(): void {
   const layersPanel = createLayersPanel(panel, {
     onAction(action: LayerPanelAction) {
       if (action.kind === 'select') {
-        selection = applyClick(selection, action.id, action.mode);
+        editor.selection.applyClick(action.id, action.mode);
         render();
         return;
       }
 
       if (action.kind === 'enter') {
-        selection = enterGroup(selection, action.id);
+        editor.selection.enterGroup(action.id);
         render();
         return;
       }
@@ -358,17 +343,17 @@ function start(): void {
     }
 
     if (result.select !== undefined) {
-      selection = setSelection(selection, result.select);
+      editor.selection.set(result.select);
     }
 
-    selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
+    editor.selection.pruneToDocument();
     render();
   };
 
   /** §61: a locked node is not deleted, and a wholly locked selection is a no-op. */
   const deleteSelection = (): void => {
     const document_ = editor.document.current;
-    const removable = selection.ids.filter((id) => findNode(document_.nodes, id)?.locked !== true);
+    const removable = editor.selection.ids.filter((id) => findNode(document_.nodes, id)?.locked !== true);
 
     if (removable.length === 0) {
       return;
@@ -378,7 +363,7 @@ function start(): void {
       `Delete ${removable.length} element${removable.length === 1 ? '' : 's'}`,
       deleteNodes(document_, new Set(removable)),
     );
-    selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
+    editor.selection.pruneToDocument();
     render();
   };
 
@@ -395,7 +380,7 @@ function start(): void {
     const gesture: GestureStart = {
       handle: 'move',
       origin: { x: 0, y: 0 },
-      nodes: gestureNodes(document_, placed(), selection.ids),
+      nodes: gestureNodes(document_, placed(), editor.selection.ids),
     };
 
     const transforms = applyGesture(gesture, {
@@ -421,15 +406,15 @@ function start(): void {
    */
   const actionContext = (): ActionContext => {
     const document_ = editor.document.visible;
-    const selected = selection.ids.map((id) => findNode(document_.nodes, id));
+    const selected = editor.selection.ids.map((id) => findNode(document_.nodes, id));
 
     return {
-      selectionCount: selection.ids.length,
+      selectionCount: editor.selection.ids.length,
       canUndo: editor.document.canUndo,
       canRedo: editor.document.canRedo,
       hasGroupSelected: selected.some((node) => node?.type === 'group'),
       allSelectedLocked:
-        selection.ids.length > 0 && selected.every((node) => node?.locked === true),
+        editor.selection.ids.length > 0 && selected.every((node) => node?.locked === true),
     };
   };
 
@@ -471,7 +456,7 @@ function start(): void {
         } else {
           editor.document.redo();
         }
-        selection = pruneSelection(selection, collectIds(editor.document.visible.nodes));
+        editor.selection.pruneToDocument();
         render();
         return;
 
@@ -481,13 +466,13 @@ function start(): void {
 
       case 'object.group':
         runArrange(
-          groupNodes(editor.document.current, selection.ids, freeGroupId(editor.document.current)),
+          groupNodes(editor.document.current, editor.selection.ids, freeGroupId(editor.document.current)),
           'Group',
         );
         return;
 
       case 'object.ungroup':
-        runArrange(ungroupNodes(editor.document.current, selection.ids), 'Ungroup');
+        runArrange(ungroupNodes(editor.document.current, editor.selection.ids), 'Ungroup');
         return;
 
       case 'arrange.align-left':
@@ -498,7 +483,7 @@ function start(): void {
       case 'arrange.align-bottom': {
         const edge = id.slice('arrange.align-'.length) as AlignEdge;
 
-        runArrange(alignNodes(editor.document.current, selection.ids, edge), action?.label ?? 'Align');
+        runArrange(alignNodes(editor.document.current, editor.selection.ids, edge), action?.label ?? 'Align');
         return;
       }
 
@@ -507,7 +492,7 @@ function start(): void {
         const axis = id.endsWith('-x') ? 'x' : 'y';
 
         runArrange(
-          distributeNodes(editor.document.current, selection.ids, axis),
+          distributeNodes(editor.document.current, editor.selection.ids, axis),
           action?.label ?? 'Distribute',
         );
         return;
@@ -517,7 +502,7 @@ function start(): void {
       case 'layer.reorder-back':
       case 'layer.reorder-forward':
       case 'layer.reorder-backward': {
-        const targetId = selection.ids[0];
+        const targetId = editor.selection.ids[0];
         if (targetId === undefined) {
           return;
         }
@@ -534,7 +519,7 @@ function start(): void {
       }
 
       case 'layer.toggle-visibility': {
-        const targetId = selection.ids[0];
+        const targetId = editor.selection.ids[0];
         const document_ = editor.document.current;
         const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
 
@@ -552,7 +537,7 @@ function start(): void {
       }
 
       case 'layer.toggle-lock': {
-        const targetId = selection.ids[0];
+        const targetId = editor.selection.ids[0];
         const document_ = editor.document.current;
         const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
 
@@ -575,7 +560,7 @@ function start(): void {
         // spec 0005 asks only that the gesture "vanishes with no trace in the
         // history". Outside a gesture, Escape steps out of an entered group.
         if (drag === undefined) {
-          selection = exitGroup(selection);
+          editor.selection.exitGroup();
         }
 
         editor.document.cancelPreview();
@@ -630,7 +615,7 @@ function start(): void {
       // A new file is a new history. An undo that crossed a file boundary would
       // restore half of another theme.
       editor.document.replace(result.document);
-      selection = clearSelection(exitAllGroups(selection));
+      editor.selection.exitAll();
       editor.notice.show(`Opened ${file.name}`);
       lastIds = '';
       inspectorKey = '';
@@ -778,14 +763,14 @@ function start(): void {
   const placed = (): PlacedNode[] => placeNodes(editor.document.visible.nodes);
 
   const selectedPlacements = (): PlacedNode[] =>
-    placed().filter((node) => selection.ids.includes(node.id));
+    placed().filter((node) => editor.selection.ids.includes(node.id));
 
   const drawOverlay = (): void => {
     const document_ = editor.document.visible;
     const chosen = selectedPlacements();
     // From the same placements as the outline: handles derived from the raw
     // transform land in the wrong place for anything inside a group.
-    const single = selection.ids.length === 1 ? chosen[0] : undefined;
+    const single = editor.selection.ids.length === 1 ? chosen[0] : undefined;
 
     overlay.update({
       transform: handle.transform(),
@@ -808,7 +793,7 @@ function start(): void {
    */
   const drawInspector = (): void => {
     const document_ = editor.document.current;
-    const sections = describeSelection(document_, selection.ids);
+    const sections = describeSelection(document_, editor.selection.ids);
     const key = JSON.stringify(sections);
 
     if (key === inspectorKey) {
@@ -821,7 +806,7 @@ function start(): void {
 
   const drawLayers = (): void => {
     const document_ = editor.document.visible;
-    const rows = buildLayerTree(document_.nodes, selection);
+    const rows = buildLayerTree(document_.nodes, editor.selection.state);
     const key = JSON.stringify(rows);
 
     if (key === layersKey) {
@@ -845,11 +830,11 @@ function start(): void {
   };
 
   const drawStatus = (): void => {
-    const count = selection.ids.length;
-    const inside = selection.enteredGroups.at(-1);
+    const count = editor.selection.ids.length;
+    const inside = editor.selection.enteredGroups.at(-1);
 
     status.textContent = [
-      count === 0 ? 'Nothing selected' : count === 1 ? selection.ids[0] : `${count} selected`,
+      count === 0 ? 'Nothing selected' : count === 1 ? editor.selection.ids[0] : `${count} selected`,
       inside === undefined ? undefined : `inside ${inside}`,
       editor.document.canUndo ? `undo: ${editor.document.undoLabel}` : undefined,
       editor.document.canRedo ? 'redo available' : undefined,
@@ -874,21 +859,6 @@ function start(): void {
     fromCentre: event.altKey,
   });
 
-  /**
-   * Shift toggles; ctrl does NOT touch the selection.
-   *
-   * Ctrl used to mean "toggle" here while also meaning "disable snapping"
-   * during a move — so holding ctrl to avoid a snap silently changed what was
-   * being dragged. In the worst case it added an ancestor of the node under the
-   * cursor, and the gesture then moved both, sending the child twice as far as
-   * the pointer.
-   *
-   * Shift-click toggling matches what authors expect from other design tools,
-   * and it leaves ctrl free to mean one thing.
-   */
-  const selectionModeOf = (event: PointerEvent): SelectionMode =>
-    event.shiftKey ? 'toggle' : 'replace';
-
   host.addEventListener('pointerdown', (event: PointerEvent) => {
     // Only the primary button starts a gesture; a right-click is for a context
     // menu that does not exist yet, and treating it as a drag would move things
@@ -911,7 +881,7 @@ function start(): void {
 
     const document_ = editor.document.visible;
     const point = toDocument(event);
-    const hitNow = hitTest(document_.nodes, point, { enteredGroups: selection.enteredGroups });
+    const hitNow = editor.selection.hitTest(document_.nodes, point);
 
     const isDoubleClick =
       grabbed === undefined &&
@@ -928,7 +898,7 @@ function start(): void {
 
     host.setPointerCapture(event.pointerId);
 
-    if (grabbed !== undefined && selection.ids.length > 0) {
+    if (grabbed !== undefined && editor.selection.ids.length > 0) {
       drag = {
         kind: 'transform',
         pointerId: event.pointerId,
@@ -936,7 +906,7 @@ function start(): void {
         gesture: {
           handle: grabbed,
           origin: point,
-          nodes: gestureNodes(document_, placed(), selection.ids),
+          nodes: gestureNodes(document_, placed(), editor.selection.ids),
         },
         doubleClickCandidate: undefined,
         moved: false,
@@ -949,7 +919,7 @@ function start(): void {
     if (hit === undefined) {
       // Empty canvas: start a marquee, and deselect unless a modifier says to
       // keep what is already chosen.
-      selection = applyClick(selection, undefined, selectionModeOf(event));
+      editor.selection.applyClick(undefined, editor.selection.modeFor(event));
       drag = {
         kind: 'marquee',
         pointerId: event.pointerId,
@@ -964,8 +934,8 @@ function start(): void {
 
     // Clicking an already-selected node keeps the whole selection, so dragging
     // a multi-selection does not collapse it to one node.
-    if (!selection.ids.includes(hit) || selectionModeOf(event) !== 'replace') {
-      selection = applyClick(selection, hit, selectionModeOf(event));
+    if (!editor.selection.ids.includes(hit) || editor.selection.modeFor(event) !== 'replace') {
+      editor.selection.applyClick(hit, editor.selection.modeFor(event));
     }
 
     drag = {
@@ -975,7 +945,7 @@ function start(): void {
       gesture: {
         handle: 'move',
         origin: point,
-        nodes: gestureNodes(document_, placed(), selection.ids),
+        nodes: gestureNodes(document_, placed(), editor.selection.ids),
       },
       doubleClickCandidate: candidate,
       moved: false,
@@ -1024,7 +994,7 @@ function start(): void {
     // approximated with the wrong one.
     if (drag.gesture.handle === 'move' && !event.ctrlKey && !event.metaKey) {
       const bounds = unionBounds(
-        placeNodes(committed.nodes).filter((node) => selection.ids.includes(node.id)),
+        placeNodes(committed.nodes).filter((node) => editor.selection.ids.includes(node.id)),
       );
 
       if (bounds !== undefined) {
@@ -1034,7 +1004,7 @@ function start(): void {
           collectSnapTargets(
             placeNodes(committed.nodes),
             committed.artboard,
-            new Set(selection.ids),
+            new Set(editor.selection.ids),
           ),
           { threshold: thresholdInDocumentUnits(SNAP_PIXELS, handle.transform().scale) },
         );
@@ -1078,15 +1048,18 @@ function start(): void {
         });
         const to = toDocument(event);
 
-        const hits = marqueeSelect(
-          document_.nodes,
-          { left: from.x, top: from.y, right: to.x, bottom: to.y },
-          { enteredGroups: selection.enteredGroups },
-        );
+        const hits = editor.selection.marquee(document_.nodes, {
+          left: from.x,
+          top: from.y,
+          right: to.x,
+          bottom: to.y,
+        });
 
-        selection = event.shiftKey
-          ? addToSelection(selection, hits)
-          : setSelection(selection, hits);
+        if (event.shiftKey) {
+          editor.selection.add(hits);
+        } else {
+          editor.selection.set(hits);
+        }
       }
 
       marquee = undefined;
@@ -1104,7 +1077,7 @@ function start(): void {
       return;
     }
 
-    editor.document.commitPreview(labelFor(finished.gesture.handle, selection.ids.length));
+    editor.document.commitPreview(labelFor(finished.gesture.handle, editor.selection.ids.length));
 
     render();
   };
@@ -1126,11 +1099,11 @@ function start(): void {
       return;
     }
 
-    selection = enterGroup(selection, outerId);
-    const inner = hitTestInside(document_.nodes, point);
+    editor.selection.enterGroup(outerId);
+    const inner = editor.selection.hitTestInside(document_.nodes, point);
 
     if (inner !== undefined && inner !== outerId) {
-      selection = applyClick(selection, inner);
+      editor.selection.applyClick(inner);
     }
 
     render();

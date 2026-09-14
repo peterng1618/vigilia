@@ -8,7 +8,7 @@ import {
   type Bounds,
   type PlacedNode,
   type Point,
-} from './geometry.js';
+} from '../../geometry.js';
 
 /**
  * Which node a gesture is aimed at.

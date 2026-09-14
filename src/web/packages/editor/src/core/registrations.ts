@@ -1,5 +1,6 @@
 import { DocumentManager } from '../document/index.js';
 import { NoticeManager } from '../notice/index.js';
+import { SelectionManager } from '../selection/index.js';
 import type { EditorCore } from './editor.js';
 
 /**
@@ -32,6 +33,7 @@ import type { EditorCore } from './editor.js';
  *    out loud while starting up.
  * 2. `document` — reads `options.document`, and every later manager reads the
  *    document.
+ * 3. `selection` — prunes itself against the document, so it needs one.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -41,6 +43,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'document',
     create: (editor: EditorCore) => new DocumentManager({ editor }),
+  },
+  {
+    key: 'selection',
+    create: (editor: EditorCore) => new SelectionManager({ editor }),
   },
 ] as const;
 

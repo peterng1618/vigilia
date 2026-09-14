@@ -70,9 +70,10 @@ tick) · 6 the duplications the new rules forbid.
 persisted/derived/transient taxonomy, folder roles, the filename vocabulary and
 a 500-signal/800-stop size ceiling, plus the decision record.
 
-**Phase 1 — done.** `EditorCore` is the composition root, with `NoticeManager`
-and `DocumentManager` behind it; `history.ts` moved to `document/` unchanged
-and stayed pure. `MANAGER_REGISTRATIONS` is the single declaration — the key
+**Phase 1 — done.** `EditorCore` is the composition root, with `NoticeManager`,
+`DocumentManager` and `SelectionManager` behind it; `history.ts`,
+`selection.ts` and `hit-test.ts` moved into `document/` and
+`selection/domain/` unchanged and stayed pure. `MANAGER_REGISTRATIONS` is the single declaration — the key
 union, the root's typed fields and construction order are all derived from it,
 so adding a manager is one array entry. `destroy()` walks it in reverse, and a
 manager that throws during `init()` unwinds what was already built.
@@ -86,21 +87,28 @@ deleted when it drops under the limit. Action coverage waits for Phase 2. **The
 ceiling is editor-only so far**; it widens to every package in Phase 6, once
 `renderer-core/src/theme/validate.ts` (1,138) is split.
 
-Two defects closed as a side effect: a stale refusal message no longer survives
-into the next drag (the status bar repaints on a `notice:changed` event rather
-than at six call sites, two of which returned early), and the identity-refusal
-rule that decides whether an edit becomes an undo entry now has one home in
-`DocumentManager.commit` instead of being re-implemented per call site.
+Three defects closed as a side effect: a stale refusal message no longer
+survives into the next drag (the status bar repaints on a `notice:changed`
+event rather than at six call sites, two of which returned early); the
+identity-refusal rule that decides whether an edit becomes an undo entry now
+has one home in `DocumentManager.commit`; and `enteredGroups` can no longer be
+omitted from a hit-test, because the manager supplies it rather than each of
+the three call sites passing it by hand.
 
-Verified 2026-09-14: 1,078 unit tests across 47 files, five typechecks clean,
+Verified 2026-09-14: 1,089 unit tests across 48 files, five typechecks clean,
 editor + player builds, §47 gate 201.1 KB of 400 KB, `npx playwright test
---workers=2` 141 passed / 61 skipped / **0 failed**. The teardown-unwind test
-was confirmed by disabling the unwind and watching it fail.
+--workers=2` 141 passed / 61 skipped / **0 failed**. Two guards were confirmed
+the way lessons.md demands — the teardown-unwind test by disabling the unwind,
+the peer-import rule by adding a real facade import — and both failed as they
+should before being restored.
 
-**Not claimed:** `main.ts` is barely smaller (1,349 → 1,327). Phase 1 built the
-seam; the shrinking happens in Phases 2–4. The event map has exactly one event
-in it, deliberately — events are added in the commit that adds their first
-subscriber, so the other ~25 redraws are still explicit `render()` calls.
+**Not claimed:** `main.ts` is only modestly smaller (1,349 → 1,300). Phase 1
+built the seam; the shrinking happens in Phases 2–4. The event map has exactly
+one event in it, deliberately — events are added in the commit that adds their
+first subscriber, so the other ~25 redraws are still explicit `render()` calls.
+`collectIds` is imported from `commands.ts` by `selection/`; it is a pure
+`ThemeNode` query whose real home is `renderer-core` beside `walkNodes`, and
+moving it is Phase 3 or 6 work.
 
 The safety net for phases 1–4 is `tests/e2e/editor.spec.ts`'s 57 structural
 assertions, so **no `data-vigilia-*` hook may be renamed while they are in
