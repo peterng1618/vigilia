@@ -4,8 +4,8 @@ import {
   snapMove,
   thresholdInDocumentUnits,
   type SnapTarget,
-} from './snapping.js';
-import { placeNodes } from './geometry.js';
+} from './resolver.js';
+import { placeNodes } from '../geometry.js';
 import type { ThemeNode } from '@vigilia/renderer-core';
 
 const artboard = { width: 1000, height: 600 };

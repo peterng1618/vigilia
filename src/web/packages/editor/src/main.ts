@@ -35,12 +35,6 @@ import {
   type Handle,
 } from './transform-gesture.js';
 import {
-  collectSnapTargets,
-  snapMove,
-  thresholdInDocumentUnits,
-  type SnapGuide,
-} from './snapping.js';
-import {
   collectIds,
   deleteNodes,
   findNode,
@@ -86,9 +80,6 @@ import type { AlignEdge } from './arrange/commands.js';
  */
 
 echarts.use([GaugeChart, LineChart, BarChart, PieChart, GridComponent, CanvasRenderer]);
-
-/** Snap threshold in viewport pixels, converted to document units per gesture. */
-const SNAP_PIXELS = 7;
 
 /** Arrow-key nudge, in artboard units. Shift multiplies it. */
 const NUDGE = 1;
@@ -146,7 +137,6 @@ function start(): void {
 
   const editor = new EditorCore({ document: theme });
   let drag: DragState | undefined;
-  let guides: readonly SnapGuide[] = [];
   let marquee: { x: number; y: number; width: number; height: number } | undefined;
   let lastDown: { time: number; x: number; y: number; id: string | undefined } | undefined;
 
@@ -513,7 +503,7 @@ function start(): void {
         editor.document.cancelPreview();
         drag = undefined;
         marquee = undefined;
-        guides = [];
+        editor.snapping.clear();
         render();
         return;
 
@@ -734,7 +724,7 @@ function start(): void {
       transform: handle.transform(),
       selected: chosen,
       handlesFor: single === undefined || single.locked ? undefined : single,
-      guides,
+      guides: editor.snapping.guides,
       artboard: document_.artboard,
       marquee,
     });
@@ -951,29 +941,22 @@ function start(): void {
     // calculation and is not implemented — so it is left off rather than
     // approximated with the wrong one.
     if (drag.gesture.handle === 'move' && !event.ctrlKey && !event.metaKey) {
-      const bounds = unionBounds(
-        placeNodes(committed.nodes).filter((node) => editor.selection.ids.includes(node.id)),
+      // The gesture's own nodes, not the selection. Moving a group moves its
+      // children, so a selection holding both transforms the group alone
+      // (§57) — measuring the selection instead aligned a box bigger than
+      // what was moving, and left the moving group in the target list it was
+      // supposed to be excluded from.
+      const delta = editor.snapping.resolveMove({
+        movingIds: drag.gesture.nodes.map((node) => node.id),
+        delta: { x: pointer.x - drag.gesture.origin.x, y: pointer.y - drag.gesture.origin.y },
+        scale: handle.transform().scale,
+      });
+
+      transforms = applyGesture(
+        drag.gesture,
+        { x: drag.gesture.origin.x + delta.x, y: drag.gesture.origin.y + delta.y },
+        modifiers,
       );
-
-      if (bounds !== undefined) {
-        const snapped = snapMove(
-          bounds,
-          { x: pointer.x - drag.gesture.origin.x, y: pointer.y - drag.gesture.origin.y },
-          collectSnapTargets(
-            placeNodes(committed.nodes),
-            committed.artboard,
-            new Set(editor.selection.ids),
-          ),
-          { threshold: thresholdInDocumentUnits(SNAP_PIXELS, handle.transform().scale) },
-        );
-
-        guides = snapped.guides;
-        transforms = applyGesture(
-          drag.gesture,
-          { x: drag.gesture.origin.x + snapped.delta.x, y: drag.gesture.origin.y + snapped.delta.y },
-          modifiers,
-        );
-      }
     }
 
     if (transforms.size > 0) {
@@ -994,7 +977,7 @@ function start(): void {
 
     const finished = drag;
     drag = undefined;
-    guides = [];
+    editor.snapping.clear();
 
     if (finished.kind === 'marquee') {
       if (marquee !== undefined && (marquee.width > 2 || marquee.height > 2)) {

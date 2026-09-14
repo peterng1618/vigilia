@@ -11,7 +11,7 @@ import {
   visibleResizeHandles,
   type Handle,
 } from './transform-gesture.js';
-import type { SnapGuide } from './snapping.js';
+import type { SnapGuide } from './snapping/resolver.js';
 
 /**
  * Selection outlines, transform handles and snap guides, drawn over the scene.

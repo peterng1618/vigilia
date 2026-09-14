@@ -1,5 +1,5 @@
-import type { Bounds, PlacedNode, Point } from './geometry.js';
-import { worldBounds } from './geometry.js';
+import type { Bounds, PlacedNode, Point } from '../geometry.js';
+import { worldBounds } from '../geometry.js';
 
 /**
  * Snapping a drag to the things already on the artboard.

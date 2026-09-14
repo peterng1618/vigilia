@@ -3,6 +3,7 @@ import { DocumentManager } from '../document/index.js';
 import { GlobalsManager } from '../globals/index.js';
 import { NoticeManager } from '../notice/index.js';
 import { SelectionManager } from '../selection/index.js';
+import { SnappingManager } from '../snapping/index.js';
 import type { EditorCore } from './editor.js';
 
 /**
@@ -39,6 +40,7 @@ import type { EditorCore } from './editor.js';
  * 4. `globals` — reads and edits the document through its manager.
  * 5. `arrange` — uses notice, document and selection, so it comes after all
  *    three.
+ * 6. `snapping` — measures against the document.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -60,6 +62,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'arrange',
     create: (editor: EditorCore) => new ArrangeManager({ editor }),
+  },
+  {
+    key: 'snapping',
+    create: (editor: EditorCore) => new SnappingManager({ editor }),
   },
 ] as const;
 

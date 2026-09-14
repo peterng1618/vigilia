@@ -27,7 +27,7 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,104 passed across 50 files (2026-09-14) |
+| Unit tests | 1,110 passed across 51 files (2026-09-14) |
 | Typechecks | five projects, clean |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
@@ -132,8 +132,27 @@ wrong is silent, and the order matters: the selection is applied *before*
 pruning, or an operation that creates a group selects an id the prune then
 removes.
 
+`SnappingManager` is the third. `snapping.ts` moves to `snapping/resolver.ts`
+unchanged; the manager owns the guides (wholly transient, cleared at the end
+of a gesture rather than inherited by the next), the pixel threshold, and the
+bounds measurement the shell used to do inline.
+
+**One correction worth recording.** status.md has listed "snapping is computed
+from the selection rather than what will move" as an open defect. Acting on
+it, I added a helper expanding the moving set to include descendants — and the
+test I wrote for it **passed with the helper disabled**. `collectSnapTargets`
+already drops any node whose ancestor is excluded, so the helper was
+re-implementing a guarantee that existed, which is the duplication rule broken
+in the act of fixing something. The helper is gone. The manager now asks for
+"what the gesture will transform" rather than "what is selected" because that
+is the honest question, **not** because a reachable defect was demonstrated —
+the two sets coincide in every case found so far, and the status.md entry
+should be treated as unproven rather than fixed. The regression test stays,
+reframed to pin the resolver's real guarantee, and it was confirmed to fail
+when that guarantee is disabled.
+
 **Not claimed:** the ratchet was **raised once by five lines** during the
-Phase 2 work, before the domain managers took `main.ts` down to 1,211 (from
+Phase 2 work, before the domain managers took `main.ts` down to 1,194 (from
 1,349); the raise is recorded next to the entry. The ratchet's measurement now
 agrees with `wc -l`, which it did not for the first two updates. Phase 1
 built the seam; the shrinking happens in Phases 2–4. The event map has exactly

@@ -55,9 +55,10 @@ export {
   worldCentre,
 } from './transform-gesture.js';
 
-export type { SnapGuide, SnapOptions, SnapResult, SnapTarget } from './snapping.js';
+export type { SnapGuide, SnapOptions, SnapResult, SnapTarget } from './snapping/resolver.js';
+export { SnappingManager } from './snapping/index.js';
 
-export { collectSnapTargets, snapMove, thresholdInDocumentUnits } from './snapping.js';
+export { collectSnapTargets, snapMove, thresholdInDocumentUnits } from './snapping/resolver.js';
 
 export type { ReorderTarget } from './commands.js';
 
