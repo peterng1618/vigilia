@@ -11,6 +11,7 @@ import {
   type SampleSource,
   type SceneHandle,
   type ThemeDocument,
+  type ThemeNode,
   type Transform,
 } from '@vigilia/renderer-core';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
@@ -304,29 +305,11 @@ function start(): void {
         return;
       }
 
-      const document_ = editor.document.current;
-      const target = findNode(document_.nodes, action.targetId);
-
-      if (target === undefined) {
-        return;
-      }
-
-      if (action.id === 'layer.toggle-visibility') {
-        const next = target.visible === false;
-        editor.document.commit(
-          `${next ? 'Show' : 'Hide'} ${nodeLabel(target)}`,
-          setNodeFlags(document_, target.id, { visible: next }),
-        );
-        render();
-        return;
-      }
-
-      const nextLocked = target.locked !== true;
-      editor.document.commit(
-        `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(target)}`,
-        setNodeFlags(document_, target.id, { locked: nextLocked }),
-      );
-      render();
+      // The row names its own target rather than using the selection, which
+      // is the only thing that differs from the keyboard — so it overrides the
+      // target instead of duplicating the body. These two were implemented
+      // twice, undo labels and all, and the copies were free to disagree.
+      runAction(action.id, action.targetId);
     },
   });
 
@@ -425,14 +408,26 @@ function start(): void {
    * id, so there is exactly one body per action. Adding a surface adds no
    * behaviour, which is the whole point of `actions.ts`.
    */
-  const runAction = (id: ActionId): void => {
+  /** The node an action applies to: the one a surface named, else the selection's first. */
+  const targetNode = (targetId: string | undefined): ThemeNode | undefined => {
+    const chosen = targetId ?? editor.selection.ids[0];
+
+    return chosen === undefined ? undefined : findNode(editor.document.current.nodes, chosen);
+  };
+
+  const runAction = (id: ActionId, targetId?: string): void => {
     const action = actionById(id);
 
     // A disabled action is not an error: a surface may show it, and a keystroke
     // may reach it. Saying why beats doing nothing silently.
+    //
+    // Enablement is skipped when a surface names its own target: every rule in
+    // the registry is phrased about the *selection*, which is the right
+    // question for a keystroke and the wrong one for a layer row's eye icon.
+    // The body still checks the node exists.
     const context = actionContext();
 
-    if (action !== undefined && !action.enabled(context)) {
+    if (targetId === undefined && action !== undefined && !action.enabled(context)) {
       // Non-null: `disabledReason` returns undefined only for an action that
       // is enabled, and this branch is the one where it is not.
       editor.notice.show(disabledReason(action, context)!);
@@ -502,14 +497,15 @@ function start(): void {
       case 'layer.reorder-back':
       case 'layer.reorder-forward':
       case 'layer.reorder-backward': {
-        const targetId = editor.selection.ids[0];
-        if (targetId === undefined) {
+        const chosen = targetId ?? editor.selection.ids[0];
+
+        if (chosen === undefined) {
           return;
         }
 
         const target = id.slice('layer.reorder-'.length) as 'front' | 'back' | 'forward' | 'backward';
         const document_ = editor.document.current;
-        const next = reorderNode(document_, targetId, target);
+        const next = reorderNode(document_, chosen, target);
 
         if (next !== document_) {
           editor.document.commit(action?.label ?? 'Reorder layer', next);
@@ -519,36 +515,34 @@ function start(): void {
       }
 
       case 'layer.toggle-visibility': {
-        const targetId = editor.selection.ids[0];
-        const document_ = editor.document.current;
-        const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
+        const node = targetNode(targetId);
 
         if (node === undefined) {
           return;
         }
 
-        const next = node.visible === false;
+        const visible = node.visible === false;
+
         editor.document.commit(
-          `${next ? 'Show' : 'Hide'} ${nodeLabel(node)}`,
-          setNodeFlags(document_, node.id, { visible: next }),
+          `${visible ? 'Show' : 'Hide'} ${nodeLabel(node)}`,
+          setNodeFlags(editor.document.current, node.id, { visible }),
         );
         render();
         return;
       }
 
       case 'layer.toggle-lock': {
-        const targetId = editor.selection.ids[0];
-        const document_ = editor.document.current;
-        const node = targetId === undefined ? undefined : findNode(document_.nodes, targetId);
+        const node = targetNode(targetId);
 
         if (node === undefined) {
           return;
         }
 
-        const nextLocked = node.locked !== true;
+        const locked = node.locked !== true;
+
         editor.document.commit(
-          `${nextLocked ? 'Lock' : 'Unlock'} ${nodeLabel(node)}`,
-          setNodeFlags(document_, node.id, { locked: nextLocked }),
+          `${locked ? 'Lock' : 'Unlock'} ${nodeLabel(node)}`,
+          setNodeFlags(editor.document.current, node.id, { locked }),
         );
         render();
         return;
@@ -666,6 +660,15 @@ function start(): void {
   fileBar.style.cssText = 'display:flex;flex:none;gap:8px;padding:10px 14px 0';
   panel.insertBefore(fileBar, toolbar);
 
+  /**
+   * Every button a toolbar built, by the action it invokes.
+   *
+   * Kept so enablement can walk the actions it actually rendered rather than
+   * asking the DOM what exists. The `data-vigilia-action` attributes stay for
+   * the browser tests to find, but nothing reads them back.
+   */
+  const actionButtons = new Map<ActionId, HTMLButtonElement>();
+
   for (const action of actionsInGroup('file')) {
     const button = createButton({
       text: action.label.replace('…', ''),
@@ -677,6 +680,7 @@ function start(): void {
       onClick: () => runAction(action.id),
     });
     fileBar.append(button);
+    actionButtons.set(action.id, button);
   }
 
   for (const action of actionsInGroup('arrange')) {
@@ -693,23 +697,24 @@ function start(): void {
       onClick: () => runAction(action.id),
     });
     toolbar.append(button);
+    actionButtons.set(action.id, button);
   }
 
   /**
-   * Enablement, asked of the registry rather than inferred from the view.
+   * Enablement, asked of the registry rather than of the view.
    *
-   * The previous version read the rule off each button's own id — "starts with
-   * distribute means it needs three" — and scoped it with a DOM selector. One
-   * word too broad disabled Open and Save until two nodes were selected, which
-   * timed out two browser tests. Now every button carries its action id and the
-   * rule has one home.
+   * This once read the rule off each button's own id, scoped by a DOM selector
+   * one word too broad, which disabled Open and Save until two nodes were
+   * selected. The rule moved to `actions.ts`, but the buttons were still
+   * *found* by query and each `data-vigilia-action` cast back to an `ActionId`.
+   * Walking what the toolbars built makes a stale id a compile error instead of
+   * a silently skipped button.
    */
   const drawToolbar = (): void => {
     const context = actionContext();
 
-    for (const button of panel.querySelectorAll<HTMLButtonElement>('[data-vigilia-action]')) {
-      const id = button.dataset['vigiliaAction'] as ActionId | undefined;
-      const action = id === undefined ? undefined : actionById(id);
+    for (const [id, button] of actionButtons) {
+      const action = actionById(id);
 
       if (action === undefined) {
         continue;

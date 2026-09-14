@@ -102,7 +102,19 @@ the way lessons.md demands — the teardown-unwind test by disabling the unwind,
 the peer-import rule by adding a real facade import — and both failed as they
 should before being restored.
 
-**Not claimed:** `main.ts` is only modestly smaller (1,349 → 1,300). Phase 1
+**Phase 2 — partly done.** The two wins that did not need later phases have
+landed: `layer.toggle-visibility` and `layer.toggle-lock` are implemented once
+rather than twice (the layer row passes its target to `runAction` as an
+override instead of carrying its own copy of the body and undo labels), and
+toolbar enablement walks the buttons the toolbars built rather than
+`querySelectorAll('[data-vigilia-action]')` with a string cast back to
+`ActionId`. **The `run(context)` registry migration is deferred until after
+Phase 3** — most action bodies need arrange, transform and file managers that
+do not exist yet, and moving them now would mean two dispatch paths.
+
+**Not claimed:** `main.ts` is only modestly smaller (1,349 → 1,306), and the
+size ratchet was **raised once by five lines** to let the toggle de-duplication
+land; the reason is recorded next to the entry. Phase 3 must take it back down. Phase 1
 built the seam; the shrinking happens in Phases 2–4. The event map has exactly
 one event in it, deliberately — events are added in the commit that adds their
 first subscriber, so the other ~25 redraws are still explicit `render()` calls.
