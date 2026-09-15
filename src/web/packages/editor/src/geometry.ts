@@ -1,40 +1,8 @@
 import type { ThemeNode, Transform } from '@vigilia/renderer-core';
 
-/**
- * Node geometry in world (artboard) space.
- *
- * ## Why the editor needs this and the renderer does not
- *
- * The renderer never composes transforms in code: it nests absolutely
- * positioned elements and lets the browser do it. That is the right answer for
- * drawing — one uniform artboard transform (§51), group-local child coordinates
- * (§57), no reflow — and it is useless for editing, because hit-testing and
- * transform handles need to know where a node actually *is*.
- *
- * So this composes the same chain the DOM composes, explicitly. The two must
- * agree; where they could disagree is called out at each step below, because a
- * handle drawn 3 px from the thing it grabs is the most obvious possible bug.
- *
- * ## Matrices rather than rectangles
- *
- * A rotated node has no axis-aligned box that is both tight and correct, so
- * hit-testing a rotated element against a rectangle is wrong at the corners.
- * Instead every node gets an affine matrix, and a point is tested by inverse-
- * transforming it into the node's own space and comparing against
- * `0,0 → width,height`. That is exact for any composition of translation,
- * rotation and scale, which is all the format allows (§57).
- */
+/** Legacy editor geometry until Fabric fully replaces custom interaction math. */
 
-/**
- * A 2D affine matrix, in the same component order CSS uses:
- * `matrix(a, b, c, d, e, f)`.
- *
- * ```
- * | a c e |
- * | b d f |
- * | 0 0 1 |
- * ```
- */
+/** CSS-order 2D affine matrix: `matrix(a, b, c, d, e, f)`. */
 export interface Matrix2D {
   readonly a: number;
   readonly b: number;
@@ -51,7 +19,7 @@ export interface Point {
 
 export const IDENTITY: Matrix2D = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
-/** `first` then `second`, i.e. the matrix product `second × first`. */
+/** `first` then `second`, i.e. `second × first`. */
 export function multiply(first: Matrix2D, second: Matrix2D): Matrix2D {
   return {
     a: second.a * first.a + second.c * first.b,
@@ -70,13 +38,7 @@ export function applyMatrix(matrix: Matrix2D, point: Point): Point {
   };
 }
 
-/**
- * Inverse of an affine matrix, or undefined when it has none.
- *
- * A zero determinant is reachable from a valid document — `scaleX: 0` is
- * allowed by the schema — so this returns undefined rather than producing
- * infinities that would make every subsequent hit-test true.
- */
+/** Return undefined for singular transforms such as `scaleX: 0`. */
 export function invert(matrix: Matrix2D): Matrix2D | undefined {
   const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
 
@@ -94,15 +56,7 @@ export function invert(matrix: Matrix2D): Matrix2D | undefined {
   };
 }
 
-/**
- * The matrix for one node's own transform, relative to its parent.
- *
- * Order matters and must match the DOM exactly. `mount.ts` sets `left`/`top`
- * (a translation) and then a CSS `transform` of `rotate() scale()` with
- * `transform-origin: 50% 50%` — so the rotation and scale happen about the
- * node's centre, *after* it has been positioned. Composing them in any other
- * order puts a rotated node somewhere the browser does not.
- */
+/** Match DOM transform order: position, then center-origin rotate/scale. */
 export function localMatrix(transform: Transform | undefined): Matrix2D {
   const t = transform ?? {};
   const x = t.x ?? 0;
@@ -119,8 +73,6 @@ export function localMatrix(transform: Transform | undefined): Matrix2D {
     return translate;
   }
 
-  // About the centre, which is what `transform-origin: 50% 50%` means: move the
-  // origin to the centre, transform, move back.
   const centreX = width / 2;
   const centreY = height / 2;
 
@@ -143,39 +95,21 @@ export function localMatrix(transform: Transform | undefined): Matrix2D {
   return multiply(multiply(multiply(toCentre, rotateScale), fromCentre), translate);
 }
 
-/** A node placed in world space, with everything the editor needs about it. */
 export interface PlacedNode {
   readonly id: string;
   readonly type: ThemeNode['type'];
-  /** Document→node matrix: use its inverse to bring a world point into node space. */
   readonly matrix: Matrix2D;
-  /**
-   * The composed matrix of this node's ancestors, without its own transform.
-   *
-   * Needed to convert a gesture: a node's `x`/`y` are expressed in its
-   * PARENT's space (§57), while a pointer delta arrives in document space. For
-   * a translation-only ancestor chain the two are the same, which is why a
-   * rotated group is where the difference shows up — the drag would go sideways.
-   */
+  /** Ancestor transform only; converts world-space gestures into parent space. */
   readonly parentMatrix: Matrix2D;
   readonly width: number;
   readonly height: number;
-  /** Depth in the tree; 0 for a root. */
   readonly depth: number;
-  /** Ancestor ids, outermost first. */
   readonly ancestors: readonly string[];
   readonly visible: boolean;
-  /** §61: a locked node stays selectable and inspectable, but must not transform. */
   readonly locked: boolean;
 }
 
-/**
- * Flattens the tree into world-space placements, in **paint order**.
- *
- * Paint order is document order (§137): a parent before its children, an earlier
- * sibling before a later one. So the last entry that contains a point is the
- * topmost one under it — which is why {@link hitTest} walks this backwards.
- */
+/** Flatten the tree into world-space placements in paint order. */
 export function placeNodes(nodes: readonly ThemeNode[]): PlacedNode[] {
   const placed: PlacedNode[] = [];
 
@@ -188,8 +122,6 @@ export function placeNodes(nodes: readonly ThemeNode[]): PlacedNode[] {
   ): void => {
     for (const node of list) {
       const matrix = multiply(localMatrix(node.transform), parentMatrix);
-      // A hidden group hides its children, whatever they say about themselves —
-      // `display: none` on the group removes the whole subtree from the page.
       const visible = parentVisible && node.visible !== false;
 
       placed.push({
@@ -216,20 +148,7 @@ export function placeNodes(nodes: readonly ThemeNode[]): PlacedNode[] {
   return placed;
 }
 
-/**
- * Drops any id whose ancestor is also in the set.
- *
- * A selection may legitimately contain both a group and something inside it —
- * shift-click the group, enter it, shift-click a child — and a gesture must then
- * move the group only. Moving both applies the delta **twice** to the child,
- * because moving a group already moves its children: a 100 px drag moves the
- * child 200 px, and it slides out of its own group.
- *
- * Observed exactly that way before this existed: a drag of one leaf inside a
- * nested group moved it (200, 80) for a (100, 40) pointer delta.
- *
- * Order is preserved, so the caller's pick order survives.
- */
+/** Remove selected descendants whose ancestor is also selected, preserving order. */
 export function outermostOnly(
   placements: readonly PlacedNode[],
   ids: readonly string[],
@@ -240,9 +159,6 @@ export function outermostOnly(
   return ids.filter((id) => {
     const placement = byId.get(id);
 
-    // An id with no placement no longer exists in the tree. Kept rather than
-    // dropped: this function answers one question, and pruning is
-    // `pruneSelection`'s job.
     return (
       placement === undefined ||
       !placement.ancestors.some((ancestor) => selected.has(ancestor))
@@ -250,11 +166,9 @@ export function outermostOnly(
   });
 }
 
-/** True when a world-space point falls inside a placed node's own box. */
+/** Exact hit-test by inverse-transforming into node-local space. */
 export function containsPoint(node: PlacedNode, point: Point): boolean {
   if (node.width <= 0 || node.height <= 0) {
-    // A zero-sized node is legal in the format and impossible to click. Giving
-    // it a click target would make an invisible node steal a gesture.
     return false;
   }
 
@@ -269,7 +183,7 @@ export function containsPoint(node: PlacedNode, point: Point): boolean {
   return local.x >= 0 && local.x <= node.width && local.y >= 0 && local.y <= node.height;
 }
 
-/** The four corners of a placed node, in world space, clockwise from top-left. */
+/** Four world-space corners, clockwise from top-left. */
 export function corners(node: PlacedNode): [Point, Point, Point, Point] {
   return [
     applyMatrix(node.matrix, { x: 0, y: 0 }),
@@ -279,7 +193,6 @@ export function corners(node: PlacedNode): [Point, Point, Point, Point] {
   ];
 }
 
-/** Axis-aligned bounds of a placed node in world space. */
 export interface Bounds {
   readonly left: number;
   readonly top: number;
@@ -287,14 +200,7 @@ export interface Bounds {
   readonly bottom: number;
 }
 
-/**
- * The axis-aligned bounds a rotated node actually occupies.
- *
- * Used for marquee selection and for alignment, where the question is "what
- * area does this cover" rather than "is this point inside it". Hit-testing uses
- * {@link containsPoint} instead, because these bounds are deliberately loose
- * for a rotated node.
- */
+/** Axis-aligned world bounds for marquee/alignment, not precise hit-testing. */
 export function worldBounds(node: PlacedNode): Bounds {
   const points = corners(node);
   const xs = points.map((point) => point.x);
@@ -321,7 +227,6 @@ export function boundsContain(outer: Bounds, inner: Bounds): boolean {
   );
 }
 
-/** Bounds covering several placements, or undefined for none. */
 export function unionBounds(nodes: readonly PlacedNode[]): Bounds | undefined {
   if (nodes.length === 0) {
     return undefined;
