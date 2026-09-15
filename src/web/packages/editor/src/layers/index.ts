@@ -15,5 +15,7 @@ export class LayersManager implements EditorManager {
     return buildLayerTree(this.editor.document.visible.nodes, this.editor.selection.state);
   }
 
-  public destroy(): void {}
+  public destroy(): void {
+    // No owned resources.
+  }
 }
