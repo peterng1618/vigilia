@@ -1,33 +1,18 @@
 import type { SampleEntry } from '@vigilia/renderer-core';
 import type { SensorDescriptor, SensorProvider } from './provider.js';
 
-/**
- * The scheduler: it owns *when*, providers own *what* (§116).
- *
- * Two rules live here and nowhere else, because both are properties of the
- * scheduler rather than of any provider:
- *
- * - **One poll per cycle for the union of keys active displays need** (§111).
- *   Opening a second phone adds keys to a set; it does not add a poll. If this
- *   were per-client, two phones showing the same dashboard would double the
- *   load on the hardware the dashboard is measuring.
- * - **A failing provider is isolated.** LHM missing, not running, or answering
- *   with nonsense must not stop baseline telemetry. The sample cycle therefore
- *   settles every provider independently and records failures instead of
- *   propagating the first one.
- */
+/** Scheduler: polls the requested-key union once and isolates provider failures. */
 
-/** What one provider did during a cycle, when it did not succeed. */
 export interface ProviderFailure {
   readonly providerId: string;
-  /** Pre-redacted (§101): this can reach a browser. */
+  /** May reach a browser; keep redacted. */
   readonly message: string;
 }
 
 export interface SampleCycle {
   readonly entries: readonly SampleEntry[];
   readonly failures: readonly ProviderFailure[];
-  /** Requested keys no provider answered. Reported, never fabricated (§97). */
+  /** Requested keys no provider answered. */
   readonly unmapped: readonly string[];
 }
 
@@ -35,13 +20,7 @@ export interface DescribedSensor extends SensorDescriptor {
   readonly providerId: string;
 }
 
-/**
- * The union of semantic keys a set of displays needs.
- *
- * Pure, and deliberately a `Set` fed by many clients: this is the function
- * that makes a second phone free. Sorted so a cycle's key order — and so the
- * shape of anything logged about it — is stable rather than insertion-ordered.
- */
+/** Stable sorted union of keys requested by active clients. */
 export function unionOfKeys(perClientKeys: Iterable<readonly string[]>): readonly string[] {
   const union = new Set<string>();
 
@@ -59,16 +38,9 @@ function describeError(error: unknown): string {
 }
 
 export class ProviderRegistry {
-  /**
-   * @param providers In **precedence order**. Where two providers can answer
-   *   the same semantic key, the earlier one wins — which is how the spec's
-   *   ownership table is enforced: the OS baseline provider is registered
-   *   first, so a dashboard of baseline metrics never acquires a dependency on
-   *   LibreHardwareMonitor for data the OS already exposes reliably.
-   */
+  /** Providers are ordered by precedence; the first provider to answer a key owns it. */
   constructor(private readonly providers: readonly SensorProvider[]) {}
 
-  /** Every sensor every healthy provider can read, with its provider's id. */
   async describe(): Promise<readonly DescribedSensor[]> {
     const settled = await Promise.allSettled(
       this.providers.map(async (provider) => {
@@ -84,18 +56,9 @@ export class ProviderRegistry {
     return settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
   }
 
-  /**
-   * Polls every provider once for the requested keys.
-   *
-   * Providers run concurrently and are settled independently — `allSettled`,
-   * not `all`. With `all`, one provider rejecting would discard the successful
-   * results of every other provider in the same cycle, which is precisely the
-   * failure isolation this class exists to provide.
-   */
+  /** Polls providers concurrently and preserves successful results when another fails. */
   async sample(semanticKeys: readonly string[], nowMs: number): Promise<SampleCycle> {
     if (semanticKeys.length === 0) {
-      // Nothing is being displayed, so nothing is acquired. §111 asks for
-      // exactly this: no active client means no upstream polling.
       return { entries: [], failures: [], unmapped: [] };
     }
 
@@ -120,9 +83,7 @@ export class ProviderRegistry {
       }
 
       for (const entry of result.value) {
-        // First provider in precedence order to answer a key owns it. A later
-        // provider's duplicate is dropped rather than overwriting, so adding a
-        // provider cannot silently re-point an existing dashboard.
+        // Keep the earliest provider's answer for each semantic key.
         if (claimed.has(entry.semanticKey)) {
           continue;
         }
