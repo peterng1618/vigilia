@@ -1,27 +1,9 @@
-/**
- * Selection state.
- *
- * Kept as a pure value with pure transitions, so every modifier combination is
- * testable in Node. The DOM layer turns pointer events into these calls and
- * draws the result; it decides nothing.
- *
- * ## Order is preserved
- *
- * The selection is an ordered list, not a set. Two things depend on it:
- * "align to the first selected" needs to know which one that was, and a status
- * line reading "4 selected" should list them in the order the author picked
- * them, not in whatever order a hash table produced.
- */
+/** Ordered pure selection state; the DOM layer only maps events into transitions. */
 
 export interface SelectionState {
-  /** Selected node ids, in the order they were added. */
   readonly ids: readonly string[];
-  /**
-   * The node a range or align operation treats as the anchor — the last one
-   * clicked, not the first. Matches every file manager and drawing tool.
-   */
+  /** Last clicked/added id used as the anchor. */
   readonly anchor: string | undefined;
-  /** Groups that have been entered, outermost first. */
   readonly enteredGroups: readonly string[];
 }
 
@@ -31,24 +13,9 @@ export const emptySelection: SelectionState = {
   enteredGroups: [],
 };
 
-/** How a click should combine with the existing selection. */
-export type SelectionMode =
-  /** Plain click: replace. */
-  | 'replace'
-  /** Ctrl/Cmd: add or remove this one. */
-  | 'toggle'
-  /** Shift: add without removing. */
-  | 'add';
+export type SelectionMode = 'replace' | 'toggle' | 'add';
 
-/**
- * Applies a click on `id`, or on empty canvas when `id` is undefined.
- *
- * Clicking empty canvas clears the selection **and leaves entered groups
- * alone**. Those are separate concerns: an author working inside a group who
- * clicks a gap has deselected, not left the group. Leaving is
- * {@link exitGroup}, or a click outside the group's bounds, which the DOM layer
- * decides because it knows where the group is.
- */
+/** Empty-canvas replace clears selection but does not exit entered groups. */
 export function applyClick(
   state: SelectionState,
   id: string | undefined,
@@ -74,8 +41,6 @@ export function applyClick(
     return {
       ...state,
       ids,
-      // Removing the anchor moves it to whatever is still selected, so a
-      // following range operation has something to anchor to.
       anchor: state.anchor === id ? ids.at(-1) : state.anchor,
     };
   }
@@ -83,19 +48,16 @@ export function applyClick(
   return { ...state, ids: [...state.ids, id], anchor: id };
 }
 
-/** Replaces the selection wholesale — a marquee result, or "select all". */
+/** Replace selection and de-duplicate promoted group hits. */
 export function setSelection(
   state: SelectionState,
   ids: readonly string[],
 ): SelectionState {
-  // De-duplicated defensively: a marquee over overlapping nodes in a group can
-  // resolve several hits to one ancestor.
   const unique = [...new Set(ids)];
 
   return { ...state, ids: unique, anchor: unique.at(-1) };
 }
 
-/** Adds a marquee result to the existing selection (shift-drag). */
 export function addToSelection(
   state: SelectionState,
   ids: readonly string[],
@@ -115,13 +77,7 @@ export function clearSelection(state: SelectionState): SelectionState {
   return { ...state, ids: [], anchor: undefined };
 }
 
-/**
- * Enters a group, making its children directly selectable.
- *
- * The selection is cleared: the group that was selected is no longer a sensible
- * selection once the author is working inside it, and keeping it would make the
- * next drag move the whole group by accident.
- */
+/** Entering a group clears selection so the group and child cannot move together. */
 export function enterGroup(state: SelectionState, groupId: string): SelectionState {
   if (state.enteredGroups.includes(groupId)) {
     return state;
@@ -134,12 +90,7 @@ export function enterGroup(state: SelectionState, groupId: string): SelectionSta
   };
 }
 
-/**
- * Leaves the innermost entered group and selects it.
- *
- * Selecting it on the way out is what makes escape feel like "step back up":
- * the author ends up holding the thing they were just inside.
- */
+/** Exit the innermost group and select it. */
 export function exitGroup(state: SelectionState): SelectionState {
   const leaving = state.enteredGroups.at(-1);
 
@@ -154,18 +105,11 @@ export function exitGroup(state: SelectionState): SelectionState {
   };
 }
 
-/** Drops all entered groups, e.g. when the document is replaced. */
 export function exitAllGroups(state: SelectionState): SelectionState {
   return { ids: [], anchor: undefined, enteredGroups: [] };
 }
 
-/**
- * Removes ids that no longer exist.
- *
- * Called after an undo, a delete, or a document replacement. A selection
- * pointing at a deleted node is how an editor ends up applying an inspector
- * change to nothing, or crashing on the next gesture.
- */
+/** Remove selections/groups that no longer exist; preserve identity on no-op. */
 export function pruneSelection(
   state: SelectionState,
   existingIds: ReadonlySet<string>,
