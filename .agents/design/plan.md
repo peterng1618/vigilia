@@ -14,8 +14,9 @@ precedence. `§N` markers are stable labels used by code/docs; never renumber.
 ## Non-goals
 
 Wireless wake-up · multiple pages per device · arbitrary theme scripts ·
-USB/serial displays · building a general-purpose graphics editor · formula-driven
-styling · OAuth flows · mutation requests · streaming protocols.
+USB/serial displays · building a general-purpose graphics editor · animated GIF
+elements · formula-driven styling · OAuth flows · mutation requests · streaming
+protocols.
 
 ## §7 — Product and scope
 
@@ -297,7 +298,8 @@ Current order:
 1. complete Fabric player flip;
 2. validate/adopt the `fabricjs-image-editor` source fork;
 3. migrate editor and persisted Fabric scene envelope together;
-4. implement schema-v2 globals/property model;
+4. implement schema-v2 globals/property model and remove legacy GIF asset
+   semantics;
 5. live editor bindings/charts;
 6. video background production path;
 7. delete superseded DOM/custom generic-editor code;
