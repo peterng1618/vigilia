@@ -99,10 +99,14 @@ Optional/acceptable limitations:
 Property controls should be integrated into the **new editor foundation**, not
 preserve the old Vigilia inspector by default.
 
-### 6. Video remains required
+### 6. Media scope
 
-One DOM video background beneath the transparent Fabric canvas, aligned/cropped
-by the same artboard transform. It is not a normal Fabric node.
+Video remains required: one DOM background beneath the transparent Fabric
+canvas, aligned/cropped by the same artboard transform. It is not a normal
+Fabric node.
+
+Animated GIF elements are **dropped**. Remove the legacy `gif` asset/schema
+semantics with schema v2; do not build a workaround.
 
 ## Next, in order
 
