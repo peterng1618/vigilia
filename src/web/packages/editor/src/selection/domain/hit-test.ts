@@ -31,7 +31,15 @@ export function hitTest(
   for (let index = placed.length - 1; index >= 0; index--) {
     const node = placed[index]!;
 
-    if (!node.visible || (!includeLocked && node.locked) || !containsPoint(node, point)) {
+    if (!node.visible) {
+      continue;
+    }
+
+    if (!includeLocked && node.locked) {
+      continue;
+    }
+
+    if (!containsPoint(node, point)) {
       continue;
     }
 
@@ -100,7 +108,11 @@ export function marqueeSelect(
       continue;
     }
 
-    if (node.type === 'group' || node.width <= 0 || node.height <= 0) {
+    if (node.type === 'group') {
+      continue;
+    }
+
+    if (node.width <= 0 || node.height <= 0) {
       continue;
     }
 
