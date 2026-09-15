@@ -2,29 +2,13 @@ import type { ServerResponse } from 'node:http';
 import { SAMPLE_EVENT, formatSseEvent } from '@vigilia/renderer-core';
 import { KeepLatestSlot } from './keep-latest.js';
 
-/**
- * One connected display.
- *
- * This is where §111's slow-client rule stops being a policy and becomes
- * behaviour. A socket applies backpressure: `res.write` returns `false` once
- * the kernel buffer is full, and the honest options at that moment are to
- * queue, to block, or to drop. Queueing telemetry is the wrong one — by the
- * time a slow phone drains a backlog, every frame in it describes the past.
- *
- * So a full socket parks the newest frame in a {@link KeepLatestSlot} and
- * waits for `drain`. Frames arriving meanwhile replace it. The phone resumes
- * at *now*, not by fast-forwarding through what it missed.
- */
+/** One display connection. Backpressure keeps only the newest pending snapshot. */
 export class SseConnection {
   private readonly slot = new KeepLatestSlot<string>();
   private waitingForDrain = false;
   private closed = false;
 
-  /**
-   * @param semanticKeys What this display needs. The union across connections
-   *   is what the host polls — so a second phone on the same dashboard adds
-   *   nothing to acquire.
-   */
+  /** Keys requested by this display; the host polls their union across connections. */
   constructor(
     private readonly response: ServerResponse,
     readonly semanticKeys: readonly string[],
@@ -33,16 +17,14 @@ export class SseConnection {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache, no-transform',
       connection: 'keep-alive',
-      // Without this a reverse proxy may buffer the stream into uselessness.
       'x-accel-buffering': 'no',
     });
 
-    // A first comment flushes headers, so EventSource fires `open` promptly
-    // rather than when the first batch happens to arrive.
+    // Flush headers so EventSource can report open before the first sample batch.
     response.write(': connected\n\n');
   }
 
-  /** Frames a batch and sends it, or parks it if the socket is full. */
+  /** Sends a framed batch now or leaves it as the newest pending frame. */
   offer(payload: string): void {
     if (this.closed) {
       return;
@@ -69,7 +51,6 @@ export class SseConnection {
       return;
     }
 
-    // Full. Stop writing and let the newest frame win while we wait.
     this.waitingForDrain = true;
     this.response.once('drain', () => {
       this.waitingForDrain = false;
@@ -77,7 +58,7 @@ export class SseConnection {
     });
   }
 
-  /** Frames displaced before they were ever sent — evidence of a slow client. */
+  /** Frames displaced before delivery. */
   get droppedCount(): number {
     return this.slot.droppedCount;
   }
