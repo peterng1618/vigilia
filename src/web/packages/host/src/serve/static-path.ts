@@ -1,21 +1,8 @@
 import path from 'node:path';
 
-/**
- * Turning a URL path into a file path, safely. Pure — no `fs`.
- *
- * §141 requires traversal to be rejected, and this is the function that does
- * it. It is separated from the `fs` read for the usual reason: the rule worth
- * testing is *which paths are allowed*, and asserting that needs no
- * filesystem, no server and no fixture tree.
- */
+/** Pure URL-path resolution and bundle content-type rules. */
 
-/**
- * Content types for what the bundles actually contain.
- *
- * A deliberate allowlist rather than a lookup in a dependency. Anything not
- * listed is served as `application/octet-stream`, which a browser will
- * download rather than execute — the safe direction for an unknown type.
- */
+/** Allowlist for bundle asset types; unknown extensions stay octet-stream. */
 const CONTENT_TYPES = new Map<string, string>([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
@@ -43,49 +30,23 @@ export function contentTypeFor(filePath: string): string {
   return CONTENT_TYPES.get(path.extname(filePath).toLowerCase()) ?? 'application/octet-stream';
 }
 
-/**
- * Whether a request for a bundle mounted at `mount` still needs its trailing
- * slash.
- *
- * The editor bundle is built with a **relative** base, because it is served
- * from two different places: `vite preview` (and the browser suite) put it at
- * the root, while this host mounts it under `/editor`. A relative base is the
- * only one correct in both, but it resolves against the *document's directory*
- * — so `/editor` asks for `/assets/…` (the player's, a 404) whereas `/editor/`
- * asks for `/editor/assets/…` (its own). One redirect removes the difference.
- *
- * This is the whole reason the editor booted to a blank stage with its status
- * stuck on "starting…": the HTML arrived, its module script did not.
- */
+/** Relative editor assets require `/editor/`, not `/editor`. */
 export function needsTrailingSlash(urlPath: string, mount: string): boolean {
   const withoutQuery = urlPath.split('?')[0] ?? '';
 
   return withoutQuery === mount;
 }
 
-/**
- * Resolves a URL path inside `root`.
- *
- * @returns An absolute path inside `root`, or `undefined` when the request
- *   escapes it. Refusing is always correct here: there is no legitimate
- *   request from a dashboard for a file outside its own bundle.
- *
- * The containment check is made **after** resolution, not by pattern-matching
- * the URL for `..`. Encoded, doubled and mixed-separator forms of traversal
- * are endless to enumerate; where the path actually lands is not.
- */
+/** Resolves inside `root`; returns undefined for malformed or escaping paths. */
 export function resolveStaticPath(root: string, urlPath: string): string | undefined {
   let decoded: string;
 
   try {
     decoded = decodeURIComponent(urlPath);
   } catch {
-    // A malformed escape is not a file request worth guessing at.
     return undefined;
   }
 
-  // A NUL byte can truncate a path inside a syscall, making a checked
-  // extension irrelevant to what actually gets opened.
   if (decoded.includes('\0')) {
     return undefined;
   }
@@ -95,9 +56,7 @@ export function resolveStaticPath(root: string, urlPath: string): string | undef
   const resolvedRoot = path.resolve(root);
   const candidate = path.resolve(resolvedRoot, relative);
 
-  // `startsWith(root)` alone would accept a sibling whose name merely begins
-  // with the root's — `/srv/player-secrets` against a root of `/srv/player`.
-  // Requiring the separator, or an exact match, closes that.
+  // Require a path-separator boundary so similarly prefixed sibling roots are rejected.
   if (candidate !== resolvedRoot && !candidate.startsWith(resolvedRoot + path.sep)) {
     return undefined;
   }
