@@ -1,27 +1,4 @@
-/**
- * Desktop authoring: interaction and inspectors over the shared renderer.
- *
- * This package does not render a scene of its own: it consumes
- * `@vigilia/renderer-core`'s scene path, the same one the player uses, and adds
- * selection, gestures and inspector UI on top. §31 is satisfied by construction
- * rather than by discipline, because there is only one renderer to keep honest.
- *
- * That renderer is moving from the DOM applier to Fabric, for **both** displays
- * at once — spec 0013. The invariant above is what the migration preserves; the
- * modules below that reimplement generic graphics editing (geometry,
- * hit-testing, transform gestures, the overlay) are what it deletes.
- *
- * Everything here is deliberately pure where it can be: geometry, hit-testing,
- * selection and (next) transform gestures are values and functions, unit-tested
- * in Node. The DOM layer turns pointer events into those calls and draws the
- * result. That is the same split `plan.ts` / `mount.ts` uses in the renderer,
- * for the same reason — a decision buried in an event handler is a decision
- * nobody can test.
- *
- * §47's bundle budget does **not** apply here. The editor is desktop-hosted and
- * unconstrained; the budget exists to keep the *player* small, which is why this
- * package may grow dependencies the player never sees.
- */
+/** Desktop authoring over the shared renderer; generic editor mechanics are migration targets. */
 
 export type { Bounds, Matrix2D, PlacedNode, Point } from './geometry.js';
 
