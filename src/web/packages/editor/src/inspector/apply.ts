@@ -8,45 +8,16 @@ import {
 } from '@vigilia/renderer-core';
 import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from '../commands.js';
 import { normalizeDegrees } from '../transform-gesture.js';
-// Applying an edit consults the same declaration that built the control, so a
-// numeric field cannot be rendered as a number input and stored as a string.
 import { parseNumeric, styleFieldFor } from './model.js';
 
-/**
- * Turning an inspector edit into a document edit.
- *
- * The counterpart to `model.ts`: that produces field descriptors from
- * a document, this consumes a field key plus a new value and produces the next
- * document. Both are pure, so the whole panel is testable without a DOM.
- *
- * ## Why field keys are strings
- *
- * `'style.fill'`, `'transform.x'`, `'binding.b1.precision'`. A string key means
- * the DOM layer carries no knowledge of the document shape — it renders rows and
- * reports "this key changed" — and it means a new field is one entry in the
- * model plus one case here, rather than a change threaded through three layers.
- *
- * The cost is that an unknown key is a runtime possibility rather than a
- * compile error, which is why {@link applyFieldChange} returns the document
- * unchanged for one instead of throwing: a typo in a field key should not take
- * down the editor mid-edit.
- */
+/** Pure inspector field edit → immutable document edit. Unknown/read-only keys no-op. */
 
-/** What the author did to a field. */
 export type FieldChange =
-  /** Typed a value, ticked a box, chose an option. */
   | { readonly kind: 'literal'; readonly value: unknown }
-  /** Chose "use global" and picked a token (§75). */
   | { readonly kind: 'ref'; readonly ref: string }
-  /** Chose "clear", returning the property to the renderer's default. */
   | { readonly kind: 'unset' };
 
-/**
- * Applies a change to every selected node.
- *
- * @returns The next document, or the same one when nothing applied — so a
- *   caller can skip an undo entry by identity.
- */
+/** Return the same document when refused/no-op so caller can skip history. */
 export function applyFieldChange(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -96,7 +67,6 @@ export function applyFieldChange(
     return applyBindingField(document_, nodes, key, change);
   }
 
-  // Unknown key — including `id` and `type`, which the model marks read-only.
   return document_;
 }
 
@@ -110,19 +80,12 @@ function applyTransformField(
     return document_;
   }
 
-  // `Number('')` is 0, and a number input reports the empty string for any
-  // content it cannot parse — so the obvious `Number(change.value)` turned a
-  // half-typed `1e` into a committed zero, which made the element vanish.
   const raw = parseNumeric(change.value);
 
   if (raw === undefined) {
     return document_;
   }
 
-  // Clamped to what the schema allows, so typing 400 into rotation cannot
-  // produce a document that fails to save. Width and height are clamped at 0
-  // for the same reason; the gesture layer's 1 px floor is a usability choice
-  // and does not belong here, where an author may legitimately want 0.
   const value =
     property === 'rotation'
       ? normalizeDegrees(raw)
@@ -130,10 +93,7 @@ function applyTransformField(
         ? Math.max(0, raw)
         : raw;
 
-  // A group is skipped rather than written to. The capability matrix means the
-  // inspector never offers it a transform row, so this is defence against a
-  // key arriving from somewhere else — writing geometry onto a group would put
-  // a value in the document that the renderer ignores and nothing displays.
+  // Legacy groups do not own transform fields in this editor model.
   const transforms = new Map<string, Transform>(
     nodes
       .filter((node) => node.type !== 'group')
@@ -159,32 +119,19 @@ function applyStyleField(
     }
 
     if (change.kind === 'ref') {
-      // §75: a reference REPLACES any literal. `updateStyle` overwrites the
-      // property wholesale rather than merging, so `{ ref, value }` — which the
-      // validator rejects — cannot be produced here.
+      // Replace the whole style value so ref/literal cannot coexist (§75).
       return updateStyle(current, node.id, { [property]: { ref: change.ref as GlobalRef } });
     }
 
-    // An empty string means "cleared" for a text or colour field. Storing it
-    // would emit `fill: ""`, which the renderer treats as absent anyway — so
-    // the document may as well say so.
     if (change.value === '' || change.value === undefined) {
       return updateStyle(current, node.id, { [property]: undefined });
     }
 
     const definition = styleFieldFor(property);
 
-    // Numeric properties must be stored as NUMBERS. Storing the control's
-    // string put `{"value":"0.25"}` in the document, and `mount.ts`'s
-    // `asNumber` requires `typeof === 'number'` — so opacity, outline width,
-    // shadow blur, font size, letter spacing and line height all silently did
-    // nothing while the field showed the typed value and the history recorded
-    // an edit. Outline was worse: a failed width parse discarded the colour
-    // too, leaving `border: 0px none`.
     if (definition?.kind === 'number') {
       const parsed = parseNumeric(change.value, definition);
 
-      // Refused rather than coerced: see `parseNumeric`.
       if (parsed === undefined) {
         return current;
       }
@@ -265,13 +212,7 @@ function isChartFamily(value: string | undefined): value is ChartFamily {
   return value === 'gauge' || value === 'line' || value === 'bar' || value === 'pie';
 }
 
-/**
- * Applies a binding field, addressed by the binding's own id.
- *
- * By id rather than by index, because binding ids are document-unique: an index
- * would mean "the second binding of whichever node", and across a selection
- * that writes one node's sensor into another's.
- */
+/** Bindings are addressed by id, never selection-relative index. */
 function applyBindingField(
   document_: ThemeDocument,
   nodes: readonly ThemeNode[],
@@ -296,8 +237,6 @@ function applyBindingField(
     }
 
     if (property === 'semanticKey') {
-      // §93: this is the whole point of a binding, so an empty key would leave
-      // a binding that can never resolve. Refused rather than stored.
       return typeof change.value === 'string' && change.value.length > 0
         ? { ...binding, semanticKey: change.value }
         : binding;
@@ -317,9 +256,6 @@ function applyBindingField(
     }
 
     if (property === 'unitDisplay') {
-      // Narrowed through a type guard rather than inline comparisons: with
-      // `change.value` typed `unknown`, the three-way `||` widened back to
-      // `string` and the result no longer satisfied `Binding`.
       return isUnitDisplay(change.value) ? { ...binding, unitDisplay: change.value } : binding;
     }
 
@@ -336,7 +272,7 @@ function isUnitDisplay(value: unknown): value is 'none' | 'short' | 'long' {
   return value === 'none' || value === 'short' || value === 'long';
 }
 
-/** Replaces one node anywhere in the tree, sharing untouched branches. */
+/** Replace one node anywhere in the tree while sharing untouched branches. */
 function replaceNode(
   nodes: readonly ThemeNode[],
   id: string,
@@ -365,7 +301,6 @@ function replaceNode(
   return changed ? mapped : nodes;
 }
 
-/** A label for the undo entry an inspector edit produces. */
 export function labelForField(key: string): string {
   if (key.startsWith('style.')) {
     return `Set ${key.slice('style.'.length)}`;
