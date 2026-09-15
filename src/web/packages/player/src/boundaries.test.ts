@@ -134,8 +134,14 @@ describe('the display bundle imports Fabric the cheap way', () => {
       )
       .map((record) => `${record.file} -> ${record.specifier}`);
 
-    // `fabric/node` and `fabric/extensions` would both drag in code a browser
-    // bundle cannot use.
+    // `fabric/node` is server code a browser bundle cannot use.
+    // `fabric/extensions` is browser EDITOR code — aligning guidelines, crop and
+    // gradient controls, all of which need the interactive `Canvas`. A display
+    // has no use for any of it, and its files import from bare `fabric`, so it
+    // would also breach the rule above. That makes it wrong *here*; it is not
+    // wrong in `packages/editor`, which this test does not scan, and spec 0013
+    // stage 4 adopts `AligningGuidelines` from it rather than reimplementing
+    // snapping. Do not read this rule as a ban on the subpath.
     expect(offenders, `unexpected Fabric entry point:\n${offenders.join('\n')}`).toEqual([]);
   });
 });

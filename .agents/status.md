@@ -28,8 +28,8 @@ incompatible settings section.
 | Check | Result |
 |---|---|
 | Unit tests | 1,157 passed across 56 files (2026-09-15) |
-| Typechecks | six projects, clean |
-| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed on the third run (2026-09-15). The first two runs each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, see below |
+| Typechecks | six projects, clean locally — **CI checks only five**, `scene-fabric` is absent from `ci.yml:39-44` (2026-09-15) |
+| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed (2026-09-15) — clean on the first attempt on the last run, and on the *third* attempt on the run before it, where the first two each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
 | §47 size gate | 201.1 KB gzip / 400 KB (2026-09-15) |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
@@ -222,7 +222,7 @@ geometry; and the origin written as `center` rather than the deprecated `left`.
 | Check | Result (2026-09-15) |
 |---|---|
 | Unit tests | 1,157 passed across 56 files |
-| Typechecks | six projects, clean |
+| Typechecks | six projects, clean locally — **CI checks only five**, `scene-fabric` is absent from `ci.yml:39-44` (2026-09-15) |
 | Builds | player, editor, host all build |
 | §47 size gate | 201.1 KB gzip / 400 KB — unchanged, nothing imports `scene-fabric` yet |
 | Host bundle | 34.36 kB |
@@ -246,6 +246,69 @@ source and on Node-level assertions, not on pixels — the chart object is still
 imported by nothing. The editor also still implements §137's old no-geometry
 rule (`capabilities.ts`, `resize-children.ts` and its import in
 `editor/src/main.ts`); that is stage 4 and is **not** done.
+
+### Stage 1 reviewed independently, and the object held up (2026-09-15)
+
+A second review, this one asked to form its own view and to verify by running
+rather than reading. Ran the suite (1,157 across 56 files), all six typechecks,
+the size gate (201.1 KB / 400 KB), and a throwaway jsdom suite against
+`VigiliaChart` to try to falsify specific claims. **The object itself came out
+clean** — the `toObject` origin override is load-bearing (falsified by calling
+`FabricObject.prototype.toObject` directly: no origin survives), `fromObject` is
+genuinely not overridden, `getDefaults()` composes correctly through
+`InteractiveFabricObject`, and **every Fabric source citation in spec 0013
+resolves**. The prototype-shape test and the `AssertNever` guard are both sound
+mechanisms.
+
+What the review found is around the object, and spec 0013 has been amended
+throughout (marked *review 2026-09-15*). Ranked:
+
+| Finding | Where it lands |
+|---|---|
+| **Fabric donates more than the migration map credited.** `fabric/extensions` ships `AligningGuidelines` (object snapping *with* guides), `installOriginWrapperUpdater`, crop controls and gradient controls; core ships `snapAngle`, `Collection`'s z-order methods, the `lock*` props and `Group.subTargetCheck`/`interactive` for group entry/exit. Four migration-map rows changed verdict | spec 0013, corrected map + new *What Fabric already donates* |
+| **Node identity was not in the persisted format at all.** Measured: Fabric emits no `id` and drops one passed in; `CHART_SERIALISED_KEYS` has none. Bindings, `PlanIssue.nodeId`, the layer tree and the plan-to-object match all key on it | spec 0013, *Settle before stage 3* — blocks stage 3 |
+| **Three claims cannot all hold**: `plan.ts` untouched, Fabric's format as the tree, no write-back layer. Resolved in favour of Fabric owning geometry and the plan being applied *onto* live objects; `planBox` narrows and `plan.ts` moves from KEEP to ADAPT | spec 0013, *After stage 3, Fabric owns geometry* |
+| **`includeDefaultValues` defaults to `true`**, so a persisted object carries 33 keys, not 10 — and turning it off breaks §134's origin condition for every built-in class, not just the chart. Unchosen either way | spec 0013, *Settle before stage 3* — blocks stage 3 |
+| **`grid.containLabel` has been inert app-wide.** ECharts 6 needs `LegacyGridContainLabel`, registered nowhere; `line.test.ts:201` and `bar.test.ts:144` assert the key and pass regardless. A live defect, pre-existing, not caused by the migration | spec 0013 stage 2 |
+| **`subTargetCheck`, `interactive` and `layoutManager`** are forced into Fabric's own `Group.toObject` — editor state and engine internals in a portable document, with no rule governing them | spec 0013, *Settle before stage 3* |
+| **Custom properties serialise by reference**: `chart.toObject().settings === the live object`, so a later in-place edit rewrites an earlier snapshot. Same defect class as the §67 rule, different door | spec 0013, *Telemetry* |
+| **`jsdom` and `canvas` are undeclared** — both are *optional* deps of `fabric@7.4.0`, and `chart-object.dom.test.ts` needs both | spec 0013 stage 2 |
+| **CI does not typecheck `scene-fabric`** | spec 0013 stage 2 |
+| **`StaticCanvas.loadFromJSON` has no test**, only `VigiliaChart.fromObject`. Confirmed working during review | spec 0013 stage 2 |
+| **The boundary test has three holes**, one asserted as intended (`* as fabric`), plus a comment about `fabric/extensions` that is factually wrong. Comment fixed on this branch | spec 0013 *Risks*; `boundaries.test.ts` |
+| Prose corrections: §85's gap list does not contain the four canvas-text gaps; §126 is deferred, not "dropped"; §2 does not exist; `mount.ts` is 766 not 767 and `plan.ts` 692 not 687; the E2E DOM hooks are 233 lines / 71 `expect()` calls, not 57 | spec 0013, throughout |
+
+**Raised, not changed:** whether a Fabric major bump should **refuse** every
+saved theme (§134's condition and `decisions.md`, the user's decision on
+2026-09-15) or run Fabric's own `installOriginWrapperUpdater`. The decision was
+taken on the premise that Fabric has no migration story, and that premise is
+false — Fabric stamps `version` on every object and ships the updater for
+exactly the 6→7 origin change. Reversing a user decision is not an agent's call;
+it is recorded in spec 0013's *Open, and not this spec's to close* and should be
+settled before stage 3 bumps `schemaVersion` for the first time.
+
+The full gauntlet was then run on the amended tree, and **the browser suite was
+clean on the first attempt**: six typechecks, 1,157 unit tests across 56 files,
+all three bundles built, the size gate at 201.1 KB / 400 KB, and
+`npm run test:e2e` at 141 passed / 61 skipped / 0 failed in 1.9 min. One clean
+first run does not explain the flakes recorded above — it is one more data point
+against a suite that has needed three attempts, not a diagnosis.
+
+**Not verified by this review:** nothing was rendered *by a Fabric object* —
+the gauntlet exercises the existing DOM renderer, and `scene-fabric` is still
+imported by nothing. So every visual and performance figure in spec 0013 remains
+as measured by the prototypes, which no longer exist. The two worth re-measuring
+before the stage that leans on them are `renderAll` (0.28 ms / 0.86 at DPR 2.75,
+stage 2) and the video throttle figure (22.9–28.2 ms p50, stage 7). The
+`+61.0 KB` Fabric projection is also still a projection; the gate prints
+201.1 KB because nothing imports `scene-fabric`. Whether `fabric/extensions`
+double-bundles Fabric is unmeasured and is the gate on adopting
+`AligningGuidelines`. No physical device, and a Pixel 7 viewport is not a
+Pixel 7.
+
+**Spec 0013 stages 5–8 are still not described anywhere in this file** — text
+and tokens, live telemetry, media, cleanup. A reader of this file alone would
+conclude the migration is a four-stage job.
 
 **1 — The editor manager refactor.** PAUSED at Phase 3, and partly overtaken:
 the managers Fabric replaces (selection, snapping, the transform half of
