@@ -231,8 +231,9 @@ Four rules that outrank convenience:
    double upstream polling" (§111) a property of one scheduler.
 2. **Themes bind to semantic keys, never to provider instances** (§93).
 3. **Typed chart settings only.** Raw ECharts options never enter the theme
-   format. There is exactly one engine-boundary cast, in `player/src/main.ts`;
-   if it appears in feature code the boundary has been breached.
+   format. There is exactly one engine-boundary cast, in
+   `renderer-core/src/scene/mount.ts`; if it appears in feature code the
+   boundary has been breached.
 4. **Status before value.** A non-`Ok` sample carries no value, and a missing
    one renders as a **gap, never a zero** (§83).
 

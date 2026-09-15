@@ -5,8 +5,8 @@
 - **Specs superseded:** the Python draft that previously occupied this file
   (`0009-python-telemetry-host-and-sensor-providers.md`). Its provider contract,
   semantic-key rules, LHM handling, mapping ownership and failure isolation are
-  **kept verbatim in intent**; only the runtime changed. See
-  [ADR-0007](../decisions/0007-host-in-node-shipped-as-a-cli.md).
+  **kept verbatim in intent**; only the runtime changed. See *the host is
+  Node/TypeScript, shipped as a CLI* in [`decisions.md`](../decisions.md).
 
 **Implementation state**, because this spec is wider than one milestone:
 

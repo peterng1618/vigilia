@@ -236,19 +236,19 @@ are about to add resembles a row, import it instead.
 |---|---|
 | Is a sample plottable (§83) | `types.ts` `hasPlottableValue` |
 | Node placement, matrices, bounds | `editor/src/geometry.ts` |
-| What a click selects | `editor/src/hit-test.ts`, `selection.ts` |
+| What a click selects | `editor/src/selection/domain/hit-test.ts`, `selection/domain/selection-state.ts` |
 | What a drag does to a transform | `editor/src/transform-gesture.ts` |
 | Group resize → children | `editor/src/resize-children.ts` |
-| What undo restores | `editor/src/history.ts` |
-| Document edits | `editor/src/commands.ts`, `arrange.ts` |
+| What undo restores | `editor/src/document/history.ts` |
+| Document edits | `editor/src/commands.ts`, `arrange/commands.ts` |
 | **Every editor action** — label, shortcut, glyph, enablement | `editor/src/actions.ts` |
 | What a focused control keeps | `editor/src/keyboard.ts` |
 | **Node display label fallback** | `editor/src/node-label.ts` (`nodeLabel`) |
 | **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `scrollAreaStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
-| **Layer panel tree projection** | `editor/src/layers-model.ts` (`buildLayerTree`) |
+| **Layer panel tree projection** | `editor/src/layers/tree.ts` (`buildLayerTree`) |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |
-| Inspector field types and ranges; numeric parsing | `editor/src/inspector-model.ts` |
+| Inspector field types and ranges; numeric parsing | `editor/src/inspector/model.ts` |
 | URL path safety, mount trailing slash | `host/src/serve/static-path.ts` |
 | Slow-client policy | `host/src/transport/keep-latest.ts` |
 | CLI flags | `host/src/cli/args.ts` |
@@ -278,9 +278,11 @@ before building anything that would add another copy.
 2. **Themes bind to semantic keys, never to provider instances** (§93), so
    changing what supplies a quantity never edits a theme.
 3. **Typed chart settings only.** Raw ECharts options never enter the theme
-   format. There is exactly one engine-boundary cast, in
-   `player/src/main.ts` — if that cast appears in feature code, the boundary has
-   been breached.
+   format. There is exactly one engine-boundary cast, `setOption(… as unknown as
+   EChartsCoreOption)` at `renderer-core/src/scene/mount.ts:474` — if that cast
+   appears in feature code, the boundary has been breached. (This file and
+   AGENTS.md both named `player/src/main.ts` until 2026-09-15, which has no cast
+   in it; a rule pointing at the wrong file cannot be checked.)
 4. **Two sensor tiers**, discovered and reported, never hardcoded (ADR-0004).
 5. **Declare, then generate.** `actions.ts` declares each action once and the
    keyboard, toolbars and menus generate from it. The alternative — a surface
