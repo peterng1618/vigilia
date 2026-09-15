@@ -391,8 +391,30 @@ font-kit dependency.
 
 ## §134 — The theme format is ours
 
-Own the JSON schema. Editor-library JSON, DOM snapshots and raw chart options
-are **not** the theme format.
+Own the JSON schema: the envelope, the semantics and the version. A document
+carries `schemaVersion`, its id and metadata, the artboard, globals, assets, and
+the semantic layer — sensor bindings, palette and typography references, typed
+chart settings. **Raw chart options are still not the theme format**, and
+neither is a bare renderer dump with no version, no semantics and no way to
+refuse it.
+
+**The renderer's own object serialisation is a sanctioned part of the format**
+(decided 2026-09-15), for the node tree only. Storing geometry, stacking,
+grouping, visibility and lock in the scene graph's format means they round-trip
+with no conversion code, and the alternative — a parallel tree kept in step by a
+write-back layer on every commit — is the translation engine this avoids.
+
+Three conditions make that safe rather than merely convenient, and they are
+requirements, not advice:
+
+- The envelope **records the renderer's major version**, and that version is
+  pinned exactly rather than by range.
+- A renderer major upgrade is a **schema migration**: `schemaVersion` bumps and
+  an older scene is refused, not guessed at (§141).
+- Geometry is written with an **explicit origin**, never an inherited default.
+  Fabric 7 changed `originX`/`originY` to default to `center`, so `left`/`top`
+  came to mean an object's centre — a saved scene relying on the old default
+  would have shifted by half its size, silently.
 
 ## §137 — Document and node shape
 

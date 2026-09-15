@@ -141,14 +141,56 @@ renderer's decisions.
 becomes *more* true than it is today, because the adapter is one module both
 ends import rather than a mount layer plus an overlay.
 
-### The document stays ours
+### The scene is stored in Fabric's format, inside Vigilia's envelope
 
-Fabric JSON is **not** the theme format (§134). The direction is one-way at
-load: `ThemeDocument` → `ScenePlan` → Fabric objects. During an editing session
-the Fabric scene is the live model and the editor writes geometry back to the
-document on commit, rounded to whole units (§57). Vigilia keeps ownership of
-ids, semantic bindings, palette and typography references, assets, chart
-configuration and schema version.
+Decided 2026-09-15 by the user, on the condition that it removes translation
+work rather than relocating it. It does — but only in one of the two readings,
+and the difference is large enough to state.
+
+**What is adopted.** The node tree is persisted as Fabric's own object
+serialisation, with Vigilia's semantics as declared custom properties on each
+object. `canvas.toObject([...vigiliaProps])` saves and
+`canvas.loadFromJSON(…)` revives, including custom classes through
+`classRegistry`. Measured on the prototype: a chart round-tripped to JSON and
+back **pixel-identical**, whole-canvas hash equal on both sides. So geometry,
+grouping, stacking order, visibility and lock cost **no conversion code at
+all**, and the write-back layer stage 3 would otherwise have needed — read
+`left`/`top`/`angle` off every object on every commit and round it into a
+parallel tree — is deleted before it is written.
+
+**What is not adopted, and why this is not hair-splitting.** Vigilia keeps the
+**envelope**: `schemaVersion`, document id and metadata, artboard, globals,
+assets, and the semantic layer (bindings, palette and typography references,
+typed chart settings). Two concrete reasons, not purity:
+
+1. **Replacing the envelope would *add* translation, not remove it.**
+   `scene/plan.ts` resolves tokens, formats text, applies binding scale/offset
+   and builds chart options — 687 pure, tested lines that are the most valuable
+   thing in the repo. It reads a `ThemeDocument`. Make raw Fabric JSON the
+   whole format and either it is rewritten, or Fabric JSON is converted into
+   what it reads on load — and that converter *is* the translation engine, just
+   moved to a worse place. The `ThemeDocument`→render direction is not work to
+   be avoided; it already exists and passes.
+2. **Fabric's format has no version and no migration story**, and §141 requires
+   a persisted format to refuse what it cannot read. Fabric 7 has *already*
+   made a breaking semantic change: `originX`/`originY` now default to
+   `center`, so `left`/`top` mean an object's centre rather than its corner.
+   Had the scene been bare Fabric JSON across that upgrade, every saved theme
+   would have silently shifted by half its size. That is precisely the defect
+   class this project has spent the most on.
+
+**The mechanism that makes this safe**, because a comment would not: the
+envelope records the **Fabric major version** the scene was written with, every
+object is written with an explicit top-left origin, and a Fabric major upgrade
+is treated as a **schema migration** — `schemaVersion` bumps, and a scene from
+an older Fabric major is refused rather than guessed at (§141). The version is
+pinned exactly (`7.4.0`), not by range.
+
+So §134 keeps its rule and narrows its scope: **the format is ours, and the
+renderer's object serialisation is a sanctioned part of it** — cited by version,
+inside an envelope that can refuse it. What stays forbidden is the thing §134
+was written against: a bare editor-library dump as the whole document, with no
+version, no semantics and no way to refuse it.
 
 ### Telemetry must never touch a serialised Fabric property
 
@@ -293,8 +335,11 @@ Each stage ends green and committed.
    families over the existing `buildXOption` builders.
 2. **Player.** `scene/fabric-adapter` + `StaticCanvas`; artboard transform to
    `viewportTransform`; size gate re-measured.
-3. **Document bridge.** `ScenePlan` → Fabric for every `PlanContent` kind;
-   geometry written back rounded (§57); save/load round-trip.
+3. **Document bridge.** `ScenePlan` → Fabric for every `PlanContent` kind, and
+   the persisted scene moves to Fabric's object format inside the envelope:
+   `toObject`/`loadFromJSON` round-trip, the Fabric major version recorded,
+   `schemaVersion` bumped, an older scene refused. **No write-back layer** —
+   that is what adopting the format removes.
 4. **Editor.** Interaction moves to Fabric; the `DELETE` rows go; snapping
    reimplemented; panels re-skinned onto the existing descriptors.
 5. **Text and tokens.** Styled runs, the layout options Fabric lacks, the
@@ -340,3 +385,10 @@ Each stage ends green and committed.
 - An import-boundary test fails on bare `fabric`, on `Canvas` in the player, and
   on any `packages/editor` specifier reaching `renderer-core` or `player`.
 - Editor and player render the same document identically, through one adapter.
+- A saved document **records the Fabric major version**, and one written by a
+  different major is **refused with a clear message**, not loaded and guessed
+  at. Asserted by a test that feeds it a scene claiming another major.
+- **No write-back layer exists.** If stage 3 ends with code copying
+  `left`/`top`/`angle` off Fabric objects into a parallel node tree, adopting
+  the scene format bought nothing and the decision should be re-argued rather
+  than worked around.

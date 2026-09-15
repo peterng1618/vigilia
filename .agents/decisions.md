@@ -43,7 +43,25 @@ Fabric over adopting `fabricjs-image-editor` as a foundation.
 displays. `renderer-core/src/scene/plan.ts` stays the only place that decides
 what a frame contains; `scene/mount.ts`'s DOM applier is replaced by one Fabric
 adapter that the editor and the player both import. The `ThemeDocument` remains
-the persisted format — Fabric JSON is not the theme format (§134).
+the persisted format, and Vigilia keeps its envelope: `schemaVersion`, id and
+metadata, artboard, globals, assets and the semantic layer.
+
+**The node tree, though, is stored in Fabric's own object format inside that
+envelope** (user, 2026-09-15), because storing it twice is what would need a
+translation engine — a parallel tree reconciled by a write-back layer on every
+commit. Fabric's serialisation round-trips geometry, stacking, grouping,
+visibility, lock and custom classes for free; measured on the prototype as a
+pixel-identical round-trip. What is *not* adopted is bare Fabric JSON as the
+whole document: `scene/plan.ts` reads a `ThemeDocument` and resolves tokens,
+text and chart options in 687 tested lines, so replacing the envelope would
+relocate translation rather than remove it — and Fabric's format carries no
+version, while §141 requires a persisted format to refuse what it cannot read.
+
+The safety conditions are in §134 and they are requirements: the envelope
+records the Fabric major version, that version is pinned exactly, a Fabric major
+upgrade is a schema migration, and geometry is written with an explicit origin.
+Fabric 7 already changed the default origin to `center`; a scene relying on the
+old default would have shifted by half its size without a word.
 
 **§31 is satisfied, not waived.** The earlier rejection turned on adopting a
 prebuilt Fabric *editor* whose canvas would have rendered the authoring surface

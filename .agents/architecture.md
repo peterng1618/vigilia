@@ -139,6 +139,9 @@ the most far-reaching, and the compiler catches it.
    files behind it. Themes already saved must keep loading; bump
    `schemaVersion` and fail unsupported versions rather than quietly migrating
    (§141). `theme/schema-sync.test.ts` binds this file to the validator.
+   **A Fabric major upgrade now belongs in this row**: the node tree is stored
+   in Fabric's object format, so its serialiser is part of the persisted
+   contract and bumping it is a schema migration (§134).
 3. `renderer-core` as a whole — shared by editor *and* player, so a stray
    dependency here breaks the player's size budget (§47).
 4. `host/src/providers/provider.ts` — the provider contract, and every provider

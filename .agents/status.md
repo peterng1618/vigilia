@@ -115,6 +115,20 @@ Verified 2026-09-15: **six typechecks clean, 1,131 unit tests across 54 files**,
 player + editor + host build, §47 gate 201.1 KB of 400 KB. Browser suite **not
 run** since stage 1 touched no rendering.
 
+**The persisted format was settled at the end of the session** (user,
+2026-09-15): the **node tree moves to Fabric's own object serialisation** inside
+Vigilia's envelope, so geometry, stacking, grouping, visibility and lock
+round-trip with no conversion code and stage 3 writes **no write-back layer**.
+Vigilia keeps `schemaVersion`, id, artboard, globals, assets and the semantic
+layer, because `plan.ts` reads a `ThemeDocument` and replacing the envelope
+would relocate translation rather than remove it. Three conditions are
+requirements, now in §134: the envelope records Fabric's **pinned** major
+version, a Fabric major upgrade is a `schemaVersion` migration that **refuses**
+older scenes, and geometry carries an **explicit origin** — Fabric 7 already
+moved the default to `center`, which would have shifted every saved scene by
+half its size. **Not implemented**: the schema still describes the current node
+tree, and the migration is stage 3.
+
 Fabric 7.4.0 becomes the scene graph for
 the editor *and* the player, `plan.ts` stays the only thing that decides a
 frame, and `mount.ts`'s DOM applier is replaced by one shared adapter. This
