@@ -48,7 +48,9 @@ export class GlobalsManager implements EditorManager {
     return `${action.key} is used ${uses} time${uses === 1 ? '' : 's'} — reassign those first`;
   }
 
-  public destroy(): void {}
+  public destroy(): void {
+    // No owned resources.
+  }
 
   #next(action: GlobalAction): ThemeDocument {
     const document_ = this.editor.document.current;
