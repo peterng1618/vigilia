@@ -1,10 +1,4 @@
-/**
- * Shared editor control chrome.
- *
- * Colour values live once as CSS custom properties in `index.html`; TypeScript
- * refers only to those semantic tokens. Every DOM surface imports these helpers
- * rather than copying button, input, or section-heading declarations.
- */
+/** Shared editor control styles using semantic CSS variables. */
 
 export interface ButtonOptions {
   readonly text: string;
@@ -70,12 +64,7 @@ export function inputStyle(font = '12px/1.4 ui-monospace,monospace'): string {
   ].join(';');
 }
 
-/**
- * The one scroll-container treatment. A vertical bar reserves space via
- * `scrollbar-gutter` instead of covering content, and `overflow-x:hidden`
- * guarantees no panel ever grows a horizontal bar. Colours come from the
- * `--vigilia-scrollbar-*` tokens in `index.html`; nothing here names a hex.
- */
+/** Shared scrolling treatment; reserves scrollbar space and suppresses horizontal bars. */
 export function scrollAreaStyle(extra = ''): string {
   return [
     'overflow-y:auto',
