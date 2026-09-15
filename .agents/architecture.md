@@ -99,6 +99,14 @@ The pure/DOM split is repeated deliberately at every layer:
 | Editor | `geometry` `hit-test` `selection` `snapping` `transform-gesture` `commands` `history` `arrange` `actions` `keyboard` `resize-children` | `overlay.ts`, the panels, `main.ts` wiring |
 | Host | `cli/args` `serve/static-path` `transport/keep-latest` `providers/registry` and the `providers/os` arithmetic | `net.ts` `server.ts` `sse.ts` `main.ts` |
 
+The editor row is the list [spec 0013](specs/0013-fabric-scene-migration.md)
+shortens: `geometry`, `hit-test`, `transform-gesture`, `overlay` and
+`resize-children` are generic graphics editing that Fabric owns, and
+`scene/mount.ts` becomes a Fabric adapter both displays import. `plan.ts` and
+everything in the Decides column that is Vigilia's — commands, history, arrange,
+actions, keyboard — stays exactly where it is. **The pure/DOM discipline is not
+what changes; who implements the drawing half is.**
+
 Gesture maths in the overlay, a decision in `mount.ts`, and path-safety logic
 inline in a request handler are all the same mistake, and they fail the same
 way.
@@ -271,6 +279,8 @@ are about to add resembles a row, import it instead.
 | **Node display label fallback** | `editor/src/node-label.ts` (`nodeLabel`) |
 | **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `scrollAreaStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
 | **Layer panel tree projection** | `editor/src/layers/tree.ts` (`buildLayerTree`) |
+| **Scene graph, hit testing, transforms, controls** | `fabric` (7.4.0), consumed **only** via `fabric/es`. Pending spec 0013; until then `editor/src/geometry.ts` and friends |
+| **`ScenePlan` → Fabric objects** | `renderer-core/src/scene/fabric-adapter` — one owner, imported by editor *and* player. Pending spec 0013 |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |
 | Inspector field types and ranges; numeric parsing | `editor/src/inspector/model.ts` |
@@ -293,6 +303,8 @@ before building anything that would add another copy.
 | Shortcut prose | `actions.ts` **and** `packages/editor/index.html`'s banner | The banner lies the moment anything is rebound |
 | Theme enums (`fitMode`, asset `kind`, `unitDisplay`, …) | schema + `document.ts` union + `validate.ts` array, unguarded | A value added to two of three is rejected on import with a misleading error |
 | Licence check | CI greps a fixed list of three names | Four real dev dependencies have no notice entry and CI is green |
+| **Player import boundary** | nothing — the §47 size gate is the only guard, and it has ~199 KB of slack | At current headroom the entire editor could leak into the player and the gate would still pass. Adding Fabric makes it worse: bare `fabric` instead of `fabric/es` costs 45 KB gzip silently. Spec 0013 stage 1 adds the test |
+| **What a stale reading looks like** | `mount.ts` writes `data-status` and lets CSS decide | A Fabric scene has no CSS hook, so something must own the decision instead of deferring it |
 
 ## 6. Patterns worth copying
 

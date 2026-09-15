@@ -34,17 +34,60 @@ ordering stands — the host was built last and took a different runtime
 entirely, which would have been a rewrite on top of three milestones of
 dependent work).*
 
-### The editor is a layer over the renderer, not a canvas editor
+### The editor and the player both render through Fabric
 
-Both Fabric candidates were rejected: they are canvas editors, this renderer is
-DOM plus ECharts, so adopting either meant rendering the scene twice — which §31
-forbids. The editor adds interaction and an inspector **over** `renderer-core`,
-so there is one renderer and no editor/display drift.
+**Decided by:** the user, 2026-09-15, directing the migration and choosing stock
+Fabric over adopting `fabricjs-image-editor` as a foundation.
 
-**Do not add a Fabric dependency.**
+`fabric` 7.4.0 (MIT, no runtime dependencies) is the scene graph for **both**
+displays. `renderer-core/src/scene/plan.ts` stays the only place that decides
+what a frame contains; `scene/mount.ts`'s DOM applier is replaced by one Fabric
+adapter that the editor and the player both import. The `ThemeDocument` remains
+the persisted format — Fabric JSON is not the theme format (§134).
 
-The durable lesson from that evaluation: test a foundation against the
-constraint that would disqualify it, first.
+**§31 is satisfied, not waived.** The earlier rejection turned on adopting a
+prebuilt Fabric *editor* whose canvas would have rendered the authoring surface
+while `mount.ts` rendered the display — two renderers, which §31 forbids. Making
+Fabric the renderer for both ends removes the second one. What is abandoned is
+Vigilia owning hit testing, transform handles, rotation maths, marquee selection
+and group transforms: ~1,600 lines of generic graphics editor that is not the
+product and that carries most of the editor's open defects.
+
+Measured before deciding, in headless Chromium: charts render through a custom
+`FabricObject` over a detached ECharts canvas, **including rotation at arbitrary
+angles with no hack**; §89's styled runs work in one text object on one shared
+baseline; the player lands at ~257 KB gzip against its 400 KB gate. Three
+settings are load-bearing rather than tunable — `objectCaching: false`,
+`animation: false`, and an explicit top-left origin, because Fabric 7 changed
+the default origin to centre.
+
+Two limits found by measurement, both confined to media:
+
+- **Video cannot be a Fabric object.** Fabric clears and redraws the entire
+  canvas per frame with no dirty-rectangle path, costing 22.9–28.2 ms against a
+  33.3 ms budget at a 4× CPU throttle. Video is therefore a DOM layer beneath a
+  transparent canvas, scoped to **one background** that the artboard crops.
+- **GIF cannot animate through Fabric at all** — `drawImage` yields frame 0
+  forever, measured against a visibly animating `<img>`. Deferred.
+
+`@anu3ev/fabric-image-editor` is **not** a dependency. It is read as a reference
+implementation at `../fabricjs-image-editor`, and its snapping, montage-area
+clipping and background handling are the models to follow. Against it: no
+shipped type declarations, a property-editing UI that is demo-only and excluded
+from its own package, no layers panel, and a full-canvas snapshot-diff history
+that would bake live telemetry into undo entries. Vigilia's declarative property
+descriptors and immutable-document history are kept instead.
+
+**What would reopen this:** live telemetry proving unaffordable on real Pixel 3
+hardware, or Vigilia's semantic state proving impossible to keep separate from
+renderer state. Neither has been tested on a device. Details, staging and the
+full migration map are in [spec 0013](specs/0013-fabric-scene-migration.md).
+
+*Supersedes: the-editor-is-a-layer-over-the-renderer-not-a-canvas-editor (whose
+one-renderer requirement stands and is the reason this shape was chosen — what
+fell was its conclusion that a canvas foundation must mean two renderers); and
+the "what is not adopted is the canvas" clause of the manager-architecture
+decision below, which otherwise stands in full.*
 
 ### The editor is a manager architecture over that layer
 
@@ -68,14 +111,15 @@ event map replacing manual redraw calls, and config-object registries as the
 extension point. The contract is written in
 [`architecture.md`](architecture.md) §4.
 
-**What is *not* adopted is the canvas.** That repo is a Fabric editor; adopting
-Fabric would render the scene twice, which §31 forbids and which the decision
-above already settled. `renderer-core`'s `plan.ts`/`mount.ts` stays the only
-renderer. Also rejected: its `jsondiffpatch` snapshot-diff history — this
-document is immutable with structural sharing, so whole-document snapshots are
-already cheap and reference equality already powers the dirty check, and the
-dependency would buy nothing. **The refactor adds no dependency, runtime or
-dev.**
+**What was adopted from that repo is the separation of concerns, and only
+that.** The refactor itself added no dependency; Fabric arrived separately and
+later, by the decision above, and the manager shape is what the Fabric adapter
+now plugs into rather than something it replaces. Also rejected, and still
+rejected: that repo's `jsondiffpatch` snapshot-diff history — this document is
+immutable with structural sharing, so whole-document snapshots are already cheap
+and reference equality already powers the dirty check. A canvas-snapshot history
+would additionally bake live telemetry values into undo entries, which §67
+forbids.
 
 The costs, stated plainly: a large diff across a package with no unit tests on
 its DOM half, where the only safety net is `tests/e2e/editor.spec.ts`'s 57

@@ -67,9 +67,10 @@ import type { AlignEdge } from './arrange/commands.js';
  * keyboard events into those calls and draws the result, which is the same
  * plan/mount discipline the renderer uses.
  *
- * ADR-0005: the scene is rendered by `@vigilia/renderer-core`, exactly as the
- * player renders it, with selection and handles added as an overlay. So there is
- * one renderer and no possibility of editor/display drift.
+ * The scene is rendered by `@vigilia/renderer-core`, exactly as the player
+ * renders it, with selection and handles added as an overlay. So there is one
+ * renderer and no possibility of editor/display drift. Spec 0013 moves that
+ * renderer to Fabric and folds the overlay into it, keeping the invariant.
  *
  * SCAFFOLD STATUS: the document comes from a checked-in fixture and the data
  * from `@vigilia/fake-source`. Opening and saving real files is Gate 4; live

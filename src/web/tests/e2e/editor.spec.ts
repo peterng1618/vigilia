@@ -451,9 +451,16 @@ test.describe('deletion', () => {
 
 test.describe('the scene is the renderer\'s, not a placeholder', () => {
   test('charts render live in the editor, exactly as in the player', async ({ page }) => {
-    // ADR-0005's decisive point: chart fidelity in the editor costs nothing
-    // here, because the editor mounts the same renderer the player does. If
-    // this ever fails, the editor has grown a second rendering path.
+    // The durable claim: the authoring surface shows REAL charts, not
+    // placeholders, because the editor renders through the same path the player
+    // does. That is what must keep holding.
+    //
+    // The *selector* below will not survive spec 0013. A Fabric scene has one
+    // canvas and no per-node DOM, so `[data-node-id="…"] canvas` stops
+    // resolving — and when it does, that is the migration arriving on schedule,
+    // NOT a fidelity regression and NOT a second rendering path. Re-point it at
+    // the scene canvas and sample the chart's region; do not weaken it to
+    // "something rendered", which is the assertion this test exists to avoid.
     await openEditor(page);
 
     for (const id of ['cpu-gauge', 'history-chart', 'thermals-bars', 'memory-donut']) {
@@ -496,7 +503,7 @@ test.describe('evidence', () => {
     // Committed to .agents/screenshots/ with VIGILIA_CAPTURE=1, like the
     // player captures. Shows what the authoring surface actually looks like —
     // including that the charts under the selection are live, which is the part
-    // ADR-0005 turns on.
+    // worth seeing with human eyes rather than asserting.
     const directory =
       process.env['VIGILIA_CAPTURE'] === undefined
         ? 'test-results/screenshots'

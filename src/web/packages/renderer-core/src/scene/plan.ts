@@ -30,8 +30,13 @@ import type {
  * already follow: emit a reviewable object, assert the object.
  *
  * It also serves §31 directly. The editor and the player run the *same* plan
- * builder; the editor adds overlays on top of it rather than rendering its own
- * scene, so the two cannot drift.
+ * builder; the editor adds interaction on top of it rather than rendering its
+ * own scene, so the two cannot drift.
+ *
+ * This file is the seam the Fabric migration turns on (spec 0013): everything
+ * it decides is engine-independent, so replacing the DOM applier with a Fabric
+ * adapter leaves it untouched. Keep it that way — nothing Fabric-shaped belongs
+ * in here.
  *
  * ## Status before value, everywhere
  *

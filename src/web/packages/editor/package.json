@@ -15,7 +15,7 @@
     "@vigilia/renderer-core": "*",
     "echarts": "6.1.0"
   },
-  "//": "ADR-0005: the editor is an interaction and inspector layer over @vigilia/renderer-core. Both Fabric candidates were rejected — they are canvas editors, and this renderer is DOM plus ECharts, so adopting one meant rendering the scene twice (§31 forbids it; Gate 0 rejects it outright). Do NOT add a Fabric dependency. No UI framework yet either: one is worth adding when the inspector surface is real enough to judge the trade, and adding it first would be choosing whatever got installed first.",
+  "//": "The editor adds interaction and inspectors over @vigilia/renderer-core, and is migrating its rendering and interaction onto Fabric — see spec 0013. Fabric IS an expected dependency here now; the 2026-09 prohibition is reversed, because Fabric renders the player too and §31's one-renderer rule is satisfied rather than waived. Import from 'fabric/es', never bare 'fabric': the default entry is one pre-bundled file no tree-shaker can see into and costs 45 KB gzip more for identical imports. Still no UI framework: one is worth adding when the inspector surface is real enough to judge the trade.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

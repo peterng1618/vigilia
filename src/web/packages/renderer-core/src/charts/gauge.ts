@@ -32,9 +32,9 @@ export { mixHex };
  *
  * The second point is the §85 "engine gap". For the **track**, the approach is
  * to approximate an angular gradient with many small segments
- * ({@link GaugeSettings.gradientSegments}), because it keeps one renderer and one
- * JSON representation for both editor and display. It is an approximation:
- * banding is visible at low segment counts and very large radii.
+ * ({@link GaugeSettings.gradientSegments}), because it keeps one typed settings
+ * shape and one engine option for both editor and display. It is an
+ * approximation: banding is visible at low segment counts and very large radii.
  *
  * The **progress** arc cannot use that path at all — `axisLine` is a single
  * property and the track already owns it — so its fill is resolved by

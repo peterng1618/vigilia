@@ -10,22 +10,66 @@ re-run. Licences are read from the package's own `package.json` or `LICENSE`,
 never from a search summary.
 
 Rewritten 2026-09-13 when the C# host was deleted: the .NET support matrix and
-the editor-foundation candidate comparison (Fabric, Vue, Pinia, Moveable) are
-gone. None of those is a dependency — .NET was removed by the host decision, and
-both Fabric candidates were rejected. See [`decisions.md`](decisions.md).
+the 2026-09-12 editor-foundation comparison (Vue, Pinia, Moveable, and the two
+Fabric-based *editors* `vue-fabric-editor` and `yft-design`) are gone. None of
+those is a dependency. Fabric itself **is** one as of 2026-09-15 — see *the
+editor and the player render through Fabric* in [`decisions.md`](decisions.md),
+and note that what was rejected in 2026-09 was the two prebuilt editors, not the
+library.
 
 ## Installed
 
-Everything Vigilia actually depends on. All build- or test-time except ECharts.
+Everything Vigilia actually depends on. All build- or test-time except ECharts
+and Fabric.
 
 | Package | Version | Licence | Ships? |
 |---|---|---|---|
 | echarts | 6.1.0 | Apache-2.0 | **Yes** — bundled into the player and editor |
+| fabric | 7.4.0 | MIT | **Yes** — bundled into the player and editor |
 | vite | 8.3.0 | MIT | No |
 | typescript | 7.0.2 | Apache-2.0 | No |
 | vitest | 5.0.0 | MIT | No |
 | @playwright/test | 1.63.0 | Apache-2.0 | No |
 | @types/node | 22.10.2 | MIT | No — types only |
+
+## Fabric — MIT, no dependencies, and one import path that matters
+
+**Method:** the installed package's own `package.json` and bundled `LICENSE`
+file, read on 2026-09-15 at version 7.4.0.
+
+- **Licence: MIT**, stated identically in `package.json`'s `"license"` and in
+  `LICENSE`'s first line.
+- **No runtime dependencies at all** (`dependencies: {}`, `peerDependencies:
+  {}`), and `"sideEffects": false`.
+
+**The `fabric/es` subpath is not an optimisation, it is the only correct import.**
+The default `.` entry resolves to `dist/index.min.mjs` — one pre-bundled,
+pre-minified 292 KB file that a tree-shaker cannot see into. `./es` resolves to
+a barrel over ~430 per-module files and **carries the same `types`**, so there
+is no typing penalty for taking it. Measured on 2026-09-15 with the workspace's
+own Vite 8.3.0: the same five named imports cost **95.0 KB gzip through `.` and
+49.3 KB through `./es`**. Writing `from 'fabric'` out of habit silently costs
+45 KB, which is why an import-boundary test names the bare specifier rather than
+relying on the §47 total to notice.
+
+Two further measured facts, because they shape what the player may import:
+
+- `StaticCanvas` genuinely excludes the interaction layer — no pointer handlers,
+  no `SelectableCanvas`, no brushes — confirmed by module manifest, string grep
+  and a 31 KB gzip difference against `Canvas`.
+- Every **built-in** shape extends `InteractiveFabricObject`, which imports
+  `createObjectDefaultControls`. So a display-only player still pays ~6.4 KB
+  gzip of control definitions unless every object descends from
+  `BaseFabricObject`. That is the accepted price of using `Rect`, `FabricText`
+  and `Group` rather than hand-rolling them.
+
+## The image-editor is a reference, not a dependency
+
+`@anu3ev/fabric-image-editor` (MIT, 0.10.30) is **not installed and is not
+planned to be**. The fork at `../fabricjs-image-editor` is read as a reference
+implementation. It would otherwise have brought `jsondiffpatch`, `jspdf` and
+`nanoid` in behind it; none of those is a Vigilia dependency. The reasoning is
+in [`decisions.md`](decisions.md).
 
 **The host has no runtime dependencies at all**: `node:http` to serve, SSE for
 the stream, `node:os` for telemetry.

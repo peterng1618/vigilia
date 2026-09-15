@@ -1,8 +1,18 @@
 # 0004 — Editor selection and transform gestures
 
-- **Status:** implemented
+- **Status:** implemented; the implementation is being retired — see
+  [0013](0013-fabric-scene-migration.md)
 - **Design document sections:** §31, §51, §57, §61, §67, §137
 - **Specs superseded:** none
+
+> **Amended by [0013](0013-fabric-scene-migration.md).** Fabric takes over hit
+> testing, transform handles, rotation and marquee selection, so `geometry.ts`,
+> `hit-test.ts`, `transform-gesture.ts` and `overlay.ts` are deleted rather than
+> maintained. **The behaviour specified below is what Fabric must be verified
+> against** — topmost-wins, exact rotated-corner hit-testing, locked and hidden
+> rules, and one undo transaction per gesture. Read this as the acceptance
+> criteria for the replacement, not as a description of code that will still
+> exist.
 
 ## Problem
 

@@ -76,7 +76,50 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**1 — The editor manager refactor.** IN PROGRESS, started 2026-09-14. Restructure
+**0 — The Fabric migration.** Decided 2026-09-15 by the user; spec
+[0013](specs/0013-fabric-scene-migration.md) and the superseding decision are
+written, **no code has changed yet**. Fabric 7.4.0 becomes the scene graph for
+the editor *and* the player, `plan.ts` stays the only thing that decides a
+frame, and `mount.ts`'s DOM applier is replaced by one shared adapter. This
+supersedes the 2026-09-12 rejection: that judged two prebuilt Fabric *editors*
+whose canvas would have rendered beside `mount.ts`, and §31 forbids two
+renderers — making Fabric *the* renderer removes the second one rather than
+waiving the rule.
+
+`@anu3ev/fabric-image-editor` is a **reference, not a dependency** — its
+property UI is demo-only and excluded from its own package, it ships no types,
+and its snapshot-diff history would bake telemetry into undo entries.
+
+Measured 2026-09-15, headless Chromium, **nothing on a device**:
+
+| Probe | Result |
+|---|---|
+| Chart as a custom `FabricObject` over a detached ECharts canvas | works, incl. **rotation at 37° with no hack** |
+| Live redraw while rotated | works — needs `zr.on('rendered')` → `dirty` → `requestRenderAll()`; without it, 0 renders and a frozen chart |
+| 4 live charts at 1 Hz + 10 static | `renderAll` 0.28 ms mean DPR 1 · 0.86 DPR 2.75 · 0.19 Pixel 3 **emulated** |
+| Chart disposal | 100 create+dispose = +82 KB heap; without `dispose()` = +15,955 KB (196×) |
+| §89 styled runs in one Fabric text object | work, one shared baseline; naive `set('text')` shears the ranges, `removeChars`/`insertChars` does not |
+| Player bundle | 201.1 KB today + 61.0 KB (`fabric/es`) − 4.6 KB = **~257 KB of the 400 KB gate** |
+| Bare `fabric` vs `fabric/es`, identical imports | 95.0 KB vs **49.3 KB** gzip |
+| Video **as a Fabric object** | **blocked** — full-canvas repaint per frame, 22.9–28.2 ms p50 against a 33.3 ms budget at 4× CPU throttle |
+| Animated GIF through Fabric | **impossible** — `drawImage` yields frame 0 forever against a visibly animating `<img>` |
+
+So: video is **one background on a DOM layer beneath the canvas**, positioned
+and scaled, with the artboard as its cropping region and nothing else (user,
+2026-09-15). GIF is deferred. Three settings are load-bearing, not tunable:
+`objectCaching: false`, `animation: false`, and an explicit top-left origin
+because Fabric 7 changed the default to centre.
+
+**Not verified, and it is the whole risk:** no physical Pixel 3, and the E2E
+suite's 57 structural assertions key on `data-node-id` / `data-vigilia-*`, which
+a single-canvas scene does not have — so the safety net thins exactly when
+stages 3–4 need it most.
+
+**1 — The editor manager refactor.** PAUSED at Phase 3, and partly overtaken:
+the managers Fabric replaces (selection, snapping, the transform half of
+arrange) do not need finishing, while `DocumentManager`, `GlobalsManager`,
+`InspectorManager` and `LayersManager` are exactly what the migration builds on.
+Original plan below. Restructure
 `packages/editor` as one manager per domain behind a composition root, modelled
 on `fabricjs-image-editor`'s separation of concerns — see
 [`decisions.md`](decisions.md) and the contract in

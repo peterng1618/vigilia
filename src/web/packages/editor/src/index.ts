@@ -1,11 +1,15 @@
 /**
  * Desktop authoring: interaction and inspectors over the shared renderer.
  *
- * ADR-0005 settled the shape of this package. It does **not** render — it
- * consumes `@vigilia/renderer-core`'s plan/mount path, the same one the player
- * uses, and adds selection, gestures and inspector UI on top. §31 is then
- * satisfied by construction rather than by discipline, because there is only one
- * renderer to keep honest.
+ * This package does not render a scene of its own: it consumes
+ * `@vigilia/renderer-core`'s scene path, the same one the player uses, and adds
+ * selection, gestures and inspector UI on top. §31 is satisfied by construction
+ * rather than by discipline, because there is only one renderer to keep honest.
+ *
+ * That renderer is moving from the DOM applier to Fabric, for **both** displays
+ * at once — spec 0013. The invariant above is what the migration preserves; the
+ * modules below that reimplement generic graphics editing (geometry,
+ * hit-testing, transform gestures, the overlay) are what it deletes.
  *
  * Everything here is deliberately pure where it can be: geometry, hit-testing,
  * selection and (next) transform gestures are values and functions, unit-tested

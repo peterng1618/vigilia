@@ -66,6 +66,16 @@ three implementations — absent, derived-and-editable, structural-only — roug
 500 lines written then deleted, because "what is a group" had not been settled.
 A spec would have been a document edit instead of a refactor.
 
+**Test a foundation against the constraint that would disqualify it, first.**
+This survived the decision that produced it. Two Fabric-based editors were
+rejected on 2026-09-12 because adopting one meant two renderers — correct, and
+reached quickly by testing that constraint before anything else. It was reversed
+three days later, and the reversal cost a day of measurement rather than a
+rewrite, because the *premise* had changed (Fabric became the renderer for both
+ends, so there was no second one) rather than the constraint having been
+mis-weighed. Naming the disqualifying constraint up front is what made both the
+rejection and its reversal cheap.
+
 **A capability that cannot express the distinction you need is the wrong
 capability.** One `transform` capability could not say "offers position but not
 size", so the design oscillated between giving a group every row and giving it

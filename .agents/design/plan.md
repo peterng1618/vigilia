@@ -61,12 +61,15 @@ delay chart or typography quality.
 ## §31 — One renderer, shared
 
 The editor and the display render through the same code. Rendering a scene twice
-is forbidden: it is how editor and display drift apart, and it disqualified both
-canvas-editor foundations that were evaluated. The editor is an interaction and
-inspector layer *over* the renderer.
+is forbidden: it is how editor and display drift apart. The editor adds
+interaction on top of that one renderer rather than bringing a second.
 
-Do not build a general-purpose graphics editor before the monitoring experience
-works.
+**Do not build a general-purpose graphics editor.** The renderer is Fabric and
+the scene graph is its object model; hit testing, transform handles, rotation,
+grouping and z-order are the library's job, not ours. Where Fabric does not
+reach — the artboard fit transform, snapping, the typed chart objects, the
+layout options its text model lacks — we add the minimum, and we add it once, in
+the module both displays import.
 
 ## §33 — Nothing is done until it is observed
 
@@ -115,6 +118,18 @@ crop; the editor previews the cropping.
 
 Decorative background media may contain or cover within its own bounds.
 UI-bearing backgrounds must stay aligned with foreground content.
+
+**Video is one background, and nothing more** (decided 2026-09-15). At most one
+video per theme, positioned and scaled, with **the artboard as its cropping
+region** — the same clip the design itself gets. No rotation, no video as a
+node, no video inside a group, no playback controls or timeline. It renders on
+its own layer beneath the scene, because a video drawn into the canvas forces a
+full-scene repaint per frame and cannot hold a frame budget on a low-end phone.
+
+That single-background scope is load-bearing, not a simplification for later:
+it is what keeps the layer's alignment down to the artboard scale and offsets,
+computed by the one owner that also positions the scene, and it removes any
+question of content painting behind the video.
 
 ## §57 — Geometry
 

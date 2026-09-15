@@ -1,8 +1,16 @@
 # 0003 — Scene rendering: plan, mount and sample sources
 
-- **Status:** implemented
+- **Status:** implemented; the mount layer is being replaced — see
+  [0013](0013-fabric-scene-migration.md)
 - **Design document sections:** §31, §51, §57, §83, §87, §89, §91, §93, §97, §116, §122, §124, §137, §141
 - **Specs superseded:** none
+
+> **Amended by [0013](0013-fabric-scene-migration.md).** The plan/mount split
+> below is the reason this migration is tractable, and `plan.ts` survives it
+> untouched. What changes is the **Mounting** section: the DOM applier becomes a
+> Fabric adapter shared by the editor and the player. Read the two together —
+> everything here about plan purity, status-before-value and formatting still
+> holds.
 
 ## Problem
 
@@ -23,8 +31,11 @@ exist, so there was no source of samples.
 The split is the point. Anything that could be *wrong* about a frame is decided
 in pure code, so it is unit-testable without a browser; the DOM layer is a dumb
 applier. It also satisfies §31 directly: the editor and the player run the same
-plan builder, so they cannot drift, and the editor adds overlays rather than
+plan builder, so they cannot drift, and the editor adds interaction rather than
 rendering its own scene.
+
+That the applier decides *nothing* is what lets spec 0013 swap it for a Fabric
+adapter without touching the tested half.
 
 `buildScenePlan` takes the clock as a parameter and never reads it. Two callers
 at the same instant get identical plans.

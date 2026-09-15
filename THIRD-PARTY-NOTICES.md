@@ -65,6 +65,20 @@ Apache-2.0 requires preserving the licence, copyright and NOTICE file contents,
 and stating significant changes. Import per-series from `echarts/core` for
 tree-shaking rather than the default bundle.
 
+## Fabric.js — MIT
+
+- Source: <https://github.com/fabricjs/fabric.js>
+- License: MIT (`"license": "MIT"` in the package's own `package.json`, matching
+  the first line of its bundled `LICENSE`) · Pinned version: **7.4.0**
+- Form: the canvas scene graph and interaction layer for the editor and the
+  player. No runtime dependencies of its own.
+
+MIT requires only that the licence and copyright notice travel with the
+distribution. Import from **`fabric/es`**, never bare `fabric` — the default
+entry is a single pre-bundled file no tree-shaker can see into, and it costs
+45 KB gzip more for the identical imports. The `./es` subpath ships the same
+type declarations, so there is nothing given up by taking it.
+
 ## Fonts, icons and imported assets
 
 Packaged fonts and imported SVG icons carry their own licences and must ship with

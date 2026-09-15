@@ -5,6 +5,13 @@
  * §31: shared rendering prevents editor/display drift. Anything exported here is
  * available to the player, so it must stay free of editor UI, inspectors and
  * component-framework dependencies (§47).
+ *
+ * The scene path is migrating from the DOM applier to Fabric (spec 0013), and
+ * §47 gets sharper rather than looser as a result: the player may import
+ * `StaticCanvas` and object classes from `fabric/es`, never the interactive
+ * `Canvas`, and never bare `fabric` — which is a pre-bundled entry no
+ * tree-shaker can see into. An import-boundary test enforces both, because the
+ * size gate has enough slack to miss them.
  */
 
 export type {
