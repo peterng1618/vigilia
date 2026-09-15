@@ -24,5 +24,7 @@ export class InspectorManager implements EditorManager {
     );
   }
 
-  public destroy(): void {}
+  public destroy(): void {
+    // No owned resources.
+  }
 }
