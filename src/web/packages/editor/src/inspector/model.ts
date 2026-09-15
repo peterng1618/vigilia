@@ -13,39 +13,9 @@ import {
 } from '@vigilia/renderer-core';
 import { findNode } from '../commands.js';
 
-/**
- * What the inspector shows, as data.
- *
- * The panel is generated from these descriptors rather than hand-written per
- * node type, for the reason every other layer here is split this way: the
- * decisions — which fields apply, what the current value is, whether it came
- * from a global, what is mixed across a selection — are the part that can be
- * wrong, and they are testable in Node. The DOM layer turns a descriptor into a
- * row and an edit back into a change.
- *
- * ## §75 is the reason this is not just a list of values
- *
- * "Every compatible property is EITHER a global reference OR its own literal —
- * never both, and never a bare value whose origin is ambiguous. Inspectors
- * surface this choice explicitly with 'use global' / 'make local'."
- *
- * So every style field carries a **source**: `ref`, `literal`, or `unset`. A row
- * showing `#00b8d9` without saying where it came from is precisely what §75
- * forbids, because the author cannot tell whether editing it will change one
- * element or every element using that token.
- *
- * ## Mixed values
- *
- * A multi-selection shows a field once, marked `mixed` when the selected nodes
- * disagree. Mixed is not the same as unset: unset means "no value, the renderer
- * default applies", mixed means "several values, and typing here replaces all
- * of them". Collapsing the two would make an edit silently overwrite values the
- * author never saw.
- */
+/** Pure selection → inspector descriptors. Keep unset distinct from mixed (§75). */
 
 export type FieldKind = 'number' | 'text' | 'colour' | 'boolean' | 'select';
-
-/** Where a style property's current value came from (§75). */
 export type FieldSource = 'ref' | 'literal' | 'unset';
 
 export interface FieldOption {
@@ -54,32 +24,19 @@ export interface FieldOption {
 }
 
 export interface FieldDescriptor {
-  /** Addresses the property for {@link applyFieldChange}. */
   readonly key: string;
   readonly label: string;
   readonly kind: FieldKind;
-  /** Current value, or undefined when unset or mixed. */
   readonly value: unknown;
-  /** Style properties only. */
   readonly source?: FieldSource;
-  /** The global being referenced, when `source` is `ref`. */
   readonly ref?: string;
-  /** Globals group this property may reference, for the "use global" picker. */
   readonly globalGroup?: GlobalGroupName;
-  /** Choices for a `select`. */
   readonly options?: readonly FieldOption[];
   readonly min?: number;
   readonly max?: number;
-  /**
-   * Spinner/arrow increment. `'any'` means the control accepts any precision,
-   * which is what a geometry field needs: a fixed `step` of 1 made every
-   * fractional value a `stepMismatch`, so the input sat permanently `:invalid`
-   * and the arrows could only move in whole units.
-   */
+  /** `'any'` avoids browser stepMismatch for unrestricted precision. */
   readonly step?: number | 'any';
-  /** The selected nodes disagree. Distinct from unset — see the module note. */
   readonly mixed?: boolean;
-  /** §61: a locked node's fields are shown but not editable. */
   readonly readOnly?: boolean;
 }
 
@@ -88,7 +45,6 @@ export interface InspectorSection {
   readonly fields: readonly FieldDescriptor[];
 }
 
-/** One style property's type and range. */
 export interface StyleFieldDefinition {
   readonly property: string;
   readonly label: string;
@@ -100,7 +56,7 @@ export interface StyleFieldDefinition {
   readonly options?: readonly FieldOption[];
 }
 
-/** Style properties the renderer understands, with how to edit each. */
+/** Renderer style vocabulary paired with editor control metadata. */
 const STYLE_FIELDS: readonly StyleFieldDefinition[] = [
   { property: 'fill', label: 'Fill', kind: 'colour', globalGroup: 'palette' },
   { property: 'color', label: 'Text colour', kind: 'colour', globalGroup: 'palette' },
@@ -133,41 +89,16 @@ const STYLE_FIELDS_BY_PROPERTY = new Map(
   STYLE_FIELDS.map((definition) => [definition.property, definition]),
 );
 
-/**
- * The definition for a style property, or `undefined` if the renderer has no
- * such property.
- *
- * Exported so that **applying** an edit consults the same declaration that
- * built the control. It previously did not, and half the Style panel was inert
- * as a result: the panel rendered a number input, this table declared
- * `min`/`max`, and the apply step stored `input.value` verbatim — a string.
- * `mount.ts`'s `asNumber` requires a real number, so opacity, outline width,
- * shadow blur, font size, letter spacing and line height all silently did
- * nothing while the field showed the typed value and the history recorded an
- * edit.
- */
+/** Shared by descriptor generation and edit parsing so field type/range cannot drift. */
 export function styleFieldFor(property: string): StyleFieldDefinition | undefined {
   return STYLE_FIELDS_BY_PROPERTY.get(property);
 }
 
-/**
- * Parses what a numeric control hands back, or refuses it.
- *
- * **A number input's `.value` is the empty string whenever its content is not
- * a valid number** — including a half-typed `1e` — and `Number('') === 0`. So
- * the obvious `Number(raw)` turned a clumsy keystroke into a committed zero:
- * width 0 made an element vanish, and clearing a numeric global rendered the
- * title at `0px`. Refusing is the only safe reading of "not a number".
- *
- * @returns The clamped number, or `undefined` when the input is not a number
- *   and the edit should be refused rather than coerced.
- */
+/** Parse and clamp numeric input; refuse blank/invalid values instead of coercing them to zero. */
 export function parseNumeric(
   raw: unknown,
   range: { readonly min?: number; readonly max?: number } = {},
 ): number | undefined {
-  // `unknown` because a `FieldChange` carries whatever produced it: the DOM
-  // sends a string, and callers in code send a number.
   if (typeof raw === 'number') {
     return Number.isFinite(raw) ? clamp(raw, range) : undefined;
   }
@@ -185,11 +116,6 @@ export function parseNumeric(
   return clamp(parsed, range);
 }
 
-/**
- * Clamped rather than refused: an author typing past a limit means the limit,
- * and spec 0006 promises an edit cannot produce a document that then fails to
- * save.
- */
 function clamp(
   value: number,
   range: { readonly min?: number; readonly max?: number },
@@ -199,12 +125,6 @@ function clamp(
   return range.max === undefined ? lower : Math.min(range.max, lower);
 }
 
-/**
- * Describes the inspector for a selection.
- *
- * An empty selection returns no sections rather than an empty shell: a panel
- * full of disabled fields is noise, and "nothing selected" is a clearer state.
- */
 export function describeSelection(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -218,10 +138,6 @@ export function describeSelection(
   }
 
   const readOnly = nodes.some((node) => node.locked === true);
-  // Which rows exist is decided by the capability matrix in `renderer-core`,
-  // not by ad-hoc type checks here. A group therefore shows identity and flags
-  // and nothing else — it used to offer X/Y/width/height and fill, properties
-  // that either did nothing or moved its outline without its contents.
   const types = nodes.map((node) => node.type);
 
   return [
@@ -239,8 +155,6 @@ function identitySection(nodes: readonly ThemeNode[], readOnly: boolean): Inspec
   return {
     title: nodes.length === 1 ? 'Element' : `${nodes.length} elements`,
     fields: [
-      // The id is shown and never editable: §75 has links depend on it, and
-      // renaming is what the name field is for.
       ...(single === undefined
         ? []
         : [
@@ -271,8 +185,6 @@ function identitySection(nodes: readonly ThemeNode[], readOnly: boolean): Inspec
         label: 'Visible',
         kind: 'boolean',
         ...common(nodes, (node) => node.visible !== false),
-        // Visibility stays editable on a locked node: §61 locks *transforms*,
-        // and being unable to hide a locked element would be a trap.
       },
       {
         key: 'locked',
@@ -288,9 +200,6 @@ function transformSection(
   nodes: readonly ThemeNode[],
   readOnly: boolean,
 ): InspectorSection {
-  // Which rows exist comes from the capability matrix. A group offers none of
-  // these: its transform *is* its children's values, so a row would restate
-  // something it does not own (spec 0011 D2).
   const read = (node: ThemeNode, property: 'x' | 'y' | 'width' | 'height' | 'rotation'): number =>
     node.transform?.[property] ?? 0;
 
@@ -313,9 +222,6 @@ function transformSection(
   return {
     title: 'Transform',
     fields: [
-      // Whole units, by decision: geometry is integral, so `step` stays 1 and
-      // `updateTransforms` rounds. A fraction typed here lands on the nearest
-      // unit rather than being refused.
       field('x', 'X', (node) => read(node, 'x')),
       field('y', 'Y', (node) => read(node, 'y')),
       field('width', 'Width', (node) => read(node, 'width'), { min: 0 }),
@@ -336,9 +242,6 @@ function styleSection(
   const fields: FieldDescriptor[] = [];
 
   for (const definition of STYLE_FIELDS) {
-    // One question, one owner: may any selected type carry this property? The
-    // old `TEXT_ONLY` set was a second declaration of the same fact, and a typo
-    // in it showed typography rows on a rectangle.
     if (!nodes.some((node) => allowsStyleProperty(node.type, definition.property))) {
       continue;
     }
@@ -372,13 +275,7 @@ function styleSection(
   return { title: 'Style', fields };
 }
 
-/**
- * Chart settings for a selection whose charts all have the same family.
- *
- * The rows are generated from renderer-core's declaration rather than listing
- * chart properties here. Mixed chart families have no compatible settings
- * surface, so they deliberately show no chart section.
- */
+/** Show chart settings only when every selected chart has the same family. */
 function chartSettingsSections(
   nodes: readonly ThemeNode[],
   readOnly: boolean,
@@ -433,14 +330,7 @@ function commonValues(values: readonly unknown[]): { value: unknown; mixed?: tru
     : { value: undefined, mixed: true };
 }
 
-/**
- * Binding rows, one section per binding.
- *
- * Single selection only. Bindings are per-node and identified by ids that are
- * unique across the document, so "the second binding" means nothing across a
- * multi-selection — editing by position would write one node's semantic key
- * into another's.
- */
+/** Binding ids are node-local; mixed selections therefore expose no binding rows. */
 function bindingSections(nodes: readonly ThemeNode[], readOnly: boolean): InspectorSection[] {
   if (nodes.length !== 1) {
     return [];
@@ -484,7 +374,6 @@ function bindingSections(nodes: readonly ThemeNode[], readOnly: boolean): Inspec
   }));
 }
 
-/** A value shared by every node, or undefined and `mixed` when they disagree. */
 function common<T>(
   nodes: readonly ThemeNode[],
   read: (node: ThemeNode) => T,
@@ -509,14 +398,7 @@ function sameStyleValue(a: StyleValue | undefined, b: StyleValue | undefined): b
   return !('ref' in b && b.ref !== undefined) && a.value === b.value;
 }
 
-/**
- * The value to show in the field.
- *
- * A reference displays its **resolved** value, so an author sees the colour they
- * will get — with `source: 'ref'` telling the row to present it as a token
- * rather than an editable literal. Showing the ref string alone would make the
- * author open the globals panel to find out what colour it is.
- */
+/** Resolve refs for the preview while `source` still tells the UI they are global. */
 function resolveForDisplay(value: StyleValue, globals: Globals): unknown {
   if (!('ref' in value) || value.ref === undefined) {
     return value.value;
@@ -532,7 +414,6 @@ function resolveForDisplay(value: StyleValue, globals: Globals): unknown {
   return globals[group as GlobalGroupName]?.[entryId]?.value;
 }
 
-/** Globals available for a field's picker, as options. */
 export function globalOptions(globals: Globals, group: GlobalGroupName): FieldOption[] {
   return Object.entries(globals[group] ?? {}).map(([id, entry]) => ({
     value: `${group}.${id}`,
