@@ -3,7 +3,7 @@ import type { ChartFamily } from '../theme/document.js';
 /**
  * Which settings each chart family accepts, as editable field descriptors.
  *
- * The **one owner** of that question (AGENTS.md §2). It previously had four
+ * The **one owner** of that question (AGENTS.md's one-owner rule). It previously had four
  * encodings that nothing related: the settings interfaces in `types.ts` and
  * `charts/*.ts`, the `default*Settings` objects, `validate.ts`'s `KNOWN_KEYS`
  * plus its `validateSettingsRange`, and the JSON schema. The editor had a

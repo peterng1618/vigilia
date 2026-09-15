@@ -1,13 +1,21 @@
 ---
 name: vigilia:write-adr
-description: Writes a Vigilia architecture decision record in .agents/decisions, and decides whether a change is an ADR at all rather than a spec or a gate entry. Use when recording a decision, choosing between options with lasting consequences, revisiting or superseding an earlier decision, or when asked why something was chosen.
+description: Writes a Vigilia architecture decision record in .agents/decisions.md, and decides whether a change is an ADR at all rather than a spec or a gate entry. Use when recording a decision, choosing between options with lasting consequences, revisiting or superseding an earlier decision, or when asked why something was chosen.
 ---
 
 # Writing an ADR
 
-`.agents/decisions.md` holds one decision per file: what was decided, the context
-that forced it, and what it costs. An ADR is **immutable once accepted** —
-correct it by superseding it, never by rewriting it.
+`.agents/decisions.md` is **one file holding every decision at its current
+position only**. A reversed decision is *rewritten in place*; the dead reasoning
+is deleted rather than left to read as current guidance, and the full original
+text stays in git history if it is ever needed.
+
+**This is not a per-file, immutable-ADR scheme, and this skill used to say it
+was**, which is how a spec came to link at a path that had not existed for a
+day. There is no `.agents/decisions/` directory; the numbered per-file ADRs
+`0001`–`0007` live only in git history under `docs/decisions/`. `ADR-000N`
+citations remain scattered through the source, so **cite an old decision by
+number where the code already does, and a new one by its heading**.
 
 ## Is this actually an ADR?
 
@@ -26,57 +34,64 @@ proposing changes to it. An ADR may supersede its
 *sequencing* (ADR-0006 did) but never its content or acceptance criteria without
 a human decision.
 
-## File convention
+## Convention
 
-`<NNNN>-<kebab-name>.md`, numbered in creation order, named for the decision
-rather than the topic — `0005-own-the-editor-layer.md`, not `0005-editor.md`.
+An `###` heading under `## Settled`, **named as the claim it makes** — "The host
+is Node/TypeScript, shipped as a CLI", not "The host". Then prose: what forced
+it, what was decided, what it costs, and what would reopen it. No status
+front-matter — a decision is in the file because it is current.
 
-```markdown
-# ADR-NNNN — <The decision, as a claim>
+Two elements are not optional:
 
-- **Status:** Proposed | Accepted | Superseded
-- **Date:** YYYY-MM-DD
-- **Supersedes:** <link, or "none">
-- **Decided by:** <who, and on what authority>
+- **`**Decided by:**`** where the authority matters (see below).
+- **`*Supersedes: …*`** as the closing italic line whenever this replaces an
+  earlier position. Name the old decisions, and say in parentheses which parts
+  of them survive. The pattern to copy:
 
-## Context
-What forced the decision. Include the evidence that exists **now** and did not
-exist before — that is usually why the decision is being made or revisited.
+  ```markdown
+  *Supersedes: target .NET 10; sequence-the-.NET-host-after-the-frontend (whose
+  ordering stands — the host was built last and took a different runtime
+  entirely, which would have been a rewrite on top of three milestones of
+  dependent work).*
+  ```
 
-## Decision
-The choice, stated plainly.
-
-## Consequences
-What this costs, what it forecloses, and what now becomes true. Include the
-consequences you dislike.
-
-## What would change this decision
-The observation that would reopen it. An ADR without this is a preference.
-```
+Two other sections exist: `## Open — need a human` for a question that is
+genuinely unanswered, and `## Resolved by a later spec` for a decision a spec
+has since settled. Gate measurements are append-only observations and belong to
+`vigilia:gate-evidence`, not here.
 
 ## Rules that matter here
 
-**`Decided by` is not decoration.** §164 reserves schema breaks, major
-dependency changes and scope expansion for human review. If you decided
-something in that class, record the authority explicitly — ADR-0005 does, and
-names the date the user granted it. If you do not have that authority, write the
-ADR as **Proposed** and say what you need.
+**`Decided by` is not decoration.** §157 reserves **scope expansion, anything
+with external effect, and product taste** for human review; architecture, schema
+design and sequencing are yours. If a decision sits in the reserved class, or if
+the user directed it themselves, record who decided and when — the manager
+architecture decision does exactly that. If you need authority you
+do not have, say plainly in the decision what you are waiting for and put it
+under `## Open — need a human` instead.
 
 **Record the rejected options and why**, with the specifics that drove it —
 versions, pins, measured numbers. "We chose X because it is better" is not a
 record; ADR-0003 pinning LibreHardwareMonitorLib exactly is.
 
-**Never edit an accepted ADR to change its meaning.** Two legitimate moves:
-supersede it with a new one that links back, or append a dated **Addendum**
-recording what changed and whether the decision still holds. ADR-0005 has one.
-Clerical fixes — a broken link, a typo — are fine.
+**Rewriting is the whole move, and it is destructive on purpose.** Replace the
+heading and the reasoning; do not strike the old text through, keep it in a
+"previously" paragraph, or leave two positions side by side. A decision that
+still reads as current is worse than none. Where a position changed more than
+once, record only where it landed and why — the intermediate steps are noise
+that future readers mistake for nuance.
 
-**Superseding is a two-file change.** The new ADR sets `Supersedes`; the old
-one's `Status` becomes `Superseded` with a link forward. An ADR that is silently
-obsolete is worse than none, because it still reads as current.
+**A surviving lesson outlives its decision.** When a rejection is reversed, the
+thing it *taught* often still holds — "test a foundation against the constraint
+that would disqualify it, first" is worth keeping whatever happens to the
+foundation. Move it to [`../../lessons.md`](../../lessons.md) rather than
+deleting it along with the reasoning.
 
 **Propagate the consequence.** A decision that contradicts `AGENTS.md`, a
-skill, `THIRD-PARTY-NOTICES.md` or a package comment leaves the contradiction
-live until you fix those too — in the same commit. ADR-0005 rejected Fabric, so
-"do not add Fabric" belongs everywhere a foundation is mentioned; a leftover
-"foundation not yet chosen" sends the next agent to install one.
+skill, `THIRD-PARTY-NOTICES.md`, a package comment, a source comment or a
+**test** leaves the contradiction live until you fix those too — in the same
+commit. Expect a reversal to have more copies than you think: a prohibition
+tends to be restated wherever the topic comes up, including in package-manifest
+comments beside the very dependency block a future agent would edit. **Grep for
+the claim, not just the topic**, and count a live test as guidance — it is the
+one copy that fails loudly instead of quietly misleading someone.

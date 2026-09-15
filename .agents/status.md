@@ -2,7 +2,7 @@
 
 A snapshot, and the one file here that goes stale on purpose. Every figure below
 must have been printed by a command that ran — **update this file before every
-commit and push** (AGENTS.md §9).
+commit and push** (AGENTS.md, "Commit and PR workflow").
 
 Durable rules are in [`AGENTS.md`](../AGENTS.md), structure in
 [`architecture.md`](architecture.md), decisions in
@@ -32,6 +32,26 @@ incompatible settings section.
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
 | Host bundle | 34.36 kB, zero runtime deps |
+
+**AGENTS.md is an operating manual again** (2026-09-15), remodelled on
+fabric.js's own AGENTS.md at the user's request: how to work here, and nothing
+about how the project is built or why. 360 lines to 289, with the architecture
+summary, the four engine rules, the mirror, the blast radius and the design
+principles deleted as duplicates of `architecture.md`, `lessons.md`,
+`decisions.md` and `plan.md` — each verified present in its owner before
+removal. `vigilia:conventions` was a 123-line third copy and is now a 28-line
+pointer; it had already drifted, recommending `npm run typecheck` while
+AGENTS.md still listed five hand-typed `tsc` paths, and carrying a boundary rule
+a later decision reversed. The commands are now the workspace-derived npm
+scripts, all five verified to exist and run. `AGENTS.md §2`/`§9` citations in six
+files became named references, since numbered sections are what drifted.
+
+Two defects fell out of the audit: old §8 required secrets to go through
+`ISecretStore`, **an interface that exists nowhere in the repo** — a C#-era name
+that outlived its runtime, with plan.md §101's "platform secret adapter" the
+real rule; and the ownership registry pointed at four paths the manager refactor
+had moved. Not claimed: no agent has yet started a session against the new file,
+so whether it reads better in practice is unverified.
 
 Style-name validation now rejects unknown properties on nodes and both text run
 variants using the existing capabilities vocabulary. The schema enum is checked

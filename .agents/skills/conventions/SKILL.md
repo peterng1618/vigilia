@@ -1,123 +1,28 @@
 ---
 name: vigilia:conventions
-description: Quick reference for Vigilia's commands, boundaries and known traps. Use when you need a fast reminder of how to build, test, or run the project, which files must not be hand-edited, or which tooling behaves unexpectedly. Full detail is in AGENTS.md.
+description: Points at Vigilia's operating manual for commands, traps, code style and git rules. Use when you need a reminder of how to build, test or run the project, which files must not be hand-edited, or which tooling behaves unexpectedly.
 ---
 
 # Vigilia conventions
 
-Fast reference. Full detail: [`AGENTS.md`](../../../AGENTS.md).
+**Read [`AGENTS.md`](../../../AGENTS.md).** It is the operating manual: project
+facts, setup, commands, traps, testing expectations, code style, where to record
+what, commit and git rules.
 
-## Commands
+This skill holds no rules of its own on purpose. It was previously a 123-line
+second copy of that file, and the copies had already drifted in two places that
+mattered — it told you to prefer `npm run typecheck` while AGENTS.md still
+listed five hand-typed `tsc` invocations, and it carried a boundary rule that a
+later decision had reversed. A quick reference that can disagree with the thing
+it references is worse than no quick reference, and AGENTS.md is in context
+already.
 
-Frontend — **from `src/web/`**:
+For anything AGENTS.md deliberately does not hold:
 
-```bash
-npx vitest run
-npm run typecheck                                # all five projects
-npx vite build packages/player
-npx vite build packages/editor
-npx vite build packages/host
-node packages/player/scripts/check-size.mjs      # needs a build first
-npx playwright test                              # needs BOTH display builds
-node packages/host/bin/vigilia.js --no-browser   # needs all three builds
-```
-
-**Five typecheck projects, not four** — `packages/editor` and `packages/host`
-are the two that get forgotten, and CI checks all five. Prefer
-`npm run typecheck`, which derives the list from the workspace, over a
-hand-written set of `tsc` invocations: the hand-written list has now been wrong
-in four separate files at once, because adding a package updates whichever copy
-the author happened to be looking at.
-
-The full pre-commit order, and why it is that order, is `vigilia:verify`. Current figures live in `.agents/status.md`; test counts are deliberately not written down anywhere, because they went
-stale by hundreds within single milestones.
-
-**There is no backend toolchain**, and no C# tree — it was deleted. Run the host
-with `node packages/host/bin/vigilia.js`. The published binary is
-**`vigilia-dashboard`**, never plain `vigilia` — that name belongs to an
-unrelated package on the registry and fetches a stranger's CLI.
-
-## The traps
-
-**Node 25 is installed and vitest 5 rejects it** (`^22.12 || ^24 || >=26`). Tests
-still run; you get only an `EBADENGINE` warning. Do not chase it as a failure.
-
-**Vite 8 bundles with rolldown, not rollup.** `manualChunks` must be a
-**function**; the object form fails with `manualChunks is not a function`.
-
-**Playwright previews *built* bundles, and starts the preview servers itself.**
-Every bundle a suite exercises must be built first; an unbuilt one surfaces as a
-server that never comes up, which reads like a Playwright fault. Read
-`playwright.config.ts` for the current `webServer` list — do not assume there is
-only one.
-
-**Screenshot capture needs `VIGILIA_CAPTURE=1` *and* `--workers=1`.** Without
-the second, the desktop and phone projects write the same directory
-concurrently and Windows fails the open with `UNKNOWN`. See
-`vigilia:gate-evidence`.
-
-**You may not be the only agent in this working tree.** `git status --short`
-before you build, test or stage — a build writes `dist/` and the browser suite
-binds fixed ports, so a concurrent run's failures can look like yours. Stage
-explicit paths; never `git add -A` or `git commit -a`.
-
-**TypeScript 7 with `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess`:**
-an explicit `undefined` is a different type from an omitted key, and every
-indexed access needs `!` when the index is known good.
-
-**`URL.pathname` on Windows** yields `/D:/...` and silently breaks `fs`. Use
-`fileURLToPath`.
-
-**No symlinks work here** (`core.symlinks=false`; `ln -s` silently copies). Never
-introduce one.
-
-## Never hand-edit
-
-| File | Instead |
+| Looking for | Read |
 |---|---|
-| `src/web/package-lock.json` | Edit `package.json`, run `npm install` |
-| `.claude/plugins/vigilia/skills/*/SKILL.md` | Edit `.agents/skills/<name>/SKILL.md` |
-| `.agents/design/environment-setup.md` | User-authored — same |
-
-## The mirror is gone — do not recreate it
-
-A C# contract was once hand-mirrored into `renderer-core/src/types.ts`, and a
-change could compile on both sides while producing wrong values at runtime. The
-host is TypeScript now and imports those types directly, so that defect class
-has nowhere left to live. The rule it left behind:
-
-- **A shape both ends read belongs in the shared library**, not in one end with
-  a reader in the other. The wire contract lives in
-  `renderer-core/src/data/protocol.ts`; the semantic key vocabulary lives in
-  `renderer-core/src/data/semantic-keys.ts`; editor actions live in
-  `packages/editor/src/actions.ts`. Each exists because the concept previously
-  had two homes.
-- **An owner nothing imports is not an owner.** `semantic-keys.ts` was created
-  and the host kept its own hand-typed copy of the same four keys, which had
-  already drifted on a label. If you introduce an owner, point every consumer
-  at it in the same commit and add a test that binds them.
-
-## Boundaries
-
-- **Player:** `renderer-core` and `player` must not depend on editor UI or a
-  component framework. If `check-size.mjs` fails, find the leaked dependency —
-  do not raise the budget.
-- **Editor:** an interaction and inspector layer *over* `renderer-core`
-  (ADR-0005). The scene is rendered once, by the renderer. **Do not add a Fabric
-  dependency** — both candidates were rejected as canvas editors, and adopting
-  one meant rendering the scene twice (§31 forbids it).
-- **Pure decides, DOM renders** — on both sides. `scene/plan.ts` versus
-  `scene/mount.ts` in the renderer; the editor's geometry, hit-test, selection,
-  snapping, gesture, command and history modules versus its overlay. Gesture
-  maths in the overlay is untestable without a browser.
-- **Providers acquire; the host schedules.** No timers, no history, no pushing
-  from inside a provider.
-
-## Non-negotiables
-
-- A non-`Ok` sample carries **no value**. Missing renders as a **gap, never zero**.
-- Never fabricate a reading; report `Unavailable` with an actionable reason.
-- Secrets go through `ISecretStore`, redacted in errors, absent from responses
-  and packages.
-- Adding a provider means extending the host's provider tests, and asserting a
-  non-`ok` sample carries no `value` key at all.
+| How the pieces fit, and which file owns which concept | [`../../architecture.md`](../../architecture.md) |
+| Why something was decided | [`../../decisions.md`](../../decisions.md) |
+| What cost time here before | [`../../lessons.md`](../../lessons.md) |
+| Current figures and what is unverified | [`../../status.md`](../../status.md) |
+| The pre-commit gauntlet, in the order that works | `vigilia:verify` |

@@ -91,7 +91,8 @@ for d in .agents/skills/*/; do
 done
 ```
 
-Then add the skill to the table in [`AGENTS.md`](../../../AGENTS.md) §3.
+Then add the skill to the table in [`AGENTS.md`](../../../AGENTS.md) under
+"In-repo skills", and give it a line under "Skill trigger guidance".
 
 **A new session is required to confirm the skill actually loads.** It cannot be
 verified from inside the session that wrote it — report it as unverified until a

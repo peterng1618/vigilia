@@ -14,7 +14,7 @@ inside a `description`, and `validateStyleMap` checks values but never property
 *names*. A typo'd property therefore passes the schema, passes validation, and
 is silently dropped by the renderer.
 
-Per AGENTS.md §2, the vocabulary gets one owner and every consumer imports it.
+Per AGENTS.md's one-owner rule, the vocabulary gets one owner and every consumer imports it.
 
 ---
 
@@ -344,7 +344,7 @@ Notes on the empty cells, since an absence is a decision:
 
 ## Ownership
 
-One home each, per AGENTS.md §2:
+One home each, per AGENTS.md's one-owner rule:
 
 | Concept | Owner |
 |---|---|

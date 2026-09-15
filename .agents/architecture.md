@@ -3,9 +3,9 @@
 How Vigilia is put together, and **where each concept lives**.
 
 This document exists to answer one question quickly: *does this already have a
-home?* AGENTS.md §2 requires that nothing be declared twice and that you search
-before adding anything; the [ownership registry](#ownership-registry) below is
-what makes that search cheap.
+home?* AGENTS.md's one-owner rule requires that nothing be declared twice and
+that you search before adding anything; the [ownership
+registry](#ownership-registry) below is what makes that search cheap.
 
 Scope, so this file does not become a fourth copy of something:
 
@@ -102,6 +102,31 @@ The pure/DOM split is repeated deliberately at every layer:
 Gesture maths in the overlay, a decision in `mount.ts`, and path-safety logic
 inline in a request handler are all the same mistake, and they fail the same
 way.
+
+### Blast radius, in order
+
+Which files radiate furthest when changed. Worth knowing before touching one,
+and worth saying explicitly that the first is *not* the most dangerous — it is
+the most far-reaching, and the compiler catches it.
+
+1. `renderer-core/src/types.ts` and `data/protocol.ts` — the sample and wire
+   contracts, single-sourced and imported by the host, both displays and the
+   editor. Compiler-checked, so a break is loud.
+2. `schema/theme-document.schema.json` — the persisted format, with real saved
+   files behind it. Themes already saved must keep loading; bump
+   `schemaVersion` and fail unsupported versions rather than quietly migrating
+   (§141). `theme/schema-sync.test.ts` binds this file to the validator.
+3. `renderer-core` as a whole — shared by editor *and* player, so a stray
+   dependency here breaks the player's size budget (§47).
+4. `host/src/providers/provider.ts` — the provider contract, and every provider
+   behind it.
+
+**A shape both ends read lives in the shared library**, never in one end with a
+reader in the other. That arrangement was once a hand-mirrored C#/TypeScript
+pair where a change compiled cleanly on both sides and produced wrong values at
+runtime; the host is TypeScript now and imports the types directly, so the
+defect class has nowhere left to live. Do not rebuild it by declaring a message
+shape in `packages/host` and its reader in a display.
 
 ## 4. Editor module conventions
 

@@ -1,6 +1,6 @@
 ---
 name: vigilia:conventions
-description: Quick reference for Vigilia's commands, boundaries and known traps. Use when you need a fast reminder of how to build, test, or run the project, which files must not be hand-edited, or which tooling behaves unexpectedly. Full detail is in AGENTS.md.
+description: Points at Vigilia's operating manual for commands, traps, code style and git rules. Use when you need a reminder of how to build, test or run the project, which files must not be hand-edited, or which tooling behaves unexpectedly.
 ---
 
 The canonical content for this skill is [`.agents/skills/conventions/SKILL.md`](../../../../../.agents/skills/conventions/SKILL.md).
