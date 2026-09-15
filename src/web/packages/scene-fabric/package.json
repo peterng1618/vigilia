@@ -1,0 +1,22 @@
+{
+  "name": "@vigilia/scene-fabric",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Renders a ScenePlan onto a Fabric canvas. Shared by the display-only player and the editor.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vigilia/renderer-core": "*",
+    "echarts": "6.1.0",
+    "fabric": "7.4.0"
+  },
+  "//": "This package exists so that Fabric is NOT reachable from @vigilia/renderer-core, whose barrel the Node host imports runtime values from. Two rules, both enforced by packages/player/src/boundaries.test.ts rather than by this comment: import Fabric only from the 'fabric/es' subpath (the default entry is one pre-bundled file no tree-shaker can see into, measured at 95.0 KB gzip against 49.3 KB), and never the interactive `Canvas` (+31.0 KB the player cannot use) — the adapter takes a StaticCanvas and @vigilia/editor constructs the interactive one."
+}

@@ -21,7 +21,7 @@ Scope, so this file does not become a fourth copy of something:
 
 ## 1. The shape
 
-One npm workspace at `src/web/`, five packages, TypeScript throughout — and
+One npm workspace at `src/web/`, six packages, TypeScript throughout — and
 nothing else. The C# tree was deleted on 2026-09-13 (see
 [`decisions.md`](decisions.md)); there is no second toolchain.
 
@@ -30,16 +30,22 @@ nothing else. The C# tree was deleted on 2026-09-13 (see
                         │   renderer-core       │  the shared library
                         │   types · protocol    │  owns every shape both
                         │   semantic-keys       │  ends read
-                        │   theme/ · scene/     │
+                        │   theme/ · scene/     │  NO fabric — the host is here
                         └───────────┬───────────┘
-                    ┌───────────────┼───────────────┐
-                    │               │               │
-              ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
-              │   host    │   │  player   │   │  editor   │
-              │ Node CLI  │   │ phones    │   │ desktop   │
-              └─────┬─────┘   └─────▲─────┘   └───────────┘
-                    │  SSE, §111    │
-                    └───────────────┘
+                    ┌───────────────┤
+                    │               │
+              ┌─────▼─────┐   ┌─────▼──────────┐
+              │   host    │   │  scene-fabric  │  fabric/es · chart objects
+              │ Node CLI  │   │  the applier   │  the ScenePlan → canvas half
+              └─────┬─────┘   └───────┬────────┘
+                    │           ┌─────┴─────────┐
+                    │           │               │
+                    │     ┌─────▼─────┐   ┌─────▼─────┐
+                    │     │  player   │   │  editor   │
+                    │     │ phones    │   │ desktop   │
+                    │     └─────▲─────┘   └───────────┘
+                    │  SSE, §111 │
+                    └────────────┘
                          fake-source  (dev/test only — never shipped)
 ```
 
@@ -47,6 +53,14 @@ nothing else. The C# tree was deleted on 2026-09-13 (see
 If the host and a display both need to know something, it goes there. Defining
 it in one and reading it in the other is the C#/TypeScript mirror rebuilt —
 the exact thing ADR-0007 removed.
+
+**`scene-fabric` exists to keep Fabric away from the host.** The host imports
+runtime values from `renderer-core`'s barrel and runs in Node, so a Fabric
+import reachable from there would put a browser scene graph in the host bundle.
+Splitting the applier into its own package makes that boundary *structural* —
+there is no dependency edge from `host` to `scene-fabric`, so no import
+carelessness can create one. Verified: the host bundle stayed at 34.36 kB after
+Fabric was added to the workspace.
 
 ## 2. Data flow, end to end
 
@@ -83,12 +97,13 @@ Two rules this flow exists to enforce:
 
 ## 3. Boundaries
 
-Three, each with a mechanical guard rather than a convention.
+Four, each with a mechanical guard rather than a convention.
 
 | Boundary | Rule | Enforced by |
 |---|---|---|
 | **Pure ↔ DOM** | The pure half decides; the DOM half draws and decides nothing | Unit tests exist only for the pure half; a decision in the DOM half is untestable without a browser, which is the tell |
-| **Player ↔ editor** | `renderer-core` and `player` must not depend on editor UI or a component framework | `packages/player/scripts/check-size.mjs` fails the build |
+| **Player ↔ editor** | `renderer-core`, `scene-fabric` and `player` must not depend on editor UI or a component framework | `packages/player/src/boundaries.test.ts` fails on an editor specifier, on bare `fabric` and on the interactive `Canvas`. `check-size.mjs` is the backstop, not the guard — it has ~199 KB of slack |
+| **Host ↔ browser** | The host must not reach a browser scene graph | No dependency edge from `host` to `scene-fabric`; `renderer-core` stays fabric-free |
 | **Shared ↔ local** | A concept two packages read lives in `renderer-core` | Review, plus the registry below |
 
 The pure/DOM split is repeated deliberately at every layer:
@@ -279,8 +294,12 @@ are about to add resembles a row, import it instead.
 | **Node display label fallback** | `editor/src/node-label.ts` (`nodeLabel`) |
 | **Editor panel chrome and button styles** | `editor/src/button.ts` (`createButton`, `buttonStyle`, `inputStyle`, `scrollAreaStyle`, `sectionHeadingStyle`); colour tokens in `editor/index.html` CSS variables |
 | **Layer panel tree projection** | `editor/src/layers/tree.ts` (`buildLayerTree`) |
-| **Scene graph, hit testing, transforms, controls** | `fabric` (7.4.0), consumed **only** via `fabric/es`. Pending spec 0013; until then `editor/src/geometry.ts` and friends |
-| **`ScenePlan` → Fabric objects** | `renderer-core/src/scene/fabric-adapter` — one owner, imported by editor *and* player. Pending spec 0013 |
+| **Scene graph, hit testing, transforms, controls** | `fabric` (7.4.0), consumed **only** via `fabric/es`, and only from `packages/scene-fabric`. Migrating; until then `editor/src/geometry.ts` and friends |
+| **A chart as a scene object** | `scene-fabric/src/chart-object.ts` (`VigiliaChart`) — owns the detached canvas, the ECharts instance, invalidation and disposal |
+| **What a chart object persists** | same file — `CHART_SERIALISED_KEYS`, and `toObject` is derived from it so the two cannot drift |
+| **The engine-option cast** | `renderer-core/src/charts/engine-option.ts` (`toEngineOption`) — the only `as unknown as EChartsCoreOption` in the codebase |
+| **`ScenePlan` → Fabric objects** | `scene-fabric` — one owner, imported by editor *and* player. Not written yet (stage 2) |
+| **Player import boundary** | `player/src/boundaries.test.ts` — `fabric/es` only, no interactive `Canvas`, no editor specifier |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |
 | Inspector field types and ranges; numeric parsing | `editor/src/inspector/model.ts` |
@@ -303,7 +322,6 @@ before building anything that would add another copy.
 | Shortcut prose | `actions.ts` **and** `packages/editor/index.html`'s banner | The banner lies the moment anything is rebound |
 | Theme enums (`fitMode`, asset `kind`, `unitDisplay`, …) | schema + `document.ts` union + `validate.ts` array, unguarded | A value added to two of three is rejected on import with a misleading error |
 | Licence check | CI greps a fixed list of three names | Four real dev dependencies have no notice entry and CI is green |
-| **Player import boundary** | nothing — the §47 size gate is the only guard, and it has ~199 KB of slack | At current headroom the entire editor could leak into the player and the gate would still pass. Adding Fabric makes it worse: bare `fabric` instead of `fabric/es` costs 45 KB gzip silently. Spec 0013 stage 1 adds the test |
 | **What a stale reading looks like** | `mount.ts` writes `data-status` and lets CSS decide | A Fabric scene has no CSS hook, so something must own the decision instead of deferring it |
 
 ## 6. Patterns worth copying

@@ -14,7 +14,7 @@ fact about the design does not.
   *and* host. No component framework
 - Package manager: **npm** (11.x). No `packageManager` field is pinned
 - Runtime: Node **22.12+, 24, or 26+** per vitest 5's `engines`
-- Workspace: **one**, at `src/web/`, five packages. **There is no second
+- Workspace: **one**, at `src/web/`, six packages. **There is no second
   toolchain — do not install a .NET SDK or Python to unblock anything**
 - Test stacks: `vitest` (unit) and `playwright` (browser)
 - Issue tracker: none. Keep skills tracker-agnostic
@@ -72,7 +72,7 @@ a package cannot leave a stale copy behind.
 | | |
 |---|---|
 | Unit tests | `npm test` |
-| Typecheck (all five projects) | `npm run typecheck` |
+| Typecheck (every project) | `npm run typecheck` |
 | Build everything | `npm run build` |
 | Build one bundle | `npx vite build packages/player` (or `editor`, `host`) |
 | Size gate | `npm run size` — needs a player build first |

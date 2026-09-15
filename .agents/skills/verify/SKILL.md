@@ -16,15 +16,14 @@ so run them in this order and stop at the first failure.
 From `src/web/`:
 
 ```bash
-# 1. Typechecks — five projects, not four. CI checks all five.
-npx tsc --noEmit -p packages/renderer-core/tsconfig.json
-npx tsc --noEmit -p packages/player/tsconfig.json
-npx tsc --noEmit -p packages/fake-source/tsconfig.json
-npx tsc --noEmit -p packages/editor/tsconfig.json
-npx tsc --noEmit -p packages/host/tsconfig.json
+# 1. Typechecks — every project, derived from the workspace manifests.
+#    Use the script, never a hand-typed list of `tsc -p` paths: that list has
+#    been wrong in four separate files at once, because adding a package
+#    updates whichever copy the author was looking at.
+npm run typecheck
 
 # 2. Unit tests — seconds, and where a logic break shows up first.
-npx vitest run
+npm test
 
 # 3. Build. Required before 4 and 5; they measure and preview the BUILT output.
 npx vite build packages/player
@@ -32,10 +31,10 @@ npx vite build packages/editor
 npx vite build packages/host
 
 # 4. The §47 display-only budget gate.
-node packages/player/scripts/check-size.mjs
+npm run size
 
 # 5. Browser tests. Slowest, ~1.5 min.
-npx playwright test
+npm run test:e2e
 ```
 
 Then update [`.agents/status.md`](../../status.md) with the figures you just

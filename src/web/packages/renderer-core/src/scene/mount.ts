@@ -1,5 +1,5 @@
 import * as echarts from 'echarts/core';
-import type { EChartsCoreOption } from 'echarts/core';
+import { toEngineOption } from '../charts/engine-option.js';
 import { computeArtboardTransform, toCssTransform, type ArtboardTransform } from '../artboard.js';
 import type {
   PlanBox,
@@ -466,12 +466,11 @@ function setChartOption(chart: echarts.ECharts, node: PlanNode): void {
     return;
   }
 
-  // The single engine boundary (§87). The plan's option types are our own
-  // reviewable shapes, and ECharts' option type is an open index-signature
-  // record, so the two are structurally incompatible by design. Cast exactly
-  // here and nowhere else — a cast in feature code means the typed-settings
-  // boundary has been breached.
-  chart.setOption(node.content.option as unknown as EChartsCoreOption);
+  // The single engine boundary (§87), and it is now owned by
+  // `charts/engine-option.ts` rather than written inline here: the Fabric
+  // renderer needs the identical crossing, and two copies of a cast is how a
+  // boundary turns into a habit.
+  chart.setOption(toEngineOption(node.content.option));
 }
 
 function renderText(element: HTMLElement, node: PlanNode): void {

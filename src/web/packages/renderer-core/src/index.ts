@@ -57,6 +57,10 @@ export {
   toLinearGradient,
 } from './charts/fill.js';
 
+export type { ChartOption, ChartOptionByFamily } from './charts/engine-option.js';
+
+export { toEngineOption } from './charts/engine-option.js';
+
 export type { GaugeOption } from './charts/gauge.js';
 
 export {

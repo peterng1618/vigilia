@@ -27,8 +27,8 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,115 passed across 52 files (2026-09-15) |
-| Typechecks | five projects, clean |
+| Unit tests | 1,131 passed across 54 files (2026-09-15) |
+| Typechecks | six projects, clean |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
 | §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
 | Host bundle | 34.36 kB, zero runtime deps |
@@ -76,9 +76,46 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**0 — The Fabric migration.** Decided 2026-09-15 by the user; spec
-[0013](specs/0013-fabric-scene-migration.md) and the superseding decision are
-written, **no code has changed yet**. Fabric 7.4.0 becomes the scene graph for
+**0 — The Fabric migration. Stage 1 landed 2026-09-15.** What exists:
+
+- **`packages/scene-fabric`**, a sixth workspace package, so Fabric is
+  unreachable from `renderer-core` — whose barrel the Node host imports runtime
+  values from. The boundary is structural, not a convention: there is no
+  dependency edge from `host`, and the **host bundle stayed at 34.36 kB** after
+  Fabric entered the workspace.
+- **`VigiliaChart`**, a `FabricObject` over a detached ECharts canvas, with the
+  invalidation hook, the resize flush, the render-scale cap and disposal that
+  the prototype proved necessary. **Not yet wired into either display** — the
+  player build is unchanged at **201.1 KB gzip of 400 KB**, because nothing
+  imports it yet. Stage 2 is what moves that number.
+- **`player/src/boundaries.test.ts`** — the import guard that did not exist
+  before. Four rules: no bare `fabric` (95.0 KB gzip against 49.3 KB for
+  `fabric/es`), no interactive `Canvas` in the display bundle (+31.0 KB it
+  cannot use), no editor specifier, and a harness check that the list it scans
+  resolves to real sources. All four were confirmed to **fail against a
+  deliberate violation** before being trusted.
+- **`toEngineOption`** in `renderer-core/src/charts/engine-option.ts` now owns
+  the single `as unknown as EChartsCoreOption` cast; `mount.ts` had it inline
+  and the Fabric renderer needed the identical crossing.
+
+**A defect found on the way, and it was not small: CI's licence job has been
+checking nothing since it was written.** It derived dependency names with
+`require('src/web/package.json')` — a bare specifier to Node, so it threw
+`MODULE_NOT_FOUND` for every manifest, left `names` empty, never entered the
+loop and exited 0. Fixed with `resolve()`, and it now fails loudly if it derives
+no names at all. With the fix it finds seven dependencies and all seven have
+notices, `fabric` included. Every "licences ✓" in CI history before this is
+meaningless.
+
+Two smaller ones: `packages/player/tsconfig.json` had no route to the narrow
+Node typings the new boundary test needs, and `vigilia:verify` told you never to
+hand-type a `tsc -p` list directly above five hand-typed `tsc -p` lines.
+
+Verified 2026-09-15: **six typechecks clean, 1,131 unit tests across 54 files**,
+player + editor + host build, §47 gate 201.1 KB of 400 KB. Browser suite **not
+run** since stage 1 touched no rendering.
+
+Fabric 7.4.0 becomes the scene graph for
 the editor *and* the player, `plan.ts` stays the only thing that decides a
 frame, and `mount.ts`'s DOM applier is replaced by one shared adapter. This
 supersedes the 2026-09-12 rejection: that judged two prebuilt Fabric *editors*

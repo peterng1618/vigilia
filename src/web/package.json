@@ -7,6 +7,7 @@
   "description": "Frontend workspace: shared renderer, display-only player and editor.",
   "workspaces": [
     "packages/renderer-core",
+    "packages/scene-fabric",
     "packages/player",
     "packages/editor",
     "packages/fake-source",
