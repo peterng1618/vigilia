@@ -16,7 +16,7 @@ import {
   type NodeContext,
   type UnsupportedReporter,
 } from './fabric-nodes.js';
-import { withinGroup } from './placement.js';
+import { drawnBox, withinGroup } from './placement.js';
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
 
 /**
@@ -108,8 +108,6 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   const objects = new Map<string, FabricObject>();
   /** The plan node last written, per id, so an update can skip unchanged work. */
   const applied = new Map<string, PlanNode>();
-  /** Ids whose image is in flight. Without this, a 1 Hz tick opens one request per second. */
-  const loading = new Set<string>();
   /** Flat plan order, which is also z-order. Rebuilt every apply. */
   let order: string[] = [];
   /** Undefined until the first apply, so an adopted scene is never cleared. */
@@ -132,19 +130,10 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
       renderScale,
       ...(options.onUnsupported === undefined ? {} : { onUnsupported: options.onUnsupported }),
       ...(options.onAssetError === undefined ? {} : { onAssetError: options.onAssetError }),
-      onReady: (nodeId, object) => {
-        loading.delete(nodeId);
-
-        // The plan may have moved on while the image was in flight.
-        if (!order.includes(nodeId)) {
-          object.dispose();
-
-          return;
-        }
-
-        objects.set(nodeId, object);
-        canvas.add(object);
-        restack();
+      // An image's object exists from the first frame and only its pixels
+      // arrive late, so there is nothing to insert or re-stack here — just a
+      // frame to draw.
+      onDecoded: () => {
         canvas.requestRenderAll();
       },
     };
@@ -183,7 +172,6 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
     canvas.remove(...canvas.getObjects());
     objects.clear();
     applied.clear();
-    loading.clear();
   }
 
   return {
@@ -212,21 +200,14 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
         const existing = reusable(node);
 
         if (existing === undefined) {
-          if (node.content.kind === 'image' && loading.has(node.id)) {
-            continue;
-          }
-
-          const created = createNodeObject(node, node.box, context(), register);
-
-          if (node.content.kind === 'image') {
-            loading.add(node.id);
-          }
+          const created = createNodeObject(node, drawnBox(node), context(), register);
 
           if (created !== undefined && parent === undefined) {
             canvas.add(created);
           }
         } else {
-          const box = parent === undefined ? node.box : withinGroup(node.box, parent.box);
+          const box =
+            parent === undefined ? drawnBox(node) : withinGroup(drawnBox(node), drawnBox(parent));
 
           updateNodeObject(existing, node, applied.get(node.id), box, context());
         }

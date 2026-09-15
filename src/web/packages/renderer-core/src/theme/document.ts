@@ -273,9 +273,19 @@ export interface AssetLicense {
   readonly attribution?: string;
 }
 
+/**
+ * What an asset *is*, declared rather than inferred from its path.
+ *
+ * Named so a renderer can ask. A vector asset needs different handling from a
+ * raster one on a canvas — see `scene-fabric/src/fabric-image.ts` — and
+ * sniffing a file extension would be a second, weaker copy of a fact the
+ * document already states.
+ */
+export type AssetKind = 'image' | 'svg' | 'gif' | 'video' | 'font';
+
 export interface AssetReference {
   readonly id: string;
-  readonly kind: 'image' | 'svg' | 'gif' | 'video' | 'font';
+  readonly kind: AssetKind;
   /** Package-relative, under `assets/`. Traversal and absolute paths are rejected (§141). */
   readonly path: string;
   readonly sha256?: string;

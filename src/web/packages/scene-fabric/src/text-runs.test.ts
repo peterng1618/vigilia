@@ -47,6 +47,24 @@ describe('several runs', () => {
     expect(shape.styles[0]?.[6]).toBeUndefined();
   });
 
+  it('carries only what the run authored, so inherited colour survives', () => {
+    // The defect this exists for, and it was invisible to every other test
+    // here because they all gave each run an explicit fill. A per-character
+    // entry *overrides* the object, so a default in one replaces the node's
+    // colour with nothing — and the run renders invisible under a green suite.
+    // Found by putting a screenshot of this path next to the DOM path's.
+    const shape = textShapeFor(
+      [segment('Vigilia', { fontWeight: 700 }), segment(' dashboard', { fill: '#888' })],
+      { fill: '#ffffff' },
+      splitGraphemes,
+    );
+
+    expect(shape.styles[0]?.[0]).toEqual({ fontWeight: 700 });
+    expect(shape.styles[0]?.[0]).not.toHaveProperty('fill');
+    // The run that *did* author a colour still gets it.
+    expect(shape.styles[0]?.[7]).toMatchObject({ fill: '#888' });
+  });
+
   it('restarts the index on a newline, because Fabric’s lines do', () => {
     // Fabric keys styles by line and then by index *within that line*. Carrying
     // a running total across a newline would style the wrong characters from

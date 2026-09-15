@@ -6,6 +6,7 @@ import { buildLineOption, type SeriesInput } from '../charts/line.js';
 import { buildPieOption, type PieSliceInput } from '../charts/pie.js';
 import type { ChartOptionByFamily } from '../charts/engine-option.js';
 import type {
+  AssetKind,
   Binding,
   ChartContent,
   ChartFamily,
@@ -142,6 +143,14 @@ export type PlanContent =
       readonly kind: 'image';
       /** Resolved by the caller's asset resolver. Undefined when unresolvable. */
       readonly src: string | undefined;
+      /**
+       * What the document says the asset is, passed through for renderers that
+       * must treat vector artwork differently from raster.
+       *
+       * Undefined only when the asset is not declared at all, which is the same
+       * condition that leaves `src` undefined.
+       */
+      readonly assetKind: AssetKind | undefined;
       readonly fit: 'contain' | 'cover' | 'stretch';
       /**
        * Recolour the artwork to one flat colour (§111).
@@ -307,10 +316,15 @@ function planContent(
     case 'image': {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
       const monochrome = resolveStyleValue(node.content.monochrome, globals, node.id, issues);
+      const assetKind = assetKindOf(node.content.assetId, context);
 
       return {
         kind: 'image',
         src,
+        // Written unconditionally, unlike `monochrome`: the key is always part
+        // of the shape and `undefined` is a meaningful value for it — the asset
+        // is not declared — rather than an absent property.
+        assetKind,
         fit: node.content.fit ?? 'contain',
         ...(typeof monochrome === 'string' && monochrome.length > 0 ? { monochrome } : {}),
       };
@@ -326,6 +340,11 @@ function planContent(
       };
     }
   }
+}
+
+/** What the document declares this asset to be, for a renderer that must care. */
+function assetKindOf(assetId: string, context: PlanContext): AssetKind | undefined {
+  return context.document.assets?.find((asset) => asset.id === assetId)?.kind;
 }
 
 function resolveAsset(

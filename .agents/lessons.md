@@ -31,6 +31,44 @@ was found by driving a browser, not by reading code — and several sat under a
 fully green suite. Unit tests prove the decisions; only rendering proves the
 wiring.
 
+**A whole new renderer passed 1,214 unit tests and 158 browser tests, and five
+things were visibly wrong the first time anyone put it beside the old one.**
+Spec 0013 stage 2, all five found in one screenshot comparison, none by a test:
+
+- **Every text run that inherited its colour was invisible.** Per-character
+  styles carried a style function's *defaults*, and a per-character entry
+  overrides the object rather than falling back to it. A run with its own
+  colour drew; the value beside it vanished.
+- **A group with no authored size culled its entire subtree.** Canvas skips a
+  0×0 object before drawing its children, where a 0×0 `div` simply does not
+  clip. Three levels of nested group disappeared — and a group with no size is
+  the *normal* case in this format, not an edge one.
+- **Every image inside a group was dropped**, because the "is this node still
+  in the plan?" guard on an async callback compared against the top-level id
+  list only.
+- **Vector icons drew mangled fragments at 1x and nothing at 4x**, because the
+  browser will not draw an intrinsically-sized-less SVG through the
+  source-rectangle form of `drawImage`.
+- A corner radius clamped per axis rather than proportionally, turning a capsule
+  into an ellipse.
+
+Three rules fell out of it, and they are the transferable part:
+
+- **The tests asserted everything except what it looked like.** Object counts,
+  geometry, matrices, identity, disposal, ordering — all correct, all green,
+  over a scene with holes in it. Asserting *where* something is says nothing
+  about whether it was drawn.
+- **"Some ink somewhere" is not a rendering assertion.** The first ink measure
+  counted non-transparent pixels, and the artboard paints a background — so
+  every region scored 1.0, including one whose image was missing. Then coverage
+  *per node* still could not separate a mangled icon (0.2344) from a correct one
+  (0.2126). What discriminates shape is where the ink sits: a coarse spatial
+  profile, compared against the same asset drawn by the browser itself, is ~10x
+  apart between correct and broken.
+- **Port a renderer one fixture at a time, looking each time.** Four of the five
+  were invisible in the fixture that was checked first and obvious in the next
+  two.
+
 **"That needs a browser" is often "I did not look for the cheap assertion".**
 A chart object shipped green and unconstructable: one property was a getter with
 no setter, and the library's only way in assigns straight onto the instance, so

@@ -27,10 +27,10 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,214 passed across 61 files (2026-09-15) |
+| Unit tests | 1,218 passed across 61 files (2026-09-15) |
 | Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
-| Browser tests (both projects) | 158 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
-| §47 size gate | **261.5 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.4 KB** |
+| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
+| §47 size gate | **261.7 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
 **AGENTS.md is an operating manual again** (2026-09-15), remodelled on
@@ -101,9 +101,19 @@ exists:
   the review, all four closed, one of them ("labels reserve no space") corrected
   rather than fixed.
 
-**Measured, not predicted:** the player bundle is **261.5 KB gzip of 400 KB**,
-against the spec's estimate of ~257 KB. 1,214 unit tests across 61 files, six
-typechecks clean, 158 browser tests passed with 0 failures on the first attempt.
+**Measured, not predicted:** the player bundle is **261.7 KB gzip of 400 KB**,
+against the spec's estimate of ~257 KB. 1,218 unit tests across 61 files, six
+typechecks clean, 164 browser tests passed with 0 failures.
+
+**Then the two paths were put side by side, and five things were visibly wrong**
+— none of which any test had caught. Every text run that inherited its colour
+was invisible; a group with no authored size culled its whole subtree (three
+levels of nesting gone, and a sizeless group is the *normal* case in this
+format); every image inside a group was dropped; vector icons drew mangled at 1x
+and not at all at 4x; and a corner radius clamped per axis rather than
+proportionally. All five are fixed, each with a test verified by sabotage, and
+the generalisable part is in [`lessons.md`](lessons.md) — including that the
+first two ink measures were themselves vacuous.
 
 **Two claims this stage disproved, both recorded where they were made.** The
 review's `grid.containLabel` finding said axis labels reserved no space
@@ -115,9 +125,11 @@ engine animation is off. It still protects a grouped chart whose siblings do not
 change, and the editor, so it stays — but the assertion that covers it is a unit
 test, not an end-to-end one.
 
-**What is not verified.** No screenshot review of the Fabric path yet, so
-nothing is claimed about how it *looks* beyond "ink is present where it should
-be and absent where it should not". Text is deliberately incomplete: ellipsis,
+**What is not verified.** The three chart-bearing fixtures and the assets
+fixture have been compared against the DOM path by eye at 1x and 4x, and
+`portrait-cover` has not. Text sits **about 2 px higher** than the DOM path at
+the demo fixture's type sizes — a baseline difference, unmeasured and not
+chased, since stage 5 owns text metrics. Text is deliberately incomplete: ellipsis,
 the line clamp and the font-load re-measure are stage 5, and the renderer
 reports each as a gap rather than approximating it. The monochrome image path
 (§111) reports a gap and draws the artwork unflattened. Nothing has run on a

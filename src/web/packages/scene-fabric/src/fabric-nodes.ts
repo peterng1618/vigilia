@@ -9,10 +9,10 @@ import {
 } from 'fabric/es';
 import type { PlanBox, PlanNode, ResolvedStyle } from '@vigilia/renderer-core';
 import { VigiliaChart } from './chart-object.js';
-import { beginImage, placeImage } from './fabric-image.js';
+import { buildImage, placeImage } from './fabric-image.js';
 import { buildText, isTextObject, textGaps, updateText } from './fabric-text.js';
 import { paintFor, unsupportedPaint } from './paint.js';
-import { placementFor } from './placement.js';
+import { drawnBox, placementFor } from './placement.js';
 
 /**
  * One Fabric object per `PlanNode`, and the updates that keep it current.
@@ -47,8 +47,8 @@ export interface NodeContext {
   readonly renderScale: number;
   readonly onUnsupported?: UnsupportedReporter;
   readonly onAssetError?: (nodeId: string, src: string) => void;
-  /** An async object — an image — is finally ready to be placed and stacked. */
-  readonly onReady?: (nodeId: string, object: FabricObject) => void;
+  /** An image's bitmap has decoded, so the scene needs redrawing. */
+  readonly onDecoded?: (nodeId: string) => void;
 }
 
 /**
@@ -175,15 +175,13 @@ function build(
       return buildChart(node, box, context);
 
     case 'image':
-      // Asynchronous: nothing exists until the image decodes. The caller holds
-      // the in-flight guard, because it is the one being called back.
-      beginImage(node, box, {
-        onReady: (nodeId, image) => context.onReady?.(nodeId, image),
+      // Synchronous, with the pixels still in flight — see `fabric-image.ts`
+      // for the two defects the obvious asynchronous shape produced.
+      return buildImage(node, box, { renderScale: context.renderScale }, {
         ...(context.onAssetError === undefined ? {} : { onAssetError: context.onAssetError }),
         ...(context.onUnsupported === undefined ? {} : { onUnsupported: context.onUnsupported }),
+        ...(context.onDecoded === undefined ? {} : { onDecoded: context.onDecoded }),
       });
-
-      return undefined;
 
     case 'video':
       // Not a gap to be worked around later: a Fabric video object was
@@ -241,7 +239,7 @@ function buildGroup(
   });
 
   const children = node.children
-    .map((child) => createNodeObject(child, child.box, context, register))
+    .map((child) => createNodeObject(child, drawnBox(child), context, register))
     .filter((child): child is FabricObject => child !== undefined);
 
   if (children.length > 0) {
@@ -292,12 +290,30 @@ function buildShape(node: PlanNode, box: PlanBox): FabricObject {
   // `mount.ts` drew, its shape switch having no `line` case at all — whereas
   // `Line` strokes a segment between two points and would change how every
   // theme that uses one looks.
-  return new Rect({
-    ...common,
-    ...(node.content.shape === 'rectangle' && node.content.cornerRadius > 0
-      ? { rx: node.content.cornerRadius, ry: node.content.cornerRadius }
-      : {}),
-  });
+  if (node.content.shape === 'rectangle' && node.content.cornerRadius > 0) {
+    const radius = cornerRadiusFor(node.content.cornerRadius, width, height);
+
+    return new Rect({ ...common, rx: radius, ry: radius });
+  }
+
+  return new Rect(common);
+}
+
+/**
+ * An authored corner radius, clamped the way CSS clamps it.
+ *
+ * Both clamp — a radius cannot exceed the box — but they clamp *differently*,
+ * and the difference is visible. Fabric's `Rect._render` caps each axis
+ * independently (`min(rx, w/2)`, `min(ry, h/2)`), so `cornerRadius: 999` on a
+ * 118x38 box becomes a 59x19 elliptical corner: a full ellipse. CSS scales both
+ * radii by one factor, giving 19x19 — a capsule, which is what an author asking
+ * for a very large radius means.
+ *
+ * Measured on the stress fixture, where the two paths drew visibly different
+ * shapes for the same node.
+ */
+function cornerRadiusFor(cornerRadius: number, width: number, height: number): number {
+  return Math.min(cornerRadius, width / 2, height / 2);
 }
 
 function buildChart(

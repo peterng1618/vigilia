@@ -866,6 +866,16 @@ Each stage ends green and committed.
    Class matching is now per node against `constructor` — `instanceof` cannot
    tell a `Textbox` from a `FabricText` — and the key watches nesting only.
 
+   **Five defects found by putting the two paths side by side**, after the suite
+   was green: invisible inherited-colour text runs, a sizeless group culling its
+   whole subtree, grouped images dropped, vector icons mangled at 1x and absent
+   at 4x, and a per-axis corner-radius clamp where CSS clamps proportionally.
+   Each is fixed with a test verified by sabotage; the rules that generalise are
+   in [`lessons.md`](../lessons.md), including that the first two ink measures
+   written for this were themselves vacuous. `PlanContent`'s image gained
+   `assetKind`, so "is this artwork vector?" is read from the document rather
+   than sniffed off a filename.
+
    **Deliberately incomplete, and reported rather than approximated** (§85), so
    stage 3 does not inherit a hidden list: text `overflow`/clamp and the
    font-load re-measure (stage 5), §111 monochrome images (stage 7), tabular

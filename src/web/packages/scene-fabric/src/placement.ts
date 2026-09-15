@@ -1,4 +1,4 @@
-import type { PlanBox } from '@vigilia/renderer-core';
+import type { PlanBox, PlanNode } from '@vigilia/renderer-core';
 
 /**
  * The top-left → centre conversion, and the only copy of it.
@@ -79,4 +79,52 @@ export interface GroupExtent {
  */
 export function withinGroup(box: PlanBox, group: GroupExtent): PlanBox {
   return { ...box, x: box.x - group.width / 2, y: box.y - group.height / 2 };
+}
+
+/**
+ * The box a node is actually drawn with.
+ *
+ * Almost always the plan's own box. The exception is a **group the document
+ * gave no size**, which is the common case rather than a rare one:
+ * `capabilities.ts` gives a group position but not size, and `plan.ts` is
+ * deliberate that a node with no explicit size has none. In the DOM a 0x0 group
+ * div was harmless, because it does not clip and its children simply
+ * overflowed it. On a canvas `FabricObject.render` begins with
+ * `isNotVisible()`, true at width 0, height 0 and no stroke — so the group
+ * returned before drawing a single child and whole subtrees vanished.
+ *
+ * So a sizeless group takes its children's extent, measured from its own
+ * top-left, and **recursively**, because a child group may be sizeless too.
+ *
+ * ## Why not Fabric's `triggerLayout`, which computes exactly this
+ *
+ * Because it also *moves* the group: its imperative layout re-centres the group
+ * on its children and shifts their local coordinates to compensate. Absolute
+ * positions survive that, but the relationship between the plan's coordinate
+ * space and the group's local space does not — and `withinGroup` depends on it
+ * on every later frame. Measured: the child of a re-centred group was replaced
+ * 35 px out on the next update. One box definition, used by creation and update
+ * alike, is what keeps the two in step.
+ *
+ * Deliberately not a tight bounding box: a rotated child can extend past it.
+ * Nothing renders wrongly as a result — a group does not clip — and the two
+ * things the box must do are be non-zero and be the same number on both paths.
+ * A group's *selection* bounds are stage 4's, and belong to Fabric by then.
+ */
+export function drawnBox(node: PlanNode): PlanBox {
+  if (node.content.kind !== 'group' || (node.box.width > 0 && node.box.height > 0)) {
+    return node.box;
+  }
+
+  let width = node.box.width;
+  let height = node.box.height;
+
+  for (const child of node.children) {
+    const box = drawnBox(child);
+
+    width = Math.max(width, box.x + box.width * box.scaleX);
+    height = Math.max(height, box.y + box.height * box.scaleY);
+  }
+
+  return { ...node.box, width, height };
 }

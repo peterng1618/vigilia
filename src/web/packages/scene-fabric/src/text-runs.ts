@@ -52,31 +52,38 @@ export interface FabricTextShape {
 export type GraphemeSplitter = (value: string) => readonly string[];
 
 /**
- * Our style vocabulary mapped onto Fabric's per-character keys.
+ * Each Fabric per-character key, and the authored properties that produce it.
  *
- * `color` and `fill` both land on `fill` for text, in that precedence, which is
- * `paint.ts`'s rule rather than a second copy of it — this list only says
- * *which* authored properties survive per run.
+ * Both directions come from this one map: which Fabric keys a run may carry,
+ * and which authored properties survive per run. `color` and `fill` both land
+ * on `fill` for text — that precedence is `paint.ts`'s rule and is not repeated
+ * here; this only says which authored property *feeds* which key.
+ *
+ * ## A run carries only what it authored, and this is why
+ *
+ * `paintFor` fills in defaults, because an object needs them: an unset fill has
+ * to be written as `''`, or Fabric paints it black. A per-character entry is the
+ * opposite — it **overrides** the object — so writing a default into one
+ * replaces whatever the node said with nothing.
+ *
+ * That was not hypothetical. Every run that inherited its colour rendered
+ * **invisible**: the object had the node's `fill`, the run's entry had `''`, and
+ * the run won. A label in its own muted colour showed while the value beside it
+ * vanished, and the whole suite stayed green — the styles were present and
+ * correctly indexed, they just said "no colour". It took putting a screenshot
+ * of this path next to the DOM path's.
  */
-const PER_RUN_STYLE_PROPERTIES: readonly string[] = [
-  'fill',
-  'color',
-  'fontFamily',
-  'fontSize',
-  'fontWeight',
-  'strokeColor',
-  'strokeWidth',
-];
+const PER_RUN_PAINT_SOURCES: Readonly<Record<string, readonly string[]>> = {
+  fill: ['color', 'fill'],
+  fontFamily: ['fontFamily'],
+  fontSize: ['fontSize'],
+  fontWeight: ['fontWeight'],
+  stroke: ['strokeColor'],
+  strokeWidth: ['strokeWidth'],
+};
 
-/** The Fabric keys a per-character entry may hold, derived from the above. */
-const PER_RUN_PAINT_KEYS: readonly string[] = [
-  'fill',
-  'fontFamily',
-  'fontSize',
-  'fontWeight',
-  'stroke',
-  'strokeWidth',
-];
+/** Authored properties that survive per run, derived from the map above. */
+const PER_RUN_STYLE_PROPERTIES: readonly string[] = Object.values(PER_RUN_PAINT_SOURCES).flat();
 
 /** One line index and one grapheme index, mutable while building. */
 type MutableStyles = Record<number, Record<number, Record<string, unknown>>>;
@@ -110,8 +117,13 @@ export function textShapeFor(
 
   for (const segment of segments) {
     const paint = paintFor(segment.style, 'text');
+    // Authored keys only — see the note on `PER_RUN_PAINT_SOURCES`. A default
+    // in a per-character entry overrides the object rather than falling back
+    // to it.
     const perRun = Object.fromEntries(
-      Object.entries(paint).filter(([key]) => PER_RUN_PAINT_KEYS.includes(key)),
+      Object.entries(paint).filter(([key]) =>
+        (PER_RUN_PAINT_SOURCES[key] ?? []).some((property) => property in segment.style),
+      ),
     );
 
     for (const property of STYLE_PROPERTIES) {

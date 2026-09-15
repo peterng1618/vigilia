@@ -38,12 +38,55 @@ interface SceneProbe {
   readonly chartRenderScales: readonly number[];
 }
 
+/**
+ * The grid measure, installed into the page.
+ *
+ * Shared by the two profile helpers, which both run in the browser — so it is
+ * declared once here and injected, rather than written out inside each
+ * `evaluate` where the two copies could drift apart and quietly compare
+ * different things.
+ */
+const GRID_PROFILE = `
+window.gridProfile = (data, width, height) => {
+  const counts = new Map();
+  const key = (i) => ((data[i] << 24) | (data[i + 1] << 16) | (data[i + 2] << 8) | data[i + 3]);
+
+  for (let i = 0; i < data.length; i += 4) counts.set(key(i), (counts.get(key(i)) ?? 0) + 1);
+
+  let background = 0;
+  let commonest = 0;
+
+  for (const [k, c] of counts) if (c > commonest) { commonest = c; background = k; }
+
+  const cells = new Array(16).fill(0);
+  const areas = new Array(16).fill(0);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = Math.min(3, Math.floor((y / height) * 4)) * 4 + Math.min(3, Math.floor((x / width) * 4));
+
+      areas[cell] += 1;
+
+      if (key((y * width + x) * 4) !== background) cells[cell] += 1;
+    }
+  }
+
+  return cells.map((drawn, i) => (areas[i] === 0 ? 0 : drawn / areas[i]));
+};
+`;
+
+/** The injected measure, as the page exposes it. */
+type ProfileWindow = typeof window & {
+  gridProfile: (data: Uint8ClampedArray, width: number, height: number) => number[];
+};
+
 async function openFabricPlayer(page: Page, theme = 'demo'): Promise<void> {
   // Installed before navigation, or the first frame is built from the real
   // clock — and then advanced rather than frozen, because a chart whose
   // content is entirely animated draws nothing until its animation progresses.
   // Both are `display.spec.ts`'s findings and apply identically here.
   await page.clock.install({ time: FIXED_TIME });
+  await page.addInitScript(GRID_PROFILE);
   await page.goto(`/?scene=fabric&theme=${theme}`);
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
   await page.clock.runFor(1500);
@@ -98,49 +141,215 @@ async function probe(page: Page): Promise<SceneProbe> {
 }
 
 /**
- * How much ink is in a region of the canvas, as a count of non-transparent
- * pixels.
+ * How much of a region is drawn *over* its background, as a fraction of the
+ * region's area.
+ *
+ * ## Why it is not a count of non-transparent pixels
+ *
+ * That was the first version, and it was **vacuous**: the artboard paints a
+ * background, so every pixel inside it has alpha 255 and every region scored
+ * 1.0 — including one whose image was missing entirely. Measured, which is the
+ * only reason it was noticed.
+ *
+ * So the measure calibrates itself: it finds the region's most common colour,
+ * which for any node box on a flat artboard is the background behind it, and
+ * counts the pixels that differ from it. A missing node scores 0, a drawn one
+ * scores its own coverage, and the number means the same thing at any device
+ * pixel ratio and any artboard scale.
  *
  * Read off the canvas' own backing store rather than from a screenshot, so it
- * is unaffected by page scroll, device scale factor or PNG encoding. The region
- * is in **CSS** pixels; the backing store may be larger, which is what
- * `devicePixelRatio` corrects for.
+ * is unaffected by page scroll or PNG encoding. `region` is in **CSS** pixels;
+ * the backing store may be larger, which is what the ratio corrects for.
  */
-async function inkIn(
+async function drawnFractionIn(
   page: Page,
   region: { x: number; y: number; width: number; height: number },
 ): Promise<number> {
   return page.evaluate((box) => {
     const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+    const context = element?.getContext('2d');
 
-    if (element === null) {
+    if (element === null || context === null || context === undefined) {
       return -1;
     }
 
     const ratio = element.width / element.getBoundingClientRect().width;
-    const context = element.getContext('2d');
-
-    if (context === null) {
-      return -1;
-    }
-
+    const width = Math.max(1, Math.round(box.width * ratio));
+    const height = Math.max(1, Math.round(box.height * ratio));
     const data = context.getImageData(
       Math.round(box.x * ratio),
       Math.round(box.y * ratio),
-      Math.max(1, Math.round(box.width * ratio)),
-      Math.max(1, Math.round(box.height * ratio)),
+      width,
+      height,
     ).data;
 
-    let painted = 0;
+    const counts = new Map<number, number>();
 
-    for (let index = 3; index < data.length; index += 4) {
-      if (data[index] !== 0) {
-        painted += 1;
+    for (let index = 0; index < data.length; index += 4) {
+      // One integer per RGBA pixel, so the modal colour is a map lookup rather
+      // than a string key per pixel.
+      const key =
+        ((data[index] ?? 0) << 24) |
+        ((data[index + 1] ?? 0) << 16) |
+        ((data[index + 2] ?? 0) << 8) |
+        (data[index + 3] ?? 0);
+
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    let background = 0;
+    let commonest = 0;
+
+    for (const [key, count] of counts) {
+      if (count > commonest) {
+        commonest = count;
+        background = key;
       }
     }
 
-    return painted;
+    let drawn = 0;
+
+    for (let index = 0; index < data.length; index += 4) {
+      const key =
+        ((data[index] ?? 0) << 24) |
+        ((data[index + 1] ?? 0) << 16) |
+        ((data[index + 2] ?? 0) << 8) |
+        (data[index + 3] ?? 0);
+
+      if (key !== background) {
+        drawn += 1;
+      }
+    }
+
+    return drawn / (width * height);
   }, region);
+}
+
+/**
+ * The same measure, over one node's own box.
+ *
+ * The whole-frame version is too coarse to be a guard: it stayed happily over
+ * its threshold while **every SVG icon in the assets fixture was missing**. The
+ * geometry comes from the renderer itself — the object's bounding rect, mapped
+ * through the viewport transform — rather than from a rectangle copied out of a
+ * fixture, so it cannot drift from what is actually drawn.
+ */
+async function drawnFractionOf(page: Page, nodeId: string): Promise<number> {
+  const region = await page.evaluate((id) => {
+    const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
+      .vigilia;
+    const adapter = handle['adapter'] as {
+      objectFor(nodeId: string):
+        | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+        | undefined;
+    };
+    const object = adapter.objectFor(id);
+
+    if (object === undefined) {
+      return undefined;
+    }
+
+    const canvas = handle['canvas'] as { viewportTransform: number[] };
+    const rect = object.getBoundingRect();
+    const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+
+    return {
+      x: rect.left * scale + offsetX,
+      y: rect.top * scale + offsetY,
+      width: rect.width * scale,
+      height: rect.height * scale,
+    };
+  }, nodeId);
+
+  return region === undefined ? -1 : drawnFractionIn(page, region);
+}
+
+/**
+ * A coarse spatial profile of what is drawn in a region: the drawn fraction of
+ * each cell of a 4x4 grid over it.
+ *
+ * Coverage alone cannot tell a *correct* drawing from a *mangled* one — an SVG
+ * drawn through the wrong `drawImage` form scored 0.2344 against the correct
+ * 0.2126, which no threshold separates. Where the ink sits does separate them,
+ * and 16 numbers is enough to say so without becoming a pixel baseline: it is
+ * computed fresh on both sides in the same browser, so nothing is committed and
+ * platform rasterisation differences cancel.
+ */
+async function profileIn(
+  page: Page,
+  region: { x: number; y: number; width: number; height: number },
+): Promise<readonly number[]> {
+  return page.evaluate((box) => {
+    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+    const context = element?.getContext('2d');
+
+    if (element === null || context === null || context === undefined) {
+      return [];
+    }
+
+    const ratio = element.width / element.getBoundingClientRect().width;
+    const width = Math.max(4, Math.round(box.width * ratio));
+    const height = Math.max(4, Math.round(box.height * ratio));
+    const data = context.getImageData(
+      Math.round(box.x * ratio),
+      Math.round(box.y * ratio),
+      width,
+      height,
+    ).data;
+
+    return (window as ProfileWindow).gridProfile(data, width, height);
+  }, region);
+}
+
+/**
+ * The same profile for an asset drawn straight into a scratch canvas.
+ *
+ * The reference side: the artwork as the browser itself renders it, at the size
+ * the node asks for, using the `drawImage` form that works for a vector source.
+ * If the scene's version does not look like this, something in the renderer is
+ * mangling it.
+ */
+async function profileOfAsset(
+  page: Page,
+  src: string,
+  size: { width: number; height: number },
+): Promise<readonly number[]> {
+  return page.evaluate(
+    ({ url, box }) =>
+      new Promise<readonly number[]>((resolve) => {
+        const image = document.createElement('img');
+
+        image.addEventListener('load', () => {
+          const canvas = document.createElement('canvas');
+
+          canvas.width = Math.max(4, Math.round(box.width));
+          canvas.height = Math.max(4, Math.round(box.height));
+
+          const context = canvas.getContext('2d');
+
+          if (context === null) {
+            resolve([]);
+
+            return;
+          }
+
+          // Five arguments, no source rect: the form Chrome honours for an SVG
+          // with no intrinsic size.
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(
+            (window as ProfileWindow).gridProfile(
+              context.getImageData(0, 0, canvas.width, canvas.height).data,
+              canvas.width,
+              canvas.height,
+            ),
+          );
+        });
+
+        image.addEventListener('error', () => resolve([]));
+        image.src = url;
+      }),
+    { url: src, box: size },
+  );
 }
 
 test.describe('the scene reaches the canvas', () => {
@@ -161,11 +370,12 @@ test.describe('the scene reaches the canvas', () => {
     await openFabricPlayer(page);
 
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
-    const painted = await inkIn(page, { x: 0, y: 0, width: size.width, height: size.height });
+    const drawn = await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height });
 
     // A canvas that mounted, sized and transformed correctly and drew nothing
-    // would pass every other assertion in this file.
-    expect(painted).toBeGreaterThan(1000);
+    // would pass every other assertion in this file. The fraction is of the
+    // whole viewport, so a dashboard of panels and charts is well over 10%.
+    expect(drawn).toBeGreaterThan(0.1);
   });
 
   test('carries the artboard transform in the canvas, not in CSS', async ({ page }) => {
@@ -205,9 +415,14 @@ test.describe('the scene reaches the canvas', () => {
 
     // The bars themselves: no ink above the design's top edge.
     if ((offsetY ?? 0) > 4) {
-      expect(await inkIn(page, { x: 0, y: 0, width: size.width, height: (offsetY ?? 0) - 2 })).toBe(
-        0,
-      );
+      expect(
+        await drawnFractionIn(page, {
+          x: 0,
+          y: 0,
+          width: size.width,
+          height: (offsetY ?? 0) - 2,
+        }),
+      ).toBe(0);
     }
   });
 });
@@ -227,9 +442,9 @@ test.describe('charts draw through a Fabric object', () => {
 
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
 
-    expect(await inkIn(page, { x: 0, y: 0, width: size.width, height: size.height })).toBeGreaterThan(
-      1000,
-    );
+    expect(
+      await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height }),
+    ).toBeGreaterThan(0.1);
   });
 
   test('keeps repainting as samples arrive', async ({ page }) => {
@@ -290,6 +505,136 @@ test.describe('device pixels reach the charts', () => {
       expect(chartScale).toBeGreaterThan(0);
       expect(chartScale).toBeLessThanOrEqual(scale * dpr + 0.001);
     }
+  });
+});
+
+/**
+ * How far apart two profiles are: the mean absolute difference per cell.
+ *
+ * Measured 2026-09-15 across both projects, one 24x24 vector icon against the
+ * browser's own rendering of it at the same pixel size:
+ *
+ * | | distance |
+ * |---|---|
+ * | correct | 0.0187 and 0.0285 |
+ * | with the vector raster removed | 0.2504 and 0.2780 |
+ *
+ * Roughly ten times apart, so the threshold is not finely balanced.
+ */
+function profileDistance(drawn: readonly number[], reference: readonly number[]): number {
+  if (drawn.length !== reference.length || drawn.length === 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const total = drawn.reduce(
+    (sum, value, index) => sum + Math.abs(value - (reference[index] ?? 0)),
+    0,
+  );
+
+  return total / drawn.length;
+}
+
+/** Twice the worst correct render measured, and a quarter of the mangled one. */
+const PROFILE_TOLERANCE = 0.06;
+
+test.describe('image assets', () => {
+  test('draws each fit mode, and every icon, in its own box', async ({ page }) => {
+    // The test the whole-frame count could not be: every SVG icon in this
+    // fixture was **absent** while that one passed. Chrome draws nothing for an
+    // SVG with no intrinsic size through `drawImage`'s source-rect form, which
+    // is the only form Fabric uses — and the symptom was device-dependent,
+    // mangled fragments at 1x and nothing at 4x. `fabric-image.ts` rasterises a
+    // vector asset first; this is what says so.
+    await openFabricPlayer(page, 'assets');
+
+    // Three rings, one PNG, at the three fit modes; then the icon row, where
+    // the first is a vector asset drawn as authored and the next two are the
+    // §111 monochrome gap, still drawn as artwork.
+    for (const nodeId of [
+      'fit-contain',
+      'fit-cover',
+      'fit-stretch',
+      'svg-original',
+      'svg-mono',
+      'png-mono',
+    ]) {
+      const drawn = await drawnFractionOf(page, nodeId);
+
+      // A lower bound per node rather than a baseline: a ring covers about a
+      // third of its box and a thermometer glyph rather less, and both are
+      // nowhere near zero. Absent scores exactly 0.
+      expect(drawn, `"${nodeId}" drew nothing inside its own box`).toBeGreaterThan(0.05);
+    }
+  });
+
+  test('draws a vector icon the shape the asset actually is', async ({ page }) => {
+    // Coverage is not enough here, and that is measured: with the vector
+    // raster removed, the same icon drew a *mangled* fragment scoring 0.2344
+    // against the correct 0.2126. What separates them is where the ink sits, so
+    // this compares the scene's 4x4 profile against the browser's own rendering
+    // of the same asset at the same size.
+    //
+    // Chrome draws nothing for an SVG with no intrinsic size through
+    // `drawImage`'s source-rect form, which is the only form Fabric uses. The
+    // symptom was device-dependent — fragments at 1x, nothing at 4x — so this
+    // is the assertion that holds at every ratio.
+    await openFabricPlayer(page, 'assets');
+
+    const region = await page.evaluate(() => {
+      const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
+        .vigilia;
+      const adapter = handle['adapter'] as {
+        objectFor(nodeId: string):
+          | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+          | undefined;
+      };
+      const object = adapter.objectFor('svg-original');
+
+      if (object === undefined) {
+        return undefined;
+      }
+
+      const canvas = handle['canvas'] as { viewportTransform: number[] };
+      const rect = object.getBoundingRect();
+      const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+
+      return {
+        x: rect.left * scale + offsetX,
+        y: rect.top * scale + offsetY,
+        width: rect.width * scale,
+        height: rect.height * scale,
+      };
+    });
+
+    expect(region, 'the icon has no object at all').toBeDefined();
+
+    const drawn = await profileIn(page, region!);
+    const ratio = await page.evaluate(() => window.devicePixelRatio);
+    // The reference is rasterised at the *same* pixel size the scene drew at,
+    // so the two antialias comparably. Drawn at a different size it differs by
+    // up to 0.089 in a single edge-heavy cell even when perfectly correct,
+    // which is most of the budget a mangled draw needs to be caught in.
+    const reference = await profileOfAsset(page, '/assets/thermometer.svg', {
+      width: region!.width * ratio,
+      height: region!.height * ratio,
+    });
+
+    expect(drawn).toHaveLength(16);
+    expect(reference).toHaveLength(16);
+
+    // The whole profile at once, as a mean absolute difference, rather than a
+    // per-cell tolerance: one edge cell can legitimately differ by a lot, and
+    // what says "wrong shape" is the ink having *moved*. Measured below.
+    expect(profileDistance(drawn, reference)).toBeLessThan(PROFILE_TOLERANCE);
+  });
+
+  test('draws nothing at all for an asset the server does not have', async ({ page }) => {
+    // §111: a declared-but-absent file must not become a broken-image glyph,
+    // which reads as a rendering failure rather than a missing file. The node
+    // has no object at all, so the helper reports -1.
+    await openFabricPlayer(page, 'assets');
+
+    expect(await drawnFractionOf(page, 'absent-image')).toBeLessThanOrEqual(0);
   });
 });
 

@@ -178,6 +178,26 @@ describe('creating a scene', () => {
     expect(absoluteCentre(object)).toEqual({ x: 50, y: 25 });
   });
 
+  it('clamps a corner radius the way CSS does, not the way Fabric does', () => {
+    // `cornerRadius: 999` means "fully rounded". Fabric caps each axis on its
+    // own, which turns a wide box into a full ellipse; CSS scales both radii by
+    // one factor, giving a capsule. The stress fixture draws visibly different
+    // shapes on the two paths without this.
+    const { adapter } = mount();
+
+    adapter.apply(
+      plan([
+        node({
+          id: 'pill',
+          box: box({ width: 120, height: 40 }),
+          content: { kind: 'shape', shape: 'rectangle', cornerRadius: 999 },
+        }),
+      ]),
+    );
+
+    expect(adapter.objectFor('pill')).toMatchObject({ rx: 20, ry: 20 });
+  });
+
   it('gives an ellipse radii rather than a width and a height', () => {
     const { adapter } = mount();
 
@@ -309,6 +329,37 @@ describe('a group’s children', () => {
     expect(group).toBeInstanceOf(Group);
     expect(group).toMatchObject({ width: 200, height: 200 });
     expect(absoluteCentre(group)).toEqual({ x: 200, y: 200 });
+  });
+
+  it('take the children’s extent when the document gives the group no size', () => {
+    // Not an edge case: `capabilities.ts` gives a group position but no size,
+    // so most authored groups arrive at 0x0. In the DOM that was harmless — a
+    // zero-sized div does not clip — but `FabricObject.render` starts with
+    // `isNotVisible()`, which is true at width 0, height 0 and no stroke, so
+    // the group returned before drawing a single child. Three levels of nested
+    // group vanished from the stress fixture under a green suite.
+    const { adapter } = mount();
+
+    adapter.apply(grouped({ x: 100, y: 100, width: 0, height: 0 }));
+
+    const group = adapter.objectFor('group')!;
+
+    expect(group.width).toBeGreaterThan(0);
+    expect(group.height).toBeGreaterThan(0);
+    expect(group.isNotVisible()).toBe(false);
+
+    // And the child has not moved: a sized group must not reposition what it
+    // contains. Authored at 10,10 within a group at 100,100, so 135,135.
+    expect(absoluteCentre(adapter.objectFor('child')!)).toEqual({ x: 135, y: 135 });
+  });
+
+  it('keep an authored group size rather than fitting to content', () => {
+    // The other half, and §137's reversal: a group that *has* geometry owns it.
+    const { adapter } = mount();
+
+    adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
+
+    expect(adapter.objectFor('group')).toMatchObject({ width: 200, height: 200 });
   });
 
   it('rotate with the group, about the group’s centre', () => {
