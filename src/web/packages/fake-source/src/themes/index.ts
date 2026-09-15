@@ -9,53 +9,21 @@ import invalidChartArity from './invalid/chart-arity.json' with { type: 'json' }
 import invalidImpossibleGeometry from './invalid/impossible-geometry.json' with { type: 'json' };
 import type { IssueCode } from '@vigilia/renderer-core';
 
-/**
- * The development theme fixtures.
- *
- * One showcase theme proves the renderer works on the layout it was designed
- * against, which is the weakest possible evidence. These exist so a change has
- * several *different* shapes to break:
- *
- * - `demo` — the showcase dashboard. Landscape, `contain`, four families.
- * - `stress` — hostile but valid. Extreme ranges, rotation, negative offsets,
- *   deep nesting, arbitrary sweeps, non-Latin scripts, every overflow mode, and
- *   values pushed past their axis by a binding scale.
- * - `portrait-cover` — a tall artboard in `cover` mode, which the showcase theme
- *   never exercises. Content sits at every edge, and the bar colour is magenta
- *   so a letterbox appearing in cover mode is unmissable.
- * - `assets` — the image node type, which nothing else covers because nothing
- *   resolved an asset ID to a URL until there was a resolver. Includes one
- *   reference that is declared and deliberately not shipped.
- *
- * The invalid set is separate and is *expected* to fail. Each file carries one
- * family of mistake and states in its `metadata.description` what it is for, so
- * a validator change that stops catching something shows up as a named
- * failure rather than a silent gap.
- */
+/** Valid fixtures cover distinct rendering shapes; invalid fixtures target validator failures. */
 
-/** A theme fixture that must validate. */
 export interface ValidThemeFixture {
   readonly name: string;
   readonly document: unknown;
   readonly summary: string;
-  /**
-   * True when the fixture binds no sensors at all.
-   *
-   * Declared rather than inferred so the suite can assert in **both**
-   * directions: a data fixture that lost its bindings fails, and a static
-   * fixture that gained one fails too. Inferring it would make either change
-   * invisible.
-   */
+  /** Declared so tests detect bindings added to or removed from static fixtures. */
   readonly staticOnly?: boolean;
 }
 
-/** A theme fixture that must NOT validate, with the codes it should produce. */
 export interface InvalidThemeFixture {
   readonly name: string;
   readonly document: unknown;
-  /** Codes the validator must report. Others may also appear unless `only` is set. */
   readonly expect: readonly IssueCode[];
-  /** When true, the reported codes must be exactly `expect` and nothing else. */
+  /** Require exactly `expect`, with no additional issue codes. */
   readonly only?: boolean;
 }
 
@@ -87,8 +55,7 @@ export const INVALID_THEMES: readonly InvalidThemeFixture[] = [
   {
     name: 'newer-version',
     document: invalidNewerVersion,
-    // §141: fail without changing the library, and report ONLY the version.
-    // Everything else in that file is also broken, and none of it may surface.
+    // Version refusal short-circuits all other validation.
     expect: ['newer-schema-version'],
     only: true,
   },
@@ -114,7 +81,6 @@ export const INVALID_THEMES: readonly InvalidThemeFixture[] = [
   },
 ];
 
-/** Looks up a valid fixture by name. */
 export function validThemeByName(name: string): unknown {
   return VALID_THEMES.find((fixture) => fixture.name === name)?.document;
 }
