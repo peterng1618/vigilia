@@ -1,71 +1,34 @@
 import type { SampleEntry, SensorTier } from '@vigilia/renderer-core';
 
-/**
- * The provider boundary: **providers acquire, the host schedules** (§116).
- *
- * A provider must never start a timer, cache history, or push a sample. It
- * answers {@link SensorProvider.sample} when the registry asks. That rule is
- * what makes "opening a second phone must not double upstream polling" (§111)
- * a property of one scheduler rather than a hope about every provider.
- *
- * It is also what keeps ADR-0007 cheap to revisit: if Node's baseline
- * telemetry turns out worse than `psutil`, Python re-enters as one provider
- * behind this interface — not as the host.
- */
+/** Provider boundary: providers acquire; the host schedules and owns history. */
 
-/**
- * Which sensors need privileged access (ADR-0004).
- *
- * Tiers are **discovered and reported, never hardcoded**: a machine without
- * the driver reports its extended sensors unavailable rather than pretending
- * the tier does not exist.
- *
- * Re-exported from the shared library rather than declared here, because
- * displays read it off a descriptor too — two declarations of the same union
- * is the mirror ADR-0007 removed, in miniature.
- */
 export type { SensorTier };
 
-/** What a provider says it can read. */
+/** What a provider can read on this machine. */
 export interface SensorDescriptor {
-  /**
-   * Provider-local and stable across restarts.
-   *
-   * **Tree or array position is never identity.** Position shifts when
-   * hardware is added, and a theme bound to position would silently follow the
-   * wrong sensor. Use the strongest stable identifier the provider exposes.
-   */
+  /** Provider-local stable identity. Never derive identity from tree/array position. */
   readonly sensorId: string;
-  /** The semantic key themes bind to (§93). */
+  /** Semantic key themes bind to. */
   readonly semanticKey: string;
-  /** Human-readable, for the mapping UI. */
   readonly label: string;
   readonly unit?: string;
   readonly tier: SensorTier;
 }
 
-/** Whether a provider can currently be read, and why not if it cannot. */
+/** Current provider availability; messages may reach a browser and must be redacted. */
 export interface ProviderHealth {
   readonly available: boolean;
-  /** Pre-redacted (§101): this reaches a browser. */
   readonly message?: string;
 }
 
 export interface SensorProvider {
-  /** Stable, and the prefix of every `sensorId` this provider emits. */
+  /** Stable provider id and sensor-id prefix. */
   readonly id: string;
   readonly label: string;
 
-  /** What this provider can read here, now. */
   describe(): Promise<readonly SensorDescriptor[]>;
 
-  /**
-   * Reads the requested semantic keys.
-   *
-   * Asked only for keys active displays need (§111). A key this provider
-   * cannot read is **omitted or returned with a non-ok status — never zero**
-   * (§83, §97).
-   */
+  /** Reads requested keys only. Unsupported/unavailable values are omitted or non-ok, never zero. */
   sample(semanticKeys: readonly string[], nowMs: number): Promise<readonly SampleEntry[]>;
 
   health(): ProviderHealth;
