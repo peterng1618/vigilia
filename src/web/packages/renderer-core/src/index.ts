@@ -1,18 +1,4 @@
-/**
- * Shared renderer — the single rendering path used by both the editor and the
- * display-only player.
- *
- * §31: shared rendering prevents editor/display drift. Anything exported here is
- * available to the player, so it must stay free of editor UI, inspectors and
- * component-framework dependencies (§47).
- *
- * The scene path is migrating from the DOM applier to Fabric (spec 0013), and
- * §47 gets sharper rather than looser as a result: the player may import
- * `StaticCanvas` and object classes from `fabric/es`, never the interactive
- * `Canvas`, and never bare `fabric` — which is a pre-bundled entry no
- * tree-shaker can see into. An import-boundary test enforces both, because the
- * size gate has enough slack to miss them.
- */
+/** Shared renderer/domain surface for editor and display. Keep it free of editor-only dependencies. */
 
 export type {
   Fill,
@@ -107,10 +93,6 @@ export type {
 
 export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
 
-// Which settings each chart family accepts — the one owner of that question,
-// consumed by the editor's inspector. Previously it had four encodings (the
-// settings interfaces, the defaults, the validator, the schema) and the editor
-// had a fifth: none, which is why no chart setting was editable.
 export type { SettingsFieldDescriptor, SettingsFieldKind } from './charts/settings-fields.js';
 
 export {
@@ -187,9 +169,6 @@ export type { SampleStoreOptions } from './data/store.js';
 
 export { SampleStore, defaultSampleStoreOptions } from './data/store.js';
 
-// The host↔display wire contract. Exported from the shared library because
-// both ends import it — one definition, compiler-checked on both sides, rather
-// than the hand-mirrored pair ADR-0007 replaced.
 export type { DecodeResult, SampleBatch, SampleEntry } from './data/protocol.js';
 
 export {
@@ -210,10 +189,6 @@ export type {
 
 export { createLiveSource } from './data/live-source.js';
 
-// The capability matrix (spec 0011) — which entity may carry which property,
-// and the single owner of the style property vocabulary. Shared because the
-// renderer paints these properties and the editor offers them, and the list
-// previously had five homes with nothing relating them.
 export type { CapabilityGroup } from './theme/capabilities.js';
 
 export {
@@ -231,9 +206,6 @@ export {
   transformPropertiesFor,
 } from './theme/capabilities.js';
 
-// The semantic key vocabulary (§93). Shared for the same reason the wire
-// contract is: the host declares which keys it can read and the editor offers
-// them to an author, so the spelling must have one owner.
 export type {
   SemanticFamily,
   SemanticKeyDescriptor,
