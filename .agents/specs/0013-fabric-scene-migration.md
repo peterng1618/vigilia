@@ -111,6 +111,12 @@ the measured probe. Support one background video beneath the transparent Fabric
 canvas, aligned and cropped by the same artboard transform. It is not a normal
 scene object and has no grouping/rotation/timeline controls.
 
+### Animated GIF elements are dropped
+
+GIF playback is no longer a product requirement. Remove the legacy `gif` asset
+kind and related v1 handling as part of the planned schema-v2 cleanup; do not
+build a Fabric/media workaround for it.
+
 ## Editor foundation checkpoint
 
 ### Preferred path: source fork of `fabricjs-image-editor`
@@ -297,7 +303,8 @@ resume the stock-Fabric/custom-editor fallback with evidence.
 - stable references;
 - artboard properties;
 - Fabric-scene envelope switch;
-- remove obsolete old-node-tree assumptions.
+- remove obsolete old-node-tree assumptions;
+- remove legacy GIF asset semantics.
 
 ### Stage 6 — live authoring
 
@@ -330,6 +337,7 @@ resume the stock-Fabric/custom-editor fallback with evidence.
 | `fabricjs-image-editor` source | **PREFERRED EDITOR FOUNDATION** |
 | design tokens / bindings / chart settings | **KEEP VIGILIA-SPECIFIC** |
 | video background layer | **KEEP / IMPLEMENT** |
+| legacy GIF asset handling | **DELETE with schema v2** |
 
 ## Acceptance
 
@@ -357,6 +365,7 @@ problem such as:
 
 ## Out of scope
 
+- animated GIF elements;
 - chart-family conversion;
 - unrestricted chart skew/stretch;
 - perfect chart-specific undo/redo;
