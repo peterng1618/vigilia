@@ -1,294 +1,190 @@
 # AGENTS.md — Vigilia
 
-This file defines how coding agents should operate in this repository.
-
-It is the operating manual only. **What the project is, how it fits together and
-why it is that way are recorded elsewhere** — see [Where to record
-what](#where-to-record-what). Keep it that way: an instruction belongs here, a
-fact about the design does not.
+Operating rules for coding agents. Project design lives in `.agents/`; keep this
+file about how to work.
 
 ## Project
 
-- Repository: `peterng1618/vigilia`, default branch `main`, remote `origin`
-- Language: **TypeScript throughout** (7.0.2) — shared renderer, player, editor
-  *and* host. No component framework
-- Package manager: **npm** (11.x). No `packageManager` field is pinned
-- Runtime: Node **22.12+, 24, or 26+** per vitest 5's `engines`
-- Workspace: **one**, at `src/web/`, six packages. **There is no second
-  toolchain — do not install a .NET SDK or Python to unblock anything**
-- Test stacks: `vitest` (unit) and `playwright` (browser)
-- Issue tracker: none. Keep skills tracker-agnostic
+- Repo: `peterng1618/vigilia`; default branch `main`; remote `origin`.
+- TypeScript throughout, one npm workspace at `src/web/`, six packages.
+- Node 22.12+, 24, or 26+. Tests: Vitest + Playwright.
+- No .NET or Python toolchain is required.
+- No component framework is currently used. Add one only if the editor work
+  clearly benefits from it.
 
-## Repository priorities
+## Non-negotiables
 
-- Keep changes focused and minimal. Avoid broad refactors unless asked.
-- **Nothing is declared twice.** Every concept has exactly one home and every
-  consumer imports it from there. Before adding a type, constant, enum, label,
-  shortcut, route, key name, style property, default or helper: grep for it — by
-  name, by value, and by the concept's other likely spellings. If it exists,
-  import it; if it is in the wrong place, move it and repoint the existing caller
-  **in the same commit**. If it is genuinely new, record its owner in
-  [`.agents/architecture.md`](.agents/architecture.md)'s ownership registry.
-  Two declarations agree when written and drift later with nothing to warn
-  anyone, which is why this outranks the rest; what it has cost here before is
-  in [`.agents/lessons.md`](.agents/lessons.md).
-- **Prefer a mechanism to a reminder.** A comment saying "keep these in sync"
-  *is* the defect. Derive one from the other, key a `Record` by a union so the
-  compiler forces exhaustiveness, or add an assertion.
-- **An owner nothing imports is not an owner.** Point every consumer at a new
-  owner in the same commit and add a test binding them.
-- Prefer fixing root causes over adding workarounds.
-- **Report untested behaviour plainly.** A ticked checkbox without observable
-  behaviour and a test is not a pass. Say what you did not verify.
-- Preserve existing architecture and naming style.
+- **One owner per concept.** Search before adding a type, key, default, action,
+  helper, route, style property, or schema value. Reuse or move the owner; do not
+  duplicate it. Record new owners in `.agents/architecture.md`.
+- **Prefer mechanisms to reminders.** Derive, type-check, or test invariants
+  instead of writing “keep these in sync”.
+- **Fix root causes.** Avoid compatibility glue that exists only to preserve an
+  obsolete internal architecture.
+- **Report unverified behaviour plainly.** Code inspection is not runtime proof.
+- **Use libraries for generic editor mechanics.** Vigilia owns telemetry,
+  semantic bindings, theme semantics and chart behaviour; it should not rebuild
+  a general-purpose graphics editor.
 
-## Making a change, in order
+## Brevity rules
 
-1. **If a shape changes, change it once**, in the package that owns it — see
-   `architecture.md`'s ownership registry. Never add a second declaration.
-2. **If it is persisted**, update the schema and decide whether the schema
-   version must bump. A theme already saved must keep loading.
-3. **Implement behind the boundary it belongs to**, pure half and I/O half kept
-   apart.
-4. **Add tests at the layer above.** For a provider, extend the conformance
-   suite rather than writing a bespoke test.
-5. **Run `vigilia:verify`.**
-6. **Record** measurements and decisions where [Where to record
-   what](#where-to-record-what) says, and update `status.md` before committing.
+These are constraints, not style suggestions.
 
-## Setup
+- Write the **shortest text that preserves the decision or invariant**.
+- Do not narrate debugging history in code comments or current-state docs. Git
+  already stores history.
+- Do not repeat rationale across `status.md`, a spec, `decisions.md` and source
+  comments. Put it in the single document that owns it and link there.
+- Code comments are **1–3 lines by default**. Longer comments are only for a
+  non-obvious invariant, API trap or measured constraint. A comment over 8 lines
+  should usually become a test name, helper name, or doc reference instead.
+- Comments explain **why**, never restate what the code does.
+- Specs describe current behaviour, edge cases, acceptance and out-of-scope.
+  They are not session diaries. Target **≤400 lines / ≤20 KB**. If an edited spec
+  is much larger, compact it before adding more.
+- `status.md` is a handoff, not a changelog. Keep only current state, next work,
+  blockers and unverified items. Target **≤250 lines**.
+- A decision entry should normally be one short paragraph plus bullets for
+  consequences/reopening conditions. Reversed reasoning stays in git history.
+- Do not paste sabotage/debug narratives into docs. State the conclusion and the
+  test that guards it.
+- Before committing prose, remove duplicated explanation and stale chronology.
 
-```bash
-cd src/web
-npm install          # also regenerates package-lock.json
-```
+## Change workflow
 
-## Common commands
+1. Read the relevant design section, spec, decision and ownership entry.
+2. If a persisted shape changes, update its schema and version policy.
+3. Implement at the existing owner/boundary.
+4. Add or update tests at the nearest useful layer.
+5. For visible work, render it and inspect it.
+6. Run `vigilia:verify`.
+7. Update `.agents/status.md` with current evidence only.
+8. Commit focused paths.
 
-Run from **`src/web/`**. Prefer these npm scripts over hand-written `tsc` or
-`vite` invocations — they derive the project list from the workspace, so adding
-a package cannot leave a stale copy behind.
+## Commands
 
-| | |
+Run from `src/web/`:
+
+| Task | Command |
 |---|---|
+| Install | `npm install` |
 | Unit tests | `npm test` |
-| Typecheck (every project) | `npm run typecheck` |
-| Build everything | `npm run build` |
+| Typecheck all workspaces | `npm run typecheck` |
+| Build all | `npm run build` |
 | Build one bundle | `npx vite build packages/player` (or `editor`, `host`) |
-| Size gate | `npm run size` — needs a player build first |
-| Browser tests | `npm run test:e2e` — needs the player **and** editor builds first |
-| Run the host | `node packages/host/bin/vigilia.js --no-browser` — needs all three builds |
-| Watch a bundle | `npx vite dev packages/player` (or `editor`) |
+| Player size gate | `npm run size` |
+| Browser tests | `npm run test:e2e` |
+| Run host | `node packages/host/bin/vigilia.js --no-browser` |
+| Dev bundle | `npx vite dev packages/player` (or `editor`) |
 
-The full pre-commit order, and why it is that order, is `vigilia:verify`.
+Prefer workspace scripts over hand-written project lists.
 
-No command here requires infrastructure, and none is interactive.
+## Important traps
 
-### The host
+- The host bin is `vigilia-dashboard`; plain `vigilia` is an unrelated npm
+  package.
+- The host must be built before `bin/vigilia.js` can run.
+- Playwright previews built bundles. Rebuild after source changes and after
+  reverting a deliberate test break.
+- Install the expected Chromium with `npx playwright install chromium` if
+  Playwright reports a missing browser.
+- Screenshot capture requires `VIGILIA_CAPTURE=1` and `--workers=1`.
+- Vite 8 uses rolldown; `manualChunks` must be a function.
+- Use `fileURLToPath` for file URLs on Windows.
+- Symlinks are not reliable in this repo.
+- Bare gitignore patterns match at any depth.
 
-Part of the same workspace, so there is no separate build root. Binds
-`127.0.0.1:5227` by default.
+## Testing
 
-```bash
-node packages/host/bin/vigilia.js --help
-node packages/host/bin/vigilia.js --no-browser      # loopback only
-node packages/host/bin/vigilia.js --host 0.0.0.0    # let phones connect
-```
+- Unit-test pure decisions; browser-test wiring and visuals.
+- **Disable a fix and re-run before trusting a new regression test.**
+- When visual behaviour changes, inspect the rendered result; object counts and
+  geometry alone do not prove pixels are correct.
+- The browser suite previews bundles directly and does **not** exercise the host.
+- Do not invent pixel-baseline claims across OSes; screenshots are evidence, not
+  cross-platform golden files.
 
-The published binary is **`vigilia-dashboard`**, never plain `vigilia` — that
-name belongs to an unrelated package on the registry and fetches a stranger's
-CLI.
+## Code structure
 
-## Traps
-
-Tooling that misleads. Everything here cost real time at least once.
-
-- **The host is built, and refuses to start unbuilt.** `bin/vigilia.js` is a
-  shim over `dist/main.js`. Node 23.6+ can strip TypeScript, but stripping is
-  not resolution, and `renderer-core` is consumed as source with `.js`
-  specifiers Node cannot resolve from `.ts` files.
-  `packages/host/vite.config.ts` explains this at length; do not "simplify" it
-  away.
-- **Playwright previews *built* bundles**, so a source change is invisible until
-  you rebuild — and **every bundle a suite exercises must be built**, not just
-  the player. A missing build surfaces as a preview server that never comes up,
-  which reads like a Playwright fault and is not one. Read
-  `playwright.config.ts` for the current `webServer` list rather than assuming
-  there is one.
-- **Rebuild after reverting an experiment.** Breaking a guard to prove a test
-  catches it leaves `dist/` holding the broken build; the next Playwright run
-  previews the sabotaged bundle and fails somewhere unrelated.
-- **Missing or outdated browser:** `npx playwright install chromium` (~115 MB).
-  The error names a version directory such as `chromium_headless_shell-1243`;
-  an older one on disk will not be used.
-- **Screenshot capture needs `VIGILIA_CAPTURE=1` *and* `--workers=1`.** Without
-  the second, the desktop and phone projects write the same directory
-  concurrently and Windows fails the open with `UNKNOWN`. See
-  `vigilia:gate-evidence`.
-- **Node 25 warns and works.** vitest 5 declares `^22.12 || ^24 || >=26`; you
-  get `EBADENGINE` and a passing suite. Do not chase it, and do not downgrade.
-- **Vite 8 bundles with rolldown, not rollup.** `manualChunks` must be a
-  **function**; the object form fails with `manualChunks is not a function`.
-- **`URL.pathname` on Windows** yields `/D:/…` and silently breaks `fs`. Use
-  `fileURLToPath`.
-- **Symlinks do not work here** — `core.symlinks=false`, and `ln -s` silently
-  copies. Never introduce one.
-- **Bare ignore rules match at any depth**, and this repo has been bitten twice:
-  `data/` untracked `renderer-core/src/data/`, and `bin/` untracked the one file
-  the host cannot start without.
-
-## Testing expectations
-
-| Layer | Location | Command |
-|---|---|---|
-| Unit | `src/web/packages/*/src/**/*.test.ts` | `npm test` |
-| Browser / visual | `src/web/tests/e2e/*.spec.ts` | `npm run test:e2e`, after the builds |
-
-- Add or update tests for behaviour changes. Unit-test the pure half; a decision
-  that needs a browser to test is a sign it is in the wrong layer.
-- **Disable the fix and re-run before believing a test.** A test that passes
-  with its own fix removed is asserting the bug.
-- **When in doubt, render it and look.** Most defects worth fixing here were
-  found by driving a browser, several of them under a fully green suite.
-- Adding a provider means **extending the host's provider tests**, not writing
-  bespoke ones.
-- **Test counts are deliberately not recorded in this file.** They moved by
-  hundreds within single milestones and every stale number invited a wrong
-  conclusion. Current figures live in
-  [`.agents/status.md`](.agents/status.md), and each must have been printed by a
-  command that actually ran.
-
-## Code style
-
-- **Write for agents: concise, precise and actionable.** Use the fewest words
-  that preserve meaning. Do not narrate implementation history, repeat nearby
-  code, or pad documents with generic explanation. Comments explain only
-  non-obvious intent, constraints or trade-offs; delete stale prose when the
-  code changes.
-- Follow existing project style and patterns. Match the surrounding comment
-  density and naming.
-- Avoid unrelated formatting-only diffs in touched files; keep imports stable.
+- Follow surrounding naming and import style; avoid unrelated formatting churn.
 - No licence headers in source files.
-- Do not leave re-export wrapper files behind after a move, and do not add a
-  barrel to shorten an import. The one sanctioned barrel is a package's public
-  surface.
-- `helpers/`, `common/`, `utils/`, `internal/` and `shared/` are not used as
-  folder names. If a generic word is the only name that fits, the file's role
-  has not been decided yet.
-- **500 lines is a signal, 800 is a stop.** A test enforces the ceiling with an
-  explicit allowlist; prefer splitting to allowlisting.
-- **`tsconfig.base.json` enables `exactOptionalPropertyTypes` and
-  `noUncheckedIndexedAccess`.** Two consequences bite immediately: passing an
-  explicit `undefined` to an optional property is a *different type* from
-  omitting the key, so construct the object without the key; and every indexed
-  access is `T | undefined`, so use `arr[0]!` when the index is known good.
-- **Refuse rather than coerce.** A number input reports `''` for anything it
-  cannot parse and `Number('') === 0`, so coercion commits zeros.
+- No re-export wrappers after moves. Package public barrels are the exception.
+- Avoid generic folders such as `helpers`, `common`, `utils`, `internal`, or
+  `shared`; name by responsibility.
+- **500 lines is a signal, 800 is a stop** for source files. Split before adding
+  to an oversized file unless there is a strong reason not to.
+- `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled.
+- Refuse invalid numeric input rather than coercing it to zero.
 
-### Files you must not hand-edit
+## Files not to hand-edit
 
-| Do not edit | Do instead |
+| File | Do instead |
 |---|---|
-| `src/web/package-lock.json` | Change `package.json`, then `npm install` |
-| `src/web/packages/*/dist/**` | Build output, gitignored |
-| `.claude/plugins/vigilia/skills/*/SKILL.md` | Pointer files. Edit `.agents/skills/<name>/SKILL.md` |
-| `.agents/design/environment-setup.md` | User-authored. Propose changes; do not rewrite |
+| `src/web/package-lock.json` | Change manifests, then `npm install` |
+| `src/web/packages/*/dist/**` | Build output |
+| `.claude/plugins/vigilia/skills/*/SKILL.md` | Edit `.agents/skills/<name>/SKILL.md` |
+| `.agents/design/environment-setup.md` | User-authored; propose changes only |
 
-### Dependencies
+## Dependencies
 
-Before proposing one, add it to `THIRD-PARTY-NOTICES.md` with its licence
-**verified from the package's own metadata or LICENSE file**, not from a search
-summary. CI derives the dependency list from the workspace manifests and fails
-if an entry is missing. Do not modify vendored MPL/LGPL files.
+Before adding a dependency, add its verified licence to
+`THIRD-PARTY-NOTICES.md`. CI derives external dependency names from workspace
+manifests and checks for notice entries.
 
-## Where to record what
+For the Fabric editor migration, `../fabricjs-image-editor` is already cloned as
+source beside Vigilia. Evaluate it as source/a potential permanent fork, not only
+through its published package surface.
 
-All prose lives in [`.agents/`](.agents). There is no `docs/` directory and no
-user-facing documentation.
+## Documentation ownership
 
-| Write this | There |
+| Content | Owner |
 |---|---|
-| Current state, next work, what is **not** verified | `.agents/status.md` — goes stale on purpose; every figure from a command that ran |
-| How the pieces fit, and **which file owns which concept** | `.agents/architecture.md` |
-| What a feature should do, and its edge cases | `.agents/specs/` (`archive/` once closed and frozen) |
-| A decision, its context, its consequences | `.agents/decisions.md` — **current position only**; a reversed decision is rewritten in place, not kept alongside |
-| A measurement or observation | `.agents/decisions.md`, append-only (`vigilia:gate-evidence`) |
-| What cost time here, as a rule rather than an anecdote | `.agents/lessons.md` |
-| Product goals and requirements | `.agents/design/plan.md` — **agent-owned**; keep it current |
+| Current state / next / unverified | `.agents/status.md` |
+| Architecture and ownership | `.agents/architecture.md` |
+| Feature behaviour and edge cases | `.agents/specs/` |
+| Current architectural decisions | `.agents/decisions.md` |
+| Durable lessons | `.agents/lessons.md` |
+| Product requirements | `.agents/design/plan.md` |
 
-**`§N` markers** in code and prose — `§93`, `§122` — are stable labels in
-`plan.md`, **not line numbers**. Add a new requirement with the next free
-number; **never renumber**.
+`§N` markers in `plan.md` are stable labels, not line numbers. Never renumber.
 
-## Commit and PR workflow
+## Sub-agents
 
-- **Update [`.agents/status.md`](.agents/status.md) before every commit and
-  push** — figures, what is next, what is not verified. One file, updated by
-  whoever is about to push, with numbers from a run they actually did.
-- **Conventional Commits** for titles: `feat`, `fix`, `docs`, `refactor`,
-  `test`, `ci`, `chore`. Not enforced by any hook or CI check — there are no git
-  hooks in this repo.
-- Target `main`. There is no PR template. Use `vigilia:create-pr`.
-- **CI must build every bundle Playwright previews.** It starts every
-  `webServer` in the config regardless of which project runs, and `dist/` is
-  gitignored — so a new preview target needs its build step added to the
-  frontend job *in the same commit*, or CI fails on a server that never comes up.
-- **Propagate a consequence in the same commit.** A change that contradicts this
-  file, a skill, a package comment, a source comment or a **test** leaves the
-  contradiction live until those are fixed too.
+Use sub-agents for independent work that can run in parallel: source audits,
+library investigation, isolated tests, or documentation checks. Keep shared
+contracts and overlapping files under one agent. The primary agent integrates
+results and owns architectural decisions.
 
-## Git safety
+## Git and commits
 
-- **Assume you are not the only agent in this working tree.** `git status`
-  before staging, every time. Stage explicit paths; **never `git add -A` or
-  `git commit -a`**. Someone else's half-finished work committed under your
-  message is the one mistake here that is genuinely expensive to unpick.
-- Never discard user changes unless explicitly asked, and do not use destructive
-  git commands without explicit instruction.
-- Pushing and opening a PR are real actions with external effect.
+- Check `git status` before staging. Stage explicit paths; never `git add -A` or
+  `git commit -a`.
+- Never discard user changes or use destructive git commands without explicit
+  instruction.
+- Update `.agents/status.md` before commit/push.
+- Use Conventional Commit titles.
+- Pushing and opening a PR are external actions.
+- Propagate a decision change to contradictory docs, comments and tests in the
+  same commit.
 
 ## Review boundary
 
-Seek human review for **scope expansion, anything with external effect**
-(publishing, LAN exposure, the licence) **and product taste**. Architecture,
-schema design and sequencing do not need it — those are yours.
+Seek human review for scope expansion, product taste, publishing, LAN exposure,
+licensing changes and other external effects. Architecture, schema design and
+sequencing are agent-owned unless the user has already directed them.
 
-## In-repo skills
+## Skills
 
-Canonical content lives in [`.agents/skills/`](.agents/skills) so any harness
-reads the same files; Claude Code also loads them through a plugin at
-`.claude/plugins/vigilia/` purely to obtain the `vigilia:` namespace. **Each
-skill has two files** — canonical plus a plugin pointer — because symlinks do
-not work here. **Edit the canonical one.** Layout rules:
-[`.agents/skills/AGENTS.md`](.agents/skills/AGENTS.md).
+Canonical skills live in `.agents/skills/`; Claude plugin files are pointers.
 
-Invoke as `vigilia:<name>`.
-
-| Skill | Use when |
-|---|---|
-| `vigilia:verify` | Checking work before committing — grades the change into a tier, then runs that tier in the order that works |
-| `vigilia:code-review` | Reviewing a diff for what static analysis cannot see |
-| `vigilia:create-pr` | Opening a PR |
-| `vigilia:write-adr` | Recording a decision, or choosing between a decision, a spec and a gate entry |
-| `vigilia:gate-evidence` | Re-capturing screenshots, or recording a measurement |
-| `vigilia:spec-driven-development` | Implementing a feature that has a spec |
-| `vigilia:create-skill` | Adding a skill |
-
-## Skill trigger guidance
-
-- About to commit or push → `vigilia:verify` first.
-- Asked to review a diff, a branch or your own change → `vigilia:code-review`.
-- Asked to open or prepare a PR → `vigilia:create-pr`.
-- Choosing between options with lasting consequences, or reversing an earlier
-  choice → `vigilia:write-adr`.
-- Recording a number you measured, or refreshing screenshots →
-  `vigilia:gate-evidence`.
-- Implementing something with a file in `.agents/specs/` →
-  `vigilia:spec-driven-development`.
+- Before commit/push: `vigilia:verify`.
+- Review: `vigilia:code-review`.
+- PR: `vigilia:create-pr`.
+- Lasting decision: `vigilia:write-adr`.
+- Measurement/evidence: `vigilia:gate-evidence`.
+- Work covered by a spec: `vigilia:spec-driven-development`.
 
 ## Communication
 
-- Be concise and factual.
-- Surface assumptions and blockers early.
-- When something cannot be verified locally, state that clearly rather than
-  implying it passed.
+Be concise and factual. Surface assumptions and blockers early. State what was
+not verified.
