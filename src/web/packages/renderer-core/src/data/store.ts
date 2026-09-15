@@ -1,34 +1,19 @@
 import type { Sample } from '../types.js';
 import type { SampleSource } from './source.js';
 
-/** Bounds for {@link SampleStore}. Both apply; the tighter one wins. */
+/** Both age and count bounds apply; the tighter one wins. */
 export interface SampleStoreOptions {
-  /** Drop samples older than this on ingest. */
   readonly maxAgeSeconds?: number;
-  /** Keep at most this many samples per semantic key. */
   readonly maxSamplesPerKey?: number;
 }
 
-/**
- * Defaults: five minutes or 600 samples per key.
- *
- * CHOSEN, NOT MEASURED. Five minutes covers the widest shipped window (300 s)
- * at the 1 s baseline, and 600 points matches the line adapter's own cap — so
- * the store never holds less than a chart is allowed to draw.
- */
+/** Chosen defaults: five minutes and 600 samples per key. */
 export const defaultSampleStoreOptions: Required<SampleStoreOptions> = {
   maxAgeSeconds: 300,
   maxSamplesPerKey: 600,
 };
 
-/**
- * Bounded in-memory history for the transport to fill (§122).
- *
- * The transport pushes ingested samples in; the plan builder pulls through
- * {@link SampleSource}. A time bound alone is a bound on age, not on memory —
- * a source sampling faster than the 1 s baseline would otherwise grow a key
- * without limit — so every ingest also enforces the per-key count cap.
- */
+/** Bounded push-in/pull-out history store (§122). Count cap also bounds fast sources. */
 export class SampleStore implements SampleSource {
   private readonly maxAgeMs: number;
   private readonly maxSamples: number;
@@ -44,7 +29,7 @@ export class SampleStore implements SampleSource {
     );
   }
 
-  /** Records samples ingested at `nowMs`, pruning each touched key. */
+  /** Record samples and prune touched keys against both bounds. */
   ingest(entries: Iterable<readonly [string, Sample]>, nowMs: number): void {
     this.lastNowMs = nowMs;
     const touched = new Set<string>();
@@ -89,7 +74,7 @@ export class SampleStore implements SampleSource {
     });
   }
 
-  /** Drops everything, for reconnect: a server backlog must not interleave two timelines. */
+  /** Clear on reconnect so old and server-replayed timelines cannot interleave. */
   reset(): void {
     this.series.clear();
     this.lastNowMs = Number.NEGATIVE_INFINITY;
