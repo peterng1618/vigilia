@@ -29,7 +29,7 @@ incompatible settings section.
 |---|---|
 | Unit tests | 1,218 passed across 61 files (2026-09-15) |
 | Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
-| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
+| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. **Root cause found 2026-09-15 and not yet fixed** — see below |
 | §47 size gate | **261.7 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
@@ -76,8 +76,92 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**0 — The Fabric migration. Stage 2 landed 2026-09-15**, behind an opt-in. What
-exists:
+**0 — The Fabric migration. Stage 3 was re-cut before it started (2026-09-15),
+its three format questions are settled, and the first of its three pieces has
+landed.**
+
+**Landed: the persisted surface.** `scene-fabric/src/persist.ts` is the one
+owner of scene ⇄ JSON — defaults stripped, `id` carried through
+`propertiesToInclude`, `loadFromJSON` behind the same module so the
+`classRegistry` registration cannot be bypassed. `VigiliaChart`'s `toObject`
+override is gone, and `settings` is deep-frozen on assignment, which closes the
+by-reference aliasing hole (`toObject().settings` **is** the live object) with a
+mechanism rather than a replace-only convention.
+
+`persist.dom.test.ts` asserts the exact emitted key set for all seven persisted
+classes with `toEqual`, not `toMatchObject`; that `subTargetCheck`,
+`interactive` and `layoutManager` are absent, **and** that they return the
+moment a group sets them, so stage 4 inherits a failing test rather than a
+comment; that identity survives a whole-canvas round trip including group
+children; that matching is by id and never by position; and — a source scan —
+that `persist.ts` is the only module in the package calling `toObject`, because
+the way to break the rule is to not call it. Four guards confirmed by sabotage
+before being trusted: stop stripping defaults → 9 failures, drop the `['id']`
+argument → 11, remove the freeze → 1, add a stray `toObject` → 1.
+
+`packages/scene-fabric/tsconfig.json` gained the shared narrow Node typings the
+source scan needs — the same entry `player` and `editor` already carry.
+
+| Check | Result (2026-09-15) |
+|---|---|
+| Unit tests | 1,235 passed across 62 files |
+| Typechecks | six projects, clean |
+| Builds | player, editor, host |
+| §47 size gate | **261.8 KB** gzip / 400 KB |
+| Host bundle | 34.26 kB |
+| Browser suite | 162 passed, 62 skipped, **2 failed** — see below |
+
+**The two browser failures are the known timing class, not this change.**
+`display.spec.ts:850` (readout stepping, desktop) is one of the three already
+recorded, and `:326` (overflowing text, phone) failed by timing out waiting for
+the artboard to appear at all. Nothing in this change touches the DOM render
+path the suite exercises. **Not claimed as green**, and the fix is the next
+commit rather than a note.
+
+**Stage 3 splits, because it asserted three things that cannot all hold** — the
+same shape of problem as the stage 2/3 re-cut. It said the persisted `nodes`
+tree becomes Fabric JSON *here*, that the editor moves at stage *4*, and that no
+converter exists. Measured: `packages/editor` reads `ThemeDocument.nodes` in
+**15 files**, five of them structurally (`commands.ts`, `arrange/commands.ts`,
+`geometry.ts`, `inspector/apply.ts`, `layers/tree.ts`) — roughly a third of the
+editor's 8,869 non-test lines. So the envelope change moves into **stage 4, with
+the editor**, and stage 3 becomes *the player is the canvas*: the persisted
+surface, then text parity, then the flip and the E2E port.
+
+**Text parity comes before the flip** (user), inverting what stage 5 implied.
+Ellipsis, the line clamp, vertical alignment and the font-load re-measure are
+all `onUnsupported` gaps that `display.spec.ts` asserts today; flipping first
+would ship them as regressions to the only product surface for two stages *and*
+delete the assertions that would notice.
+
+**Refuse, and strip defaults** (user), which was one decision rather than two.
+Fabric's own origin migrator needs explicit origins; explicit origins need
+`includeDefaultValues = true`, because stripping drops an origin equal to the
+default and — measured — asking for it by name does not rescue it. So migrating
+costs ~3× the document size, 7.4.0's default values baked into every object and
+a hand-written filter for `subTargetCheck`/`interactive`/`layoutManager`, while
+refusing gets all three for free. §134's explicit-origin condition changes
+mechanism accordingly, and `VigiliaChart`'s `toObject` override is withdrawn.
+Measurements in [`decisions.md`](decisions.md).
+
+**The browser-suite flakes are diagnosed — one root cause for all three.**
+`page.clock.install()` does not stop time: playwright-core 1.63.0's
+`_replayLogOnce` resumes real-time ticking unless `isPaused`, which only
+`pauseAt` sets, and neither spec calls it. The player's 1 Hz `setInterval` then
+fires at a phase set by real time spent in `goto`, `screenshot()` and CDP round
+trips — i.e. by worker contention, which is why the failures move between runs
+and vanish in isolation. **Not verified:** this is a mechanism and a line
+number, not a fix. Nothing has been changed and no suite has been re-run against
+it. Spec 0013's risk list has the per-test derivation.
+
+Ahead, in order: the persisted surface (`scene-fabric/src/persist.ts`, defaults
+stripped, `id` carried, exact per-class key-set tests) · the clock fix, proved
+by three consecutive browser runs · text parity · the flip and the E2E port
+(of 44 cases per project, ~26 port directly, 8 need a probe surface the adapter
+does not expose — a text segment's `status` has no canvas carrier — and ~3 are
+DOM artefacts to delete rather than port).
+
+**Stage 2 landed 2026-09-15**, behind an opt-in. What exists:
 
 - **`scene-fabric/src/adapter.ts`** — `createSceneAdapter`, the one owner of
   `ScenePlan` → Fabric, imported by both ends. It reconciles a plan **onto** a
@@ -365,9 +449,10 @@ double-bundles Fabric is unmeasured and is the gate on adopting
 `AligningGuidelines`. No physical device, and a Pixel 7 viewport is not a
 Pixel 7.
 
-**Spec 0013 stages 5–8 are still not described anywhere in this file** — text
-and tokens, live telemetry, media, cleanup. A reader of this file alone would
-conclude the migration is a four-stage job.
+**Spec 0013 stages 6–8 are still not described anywhere in this file** — live
+telemetry, media, cleanup. Stage 5 is now named above (tokens, plus the text
+§85 gaps left behind when text's layout half moved into stage 3), but a reader
+of this file alone would still conclude the migration is a five-stage job.
 
 **`vigilia:verify` is now tiered** (2026-09-15, the user's call after that
 commit ran all five steps to check two prose files and a test comment). It grades

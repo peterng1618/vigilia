@@ -53,15 +53,31 @@ commit. Fabric's serialisation round-trips geometry, stacking, grouping,
 visibility, lock and custom classes for free; measured on the prototype as a
 pixel-identical round-trip. What is *not* adopted is bare Fabric JSON as the
 whole document: `scene/plan.ts` reads a `ThemeDocument` and resolves tokens,
-text and chart options in 687 tested lines, so replacing the envelope would
-relocate translation rather than remove it — and Fabric's format carries no
-version, while §141 requires a persisted format to refuse what it cannot read.
+text and chart options in 733 tested lines, so replacing the envelope would
+relocate translation rather than remove it. Fabric *does* stamp a `version` on
+every object and on the canvas — an earlier draft here said it carries none, and
+that was wrong — but it is a **library** stamp: nothing reads it, nothing
+refuses on it, and it says nothing about Vigilia's own semantics, which change
+on their own schedule. §141 requires a persisted format to refuse what it cannot
+read, so the envelope keeps `schemaVersion` and keeps the refusal.
 
 The safety conditions are in §134 and they are requirements: the envelope
 records the Fabric major version, that version is pinned exactly, a Fabric major
-upgrade is a schema migration, and geometry is written with an explicit origin.
-Fabric 7 already changed the default origin to `center`; a scene relying on the
-old default would have shifted by half its size without a word.
+upgrade is a schema migration that **refuses** an older scene, and Fabric's own
+default-stripping is **on**, so every persisted key is an authored deviation and
+every absent one means the recorded major's default.
+
+**The last of those replaced an explicit-origin rule on 2026-09-15**, when the
+review's reopening of "refuse or migrate?" was put back to the user with
+measurements. Fabric's `installOriginWrapperUpdater` needs explicit origins;
+explicit origins need `includeDefaultValues = true`, because stripping drops an
+origin equal to the default and asking for it by name does not rescue it. So the
+choice was one choice, not two: migrate and pay ~3× the document size, 7.4.0's
+default values baked into every object and a hand-written filter to keep
+`subTargetCheck`, `interactive` and `layoutManager` out of a portable document —
+or refuse and get all three for free. The user chose refuse. It protects
+thirty-three keys where the explicit origin protected two, and costs one
+migration of saved themes at some future Fabric major.
 
 **Only authored values are stored on a Fabric object; derived state is
 recomputed.** A chart persists its `family` and typed `settings` — exactly
@@ -313,6 +329,46 @@ finding was reached by reading the warning and the registration sites, and the
 inference from "ECharts warns that a key needs a module" to "the key does
 nothing" is not sound. The layout was never measured until the fix was written.
 `grid.dom.test.ts` now measures it.
+
+### Measured: what Fabric 7.4.0 actually serialises
+
+2026-09-15, against `fabric/node` 7.4.0 in a throwaway script, to settle spec
+0013's three *Settle before stage 3* questions. Each of these had been reasoned
+about from Fabric's source; two of the conclusions were wrong.
+
+One `StaticCanvas` holding a `Rect`, a `Group` containing a `FabricText`:
+
+| class | `includeDefaultValues` on | off |
+|---|---|---|
+| `Rect` | 33 keys | `height id left top type version width` |
+| `Group` | 37 keys, incl. `interactive`, `layoutManager`, `subTargetCheck` | `height id left objects top type version width` |
+| `FabricText` | 47 keys | `height id left styles text top type version width` |
+
+Four findings, in the order they changed a decision:
+
+- **Stripping removes the three keys the review wanted an allow-list for.**
+  `subTargetCheck`, `interactive` and `layoutManager` are all at their defaults
+  in a display scene, so no filter is needed. Set `subTargetCheck: true` and
+  they come back — measured — which is stage 4's problem and now has a test.
+- **`propertiesToInclude` does not survive `_removeDefaultValues`.**
+  `canvas.toObject(['id', 'originX', 'originY'])` with defaults off emits
+  `height id left top type version width`: the origin is requested and still
+  dropped. So an explicit origin and stripped defaults cannot coexist for a
+  built-in class, which is what made "refuse or migrate?" a single decision
+  rather than two. The earlier draft assumed asking by name would work.
+- **Identity needs no subclassing.** `canvas.toObject(['id'])` propagates
+  through `__serializeObjects` into nested group children, and `loadFromJSON`
+  revives `id` as an own property. The review's "a custom property on every
+  persisted class" would have meant six subclasses for nothing.
+- **And the hazard that replaces it is silent.** A canvas re-serialised without
+  the argument — `canvas.toObject()` after a `loadFromJSON` that carried ids —
+  emits no `id` anywhere, with no error. Hence one owner for canvas→JSON, and a
+  test asserting every object in a saved scene has one.
+
+**The generalisable part:** three of these are one-line experiments that took
+minutes, and each overturned a written conclusion reached by reading the same
+library's source carefully. Where a library's behaviour decides a format, run
+it.
 
 ---
 

@@ -28,6 +28,10 @@ export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
 
 export { createSceneAdapter } from './adapter.js';
 
+export type { SerialisedScene } from './persist.js';
+
+export { reviveScene, SCENE_PERSISTED_PROPERTIES, serialiseScene } from './persist.js';
+
 export type { FabricSceneHandle, FabricSceneOptions } from './scene.js';
 
 export { mountFabricScene } from './scene.js';

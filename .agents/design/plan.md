@@ -411,24 +411,35 @@ requirements, not advice:
   pinned exactly rather than by range.
 - A renderer major upgrade is a **schema migration**: `schemaVersion` bumps and
   an older scene is refused, not guessed at (§141).
-- Geometry is written with an **explicit origin**, never an inherited default.
-  Fabric 7 changed `originX`/`originY` to default to `center`, so `left`/`top`
-  came to mean an object's centre — a saved scene relying on the old default
-  would have shifted by half its size, silently.
+- **Every persisted key is an authored deviation, and every absent key means
+  the recorded major's default.** The renderer's own default-stripping is turned
+  **on**, so an object carries only what the author changed; what it does not
+  carry is defined by the version above, which refuses to load under a different
+  major. Nothing is ever reinterpreted under a default that moved, because a
+  build with different defaults does not open the file.
 
-  **The explicit value is the renderer's supported one, not ours.** Fabric 7
-  deprecates every origin except `center`, so the format writes `center` and
-  the renderer's adapter converts from Vigilia's top-left boxes in one place.
-  Pinning our own convention into the persisted format would satisfy this
-  condition while making the deprecation's removal a migration of every saved
-  theme — trading one silent shift for a scheduled one.
+  *Changed 2026-09-15.* This condition previously required geometry to be
+  written with an **explicit origin**, because Fabric 7 changed
+  `originX`/`originY` to default to `center` and a scene relying on the old
+  default would have shifted by half its size, silently. That is still the
+  hazard; it is the mechanism that changed, and it changed because the two could
+  not coexist. Measured: Fabric strips any property equal to its default, an
+  instance cannot opt out, and asking for the origin by name does not rescue it
+  either — so "explicit origin" and "strip defaults" are mutually exclusive for
+  the renderer's built-in classes, and satisfying the old wording meant
+  subclassing six of them.
 
-  **"Explicit" means it survives the renderer's own default-stripping**, which
-  is a stronger requirement than writing the value. Fabric drops any property
-  equal to its default, and an instance cannot opt out of that. So the origin
-  is re-added after serialising, and the test that proves it runs with defaults
-  stripped. A value that happens never to equal a default satisfies this rule
-  only by luck, and luck is what this condition exists to remove.
+  The rule chosen is the stronger of the two: an explicit origin protected two
+  keys, and refusing on the recorded major protects all thirty-three. The
+  price, accepted deliberately (user, 2026-09-15), is that a renderer major
+  upgrade makes every saved theme unopenable rather than migratable.
+
+  The origin itself is still **the renderer's supported value, not ours**.
+  Fabric 7 deprecates every origin except `center`, so the format is written in
+  centre coordinates and the adapter converts from Vigilia's top-left boxes in
+  one place. Pinning our own convention would have made the deprecation's
+  removal a migration of every saved theme — trading one silent shift for a
+  scheduled one.
 
 ## §137 — Document and node shape
 

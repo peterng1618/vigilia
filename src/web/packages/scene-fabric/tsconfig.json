@@ -4,5 +4,11 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/**/*.ts"]
+  // The second entry is the shared narrow Node typings, owned by
+  // renderer-core and already named by the editor's and the player's configs.
+  // `src/persist.dom.test.ts` walks this package's own sources to assert that
+  // `persist.ts` is the only module serialising a canvas, and `@types/node` is
+  // deliberately absent from the workspace so `fs` cannot type-check inside a
+  // browser bundle. See that file's header.
+  "include": ["src/**/*.ts", "../renderer-core/src/node-builtins.d.ts"]
 }

@@ -62,12 +62,13 @@ import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
  * `PlanBox` is top-left and Fabric's `left`/`top` mean the object's centre. The
  * conversion is two additions in the adapter, once, because Fabric 7 marks
  * every origin except `center` **deprecated**. Pinning `'left'` would have put
- * the persisted format on an API Fabric intends to remove, and §134 asks only
- * that the origin be *explicit*.
+ * the persisted format on an API Fabric intends to remove.
  *
- * `_render` works in centred local space regardless. The one non-obvious cost
- * is that the origin now *equals* the default, so Fabric's default-stripping
- * drops it — which is what {@link toObject} exists to prevent.
+ * `_render` works in centred local space regardless. The origin therefore
+ * *equals* the default and default-stripping drops it, which is deliberate: a
+ * saved scene records only authored deviations, and what an absent key means is
+ * fixed by the Fabric major the envelope records and refuses to load across.
+ * See `persist.ts`.
  *
  * ## Telemetry cannot reach a serialised property
  *
@@ -142,9 +143,11 @@ export class VigiliaChart extends FabricObject {
    * emitted one are the same thing.
    *
    * Fabric's own `toObject` concatenates this into the properties it picks
-   * (`Object.ts:1748`), so the emitted Vigilia keys are never hand-listed. The
-   * narrow {@link toObject} override below adds the origin and nothing else,
-   * for a reason recorded there.
+   * (`Object.ts:1748`), so the emitted Vigilia keys are never hand-listed, and
+   * there is **no `toObject` override at all**. Stage 1 had one, re-adding
+   * `originX`/`originY` that default-stripping drops; it was withdrawn once
+   * §134's explicit-origin condition was replaced by stripping plus a pinned
+   * major that refuses. `persist.ts` owns that rule for the whole scene.
    */
   public static override customProperties: string[] = [...CHART_SERIALISED_KEYS];
 
@@ -171,7 +174,7 @@ export class VigiliaChart extends FabricObject {
   /** Declared, not initialised: a field initialiser would clobber `setOptions`. */
   public declare family: ChartFamily;
 
-  public declare settings: ChartContent['settings'];
+  private _settings!: ChartContent['settings'];
 
   private _renderScale: number = DEFAULT_RENDER_SCALE;
 
@@ -208,6 +211,34 @@ export class VigiliaChart extends FabricObject {
   }
 
   /**
+   * The authored chart settings, frozen so a snapshot cannot be rewritten.
+   *
+   * Fabric copies custom properties **by reference**: `toObject().settings` is
+   * this exact object, not a copy. So a canvas snapshot taken at T1 shares it
+   * with the live chart, and an in-place edit at T2 silently rewrites the T1
+   * snapshot — which, once history is canvas snapshots (stage 4), means undo
+   * restoring the *new* value. That is §67's stale-reading failure arriving
+   * through aliasing rather than through derived state.
+   *
+   * Freezing on assignment closes it without a `toObject` override to clone
+   * through, and without a "settings are replace-only" convention that nothing
+   * enforces. Modules are strict, so an in-place write throws rather than
+   * quietly doing nothing, and the `readonly` already in the type stops being a
+   * claim only the compiler checks.
+   *
+   * Deep, because the shallow case is not the interesting one: a gauge's bands
+   * and a line's series are arrays, and those are what an editor would be
+   * tempted to `push` to.
+   */
+  public get settings(): ChartContent['settings'] {
+    return this._settings;
+  }
+
+  public set settings(settings: ChartContent['settings']) {
+    this._settings = freezeDeep(settings);
+  }
+
+  /**
    * Device-pixel oversample for the detached canvas.
    *
    * An accessor pair for the same reason {@link option} is one, plus a second:
@@ -227,32 +258,6 @@ export class VigiliaChart extends FabricObject {
 
   public set renderScale(scale: number) {
     this.setRenderScale(scale);
-  }
-
-  /**
-   * States the origin unconditionally, which Fabric would otherwise drop.
-   *
-   * **This is the one thing here Fabric is not left to do**, and it is two keys
-   * rather than a re-implemented property list — `customProperties` still
-   * carries everything Vigilia adds, and there is no `fromObject` override.
-   *
-   * §134 requires a persisted object to record its origin explicitly, because
-   * Fabric 7 already changed that default once and a scene relying on the old
-   * one would have shifted by half its size. But `_removeDefaultValues`
-   * exempts only `left`, `top` and `type` (`Object.ts:1858-1875`), and `center`
-   * **is** the default — so the origin is stripped the moment defaults are
-   * stripped. The object cannot opt out either: `StaticCanvas._toObject` forces
-   * `includeDefaultValues = false` onto every instance when the canvas has it
-   * off (`StaticCanvas.ts:849-856`).
-   *
-   * `originX: 'left'` used to survive this, but only by accident — it could
-   * never equal the default. Relying on that is how a requirement quietly stops
-   * holding, so it is asserted against a stripped `toObject` instead.
-   */
-  public override toObject(propertiesToInclude: string[] = []): Record<string, unknown> {
-    const { originX, originY } = this;
-
-    return { ...super.toObject(propertiesToInclude), originX, originY };
   }
 
   /**
@@ -481,6 +486,31 @@ export class VigiliaChart extends FabricObject {
     // would have been an intermittent, unreproducible blank chart.
     chart.getZr().flush();
   }
+}
+
+/**
+ * Freezes a value and everything reachable from it, in place.
+ *
+ * In place rather than on a copy, so `chart.settings` stays the object the
+ * caller passed. Freezing a copy would make the alias immutable and leave the
+ * original writable, which is the same defect with an extra indirection.
+ *
+ * Already-frozen input short-circuits, which is what keeps this cheap when the
+ * plan hands the same settings object back every frame, and is also the cycle
+ * guard: a frozen object is never descended into twice.
+ */
+function freezeDeep<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
+    return value;
+  }
+
+  Object.freeze(value);
+
+  for (const entry of Object.values(value)) {
+    freezeDeep(entry);
+  }
+
+  return value;
 }
 
 // Registers under both `VigiliaChart` and `vigiliachart`, which is all

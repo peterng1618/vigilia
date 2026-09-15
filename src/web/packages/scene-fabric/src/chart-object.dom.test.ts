@@ -178,23 +178,28 @@ describe('the serialised object', () => {
     chart.dispose();
   });
 
-  it('records the origin even when defaults are stripped', () => {
-    // §134: a saved scene must not depend on an inherited origin, because
-    // Fabric 7 already changed that default once and every saved theme would
-    // have shifted by half its size.
+  it('omits the origin when defaults are stripped, like every other class', () => {
+    // **This assertion inverted on 2026-09-15**, and it is not a regression.
+    // It used to require the origin to survive stripping, which needed a
+    // `toObject` override — §134's explicit-origin condition. That condition
+    // was replaced: defaults are stripped everywhere, so a persisted key means
+    // an authored deviation and an absent one means the default of the Fabric
+    // major the envelope records and refuses to load across. The override was
+    // withdrawn with it.
     //
-    // This asserts the hard case, not the easy one. `originX: 'left'` was
-    // self-guarding by accident — it could never equal the default, so it
-    // always survived. `center` *is* the default, so `_removeDefaultValues`
-    // drops it (it exempts only `left`, `top` and `type`), and the object
-    // cannot opt out: `StaticCanvas._toObject` forces `includeDefaultValues`
-    // off onto every instance when the canvas has it off. Without the narrow
-    // `toObject` override this test is the one that fails.
+    // What makes this worth asserting rather than deleting is that the chart
+    // must behave like `Rect` and `Group` here. A single class still writing
+    // its origin is how the withdrawn rule comes back for one object.
     const chart = new VigiliaChart(chartOptions());
 
     chart.includeDefaultValues = false;
 
-    expect(chart.toObject()).toMatchObject({ originX: 'center', originY: 'center' });
+    const json = chart.toObject();
+
+    expect(json).not.toHaveProperty('originX');
+    expect(json).not.toHaveProperty('originY');
+    // Still centred in memory: only the *persisted* surface changed.
+    expect(chart.originX).toBe('center');
     chart.dispose();
   });
 

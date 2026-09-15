@@ -100,33 +100,30 @@ Four settings are not preferences, they are load-bearing:
 
 `PlanBox` is top-left and Fabric's `left`/`top` mean the object's centre, so
 something must convert. Fabric 7 **deprecates every origin except `center`**
-("please use 'center' as value in new projects", `ObjectGeometry.ts:581-587`),
-and §134 requires the origin to be *explicit* rather than inherited — which
-`center` satisfies exactly as well as `'left'` does.
+("please use 'center' as value in new projects", `ObjectGeometry.ts:581-587`).
 
 So objects are written with **`originX`/`originY` of `center`**, and the
 top-left→centre conversion is two additions in the adapter, in one place.
-Pinning `'left'` would have satisfied §134 while putting the **persisted
-format** on an API Fabric intends to remove, turning its removal into a
-migration of every saved theme. `_render` works in centred local space
-regardless, so nothing else changes.
+Pinning `'left'` would have put the **persisted format** on an API Fabric
+intends to remove, turning its removal into a migration of every saved theme.
+`_render` works in centred local space regardless, so nothing else changes.
 
-**Adopting the default costs one thing, and it is easy to miss.** Fabric strips
-any property equal to its default: `_removeDefaultValues` exempts only `left`,
-`top` and `type`, and the object cannot opt out, because
-`StaticCanvas._toObject` forces `includeDefaultValues` off onto every instance
-when the canvas has it off. `originX: 'left'` survived that **by accident** —
-it could never equal the default. `center` does, so it is dropped the moment
-defaults are stripped, and §134's condition silently stops holding.
+**Adopting the default means the origin is not written at all**, and that is
+now deliberate. Fabric strips any property equal to its default:
+`_removeDefaultValues` exempts only `left`, `top` and `type`, the object cannot
+opt out (`StaticCanvas._toObject` forces `includeDefaultValues` off onto every
+instance when the canvas has it off), and **`propertiesToInclude` does not
+rescue it either** — measured. `originX: 'left'` used to survive stripping, but
+only by accident: it could never equal the default.
 
-A `toObject` override therefore re-adds the two origin keys, and it is the only
-sanctioned override on the object. The test asserts it with
-`includeDefaultValues = false`, because the easy case passes either way.
-Anything else persisted whose value could equal a Fabric default needs the same
-treatment — which is a reason to keep the custom-property surface to authored
-values that never look like a default, and which **generalises badly to Fabric's
-own built-in classes**: see [Whether defaults are
-stripped](#whether-defaults-are-stripped-is-a-format-decision-not-a-default).
+Stage 1 answered that with a `toObject` override re-adding the two keys, and
+**that override is withdrawn** *(2026-09-15)*. §134's explicit-origin condition
+was one instance of a general worry — geometry reinterpreted under a changed
+default — and [stripping plus a refusing major
+version](#defaults-are-stripped-and-that-is-what-makes-the-rest-free) answers
+the general case for all 33 keys instead of two. Keeping the override would
+leave the chart the only class writing an origin, which is worse than either
+rule applied consistently.
 
 **A centre origin also puts half-units in the persisted format, and §57 asks for
 integers** *(review 2026-09-15)*. `left = x + width / 2`, so an odd-width box
@@ -417,19 +414,26 @@ inside an envelope that can refuse it. What stays forbidden is the thing §134
 was written against: a bare editor-library dump as the whole document, with no
 version, no semantics and no way to refuse it.
 
-### Settle before stage 3
+### Settled before stage 3
 
-*Added by the review 2026-09-15.* Three questions were left inside the stage
-that **freezes the format**. Each is a sentence to decide now and a migration of
-every saved theme to decide later, so stage 3 does not start until all three are
-written down here.
+*Raised by the review 2026-09-15, closed the same day.* Three questions were
+left inside the stage that **freezes the format**. All three are answered below,
+and the answers came from running Fabric 7.4.0 rather than from reading it — two
+of the three earlier write-ups were wrong about what it does.
+
+The third question turned out to be the same question as the second, and the
+one the spec [could not
+close](#open-and-not-this-specs-to-close) — refuse or migrate on a Fabric major
+bump — turned out to decide both. So it was put to the user with the
+measurements, and **the decision is: refuse, and strip defaults** (user,
+2026-09-15).
 
 #### Node identity is part of the format
 
-**Fabric persists no id, and stage 1 does not add one.** Measured: `Rect`'s
-`toObject()` emits 33 keys and none is `id`; `new Rect({ id: 'node-7' })` drops
-it entirely, because `toObject` picks from a fixed list plus
-`customProperties`. `CHART_SERIALISED_KEYS` is `['family', 'settings']`.
+**Fabric persists no id by default.** Measured: `Rect`'s `toObject()` emits 33
+keys and none is `id`; `new Rect({ id: 'node-7' })` drops it entirely, because
+`toObject` picks from a fixed list plus `customProperties`.
+`CHART_SERIALISED_KEYS` is `['family', 'settings']`.
 
 Everything Vigilia has keys on `ThemeNode.id`: `Binding` lives on the node,
 `PlanIssue.nodeId`, `buildLayerTree`, `describeSelection`, `findNode`,
@@ -445,67 +449,90 @@ a bound chart, insert a rectangle at index 0, reload, and every binding is one
 node out — silently, with no issue raised, because each id still resolves to
 *some* node.
 
-**So: `id` is a custom property on every persisted class, required, and a
-round-trip test asserts it survives.** Note it does not fit the
-authored-values rule below — an id is neither authored nor derivable — so that
-rule has three categories, not two: authored configuration (persisted),
-derived state (never persisted), and **identity** (persisted, generated once,
-never edited).
+**So: `id` is persisted on every class, required, and a round-trip test asserts
+it survives.** Note it does not fit the authored-values rule below — an id is
+neither authored nor derivable — so that rule has three categories, not two:
+authored configuration (persisted), derived state (never persisted), and
+**identity** (persisted, generated once, never edited).
 
-#### Whether defaults are stripped is a format decision, not a default
+**It costs no subclassing, and the review's "custom property on every persisted
+class" would have.** Measured: `canvas.toObject(['id'])` propagates
+`propertiesToInclude` down through `__serializeObjects` into every nested
+group's children, and `loadFromJSON` revives `id` as an own property that
+`object.get('id')` then reads — which is what `adoptExisting`
+(`adapter.ts:341`) already assumes. So identity is a *call-site* argument, not a
+`customProperties` declaration on six built-in classes.
+
+That is also its one hazard, and it is silent: **an object re-serialised without
+the argument simply has no `id`**, with no error anywhere. Measured on a revived
+canvas — `canvas.toObject()` after a `loadFromJSON` that carried ids emits none.
+So the argument is not passed at call sites; there is **one owner**,
+`scene-fabric/src/persist.ts`, and a test asserts every object in a serialised
+scene carries a string id.
+
+#### Defaults are stripped, and that is what makes the rest free
 
 `includeDefaultValues` defaults to **`true`** — `StaticCanvasOptions.ts:167` and
-`shapes/Object/defaultValues.ts:86`. Measured on one chart:
+`shapes/Object/defaultValues.ts:86`. **Vigilia sets it to `false`.** Measured on
+a canvas holding one of each:
 
-| | keys emitted |
-|---|---|
-| defaults stripped | 10 — `family, height, left, originX, originY, settings, top, type, version, width` |
-| **defaults on (today's behaviour)** | 33 — adds `angle, backgroundColor, fill, fillRule, flipX, flipY, globalCompositeOperation, opacity, paintFirst, scaleX, scaleY, shadow, skewX, skewY, stroke, strokeDashArray, strokeDashOffset, strokeLineCap, strokeLineJoin, strokeMiterLimit, strokeUniform, strokeWidth, visible` |
+| class | defaults on | defaults off |
+|---|---|---|
+| `Rect` | 33 keys | `height id left top type version width` |
+| `Group` | 37 keys | `height id left objects top type version width` |
+| `FabricText` | 47 keys | `height id left styles text top type version width` |
 
-Neither is free:
+Three things follow, and only the third is a cost:
 
-- **On** — the document is ~3× larger and every object bakes in 7.4.0's default
-  *values*. [Origin](#origin)'s `toObject` override is then dead on the real
-  save path, which is how it gets deleted as redundant by someone who then turns
-  stripping on.
-- **Off** — `_removeDefaultValues` exempts only `left`, `top` and `type`
-  (`Object.ts:1868`), so **every** built-in class loses any property equal to a
-  Fabric default. A `Rect`, `FabricText` or `Group` authored at
-  `originX: 'center'` loses its origin and §134's condition stops holding for
-  everything except the chart. The only fixes are subclassing three built-ins or
-  patching `classRegistry` — both of which contradict [Acceptance](#acceptance)'s
-  "nothing is hand-written that Fabric donates".
+1. **The document is roughly a third the size** and no object bakes in 7.4.0's
+   default *values*.
+2. **The allow-list over Fabric's own keys writes itself.** `subTargetCheck`,
+   `interactive` and `layoutManager` — the three the review found forced into
+   `Group.toObject` (`Group.ts:578-596`) — are all at their defaults, so
+   stripping removes them. No filter, no hand-maintained list. See the residual
+   below, which is real and belongs to stage 4.
+3. **`originX`/`originY` no longer survive**, for built-ins *and* for the chart.
 
-Whichever is chosen, it is chosen **here, once**, and a test asserts the exact
-emitted key set for one object of each persisted class — not a subset match. A
-`toMatchObject` cannot see a key that should not be there.
+Point 3 is the one that had to be decided rather than absorbed, because §134
+required an explicit origin. Two measurements close it:
 
-#### Fabric's own properties need the same rule as Vigilia's
+- `_removeDefaultValues` exempts only `left`, `top` and `type`
+  (`Object.ts:1868`), so any class whose origin equals `center` loses it.
+- **`propertiesToInclude` does not rescue it.** Measured:
+  `canvas.toObject(['id', 'originX', 'originY'])` with defaults stripped emits
+  `height id left top type version width` — the origin is requested and still
+  dropped, because stripping runs after the keys are picked. So "explicit
+  origin" and "strip defaults" are mutually exclusive for a built-in, and the
+  only escapes are six subclasses or a `classRegistry` patch, both of which
+  contradict [Acceptance](#acceptance)'s "nothing is hand-written that Fabric
+  donates".
 
-[Only authored values](#the-scene-is-stored-in-fabrics-format-inside-vigilias-envelope)
-governs `customProperties`. Nothing governs the properties **Fabric** writes,
-and two of them are exactly what `renderScale` was excluded for. `Group.toObject`
-(`Group.ts:578-596`):
+**So §134's third condition changes mechanism rather than being waived.** What
+it wanted is that geometry is never silently reinterpreted under a changed
+default. An explicit origin bought that for two keys. Stripping plus a pinned
+major that **refuses** buys it for all 33: with defaults stripped, every emitted
+key is an authored deviation, every absent key means "the default of the Fabric
+major this envelope records", and a scene from a different major is not loaded
+at all. That is strictly stronger, and it is why the two questions were one.
 
-```ts
-return {
-  ...super.toObject(['subTargetCheck', 'interactive', ...propertiesToInclude]),
-  ...(layoutManager.strategy !== 'fit-content' || this.includeDefaultValues
-    ? { layoutManager } : {}),
-  objects: this.__serializeObjects('toObject', propertiesToInclude),
-};
-```
+The consequence in code: **[Origin](#origin)'s `toObject` override is withdrawn**
+— it was sanctioned to satisfy a condition that no longer exists in that form,
+and keeping it would leave the chart the one class writing an origin nothing
+else writes.
 
-`subTargetCheck` and `interactive` are **editor interaction state**, forced into
-the output unconditionally. And with defaults on, **every group carries a
-`layoutManager`**, pinning Fabric's layout-strategy names into a portable
-document.
+**Residual, and it is stage 4's.** Stripping hides `subTargetCheck` and
+`interactive` only while they are `false`. The moment the editor enables group
+entry (stage 4 adopts `subTargetCheck` + `interactive` for exactly that), both
+become non-default and both are emitted — measured. That is editor state in a
+portable document, and the rule against it still stands; what changes is that
+stage 4 inherits a **failing test** rather than a comment, because the key-set
+test below pins the empty case and a companion test pins the reappearance.
 
-**So: the persisted surface is an allow-list over Fabric's own keys too**, and
-the same per-class key-set test asserts it. "The renderer's object serialisation
-is a sanctioned part of the format" sanctions geometry, order, grouping,
-visibility and lock — not engine internals and not which objects the editor
-lets you click into.
+Whichever way this had gone, the assertion is the same and is what makes it
+enforceable: **a test asserts the exact emitted key set for one object of each
+persisted class** — `toEqual` on a sorted list, never a subset match. A
+`toMatchObject` cannot see a key that should not be there, and the keys that
+should not be there are precisely the ones nobody thinks to look for.
 
 ### Telemetry cannot reach a serialised property
 
@@ -533,18 +560,26 @@ written at all. A test still asserts the surface, but what it asserts is that
 the built option is absent — a property of the design, not a property of a
 name.
 
-**A second door into the same defect, and it is open** *(review 2026-09-15)*.
-Fabric's `toObject` copies custom properties **by reference**, measured:
+**A second door into the same defect** *(review 2026-09-15)*. Fabric's
+`toObject` copies custom properties **by reference**, measured:
 `chart.toObject().settings === the live settings object`. So a snapshot taken at
 T1 shares `settings` with the object, an in-place settings edit at T2 rewrites
 the T1 snapshot, and undo restores the *new* value — the same stale-reading
 failure this section is about, arriving through aliasing rather than through
 derivation. Latent today (the settings type is `readonly` and history is an
 immutable document), live from stage 4, where canvas snapshots and chart-settings
-editing coexist. **Either clone in `toObject`, or assert that the settings path
-is replace-only and never mutates in place.** Anything with object-valued custom
-properties inherits this, so the decision belongs beside the rule above rather
-than in the chart.
+editing coexist.
+
+**Closed by freezing on assignment** rather than by cloning in `toObject`
+*(2026-09-15)*. The two candidates were a clone on the way out and a rule that
+the settings path is replace-only; the first re-introduces the override this
+spec has just withdrawn everywhere else, and the second is a reminder, which
+[the repository's own rule](../../AGENTS.md) says *is* the defect. Freezing is
+neither: `Object.freeze` on the settings setter makes an in-place write throw in
+strict mode, so the aliasing is harmless because the alias is immutable, and the
+`readonly` already in the type stops being a claim only the compiler checks.
+Anything with object-valued custom properties inherits both the hazard and this
+answer, which is why it is recorded here rather than in the chart.
 
 ### Groups: §137's no-geometry clause is rescinded, and Fabric's group is the group
 
@@ -922,40 +957,104 @@ Each stage ends green and committed.
      without failing. Both are now in `THIRD-PARTY-NOTICES.md` with licences
      read from their own metadata, and `renderer-core/src/charts/grid.dom.test.ts`
      is a second consumer.
-3. **Document bridge.** The persisted scene moves to Fabric's object format
-   inside the envelope: `toObject`/`loadFromJSON` round-trip, the Fabric major
-   version recorded, `schemaVersion` bumped, an older scene refused. A Fabric
-   `Group` is persisted with its geometry, per the §137 reversal above. **No
-   write-back layer** — that is what adopting the format removes.
+3. **The player is the canvas.** The persisted *surface* is settled and
+   asserted, text reaches parity, and the DOM path leaves the player.
 
-   **Also here, from the stage-2 re-cut:** `?scene=fabric` becomes the default
-   and then goes, `display.spec.ts` ports onto the canvas, and the DOM path
-   leaves the player. Mapping every `PlanContent` kind moved *out* of this stage
-   and into stage 2, where switching the player made it unavoidable.
+   ### Where stage 3 ends, re-cut 2026-09-15
 
-   **Preconditions, not deliverables.** [Settle before stage
-   3](#settle-before-stage-3) must be written down first: node identity,
-   whether defaults are stripped, and the allow-list over Fabric's own keys.
-   Also settled before the adapter is written, at stage 2: [who owns
-   geometry](#after-stage-3-fabric-owns-geometry-and-the-plan-owns-everything-else),
-   because it decides the adapter's signature.
+   *Decided before starting it, and it is the same shape of problem as the
+   stage-2 re-cut: three things the staging asserted cannot all hold.* It said
+   the persisted `nodes` tree becomes Fabric JSON **here**, that the editor
+   moves at stage **4**, and that **no converter** exists. Any two:
 
-   **And one propagation this stage owns.** §134 and §137 were rewritten on this
+   `packages/editor` reads `ThemeDocument.nodes` in **15 files**, five of them
+   structurally — `commands.ts`, `arrange/commands.ts`, `geometry.ts` (whose
+   `placeNodes` six other modules read through), `inspector/apply.ts` and
+   `layers/tree.ts`. That is roughly a third of the editor's 8,869 non-test
+   lines, and none of it survives `nodes` being replaced by a flat Fabric scene
+   plus an id-keyed semantic layer. So removing `nodes` either takes the editor
+   with it, or needs the load-time Fabric-JSON→`ThemeNode` converter that [the
+   format
+   decision](#the-scene-is-stored-in-fabrics-format-inside-vigilias-envelope)
+   exists to delete.
+
+   **So the envelope change moves into stage 4, with the editor, because they
+   are one change.** What stays here is everything that does not touch the
+   envelope, in this order:
+
+   1. **The persisted surface**, which is [Settled before stage
+      3](#settled-before-stage-3) made executable rather than written down:
+      `scene-fabric/src/persist.ts` as the one owner of canvas→JSON, defaults
+      stripped, `id` carried through `propertiesToInclude`, the withdrawn origin
+      override, frozen settings, and the exact per-class key-set tests. This is
+      format-neutral: it decides what an object serialises to, not what the
+      document is, so it can land and be tested in Node before the envelope
+      exists.
+   2. **Text parity** — moved forward out of stage 5, see below.
+   3. **The flip**: `?scene=fabric` becomes the default and then goes,
+      `display.spec.ts` ports onto canvas probes, and the DOM path leaves the
+      player. `mount.ts` itself still cannot die; stage 8 owns that, because the
+      editor calls it until stage 4.
+
+   **Text parity comes before the flip** (user, 2026-09-15), which inverts the
+   order stage 5 implied. Ellipsis, the line clamp, vertical alignment and the
+   font-load re-measure are all `onUnsupported` gaps today and
+   `display.spec.ts` asserts every one of them; flipping first ships them as
+   regressions to the only product surface for two stages, and deletes the
+   assertions that would notice. Doing them first also keeps the DOM path
+   available to diff against, which is how stage 2's five invisible defects were
+   found. What does **not** move forward is the token half of stage 5, or the
+   §85 gaps that need human agreement first — tabular numerals, per-run
+   opacity, shadow and letter spacing.
+
+   **And one gate, from [Risks](#risks).** The browser suite's flakes are
+   diagnosed and fixed *before* any assertion is rewritten, or a canvas-probe
+   failure and a timing failure become indistinguishable. Root cause found
+   2026-09-15: `page.clock.install()` does not stop time — playwright-core
+   1.63.0's `_replayLogOnce` resumes real-time ticking unless `isPaused`, which
+   only `pauseAt` sets, and neither spec calls it. So the player's 1 Hz
+   `setInterval` keeps firing at a phase set by real wall time spent in `goto`,
+   `screenshot()` and every CDP round trip.
+
+   **One propagation this stage owns.** §134 and §137 were rewritten on this
    branch — §134's "editor-library JSON … is not the theme format" clause was
-   deleted, not narrowed. **18 in-code citations of §134 and 15 of §137** now
-   resolve to changed or inverted text, in `schema/theme-document.schema.json`,
+   deleted, not narrowed, and its explicit-origin condition has now changed
+   mechanism too. **18 in-code citations of §134 and 15 of §137** resolve to
+   changed or inverted text, in `schema/theme-document.schema.json`,
    `renderer-core/src/theme/document.ts`, `theme/serialize.ts`,
    `editor/src/commands.ts`, `layers/tree.ts`,
    `selection/domain/hit-test.ts` and others. Re-read them against the new
    wording; most §137 citations mean the surviving stacking clause and are fine,
    which is exactly why the few that are not will not be noticed otherwise.
-4. **Editor.** Interaction moves to Fabric; the `DELETE` rows go; snapping
+4. **The document and the editor**, as one change, because the format cannot
+   move without them.
+
+   **The envelope**, moved here from stage 3: the node tree becomes Fabric's
+   object format inside it, `toObject`/`loadFromJSON` round-trip, the Fabric
+   major version recorded and asserted equal to the one Fabric wrote,
+   `schemaVersion` bumped, an older scene refused. A Fabric `Group` is persisted
+   with its geometry, per the §137 reversal above. **No write-back layer** —
+   that is what adopting the format removes. `validate.ts:354-360` already
+   refuses an older version, so the refusal is a constant bump plus a message
+   that reads correctly when v1 is the *common* input rather than an exotic one.
+   Four valid fixtures totalling **89 nodes**, max depth 4, are rewritten by
+   hand; eight invalid fixtures need their expected `IssueCode[]` re-derived,
+   since several codes come from node validators that go away. Expect
+   `schema-sync.test.ts` to be the loudest failure — it locks the schema JSON,
+   `document.ts`'s constants and `validate.ts`'s `KNOWN_KEYS` together, which is
+   exactly what you want it to do.
+
+   **The editor.** Interaction moves to Fabric; the `DELETE` rows go; snapping
    reimplemented; panels re-skinned onto the existing descriptors. Resize uses
    Fabric's own `controlsUtils.changeWidth`/`changeHeight` rather than a
    hand-rolled handler — that is how `Textbox` re-lays out instead of scaling,
    which is what a chart needs. This stage also carries the §137 reversal into
    the editor: `capabilities.ts` gives a group its transform rows back, spec
    0011's D2 is rewritten, and `resize-children.ts` and its import go.
+   `collectIds(...).join(',')` as a remount key (`editor/src/main.ts:209`,
+   `:684`) deletes rather than ports — it exists to work around
+   `mount.ts`'s `assertSameScene` throw, which the adapter's `structureKeyFor`
+   already replaces.
 
    **Start with the bundle experiment**, because it decides how much of this
    stage exists: build the editor importing `AligningGuidelines` from
@@ -971,8 +1070,17 @@ Each stage ends green and committed.
    ("No geometry: a group's transform is its children's values"), and
    `editor/src/arrange/commands.test.ts` plus `editor/src/arrange/index.test.ts`
    wherever they assert the shear refusal. None is a regression when it flips.
-5. **Text and tokens.** Styled runs, the layout options Fabric lacks, the
-   font-load re-measure hook, palette and typography tokens as Fabric fills.
+
+   **And one this stage creates.** Enabling group entry sets `subTargetCheck`
+   and `interactive`, which stops them being default and therefore puts them
+   back in the persisted output — see the residual in [Defaults are
+   stripped](#defaults-are-stripped-and-that-is-what-makes-the-rest-free). Stage
+   3 leaves a failing key-set test here rather than a comment.
+5. **Tokens, and the text §85 gaps.** Palette and typography tokens as Fabric
+   fills. Text's *layout* half moved to stage 3; what remains here is what
+   needed human agreement on an alternative first — tabular numerals, per-run
+   opacity, shadow and letter spacing — plus the ~2 px baseline difference
+   against the DOM path, still unmeasured.
 6. **Live telemetry.** Bindings into chart objects and text runs, with the
    no-serialised-property rule under test.
 7. **Media.** Video as background media on a DOM layer; decide GIF.
@@ -992,12 +1100,33 @@ Each stage ends green and committed.
   assertions are not an option here (CI is Linux, development is Windows).
   Replacing those hooks with canvas-level probes is stage 3 work and must not be
   deferred past it.
-- **That replacement lands on a suite that is already unreliable.**
-  `status.md` records the browser suite needing three attempts, with the flakes
-  unexplained — "a suite that needs three attempts is a suite that can hide a
-  real failure". Canvas-level probes are harder to trust than DOM assertions,
-  not easier, so **diagnose the flakes before stage 3 rewrites the assertions**,
-  or the two failure modes become indistinguishable.
+- ~~**That replacement lands on a suite that is already unreliable.**~~
+  **Diagnosed 2026-09-15, one root cause for all three recorded flakes.**
+  `page.clock.install()` does not stop time. In playwright-core 1.63.0,
+  `_replayLogOnce` — reached from every `Date.now`/`performance.now` accessor —
+  resumes real-time ticking unless `isPaused`, and `isPaused` is set **only** by
+  a logged `pauseAt`. Neither spec calls `pauseAt`, so `install({ time })` pins
+  where the clock *starts* and then lets it run at wall speed;
+  `playwright.config.ts:11-14`'s comment that "freezing it freezes the frame" is
+  not what the API does.
+
+  The player's `setInterval(tick, 1000)` (`player/src/main.ts:76`, `:213-219`)
+  therefore keeps firing at a phase set by real time spent in `goto`,
+  `screenshot()` and every CDP round trip — i.e. by worker contention, which is
+  why the failures move between runs and vanish in isolation. Each tick calls
+  `fake.setNow(Date.now())` and rebuilds the plan, so every readout is
+  recomputed. Per test: `:850` starts its reads exactly on a tick boundary and
+  five real `textContent()` round trips push one past the next boundary; `:776`
+  lets a tick land between two `locator.screenshot()` calls and additionally
+  `install`s twice on one page, so its two halves start at different phases by
+  construction; `:390` loses its span handles to `mount.ts:434-438`'s
+  unguarded text rebuild mid-`evaluateAll`, and `getComputedStyle` on a detached
+  element returns empty strings — exactly what `:401` checks.
+
+  Fixed before any assertion is rewritten, because canvas probes are harder to
+  trust than DOM assertions and the two failure modes must stay
+  distinguishable. Note `openFabricPlayer` (`display-fabric.spec.ts:83-93`)
+  inherits the identical clock behaviour.
 - **`renderScale` needs a hard cap, and the cap must be on *area*.** One
   300×180 chart re-rasterised at viewport zoom 4 cost 13.18 MB. A cap on the
   *factor* does not bound memory, because cost is `width × height × scale²` —
@@ -1064,12 +1193,12 @@ Each stage ends green and committed.
   work. **The check is a grep, not a judgement**: for every `DELETE` and
   `REPLACE` row, name the Fabric API that replaced it, or say why none exists.
 
-  **One override is sanctioned and must stay**: `toObject` re-adds `originX`
-  and `originY`, because the origin now equals Fabric's default and
-  `_removeDefaultValues` therefore strips it. See
-  [Origin](#origin) — this is a requirement, not a convenience, and the test
-  asserts it against a `toObject` with defaults stripped rather than the easy
-  case.
+  **No override is sanctioned any more.** Stage 1's `toObject` re-adding
+  `originX`/`originY` was the one exception; it is withdrawn, because the
+  condition it satisfied changed mechanism — see
+  [Origin](#origin) and [Defaults are
+  stripped](#defaults-are-stripped-and-that-is-what-makes-the-rest-free). The
+  chart's serialised surface is now `customProperties` and nothing else.
 - Every setting in `CHART_SETTINGS_FIELDS` is editable through the editor's
   property panel and visibly changes the chart.
 - A missing sample renders as a gap, never a zero (§83), in a Fabric chart.
@@ -1105,11 +1234,20 @@ Added by the review 2026-09-15:
   object at index 0 between save and load and checking that bindings still land
   on the right node — the failure that matching by position produces silently.
 - **The persisted key set is asserted exactly, per persisted class**, not as a
-  subset. `toMatchObject` cannot see a key that should not be there, and the
-  keys that should not be there are `subTargetCheck`, `interactive`,
-  `layoutManager` and whatever the next Fabric minor adds to `toObject`.
+  subset, and **with defaults stripped**, which is the real save path.
+  `toMatchObject` cannot see a key that should not be there, and the keys that
+  should not be there are `subTargetCheck`, `interactive`, `layoutManager` and
+  whatever the next Fabric minor adds to `toObject`.
 - **No editor or device state is in the format.** `renderScale` already passes
-  this; `subTargetCheck` and `interactive` currently would not.
+  this. `subTargetCheck` and `interactive` pass only while they are false — a
+  companion test pins their reappearance, so stage 4 inherits a failure rather
+  than a comment.
+- **Every object in a saved scene carries an id.** Identity is a
+  `propertiesToInclude` argument, not a class declaration, so the failure mode
+  is a silent omission rather than an error — measured: a canvas re-serialised
+  without the argument emits no `id` anywhere.
+- **A settings object cannot be mutated in place.** Frozen on assignment, so
+  the by-reference `toObject` copy cannot rewrite an earlier snapshot.
 - **A whole-canvas `loadFromJSON` revives every persisted class**, not just
   `VigiliaChart.fromObject`. That is the path a saved theme actually takes.
 - **A chart's axis labels reserve space**, asserted by a rendered measurement
@@ -1118,23 +1256,33 @@ Added by the review 2026-09-15:
 - **Mutating a chart's settings does not change a snapshot taken earlier.**
   Custom properties serialise by reference today.
 
-## Open, and not this spec's to close
+## Closed, having not been this spec's to close
 
-**Refuse or migrate, on a Fabric major bump?** §134's second condition and
-`decisions.md` both say **refuse** — a user decision on 2026-09-15, taken on the
-premise that Fabric has no migration story. That premise is false: Fabric emits
-`version` on every object and ships `installOriginWrapperUpdater` for exactly
-the 6→7 origin change, documented as "run the install once in that session" when
-the version tag shows data needs updating.
+**Refuse or migrate, on a Fabric major bump? — refuse** (user, 2026-09-15, put
+back to them with the evidence below and re-affirmed).
 
-With `SUPPORTED_SCHEMA_VERSION = 1` and `validate.ts:354` refusing anything
-unequal, a Fabric 8 bump makes **every saved theme unopenable** — and Vigilia
-writes origins explicitly, which is precisely the condition under which Fabric's
-wrapper needs no guess and is exact.
+The review had reopened it. §134's second condition and `decisions.md` both said
+refuse, taken on the premise that Fabric has no migration story, and that
+premise is false: Fabric emits `version` on every object and ships
+`installOriginWrapperUpdater` for exactly the 6→7 origin change, documented as
+"run the install once in that session" when the version tag shows data needs
+updating. With `SUPPORTED_SCHEMA_VERSION` refusing anything unequal
+(`validate.ts:354`), a Fabric 8 bump makes **every saved theme unopenable**.
 
-Refusing rather than *guessing* remains right. Refusing rather than running the
-library's own versioned, documented migrator is a different choice, and it costs
-every saved theme. **Not changed here** — it reverses a user decision, and
-§157 puts that outside an agent's call. Raised with the evidence so it is
-decided before stage 3 bumps `schemaVersion` for the first time and sets the
-precedent.
+What settled it is that the choice is not free-standing. Fabric's wrapper reads
+`originX`/`originY` off the serialised object, and its README warns that a scene
+exported with defaults stripped must *tell it* what the defaults were. So
+migrating requires explicit origins, explicit origins require
+`includeDefaultValues = true` (measured: `propertiesToInclude` does not survive
+stripping), and defaults-on costs ~3× the document size, bakes 7.4.0's default
+values into every object, and needs a hand-written filter to keep
+`subTargetCheck`, `interactive` and `layoutManager` out of a portable document.
+Refusing costs one migration of saved themes at some future major; migrating
+costs a worse format at every save until then. The user chose refuse, and the
+consequences are written into [Defaults are
+stripped](#defaults-are-stripped-and-that-is-what-makes-the-rest-free).
+
+**What would reopen it:** a real user with saved themes at the moment Fabric 8
+lands. Until Vigilia ships, the cost of refusing is zero, and this is
+reversible — turning stripping off later is a `schemaVersion` bump like any
+other.

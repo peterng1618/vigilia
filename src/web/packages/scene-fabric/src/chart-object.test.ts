@@ -125,9 +125,11 @@ describe('the defaults Fabric actually applies', () => {
 
   it('uses Fabric’s centre origin rather than the deprecated top-left', () => {
     // Fabric 7 marks every origin except `center` deprecated ("please use
-    // 'center' as value in new projects"), and this value is persisted. The
-    // PlanBox top-left -> centre conversion is two additions in the adapter;
-    // §134's requirement is that the origin be explicit, which this satisfies.
+    // 'center' as value in new projects"). The PlanBox top-left -> centre
+    // conversion is two additions in the adapter. Note this value is *not*
+    // persisted — it equals the default and defaults are stripped, which is
+    // deliberate; see `persist.ts`. It still has to be declared, because
+    // `_render` and every box measurement work in centred local space.
     expect(VigiliaChart.ownDefaults).toMatchObject({ originX: 'center', originY: 'center' });
   });
 
