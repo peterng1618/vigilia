@@ -14,7 +14,7 @@ import type {
 export interface SceneHandle {
   /** Renderer-owned artboard element; geometry consumers should use transform(). */
   readonly artboard: HTMLElement;
-  readonly transform: () => ArtboardTransform;
+  transform(): ArtboardTransform;
   update(plan: ScenePlan): void;
   resize(): void;
   dispose(): void;
