@@ -8,7 +8,7 @@ import {
   type FabricObject,
   type StaticCanvas,
 } from 'fabric/es';
-import type { PlanNode, ScenePlan } from '@vigilia/renderer-core';
+import type { PlanBox, PlanNode, ScenePlan } from '@vigilia/renderer-core';
 import { VigiliaChart } from './chart-object.js';
 import {
   createNodeObject,
@@ -16,6 +16,7 @@ import {
   type NodeContext,
   type UnsupportedReporter,
 } from './fabric-nodes.js';
+import { isTextObject, updateText } from './fabric-text.js';
 import { drawnBox, withinGroup } from './placement.js';
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
 
@@ -112,6 +113,11 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   let order: string[] = [];
   /** Undefined until the first apply, so an adopted scene is never cleared. */
   let structure: string | undefined;
+  /**
+   * The box each node was last drawn with, so a font load can re-measure text
+   * without re-deriving group-relative coordinates or re-running the plan.
+   */
+  const boxes = new Map<string, PlanBox>();
   let renderScale = clampRenderScale(options.renderScale ?? DEFAULT_RENDER_SCALE, 1, 1);
 
   // `canvas.remove()` does NOT dispose an object — it only fires this event
@@ -172,9 +178,10 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
     canvas.remove(...canvas.getObjects());
     objects.clear();
     applied.clear();
+    boxes.clear();
   }
 
-  return {
+  const adapter: SceneAdapter = {
     apply(plan: ScenePlan): void {
       const nodes = [...walk(plan.nodes)];
       const nextStructure = structureKeyFor(nodes);
@@ -198,6 +205,13 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
         // `Group.add()` does that conversion, so only the update path applies
         // it — see `placement.ts`.
         const existing = reusable(node);
+        // The box an *update* would use, which for a grouped node is not the
+        // one creation uses: `Group.add()` converts a new child out of the
+        // group's plane by inverting its matrix, so only the update path
+        // subtracts the group's half-size by hand. Recorded rather than the
+        // creation box, because every later re-measure is an update.
+        const box =
+          parent === undefined ? drawnBox(node) : withinGroup(drawnBox(node), drawnBox(parent));
 
         if (existing === undefined) {
           const created = createNodeObject(node, drawnBox(node), context(), register);
@@ -206,13 +220,11 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
             canvas.add(created);
           }
         } else {
-          const box =
-            parent === undefined ? drawnBox(node) : withinGroup(drawnBox(node), drawnBox(parent));
-
           updateNodeObject(existing, node, applied.get(node.id), box, context());
         }
 
         applied.set(node.id, node);
+        boxes.set(node.id, box);
       }
 
       removeStale(nodes);
@@ -241,10 +253,38 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
 
     dispose(): void {
       clear();
+      releaseFonts();
       order = [];
       structure = undefined;
     },
   };
+
+  /**
+   * Re-measures every text object against the faces now available.
+   *
+   * Deliberately *not* `apply(lastPlan)`, which was the first version. Re-running
+   * the whole plan for a font load also re-sends every chart's option, restacks
+   * the canvas and walks the tree — work that has nothing to do with fonts, at a
+   * moment no clock controls, which is a new source of nondeterminism in exactly
+   * the suite that just had one removed. Text is what a font changes, so text is
+   * what this touches.
+   */
+  function remeasureText(): void {
+    for (const [nodeId, object] of objects) {
+      const node = applied.get(nodeId);
+      const box = boxes.get(nodeId);
+
+      if (node !== undefined && box !== undefined && isTextObject(object)) {
+        updateText(object, node, box);
+      }
+    }
+
+    canvas.requestRenderAll();
+  }
+
+  const releaseFonts = watchFontLoads(remeasureText);
+
+  return adapter;
 
   /**
    * The object already drawing this node, if it is still the right class.
@@ -262,6 +302,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
 
     objects.delete(node.id);
     applied.delete(node.id);
+    boxes.delete(node.id);
 
     if (existing.group instanceof Group) {
       existing.group.remove(existing);
@@ -283,6 +324,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
 
       objects.delete(nodeId);
       applied.delete(nodeId);
+      boxes.delete(nodeId);
 
       // A grouped object leaves through its group, which fires `removed` on
       // the group rather than on the canvas — so it is disposed here.
@@ -354,6 +396,49 @@ function adoptExisting(canvas: StaticCanvas, objects: Map<string, FabricObject>)
   };
 
   visit(canvas.getObjects());
+}
+
+/**
+ * Re-runs the plan whenever a font finishes loading.
+ *
+ * The DOM path gets this free: a face arriving after first paint reflows every
+ * element using it. A canvas does not — text is measured once, at
+ * `initDimensions()`, and whatever the fallback face measured is what the
+ * alignment, the ellipsis cut and the clamp were computed from. So a dashboard
+ * would show its webfont at the *fallback's* metrics: text off its authored
+ * edge, and an ellipsis cutting in the wrong place. Re-applying the plan
+ * re-measures, because the text path updates unconditionally.
+ *
+ * Both signals, because they answer different questions: `ready` resolves once
+ * for the fonts the page started with, and `loadingdone` fires for any that
+ * arrive later. Returns its own unsubscribe, so a disposed adapter cannot be
+ * woken by a font it no longer has anything to draw with.
+ *
+ * `document.fonts` is guarded rather than assumed: it is absent under bare
+ * jsdom, and an adapter that throws on construction there would take the whole
+ * unit suite with it.
+ */
+function watchFontLoads(remeasure: () => void): () => void {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+
+  if (fonts === undefined) {
+    return () => {};
+  }
+
+  let live = true;
+  const onLoad = (): void => {
+    if (live) {
+      remeasure();
+    }
+  };
+
+  fonts.addEventListener('loadingdone', onLoad);
+  void fonts.ready.then(onLoad);
+
+  return () => {
+    live = false;
+    fonts.removeEventListener('loadingdone', onLoad);
+  };
 }
 
 interface WalkedNode {

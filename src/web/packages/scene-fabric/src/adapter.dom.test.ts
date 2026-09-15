@@ -77,6 +77,19 @@ function rectangle(id: string, geometry: Partial<PlanBox>, style: PlanNode['styl
   });
 }
 
+function textNode(id: string, text: string, style: PlanNode['style'] = {}): PlanNode {
+  return node({
+    id,
+    box: box({ width: 100, height: 30 }),
+    style,
+    content: {
+      kind: 'text',
+      segments: [{ text, style: {} }],
+      layout: { wrap: false, overflow: 'visible', align: 'left', verticalAlign: 'top' },
+    },
+  });
+}
+
 function plan(nodes: readonly PlanNode[], artboard: Partial<ScenePlan['artboard']> = {}): ScenePlan {
   return {
     artboard: {
@@ -588,18 +601,7 @@ describe('what it will not draw', () => {
     const { adapter } = mount({ onUnsupported });
 
     adapter.apply(
-      plan([
-        node({
-          id: 't',
-          box: box({ width: 100, height: 30 }),
-          style: { tabularNumerals: true },
-          content: {
-            kind: 'text',
-            segments: [{ text: '42', style: {} }],
-            layout: { wrap: false, overflow: 'visible', align: 'left', verticalAlign: 'top' },
-          },
-        }),
-      ]),
+      plan([textNode('t', '42', { tabularNumerals: true })]),
     );
 
     expect(onUnsupported).toHaveBeenCalledWith('t', expect.stringContaining('tabularNumerals'));
@@ -628,5 +630,115 @@ describe('a scene that already exists', () => {
     expect(canvas.getObjects()).toHaveLength(1);
     expect(adapter.objectFor('r')).toBe(existing);
     expect(absoluteCentre(existing)).toEqual({ x: 45, y: 45 });
+  });
+});
+
+describe('a font arriving after the first paint', () => {
+  /**
+   * A stand-in for `FontFaceSet`.
+   *
+   * `document.fonts` is **undefined** under jsdom — verified, and it is why
+   * every other test in this file passes without a stub: the adapter guards
+   * the lookup rather than assuming a browser. So the hook cannot be observed
+   * without supplying one.
+   */
+  function stubFontFaceSet(): {
+    fire: () => void;
+    listeners: () => number;
+    restore: () => void;
+  } {
+    const target = new EventTarget() as EventTarget & { ready: Promise<unknown> };
+    const add = target.addEventListener.bind(target);
+    const remove = target.removeEventListener.bind(target);
+    let count = 0;
+
+    // Never resolves. The `loadingdone` path is the one under test, and a
+    // resolving `ready` would fire a second, untimed re-apply into it.
+    target.ready = new Promise(() => {});
+
+    target.addEventListener = (...args: Parameters<typeof add>) => {
+      count += 1;
+      add(...args);
+    };
+    target.removeEventListener = (...args: Parameters<typeof remove>) => {
+      count -= 1;
+      remove(...args);
+    };
+
+    Object.defineProperty(document, 'fonts', { value: target, configurable: true });
+
+    return {
+      fire: () => target.dispatchEvent(new Event('loadingdone')),
+      listeners: () => count,
+      restore: () => {
+        Reflect.deleteProperty(document, 'fonts');
+      },
+    };
+  }
+
+  it('re-measures text against the face that arrived', () => {
+    // The DOM path reflows for free when a face lands; a canvas measured its
+    // text once, at `initDimensions()`, and every alignment, ellipsis cut and
+    // line clamp was computed from the fallback's metrics.
+    //
+    // Text only — not a full re-apply, which would also re-send every chart's
+    // option and restack the canvas at a moment no clock controls.
+    //
+    // Observed by tampering rather than by counting calls: the re-measure is
+    // only worth anything if it actually rewrites the object.
+    const fonts = stubFontFaceSet();
+
+    try {
+      const canvas = new StaticCanvas(undefined, { width: 1920, height: 1080 });
+      canvases.push(canvas);
+
+      const adapter = createSceneAdapter({ canvas });
+      adapters.push(adapter);
+
+      adapter.apply(plan([textNode('t', 'CPU 42%')]));
+
+      const object = adapter.objectFor('t');
+
+      expect(object).toBeDefined();
+      object?.set('text', 'measured against the fallback');
+
+      fonts.fire();
+
+      expect(object?.get('text')).toBe('CPU 42%');
+    } finally {
+      fonts.restore();
+    }
+  });
+
+  it('unsubscribes on dispose, so a torn-down scene is not kept alive', () => {
+    // Asserted as listener removal rather than as "nothing happens", and the
+    // difference matters: dropping `lastPlan` in `dispose` already makes the
+    // callback a no-op, so a behavioural assertion here passes with the
+    // unsubscribe deleted. Verified by deleting it. What the unsubscribe is
+    // actually for is the leak — a live listener on `document.fonts` holds the
+    // closure, and through it the canvas and every object on it, for as long as
+    // the page lives.
+    const fonts = stubFontFaceSet();
+
+    try {
+      const canvas = new StaticCanvas(undefined, { width: 1920, height: 1080 });
+      canvases.push(canvas);
+
+      const adapter = createSceneAdapter({ canvas });
+
+      adapter.apply(plan([textNode('t', 'CPU 42%')]));
+
+      expect(fonts.listeners()).toBe(1);
+
+      adapter.dispose();
+
+      expect(fonts.listeners()).toBe(0);
+      expect(() => {
+        fonts.fire();
+      }).not.toThrow();
+      expect(canvas.getObjects()).toHaveLength(0);
+    } finally {
+      fonts.restore();
+    }
   });
 });

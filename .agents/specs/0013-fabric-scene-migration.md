@@ -994,7 +994,16 @@ Each stage ends green and committed.
       format-neutral: it decides what an object serialises to, not what the
       document is, so it can land and be tested in Node before the envelope
       exists.
-   2. **Text parity** — moved forward out of stage 5, see below.
+   2. **Text parity** — moved forward out of stage 5, see below. *Landed
+      2026-09-15*: clipping for both non-visible overflow modes, single-line
+      ellipsis, the wrapped line clamp, and the font-load re-measure. Vertical
+      alignment was already done at stage 2. Truncation cuts **segments** and
+      rebuilds the shape through `text-runs.ts` rather than slicing the
+      concatenated string, so the grapheme-index mapping keeps one owner; the
+      fit is found by bisection rather than from the private `__charBounds`.
+      One case still reports a gap: wrapped text asking for an ellipsis when
+      the plan could not compute `maxLines`, which happens only when the type
+      size did not resolve.
    3. **The flip**: `?scene=fabric` becomes the default and then goes,
       `display.spec.ts` ports onto canvas probes, and the DOM path leaves the
       player. `mount.ts` itself still cannot die; stage 8 owns that, because the

@@ -27,10 +27,10 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,237 passed across 63 files (2026-09-15) |
+| Unit tests | 1,251 passed across 64 files (2026-09-15) |
 | Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
-| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed — **three consecutive runs** (2026-09-15). Earlier runs needed a *third* attempt, each failing a different single test. **Root cause found and fixed**: `page.clock.install` does not stop time. See below |
-| §47 size gate | **261.9 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
+| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed (2026-09-15). The **display** suite's flakes are diagnosed and fixed — `page.clock.install` does not stop time — and ran clean three times consecutively. The **editor** suite still fails a single varying test under contention, uses no fake clock, and is undiagnosed. See below |
+| §47 size gate | **262.4 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
 **AGENTS.md is an operating manual again** (2026-09-15), remodelled on
@@ -188,10 +188,55 @@ refusing gets all three for free. §134's explicit-origin condition changes
 mechanism accordingly, and `VigiliaChart`'s `toObject` override is withdrawn.
 Measurements in [`decisions.md`](decisions.md).
 
-Ahead, in order: text parity · the flip and the E2E port
-(of 44 cases per project, ~26 port directly, 8 need a probe surface the adapter
-does not expose — a text segment's `status` has no canvas carrier — and ~3 are
-DOM artefacts to delete rather than port).
+**Landed: text parity, so the flip costs nothing.** Clipping for both
+non-visible overflow modes, single-line ellipsis, the wrapped line clamp, and
+the font-load re-measure. Vertical alignment was already done at stage 2.
+
+Two design points worth keeping. Truncation cuts **segments** and rebuilds the
+shape through `text-runs.ts`, never the concatenated string — that file owns the
+text → grapheme-index → per-run style mapping, and a second implementation of
+the same arithmetic would disagree the first time a cut landed inside a run. And
+the fit is found by bisection on the grapheme count rather than read out of
+`__charBounds`, which is a private field that would not survive a Fabric minor;
+that costs `log2(n)` measurements, only for a node that actually overflows.
+
+The font hook re-measures **text only**, not the whole plan. Re-applying was the
+first version and was wrong: it re-sent every chart's option and restacked the
+canvas at a moment no clock controls, which is a fresh source of nondeterminism
+in the suite that had just had one removed.
+
+`clip` applies to `ellipsis` too, because it does in the DOM — so an imperfect
+ellipsis cut is clipped rather than painted over a neighbour. **One case still
+reports a gap** (§85): wrapped text asking for an ellipsis when the plan could
+not compute `maxLines`, which happens only when the type size did not resolve.
+Also still gaps, and deliberately: tabular numerals and per-run opacity, shadow
+and letter spacing, which need human agreement on an alternative first.
+
+| Check | Result (2026-09-15) |
+|---|---|
+| Unit tests | 1,251 passed across 64 files |
+| Typechecks | six projects, clean |
+| §47 size gate | 262.4 KB gzip / 400 KB |
+| Browser suite | 164 / 62 skipped / 0 failed on two of three runs; one run had a single `editor.spec.ts` failure — see below |
+
+Guards confirmed by sabotage first: never ellipsise → 4 failures, never clip →
+3, clip at the object's centre instead of the box's → 1, always ellipsise → 2,
+never watch fonts → 1, drop the `document.fonts` guard → 30. The unsubscribe
+test was **rewritten** because its first version passed with the unsubscribe
+deleted — `lastPlan = undefined` was doing the work — so it now asserts listener
+removal, which is the leak it actually prevents.
+
+**The editor suite has a separate flake class, and this work did not fix it.**
+`editor.spec.ts` calls the clock **zero** times, so the clock fix could not have
+helped it, and it passes 57/57 three times in isolation while failing a single
+different test under full-suite contention. That matches what `status.md` has
+recorded since 2026-09-13. It is undiagnosed, and it is the remaining reason the
+suite cannot be called reliable.
+
+Ahead: the flip and the E2E port (of 44 cases per project, ~26 port directly,
+8 need a probe surface the adapter does not expose — a text segment's `status`
+has no canvas carrier — and ~3 are DOM artefacts to delete rather than port).
+Then stage 4: the envelope and the editor, together.
 
 **Stage 2 landed 2026-09-15**, behind an opt-in. What exists:
 
