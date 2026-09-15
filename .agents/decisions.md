@@ -63,6 +63,25 @@ upgrade is a schema migration, and geometry is written with an explicit origin.
 Fabric 7 already changed the default origin to `center`; a scene relying on the
 old default would have shifted by half its size without a word.
 
+**Only authored values are stored on a Fabric object; derived state is
+recomputed.** A chart persists its `family` and typed `settings` — exactly
+`ChartContent`'s keys — and not the built engine option, which `plan.ts`
+rebuilds from those settings, the theme's tokens and the current samples every
+frame. That is what makes §67 structural instead of inspected: a serialised
+built option carries live readings inside `series[].data`, where a guard on key
+*names* cannot see them. One was written, and it passed. The same reasoning
+excludes `renderScale`, which is device state.
+
+**A Fabric `Group` is persisted with its geometry, and §137's no-geometry rule
+is dropped** (user, 2026-09-15). Keeping it meant flattening every group's
+matrix onto its children on save and rebuilding groups from a tag on load —
+a write-back layer in a different place, which is the thing this decision
+exists to avoid. Nesting, group resize, rotation and clipping arrive as
+Fabric's. The rule was never adopted by the format anyway: the schema and §57
+have always described composing transforms. §137's "child order alone
+determines stacking" clause is unaffected and is what nearly all of its
+citations rely on. The editor still implements the old rule and moves at stage 4.
+
 **§31 is satisfied, not waived.** The earlier rejection turned on adopting a
 prebuilt Fabric *editor* whose canvas would have rendered the authoring surface
 while `mount.ts` rendered the display — two renderers, which §31 forbids. Making
@@ -74,10 +93,20 @@ product and that carries most of the editor's open defects.
 Measured before deciding, in headless Chromium: charts render through a custom
 `FabricObject` over a detached ECharts canvas, **including rotation at arbitrary
 angles with no hack**; §89's styled runs work in one text object on one shared
-baseline; the player lands at ~257 KB gzip against its 400 KB gate. Three
+baseline; the player lands at ~257 KB gzip against its 400 KB gate. Four
 settings are load-bearing rather than tunable — `objectCaching: false`,
-`animation: false`, and an explicit top-left origin, because Fabric 7 changed
-the default origin to centre.
+`animation: false`, an explicit `center` origin because Fabric 7 changed the
+default and deprecated every other value, and `strokeWidth: 0` on charts,
+because Fabric folds stroke width into an object's bounding box and that was
+the whole unexplained 1.4 px error measured at 37°.
+
+**Fabric's own mechanisms are used rather than re-implemented**, which sounds
+obvious and was not: the first chart object hand-wrote `toObject`, overrode
+`fromObject` in a way that skipped Fabric's enlivening of clip paths and
+gradients, declared its defaults twice, and set `dirty` by field assignment —
+which bypasses the `_set` call that propagates dirtiness to an enclosing group,
+so any grouped live chart would have frozen. It also could not be constructed
+at all. See [lessons.md](lessons.md).
 
 Two limits found by measurement, both confined to media:
 

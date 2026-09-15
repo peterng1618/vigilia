@@ -1,4 +1,4 @@
-# Status — 2026-09-14
+# Status — 2026-09-15
 
 A snapshot, and the one file here that goes stale on purpose. Every figure below
 must have been printed by a command that ran — **update this file before every
@@ -27,11 +27,11 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,131 passed across 54 files (2026-09-15) |
+| Unit tests | 1,157 passed across 56 files (2026-09-15) |
 | Typechecks | six projects, clean |
-| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed at `--workers=2` (2026-09-14) |
-| §47 size gate | 201.1 KB gzip / 400 KB (user-measured this session; player bundle byte-identical since — same content hashes in rebuild) |
-| Host bundle | 34.36 kB, zero runtime deps |
+| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed on the third run (2026-09-15). The first two runs each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, see below |
+| §47 size gate | 201.1 KB gzip / 400 KB (2026-09-15) |
+| Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
 **AGENTS.md is an operating manual again** (2026-09-15), remodelled on
 fabric.js's own AGENTS.md at the user's request: how to work here, and nothing
@@ -111,9 +111,10 @@ Two smaller ones: `packages/player/tsconfig.json` had no route to the narrow
 Node typings the new boundary test needs, and `vigilia:verify` told you never to
 hand-type a `tsc -p` list directly above five hand-typed `tsc -p` lines.
 
-Verified 2026-09-15: **six typechecks clean, 1,131 unit tests across 54 files**,
-player + editor + host build, §47 gate 201.1 KB of 400 KB. Browser suite **not
-run** since stage 1 touched no rendering.
+As committed (`685a192`, 2026-09-15): six typechecks clean, 1,131 unit tests
+across 54 files, player + editor + host build, §47 gate 201.1 KB of 400 KB.
+**Superseded by the review below** — the chart object did not work, and the
+current figures are in that section rather than here.
 
 **The persisted format was settled at the end of the session** (user,
 2026-09-15): the **node tree moves to Fabric's own object serialisation** inside
@@ -126,8 +127,14 @@ requirements, now in §134: the envelope records Fabric's **pinned** major
 version, a Fabric major upgrade is a `schemaVersion` migration that **refuses**
 older scenes, and geometry carries an **explicit origin** — Fabric 7 already
 moved the default to `center`, which would have shifted every saved scene by
-half its size. **Not implemented**: the schema still describes the current node
-tree, and the migration is stage 3.
+half its size.
+
+That explicit origin is now **`center` rather than top-left**, and "explicit"
+turned out to mean more than writing the value: Fabric strips any property
+equal to its default and an instance cannot opt out, so the origin is re-added
+after serialising and asserted with defaults stripped. See the review below.
+**Not implemented**: the schema still describes the current node tree, and the
+migration is stage 3.
 
 Fabric 7.4.0 becomes the scene graph for
 the editor *and* the player, `plan.ts` stays the only thing that decides a
@@ -157,14 +164,88 @@ Measured 2026-09-15, headless Chromium, **nothing on a device**:
 
 So: video is **one background on a DOM layer beneath the canvas**, positioned
 and scaled, with the artboard as its cropping region and nothing else (user,
-2026-09-15). GIF is deferred. Three settings are load-bearing, not tunable:
-`objectCaching: false`, `animation: false`, and an explicit top-left origin
-because Fabric 7 changed the default to centre.
+2026-09-15). GIF is deferred. Four settings are load-bearing, not tunable:
+`objectCaching: false`, `animation: false`, an explicit **`center`** origin
+(Fabric 7 changed the default *and* deprecated every other value, so the
+top-left conversion lives in the adapter), and `strokeWidth: 0` on charts.
 
 **Not verified, and it is the whole risk:** no physical Pixel 3, and the E2E
 suite's 57 structural assertions key on `data-node-id` / `data-vigilia-*`, which
 a single-canvas scene does not have — so the safety net thins exactly when
 stages 3–4 need it most.
+
+### Stage 1 reviewed, and it did not work (2026-09-15)
+
+Reviewed at the user's request before stage 2 could build on it. The chart
+object **could not be constructed**: `option` was a getter with no setter, and
+Fabric's only entry path (`_setOptions` → `set` → `this[key] = value`) therefore
+threw a `TypeError` on every construction that supplied one. Nothing caught it —
+no unit test instantiated the class, by a deliberate decision to leave mounting
+to stage 2's browser tests, so the suite commit `685a192` recorded as green was
+green over an unbuildable object. Reproduced against Fabric's exact code path
+before fixing.
+
+The deferral is now undone: `chart-object.dom.test.ts` mounts real charts under
+`jsdom` plus the `canvas` package already in the tree, which needs no browser
+and no new dependency. It constructs all four families, serialises, revives
+through Fabric's own path, and asserts the grouped-cache invalidation. Nothing
+in it compares a pixel; that stays Playwright's.
+
+Four things Fabric already donates were hand-written, and each failed silently:
+
+| Hand-written | Handed back to Fabric | What it would have cost |
+|---|---|---|
+| `toObject` override | `static customProperties` | A second list beside the declared one; also bypassed `includeDefaultValues` |
+| `fromObject` override | inherited `fromObject` | Skipped `enlivenObjectEnlivables`, so a serialised `clipPath` or gradient revived as a plain object — and stage 2 clips to the artboard |
+| `getDefaults()` **and** a constructor `set` | `static ownDefaults` | Defaults declared twice; `getDefaults()` was never called on construction, so only the duplicate ran |
+| `this.dirty = true` | `this.set('dirty', true)` | `_set` is what propagates dirtiness to a parent. A Fabric `Group` caches by default, so any **grouped** live chart would have frozen |
+
+Also corrected: `strokeWidth` was left at Fabric's default of 1, which is the
+entire 1.4 px bounding-box error recorded above — `1 × (cos 37° + sin 37°)` is
+1.4004 against a measured 1.4 on both axes, so it was a fixable defect read as
+noise. And the `renderScale` cap was on the scale factor, which does not bound
+memory (cost is `w × h × scale²`); it is now two ceilings, factor and pixel
+area, and the area one never undersamples.
+
+**The §67 guard was passing over the defect it existed to catch.** The chart
+serialised `['family', 'option', 'renderScale']` and the test asserted no key
+*name* looked like telemetry. Every name passed; the samples were inside
+`option`, as `series[].data`. The surface is now `['family', 'settings']` —
+`ChartContent`'s keys, authored values only — so no sample can be written at
+all. `renderScale` also left, being device state in a portable document.
+
+Three format decisions taken now rather than at stage 3, because stage 3 freezes
+them (all three the user's, 2026-09-15): typed settings rather than the built
+option; **§137's no-geometry rule dropped** so a Fabric `Group` persists with its
+geometry; and the origin written as `center` rather than the deprecated `left`.
+
+| Check | Result (2026-09-15) |
+|---|---|
+| Unit tests | 1,157 passed across 56 files |
+| Typechecks | six projects, clean |
+| Builds | player, editor, host all build |
+| §47 size gate | 201.1 KB gzip / 400 KB — unchanged, nothing imports `scene-fabric` yet |
+| Host bundle | 34.36 kB |
+| Guard verified by disabling the fix | removing the `option` setter fails 13 assertions; reverting `set('dirty')` to a field assignment fails the grouped-cache test; removing the origin from `toObject` fails the stripped-defaults test; dropping a `ChartContent` key fails the typecheck, naming the key |
+
+The browser suite was run three times. Runs 1 and 2 each failed exactly one
+test, and **not the same one** — `display.spec.ts:390` (styled-run spans,
+phone), then `display.spec.ts:850` (readout stepping, desktop). Both passed in
+isolation, the first also passed in isolation with these changes stashed, and
+run 3 was clean at 141 passed / 61 skipped / 0 failed. That is the timing-flake
+class already recorded for the editor suite, not a regression. It is still not
+a clean bill of health: **the flakes are unexplained, nobody has diagnosed
+them, and a suite that needs three attempts is a suite that can hide a real
+failure.** Stage 1 imports into no rendering path, and the
+size gate prints the same 201.1 KB as before — **no hash comparison was run**,
+so that is unchanged in size, not proven byte-identical.
+
+**Not verified:** nothing in this stage has been *rendered*. Every claim about
+construction, grouping, disposal and the JSON round-trip rests on Fabric's
+source and on Node-level assertions, not on pixels — the chart object is still
+imported by nothing. The editor also still implements §137's old no-geometry
+rule (`capabilities.ts`, `resize-children.ts` and its import in
+`editor/src/main.ts`); that is stage 4 and is **not** done.
 
 **1 — The editor manager refactor.** PAUSED at Phase 3, and partly overtaken:
 the managers Fabric replaces (selection, snapping, the transform half of
@@ -301,16 +382,21 @@ passing in isolation (known timing-flake class).
 **2 — Schema v2, as one change.** Sequenced *after* the refactor deliberately, so
 it lands where the document model, globals and inspector each have one owner —
 and so `resize-children.ts` is deleted rather than moved twice. Everything breaking together, so there's one
-migration: group loses its stored transform; palette becomes rgba; gradients
+migration: ~~group loses its stored transform~~ (**reversed 2026-09-15** — a
+group keeps its transform and gains Fabric's; see spec 0013's *Groups*); palette becomes rgba; gradients
 become palette tokens; `fonts`/`fontSizes` become `typePresets`; a reserved
 undeletable `palette.none`; `name` removed in favour of `id`; artboard
 `width`/`height` editable. v1 is **refused, not migrated** (§141) — the five
 in-repo fixtures get rewritten by hand. See [spec 0011](specs/0011-editor-property-model.md).
 
-Two consequences to handle in the same change: group resize handles come off the
-canvas (size isn't a group operation), which makes `resize-children.ts` dead
-code; and `deleteGlobal` switches from refusing to reassigning with a
-`palette.none` fallback.
+One consequence to handle in the same change: `deleteGlobal` switches from
+refusing to reassigning with a `palette.none` fallback.
+
+The other one is gone. "Group resize handles come off the canvas, which makes
+`resize-children.ts` dead code" was reversed on 2026-09-15: a group has geometry
+again, resize is a group operation, and Fabric's `LayoutManager` performs it —
+so `resize-children.ts` is deleted as *superseded* rather than as dead, at spec
+0013 stage 4.
 
 **3 — The starter theme, and host theme storage.** Still the thing between this
 and a usable product: the dashboard shows mostly dashes. `demo-theme.json` binds

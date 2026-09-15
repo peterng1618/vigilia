@@ -416,6 +416,20 @@ requirements, not advice:
   came to mean an object's centre — a saved scene relying on the old default
   would have shifted by half its size, silently.
 
+  **The explicit value is the renderer's supported one, not ours.** Fabric 7
+  deprecates every origin except `center`, so the format writes `center` and
+  the renderer's adapter converts from Vigilia's top-left boxes in one place.
+  Pinning our own convention into the persisted format would satisfy this
+  condition while making the deprecation's removal a migration of every saved
+  theme — trading one silent shift for a scheduled one.
+
+  **"Explicit" means it survives the renderer's own default-stripping**, which
+  is a stronger requirement than writing the value. Fabric drops any property
+  equal to its default, and an instance cannot opt out of that. So the origin
+  is re-added after serialising, and the test that proves it runs with defaults
+  stripped. A value that happens never to equal a default satisfies this rule
+  only by luck, and luck is what this condition exists to remove.
+
 ## §137 — Document and node shape
 
 Document: `schemaVersion`, id and metadata, artboard and background, an ordered
@@ -430,9 +444,23 @@ A consequence worth stating: grouping makes its members contiguous in that
 order, so it moves paint order for anything that was interleaved between them.
 That is inherent to a single ordered child list, not a bug to fix.
 
-A **group is a structural entity, not a drawable.** It has children, visibility,
-lock and a position in the order — no geometry of its own and no paint. Moving
-and rotating a group is a canvas gesture that rewrites its children's values.
+A **group has its own geometry** — a transform, and children positioned in its
+space — which composes with its children's, so grouping and ungrouping preserve
+world appearance without baking anything (§57, and the schema has always said
+so). A group still has no paint of its own.
+
+*Changed 2026-09-15.* This requirement previously said the opposite: that a
+group was structural with no geometry, and that moving or rotating one rewrote
+its children's values. That position was never adopted by the format — the
+schema and §57 both described composing transforms throughout — and it conflicts
+with the scene graph adopted under §134, whose group carries a transform. Rather
+than flatten every group on save and rebuild it on load, which is the
+translation layer §134 exists to avoid, the rule gives way. The editor still
+implements the old rule and moves at spec 0013 stage 4.
+
+Two clauses of this section are untouched by that change and are what most of
+its citations rely on: **child order alone determines stacking**, and a group
+has children, visibility, lock and a position in that order.
 
 ## §138 — Widgets in the document
 

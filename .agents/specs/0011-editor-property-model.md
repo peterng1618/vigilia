@@ -54,6 +54,22 @@ units, and are not rounded. Landed as `3b545c5`.
 
 ### D2 — A group is an editor entity, not a theme element
 
+> **REVERSED 2026-09-15 — do not implement the rest of this section.** §137 no
+> longer says a group has no geometry, and a group is now persisted with its own
+> transform. The reason is in [spec 0013](0013-fabric-scene-migration.md)'s
+> *Groups* section: the scene graph adopted under §134 has a group that carries
+> geometry, so keeping D2 meant flattening every group on save and rebuilding it
+> on load — the translation layer the migration exists to delete. Fabric's
+> `Group` and `ActiveSelection` now supply what D2's consequences describe, and
+> its "no transform rows" conclusion is undone at stage 4.
+>
+> The text below is kept, not deleted, because two of its arguments outlived it:
+> the `position`/`size`/`rotation` capability split, which the artboard (D6)
+> needs regardless, and D0's converse — the canvas must not offer what the
+> inspector denies. **It also contradicted the format all along**, which is the
+> part worth remembering: the schema and §57 always described composing
+> transforms, so this was a position the persisted document never took.
+
 A group exists to move things together and to organise the layer list. It is
 **not** a drawable.
 

@@ -31,6 +31,23 @@ was found by driving a browser, not by reading code — and several sat under a
 fully green suite. Unit tests prove the decisions; only rendering proves the
 wiring.
 
+**"That needs a browser" is often "I did not look for the cheap assertion".**
+A chart object shipped green and unconstructable: one property was a getter with
+no setter, and the library's only way in assigns straight onto the instance, so
+every construction threw. The deferral was reasoned — instantiating it needs a
+document, a canvas and a live chart engine, and asserting against a fake canvas
+proves nothing. But the defect was in the **prototype**, and a prototype is
+inspectable in Node. The class object, its statics, its accessor descriptors and
+its serialised surface all are. Ask what the failure's *shape* is before
+concluding the environment is the blocker.
+
+**A guard that checks names does not check values.** The same object declared
+its persisted keys and tested that none of them *sounded* like telemetry. Every
+name passed; the live samples were one level down, inside a key called `option`.
+A predicate over identifiers cannot see into the thing they identify — so a rule
+about what data may exist has to be enforced by what the design permits, not by
+what the keys are called.
+
 **The browser suite does not exercise the host.** Playwright previews each
 bundle on its own port, so a serving bug — a mount prefix, an asset path, a
 redirect — is invisible to a green gauntlet. The editor once shipped unable to
@@ -58,6 +75,21 @@ compiler forces exhaustiveness, or add an assertion.
 compiler-checked is usually fine. Duplicated, stringly-typed and unguarded is
 the real problem — a style property name typo'd in a theme passes the schema
 *and* the validator and is silently dropped at render time.
+
+**Before writing behaviour a library might already have, read its source for
+the hook.** A chart object hand-wrote four things Fabric donates: serialisation
+(`static customProperties`), revival (inherited `fromObject`, whose override
+skipped the step that turns a serialised clip path back into an object),
+defaults (`static ownDefaults`), and invalidation (`set('dirty', true)`, where a
+field assignment skips the propagation to an enclosing group and freezes a
+grouped live chart). Each hand-written version *looked* right and each was wrong
+in a way no test would surface. A dependency taken for what it donates has to be
+read for what it donates; the published docs named none of these four.
+
+**Derived state in a persisted format is duplication with a clock on it.** It
+agrees at the moment of writing and diverges the first time its inputs change —
+and it also smuggles whatever its inputs contained at write time, which is how
+telemetry nearly reached a saved document.
 
 ## Designing
 

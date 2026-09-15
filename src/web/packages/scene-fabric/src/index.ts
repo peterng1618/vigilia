@@ -20,12 +20,13 @@
  * Spec 0013 has the measurements and the staging.
  */
 
-export type { ChartObjectFamily, VigiliaChartProps } from './chart-object.js';
+export type { ChartSerialisedKey, VigiliaChartOptions } from './chart-object.js';
+
+export { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
 
 export {
   clampRenderScale,
   DEFAULT_RENDER_SCALE,
+  MAX_BACKING_PIXELS,
   MAX_RENDER_SCALE,
-  VigiliaChart,
-  withoutEngineAnimation,
-} from './chart-object.js';
+} from './render-scale.js';

@@ -1,68 +1,150 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CHART_SERIALISED_KEYS,
-  DEFAULT_RENDER_SCALE,
-  MAX_RENDER_SCALE,
-  clampRenderScale,
-  withoutEngineAnimation,
-} from './chart-object.js';
+import { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
 
 /**
- * The chart object's pure decisions.
+ * The chart object's decisions and its shape.
  *
- * Deliberately narrow. `vitest.config.ts` runs in a **node** environment and
- * says why: unit tests cover the shared renderer's pure logic, and visual or
- * cross-device behaviour belongs to Playwright. Instantiating a `VigiliaChart`
- * needs a document, a 2D context and a live ECharts instance, so mounting,
- * rotation, live redraw, disposal and the JSON round-trip are browser tests —
- * asserting them here would mean asserting against a fake canvas, which proves
- * nothing about the thing that actually draws.
+ * `vitest.config.ts` runs in a **node** environment and says why: unit tests
+ * cover pure logic, and visual or cross-device behaviour belongs to Playwright.
+ * So nothing here constructs a chart — that needs a document, a 2D context and
+ * a live ECharts instance, and asserting against a fake canvas proves nothing
+ * about the thing that draws.
  *
- * What *is* testable here is every rule that is a decision rather than a
- * rendering, and the serialised surface is the important one.
+ * What *is* testable without a browser turned out to be more than "pure
+ * functions". The class object, its statics and its prototype are all
+ * inspectable in Node, and the one defect that reached `main` was a prototype
+ * shape — so those are asserted here rather than deferred.
  */
 
-describe('the serialised surface', () => {
-  it('carries only authored configuration, never a sample', () => {
-    // The §67 rule, asserted rather than reviewed: live telemetry must not
-    // reach a property Fabric writes out. `option` is the rebuilt plan option
-    // and is replaced wholesale; the other two are authored. If a key like
-    // `value`, `samples` or `history` ever appears here, a canvas snapshot
-    // starts capturing readings and undo starts restoring stale ones.
-    expect([...CHART_SERIALISED_KEYS]).toEqual(['family', 'option', 'renderScale']);
+describe('the persisted surface', () => {
+  it('carries only authored configuration', () => {
+    // The §67 rule, structural rather than reviewed. These are `ChartContent`'s
+    // keys: the family and the typed settings the document already stores.
+    expect([...CHART_SERIALISED_KEYS]).toEqual(['family', 'settings']);
   });
 
-  it('names nothing that sounds like live data', () => {
-    // A deliberately blunt second net, because the list above is easy to extend
-    // without thinking and the failure it guards against is silent.
-    const telemetryShaped = /sample|value|reading|history|series|latest|now|tick/i;
-    const offenders = CHART_SERIALISED_KEYS.filter((key) => telemetryShaped.test(key));
+  it('never carries the built engine option', () => {
+    // The built option is derived — `plan.ts` rebuilds it from the settings,
+    // the theme's tokens and the current samples on every frame — and it holds
+    // live readings inside `series[].data`. Serialising it put telemetry in the
+    // persisted document where no key-name check could see it: a canvas
+    // snapshot would bake a reading into the next undo entry taken for an
+    // unrelated reason, and undo would restore a stale number.
+    expect([...CHART_SERIALISED_KEYS]).not.toContain('option');
 
-    expect(offenders).toEqual([]);
+    // Device state, too: renderScale is DPR x viewport zoom, so persisting it
+    // would carry the authoring machine's display into a portable document.
+    expect([...CHART_SERIALISED_KEYS]).not.toContain('renderScale');
+  });
+
+  it('is what Fabric actually emits, not a parallel list', () => {
+    // Fabric's own `toObject` concatenates `customProperties` into the keys it
+    // picks, so deriving this from CHART_SERIALISED_KEYS makes the declaration
+    // and the behaviour one thing. The previous `toObject` override kept a
+    // second hand-written list beside it.
+    expect(VigiliaChart.customProperties).toEqual([...CHART_SERIALISED_KEYS]);
+  });
+
+  it('leaves revival entirely to Fabric', () => {
+    // `FabricObject.fromObject` routes through `_fromObject`, which runs
+    // `enlivenObjectEnlivables` first — the step that turns a serialised
+    // clipPath, gradient or pattern back into an instance. An override calling
+    // `new VigiliaChart(object)` skipped it and revived a clip path as a plain
+    // object, which matters from stage 2, where content is clipped to the
+    // artboard.
+    expect(Object.hasOwn(VigiliaChart, 'fromObject')).toBe(false);
   });
 });
 
-describe('clampRenderScale', () => {
-  it('caps the oversample factor', () => {
-    // 13.18 MB for one 300x180 chart at scale 4 is why there is a ceiling.
-    expect(clampRenderScale(4)).toBe(MAX_RENDER_SCALE);
-    expect(clampRenderScale(100)).toBe(MAX_RENDER_SCALE);
+describe('every property Fabric may assign is assignable', () => {
+  /**
+   * Fabric has exactly one way in: `_setOptions` walks the options bag and does
+   * `this[key] = value` for every key (`CommonMethods.ts:9-40`). That path is
+   * used by the constructor, by `set`, by `clone` and by `loadFromJSON`, so a
+   * key that cannot be assigned breaks all four.
+   *
+   * This is the test that was missing. `option` was declared as a getter with
+   * no setter, so `new VigiliaChart({ option })` threw
+   * `TypeError: Cannot set property option of #<VigiliaChart> which has only a
+   * getter` on **every** construction that supplied one — and because no unit
+   * test instantiated the class and the browser tests were deferred to stage 2,
+   * the suite stayed green against an object that could not be built.
+   *
+   * `Object.create` gives a prototype-backed instance without running the
+   * constructor, so the assignment path is exercised for real with no DOM.
+   */
+  const assignableKeys = [...VigiliaChart.customProperties, 'option', 'renderScale'];
+
+  it.each(assignableKeys)('accepts an assignment to `%s`', (key) => {
+    const instance = Object.create(VigiliaChart.prototype) as Record<string, unknown>;
+
+    expect(() => {
+      instance[key] = undefined;
+    }).not.toThrow();
   });
 
-  it('passes through anything within the cap', () => {
-    expect(clampRenderScale(1)).toBe(1);
-    expect(clampRenderScale(2.75)).toBe(2.75);
-    expect(clampRenderScale(MAX_RENDER_SCALE)).toBe(MAX_RENDER_SCALE);
+  it('has no getter-only accessor anywhere on the prototype chain', () => {
+    // The general form of the same defect, so a future property cannot
+    // reintroduce it under a different name. A read-only view of internal
+    // state must not be reachable by a name Fabric might assign.
+    const offenders: string[] = [];
+
+    for (
+      let prototype: object | null = VigiliaChart.prototype;
+      prototype !== null && prototype !== Object.prototype;
+      prototype = Object.getPrototypeOf(prototype) as object | null
+    ) {
+      for (const [name, descriptor] of Object.entries(
+        Object.getOwnPropertyDescriptors(prototype),
+      )) {
+        if (descriptor.get !== undefined && descriptor.set === undefined) {
+          offenders.push(name);
+        }
+      }
+    }
+
+    // `disposed` is read-only by intent and is not a key Fabric assigns from an
+    // options bag. Fabric's own `type` does not appear: it pairs its getter
+    // with a setter that warns and discards, precisely so this assignment path
+    // cannot throw. Anything else appearing here is the bug above returning —
+    // give the property a setter, or rename it so it cannot collide with a
+    // Fabric property.
+    expect(offenders.sort()).toEqual(['disposed']);
+  });
+});
+
+describe('the defaults Fabric actually applies', () => {
+  it('declares them once, through Fabric’s own mechanism', () => {
+    // `FabricObject`'s constructor assigns `FabricObject.ownDefaults` by name
+    // rather than calling `this.constructor.getDefaults()` (`Object.ts:370`),
+    // so a subclass must assign its own — the pattern `Rect` and `Group` use.
+    // Setting them a second time in the constructor body, as this class used
+    // to, both duplicated the declaration and overrode the caller.
+    expect(VigiliaChart.getDefaults()).toMatchObject(VigiliaChart.ownDefaults);
   });
 
-  it('refuses a scale that would produce a zero-sized canvas', () => {
-    // `echarts.init` on a 0x0 element does not fail loudly, it just never
-    // draws — so a bad scale has to be refused here rather than discovered on
-    // screen. Refuse rather than coerce: fall back to the default, never to 0.
-    expect(clampRenderScale(0)).toBe(DEFAULT_RENDER_SCALE);
-    expect(clampRenderScale(-2)).toBe(DEFAULT_RENDER_SCALE);
-    expect(clampRenderScale(Number.NaN)).toBe(DEFAULT_RENDER_SCALE);
-    expect(clampRenderScale(Number.POSITIVE_INFINITY)).toBe(DEFAULT_RENDER_SCALE);
+  it('uses Fabric’s centre origin rather than the deprecated top-left', () => {
+    // Fabric 7 marks every origin except `center` deprecated ("please use
+    // 'center' as value in new projects"), and this value is persisted. The
+    // PlanBox top-left -> centre conversion is two additions in the adapter;
+    // §134's requirement is that the origin be explicit, which this satisfies.
+    expect(VigiliaChart.ownDefaults).toMatchObject({ originX: 'center', originY: 'center' });
+  });
+
+  it('carries no stroke, so the bounding box is the chart’s box', () => {
+    // Fabric adds strokeWidth into `_getTransformedDimensions`, so the default
+    // of 1 inflates the bounding box, the hit area and every control position.
+    // It is the whole 1.4 px error measured at 37 degrees: 1 x (cos 37 + sin 37)
+    // is 1.4004. `_render` never calls `_renderPaintInOrder`, so no stroke was
+    // ever drawn — only measured.
+    expect(VigiliaChart.ownDefaults.strokeWidth).toBe(0);
+  });
+
+  it('never caches the object', () => {
+    // 7.99 ms mean / 36.5 ms p95 at DPR 2.75 against 0.12/0.2 ms, and past
+    // viewport zoom ~8 the capped raster is upscaled — the bitmap label §91
+    // forbids.
+    expect(VigiliaChart.ownDefaults.objectCaching).toBe(false);
   });
 });
 

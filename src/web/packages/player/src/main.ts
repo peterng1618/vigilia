@@ -43,12 +43,18 @@ import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 // staying a narrow list — never switch to the `echarts` default bundle here.
 // GridComponent is what the cartesian families (line, bar) need; the gauge and
 // pie families do not use it.
-// Both renderers are registered because §157 asks for the comparison to be
-// measured rather than assumed: SVG trades draw speed for crisper scaling, and
-// which wins depends on the reference phone. It also turns out to matter for
-// reproducibility — canvas rasterisation is not byte-stable across page loads,
-// SVG is — so `?renderer=svg` is how a deterministic capture of a chart is
-// possible at all.
+// Both renderers are registered so the comparison can be measured rather than
+// assumed: SVG trades draw speed for crisper scaling, and which wins depends on
+// the reference phone.
+//
+// This comment used to add that SVG was also how a deterministic chart capture
+// was possible at all. **That was false**, and the repo's own measurement says
+// so: `display.spec.ts`'s determinism tests and `.agents/screenshots/README.md`
+// record that a frame containing a chart is not byte-reproducible on *either*
+// renderer, with the clock frozen and animation off. Nothing rests on `svg`
+// for reproducibility, which is what makes losing it affordable — spec 0013
+// stage 2 removes this registration along with `mount.ts`, because a Fabric
+// object draws by blitting a canvas and cannot reach the SVG renderer at all.
 echarts.use([
   GaugeChart,
   LineChart,

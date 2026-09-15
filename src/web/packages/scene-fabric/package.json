@@ -10,6 +10,11 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "sideEffects": [
+    "./src/chart-engine.ts",
+    "./src/chart-object.ts"
+  ],
+  "//sideEffects": "Declared explicitly because both are real and both fail SILENTLY if dropped. chart-engine.ts is a bare `echarts.use(...)` import and a missing registration does not throw — the chart just draws nothing. chart-object.ts ends with `classRegistry.setClass`, without which loadFromJSON cannot revive a chart. Setting `\"sideEffects\": false` here to shrink a bundle would remove both. `chart-object.dom.test.ts` mounts all four families, which is what would catch it.",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

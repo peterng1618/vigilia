@@ -299,7 +299,9 @@ are about to add resembles a row, import it instead.
 | **Layer panel tree projection** | `editor/src/layers/tree.ts` (`buildLayerTree`) |
 | **Scene graph, hit testing, transforms, controls** | `fabric` (7.4.0), consumed **only** via `fabric/es`, and only from `packages/scene-fabric`. Migrating; until then `editor/src/geometry.ts` and friends |
 | **A chart as a scene object** | `scene-fabric/src/chart-object.ts` (`VigiliaChart`) — owns the detached canvas, the ECharts instance, invalidation and disposal |
-| **What a chart object persists** | same file — `CHART_SERIALISED_KEYS`, and `toObject` is derived from it so the two cannot drift |
+| **What a chart object persists** | same file — `CHART_SERIALISED_KEYS`, which *is* Fabric's `static customProperties`, so the declared surface and the emitted one are one thing rather than two that agree. Contains authored values only (`ChartContent`'s keys); the built option and `renderScale` are derived and are not written. The one `toObject` override re-adds the origin, which Fabric's default-stripping would drop |
+| **How large a chart's backing canvas may get** | `scene-fabric/src/render-scale.ts` — two ceilings, factor *and* pixel area, because `w × h × scale²` is not bounded by a factor alone |
+| **Which ECharts pieces are registered** | `scene-fabric/src/chart-engine.ts` — a module side effect, so importing a chart object is what guarantees the engine can draw it. `player/src/main.ts` and `editor/src/main.ts` still carry their own lists for `mount.ts` and lose them at stage 2 |
 | **The engine-option cast** | `renderer-core/src/charts/engine-option.ts` (`toEngineOption`) — the only `as unknown as EChartsCoreOption` in the codebase |
 | **`ScenePlan` → Fabric objects** | `scene-fabric` — one owner, imported by editor *and* player. Not written yet (stage 2) |
 | **Player import boundary** | `player/src/boundaries.test.ts` — `fabric/es` only, no interactive `Canvas`, no editor specifier |
@@ -336,11 +338,16 @@ before building anything that would add another copy.
 2. **Themes bind to semantic keys, never to provider instances** (§93), so
    changing what supplies a quantity never edits a theme.
 3. **Typed chart settings only.** Raw ECharts options never enter the theme
-   format. There is exactly one engine-boundary cast, `setOption(… as unknown as
-   EChartsCoreOption)` at `renderer-core/src/scene/mount.ts:474` — if that cast
-   appears in feature code, the boundary has been breached. (This file and
-   AGENTS.md both named `player/src/main.ts` until 2026-09-15, which has no cast
-   in it; a rule pointing at the wrong file cannot be checked.)
+   format — including the node tree now that it is stored in Fabric's format, so
+   a chart object persists its typed `settings` and never its built option.
+   There is exactly one engine-boundary cast, the `as unknown as
+   EChartsCoreOption` inside `toEngineOption` at
+   `renderer-core/src/charts/engine-option.ts` — if that cast appears anywhere
+   else, the boundary has been breached; grep for `toEngineOption` to find every
+   crossing. (This rule has pointed at the wrong file twice: at
+   `player/src/main.ts`, which never had a cast, and then at `mount.ts:474`,
+   which called `toEngineOption` rather than casting. Cite the owner, not a line
+   number.)
 4. **Two sensor tiers**, discovered and reported, never hardcoded (ADR-0004).
 5. **Declare, then generate.** `actions.ts` declares each action once and the
    keyboard, toolbars and menus generate from it. The alternative — a surface
