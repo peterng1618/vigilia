@@ -26,6 +26,41 @@ confident sentence. **Check the claim, not the note.**
 
 **Disable the fix and re-run before believing a test.**
 
+**A guard that compares freshly-built objects by identity is not a guard.**
+`mount.ts` skipped an update when `previous.style !== node.style` — and
+`resolveStyleMap` returns a new object on every build, so the comparison was
+true on every tick and the write it "guarded" happened unconditionally. The
+comment three lines above it said, correctly, that "the plan rebuilds these
+objects every frame, so identity says nothing and the fields have to be
+compared". The sibling `sameBox` did compare fields. It sat there for months,
+green, doing nothing, next to a working example of itself and an explanation of
+why it could not work. Two more of the same shape were found in the same hour:
+the text branch had no guard at all, and the map every guard compared against
+**was never seeded at mount**, so the first update after mount rewrote the whole
+scene regardless.
+
+**An unasserted optimisation is indistinguishable from a broken one.** All three
+of those were found only because a test was written for the third — the first
+unit test that had ever mounted an 800-line module. If nothing asserts that work
+is skipped, nothing notices when it stops being.
+
+**A test-harness API that sounds like it stops time may not.** Playwright's
+`page.clock.install({ time })` pins where the clock *starts* and then lets it
+run at wall speed; only `pauseAt` stops it. The whole browser suite was written
+believing otherwise, `playwright.config.ts` said so in a comment, and the result
+was three tests failing intermittently for months with the flakes recorded as
+"unexplained". Two minutes of measurement — read `Date.now()`, sleep, read it
+again — settled it. **Measure the harness's own guarantee before building
+assertions on it**, especially the ones a comment asserts confidently.
+
+**And then check what that harness bug was hiding.** "Any frame with a chart in
+it is not byte-reproducible" had been measured on both ECharts renderers and
+written into three documents as a limitation of the engine. It was a limitation
+of the clock: each capture happened at a different instant. With the clock
+actually stopped, the frames are identical. A measurement is only as true as the
+harness it was taken through, so when the harness turns out to be wrong, the
+things it "measured" are open again — not just the tests that failed.
+
 **When in doubt, render it and look.** Every defect worth fixing in the editor
 was found by driving a browser, not by reading code — and several sat under a
 fully green suite. Unit tests prove the decisions; only rendering proves the

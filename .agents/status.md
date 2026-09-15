@@ -27,10 +27,10 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,218 passed across 61 files (2026-09-15) |
+| Unit tests | 1,237 passed across 63 files (2026-09-15) |
 | Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
-| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. **Root cause found 2026-09-15 and not yet fixed** — see below |
-| §47 size gate | **261.7 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
+| Browser tests (both projects) | 164 passed, 62 skipped, 0 failed — **three consecutive runs** (2026-09-15). Earlier runs needed a *third* attempt, each failing a different single test. **Root cause found and fixed**: `page.clock.install` does not stop time. See below |
+| §47 size gate | **261.9 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.6 KB** |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
 **AGENTS.md is an operating manual again** (2026-09-15), remodelled on
@@ -69,10 +69,11 @@ panel edge. Verified: five typechecks clean, 1,045 unit tests pass,
 editor+player+host build, desktop Chromium 100 passed / 1 skipped.
 
 Chromium 1243 installed successfully, clearing the prior launch blocker. The
-full browser run had two desktop timing failures: "animates by default, and not
-when static is asked for" and "keeps the numeric readout stepping at the sample
-rate, not interpolated". Both passed an isolated one-worker rerun. The full
-suite is not clean; timing stability remains unverified.
+two desktop timing failures recorded here — "animates by default, and not when
+static is asked for" and "keeps the numeric readout stepping at the sample rate,
+not interpolated" — were **diagnosed and fixed on 2026-09-15**; both were the
+clock bug below. Timing stability is now three consecutive clean runs on this
+machine, which is evidence rather than proof.
 
 ## Next, in order
 
@@ -109,14 +110,57 @@ source scan needs — the same entry `player` and `editor` already carry.
 | Builds | player, editor, host |
 | §47 size gate | **261.8 KB** gzip / 400 KB |
 | Host bundle | 34.26 kB |
-| Browser suite | 162 passed, 62 skipped, **2 failed** — see below |
+| Browser suite | 162 passed, 62 skipped, **2 failed** — both the timing class, fixed by the commit below |
 
-**The two browser failures are the known timing class, not this change.**
-`display.spec.ts:850` (readout stepping, desktop) is one of the three already
-recorded, and `:326` (overflowing text, phone) failed by timing out waiting for
-the artboard to appear at all. Nothing in this change touches the DOM render
-path the suite exercises. **Not claimed as green**, and the fix is the next
-commit rather than a note.
+**Landed: the browser suite's flakes, diagnosed and fixed.** `page.clock.install`
+does not stop time — measured, 1213 ms of drift over 1200 ms real; `pauseAt`
+gives 0 ms. `tests/e2e/clock.ts` is now the one owner of the sequence, and 21
+call sites that each open a player go through it. Three further measurements
+shaped it: `pauseAt` alone is the whole call (pairing it with `install` races
+under load and throws "cannot fast-forward to the past"), the clock is
+**context**-scoped despite living at `page.clock`, and it survives navigation
+exactly.
+
+**Three things in `mount.ts` fell out of writing the first unit test that ever
+mounted it**, and the second and third are worse than the one being fixed:
+
+- The text branch had **no** update guard, so every text node's spans were
+  destroyed and rebuilt on every 1 Hz tick. That is what detached Playwright's
+  span handles mid-assertion — `getComputedStyle` on a detached element returns
+  empty strings rather than throwing, which is exactly what the styled-run test
+  checked.
+- The **style** guard compared `previous.style !== node.style` by identity, and
+  `resolveStyleMap` returns a fresh object every build — so it was true on every
+  tick and never once prevented a write. The comment above it says identity
+  cannot work here; the sibling `sameBox` compares fields.
+- The `applied` map every guard compares against was **never seeded at mount**,
+  so the first update after mount rewrote every box, style and text in the
+  scene.
+
+`mount.dom.test.ts` asserts span identity across an unchanged update, and the
+counter-case. All three fixes confirmed by sabotage, with the counter-case
+staying green each time.
+
+**And the flake was hiding a recorded "limitation".** "Any frame with a chart in
+it is not byte-reproducible" was measured on both ECharts renderers and written
+into `screenshots/README.md`, spec 0013 and a test asserting it. It was
+measuring the clock. With the clock stopped, chart frames are byte-identical;
+the test is inverted and is now the regression guard for `clock.ts`. Pixel
+baselines stay out for the reason that actually blocks them — CI is Linux,
+development is Windows. Two dead links to a `gate-0.md` that no longer exists
+were fixed in the same pass.
+
+| Check | Result (2026-09-15) |
+|---|---|
+| Unit tests | 1,237 passed across 63 files |
+| Typechecks | six projects, clean |
+| §47 size gate | 261.9 KB gzip / 400 KB |
+| Browser suite | **164 passed, 62 skipped, 0 failed — three consecutive runs** |
+
+That last row is the point: the recorded state was a suite needing three
+attempts with the cause unknown. **Still not claimed:** nothing here was run in
+CI, `phone-chromium` runs nowhere but locally, and three clean runs on one
+machine is evidence rather than proof.
 
 **Stage 3 splits, because it asserted three things that cannot all hold** — the
 same shape of problem as the stage 2/3 re-cut. It said the persisted `nodes`
@@ -144,19 +188,7 @@ refusing gets all three for free. §134's explicit-origin condition changes
 mechanism accordingly, and `VigiliaChart`'s `toObject` override is withdrawn.
 Measurements in [`decisions.md`](decisions.md).
 
-**The browser-suite flakes are diagnosed — one root cause for all three.**
-`page.clock.install()` does not stop time: playwright-core 1.63.0's
-`_replayLogOnce` resumes real-time ticking unless `isPaused`, which only
-`pauseAt` sets, and neither spec calls it. The player's 1 Hz `setInterval` then
-fires at a phase set by real time spent in `goto`, `screenshot()` and CDP round
-trips — i.e. by worker contention, which is why the failures move between runs
-and vanish in isolation. **Not verified:** this is a mechanism and a line
-number, not a fix. Nothing has been changed and no suite has been re-run against
-it. Spec 0013's risk list has the per-test derivation.
-
-Ahead, in order: the persisted surface (`scene-fabric/src/persist.ts`, defaults
-stripped, `id` carried, exact per-class key-set tests) · the clock fix, proved
-by three consecutive browser runs · text parity · the flip and the E2E port
+Ahead, in order: text parity · the flip and the E2E port
 (of 44 cases per project, ~26 port directly, 8 need a probe surface the adapter
 does not expose — a text segment's `status` has no canvas carrier — and ~3 are
 DOM artefacts to delete rather than port).
@@ -379,7 +411,8 @@ run 3 was clean at 141 passed / 61 skipped / 0 failed. That is the timing-flake
 class already recorded for the editor suite, not a regression. It is still not
 a clean bill of health: **the flakes are unexplained, nobody has diagnosed
 them, and a suite that needs three attempts is a suite that can hide a real
-failure.** Stage 1 imports into no rendering path, and the
+failure.** *(Diagnosed and fixed later the same day — `page.clock.install` does
+not stop time. See the top of this file.)* Stage 1 imports into no rendering path, and the
 size gate prints the same 201.1 KB as before — **no hash comparison was run**,
 so that is unchanged in size, not proven byte-identical.
 
@@ -435,7 +468,8 @@ clean on the first attempt**: six typechecks, 1,157 unit tests across 56 files,
 all three bundles built, the size gate at 201.1 KB / 400 KB, and
 `npm run test:e2e` at 141 passed / 61 skipped / 0 failed in 1.9 min. One clean
 first run does not explain the flakes recorded above — it is one more data point
-against a suite that has needed three attempts, not a diagnosis.
+against a suite that has needed three attempts, not a diagnosis. *(The diagnosis
+came later the same day; see the top of this file.)*
 
 **Not verified by this review:** nothing was rendered *by a Fabric object* —
 the gauntlet exercises the existing DOM renderer, and `scene-fabric` is still

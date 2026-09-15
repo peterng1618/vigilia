@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { installFixedClock, openPaused } from './clock.js';
 
 /**
  * The Fabric scene graph, in a real browser.
@@ -23,9 +24,6 @@ import { expect, test, type Page } from '@playwright/test';
  * CI is Linux, development is Windows, glyphs differ. "Some ink, in this box"
  * survives that; a PNG does not.
  */
-
-/** Pinned so the fake source is frozen and every frame is identical. */
-const FIXED_TIME = new Date('2026-01-01T12:00:00Z');
 
 /** What the diagnostics hook exposes, narrowed to what this suite reads. */
 interface SceneProbe {
@@ -81,14 +79,15 @@ type ProfileWindow = typeof window & {
 };
 
 async function openFabricPlayer(page: Page, theme = 'demo'): Promise<void> {
-  // Installed before navigation, or the first frame is built from the real
-  // clock — and then advanced rather than frozen, because a chart whose
-  // content is entirely animated draws nothing until its animation progresses.
-  // Both are `display.spec.ts`'s findings and apply identically here.
-  await page.clock.install({ time: FIXED_TIME });
+  // The pieces rather than `openPaused`, because the profiling helper has to be
+  // injected between installing the clock and navigating. Everything else is
+  // the same sequence, and the reason it must be that sequence is in `clock.ts`.
+  await installFixedClock(page);
   await page.addInitScript(GRID_PROFILE);
   await page.goto(`/?scene=fabric&theme=${theme}`);
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
+  // Advanced rather than left frozen: a chart whose content is entirely
+  // animated draws nothing until its animation progresses.
   await page.clock.runFor(1500);
 }
 
@@ -669,9 +668,7 @@ test.describe('both paths agree on the document', () => {
 
     const fabricIds = (await probe(page)).ids.sort();
 
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=demo');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=demo');
 
     const domIds = await page.evaluate(() =>
       [...document.querySelectorAll('[data-vigilia="artboard"] > [data-node-id]')].map(

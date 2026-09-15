@@ -1,8 +1,9 @@
 # Dashboard screenshots
 
-Rendered evidence for the Gate 0 styling matrix and the demonstration set in
-[`../gate-0.md`](../gate-0.md). Produced from the built player bundle by
-`src/web/tests/e2e/display.spec.ts`.
+Rendered evidence for the styling matrix and the demonstration set. Produced
+from the built player bundle by `src/web/tests/e2e/display.spec.ts`; the
+measurements that go with them are in [`../decisions.md`](../decisions.md),
+which is where gate evidence lives (AGENTS.md, "Where to record what").
 
 Refresh them deliberately:
 
@@ -24,14 +25,17 @@ so without it you capture the previous build.
 
 Nothing compares against them, and nothing should:
 
-- **Any frame with a chart in it is not byte-reproducible.** Measured, not
-  assumed: with the clock frozen, animation disabled and a fresh page per
-  capture, the chart-free fixture reproduces exactly while every frame
-  containing an ECharts chart differs — on both the canvas and SVG renderers.
-  See the engine-gap section in [`../gate-0.md`](../gate-0.md).
 - **They are platform-specific.** CI renders on Linux and development happens on
   Windows; glyph rasterisation differs, so a committed PNG could never pass as a
-  cross-platform assertion.
+  cross-platform assertion. This is the reason, and it is the only one left.
+- ~~**Any frame with a chart in it is not byte-reproducible.**~~ **False,
+  corrected 2026-09-15.** It was measured, on both ECharts renderers, and it was
+  measuring the harness rather than the engine: `page.clock.install()` does not
+  stop time, so each capture happened at a different instant and the engine
+  correctly drew a different frame. With the clock actually paused, three
+  captures of a chart are byte-identical — asserted by `display.spec.ts`'s
+  "a chart frame IS byte-reproducible", which is now the regression guard for
+  the clock. See [`../decisions.md`](../decisions.md).
 
 Captures use `?static=1`, which disables animation — a real setting the player
 also applies when the viewer prefers reduced motion — and discard a warm-up

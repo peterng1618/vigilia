@@ -719,11 +719,15 @@ purpose — `status.md` records that citations by number are what drifted.)*
   survives until stage 8, because the editor still mounts through it. Two things were resting on it, and neither is
   lost: the canvas-versus-SVG comparison `player/src/main.ts` wanted measured is
   moot once only one is reachable, and the *deterministic capture* claim beside
-  it was already false — `gate-evidence`, `screenshots/README.md` and
-  `display.spec.ts:748` all record that a chart frame is **not** byte-reproducible
-  **on either renderer**, measured. So the comment goes, the registration goes,
-  and the three places citing "both the canvas and SVG renderers" get corrected
-  to say there is one.
+  it was wrong in both directions. `screenshots/README.md` and
+  `display.spec.ts` recorded that a chart frame is **not** byte-reproducible on
+  either renderer, measured — and **that measurement was of the test harness,
+  not the engine** *(corrected 2026-09-15)*. `page.clock.install()` does not
+  stop time, so every capture happened at a different instant. With the clock
+  paused, a chart frame reproduces byte-for-byte. Both places are corrected,
+  the test is inverted and now guards the clock, and committed pixel baselines
+  remain out for the reason that actually blocks them: CI is Linux and
+  development is Windows.
 - **`renderScale` is not persisted.** It is device state — device pixel ratio
   times viewport zoom — and a portable document should not carry the authoring
   machine's display. The display supplies it on mount.

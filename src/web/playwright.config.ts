@@ -9,9 +9,14 @@ import { defineConfig, devices } from '@playwright/test';
  * measures and clips as intended (§89–§91), and that the artboard transform puts
  * the design where it should be at several viewport sizes.
  *
- * The time base is pinned with Playwright's clock API rather than a query
+ * The time base is controlled with Playwright's clock API rather than a query
  * parameter, so the player needs no test hook: every value the fake source
- * produces is a pure function of the clock, so freezing it freezes the frame.
+ * produces is a pure function of the clock.
+ *
+ * **Pinning it is not freezing it, and this comment used to say it was.**
+ * `install({ time })` sets where the clock starts and then lets it run at wall
+ * speed; only `pauseAt` stops it. `tests/e2e/clock.ts` owns that sequence, has
+ * the measurement, and is why three tests here were intermittently failing.
  *
  * ## Why these assertions are structural and not pixel baselines
  *

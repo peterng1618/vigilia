@@ -370,6 +370,46 @@ minutes, and each overturned a written conclusion reached by reading the same
 library's source carefully. Where a library's behaviour decides a format, run
 it.
 
+### Measured: the browser suite's flakes, and what they were hiding
+
+2026-09-15. `status.md` had recorded the browser suite needing three attempts,
+failing a different single test each time, each passing in isolation, cause
+unknown. One root cause, measured in the page rather than inferred:
+
+| clock setup | drift over real time |
+|---|---|
+| `install({ time })` — what every test used | **1213 ms** over 1200 ms |
+| `pauseAt(time)` | **0 ms** over 800 ms |
+
+`page.clock.install` pins where the clock starts and then lets it run at wall
+speed; `isPaused` is set only by `pauseAt`, which no spec called. So the
+player's 1 Hz `setInterval` fired at a phase set by real time spent in `goto`,
+`screenshot()` and every CDP round trip — i.e. by machine load, which is why the
+failures moved between runs and vanished in isolation.
+
+Three further measurements shaped the fix:
+
+- **`pauseAt` alone is the whole call.** `install` then `pauseAt` has a race
+  under load: `pauseAt` is a fast-forward and refuses to move backwards, so real
+  time elapsing between the two round trips makes the target the past and it
+  throws. Cost one full-suite run per attempt to see.
+- **The clock is context-scoped, not page-scoped**, despite living at
+  `page.clock`. A fresh `context.newPage()` inherits the advanced clock.
+- **It survives navigation exactly**: pause, navigate, `runFor(1500)`, navigate
+  twice more, and `Date.now()` is still `FIXED_TIME + 1500`.
+
+**What the bug was hiding, and this is the part worth keeping.** "Any frame with
+a chart in it is not byte-reproducible" was measured on both ECharts renderers
+and recorded in `screenshots/README.md`, spec 0013 and a test that asserted it.
+It was measuring the clock: each capture happened at a different instant. With
+the clock stopped, three captures of a chart are byte-identical, verified over
+three runs. The test is **inverted** and is now the regression guard for the
+clock module. Committed pixel baselines are still out, for the reason that
+actually blocks them — CI is Linux, development is Windows.
+
+Result: three consecutive full runs at **164 passed / 62 skipped / 0 failed**,
+where the recorded state was a suite needing three attempts.
+
 ---
 
 ## Open — need a human

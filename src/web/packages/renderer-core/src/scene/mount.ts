@@ -131,6 +131,15 @@ export function mountScene(options: MountOptions): SceneHandle {
     artboard.append(createNode(node, charts, texts, media, elements, options.onAssetError));
   }
 
+  // Seeded here rather than only by `updateNode`, which is where it was. Every
+  // guard in `updateNode` compares against this map, so while mounting left it
+  // empty the first update after mount found no previous node for anything and
+  // rewrote every box, style and text in the scene. The guards are only worth
+  // as much as this map is complete.
+  for (const node of walkPlan(plan.nodes)) {
+    applied.set(node.id, node);
+  }
+
   function applyArtboard(): ArtboardTransform {
     artboard.style.width = `${plan.artboard.width}px`;
     artboard.style.height = `${plan.artboard.height}px`;
@@ -424,7 +433,13 @@ function updateNode(
       applyBox(mounted, node.box);
     }
 
-    if (previous === undefined || previous.style !== node.style) {
+    // Field-by-field, not identity. `resolveStyleMap` returns a **fresh
+    // object** on every build, so `previous.style !== node.style` was true on
+    // every tick and this guard never once prevented a write — while the
+    // comment above it says exactly why identity cannot work here. Found
+    // 2026-09-15 by a test written for the text branch below, which inherited
+    // the same mistake by copying this line.
+    if (previous === undefined || !sameStyle(previous.style, node.style)) {
       applyCommonStyle(mounted, node.style, node.content.kind === 'text' ? 'text' : 'box');
     }
 
@@ -433,7 +448,19 @@ function updateNode(
 
   if (node.content.kind === 'text') {
     const element = texts.get(node.id);
-    if (element !== undefined) {
+
+    // Guarded for the same reason the box and style writes above are, and it
+    // was the one branch that was not. `renderText` clears the element and
+    // rebuilds every span, so an unguarded call destroyed and recreated the
+    // whole subtree of every text node at the player's 1 Hz tick — including
+    // the ~90% of them whose text had not changed.
+    //
+    // That is a real cost, and it was also a test flake: a Playwright handle
+    // resolved from one of those spans detaches mid-assertion, and
+    // `getComputedStyle` on a detached element returns empty strings for every
+    // property rather than throwing. `display.spec.ts`'s styled-run test
+    // checked exactly that and failed intermittently for two months.
+    if (element !== undefined && (previous === undefined || !sameText(previous, node))) {
       renderText(element, node);
     }
     return;
@@ -497,6 +524,54 @@ function renderText(element: HTMLElement, node: PlanNode): void {
     applyCommonStyle(span, segment.style, 'text');
     element.append(span);
   }
+}
+
+/**
+ * Whether two plans describe the same rendered text, segment for segment.
+ *
+ * Field-by-field for the same reason {@link sameBox} is: the plan rebuilds the
+ * segment array — and every style object in it — on every frame, so identity
+ * says nothing about any of it.
+ */
+function sameText(a: PlanNode, b: PlanNode): boolean {
+  if (a.content.kind !== 'text' || b.content.kind !== 'text') {
+    return false;
+  }
+
+  const before = a.content.segments;
+  const after = b.content.segments;
+
+  return (
+    before.length === after.length &&
+    before.every((segment, index) => {
+      const other = after[index]!;
+
+      return (
+        segment.text === other.text &&
+        segment.status === other.status &&
+        segment.message === other.message &&
+        sameStyle(segment.style, other.style)
+      );
+    })
+  );
+}
+
+/**
+ * Whether two resolved styles would produce the same declarations.
+ *
+ * Shallow, and **deliberately conservative about object values**: a
+ * `ResolvedStyle` value is typed `unknown`, and comparing two of them with
+ * `Object.is` reports "changed" for any pair of objects. That is the safe
+ * direction — the write is simply reapplied, which is what happened
+ * unconditionally before this existed. Every literal the resolver produces
+ * today is a primitive, so in practice this skips the write.
+ */
+function sameStyle(a: ResolvedStyle, b: ResolvedStyle): boolean {
+  const keys = Object.keys(a);
+
+  return (
+    keys.length === Object.keys(b).length && keys.every((key) => Object.is(a[key], b[key]))
+  );
 }
 
 /** Field-by-field, because the plan builds a fresh box object every frame. */

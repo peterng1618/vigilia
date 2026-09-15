@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openPaused } from './clock.js';
 
 /**
  * What only a browser can answer about the display path.
@@ -11,9 +12,6 @@ import { expect, test, type Page } from '@playwright/test';
  * Every assertion is structural, for the reason given in `playwright.config.ts`:
  * CI is Linux, development is Windows, and glyph rasterisation differs.
  */
-
-/** Pinned so the fake source is frozen and every frame is identical. */
-const FIXED_TIME = new Date('2026-01-01T12:00:00Z');
 
 /**
  * Every valid theme fixture, by name.
@@ -33,27 +31,26 @@ const FIXTURES = [
 ] as const;
 
 /**
- * Opens the player on a controlled clock.
+ * Opens the player, paused, and then advances it deliberately.
  *
- * `install` rather than `setFixedTime`, and then advanced rather than frozen,
- * for a reason worth recording: a chart whose content is **entirely** animated
- * draws nothing until its animation progresses. A frozen clock leaves the line
- * chart and the donut blank, while the gauge and the bars still show because
- * their tracks are static. That is real player behaviour, not a test artefact —
- * a screenshot taken in the same tick as the mount would catch a dashboard
- * mid-appearance.
+ * Paused rather than merely pinned — see `clock.ts`, which measured that
+ * `install` alone lets the clock run at wall speed and explains the three
+ * flakes that came of it.
  *
- * Advancing a fake clock keeps every value a pure function of a fixed start
- * time, so determinism survives.
+ * Advanced rather than left at zero, for a reason worth recording: a chart
+ * whose content is **entirely** animated draws nothing until its animation
+ * progresses. A frozen clock leaves the line chart and the donut blank, while
+ * the gauge and the bars still show because their tracks are static. That is
+ * real player behaviour, not a test artefact — a screenshot taken in the same
+ * tick as the mount would catch a dashboard mid-appearance.
+ *
+ * The readiness selector is a chart canvas rather than the artboard, because
+ * ECharts draws on an animation frame and the clock stops firing those the
+ * moment it pauses. Waiting for the artboard and *then* pausing would leave
+ * this waiting forever for a frame that can no longer arrive.
  */
 async function openPlayer(page: Page): Promise<void> {
-  // Install before navigation, or the first frame is built from the real clock.
-  await page.clock.install({ time: FIXED_TIME });
-  await page.goto('/');
-  await page.waitForSelector('[data-vigilia="artboard"]');
-  // ECharts draws on an animation frame, so wait for a canvas to exist rather
-  // than assuming setOption painted synchronously.
-  await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+  await openPaused(page, '/', '[data-node-id="cpu-gauge"] canvas');
   // Past the default 1 s ECharts animation, so everything has settled.
   await page.clock.runFor(1500);
 }
@@ -144,9 +141,7 @@ test.describe('the demo dashboard renders', () => {
     // The fixture's GPU temperature goes out for 6 of every 24 seconds. Rather
     // than hunting for a frozen instant inside that window, step the clock in
     // one-second increments until the outage appears.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/');
 
     const statusSpan = page.locator('[data-node-id="thermals-gpu-label"] span[data-status]');
 
@@ -241,9 +236,7 @@ test.describe('update behaviour', () => {
   test('updates values without recreating chart canvases', async ({ page }) => {
     // "Update charts without recreating the scene." A recreated canvas would
     // restart every animation and throw away the engine's state each second.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/');
-    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+    await openPaused(page, '/', '[data-node-id="cpu-gauge"] canvas');
 
     const canvas = page.locator('[data-node-id="cpu-gauge"] canvas').first();
     await canvas.evaluate((el) => {
@@ -283,9 +276,7 @@ test.describe('update behaviour', () => {
     await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
 
     for (const fixture of FIXTURES) {
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture.name}&static=1`);
-      await page.waitForSelector('[data-vigilia="artboard"]');
+      await openPaused(page, `/?theme=${fixture.name}&static=1`);
       await page.clock.runFor(1500);
 
       const screenshot = await page.screenshot({
@@ -474,9 +465,7 @@ test.describe('every fixture renders', () => {
         }
       });
 
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture.name}`);
-      await page.waitForSelector('[data-vigilia="artboard"]');
+      await openPaused(page, `/?theme=${fixture.name}`);
       await page.clock.runFor(1500);
 
       // An artboard with no children means the document loaded and nothing
@@ -525,9 +514,7 @@ test.describe('every fixture renders', () => {
     });
 
     test(`${fixture.name}: keeps the design inside the viewport`, async ({ page }) => {
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=${fixture.name}`);
-      await page.waitForSelector('[data-vigilia="artboard"]');
+      await openPaused(page, `/?theme=${fixture.name}`);
 
       const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
       const viewport = page.viewportSize();
@@ -556,9 +543,7 @@ test.describe('every fixture renders', () => {
   }
 
   test('cover mode fills the viewport rather than letterboxing (§55)', async ({ page }) => {
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=portrait-cover');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=portrait-cover');
 
     const box = await page.locator('[data-vigilia="artboard"]').boundingBox();
     const viewport = page.viewportSize();
@@ -587,9 +572,7 @@ test.describe('visibility', () => {
     // node's box is laid out with `display: flex` — so the flex overwrote
     // `display: none` and a node marked `"visible": false` rendered anyway. A
     // stress fixture carrying a hidden element that says so is what caught it.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=stress');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=stress');
 
     const hidden = page.locator('[data-node-id="hidden-node"]');
 
@@ -616,9 +599,7 @@ test.describe('image assets (§111)', () => {
       }
     });
 
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=assets');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=assets');
 
     // A loaded image has non-zero natural dimensions; a broken one does not.
     // This is what distinguishes "the element exists" from "the bytes arrived".
@@ -640,9 +621,7 @@ test.describe('image assets (§111)', () => {
   });
 
   test('applies each fit mode to the same artwork', async ({ page }) => {
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=assets');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=assets');
 
     await expect(page.locator('[data-node-id="fit-contain"] img')).toHaveCSS(
       'object-fit',
@@ -654,9 +633,7 @@ test.describe('image assets (§111)', () => {
   });
 
   test('recolours a monochrome image with a mask, not a filter', async ({ page }) => {
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=assets');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=assets');
 
     const mono = page.locator('[data-node-id="svg-mono"]');
 
@@ -673,9 +650,7 @@ test.describe('image assets (§111)', () => {
   test('leaves a non-monochrome image as real artwork', async ({ page }) => {
     // §111 requires multicolour originals to be preserved unless the author
     // explicitly recolours, so the default path must stay an <img>.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=assets');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=assets');
 
     await expect(page.locator('[data-node-id="svg-original"] img')).toHaveCount(1);
     await expect(page.locator('[data-node-id="svg-original"]')).toHaveCSS(
@@ -687,9 +662,7 @@ test.describe('image assets (§111)', () => {
   test('draws nothing for an unresolvable asset instead of a broken-image icon', async ({
     page,
   }) => {
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=assets');
-    await page.waitForSelector('[data-vigilia="artboard"]');
+    await openPaused(page, '/?theme=assets');
 
     const node = page.locator('[data-node-id="absent-image"]');
     const img = node.locator('img');
@@ -724,9 +697,7 @@ test.describe('deterministic rendering', () => {
     // reproduces, which four successive captures confirmed.
     const capture = async (): Promise<Buffer> => {
       const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto('/?theme=assets&static=1');
-      await page.waitForSelector('[data-vigilia="artboard"]');
+      await openPaused(page, '/?theme=assets&static=1');
       // Fonts before pixels: a face that realises after the shutter changes
       // glyph rasterisation, which is a second source of drift and one the page
       // CAN wait for.
@@ -745,16 +716,30 @@ test.describe('deterministic rendering', () => {
     expect(Buffer.compare(first, second)).toBe(0);
   });
 
-  test('a chart frame is NOT byte-reproducible, and that is recorded', async ({ browser }) => {
-    // Pinned as a test so the limitation cannot be quietly forgotten and then
-    // rediscovered as a flaky baseline. If this ever starts failing, ECharts
-    // became deterministic and pixel baselines are back on the table — which is
-    // worth knowing immediately.
+  test('a chart frame IS byte-reproducible, once the clock is genuinely stopped', async ({
+    browser,
+  }) => {
+    // **This assertion inverted on 2026-09-15**, and the inversion is the
+    // point. It used to assert the opposite, as a pinned limitation — "any
+    // frame with a chart in it is not byte-reproducible", measured on both
+    // ECharts renderers and recorded in three places.
+    //
+    // It was measuring the test harness. `page.clock.install()` does not stop
+    // time (see `clock.ts`), so every capture below happened at a different
+    // instant and ECharts drew a different frame — correctly. With the clock
+    // actually paused, three captures are byte-identical.
+    //
+    // So it is kept, inverted, because it is now the regression guard for the
+    // clock itself: delete the `pauseAt` in `clock.ts` and this is what fails,
+    // loudly and for the right reason, instead of three unrelated tests
+    // failing intermittently somewhere else.
+    //
+    // It does **not** put committed pixel baselines back on the table. That is
+    // blocked by platform, not by the engine: CI renders on Linux, development
+    // happens on Windows, and glyph rasterisation differs.
     const capture = async (): Promise<Buffer> => {
       const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto('/?theme=demo&static=1');
-      await page.waitForSelector('[data-node-id="history-chart"] canvas');
+      await openPaused(page, '/?theme=demo&static=1', '[data-node-id="history-chart"] canvas');
       await page.evaluate(() => document.fonts.ready);
       await page.clock.runFor(1200);
       const shot = await page.locator('[data-node-id="history-chart"]').screenshot();
@@ -762,6 +747,9 @@ test.describe('deterministic rendering', () => {
       return shot;
     };
 
+    // Warm-up discarded: the first render after a cold browser start differs
+    // from every render after it, which is a browser-startup effect rather
+    // than an engine one.
     await capture();
 
     const first = await capture();
@@ -769,22 +757,29 @@ test.describe('deterministic rendering', () => {
 
     expect(
       Buffer.compare(first, second),
-      'ECharts became byte-reproducible — update gate-0.md and reconsider pixel baselines',
-    ).not.toBe(0);
+      'a chart frame stopped reproducing — the clock is probably running again',
+    ).toBe(0);
   });
 
-  test('animates by default, and not when static is asked for', async ({ page }) => {
+  test('animates by default, and not when static is asked for', async ({ context }) => {
     // The flag has to actually reach the chart engine, or the determinism above
     // would be an accident of timing rather than a property.
+    //
+    // A page per half, from the context so the project's viewport is kept.
+    // Both halves used to share one, which meant installing the clock twice
+    // over a page that had already run — so the two were not comparable by
+    // construction, and this was one of the three recorded flakes.
     const animationOf = async (query: string): Promise<boolean> => {
-      await page.clock.install({ time: FIXED_TIME });
-      await page.goto(`/?theme=demo${query}`);
-      await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+      const page = await context.newPage();
+
+      await openPaused(page, `/?theme=demo${query}`, '[data-node-id="cpu-gauge"] canvas');
 
       // Two captures a short way apart: an animating chart is still moving.
       const before = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
       await page.clock.runFor(120);
       const after = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
+
+      await page.close();
 
       return Buffer.compare(before, after) !== 0;
     };
@@ -797,9 +792,7 @@ test.describe('deterministic rendering', () => {
     // An accessibility preference, not a test hook: a dashboard that ignores it
     // animates in someone's peripheral vision all day.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=demo');
-    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+    await openPaused(page, '/?theme=demo', '[data-node-id="cpu-gauge"] canvas');
 
     const before = await page.locator('[data-node-id="cpu-gauge"]').screenshot();
     await page.clock.runFor(120);
@@ -816,9 +809,7 @@ test.describe('smooth animation', () => {
     // one lunge and then two thirds of a second of stillness — a visible
     // stutter. Continuous motion means the arc differs at EVERY sampled instant
     // across the interval, not just at the start of it.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=demo');
-    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+    await openPaused(page, '/?theme=demo', '[data-node-id="cpu-gauge"] canvas');
 
     // Settle the entrance animation, then let one data tick land so an update
     // transition is in flight.
@@ -854,9 +845,7 @@ test.describe('smooth animation', () => {
     // value that was never measured. Geometry may glide because nobody reads a
     // number off an arc's position. Digits may not, because that is exactly how
     // they are read — so the readout changes once per sample and holds.
-    await page.clock.install({ time: FIXED_TIME });
-    await page.goto('/?theme=demo');
-    await page.locator('[data-node-id="cpu-gauge"] canvas').first().waitFor();
+    await openPaused(page, '/?theme=demo', '[data-node-id="cpu-gauge"] canvas');
     await page.clock.runFor(2000);
 
     const readout = page.locator('[data-node-id="cpu-readout"]');
