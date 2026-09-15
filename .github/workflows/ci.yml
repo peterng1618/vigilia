@@ -101,15 +101,32 @@ jobs:
         # (an external executable and a package deliberately refused), so the
         # check would have failed if someone tidied away a notice for something
         # never installed — while missing every dependency actually added.
+        #
+        # `resolve()` is not decoration. `find` hands this script a RELATIVE
+        # path, and `require('src/web/package.json')` is a bare specifier to
+        # Node, so it threw MODULE_NOT_FOUND for every manifest — leaving
+        # `names` empty, the loop unentered and the job exiting 0 having
+        # verified nothing at all. It reported green from the day it was
+        # written until 2026-09-15. A guard that cannot fail is worse than no
+        # guard, so the last step here asserts that it found something.
         run: |
           set -euo pipefail
           missing=0
-          names=$(find src/web -name package.json -not -path '*/node_modules/*'             -exec node -e '
-              const p = require(process.argv[1]);
+          names=$(find src/web -name package.json -not -path '*/node_modules/*' -exec node -e '
+              const { resolve } = require("node:path");
+              const p = require(resolve(process.argv[1]));
               for (const k of Object.keys({ ...p.dependencies, ...p.devDependencies })) {
                 if (!k.startsWith("@vigilia/")) console.log(k);
               }
             ' {} \; | sort -u)
+
+          if [ -z "$names" ]; then
+            echo "::error::derived no dependency names at all — this check is broken, not passing"
+            exit 1
+          fi
+
+          echo "checking notices for: $(echo "$names" | tr '\n' ' ')"
+
           for name in $names; do
             if ! grep -qiF "$name" THIRD-PARTY-NOTICES.md; then
               echo "::error::$name is declared in a package.json but not mentioned in THIRD-PARTY-NOTICES.md"
