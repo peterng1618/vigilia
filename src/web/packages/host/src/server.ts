@@ -6,14 +6,7 @@ import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './serve/s
 import { ProviderRegistry, unionOfKeys } from './providers/registry.js';
 import { SseConnection } from './transport/sse.js';
 
-/**
- * The HTTP surface: bundles, discovery, and the sample stream.
- *
- * Decides as little as possible. Path safety is `serve/static-path.ts`, the
- * wire shape is `renderer-core/data/protocol.ts`, slow-client policy is
- * `transport/sse.ts`, and *what to poll* is the registry. What is left here is
- * routing and a timer — the parts that need a socket to mean anything.
- */
+/** HTTP routing for bundles, discovery, and sample streaming. */
 
 export interface BundleRoots {
   readonly player: string;
@@ -23,13 +16,7 @@ export interface BundleRoots {
 export interface HostServerOptions {
   readonly registry: ProviderRegistry;
   readonly bundles: BundleRoots;
-  /**
-   * The acquisition cadence.
-   *
-   * 1 s is the baseline `SampleStore` is sized for, and **not a measured
-   * budget** — §126 has no named reference hardware yet, so this is a chosen
-   * default awaiting a measurement, not the outcome of one.
-   */
+  /** Chosen baseline cadence; not a measured performance budget. */
   readonly sampleIntervalMs?: number;
   readonly now?: () => number;
 }
@@ -42,13 +29,12 @@ export interface HostServer {
 
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
 
-/** Addresses belonging to this machine, in the forms Node reports them. */
+/** Recognizes loopback forms Node may report. */
 function isLoopbackRemote(address: string | undefined): boolean {
   if (address === undefined) {
     return false;
   }
 
-  // Node reports IPv4-mapped IPv6 for a v4 client on a dual-stack socket.
   const normalized = address.replace(/^::ffff:/, '');
 
   return normalized === '127.0.0.1' || normalized === '::1';
@@ -69,13 +55,7 @@ function sendText(response: http.ServerResponse, status: number, body: string): 
   response.end(body);
 }
 
-/**
- * Serves one file from a bundle root, falling back to `index.html`.
- *
- * The fallback applies only to extension-less paths. A missing `.js` is a
- * broken build and must 404 loudly; answering it with HTML would surface as an
- * inscrutable syntax error in the console instead.
- */
+/** Serves a bundle file; extension-less routes may fall back to index.html. */
 async function serveStatic(
   response: http.ServerResponse,
   root: string,
@@ -101,8 +81,7 @@ async function serveStatic(
 
       response.writeHead(200, {
         'content-type': contentTypeFor(candidate),
-        // Versioned asset filenames come from the build; the entry HTML must
-        // not be cached or a rebuild would keep serving the old bundle.
+        // Entry HTML must not retain references to an old build.
         'cache-control': path.extname(candidate) === '.html' ? 'no-store' : 'no-cache',
       });
       response.end(body);
@@ -112,8 +91,6 @@ async function serveStatic(
     }
   }
 
-  // A blank page is indistinguishable from a crash, so say which build is
-  // missing and what to run.
   sendText(response, 404, missingBundleHint);
 }
 
@@ -157,19 +134,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
 
     if (url.pathname === '/editor' || url.pathname.startsWith('/editor/')) {
-      // §7: full editing is localhost-only by default. Binding to a wildcard
-      // is an explicit decision to let phones *display*; it is not consent to
-      // let the network author themes. The bind address and the peer address
-      // are different questions, and only the peer answers this one.
+      // Editing remains localhost-only even when the display server binds to the LAN.
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
         sendText(response, 403, 'The editor is available on this PC only.');
         return;
       }
 
-      // The editor's assets are relative, so they only resolve inside this
-      // mount when the document has a trailing slash. Without it the browser
-      // asks the *player's* dist for the editor's bundle and gets a 404, and
-      // the editor hangs on "starting…" with nothing in the stage.
+      // Preserve the editor mount as the base for relative assets.
       if (needsTrailingSlash(url.pathname, '/editor')) {
         const query = url.search;
         response.writeHead(302, {
@@ -189,12 +160,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    // The host's own default is REAL data. The player defaults to its fake
-    // source so that `vite preview` and the browser tests keep working against
-    // deterministic synthetic samples — but a phone pointed at this PC must get
-    // hardware, so the entry point says so explicitly rather than relying on
-    // the bundle to guess. §97: the choice is never inferred from whether a
-    // host happens to answer.
+    // Host-served player defaults explicitly to real data; standalone preview stays deterministic.
     if (url.pathname === '/' && !url.searchParams.has('data')) {
       url.searchParams.set('data', 'live');
       response.writeHead(302, {
@@ -236,12 +202,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
     request.on('error', drop);
   }
 
-  /**
-   * One cycle: one poll of the union, one batch, offered to every display.
-   *
-   * The union is computed here rather than per connection precisely so that
-   * two phones showing the same dashboard cost one poll (§111).
-   */
+  /** Polls the union once, then offers one batch to every display. */
   async function tick(): Promise<void> {
     if (connections.size === 0) {
       return;
@@ -258,12 +219,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
   const timer = setInterval(() => {
     void tick().catch(() => {
-      // A cycle that throws must not stop the timer — the next one may
-      // succeed, and a provider's failure is already isolated by the registry.
+      // Provider failures are isolated; keep future cycles running.
     });
   }, intervalMs);
 
-  // Never hold the process open on the timer alone.
   timer.unref();
 
   return {
