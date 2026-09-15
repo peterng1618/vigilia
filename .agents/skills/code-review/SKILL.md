@@ -1,107 +1,68 @@
 ---
 name: vigilia:code-review
-description: Reviews a Vigilia diff for the defects static analysis cannot catch — contract mirror drift, fabricated sensor readings, boundary leaks, non-deterministic test data, and schema compatibility breaks. Use when reviewing a PR or diff, checking a change before requesting review, or asked to look for bugs in Vigilia code.
+description: Review Vigilia diffs for contract drift, fabricated data, Fabric/editor boundary leaks, persistence mistakes, ineffective tests, and unnecessary complexity.
 ---
 
 # Reviewing Vigilia changes
 
-The compiler, analyzers and CI already catch style, nullability, unused code and
-bundle size. **Do not spend review effort restating them.** What follows is what
-they cannot see.
+Order findings by severity. Do not restate compiler/linter output.
 
-Order findings by blast radius, most severe first.
+## 1. Shared contracts
 
-## 1. Contract mirror drift — the highest-risk defect here
+A shape used by host and browser belongs in `renderer-core`. Flag duplicated wire
+or semantic-key definitions across packages.
 
-A shape both the host and a display read lives in the shared library —
-`renderer-core/src/data/protocol.ts` for the wire contract,
-`data/semantic-keys.ts` for the vocabulary. A message shape defined in
-`packages/host` with a reader in a display is the old C#/TypeScript mirror
-rebuilt: it compiles on both sides and produces wrong values at runtime.
+## 2. Data honesty
 
-**If the diff touches `Sample`, `SensorStatus`, `SensorValueType`,
-`SensorDescriptor` or the wire shape on either side, verify the other side
-changed too.** A rename, a new status value, a changed optionality — each
-compiles cleanly on both sides and produces wrong values at runtime.
+- Non-`ok` samples carry no plottable value.
+- Missing/unavailable/error never becomes zero/default.
+- Display clamping must not overwrite the raw reading.
+- Fake data is explicit test/demo data, never runtime fallback.
 
-Specifically check: a new `SensorStatus` member added in C# but absent from the
-TypeScript union means the renderer's exhaustive `switch` silently stops being
-exhaustive for real data.
+## 3. Architecture boundaries
 
-## 2. Fabricated or zeroed readings
+- `renderer-core` must stay Fabric/DOM-free.
+- Player may use `scene-fabric`, not editor UI/managers or interactive `Canvas`.
+- Raw ECharts options must not enter persisted theme data.
+- Providers acquire; the host schedules/history-buffers.
+- During spec 0013, flag new home-grown generic editor mechanics that should come
+  from the `fabricjs-image-editor` source fork.
 
-§83 and §97 are behavioural requirements, not style preferences.
+## 4. Persistence
 
-- A non-`Ok` sample must carry **no value**. Look for code that sets `Value`
-  alongside `Missing`, `Error` or `Unavailable`.
-- A missing sample must render as a **gap**. A zero-length arc, a `0` label, or a
-  series point at zero all read as "the sensor says zero" and are wrong.
-- An unavailable sensor must report `Unavailable` **with an actionable reason** —
-  never a substituted default, never a guess from a neighbouring sensor.
-- Clamping is display-only. If a diff clamps a value *before* storage or
-  publication, the raw reading has been lost.
+For theme/schema/Fabric-scene changes verify:
 
-## 3. Boundary leaks
+- schema/version policy is explicit;
+- unsupported versions fail cleanly;
+- Fabric identity survives round-trip;
+- telemetry, built ECharts options, playback and render scale are not persisted;
+- no second simplified scene tree/write-back mapping is introduced.
 
-**Platform:** does anything in `Contracts`, `Core`, `Providers.Http` or the
-renderer now reference a Windows type, or add `IsWindowsPlatformProject=true` to
-a project that should stay neutral?
+## 5. Tests
 
-**Player vs editor:** does `renderer-core` or `player` gain a dependency on
-editor UI, inspectors, or a component framework? The size check catches weight,
-but a small editor-only utility can slip under the budget and still violate §47.
+- New regression tests should fail with the fix removed.
+- Visible renderer changes need browser/visual evidence, not only object counts.
+- Browser E2E does not exercise the host; do not infer host correctness from it.
+- Flag assertions that only prove “did not throw”.
 
-**Typed chart settings:** raw ECharts options must not reach the theme format.
-There is exactly **one** legitimate engine-boundary cast, in
-`packages/player/src/main.ts`. A second cast appearing anywhere is the finding.
+## 6. Security/external effects
 
-**Provider responsibilities:** a provider that starts a timer, caches history, or
-pushes samples has taken over the host's job (§95).
+Check secret redaction, path traversal, LAN exposure, auth/session boundaries and
+imports that trigger network access.
 
-## 4. Non-deterministic test data
+## 7. Complexity and prose
 
-The fake provider exists to make visual tests reproducible. Flag anything that
-reintroduces nondeterminism:
+Flag unnecessary custom infrastructure when a dependency already owns the
+behaviour. Also flag documentation/comment bloat:
 
-- `string.GetHashCode()` — randomized per process
-- `DateTime.Now` / `DateTimeOffset.UtcNow` in sample generation — the fake
-  provider has a virtual clock; use `Advance()`
-- `Random` without a fixed seed
-- Animation left enabled in a screenshot path
+- comments that narrate implementation/debug history;
+- comments over ~8 lines without a real invariant/API trap;
+- specs/status entries that repeat chronology already in git;
+- the same rationale copied into several docs/source comments.
 
-## 5. Schema and persistence compatibility
-
-If `schema/theme-document.schema.json` changed:
-
-- Can a theme saved under the previous version still load? If not, was
-  `schemaVersion` bumped, and does an unsupported version **fail without
-  changing the library** (§141)?
-- Did a field become required, or an enum lose a member? Both break existing
-  documents.
-- Are new asset paths still constrained against traversal and absolute paths?
-
-## 6. Security-relevant paths
-
-- Does an error message, log line, or API response now carry a secret, a token,
-  or a full request with headers? §101 requires redaction before anything
-  reaches a browser.
-- Does a new endpoint bind beyond loopback, or bypass the display-scoped session
-  check? LAN serving is opt-in and editing is localhost-only by default
-  (§147, §149).
-- Does an importer fetch a URL the user did not explicitly configure? Theme
-  imports must never trigger network access on their own (§130).
-
-## 7. Tests that assert nothing
-
-- A provider added without extending the host's provider tests has skipped
-  the conformance definition entirely.
-- A test that only asserts a call did not throw. What is the observable
-  behaviour?
-- A gate checklist item ticked with no committed evidence (§33).
+Prefer a precise helper/test/doc link over an essay comment.
 
 ## Reporting
 
-State each finding as: the defect, a concrete failure scenario (inputs → wrong
-output), and the file and line. If you are unsure whether something is real, say
-so rather than padding the list — and never claim you verified a build or test
-run you did not perform.
+For each finding: defect, concrete failure scenario, file/line, and severity.
+Do not pad the review with speculative or stylistic findings.
