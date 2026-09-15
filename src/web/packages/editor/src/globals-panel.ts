@@ -4,25 +4,8 @@ import type { GlobalUsage } from './globals/commands.js';
 import type { GlobalAction } from './globals/domain/global-action.js';
 import { GLOBAL_GROUP_META } from './globals/domain/groups.js';
 
-/**
- * The theme's globals, as an editable list (§73, §75).
- *
- * Document-level rather than selection-level, which is why it is a sibling of
- * the inspector rather than a section inside it: the inspector says "nothing
- * selected" when nothing is, and the palette is still worth looking at then.
- *
- * Renders {@link GlobalUsage} and emits {@link GlobalAction}. Decides nothing —
- * `globals-commands.ts` holds every rule, and is pure.
- *
- * ## Why each row shows a use count
- *
- * Changing a token changes every element that follows it, and an author cannot
- * see that from the row. "6 uses" is the blast radius, in the place where the
- * decision is made. It is also what makes deleting comprehensible: the button
- * says what it is about to inline.
- */
+/** Document-level token UI. Renders usage and emits actions; pure commands own rules. */
 
-/** What the author did. */
 export interface GlobalsPanel {
   readonly root: HTMLElement;
   render(usage: readonly GlobalUsage[]): void;
@@ -33,7 +16,6 @@ export interface GlobalsCallbacks {
   readonly onAction: (action: GlobalAction) => void;
 }
 
-/** Group labels and what a new token in each one starts as. */
 export function createGlobalsPanel(
   host: HTMLElement,
   callbacks: GlobalsCallbacks,
@@ -57,9 +39,7 @@ export function createGlobalsPanel(
       root.textContent = '';
 
       for (const group of GLOBAL_GROUPS) {
-        // Every group is shown, including empty ones: the way to discover that
-        // a theme can have spacing tokens is to see the empty Spacing section
-        // with an add button, not to read the schema.
+        // Show empty groups so authors can discover/create their token types.
         root.append(
           renderGroup(
             group,
@@ -140,9 +120,7 @@ function renderRow(
     'min-width:0',
   ].join(';');
 
-  // The KEY, not the display name, in the first column. References are
-  // `group.key`, so the key is what an author needs to recognise a token in a
-  // ref picker — showing only the pretty name hides the thing that matters.
+  // References use group.key, so key is the primary identity shown in the row.
   const keyInput = document.createElement('input');
   keyInput.type = 'text';
   keyInput.value = key;
@@ -172,9 +150,7 @@ function renderRow(
   row.append(value);
 
   if (kind === 'colour') {
-    // Same split as the inspector: a text field takes any CSS colour a theme
-    // may hold, the well is for picking. `input[type=color]` only understands
-    // `#rrggbb`, so it cannot be the only control.
+    // Text input accepts arbitrary CSS colours; the colour well only accepts #rrggbb.
     const well = document.createElement('input');
     well.type = 'color';
     well.dataset['vigiliaGlobalColour'] = id;
@@ -236,5 +212,3 @@ function renderRow(
 function describeUses(count: number): string {
   return count === 1 ? '1 use' : `${count} uses`;
 }
-
-/** What a new token in a group starts as. */
