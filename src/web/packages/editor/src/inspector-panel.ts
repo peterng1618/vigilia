@@ -7,33 +7,7 @@ import {
   type InspectorSection,
 } from './inspector/model.js';
 
-/**
- * The inspector panel: descriptors in, edits out.
- *
- * Knows nothing about the document. It receives {@link InspectorSection}s,
- * renders a row per field, and reports `(key, change)` when the author changes
- * something. Every rule about what a field means lives in
- * `model.ts` and `apply.ts`, both of which are pure.
- *
- * ## Edits land on `change`, not on every keystroke
- *
- * A `change` event fires on blur or Enter for text and number inputs, and
- * immediately for checkboxes and selects. So one field edit is one undo entry,
- * which is what §67 asks for. Reporting on `input` instead would put an entry
- * in history for every digit typed — the same mistake as recording a drag per
- * pointer move, and it would also re-render the scene mid-number, so typing
- * "100" would briefly apply 1 and then 10.
- *
- * ## §75 is a per-row mode switch
- *
- * A style row that can reference a token gets a small button: **use global**
- * when it holds a literal, **make local** when it holds a reference. That is
- * the explicit choice §75 requires, and the row always says which state it is
- * in rather than showing a bare value whose origin is ambiguous.
- *
- * Switching *to* a global is a two-step choice, and the intermediate step is
- * held here rather than in the document — see {@link PendingRefs}.
- */
+/** Descriptor-driven inspector UI. Emits edits; document rules live in model/apply. */
 
 export interface InspectorPanel {
   readonly root: HTMLElement;
@@ -42,31 +16,14 @@ export interface InspectorPanel {
 }
 
 export interface InspectorCallbacks {
-  /** The author changed a field. */
   readonly onChange: (key: string, change: FieldChange) => void;
 }
 
-/**
- * Rows switched to "use global" whose token has not been chosen yet.
- *
- * Deliberately UI-local. The obvious implementation is to write
- * `{ ref: 'palette.' }` immediately and let the row re-render as a picker — but
- * that puts a **dangling reference** in the document and an undo entry in the
- * history for a choice the author has not finished making, and an interrupted
- * click leaves the theme referring to a token that does not exist. §75's
- * conversion is not complete until a token is picked, so nothing is committed
- * until then.
- *
- * Cleared when the selection changes, because a pending row belongs to the node
- * it was opened on.
- */
+/** UI-local token-picker state. Do not commit a ref until a token is chosen. */
 interface PendingRefs {
   has(key: string): boolean;
-  /** Open the picker for a row, without touching the document. */
   begin(key: string): void;
-  /** A token was chosen: the resulting document change redraws the panel. */
   end(key: string): void;
-  /** Backed out without choosing: nothing changed, so redraw explicitly. */
   cancel(key: string): void;
 }
 
@@ -89,11 +46,7 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
   let last: { sections: readonly InspectorSection[]; globals: Globals } | undefined;
 
   const draw = (sections: readonly InspectorSection[], globals: Globals): void => {
-      // Rebuilt wholesale on every render. A diffing panel would keep focus
-      // through a re-render, which matters — but the scene re-renders on a 1 Hz
-      // data tick, and rebuilding then would steal focus mid-typing. Guarded
-      // instead by only re-rendering the panel when the selection or document
-      // changes, which the caller decides.
+    // Rebuild only when selection/document content changes; rebuilding loses focus.
     root.textContent = '';
 
     if (sections.length === 0) {
@@ -115,8 +68,7 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
     begin(key) {
       pendingKeys.add(key);
 
-      // Redrawn from the last input rather than waiting for a document change,
-      // because there is no document change — that is the whole point.
+      // No document change occurs when opening the picker, so redraw locally.
       if (last !== undefined) {
         draw(last.sections, last.globals);
       }
@@ -141,8 +93,7 @@ export function createInspector(host: HTMLElement, callbacks: InspectorCallbacks
     render(sections: readonly InspectorSection[], globals: Globals): void {
       const keys = new Set(sections.flatMap((section) => section.fields.map((f) => f.key)));
 
-      // A pending row belongs to the node it was opened on. Anything that is no
-      // longer on screen is abandoned.
+      // Pending state belongs only to currently rendered fields.
       for (const key of pendingKeys) {
         if (!keys.has(key)) {
           pendingKeys.delete(key);
@@ -197,16 +148,13 @@ function renderField(
   label.style.cssText = 'flex:0 0 92px;min-width:0;color:var(--vigilia-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
   row.append(label);
 
-  // A reference shows the token it points at, and the value it resolves to, so
-  // the author can see both what they picked and what it looks like.
+  // References show both token identity and resolved value.
   if (field.source === 'ref' && field.globalGroup !== undefined) {
     row.append(referencePicker(field, globals, callbacks, pending));
     row.append(modeButton('make local', field, callbacks, 'literal', pending));
     return row;
   }
 
-  // Switched to a global, token not chosen yet: a picker with nothing selected,
-  // and the same button to back out. No document change has happened.
   if (field.globalGroup !== undefined && pending.has(field.key)) {
     row.append(referencePicker(field, globals, callbacks, pending));
     row.append(modeButton('make local', field, callbacks, 'literal', pending));
@@ -218,8 +166,6 @@ function renderField(
   if (field.globalGroup !== undefined && !field.readOnly) {
     const options = globalOptions(globals, field.globalGroup);
 
-    // No button when the document defines no tokens of that kind: offering
-    // "use global" that opens an empty list is worse than not offering it.
     if (options.length > 0) {
       row.append(modeButton('use global', field, callbacks, 'ref', pending));
     }
@@ -233,8 +179,6 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = field.value === true;
-    // `indeterminate` is exactly the right affordance for a mixed boolean: the
-    // author can see it is neither, and clicking sets all of them.
     input.indeterminate = field.mixed === true;
     input.disabled = field.readOnly === true;
     input.dataset['vigiliaInput'] = field.key;
@@ -291,8 +235,6 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
     input.step = String(field.step ?? 1);
   }
 
-  // Mixed shows as an empty field with a placeholder rather than one node's
-  // value, which would look like agreement that is not there.
   if (field.mixed === true) {
     input.value = '';
     input.placeholder = 'mixed';
@@ -304,15 +246,8 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
   }
 
   input.addEventListener('change', () => {
-    // A number input reports `.value` as the empty string for ANY content it
-    // cannot parse, so a half-typed `1e` is indistinguishable from a cleared
-    // field by value alone — and treating it as empty committed a zero, which
-    // made elements vanish and rendered text at 0px. `validity.badInput` is
-    // the one signal that separates the two: garbage is refused here, while a
-    // genuinely empty field still means "clear this property".
+    // Number inputs use '' for bad input; badInput distinguishes it from a deliberate clear.
     if (field.kind === 'number' && input.validity.badInput) {
-      // Snap back to what the document holds, so the rejected text does not
-      // sit on screen looking accepted.
       input.value = field.value === undefined ? '' : String(field.value);
       return;
     }
@@ -323,10 +258,7 @@ function valueInput(field: FieldDescriptor, callbacks: InspectorCallbacks): HTML
   group.append(input);
 
   if (field.kind === 'colour' && field.readOnly !== true) {
-    // A native colour well beside the text field. Both edit the same property:
-    // the text field accepts any CSS colour the theme may contain, and the well
-    // is for picking. `input[type=color]` only understands `#rrggbb`, so it
-    // cannot be the only control without narrowing what a theme can express.
+    // Native colour inputs only cover #rrggbb; the text field retains the full CSS value.
     const well = document.createElement('input');
     well.type = 'color';
     well.dataset['vigiliaColour'] = field.key;
@@ -359,9 +291,7 @@ function referencePicker(
   select.disabled = field.readOnly === true;
   select.style.cssText = inputStyle();
 
-  // Nothing chosen yet: an explicit prompt, not the first token pre-selected.
-  // A pre-selected token would mean clicking "use global" and clicking away
-  // silently picked one.
+  // Pending refs start unselected; opening the picker must not choose a token.
   if (field.source !== 'ref') {
     const prompt = document.createElement('option');
     prompt.value = '';
@@ -376,9 +306,7 @@ function referencePicker(
     select.append(element);
   }
 
-  // A reference to a token that no longer exists still has to be shown, or the
-  // author cannot see what is broken — the picker would silently jump to the
-  // first token and an edit would "fix" it without anyone noticing.
+  // Keep dangling refs visible instead of silently selecting another token.
   if (field.ref !== undefined && !select.querySelector(`option[value="${cssEscape(field.ref)}"]`)) {
     const missing = document.createElement('option');
     missing.value = field.ref;
@@ -398,7 +326,6 @@ function referencePicker(
 
   group.append(select);
 
-  // The resolved swatch, so a token name is not the only thing on screen.
   if (field.kind === 'colour' && typeof field.value === 'string') {
     const swatch = document.createElement('span');
     swatch.style.cssText = [
@@ -431,12 +358,7 @@ function modeButton(
 
   button.addEventListener('click', () => {
     if (target === 'literal') {
-      // "Make local" freezes the token's CURRENT value into the element, which
-      // is what §75's conversion means — and what an author expects: the
-      // element keeps looking the same and stops following the token.
-      //
-      // When the row was only *pending* a token there is nothing to freeze and
-      // nothing was ever committed, so backing out is a redraw, not an edit.
+      // Making local freezes the token's current resolved value.
       if (field.source === 'ref') {
         callbacks.onChange(field.key, {
           kind: 'literal',
@@ -449,9 +371,7 @@ function modeButton(
       return;
     }
 
-    // "Use global" only opens the picker. Committing a ref here — even a
-    // placeholder one — would write a dangling reference and an undo entry for
-    // an unfinished choice.
+    // Opening the token picker is UI state, not a document edit.
     pending.begin(field.key);
   });
 
@@ -473,19 +393,11 @@ function clearButton(field: FieldDescriptor, callbacks: InspectorCallbacks): HTM
   return button;
 }
 
-/**
- * A `#rrggbb` value for the native colour well.
- *
- * Anything else — a named colour, `rgba()`, a value with alpha — has no
- * representation in `input[type=color]`, so the well falls back to black rather
- * than showing a wrong colour. The text field beside it still shows the real
- * value, which is why the well is never the only control.
- */
+/** Returns a native-colour-compatible value; other CSS formats fall back to black. */
 function toHexOrDefault(value: unknown): string {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
 }
 
-/** Escapes a value for use in an attribute selector. */
 function cssEscape(value: string): string {
   return value.replace(/["\\]/g, '\\$&');
 }
