@@ -24,6 +24,16 @@ export type { ChartSerialisedKey, VigiliaChartOptions } from './chart-object.js'
 
 export { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
 
+export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
+
+export { createSceneAdapter } from './adapter.js';
+
+export type { FabricSceneHandle, FabricSceneOptions } from './scene.js';
+
+export { mountFabricScene } from './scene.js';
+
+export type { UnsupportedReporter } from './fabric-nodes.js';
+
 export {
   clampRenderScale,
   DEFAULT_RENDER_SCALE,

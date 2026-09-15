@@ -301,9 +301,17 @@ are about to add resembles a row, import it instead.
 | **A chart as a scene object** | `scene-fabric/src/chart-object.ts` (`VigiliaChart`) — owns the detached canvas, the ECharts instance, invalidation and disposal |
 | **What a chart object persists** | same file — `CHART_SERIALISED_KEYS`, which *is* Fabric's `static customProperties`, so the declared surface and the emitted one are one thing rather than two that agree. Contains authored values only (`ChartContent`'s keys); the built option and `renderScale` are derived and are not written. The one `toObject` override re-adds the origin, which Fabric's default-stripping would drop |
 | **How large a chart's backing canvas may get** | `scene-fabric/src/render-scale.ts` — two ceilings, factor *and* pixel area, because `w × h × scale²` is not bounded by a factor alone |
-| **Which ECharts pieces are registered** | `scene-fabric/src/chart-engine.ts` — a module side effect, so importing a chart object is what guarantees the engine can draw it. `player/src/main.ts` and `editor/src/main.ts` still carry their own lists for `mount.ts` and lose them at stage 2 |
+| **Which ECharts pieces are registered** | `scene-fabric/src/chart-engine.ts` — a module side effect, so importing a chart object is what guarantees the engine can draw it. `player/src/main.ts` and `editor/src/main.ts` still carry their own lists for `mount.ts`, and lose them when it goes |
+| **Cartesian grid rect, and whether labels may shrink it** | `renderer-core/src/charts/grid.ts` (`cartesianGrid`) — line and bar declared the same five keys twice, one of them deprecated |
 | **The engine-option cast** | `renderer-core/src/charts/engine-option.ts` (`toEngineOption`) — the only `as unknown as EChartsCoreOption` in the codebase |
-| **`ScenePlan` → Fabric objects** | `scene-fabric` — one owner, imported by editor *and* player. Not written yet (stage 2) |
+| **`ScenePlan` → Fabric objects** | `scene-fabric/src/adapter.ts` (`createSceneAdapter`) — one owner, imported by editor *and* player. Reconciles a plan **onto** a canvas: creates only for an id it cannot find, so a scene revived from Fabric's own format (stage 3) is configured rather than replaced |
+| **Which Fabric class a node needs** | same file — `classFor`, compared against `constructor` rather than with `instanceof`, because `Textbox` extends `FabricText` |
+| **Top-left → centre origin** | `scene-fabric/src/placement.ts` (`placementFor`) — the only copy, and `withinGroup` for a child's space inside a group |
+| **Style → Fabric properties** | `scene-fabric/src/paint.ts` (`paintFor`, `unsupportedPaint`) — a fixed list, never a pass-through; box or text passed in, never inferred |
+| **§89 runs → per-character styles** | `scene-fabric/src/text-runs.ts` (`textShapeFor`) — pure, with the grapheme splitter injected so it agrees with Fabric's own indexing |
+| **A node's Fabric class, and its updates** | `scene-fabric/src/fabric-nodes.ts`, with text in `fabric-text.ts` and images in `fabric-image.ts` |
+| **Canvas element, size and the artboard transform** | `scene-fabric/src/scene.ts` (`mountFabricScene`) — `computeArtboardTransform`'s output becomes `viewportTransform`; the adapter never sees the viewport |
+| **What this renderer cannot express** | `onUnsupported`, reported per node by `fabric-nodes.ts` and `paint.ts`. Distinct from `ScenePlan.issues`, which are facts about the *data* rather than the renderer |
 | **Player import boundary** | `player/src/boundaries.test.ts` — `fabric/es` only, no interactive `Canvas`, no editor specifier |
 | **Which entity may carry which property** | `renderer-core/src/theme/capabilities.ts` — the spec 0011 matrix, keyed by `NodeType` so a new type is a compile error |
 | **Style property vocabulary** | same file — `STYLE_PROPERTIES`, `isKnownStyleProperty`; validator rejects unknown names and schema-sync tests bind the schema enum to this owner |

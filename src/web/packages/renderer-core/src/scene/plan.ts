@@ -1,12 +1,14 @@
 import type { SampleSource } from '../data/source.js';
 import type { Sample, SensorStatus } from '../types.js';
-import { buildBarOption, type BarInput, type BarOption } from '../charts/bar.js';
-import { buildGaugeOption, type GaugeOption } from '../charts/gauge.js';
-import { buildLineOption, type LineOption, type SeriesInput } from '../charts/line.js';
-import { buildPieOption, type PieOption, type PieSliceInput } from '../charts/pie.js';
+import { buildBarOption, type BarInput } from '../charts/bar.js';
+import { buildGaugeOption } from '../charts/gauge.js';
+import { buildLineOption, type SeriesInput } from '../charts/line.js';
+import { buildPieOption, type PieSliceInput } from '../charts/pie.js';
+import type { ChartOptionByFamily } from '../charts/engine-option.js';
 import type {
   Binding,
   ChartContent,
+  ChartFamily,
   Globals,
   StyleMap,
   StyleValue,
@@ -101,6 +103,28 @@ export interface PlanTextLayout {
   readonly maxLines?: number;
 }
 
+/**
+ * A chart: its authored configuration, and this frame's built option.
+ *
+ * One entry per family, generated rather than written out, so narrowing on
+ * `family` still yields that family's own option type and a consumer never
+ * casts to read it. Both halves come from their owners — `ChartContent` pairs a
+ * family with its settings, `ChartOptionByFamily` pairs it with its option — so
+ * a fifth family appears here without this file being touched.
+ *
+ * **`settings` is here because a renderer may have to *create* the chart.** The
+ * option is derived per frame and is all the DOM mount layer ever needed; a
+ * Fabric scene builds a `VigiliaChart`, whose persisted surface is exactly
+ * `ChartContent`. Deriving it back out of the built option is not possible, and
+ * a second copy of the document's chart shape is what spec 0013 refuses.
+ */
+export type PlanChart = {
+  [F in ChartFamily]: Extract<ChartContent, { readonly family: F }> & {
+    readonly kind: 'chart';
+    readonly option: ChartOptionByFamily[F];
+  };
+}[ChartFamily];
+
 export type PlanContent =
   | { readonly kind: 'group' }
   | {
@@ -113,13 +137,7 @@ export type PlanContent =
       readonly segments: readonly PlanTextSegment[];
       readonly layout: PlanTextLayout;
     }
-  // Split per family rather than pairing one `family` field with a union of
-  // options: narrowing on `family` then yields that family's option type, so a
-  // consumer never has to cast to read it.
-  | { readonly kind: 'chart'; readonly family: 'gauge'; readonly option: GaugeOption }
-  | { readonly kind: 'chart'; readonly family: 'line'; readonly option: LineOption }
-  | { readonly kind: 'chart'; readonly family: 'bar'; readonly option: BarOption }
-  | { readonly kind: 'chart'; readonly family: 'pie'; readonly option: PieOption }
+  | PlanChart
   | {
       readonly kind: 'image';
       /** Resolved by the caller's asset resolver. Undefined when unresolvable. */
@@ -552,6 +570,7 @@ function planChart(
       return {
         kind: 'chart',
         family: 'gauge',
+        settings: content.settings,
         option: buildGaugeOption(content.settings, applyTransform(sample, binding), animate),
       };
     }
@@ -567,6 +586,7 @@ function planChart(
       return {
         kind: 'chart',
         family: 'line',
+        settings: content.settings,
         option: buildLineOption(content.settings, series, context.nowMs, animate),
       };
     }
@@ -580,6 +600,7 @@ function planChart(
       return {
         kind: 'chart',
         family: 'bar',
+        settings: content.settings,
         option: buildBarOption(content.settings, inputs, animate),
       };
     }
@@ -593,6 +614,7 @@ function planChart(
       return {
         kind: 'chart',
         family: 'pie',
+        settings: content.settings,
         option: buildPieOption(content.settings, slices, animate),
       };
     }

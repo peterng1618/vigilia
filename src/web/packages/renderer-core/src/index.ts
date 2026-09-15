@@ -250,6 +250,7 @@ export {
 
 export type {
   PlanBox,
+  PlanChart,
   PlanContent,
   PlanContext,
   PlanIssue,
