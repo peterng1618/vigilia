@@ -678,9 +678,10 @@ purpose — `status.md` records that citations by number are what drifted.)*
   tree, as is the `span[data-status]` hook that let a theme style a stale
   reading without the renderer deciding. Something must now own that decision.
 - **The ECharts SVG renderer becomes unreachable.** A Fabric object draws by
-  blitting a canvas, so `renderer: 'svg'` cannot be used through one at all —
-  `mount.ts`'s `chartRenderer` option and the player's `?renderer=svg` both die
-  with `mount.ts` at stage 2. Two things were resting on it, and neither is
+  blitting a canvas, so `renderer: 'svg'` cannot be used through one at all.
+  `mount.ts`'s `chartRenderer` option and the player's `?renderer=svg` go at
+  stage 2 — the player was the option's only caller — while `mount.ts` itself
+  survives until stage 8, because the editor still mounts through it. Two things were resting on it, and neither is
   lost: the canvas-versus-SVG comparison `player/src/main.ts` wanted measured is
   moot once only one is reachable, and the *deterministic capture* claim beside
   it was already false — `gate-evidence`, `screenshots/README.md` and
@@ -798,7 +799,50 @@ Each stage ends green and committed.
    and wires `canvas.on('object:removed')` to `dispose()`, because
    `canvas.remove()` does **not** call it (`Collection.ts:68`) while
    `destroy()` does (`StaticCanvas.ts:1473`). `mount.ts`'s `chartRenderer`
-   option and the player's `?renderer=svg` go with `mount.ts`.
+   option and the player's `?renderer=svg` go, because the player was their only
+   consumer; `mount.ts` itself cannot, and the boundary between this stage and
+   the next moved as a result — see below.
+
+   ### Where stage 2 ends, re-cut 2026-09-15
+
+   *Decided while implementing it. Three things the staging asserted cannot all
+   hold, the same shape of problem as [who owns
+   geometry](#after-stage-3-fabric-owns-geometry-and-the-plan-owns-everything-else).*
+
+   The staging said this stage switches the player to a `StaticCanvas`, that
+   mapping **every** `PlanContent` kind is stage 3's, and that `mount.ts` dies
+   here. Any two:
+
+   - `mount.ts` cannot die here. `editor/src/main.ts:147` and `:678` call
+     `mountScene`, and the editor is stage 4. Stage 8 already exists to delete
+     the superseded renderer, which is the only stage that can.
+   - A player on a canvas with only charts mapped renders **charts and nothing
+     else**. Every fixture carries text and rectangles; `demo-theme.json` is 13
+     text nodes, 6 rectangles, 5 charts and 5 groups. So the content mapping is
+     not separable from switching the player, and "every `PlanContent` kind"
+     moves into this stage.
+   - Even with every kind mapped, text is not at parity until stage 5, which
+     owns styled runs and *the layout options Fabric lacks* — ellipsis, the line
+     clamp, vertical alignment, the font-load re-measure. `display.spec.ts`
+     asserts those today, across 68 DOM-hook assertions.
+
+   **So: this stage delivers the adapter over every kind except video, and the
+   player renders through it behind `?scene=fabric`. The DOM path stays the
+   default.** The flip, and porting `display.spec.ts` onto the canvas, move to
+   stage 3 — which is where the format decisions already gate.
+
+   Why an opt-in rather than the switch: every stage ends green, and a switch
+   here ships a text-layout regression to the only product surface for three
+   stages. What it costs is two render paths in the player until the flip, which
+   was already true of `mount.ts` and the adapter until stage 8. `SceneHandle`
+   is what makes it cheap — the adapter returns the same handle `mountScene`
+   does, so `player/src/main.ts` branches at one call and the flip deletes a
+   branch rather than rewriting the entry point.
+
+   **`?scene=fabric`, not `?renderer=fabric`.** `renderer` selected the *chart*
+   engine's renderer and is retired in this stage; reusing the name for the
+   scene graph would make two different meanings share one parameter across the
+   branch's history.
 
    **Also in this stage, found by the review and all cheap** — none of them is
    worth its own stage and all four are in stage-1 code:
@@ -839,12 +883,16 @@ Each stage ends green and committed.
      without failing. Both are now in `THIRD-PARTY-NOTICES.md` with licences
      read from their own metadata, and `renderer-core/src/charts/grid.dom.test.ts`
      is a second consumer.
-3. **Document bridge.** `ScenePlan` → Fabric for every `PlanContent` kind, and
-   the persisted scene moves to Fabric's object format inside the envelope:
-   `toObject`/`loadFromJSON` round-trip, the Fabric major version recorded,
-   `schemaVersion` bumped, an older scene refused. A Fabric `Group` is
-   persisted with its geometry, per the §137 reversal above. **No write-back
-   layer** — that is what adopting the format removes.
+3. **Document bridge.** The persisted scene moves to Fabric's object format
+   inside the envelope: `toObject`/`loadFromJSON` round-trip, the Fabric major
+   version recorded, `schemaVersion` bumped, an older scene refused. A Fabric
+   `Group` is persisted with its geometry, per the §137 reversal above. **No
+   write-back layer** — that is what adopting the format removes.
+
+   **Also here, from the stage-2 re-cut:** `?scene=fabric` becomes the default
+   and then goes, `display.spec.ts` ports onto the canvas, and the DOM path
+   leaves the player. Mapping every `PlanContent` kind moved *out* of this stage
+   and into stage 2, where switching the player made it unavoidable.
 
    **Preconditions, not deliverables.** [Settle before stage
    3](#settle-before-stage-3) must be written down first: node identity,
