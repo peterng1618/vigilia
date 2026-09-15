@@ -1,30 +1,12 @@
 ---
 name: vigilia:verify
-description: Runs Vigilia's pre-commit gauntlet — typechecks, unit tests, bundle build, the size gate and the browser suite — in the order that avoids the traps, and reports what was not verified. Use before committing, before claiming something works, after changing renderer-core, or when asked to check, verify, validate or test the project.
+description: Run the appropriate Vigilia pre-commit checks and report exactly what was verified.
 ---
 
 # Verifying Vigilia
 
-Run this before committing, and before any claim that something works. §33: a
-ticked checkbox without observable behaviour and a test is not a pass.
-
-## Scope first
-
-Running all five steps on a prose change is three minutes to learn nothing, and
-a gauntlet that costs that on every commit is one that gets skipped wholesale
-instead of scoped honestly. **CI is the backstop** — every push runs typecheck,
-unit tests, all three builds, the size gate and `desktop-chromium` — so scope
-locally, with the two things CI cannot cover:
-
-- **`phone-chromium` runs nowhere but here.** `ci.yml` passes
-  `--project=desktop-chromium`. Anything that could differ at a phone viewport —
-  §53 fit and letterboxing, text overflow, touch targets — is checked locally or
-  never.
-- **CI typechecks five projects, not six** (`scene-fabric` is absent from
-  `ci.yml`). Use `npm run typecheck`, which derives the list from the workspace.
-
-Grade the paths you are about to commit. Unknown paths grade **FULL**, so a new
-kind of file never silently downgrades:
+CI runs typecheck, unit tests, builds, size gate and desktop Chromium. Scope local
+verification by changed paths; unknown paths are FULL.
 
 ```bash
 git status --porcelain | cut -c4- | awk '
@@ -36,143 +18,53 @@ git status --porcelain | cut -c4- | awk '
   END { print f ? "FULL" : e ? "E2E" : t ? "UNIT" : "PROSE" }'
 ```
 
-`--porcelain` and not `git diff`, because `git diff` cannot see an **untracked**
-new file — which is the one change most likely to need the full run.
+| Tier | Run |
+|---|---|
+| PROSE | no tests |
+| UNIT | typecheck + full unit suite |
+| E2E | typecheck + units + builds + browser suite |
+| FULL | typecheck + units + builds + size gate + browser suite |
 
-| Tier | Changed | Run | Cost |
-|---|---|---|---|
-| **PROSE** | only `*.md`, `.agents/**` | nothing | — |
-| **UNIT** | also `*.test.ts` | 1–2 | ~40 s |
-| **E2E** | also `tests/e2e/**` | 1–3, 5 | ~2.5 min |
-| **FULL** | anything else — source, `schema/**`, a manifest, a config | 1–5 | ~3 min |
+Do not select unit tests by changed path; cross-package boundary tests make that
+unsafe.
 
-**PROSE runs nothing because nothing reads it**, and that was checked rather
-than assumed: the only tests that touch disk read the *source tree*
-(`boundaries.test.ts`, both packages) and `schema/theme-document.schema.json`
-(`schema-sync.test.ts`). None reads `AGENTS.md`, a skill or a spec. A prose
-change still needs AGENTS.md's "propagate a consequence" read — that is a
-different obligation from a test run.
+## Commands
 
-Three things that look scopeable and are not:
-
-- **Never select unit tests by path.** The whole suite is 17 s, and this repo's
-  boundary tests live in a *different package* from the code they constrain:
-  `packages/player/src/boundaries.test.ts` is what fails when `renderer-core`
-  imports Fabric the expensive way. Path-based selection would miss precisely
-  the checks that span packages.
-- **A source file added or deleted is FULL even if no existing file changed.**
-  `boundaries.test.ts` walks the tree, so its input moved without any diff in a
-  file it already read.
-- **Comment-only edits to a source file still grade FULL.** The classifier keys
-  on paths, not on diff content, because "it is only a comment" is a judgement
-  and this repo prefers a mechanism. If you drop a tier on that basis, say so in
-  your report — CI will run it anyway.
-
-## Then, in order
-
-Each step is cheap relative to the one after it and fails for clearer reasons,
-so run them in this order and stop at the first failure.
-
-From `src/web/`:
+From `src/web/`, in order:
 
 ```bash
-# 1. Typechecks, ~25 s — every project, derived from the workspace manifests.
-#    Use the script, never a hand-typed list of `tsc -p` paths: that list has
-#    been wrong in four separate files at once, because adding a package
-#    updates whichever copy the author was looking at.
 npm run typecheck
-
-# 2. Unit tests, ~17 s — where a logic break shows up first.
 npm test
-
-# 3. Build, ~22 s for all three. Required before 4 and 5; they measure and
-#    preview the BUILT output. Cheap enough that it is never worth skipping
-#    once you have decided to run 4 or 5.
-npx vite build packages/player
-npx vite build packages/editor
-npx vite build packages/host
-
-# 4. The §47 display-only budget gate. Instant, given 3.
+npm run build
 npm run size
-
-# 5. Browser tests, ~2 min. The only expensive step, and the flaky one.
 npm run test:e2e
 ```
 
-Then update [`.agents/status.md`](../../status.md) with the figures you just
-produced — before committing. **Record the tier too**, so a later reader can
-tell a figure that was measured from one that was not run.
+Stop at the first failure. Build before size/E2E because both consume built
+output. Rebuild after reverting deliberate sabotage.
 
-## The traps, in the order you will hit them
+## Extra checks when relevant
 
-**Every bundle a browser suite exercises must be built first.** Playwright
-previews built output, so a source change is invisible until its bundle is
-rebuilt, and an unbuilt bundle surfaces as a preview server that never comes
-up — which reads like a Playwright fault and is not one. Check
-`playwright.config.ts` for the current `webServer` list rather than assuming
-only the player is served.
+- Renderer/player viewport changes: run the `phone-chromium` project locally as
+  well as normal CI coverage.
+- Host serving/base/output changes: build, start
+  `node packages/host/bin/vigilia.js --port 5231 --no-browser`, and load both
+  player/editor through the host. Playwright preview servers do not test this.
+- Visible rendering changes: inspect the result, not only structural assertions.
 
-**`check-size.mjs` measures `dist/` on disk.** Without step 3 it either fails on
-a missing directory or, worse, passes against a stale build.
+No physical-phone validation is required unless a future product requirement
+explicitly adds it.
 
-**Rebuild after *reverting* an experiment, too.** Temporarily breaking a guard
-to prove a test catches it is worth doing — and leaves `dist/` holding the
-broken build. Restoring the source is not enough; the next Playwright run
-previews the sabotaged bundle and fails somewhere unrelated to what you are
-working on, which reads like a flake. Rebuild, then re-run.
+## Traps
 
-**The browser suite does not exercise the host.** Playwright previews each
-bundle directly on its own port, so nothing in steps 1–5 ever asks the host to
-serve them. A serving bug — a mount prefix, an asset path, a redirect — is
-invisible to a fully green gauntlet. This is not hypothetical: the editor
-shipped unable to boot through the host while all five checks passed, because
-its absolute `/assets/…` resolved against the player's dist. After changing
-the host's serving, the editor's Vite `base`, or either bundle's output layout,
-start the host and load both surfaces:
-
-```bash
-node packages/host/bin/vigilia.js --port 5231 --no-browser   # then open both
-```
-
-and confirm the editor reaches an artboard rather than a status bar stuck on
-"starting…". Checking the HTTP status of the *document* is not enough — the
-HTML arrives either way.
-
-**If the size gate fails, find the leaked dependency — do not raise the
-budget.** That gate is the mechanical half of the player/editor boundary; an
-editor dependency reaching `renderer-core` or `player` is exactly what it is
-there to catch.
-
-**Node 25 warns and works.** vitest 5 declares `^22.12 || ^24 || >=26`; you get
-`EBADENGINE` and a passing suite. Not a failure — do not downgrade.
-
-## You are probably not alone in this tree
-
-Another agent session may be editing the same working tree. Before running
-anything that writes:
-
-```bash
-git status --short
-```
-
-A build writes into `dist/`, and the browser suite starts preview servers on
-fixed ports — both interfere with a concurrent run, and a suite that fails
-mid-edit tells you nothing about your own change. If files you did not touch are
-modified, **the failures may not be yours**: establish that before reporting a
-regression, and never "fix" a file another session is holding.
-
-When staging, stage explicit paths. Never `git add -A`, never `git commit -a`.
+- `check-size.mjs` measures `dist/`; stale builds give stale answers.
+- If the size gate fails, find the dependency leak rather than raising the gate
+  to make it pass.
+- Another agent may be writing the tree/build output. Check `git status --short`
+  before running/staging and never discard unknown changes.
+- Stage explicit paths; never `git add -A` or `git commit -a`.
 
 ## Reporting
 
-State what you ran and what you did not. Specifically:
-
-- **Name the tier and what it excluded.** "PROSE — no build, no suite" is a
-  complete report. "Verified" is not, because it reads as all five.
-- Numbers only from a run you actually executed in this session. Do not carry a
-  count forward from a document — those go stale by hundreds within a
-  milestone, which is why `AGENTS.md` no longer records them.
-- Name the layers you skipped, especially anything needing real hardware or a
-  real phone. A Pixel 7 *viewport* is not a Pixel 7.
-- If tests fail, quote the failures. A summary that says "passing" over six
-  failures is the worst possible output.
+State the tier, commands run, failures, and material checks skipped. Numbers must
+come from this session's output, not copied from `status.md`.
