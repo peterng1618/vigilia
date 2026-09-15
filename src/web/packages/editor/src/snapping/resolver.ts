@@ -1,76 +1,31 @@
 import type { Bounds, PlacedNode, Point } from '../geometry.js';
 import { worldBounds } from '../geometry.js';
 
-/**
- * Snapping a drag to the things already on the artboard.
- *
- * ## What it snaps to, and why that list
- *
- * Edges and centres, of other nodes and of the artboard. Nothing else — no
- * grid, no equal-spacing distribution, no baseline detection. Those are all
- * useful and all speculative; edges and centres are what an author reaches for
- * when aligning a dashboard, and they are what the guides can honestly explain.
- *
- * ## The threshold is in viewport pixels, converted by the caller
- *
- * A snap threshold has to feel the same whatever the zoom, so it is a *screen*
- * distance. But everything here works in document space, so the caller divides
- * its pixel threshold by the artboard scale before passing it in. Getting that
- * backwards makes snapping unusable at either extreme — sticky at 25 % zoom, and
- * imperceptible at 400 %.
- *
- * ## One correction per axis
- *
- * The nearest candidate on each axis wins independently, so a node can snap its
- * left edge to one neighbour and its vertical centre to another. That is what
- * makes aligning into a grid of panels feel effortless, and it is also why the
- * result carries the *guides* that matched: an author needs to see which
- * alignment they got, not just that something moved.
- */
+/** Legacy edge/centre snapping until the Fabric editor foundation replaces it. */
 
-/** An alignment a node can snap to. */
 export interface SnapTarget {
   readonly axis: 'x' | 'y';
-  /** Position in document space. */
   readonly position: number;
-  /**
-   * What produced it — a node id, or `artboard`.
-   *
-   * Carried so a guide can be drawn to the thing it aligned with rather than
-   * across the whole canvas, which is the difference between a guide that
-   * explains itself and a line that just appears.
-   */
   readonly source: string;
-  /** Which part of the source: its near edge, centre or far edge. */
   readonly kind: 'start' | 'centre' | 'end';
 }
 
-/** A snap that was applied, for drawing. */
 export interface SnapGuide extends SnapTarget {
-  /** Which part of the dragged box landed on it. */
   readonly moved: 'start' | 'centre' | 'end';
 }
 
 export interface SnapResult {
-  /** The delta to use instead of the raw one. */
   readonly delta: Point;
   readonly guides: readonly SnapGuide[];
 }
 
 export interface SnapOptions {
-  /** Maximum correction, in **document** units. See the note above about zoom. */
+  /** Maximum correction in document units. */
   readonly threshold: number;
-  /** Skip snapping entirely — normally bound to a modifier key. */
   readonly disabled?: boolean;
 }
 
-/**
- * Collects every alignment the artboard offers.
- *
- * `exclude` is the set being dragged: a node must not snap to itself, and a
- * multi-selection must not snap to its own members, or the selection would
- * fight its own alignment.
- */
+/** Collect artboard and visible-node edge/centre targets, excluding dragged content. */
 export function collectSnapTargets(
   nodes: readonly PlacedNode[],
   artboard: { readonly width: number; readonly height: number },
@@ -86,14 +41,11 @@ export function collectSnapTargets(
   ];
 
   for (const node of nodes) {
-    // Hidden nodes offer no alignment: there is nothing on screen to align to,
-    // and a guide pointing at an invisible edge is unexplainable.
     if (!node.visible || exclude.has(node.id) || node.width <= 0 || node.height <= 0) {
       continue;
     }
 
-    // Excluded if any ancestor is being dragged — a child moves with its group,
-    // so its edges are not independent alignments.
+    // Children of a dragged ancestor move with it and are not independent targets.
     if (node.ancestors.some((ancestor) => exclude.has(ancestor))) {
       continue;
     }
@@ -113,12 +65,7 @@ export function collectSnapTargets(
   return targets;
 }
 
-/**
- * Adjusts a move so the dragged bounds align with something.
- *
- * @param bounds Where the dragged content started, in document space.
- * @param delta The raw pointer delta.
- */
+/** Apply the nearest independent correction on each axis. */
 export function snapMove(
   bounds: Bounds,
   delta: Point,
@@ -185,14 +132,7 @@ interface Correction {
   readonly moved: 'start' | 'centre' | 'end';
 }
 
-/**
- * The smallest correction that brings any candidate onto any target.
- *
- * Ties break toward a **centre** alignment, then toward the earlier target.
- * That ordering is deliberate: when an edge and a centre are equally close, the
- * centre is almost always what the author meant, and an arbitrary tie-break
- * would make the same drag snap differently depending on iteration order.
- */
+/** Nearest correction wins; exact ties prefer centre-to-centre alignment. */
 function bestCorrection(
   candidates: readonly Candidate[],
   targets: readonly SnapTarget[],
@@ -226,13 +166,7 @@ function bestCorrection(
   return best;
 }
 
-/**
- * Converts a pixel threshold into document units.
- *
- * Trivial, and here because the conversion is the part that gets forgotten:
- * snapping done in document units with a pixel threshold is sticky when zoomed
- * out and imperceptible when zoomed in.
- */
+/** Convert a viewport-pixel snap tolerance to document units. */
 export function thresholdInDocumentUnits(pixels: number, artboardScale: number): number {
   if (!Number.isFinite(artboardScale) || artboardScale <= 0) {
     return pixels;
