@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { describeSelection, globalOptions } from './inspector-model.js';
-import { applyFieldChange, labelForField } from './inspector-apply.js';
-import { findNode } from './commands.js';
+import { describeSelection, globalOptions } from './model.js';
+import { applyFieldChange, labelForField } from './apply.js';
+import { findNode } from '../commands.js';
 import { validateThemeDocument } from '@vigilia/renderer-core';
 import type { ThemeDocument, ThemeNode } from '@vigilia/renderer-core';
 

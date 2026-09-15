@@ -1,11 +1,11 @@
 import type { Globals } from '@vigilia/renderer-core';
 import { buttonStyle, inputStyle, scrollAreaStyle, sectionHeadingStyle } from './button.js';
-import type { FieldChange } from './inspector-apply.js';
+import type { FieldChange } from './inspector/apply.js';
 import {
   globalOptions,
   type FieldDescriptor,
   type InspectorSection,
-} from './inspector-model.js';
+} from './inspector/model.js';
 
 /**
  * The inspector panel: descriptors in, edits out.
@@ -13,7 +13,7 @@ import {
  * Knows nothing about the document. It receives {@link InspectorSection}s,
  * renders a row per field, and reports `(key, change)` when the author changes
  * something. Every rule about what a field means lives in
- * `inspector-model.ts` and `inspector-apply.ts`, both of which are pure.
+ * `model.ts` and `apply.ts`, both of which are pure.
  *
  * ## Edits land on `change`, not on every keystroke
  *

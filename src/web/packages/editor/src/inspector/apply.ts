@@ -6,16 +6,16 @@ import {
   type ThemeNode,
   type Transform,
 } from '@vigilia/renderer-core';
-import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from './commands.js';
-import { normalizeDegrees } from './transform-gesture.js';
+import { findNode, renameNode, setNodeFlags, updateStyle, updateTransforms } from '../commands.js';
+import { normalizeDegrees } from '../transform-gesture.js';
 // Applying an edit consults the same declaration that built the control, so a
 // numeric field cannot be rendered as a number input and stored as a string.
-import { parseNumeric, styleFieldFor } from './inspector-model.js';
+import { parseNumeric, styleFieldFor } from './model.js';
 
 /**
  * Turning an inspector edit into a document edit.
  *
- * The counterpart to `inspector-model.ts`: that produces field descriptors from
+ * The counterpart to `model.ts`: that produces field descriptors from
  * a document, this consumes a field key plus a new value and produces the next
  * document. Both are pure, so the whole panel is testable without a DOM.
  *

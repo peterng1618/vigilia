@@ -45,8 +45,6 @@ import {
 import { EditorCore } from './core/editor.js';
 import { createOverlay } from './overlay.js';
 import { unionBounds } from './geometry.js';
-import { describeSelection } from './inspector-model.js';
-import { applyFieldChange, labelForField } from './inspector-apply.js';
 import { createInspector } from './inspector-panel.js';
 import { createLayersPanel, type LayerPanelAction } from './layers-panel.js';
 import { createButton } from './button.js';
@@ -211,15 +209,7 @@ function start(): void {
 
   const inspector = createInspector(body, {
     onChange(key, change) {
-      const document_ = editor.document.current;
-      const next = applyFieldChange(document_, editor.selection.ids, key, change);
-
-      // Identity: `applyFieldChange` returns the same document when a change
-      // did not apply — a refused value, an unknown key — and committing then
-      // would put an undo entry in history that does nothing.
-      if (next !== document_) {
-        editor.document.commit(labelForField(key), next);
-      } else {
+      if (!editor.inspector.edit(key, change)) {
         // Refused. The redraw guard compares against the last content
         // rendered, and a refused edit changes nothing — so without this the
         // panel skips the redraw and the author's rejected input stays on
@@ -739,8 +729,7 @@ function start(): void {
    * not.
    */
   const drawInspector = (): void => {
-    const document_ = editor.document.current;
-    const sections = describeSelection(document_, editor.selection.ids);
+    const sections = editor.inspector.sections();
     const key = JSON.stringify(sections);
 
     if (key === inspectorKey) {
@@ -748,7 +737,7 @@ function start(): void {
     }
 
     inspectorKey = key;
-    inspector.render(sections, document_.globals ?? {});
+    inspector.render(sections, editor.document.current.globals ?? {});
   };
 
   const drawLayers = (): void => {

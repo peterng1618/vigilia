@@ -1,6 +1,7 @@
 import { ArrangeManager } from '../arrange/index.js';
 import { DocumentManager } from '../document/index.js';
 import { GlobalsManager } from '../globals/index.js';
+import { InspectorManager } from '../inspector/index.js';
 import { LayersManager } from '../layers/index.js';
 import { NoticeManager } from '../notice/index.js';
 import { SelectionManager } from '../selection/index.js';
@@ -43,6 +44,7 @@ import type { EditorCore } from './editor.js';
  *    three.
  * 6. `snapping` — measures against the document.
  * 7. `layers` — projects document and selection into rows.
+ * 8. `inspector` — the same, into field descriptors, and edits back.
  */
 export const MANAGER_REGISTRATIONS = [
   {
@@ -72,6 +74,10 @@ export const MANAGER_REGISTRATIONS = [
   {
     key: 'layers',
     create: (editor: EditorCore) => new LayersManager({ editor }),
+  },
+  {
+    key: 'inspector',
+    create: (editor: EditorCore) => new InspectorManager({ editor }),
   },
 ] as const;
 

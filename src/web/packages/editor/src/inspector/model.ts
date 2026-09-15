@@ -11,7 +11,7 @@ import {
   type ThemeDocument,
   type ThemeNode,
 } from '@vigilia/renderer-core';
-import { findNode } from './commands.js';
+import { findNode } from '../commands.js';
 
 /**
  * What the inspector shows, as data.
