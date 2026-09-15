@@ -6,16 +6,9 @@ import { OsSensorProvider } from './providers/os.js';
 import { ProviderRegistry } from './providers/registry.js';
 import { createHostServer } from './server.js';
 
-/**
- * The launcher — what `npx vigilia` runs.
- *
- * Order matters and is the point of the whole file: bind, **wait until the
- * port actually answers**, then print and open a browser. A fixed sleep before
- * opening is a race that usually wins, and on a cold start loses — making a
- * new user's first experience a connection error page.
- */
+/** Launcher: bind, verify reachability, then print/open URLs. */
 
-/** ANSI dim/yellow, applied only to a TTY so piped output stays clean. */
+/** ANSI styling only for TTY output. */
 function style(code: string, text: string): string {
   return process.stdout.isTTY ? `\u001b[${code}m${text}\u001b[0m` : text;
 }
@@ -37,9 +30,7 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   const { port: wanted, host, openBrowser: shouldOpen } = parsed.options;
 
-  // The provider order IS the ownership table in spec 0010: the OS baseline
-  // provider is registered first, so a baseline dashboard never picks up a
-  // dependency on LibreHardwareMonitor for data the OS exposes reliably.
+  // Provider order defines ownership priority; baseline OS sensors come first.
   const registry = new ProviderRegistry([new OsSensorProvider()]);
 
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -76,8 +67,6 @@ export async function run(argv: readonly string[]): Promise<number> {
   console.log(`\nVigilia v${VERSION}`);
 
   if (bound !== wanted) {
-    // Never silent: someone is about to read this URL aloud to a person
-    // holding a phone.
     console.log(style('33', `Port ${wanted} was busy, so this is on ${bound}.`));
   }
 
@@ -94,8 +83,6 @@ export async function run(argv: readonly string[]): Promise<number> {
           (lan === undefined ? '' : ` Phones on this Wi-Fi: http://${lan}:${bound}`),
       ),
     );
-    // §7: plain LAN HTTP has no confidentiality. Saying so every time is
-    // cheap; a user discovering it later is not.
     console.log(
       style('33', '  Plain HTTP — trusted networks only, never the internet.'),
     );
@@ -110,8 +97,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     openBrowser(`${url}/editor`);
   }
 
-  // §7: a stopped host cannot restart itself through its own website, so
-  // process lifetime belongs here — to the terminal, and later the tray.
+  // Process lifetime belongs to the terminal until a tray host exists.
   await new Promise<void>((resolve) => {
     let stopping = false;
     const stop = (): void => {
