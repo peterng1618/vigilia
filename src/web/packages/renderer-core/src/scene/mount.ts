@@ -519,7 +519,9 @@ function applyCommonStyle(element: HTMLElement, style: ResolvedStyle, mode: Pain
     element.style.lineHeight = String(lineHeight);
   }
 
-  if (style['tabularNumerals'] === true) {
+  const tabularNumerals = style['tabularNumerals'];
+  if (tabularNumerals === true) {
+    // Use tabular figures when the font supports them.
     element.style.fontVariantNumeric = 'tabular-nums';
   }
 }
