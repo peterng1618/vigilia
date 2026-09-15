@@ -1,24 +1,4 @@
-/**
- * Renders a `ScenePlan` onto a Fabric canvas.
- *
- * This package exists to keep Fabric **out** of `@vigilia/renderer-core`, whose
- * barrel the Node host imports runtime values from. The boundary is therefore
- * structural rather than a convention: the host has no dependency edge to here,
- * so a browser scene graph cannot reach its bundle however carelessly someone
- * imports.
- *
- * Two rules apply to everything in this package, both asserted by
- * `packages/player/src/boundaries.test.ts`:
- *
- * - Import Fabric from **`fabric/es`** only. The default entry is one
- *   pre-bundled file no tree-shaker can see into — 95.0 KB gzip against
- *   49.3 KB for the same imports, with identical types.
- * - Never the interactive **`Canvas`**. The adapter works against a
- *   `StaticCanvas`, and `@vigilia/editor` constructs the interactive one, so
- *   the player never pays for +31.0 KB of pointer handling it cannot use.
- *
- * Spec 0013 has the measurements and the staging.
- */
+/** Fabric ScenePlan renderer. Keep Fabric out of renderer-core; player code uses `fabric/es` StaticCanvas only. */
 
 export type { ChartSerialisedKey, VigiliaChartOptions } from './chart-object.js';
 
