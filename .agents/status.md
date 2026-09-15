@@ -310,6 +310,16 @@ Pixel 7.
 and tokens, live telemetry, media, cleanup. A reader of this file alone would
 conclude the migration is a four-stage job.
 
+**`vigilia:verify` is now tiered** (2026-09-15, the user's call after that
+commit ran all five steps to check two prose files and a test comment). It grades
+the paths being committed — PROSE / UNIT / E2E / FULL — and runs only what the
+change can affect, safe because CI re-checks everything on push. Measured costs:
+typecheck ~25 s, unit tests 17 s, three builds 22 s, size gate instant, browser
+suite ~114 s. **Reports now name the tier**, so a figure that was measured can
+be told from a step that was not run. The two CI gaps above are what bound it:
+`phone-chromium` runs nowhere but locally, and CI typechecks five projects of
+six. See `decisions.md`.
+
 **1 — The editor manager refactor.** PAUSED at Phase 3, and partly overtaken:
 the managers Fabric replaces (selection, snapping, the transform half of
 arrange) do not need finishing, while `DocumentManager`, `GlobalsManager`,

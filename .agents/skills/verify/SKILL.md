@@ -8,7 +8,67 @@ description: Runs Vigilia's pre-commit gauntlet — typechecks, unit tests, bund
 Run this before committing, and before any claim that something works. §33: a
 ticked checkbox without observable behaviour and a test is not a pass.
 
-## Order matters
+## Scope first
+
+Running all five steps on a prose change is three minutes to learn nothing, and
+a gauntlet that costs that on every commit is one that gets skipped wholesale
+instead of scoped honestly. **CI is the backstop** — every push runs typecheck,
+unit tests, all three builds, the size gate and `desktop-chromium` — so scope
+locally, with the two things CI cannot cover:
+
+- **`phone-chromium` runs nowhere but here.** `ci.yml` passes
+  `--project=desktop-chromium`. Anything that could differ at a phone viewport —
+  §53 fit and letterboxing, text overflow, touch targets — is checked locally or
+  never.
+- **CI typechecks five projects, not six** (`scene-fabric` is absent from
+  `ci.yml`). Use `npm run typecheck`, which derives the list from the workspace.
+
+Grade the paths you are about to commit. Unknown paths grade **FULL**, so a new
+kind of file never silently downgrades:
+
+```bash
+git status --porcelain | cut -c4- | awk '
+  /^\.agents\//             { next }
+  /\.md$/                   { next }
+  /\.test\.ts$/             { t=1; next }
+  /^src\/web\/tests\/e2e\// { e=1; next }
+                            { f=1 }
+  END { print f ? "FULL" : e ? "E2E" : t ? "UNIT" : "PROSE" }'
+```
+
+`--porcelain` and not `git diff`, because `git diff` cannot see an **untracked**
+new file — which is the one change most likely to need the full run.
+
+| Tier | Changed | Run | Cost |
+|---|---|---|---|
+| **PROSE** | only `*.md`, `.agents/**` | nothing | — |
+| **UNIT** | also `*.test.ts` | 1–2 | ~40 s |
+| **E2E** | also `tests/e2e/**` | 1–3, 5 | ~2.5 min |
+| **FULL** | anything else — source, `schema/**`, a manifest, a config | 1–5 | ~3 min |
+
+**PROSE runs nothing because nothing reads it**, and that was checked rather
+than assumed: the only tests that touch disk read the *source tree*
+(`boundaries.test.ts`, both packages) and `schema/theme-document.schema.json`
+(`schema-sync.test.ts`). None reads `AGENTS.md`, a skill or a spec. A prose
+change still needs AGENTS.md's "propagate a consequence" read — that is a
+different obligation from a test run.
+
+Three things that look scopeable and are not:
+
+- **Never select unit tests by path.** The whole suite is 17 s, and this repo's
+  boundary tests live in a *different package* from the code they constrain:
+  `packages/player/src/boundaries.test.ts` is what fails when `renderer-core`
+  imports Fabric the expensive way. Path-based selection would miss precisely
+  the checks that span packages.
+- **A source file added or deleted is FULL even if no existing file changed.**
+  `boundaries.test.ts` walks the tree, so its input moved without any diff in a
+  file it already read.
+- **Comment-only edits to a source file still grade FULL.** The classifier keys
+  on paths, not on diff content, because "it is only a comment" is a judgement
+  and this repo prefers a mechanism. If you drop a tier on that basis, say so in
+  your report — CI will run it anyway.
+
+## Then, in order
 
 Each step is cheap relative to the one after it and fails for clearer reasons,
 so run them in this order and stop at the first failure.
@@ -16,29 +76,32 @@ so run them in this order and stop at the first failure.
 From `src/web/`:
 
 ```bash
-# 1. Typechecks — every project, derived from the workspace manifests.
+# 1. Typechecks, ~25 s — every project, derived from the workspace manifests.
 #    Use the script, never a hand-typed list of `tsc -p` paths: that list has
 #    been wrong in four separate files at once, because adding a package
 #    updates whichever copy the author was looking at.
 npm run typecheck
 
-# 2. Unit tests — seconds, and where a logic break shows up first.
+# 2. Unit tests, ~17 s — where a logic break shows up first.
 npm test
 
-# 3. Build. Required before 4 and 5; they measure and preview the BUILT output.
+# 3. Build, ~22 s for all three. Required before 4 and 5; they measure and
+#    preview the BUILT output. Cheap enough that it is never worth skipping
+#    once you have decided to run 4 or 5.
 npx vite build packages/player
 npx vite build packages/editor
 npx vite build packages/host
 
-# 4. The §47 display-only budget gate.
+# 4. The §47 display-only budget gate. Instant, given 3.
 npm run size
 
-# 5. Browser tests. Slowest, ~1.5 min.
+# 5. Browser tests, ~2 min. The only expensive step, and the flaky one.
 npm run test:e2e
 ```
 
 Then update [`.agents/status.md`](../../status.md) with the figures you just
-produced — before committing.
+produced — before committing. **Record the tier too**, so a later reader can
+tell a figure that was measured from one that was not run.
 
 ## The traps, in the order you will hit them
 
@@ -104,10 +167,12 @@ When staging, stage explicit paths. Never `git add -A`, never `git commit -a`.
 
 State what you ran and what you did not. Specifically:
 
+- **Name the tier and what it excluded.** "PROSE — no build, no suite" is a
+  complete report. "Verified" is not, because it reads as all five.
 - Numbers only from a run you actually executed in this session. Do not carry a
   count forward from a document — those go stale by hundreds within a
   milestone, which is why `AGENTS.md` no longer records them.
-- Name the layers you skipped, especially .NET and anything needing real
-  hardware or a real phone. A Pixel 7 *viewport* is not a Pixel 7.
+- Name the layers you skipped, especially anything needing real hardware or a
+  real phone. A Pixel 7 *viewport* is not a Pixel 7.
 - If tests fail, quote the failures. A summary that says "passing" over six
   failures is the worst possible output.

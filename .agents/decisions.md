@@ -218,6 +218,48 @@ the regression nobody predicted. Two on the roadmap plausibly cost something —
 the LHM provider reading a full sensor tree every cycle, and a 600-point line
 chart on a low-end phone. Reinstate this the moment anything starts costing.
 
+### Pre-commit verification is scoped to what changed, because CI is the backstop
+
+**Decided by:** the user, 2026-09-15, after a commit that changed two prose
+documents and one test comment ran the whole three-minute gauntlet.
+
+`vigilia:verify` grades the paths being committed into four tiers and runs only
+what the change can affect: nothing for prose, typecheck plus unit tests when a
+test file changed, and all five steps for source, schema, a manifest or a
+config. The tiers and the classifier live in that skill — one owner; this
+records why they are allowed to exist.
+
+Measured 2026-09-15: typecheck ~25 s, unit tests 17 s, all three builds 22 s,
+size gate instant, browser suite ~114 s. The browser suite is 60% of the cost
+and is the step with undiagnosed flakes, so it is the only one worth
+conditioning; the rest are cheap enough that scoping them trades real coverage
+for seconds.
+
+**What makes this safe is CI, not judgement.** Every push runs typecheck, unit
+tests, three builds, the size gate and `desktop-chromium`. Local scoping buys
+iteration speed on a change CI will re-check anyway.
+
+**Two exceptions, and they are the reopening conditions.** CI runs only
+`desktop-chromium`, so `phone-chromium` is checked locally or never; and CI
+typechecks five projects, not six. **If CI's coverage narrows — a step dropped,
+a project missed, the Playwright project list trimmed — the tier that relied on
+it stops being safe and this decision must be re-cut.** Widening CI to run
+`phone-chromium` would retire the first exception.
+
+**Rejected: selecting unit tests by path**, which is what "run the tests the
+change touched" literally asks for. This repo's boundary tests live in a
+different package from the code they constrain —
+`packages/player/src/boundaries.test.ts` is what fails when `renderer-core`
+imports Fabric the expensive way, and `boundaries.test.ts` walks the source tree
+so *adding* a file changes its input with no diff in anything it already read.
+Path-based selection would miss exactly the checks that span packages, to save
+17 seconds. The suite is run whole or not at all.
+
+**Also rejected: classifying by diff content** rather than by path, so that a
+comment-only edit to a source file could skip the build. "It is only a comment"
+is a judgement, and AGENTS.md prefers a mechanism; the classifier keys on paths
+and a dropped tier has to be stated in the report.
+
 ---
 
 ## Open — need a human

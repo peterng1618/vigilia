@@ -25,4 +25,4 @@ For anything AGENTS.md deliberately does not hold:
 | Why something was decided | [`../../decisions.md`](../../decisions.md) |
 | What cost time here before | [`../../lessons.md`](../../lessons.md) |
 | Current figures and what is unverified | [`../../status.md`](../../status.md) |
-| The pre-commit gauntlet, in the order that works | `vigilia:verify` |
+| The pre-commit gauntlet, scoped to what changed | `vigilia:verify` |

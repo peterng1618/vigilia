@@ -266,7 +266,7 @@ Invoke as `vigilia:<name>`.
 
 | Skill | Use when |
 |---|---|
-| `vigilia:verify` | Checking work before committing — the full gauntlet, in the order that works |
+| `vigilia:verify` | Checking work before committing — grades the change into a tier, then runs that tier in the order that works |
 | `vigilia:code-review` | Reviewing a diff for what static analysis cannot see |
 | `vigilia:create-pr` | Opening a PR |
 | `vigilia:write-adr` | Recording a decision, or choosing between a decision, a spec and a gate entry |
