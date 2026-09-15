@@ -27,8 +27,8 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,159 passed across 57 files (2026-09-15) |
-| Typechecks | six projects, clean locally — **CI checks only five**, `scene-fabric` is absent from `ci.yml:39-44` (2026-09-15) |
+| Unit tests | 1,160 passed across 57 files (2026-09-15) |
+| Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed (2026-09-15) — clean on the first attempt on the last run, and on the *third* attempt on the run before it, where the first two each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
 | §47 size gate | 201.1 KB gzip / 400 KB (2026-09-15) |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
@@ -222,7 +222,7 @@ geometry; and the origin written as `center` rather than the deprecated `left`.
 | Check | Result (2026-09-15) |
 |---|---|
 | Unit tests | 1,157 passed across 56 files |
-| Typechecks | six projects, clean locally — **CI checks only five**, `scene-fabric` is absent from `ci.yml:39-44` (2026-09-15) |
+| Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
 | Builds | player, editor, host all build |
 | §47 size gate | 201.1 KB gzip / 400 KB — unchanged, nothing imports `scene-fabric` yet |
 | Host bundle | 34.36 kB |
@@ -272,9 +272,9 @@ throughout (marked *review 2026-09-15*). Ranked:
 | ~~**`grid.containLabel` has been inert app-wide**~~ — **fixed, and the finding was half wrong.** The deprecation warning was real; "labels reserve no space anywhere" was inferred from it and is false. Measured: the deprecated key lays out *identically* to its replacement. The builders moved to `outerBoundsMode`/`outerBoundsContain` under one owner, `charts/grid.ts`, and `grid.dom.test.ts` measures the layout instead of asserting a key | done; table in `decisions.md` |
 | **`subTargetCheck`, `interactive` and `layoutManager`** are forced into Fabric's own `Group.toObject` — editor state and engine internals in a portable document, with no rule governing them | spec 0013, *Settle before stage 3* |
 | **Custom properties serialise by reference**: `chart.toObject().settings === the live object`, so a later in-place edit rewrites an earlier snapshot. Same defect class as the §67 rule, different door | spec 0013, *Telemetry* |
-| **`jsdom` and `canvas` are undeclared** — both are *optional* deps of `fabric@7.4.0`, and `chart-object.dom.test.ts` needs both | spec 0013 stage 2 |
-| **CI does not typecheck `scene-fabric`** | spec 0013 stage 2 |
-| **`StaticCanvas.loadFromJSON` has no test**, only `VigiliaChart.fromObject`. Confirmed working during review | spec 0013 stage 2 |
+| ~~**`jsdom` and `canvas` are undeclared**~~ — **fixed.** Root devDependencies beside vitest, and in `THIRD-PARTY-NOTICES.md`. `canvas` is native, so npm continued silently when a prebuild was missing and the DOM tests lost their 2D context without failing | done |
+| ~~**CI does not typecheck `scene-fabric`**~~ — **fixed**, by calling `npm run typecheck`. Residual: `--if-present` still skips a package with no such script, in silence | done, residual noted in spec 0013 stage 2 |
+| ~~**`StaticCanvas.loadFromJSON` has no test**~~ — **fixed.** Verified by sabotage: dropping `classRegistry.setClass` fails the new test and leaves the other eleven in that file green | done |
 | **The boundary test has three holes**, one asserted as intended (`* as fabric`), plus a comment about `fabric/extensions` that is factually wrong. Comment fixed on this branch | spec 0013 *Risks*; `boundaries.test.ts` |
 | Prose corrections: §85's gap list does not contain the four canvas-text gaps; §126 is deferred, not "dropped"; §2 does not exist; `mount.ts` is 766 not 767 and `plan.ts` 692 not 687; the E2E DOM hooks are 233 lines / 71 `expect()` calls, not 57 | spec 0013, throughout |
 

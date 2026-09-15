@@ -819,23 +819,26 @@ Each stage ends green and committed.
      complains — which is the regression guard — and that containment is
      observable in the layout, which is what the two key-asserting unit tests
      should have done.
-   - **`StaticCanvas.loadFromJSON` has no test**, only `VigiliaChart.fromObject`
-     does — yet the canvas path is what stage 3 depends on, and it is the one
-     that needs `classRegistry.setClass` to have run and the `sideEffects`
-     declaration to have survived bundling. `package.json`'s comment names
-     `chart-object.dom.test.ts` as the thing that would catch a regression; it
-     would not. Confirmed working during review; add the ~7-line test.
-   - **CI does not typecheck `scene-fabric`.** `ci.yml:39-44` enumerates five
-     projects by hand while `npm run typecheck` runs six. AGENTS.md says why
-     that shape is wrong, and the step's own comment ("Five projects, not four")
-     shows it has failed this way before. A type error in `chart-object.ts`
-     passes CI today. Use the npm script.
-   - **`jsdom` and `canvas` are undeclared.** Both are **optional** dependencies
-     of `fabric@7.4.0`, and `chart-object.dom.test.ts` — the only test that
-     mounts a chart or exercises the origin override — needs both. `canvas` is
-     native; if its prebuild is unavailable npm continues silently and the test
-     environment quietly loses its 2D context. Declare both as devDependencies,
-     which also puts them through the licence job.
+   - ~~**`StaticCanvas.loadFromJSON` has no test**~~ — **done.** The canvas path
+     is what stage 3 depends on and the one that needs `classRegistry.setClass`
+     to have run. Verified by sabotage: dropping the registration fails the new
+     test and **leaves the other eleven in that file green**, which is the
+     review's point about `package.json`'s comment naming it as the guard.
+   - ~~**CI does not typecheck `scene-fabric`**~~ — **done**, by running
+     `npm run typecheck` rather than a hand-written list. The list had drifted
+     twice: the host was added late, then `scene-fabric` became the sixth and
+     the comment still said five. **Residual, not closed:** the script passes
+     `--if-present`, so a package with no `typecheck` script is skipped in
+     silence. Closing that needs a manifest invariant asserted somewhere, and
+     no test in this workspace reads manifests yet.
+   - ~~**`jsdom` and `canvas` are undeclared**~~ — **done**, as root
+     devDependencies beside vitest, which is what owns `environment` for the
+     workspace. Both were reachable only as **optional** dependencies of
+     `fabric@7.4.0`; `canvas` is native, so npm continues silently when its
+     prebuild is unavailable and the DOM tests would have lost their 2D context
+     without failing. Both are now in `THIRD-PARTY-NOTICES.md` with licences
+     read from their own metadata, and `renderer-core/src/charts/grid.dom.test.ts`
+     is a second consumer.
 3. **Document bridge.** `ScenePlan` → Fabric for every `PlanContent` kind, and
    the persisted scene moves to Fabric's object format inside the envelope:
    `toObject`/`loadFromJSON` round-trip, the Fabric major version recorded,

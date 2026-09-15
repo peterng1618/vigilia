@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Group } from 'fabric/es';
+import { Group, StaticCanvas } from 'fabric/es';
 import { describe, expect, it } from 'vitest';
 import {
   buildBarOption,
@@ -217,6 +217,45 @@ describe('the serialised object', () => {
     expect(revived.angle).toBe(37);
     expect(revived.originX).toBe('center');
     expect(revived.option).toBeUndefined();
+    revived.dispose();
+  });
+});
+
+describe('the canvas round trip', () => {
+  it('revives a chart through StaticCanvas.loadFromJSON', async () => {
+    // The path stage 3 actually depends on, which had no test: only
+    // `VigiliaChart.fromObject` did, and calling that directly proves the class
+    // can revive itself while saying nothing about whether the *canvas* can
+    // find it. That needs `classRegistry.setClass` to have run — which happens
+    // on import of `chart-object.ts`, and is exactly what `package.json`'s
+    // `sideEffects` entry stops a bundler from dropping.
+    const source = new StaticCanvas(undefined, { width: 400, height: 300 });
+    const chart = new VigiliaChart(chartOptions({ left: 150, top: 90, angle: 37 }));
+
+    source.add(chart);
+
+    const json = source.toObject();
+    source.dispose();
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await revived.loadFromJSON(json);
+
+    const objects = revived.getObjects();
+
+    expect(objects).toHaveLength(1);
+
+    const [first] = objects;
+
+    // The assertion that matters: a real `VigiliaChart`, not the plain
+    // `FabricObject` the registry falls back to when a class is unknown.
+    expect(first).toBeInstanceOf(VigiliaChart);
+    expect((first as VigiliaChart).family).toBe('line');
+    expect((first as VigiliaChart).settings).toEqual(defaultLineSettings);
+    expect(first?.angle).toBe(37);
+    // Derived, so it does not survive — `plan.ts` re-supplies it, which is the
+    // normal render path.
+    expect((first as VigiliaChart).option).toBeUndefined();
+
     revived.dispose();
   });
 });

@@ -98,6 +98,26 @@ no TypeScript runtime ships. Licence read from the installed package's own
 
 Unit test runner. Test-time only; never bundled.
 
+## jsdom — MIT
+
+`jsdom` 26.1.0. Test-time only; never bundled. The environment the
+`*.dom.test.ts` files run in, where `echarts.init` and Fabric need a `document`.
+Licence verified 2026-09-15 from the package's own `package.json`
+(`"license": "MIT"`) and its bundled `LICENSE.txt`.
+
+## node-canvas (`canvas`) — MIT
+
+`canvas` 3.2.3. Test-time only; never bundled — the browser supplies the real
+thing, and this exists so a `*.dom.test.ts` gets a 2D context that actually
+rasterises. Licence verified 2026-09-15 from the package's own `package.json`
+(`"license": "MIT"`); the published tarball carries no `LICENSE` file.
+
+**Native module.** It compiles or downloads a prebuilt binary at install time
+and links against Cairo, Pango and libjpeg, which carry their own licences
+(LGPL-2.1 / MPL-1.1 for Cairo, LGPL-2.1 for Pango). Nothing here is
+redistributed by Vigilia: no published artefact contains it and no runtime
+loads it.
+
 ## Playwright (`@playwright/test`) — Apache-2.0
 
 Browser test runner. Test-time only; never bundled. Downloads its own Chromium
