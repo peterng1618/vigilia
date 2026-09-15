@@ -14,37 +14,10 @@ import {
 import { collectIds, deleteNodes, findNode, insertNodes, updateTransforms } from '../commands.js';
 
 /**
- * Grouping, ungrouping, alignment and distribution.
- *
- * Pure: document in, document out. Every rule about what is *refused* lives
- * here too, and each refusal returns the document unchanged so the caller skips
- * the undo entry by identity.
- *
- * ## Why some of these refuse instead of approximating
- *
- * §57 says transforms **compose** rather than being baked. Grouping and
- * ungrouping move a node between parents, which is the one operation that
- * cannot honour that: the node's coordinates have to be re-expressed in a new
- * parent's space, and for some ancestries the result is not representable at
- * all.
- *
- * The format allows a transform to be `translate × rotate(θ) × scale(sx, sy)`
- * about the node's centre. Composing two of those gives a linear part
- * `R(a)·S(g) · R(b)·S(c)`, which collapses back into the same form only when
- *
- * - the outer scale is **uniform** — then it commutes with the inner rotation —
- *   or
- * - the inner rotation is **zero**.
- *
- * Otherwise the product is a **shear**, and no `{rotation, scaleX, scaleY}`
- * expresses it. Baking it approximately would move the author's artwork by an
- * amount nobody asked for, so {@link ungroupNodes} refuses and says why.
- *
- * This is not a theoretical case: a group scaled 2× on one axis containing a
- * rotated child is three clicks away.
+ * Legacy grouping/alignment until Fabric owns these operations. Ungroup refuses
+ * transform compositions that would introduce shear not representable by the schema.
  */
 
-/** Why an arrange operation could not be performed. */
 export type ArrangeRefusal =
   | 'nothing-selected'
   | 'needs-two'
@@ -55,13 +28,10 @@ export type ArrangeRefusal =
 
 export interface ArrangeResult {
   readonly document: ThemeDocument;
-  /** Set when the document was returned unchanged. */
   readonly refused?: ArrangeRefusal;
-  /** Ids to select afterwards, when the operation changed what should be selected. */
   readonly select?: readonly string[];
 }
 
-/** Human-readable, for a status bar. */
 export function describeRefusal(refusal: ArrangeRefusal): string {
   switch (refusal) {
     case 'nothing-selected':
@@ -79,19 +49,7 @@ export function describeRefusal(refusal: ArrangeRefusal): string {
   }
 }
 
-/**
- * Wraps the selection in a new group.
- *
- * The group takes the selection's bounding box in the shared parent's space,
- * and each child's coordinates become relative to it. Children keep their
- * relative paint order, and the group is inserted where the **topmost** member
- * was, so grouping does not change what covers what.
- *
- * Refuses a selection spanning more than one parent. Re-parenting across
- * ancestries needs each node's coordinates re-expressed in a different space,
- * which is the shear problem described in the module comment — and "group these
- * three, two of which are in another group" has no obvious right answer anyway.
- */
+/** Group same-parent nodes, preserving child and paint order. */
 export function groupNodes(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -123,16 +81,13 @@ export function groupNodes(
     return { document: document_, refused: 'mixed-parents' };
   }
 
-  // Document order, so the group's children keep the paint order they had.
   const members = siblings.filter((node) => chosen.includes(node.id));
 
   if (members.length !== chosen.length) {
     return { document: document_, refused: 'mixed-parents' };
   }
 
-  // The box in the PARENT's space, which is the space the group's own transform
-  // is written in. Using world bounds here would offset the group by every
-  // ancestor's translation.
+  // Group geometry is expressed in the shared parent's coordinate space.
   const box = parentSpaceBounds(members);
 
   const children = members.map((node) => ({
@@ -157,8 +112,6 @@ export function groupNodes(
     children,
   };
 
-  // Insert where the topmost member was, so the group covers exactly what its
-  // contents covered.
   const topmost = members.at(-1);
   const index = siblings.findIndex((node) => node.id === topmost?.id);
   const removed = deleteNodes(document_, new Set(chosen));
@@ -170,15 +123,7 @@ export function groupNodes(
   };
 }
 
-/**
- * Replaces each selected group with its children.
- *
- * Each child's transform absorbs the group's, so nothing moves. That is the one
- * place this editor bakes a transform, and it is unavoidable: the child is
- * changing parents, so its coordinates must be re-expressed.
- *
- * Refuses when the composition is not representable — see the module comment.
- */
+/** Ungroup by composing group transform into each child; refuse shear. */
 export function ungroupNodes(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -208,10 +153,7 @@ export function ungroupNodes(
         return { document: document_, refused: 'would-shear' };
       }
 
-      // A hidden group hides its children via inheritance (§61 / spec 0012).
-      // Ungrouping must not reveal them: visible:false is applied even when a
-      // child explicitly held true, because true could not override its hidden
-      // ancestor before the group was removed.
+      // Preserve inherited hidden state after removing the group.
       const childWithTransform = { ...child, transform } as ThemeNode;
       composed.push(group.visible === false ? { ...childWithTransform, visible: false } : childWithTransform);
       selected.push(child.id);
@@ -234,17 +176,9 @@ export function ungroupNodes(
   return { document: next, select: selected };
 }
 
-/** Which edge or axis to align to. */
 export type AlignEdge = 'left' | 'centre' | 'right' | 'top' | 'middle' | 'bottom';
 
-/**
- * Aligns the selection within its own bounding box.
- *
- * To the selection's bounds rather than the artboard's: aligning two nodes to
- * the artboard's left edge stacks them in a corner, which is never what the
- * gesture means. A single node has bounds equal to itself, so aligning one node
- * is a no-op rather than a jump — hence the two-node requirement.
- */
+/** Align within the selection's own bounds. */
 export function alignNodes(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -284,15 +218,7 @@ export function alignNodes(
   return { document: updateTransforms(document_, transforms) };
 }
 
-/**
- * Spreads the selection so the **gaps** between neighbours are equal.
- *
- * Equal gaps, not equal centre spacing. With mixed sizes the two differ, and
- * equal gaps is what "distribute" means to anyone looking at the result — equal
- * centres leaves a wide element visually crowding its neighbours.
- *
- * The outermost two do not move: they define the span.
- */
+/** Distribute equal gaps; outermost items define the span. */
 export function distributeNodes(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -305,8 +231,6 @@ export function distributeNodes(
   }
 
   if (movable.length < 3) {
-    // Two nodes are already "distributed" whatever the spacing, so this would
-    // be a no-op that still wrote an undo entry.
     return { document: document_, refused: 'needs-two' };
   }
 
@@ -351,7 +275,6 @@ export function distributeNodes(
   return { document: updateTransforms(document_, transforms) };
 }
 
-/** The selection, filtered to what may actually be arranged. */
 function arrangeable(
   document_: ThemeDocument,
   ids: readonly string[],
@@ -396,13 +319,7 @@ function alignDelta(edge: AlignEdge, box: Bounds, total: Bounds): { x: number; y
   }
 }
 
-/**
- * Applies a world-space delta to a node's own coordinates.
- *
- * The delta is measured between world bounds, and `x`/`y` are in the parent's
- * space (§57) — the same conversion a drag needs, and wrong in the same
- * invisible way if skipped.
- */
+/** Convert a world-space alignment delta to the node's parent space. */
 function shift(
   transform: Transform | undefined,
   delta: { x: number; y: number },
@@ -426,11 +343,7 @@ function shift(
   };
 }
 
-/**
- * A child's transform with its parent group's absorbed into it.
- *
- * Returns undefined when the result would be a shear — see the module comment.
- */
+/** Compose group and child transforms; undefined means the result would shear. */
 export function composeTransforms(
   group: Transform | undefined,
   child: Transform | undefined,
@@ -449,14 +362,7 @@ export function composeTransforms(
 
   const rotation = groupRotation + childRotation;
 
-  // The group's scale goes into the child's SIZE, and its own scale factors are
-  // left alone — a scaled group is usually a layout decision, and a baked size
-  // is what an author edits next. Multiplying both would apply the group's
-  // scale twice, which is exactly what the first version did: a 2× group made
-  // its child 2× bigger *and* kept it at scale 2, so it ended up 4× on screen.
-  //
-  // The child's own scale still multiplies its size at render time, so the
-  // product `size × scale` is preserved either way.
+  // Bake group scale into child size; preserve the child's own scale factors.
   const scaleX = child?.scaleX ?? 1;
   const scaleY = child?.scaleY ?? 1;
   const width = (child?.width ?? 0) * groupScaleX;
@@ -464,9 +370,6 @@ export function composeTransforms(
 
   const target = multiply(localMatrix(child), localMatrix(group));
 
-  // Solve for x/y instead of deriving them: `localMatrix` applies the
-  // translation LAST, so whatever the rotate-scale part produces, x/y are
-  // exactly the difference between where it lands and where it must land.
   const base: Transform = {
     ...withoutPosition(child),
     ...(rotation === 0 ? {} : { rotation }),
@@ -491,7 +394,7 @@ function withoutPosition(transform: Transform | undefined): Transform {
   return rest;
 }
 
-/** Bounds of a set of siblings in their shared parent's space. */
+/** Bounds of siblings in their shared parent's space. */
 function parentSpaceBounds(nodes: readonly ThemeNode[]): Bounds {
   const boxes = nodes.map((node) =>
     worldBounds({
@@ -522,7 +425,6 @@ function childrenOf(document_: ThemeDocument, parentId: string): readonly ThemeN
   return parent?.type === 'group' ? parent.children : undefined;
 }
 
-/** An id for a new group that is free in this document. */
 export function freeGroupId(document_: ThemeDocument, base = 'group'): string {
   const taken = collectIds(document_.nodes);
 
