@@ -12,30 +12,7 @@ import {
   type ThemeDocument,
 } from './document.js';
 
-/**
- * Validates a parsed theme document (§141).
- *
- * ## Why this is hand-written
- *
- * The rules that matter most cannot be expressed in JSON Schema: that a style
- * value's `ref` resolves to a global that exists, that node and binding IDs are
- * unique, that a text run's `bindingId` names a binding **on its own node**,
- * that the tree is bounded in depth and count, and that a chart's settings suit
- * its family. A generic validator would check the shape and miss all of those.
- *
- * It also keeps the player dependency-free, which §47's bundle budget depends
- * on, and lets every message name the specific authoring mistake.
- *
- * `schema/theme-document.schema.json` stays the published contract. The shared
- * constants are asserted equal to it by `schema-sync.test.ts`.
- *
- * ## All issues, except for the version
- *
- * Import UX needs every problem at once, so checks accumulate. The one exception
- * is the schema version: §141 requires an unsupported version to fail **without
- * changing the library**, and reporting fifty type errors from a format we
- * admittedly do not understand would be noise at best and misleading at worst.
- */
+/** Validates parsed theme documents, including cross-reference and structural invariants. */
 
 export type IssueCode =
   | 'not-an-object'
@@ -59,7 +36,7 @@ export type IssueCode =
 
 export interface ValidationIssue {
   readonly code: IssueCode;
-  /** JSON Pointer into the document, so an editor can navigate to the fault. */
+  /** JSON Pointer for editor navigation. */
   readonly path: string;
   readonly message: string;
 }
@@ -68,7 +45,7 @@ export type ValidationResult =
   | { readonly ok: true; readonly document: ThemeDocument }
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
 
-/** Bindings a node type can consume. A binding nothing reads is an error, not a no-op. */
+/** Bindings each node type may consume. */
 const BINDING_ARITY: Record<
   (typeof NODE_TYPES)[number],
   { readonly min: number; readonly max: number }
@@ -77,14 +54,12 @@ const BINDING_ARITY: Record<
   rectangle: { min: 0, max: 0 },
   ellipse: { min: 0, max: 0 },
   line: { min: 0, max: 0 },
-  // A text element may mix several live values with literals across styled runs.
   text: { min: 0, max: 64 },
   chart: { min: 1, max: 64 },
   image: { min: 0, max: 0 },
   video: { min: 0, max: 0 },
 };
 
-/** A gauge reads one value against a range; more than one has no meaning. */
 const CHART_BINDING_ARITY: Record<
   (typeof CHART_FAMILIES)[number],
   { readonly min: number; readonly max: number }
@@ -95,22 +70,7 @@ const CHART_BINDING_ARITY: Record<
   pie: { min: 1, max: 64 },
 };
 
-/**
- * Known keys per shape, mirroring the schema's `additionalProperties: false`.
- *
- * These exist to catch the most common authoring mistake there is: a typo. A
- * document with `"visable": true` is valid JSON, passes every other check, and
- * silently renders a node the author believed they had hidden. Ignoring unknown
- * keys makes that invisible; rejecting them names the line.
- *
- * Forward compatibility is *not* what this trades away. A field a newer build
- * introduces comes with a `schemaVersion` bump, which is rejected earlier and
- * with a clearer message (§141). Within one declared version, an unexpected
- * field means something is wrong.
- *
- * `schema-sync.test.ts` asserts each of these against the schema's own
- * `properties`, so the two cannot drift apart silently.
- */
+/** Known keys mirror schema shapes with `additionalProperties: false`. */
 const KNOWN_KEYS = {
   document: ['schemaVersion', 'id', 'metadata', 'artboard', 'globals', 'nodes', 'assets', 'editorMetadata'],
   metadata: ['name', 'author', 'description', 'createdAt', 'updatedAt'],
@@ -199,7 +159,7 @@ const KNOWN_KEYS = {
 
 export type KnownKeyShape = keyof typeof KNOWN_KEYS;
 
-/** The key lists above, for the drift guard in `schema-sync.test.ts`. */
+/** Exposed for schema drift tests. */
 export function knownKeysFor(shape: KnownKeyShape): readonly string[] {
   return KNOWN_KEYS[shape];
 }
@@ -211,13 +171,7 @@ class Issues {
     this.list.push({ code, path, message });
   }
 
-  /**
-   * Rejects keys the shape does not declare.
-   *
-   * The message suggests the nearest known key when there is an obvious one,
-   * because the whole value of this check is turning "my theme does nothing"
-   * into "line 14 says visable".
-   */
+  /** Rejects unknown keys and suggests a close declared key when useful. */
   unknownKeys(
     value: Record<string, unknown>,
     path: string,
@@ -243,7 +197,6 @@ class Issues {
     }
   }
 
-  /** True when `value` is a plain object; records an issue and returns false otherwise. */
   object(value: unknown, path: string, what: string): value is Record<string, unknown> {
     if (!isRecord(value)) {
       this.add('wrong-type', path, `${what} must be an object.`);
@@ -286,7 +239,6 @@ class Issues {
   }
 }
 
-/** Validates a parsed JSON value as a theme document. */
 export function validateThemeDocument(input: unknown): ValidationResult {
   const issues = new Issues();
 
@@ -294,8 +246,7 @@ export function validateThemeDocument(input: unknown): ValidationResult {
     return { ok: false, issues: [{ code: 'not-an-object', path: '', message: 'The document must be a JSON object.' }] };
   }
 
-  // §141: version first, and alone. Anything else we might report about a format
-  // we do not understand would be speculation.
+  // Version is checked first and alone; other validation would interpret an unknown format.
   const versionIssue = checkSchemaVersion(input['schemaVersion']);
   if (versionIssue) {
     return { ok: false, issues: [versionIssue] };
@@ -309,7 +260,7 @@ export function validateThemeDocument(input: unknown): ValidationResult {
   }
 
   if (!issues.stableId(input['id'], '/id', 'The document id')) {
-    // Keep going: an unusable id does not stop the rest from being checked.
+    // Continue to report all errors in this supported format.
   }
 
   validateArtboard(issues, input['artboard']);
@@ -326,9 +277,7 @@ export function validateThemeDocument(input: unknown): ValidationResult {
     return { ok: false, issues: issues.list };
   }
 
-  // The checks above establish every field this cast asserts. It is the one
-  // unchecked narrowing in the module, and it is sound only because of them —
-  // an early return added above it would silently make it a lie.
+  // All fields have been narrowed by the checks above.
   return { ok: true, document: input as unknown as ThemeDocument };
 }
 
@@ -391,7 +340,7 @@ function validateArtboard(issues: Issues, value: unknown): void {
   }
 }
 
-/** Returns the set of valid `group.id` references. */
+/** Returns valid `group.id` references. */
 function validateGlobals(issues: Issues, value: unknown): Set<string> {
   const keys = new Set<string>();
 
@@ -443,7 +392,7 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
   return keys;
 }
 
-/** Returns the set of declared asset IDs. */
+/** Returns declared asset IDs. */
 function validateAssets(issues: Issues, value: unknown): Set<string> {
   const ids = new Set<string>();
 
@@ -490,14 +439,7 @@ function validateAssets(issues: Issues, value: unknown): Set<string> {
   return ids;
 }
 
-/**
- * Checks an asset path.
- *
- * The traversal check is NOT redundant with the pattern. `ASSET_PATH_PATTERN`
- * permits `.`, `/` and `-`, so `assets/../../secrets.env` matches it — the
- * schema's own description claims traversal is rejected, but its pattern alone
- * does not do that. Rejecting a `..` segment is the part that actually holds.
- */
+/** Pattern matching alone does not reject `..`; traversal is checked explicitly. */
 function validateAssetPath(issues: Issues, value: unknown, path: string): void {
   if (typeof value !== 'string') {
     issues.add('missing-field', path, 'An asset needs a package-relative path.');
@@ -586,7 +528,6 @@ function validateNode(
   if (issues.stableId(value['id'], `${path}/id`, 'A node id')) {
     const id = value['id'] as string;
     if (context.nodeIds.has(id)) {
-      // §75: links are by stable id, so a duplicate makes them ambiguous.
       issues.add('duplicate-id', `${path}/id`, `Node id "${id}" is used more than once.`);
     }
     context.nodeIds.add(id);
@@ -615,13 +556,7 @@ function validateNode(
   validateContent(issues, value, path, type, ownBindingIds, context, depth);
 }
 
-/**
- * Checks an inserted widget's provenance stamp (§138).
- *
- * Only `widgetId` is required. A widget exported without a name or version is
- * still a widget, and rejecting the stamp would lose the only record of where a
- * subtree came from.
- */
+/** Only widgetId is required on provenance. */
 function validateProvenance(issues: Issues, value: unknown, path: string): void {
   if (value === undefined) {
     return;
@@ -695,12 +630,7 @@ function validateStyleMap(
   }
 }
 
-/**
- * §75: either a global reference or a local literal, and the document must say
- * which. Both together is rejected rather than resolved by precedence — a
- * silent winner is how a theme ends up showing a colour nobody can find in the
- * inspector.
- */
+/** Style values must declare exactly one of `ref` or `value`. */
 function validateStyleValue(
   issues: Issues,
   value: unknown,
@@ -764,7 +694,7 @@ function validateStyleValue(
   }
 }
 
-/** Returns the binding IDs declared on this node. */
+/** Returns binding IDs declared on this node. */
 function validateBindings(
   issues: Issues,
   value: unknown,
@@ -812,8 +742,6 @@ function validateBindings(
 
     const key = binding['semanticKey'];
     if (typeof key !== 'string' || key.length === 0 || key.length > 120) {
-      // §93: the semantic key is the whole point of a binding — a provider
-      // instance id here would defeat provider replacement.
       issues.add('missing-field', `${bindingPath}/semanticKey`, 'A binding needs a semantic key of 1–120 characters.');
     }
 
@@ -972,9 +900,7 @@ function validateTextContent(
       if (typeof bindingId !== 'string') {
         issues.add('missing-field', `${runPath}/bindingId`, 'A value run needs a bindingId.');
       } else if (!ownBindingIds.has(bindingId)) {
-        // Deliberately node-local. A run reading another node's binding would
-        // make a text element's data depend on a node it has no relationship
-        // to, and moving either one would break it invisibly.
+        // Value runs may reference bindings on their own node only.
         issues.add(
           'unresolved-binding-ref',
           `${runPath}/bindingId`,
@@ -1028,12 +954,7 @@ function validateChartContent(
   validateSettingsRange(issues, settings, `${path}/settings`, family);
 }
 
-/**
- * Checks the numeric invariants that would otherwise render nothing or divide by
- * zero. This is not a full settings validation: the adapters clamp their own
- * cosmetic inputs, and duplicating every bound here would be a second place to
- * keep in sync. What is checked here is what the adapters cannot recover from.
- */
+/** Validates only settings invariants adapters cannot recover from. */
 function validateSettingsRange(
   issues: Issues,
   settings: Record<string, unknown>,
@@ -1063,8 +984,6 @@ function validateSettingsRange(
     return;
   }
 
-  // Pie. A zero-width ring draws nothing, which looks like a broken theme
-  // rather than an authoring mistake.
   const inner = settings['innerRadiusPercent'];
   const outer = settings['outerRadiusPercent'];
 
@@ -1085,13 +1004,7 @@ function validateSettingsRange(
   }
 }
 
-/**
- * The known key closest to a misspelling, or undefined if none is close.
- *
- * Case-insensitive Levenshtein with a distance cap of 3, which catches
- * `visable`, `strokewidth` and `cornerRadious` without inventing a suggestion
- * for a key that was simply never part of the format.
- */
+/** Returns a close known key for typo diagnostics, capped at edit distance 3. */
 function nearestKey(key: string, allowed: readonly string[]): string | undefined {
   let best: string | undefined;
   let bestDistance = 4;
@@ -1109,8 +1022,7 @@ function nearestKey(key: string, allowed: readonly string[]): string | undefined
 }
 
 function editDistance(a: string, b: string): number {
-  // Single-row Levenshtein: the inputs are property names, so this runs on
-  // strings of a dozen characters and allocating a matrix would be wasteful.
+  // Single-row Levenshtein is enough for short property names.
   let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
 
   for (let i = 1; i <= a.length; i++) {
