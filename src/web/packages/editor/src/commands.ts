@@ -5,27 +5,8 @@ import type {
   Transform,
 } from '@vigilia/renderer-core';
 
-/**
- * Document edits, as pure functions.
- *
- * Every edit returns a **new** document and leaves the old one untouched, which
- * is what makes undo a matter of keeping the previous value rather than
- * computing an inverse. Inverse operations are where undo implementations go
- * wrong: "un-delete" has to restore a node *and* its position among its
- * siblings *and* anything that referenced it, and each of those is a separate
- * chance to be subtly wrong. Keeping whole documents costs memory and cannot be
- * subtly wrong.
- *
- * ## Structural sharing, not deep cloning
- *
- * Only the nodes on the path to a change are rebuilt; untouched subtrees are
- * reused by reference. A theme is bounded at 5000 nodes, so a naive deep clone
- * per keystroke would be affordable — but reference equality is what lets a UI
- * skip re-rendering a panel that did not change, and that matters more than the
- * allocation.
- */
+/** Pure immutable document edits with structural sharing. */
 
-/** Replaces the transforms of several nodes at once. */
 export function updateTransforms(
   document: ThemeDocument,
   transforms: ReadonlyMap<string, Transform>,
@@ -43,33 +24,9 @@ export function updateTransforms(
   };
 }
 
-/**
- * Rounds a transform to whole artboard units.
- *
- * **Geometry here is integral by decision** — positions, sizes and rotation are
- * whole numbers, so the inspector's controls step by 1 and a typed fraction
- * lands on the nearest unit. A dashboard is laid out on a pixel grid at a fixed
- * artboard size; sub-unit placement buys nothing and costs legibility.
- *
- * It also removes a real defect. Every gesture composes and inverts matrices,
- * and floating-point error survives that arithmetic: dragging a node 37 px
- * wrote `89.99999999999994` into the document rather than `90`. The inspector
- * showed a fourteen-digit number in a 60 px field, saved themes carried the
- * dirt, and a re-save produced a noisy diff for a drag that had visually landed
- * on a round number.
- *
- * Applied here because **every** transform write goes through
- * `updateTransforms` — the gesture layer, the arrange commands, the nudge and
- * the group-resize scaling all funnel into it. Rounding at each of those
- * instead would be four places to forget.
- *
- * `scaleX`/`scaleY` are deliberately **not** rounded: they are multipliers, not
- * units, and a scale of 0.9 is a legitimate authored value that rounding to 1
- * would silently discard.
- */
+/** Quantise position/size/rotation to whole units; scales remain fractional. */
 function quantise(transform: Transform): Transform {
   const round = (value: number): number => {
-    // `-0` would otherwise serialise into the document as `-0`.
     const rounded = Math.round(value);
 
     return rounded === 0 ? 0 : rounded;
@@ -85,14 +42,7 @@ function quantise(transform: Transform): Transform {
   };
 }
 
-/**
- * Merges style properties into a node, or removes them.
- *
- * A property set to `undefined` is **deleted** rather than stored, because
- * `{ ref: undefined }` is not a valid style value (§75 requires exactly one of
- * `ref` or `value`) and storing it would fail validation on save. This is how
- * an inspector expresses "back to the default".
- */
+/** Merge style changes; `undefined` removes the property and restores its default. */
 export function updateStyle(
   document: ThemeDocument,
   nodeId: string,
@@ -115,8 +65,6 @@ export function updateStyle(
         }
       }
 
-      // An empty style map is dropped so a saved document does not carry
-      // `"style": {}` on every node an author touched and reverted.
       return Object.keys(style).length === 0
         ? omitStyle(node)
         : { ...node, style };
@@ -124,7 +72,6 @@ export function updateStyle(
   };
 }
 
-/** Renames a node's display name. Its id never changes (§75). */
 export function renameNode(
   document: ThemeDocument,
   nodeId: string,
@@ -138,7 +85,6 @@ export function renameNode(
   };
 }
 
-/** Sets visibility or lock state. */
 export function setNodeFlags(
   document: ThemeDocument,
   nodeId: string,
@@ -152,12 +98,7 @@ export function setNodeFlags(
   };
 }
 
-/**
- * Removes nodes, wherever they are in the tree.
- *
- * Removing a group removes its children with it — they cannot exist without a
- * parent, and promoting them would silently change the design.
- */
+/** Removing a group removes its subtree; children are not promoted implicitly. */
 export function deleteNodes(
   document: ThemeDocument,
   ids: ReadonlySet<string>,
@@ -176,14 +117,7 @@ export function deleteNodes(
   return { ...document, nodes: filter(document.nodes) };
 }
 
-/**
- * Inserts nodes into a parent at an index.
- *
- * @param parentId The group to insert into, or undefined for the document root.
- * @param index Where among the siblings, or undefined for last — which is
- *   **topmost**, because child order is paint order (§137). "Last" is what a
- *   paste or a new element should be: on top, where the author can see it.
- */
+/** Insert into a group or root. Omitted index appends at the top of paint order. */
 export function insertNodes(
   document: ThemeDocument,
   nodes: readonly ThemeNode[],
@@ -208,17 +142,9 @@ export function insertNodes(
   };
 }
 
-/** Where a node can be moved to in the stacking order. */
 export type ReorderTarget = 'front' | 'back' | 'forward' | 'backward';
 
-/**
- * Changes a node's position among its siblings (§137).
- *
- * Only among its **siblings**: moving a node between parents is a different
- * operation, because it changes the coordinate space the node's transform is
- * expressed in, and doing both at once would move the node on screen while
- * claiming to reorder it.
- */
+/** Reorder only among siblings; changing parent would also change coordinate space. */
 export function reorderNode(
   document: ThemeDocument,
   nodeId: string,
@@ -246,7 +172,6 @@ export function reorderNode(
       return next;
     }
 
-    // Not at this level — recurse, and rebuild only the branch that changed.
     let changed = false;
     const mapped = nodes.map((node) => {
       if (node.type !== 'group' || changed) {
@@ -271,7 +196,6 @@ export function reorderNode(
   return nodes === undefined ? document : { ...document, nodes };
 }
 
-/** Finds a node anywhere in the tree. */
 export function findNode(
   nodes: readonly ThemeNode[],
   id: string,
@@ -292,7 +216,6 @@ export function findNode(
   return undefined;
 }
 
-/** Every node id in the document, for pruning a selection. */
 export function collectIds(nodes: readonly ThemeNode[]): Set<string> {
   const ids = new Set<string>();
 
@@ -310,12 +233,7 @@ export function collectIds(nodes: readonly ThemeNode[]): Set<string> {
   return ids;
 }
 
-/**
- * Rebuilds the tree, applying `change` to every node.
- *
- * Returns the original array when nothing changed, so reference equality
- * survives a no-op edit — which is what lets a UI skip re-rendering.
- */
+/** Preserve array identity when no descendant changes. */
 function mapNodes(
   nodes: readonly ThemeNode[],
   change: (node: ThemeNode) => ThemeNode,
@@ -355,7 +273,7 @@ function spliceInto(
   return next;
 }
 
-/** Drops the `style` key entirely, which `delete` on a spread cannot express cleanly. */
+/** Drop `style` entirely rather than persisting an empty map. */
 function omitStyle(node: ThemeNode): ThemeNode {
   const { style: _style, ...rest } = node as ThemeNode & { style?: StyleMap };
   return rest as ThemeNode;
