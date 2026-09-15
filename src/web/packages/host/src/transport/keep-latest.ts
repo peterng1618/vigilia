@@ -1,26 +1,10 @@
-/**
- * The per-client send slot. Pure, and the whole of §111's slow-client rule.
- *
- * "Bound per-client queues and discard obsolete pending snapshots for slow
- * clients" is not a queue with a cap — it is a slot that holds **one** item.
- * A telemetry snapshot has no value once a newer one exists: replaying a
- * backlog shows a phone the past at speed and then catches up, which is worse
- * than having shown it nothing. So a new snapshot *replaces* the pending one
- * and the old one is dropped.
- *
- * Drops are counted rather than ignored, because "this client cannot keep up"
- * is exactly the kind of claim §111 asks to be measured instead of assumed.
- */
+/** Single pending telemetry slot: newer snapshots replace obsolete unsent ones. */
 export class KeepLatestSlot<T> {
   private pending: T | undefined;
   private dropped = 0;
   private delivered = 0;
 
-  /**
-   * Offers a snapshot, replacing anything still waiting.
-   *
-   * @returns `true` when this displaced an undelivered snapshot.
-   */
+  /** Offers a snapshot and reports whether it displaced one still pending. */
   offer(item: T): boolean {
     const displaced = this.pending !== undefined;
 
@@ -33,7 +17,7 @@ export class KeepLatestSlot<T> {
     return displaced;
   }
 
-  /** Takes the pending snapshot, if any, and empties the slot. */
+  /** Takes and clears the pending snapshot. */
   take(): T | undefined {
     const item = this.pending;
 
@@ -50,7 +34,7 @@ export class KeepLatestSlot<T> {
     return this.pending !== undefined;
   }
 
-  /** Snapshots displaced before they were ever sent. */
+  /** Snapshots displaced before delivery. */
   get droppedCount(): number {
     return this.dropped;
   }
