@@ -58,66 +58,24 @@ import {
 } from './persist.js';
 import type { AlignEdge } from './arrange/commands.js';
 
-/**
- * The editor shell.
- *
- * Thin on purpose. Every decision — what a click selects, what a drag does to a
- * transform, where a snap lands, what undo restores — lives in the pure modules
- * beside this file and is unit-tested in Node. This translates pointer and
- * keyboard events into those calls and draws the result, which is the same
- * plan/mount discipline the renderer uses.
- *
- * The scene is rendered by `@vigilia/renderer-core`, exactly as the player
- * renders it, with selection and handles added as an overlay. So there is one
- * renderer and no possibility of editor/display drift. Spec 0013 moves that
- * renderer to Fabric and folds the overlay into it, keeping the invariant.
- *
- * SCAFFOLD STATUS: the document comes from a checked-in fixture and the data
- * from `@vigilia/fake-source`. Opening and saving real files is Gate 4; live
- * sensors are Gate 3, deferred by ADR-0006.
- */
+/** Legacy editor shell: event wiring + DOM only; pure modules own behavior. */
 
 echarts.use([GaugeChart, LineChart, BarChart, PieChart, GridComponent, CanvasRenderer]);
 
-/** Arrow-key nudge, in artboard units. Shift multiplies it. */
 const NUDGE = 1;
 const NUDGE_LARGE = 10;
 
-/**
- * Double-click window and slop, for detecting one ourselves.
- *
- * The browser's `dblclick` cannot be used here. This editor calls
- * `setPointerCapture` on pointerdown so a drag keeps receiving moves when the
- * pointer leaves the stage — and capture retargets `pointerup` to the capturing
- * element, so pointerdown and pointerup no longer share a target and the
- * browser never synthesises `click` at all, let alone `dblclick`. Verified by
- * logging every event during a double-click: only pointerdown and pointerup
- * arrive.
- *
- * Detecting it from consecutive pointerdowns is not a workaround so much as the
- * more honest primitive: it works identically for touch, and it lets a
- * double-tap be tuned independently of an OS mouse setting.
- */
+/** Pointer capture prevents native dblclick synthesis, so detect consecutive presses. */
 const DOUBLE_CLICK_MS = 400;
 const DOUBLE_CLICK_SLOP = 5;
 
 interface DragState {
   readonly gesture: GestureStart;
   readonly pointerId: number;
-  /** Viewport position where the drag began, for the marquee. */
   readonly viewportOrigin: { x: number; y: number };
   readonly kind: 'transform' | 'marquee';
-  /**
-   * This press *could* complete a double-click, if the pointer is released
-   * without travelling.
-   *
-   * Deciding on release rather than on the press is what makes both gestures
-   * work. Acting on the second press swallows a click-then-drag at the same
-   * spot — which a browser test caught immediately, because "select, then drag
-   * it somewhere" is the most common thing anyone does in an editor.
-   */
+  /** Only completes if the second press is released without becoming a drag. */
   readonly doubleClickCandidate: { readonly id: string; readonly point: { x: number; y: number } } | undefined;
-  /** Set once the pointer travels far enough that this is definitely a drag. */
   moved: boolean;
 }
 
@@ -147,7 +105,6 @@ function start(): void {
   let handle: SceneHandle = mountScene({ host, plan: plan(editor.document.visible) });
   const overlay = createOverlay(host);
 
-  // Left sidebar: theme-level globals (palette, fonts, etc.), always visible.
   const leftPanel = document.createElement('div');
   leftPanel.dataset['vigiliaPanel'] = 'theme';
   leftPanel.style.cssText = [
@@ -164,7 +121,6 @@ function start(): void {
   ].join(';');
   work.insertBefore(leftPanel, host);
 
-  // Right sidebar: element inspector on top, document layer tree below.
   const panel = document.createElement('div');
   panel.dataset['vigiliaPanel'] = 'root';
   panel.style.cssText = [
@@ -192,30 +148,17 @@ function start(): void {
   ].join(';');
   panel.append(body);
 
-  /**
-   * What each panel last rendered, so a redraw can be skipped.
-   */
   let inspectorKey = '';
   let layersKey = '';
   let globalsKey = '';
 
-  /**
-   * The node ids the scene was last mounted with.
-   *
-   * `mountScene.update` refuses a plan whose ids differ — it is for new data,
-   * not a new document — so a change to the set means a remount. Opening a file
-   * clears this, because every id changed at once.
-   */
+  /** `mountScene.update` cannot accept a changed node-id set; remount when it changes. */
   let lastIds = [...collectIds(editor.document.visible.nodes)].join(',');
 
   const inspector = createInspector(body, {
     onChange(key, change) {
       if (!editor.inspector.edit(key, change)) {
-        // Refused. The redraw guard compares against the last content
-        // rendered, and a refused edit changes nothing — so without this the
-        // panel skips the redraw and the author's rejected input stays on
-        // screen looking accepted. Clearing the key forces the field back to
-        // the real value.
+        // Force refused input back to the committed value.
         inspectorKey = '';
       }
 
@@ -226,9 +169,6 @@ function start(): void {
   const globalsPanel = createGlobalsPanel(leftPanel, {
     onAction(action) {
       if (!editor.globals.apply(action)) {
-        // See the inspector's `onChange`: a refused edit must snap back, and
-        // the guard would otherwise skip the redraw that does it. An invalid
-        // token key is the reachable case — `not a key` stayed in the field.
         globalsKey = '';
 
         const reason = editor.globals.refusalReason(action);
@@ -256,15 +196,11 @@ function start(): void {
         return;
       }
 
-      // The row names its own target rather than using the selection, which
-      // is the only thing that differs from the keyboard — so it overrides the
-      // target instead of duplicating the body. These two were implemented
-      // twice, undo labels and all, and the copies were free to disagree.
+      // Layer rows name their target; shared action bodies still live in runAction.
       runAction(action.id, action.targetId);
     },
   });
 
-  /** §61: a locked node is not deleted, and a wholly locked selection is a no-op. */
   const deleteSelection = (): void => {
     const document_ = editor.document.current;
     const removable = editor.selection.ids.filter((id) => findNode(document_.nodes, id)?.locked !== true);
@@ -281,7 +217,6 @@ function start(): void {
     render();
   };
 
-  /** Moves the selection by one step, or {@link NUDGE_LARGE} with shift held. */
   const nudge = (id: ActionId): void => {
     const direction = NUDGE_DIRECTIONS[id];
 
@@ -303,21 +238,12 @@ function start(): void {
     });
 
     if (transforms.size > 0) {
-      // A nudge is a completed gesture in itself, so it commits immediately.
-      // Coalescing a held arrow key into one entry would be nicer and needs a
-      // timer; one entry per press is at least predictable.
       editor.document.commit('Nudge', updateTransforms(document_, transforms));
       render();
     }
   };
 
-  /**
-   * The enablement snapshot every surface asks about.
-   *
-   * Built here because it reads the mutable editor state; the *rules* live in
-   * `actions.ts`, so a toolbar, a menu and the keyboard cannot disagree about
-   * whether something is available.
-   */
+  /** Snapshot only the mutable state used by pure action enablement rules. */
   const actionContext = (): ActionContext => {
     const document_ = editor.document.visible;
     const selected = editor.selection.ids.map((id) => findNode(document_.nodes, id));
@@ -332,35 +258,19 @@ function start(): void {
     };
   };
 
-  /**
-   * The one place an action is performed.
-   *
-   * Every surface — keyboard, toolbars, menu bar, layer panel — routes here by
-   * id, so there is exactly one body per action. Adding a surface adds no
-   * behaviour, which is the whole point of `actions.ts`.
-   */
-  /** The node an action applies to: the one a surface named, else the selection's first. */
   const targetNode = (targetId: string | undefined): ThemeNode | undefined => {
     const chosen = targetId ?? editor.selection.ids[0];
 
     return chosen === undefined ? undefined : findNode(editor.document.current.nodes, chosen);
   };
 
+  /** Single imperative body for toolbar, keyboard and layer actions. */
   const runAction = (id: ActionId, targetId?: string): void => {
     const action = actionById(id);
-
-    // A disabled action is not an error: a surface may show it, and a keystroke
-    // may reach it. Saying why beats doing nothing silently.
-    //
-    // Enablement is skipped when a surface names its own target: every rule in
-    // the registry is phrased about the *selection*, which is the right
-    // question for a keystroke and the wrong one for a layer row's eye icon.
-    // The body still checks the node exists.
     const context = actionContext();
 
+    // Selection-based enablement does not apply when a layer row supplies its own target.
     if (targetId === undefined && action !== undefined && !action.enabled(context)) {
-      // Non-null: `disabledReason` returns undefined only for an action that
-      // is enabled, and this branch is the one where it is not.
       editor.notice.show(disabledReason(action, context)!);
 
       return;
@@ -482,10 +392,6 @@ function start(): void {
       }
 
       case 'navigate.escape':
-        // Cancelling a gesture keeps the selection. Discarding it as well was
-        // extra punishment for an author who changed their mind mid-drag, and
-        // spec 0005 asks only that the gesture "vanishes with no trace in the
-        // history". Outside a gesture, Escape steps out of an entered group.
         if (drag === undefined) {
           editor.selection.exitGroup();
         }
@@ -502,14 +408,6 @@ function start(): void {
     }
   };
 
-  /**
-   * Opening and saving.
-   *
-   * A hidden `<input type=file>` and a generated download rather than the File
-   * System Access API: there is no host to save *to* yet (ADR-0006), so this is
-   * a stopgap either way, and a picker-plus-download round trip is one a test
-   * can actually drive.
-   */
   const filePicker = document.createElement('input');
   filePicker.type = 'file';
   filePicker.accept = 'application/json,.json';
@@ -527,20 +425,14 @@ function start(): void {
     void file.text().then((text) => {
       const result = parseThemeFile(text);
 
-      // The picker is reset either way, or choosing the same file twice in a
-      // row fires no change event and looks like a dead button.
+      // Reset so choosing the same file again still emits change.
       filePicker.value = '';
 
       if (!result.ok) {
-        // Loudly, and without touching the open document: a theme that fails
-        // validation is exactly the case §141 exists for, and silently keeping
-        // half of it would be worse than refusing.
         editor.notice.show(`Could not open: ${describeIssues(result.issues)}`);
         return;
       }
 
-      // A new file is a new history. An undo that crossed a file boundary would
-      // restore half of another theme.
       editor.document.replace(result.document);
       editor.selection.exitAll();
       editor.notice.show(`Opened ${file.name}`);
@@ -564,10 +456,6 @@ function start(): void {
 
     URL.revokeObjectURL(url);
 
-    // §139: saving marks the history clean WITHOUT clearing it, so undo still
-    // reaches edits from before the save. This is the first caller — the rule
-    // has been unit-tested since the history module existed and until now had
-    // never run in the product.
     editor.document.markSaved();
     editor.notice.show(`Saved ${anchor.download}`);
     render();
@@ -575,10 +463,6 @@ function start(): void {
 
   const toolbar = document.createElement('div');
   toolbar.dataset['vigiliaToolbar'] = 'arrange';
-  // Two rows, not one wrapped row. Ten controls do not fit one 300 px row: the
-  // first version clipped the last align button off the panel's edge, and
-  // wrapping then left it orphaned on a line of its own. Both were visible in
-  // the committed screenshot, which is what committing them is for.
   toolbar.style.cssText = [
     'display:flex',
     'flex:none',
@@ -593,13 +477,7 @@ function start(): void {
   fileBar.style.cssText = 'display:flex;flex:none;gap:8px;padding:10px 14px 0';
   panel.insertBefore(fileBar, toolbar);
 
-  /**
-   * Every button a toolbar built, by the action it invokes.
-   *
-   * Kept so enablement can walk the actions it actually rendered rather than
-   * asking the DOM what exists. The `data-vigilia-action` attributes stay for
-   * the browser tests to find, but nothing reads them back.
-   */
+  /** Buttons keyed by action id so enablement never reads behavior back from DOM. */
   const actionButtons = new Map<ActionId, HTMLButtonElement>();
 
   for (const action of actionsInGroup('file')) {
@@ -633,16 +511,6 @@ function start(): void {
     actionButtons.set(action.id, button);
   }
 
-  /**
-   * Enablement, asked of the registry rather than of the view.
-   *
-   * This once read the rule off each button's own id, scoped by a DOM selector
-   * one word too broad, which disabled Open and Save until two nodes were
-   * selected. The rule moved to `actions.ts`, but the buttons were still
-   * *found* by query and each `data-vigilia-action` cast back to an `ActionId`.
-   * Walking what the toolbars built makes a stale id a compile error instead of
-   * a silently skipped button.
-   */
   const drawToolbar = (): void => {
     const context = actionContext();
 
@@ -664,14 +532,6 @@ function start(): void {
     }
   };
 
-  /**
-   * Re-mounts the scene.
-   *
-   * Needed because `mountScene.update` deliberately refuses a plan whose node
-   * ids differ — it is for new data, not a new document. Adding or deleting a
-   * node is a new document, so the scene is rebuilt. Moving one is not, and
-   * takes the cheap path.
-   */
   const remount = (): void => {
     handle.dispose();
     overlay.root.remove();
@@ -706,8 +566,6 @@ function start(): void {
   const drawOverlay = (): void => {
     const document_ = editor.document.visible;
     const chosen = selectedPlacements();
-    // From the same placements as the outline: handles derived from the raw
-    // transform land in the wrong place for anything inside a group.
     const single = editor.selection.ids.length === 1 ? chosen[0] : undefined;
 
     overlay.update({
@@ -720,15 +578,7 @@ function start(): void {
     });
   };
 
-  /**
-   * Redraws the inspector, but only when its content would differ.
-   *
-   * The panel is rebuilt wholesale, which loses focus — and `render()` also
-   * runs on every 1 Hz data tick, so redrawing unconditionally would steal
-   * focus from a field mid-typing once a second. The selection and the
-   * committed document are what the panel depends on; live sample values are
-   * not.
-   */
+  /** Skip wholesale inspector rebuilds when descriptors are unchanged; rebuild loses focus. */
   const drawInspector = (): void => {
     const sections = editor.inspector.sections();
     const key = JSON.stringify(sections);
@@ -796,21 +646,13 @@ function start(): void {
   });
 
   host.addEventListener('pointerdown', (event: PointerEvent) => {
-    // Only the primary button starts a gesture; a right-click is for a context
-    // menu that does not exist yet, and treating it as a drag would move things
-    // by accident.
     if (event.button !== 0) {
       return;
     }
 
-    // `closest`, not `event.target.dataset`. A handle is a hit area containing a
-    // smaller visible dot, so the press lands on the dot — which carries no
-    // dataset, so reading the target directly found nothing and every resize
-    // silently became a move. The status bar said "Move element" while the
-    // author dragged a resize handle.
-    // A new gesture supersedes whatever the last refusal was about.
     editor.notice.clear();
 
+    // Handle hit areas contain child dots; resolve from the nearest annotated ancestor.
     const grabbed = (event.target as HTMLElement | null)
       ?.closest('[data-vigilia-handle]')
       ?.getAttribute('data-vigilia-handle') as Handle | undefined;
@@ -853,8 +695,6 @@ function start(): void {
     const hit = hitNow;
 
     if (hit === undefined) {
-      // Empty canvas: start a marquee, and deselect unless a modifier says to
-      // keep what is already chosen.
       editor.selection.applyClick(undefined, editor.selection.modeFor(event));
       drag = {
         kind: 'marquee',
@@ -868,8 +708,7 @@ function start(): void {
       return;
     }
 
-    // Clicking an already-selected node keeps the whole selection, so dragging
-    // a multi-selection does not collapse it to one node.
+    // Preserve an existing multi-selection when beginning a drag on one member.
     if (!editor.selection.ids.includes(hit) || editor.selection.modeFor(event) !== 'replace') {
       editor.selection.applyClick(hit, editor.selection.modeFor(event));
     }
@@ -924,16 +763,8 @@ function start(): void {
 
     let transforms = applyGesture(drag.gesture, pointer, modifiers);
 
-    // Snapping applies to a move only. A snapped resize needs the moving EDGE
-    // compared against targets rather than the whole box, which is a different
-    // calculation and is not implemented — so it is left off rather than
-    // approximated with the wrong one.
+    // Move snapping uses the actual gesture nodes; resize snapping is not implemented.
     if (drag.gesture.handle === 'move' && !event.ctrlKey && !event.metaKey) {
-      // The gesture's own nodes, not the selection. Moving a group moves its
-      // children, so a selection holding both transforms the group alone
-      // (§57) — measuring the selection instead aligned a box bigger than
-      // what was moving, and left the moving group in the target list it was
-      // supposed to be excluded from.
       const delta = editor.snapping.resolveMove({
         movingIds: drag.gesture.nodes.map((node) => node.id),
         delta: { x: pointer.x - drag.gesture.origin.x, y: pointer.y - drag.gesture.origin.y },
@@ -948,11 +779,9 @@ function start(): void {
     }
 
     if (transforms.size > 0) {
-      // A group's children are a consequence of resizing it, not part of the
-      // gesture: without this the outline grows around unchanged contents.
       const withChildren = withScaledDescendants(committed, transforms, drag.gesture.handle);
 
-      // A preview, not a commit: §67 wants one undo entry per gesture.
+      // One live gesture remains one undo transaction (§67).
       editor.document.preview(updateTransforms(committed, withChildren));
       render();
     }
@@ -996,9 +825,7 @@ function start(): void {
       return;
     }
 
-    // A press that never travelled and completed a double-click opens the group
-    // instead of committing a transform. The preview is discarded: whatever
-    // sub-pixel movement happened between the two clicks is not an edit.
+    // A stationary second press enters the group instead of committing sub-pixel movement.
     if (!finished.moved && finished.doubleClickCandidate !== undefined) {
       lastDown = undefined;
       editor.document.cancelPreview();
@@ -1014,12 +841,6 @@ function start(): void {
   host.addEventListener('pointerup', endDrag);
   host.addEventListener('pointercancel', endDrag);
 
-  /**
-   * Enters the group under a point and selects what is actually there.
-   *
-   * Called from the synthesised double-click. If the target is not a group
-   * there is nothing to enter, and the first click's selection already stands.
-   */
   function enterGroupAt(outerId: string, point: { x: number; y: number }): void {
     const document_ = editor.document.visible;
     const node = findNode(document_.nodes, outerId);
@@ -1040,9 +861,6 @@ function start(): void {
 
   window.addEventListener('keydown', (event: KeyboardEvent) => {
     const meta = event.ctrlKey || event.metaKey;
-
-    // These are bound on `window`, so they also see everything typed into an
-    // inspector field. `keyboard.ts` decides what a focused control keeps.
     const target = event.target;
 
     if (
@@ -1060,8 +878,7 @@ function start(): void {
       return;
     }
 
-    // Backspace is a second binding for Delete, kept here rather than in the
-    // registry so the menu shows one canonical key.
+    // Backspace is an alternate Delete binding; registry keeps one canonical label.
     const key = event.key === 'Backspace' ? 'Delete' : event.key;
     const action = actionForShortcut({ key, meta, shift: event.shiftKey });
 
@@ -1069,27 +886,9 @@ function start(): void {
       return;
     }
 
-    // Claimed before running, and before the enablement check: Ctrl+S must not
-    // fall through to the browser's "save page" just because the action is
-    // currently unavailable.
     event.preventDefault();
 
-    // Nothing but Escape may run while a gesture is live.
-    //
-    // A live drag holds a snapshot of the nodes as they were when it started
-    // (`GestureStart.nodes`) and re-applies it against `editor.document.current` on
-    // every pointer move. An action that commits meanwhile moves that ground
-    // out from under it, and the next move re-applies the stale snapshot on top
-    // of the new document. Observed three ways: Ctrl+Z mid-drag put the node
-    // 180 px out instead of 100 and **destroyed the earlier history entry**;
-    // Ctrl+G mid-drag moved a panel 165 px for 120 px of travel, because
-    // grouping rebased the children while the gesture still held their old
-    // absolute positions; Delete mid-drag left a phantom "Move 0 elements"
-    // entry that made the following undo look dead.
-    //
-    // Refusing is the honest option — the alternative, silently cancelling the
-    // author's gesture to service a keystroke, throws away work they can see on
-    // screen. Escape is exempt because cancelling is precisely what it means.
+    // Gesture snapshots become stale if another edit commits mid-drag; refuse all but Escape.
     if (drag !== undefined && action.id !== 'navigate.escape') {
       editor.notice.show('Finish or cancel the drag first (Esc cancels)');
       return;
@@ -1103,10 +902,6 @@ function start(): void {
     drawOverlay();
   });
 
-  // The status bar repaints because the message changed, not because each of
-  // the six sites that set one remembered to ask. Two of them did not: the
-  // pointerdown that clears a stale refusal returns early for a resize handle,
-  // so the old explanation used to sit there for the whole of the next drag.
   editor.events.on('notice:changed', () => {
     drawStatus();
   });
@@ -1114,20 +909,12 @@ function start(): void {
   render();
 }
 
-/**
- * Snapshots the selected nodes for a gesture.
- *
- * Takes the placements as well as the document, because a gesture needs each
- * node's ancestor matrix to convert a document-space pointer delta into the
- * parent space its `x`/`y` are written in (§57).
- */
+/** Snapshot selected nodes plus ancestor matrices needed for parent-space gesture math. */
 function gestureNodes(
   document_: ThemeDocument,
   placements: readonly PlacedNode[],
   ids: readonly string[],
 ): GestureNode[] {
-  // §57: moving a group moves its children, so a selection holding both must
-  // transform the group alone.
   return outermostOnly(placements, ids)
     .map((id) => {
       const node = findNode(document_.nodes, id);
@@ -1161,13 +948,7 @@ function labelFor(handle: Handle, count: number): string {
   return `Resize ${subject}`;
 }
 
-/**
- * Which way each nudge action moves.
- *
- * Keyed by action id rather than by key name, because `actions.ts` now owns
- * which key is bound — this table would otherwise be a second place where
- * ArrowUp could be wired to the wrong axis.
- */
+/** Direction only; `actions.ts` owns which keys invoke these ids. */
 const NUDGE_DIRECTIONS: Partial<Record<ActionId, { readonly x: number; readonly y: number }>> = {
   'navigate.nudge-left': { x: -1, y: 0 },
   'navigate.nudge-left-large': { x: -1, y: 0 },
