@@ -1,72 +1,54 @@
 ---
 name: vigilia:spec-driven-development
-description: Keeps Vigilia implementation and specs in sync. Use when implementing a feature that has a spec in .agents/specs/, writing a new spec, verifying code against a spec, or updating a spec after a behaviour change.
+description: Keep Vigilia specs and implementation aligned. Use when writing, implementing, reviewing, or updating a spec in .agents/specs/.
 ---
 
 # Spec-driven development
 
-Specs live in [`.agents/specs/`](../../specs/README.md). Read that README for the
-file convention and for how specs differ from gate evidence and ADRs.
+Read `.agents/design/plan.md` first, then the relevant spec. The plan sets product
+requirements; the spec refines one feature; code follows both.
 
-## The precedence order
+## Write a spec only when needed
 
-1. **The design document** — [`.agents/design/plan.md`](../../../.agents/design/plan.md).
-   User-authored, revision 9, the top-level spec. It wins.
-2. **A spec in `.agents/specs/`** — refines the design document for one feature.
-   It never contradicts it.
-3. **The code.**
+Use a spec for behaviour that is not obvious from the diff: persisted shapes,
+state transitions, edge cases, error handling, engine gaps, or multi-stage work.
+Do not write one for routine implementation detail.
 
-When you find a conflict between levels, **stop and get a human decision.** Do
-not encode the disagreement in a spec, and do not silently implement whichever
-you prefer — §164 requires human review for scope changes, and a contradiction
-between the design document and a spec is exactly that.
+A good spec contains only:
 
-## Starting work on a feature with a spec
+- problem / intent;
+- current decision;
+- required behaviour and edge cases;
+- out of scope;
+- acceptance evidence;
+- migration stages when sequencing matters.
 
-1. Read the spec **and** the design-document sections it cites. The spec is a
-   refinement; reading it alone loses the constraints.
-2. Check `Status`. A `draft` spec has not been agreed — confirm before building
-   to it.
-3. Identify which acceptance criteria already have tests. Per §33 an untested
-   criterion is not met, regardless of what the code appears to do.
+**Do not write a chronological work log.** Git stores history. Measurements that
+matter to a decision belong in `decisions.md`; transient run counts belong in
+`status.md`.
 
-## Writing a new spec
+Target **≤400 lines / ≤20 KB**. If an edited spec is already much larger, compact
+it before adding more. Prefer tables and short bullets over narrative.
 
-Write one when behaviour is worth pinning down beyond the design document: a
-schema shape, a state machine, an error taxonomy, a set of edge cases. Do not
-write one for a change whose behaviour is obvious from the diff.
+## While implementing
 
-The **edge cases and error states are the valuable part.** The happy path is
-usually inferable from the code; the exhaustive list of what happens when a
-sensor disappears mid-render, or a theme references a deleted global, is not.
+1. Read the cited `§N` requirements.
+2. Check whether the spec is accepted or draft.
+3. Identify the observable behaviour and test for each criterion.
+4. Implement at the existing owner/boundary.
+5. If behaviour changes intentionally, update the spec in the same commit.
+6. If the engine cannot express a requirement, record the gap and get the
+   required product decision instead of approximating silently.
 
-Always fill `Out of scope`. It is what stops the same question being
-re-litigated in three months.
+Do not keep superseded alternatives inline. State the current decision and rely
+on git history for the old one.
 
-## Keeping a spec honest
+## Verification language
 
-When implementation diverges:
+Use only:
 
-- **Behaviour intentionally changed** → update the spec in the **same commit**.
-  A stale spec is worse than none, because the next reader trusts it.
-- **Spec was wrong or unachievable** → update it, and record *why* in the spec
-  so the constraint is not rediscovered later.
-- **Spec superseded** → mark `Status: superseded` and point at its replacement.
-  Do not delete it; the reasoning stays useful.
-- **Engine or platform cannot do what the spec requires** → this is a §85-style
-  gap. Record the gap explicitly, propose alternatives, and get human agreement
-  before committing to one. The gauge-gradient gap in `.agents/decisions.md` is
-  the worked example.
+- **Met** — observed behaviour plus a test.
+- **Implemented, unverified** — code exists but evidence does not.
+- **Not implemented**.
 
-## Verifying code against a spec
-
-Work criterion by criterion and, for each, name the observable behaviour and the
-test that proves it. Report three outcomes distinctly:
-
-- **Met** — behaviour exists and a test covers it.
-- **Implemented but untested** — say so. This is not met.
-- **Not implemented.**
-
-Never report a criterion as met on the strength of reading the code. And do not
-claim you ran the .NET tests unless an SDK is actually installed — currently none
-is.
+Do not claim runtime behaviour from source inspection alone.
