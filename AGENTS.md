@@ -160,6 +160,11 @@ Tooling that misleads. Everything here cost real time at least once.
 
 ## Code style
 
+- **Write for agents: concise, precise and actionable.** Use the fewest words
+  that preserve meaning. Do not narrate implementation history, repeat nearby
+  code, or pad documents with generic explanation. Comments explain only
+  non-obvious intent, constraints or trade-offs; delete stale prose when the
+  code changes.
 - Follow existing project style and patterns. Match the surrounding comment
   density and naming.
 - Avoid unrelated formatting-only diffs in touched files; keep imports stable.
