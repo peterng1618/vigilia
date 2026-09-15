@@ -13,7 +13,13 @@ export const emptySelection: SelectionState = {
   enteredGroups: [],
 };
 
-export type SelectionMode = 'replace' | 'toggle' | 'add';
+export type SelectionMode =
+  /** Replace selection. */
+  | 'replace'
+  /** Toggle members. */
+  | 'toggle'
+  /** Add without removing existing members. */
+  | 'add';
 
 /** Empty-canvas replace clears selection but does not exit entered groups. */
 export function applyClick(
