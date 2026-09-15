@@ -1,568 +1,320 @@
 # Vigilia — product plan
 
-**Owned by the agent.** The user supplies goals and intent; everything else here
-— architecture, sequencing, format design, trade-offs — is the agent's to decide
-and to keep true. Revision 10, 13 September 2026.
-
-## How to read the §N markers
-
-`§N` is a **stable label**, written into the text below. It is not a line number
-and not a section number.
-
-It used to be both, inconsistently: `§47` meant line 47 while `§7` meant section
-7. Code cites 43 of these labels **446 times**, so adding a single line to this
-document silently invalidated every marker beneath it — which is why this
-document sat frozen at revision 9 while the project moved past it, still
-mandating Vue, Fabric, ASP.NET Core and SignalR. The numbers are kept exactly as
-they were so every existing citation still resolves; they are no longer
-positional, so this document can now be maintained.
-
-Add a new requirement with the next free number. Never renumber.
-
----
+Agent-owned current requirements. User goals and explicit product choices take
+precedence. `§N` markers are stable labels used by code/docs; never renumber.
 
 ## Goals
 
-From the user. These are the only part of this document an agent does not
-decide.
-
-1. **See my PC's live state on a phone**, over local Wi-Fi, without internet.
-2. **Design the dashboard visually**, in a desktop browser — not by editing JSON.
-3. **Charts and typography are the product.** Extensive, editable, data-aware
-   styling is release scope, not polish.
-4. **Personal use first.** Optimise for development speed over release polish.
-   No packaging, publishing or release engineering until asked.
-5. **Never show a number that was not measured.**
+1. Show the PC's live state on a phone over local Wi-Fi without internet.
+2. Design dashboards visually in a desktop browser, not by editing JSON.
+3. Charts and typography are first-class product features.
+4. Personal use first; optimize development speed over release polish.
+5. Never show a number that was not measured.
 
 ## Non-goals
 
 Wireless wake-up · multiple pages per device · arbitrary theme scripts ·
-USB/serial hardware displays · a general-purpose graphics editor · formula-driven
+USB/serial displays · building a general-purpose graphics editor · formula-driven
 styling · OAuth flows · mutation requests · streaming protocols.
-
----
 
 ## §7 — Product and scope
 
-A PC-hosted website for live hardware monitoring over local Wi-Fi. Full editing
-in a desktop browser; each phone shows one assigned dashboard. Windows-first,
-with boundaries preserved for later Linux/macOS support and **no promise of
-identical sensor coverage**. Local metrics need no internet; remote API sensors
-and weather need their endpoints.
-
-V1 includes static bitmap/SVG elements, GIF elements and video backgrounds.
-"Static artwork" excludes sensor-driven bitmap masks, sprite gauges and bitmap
-needles — not GIF or video playback.
-
-Native shape drawing starts minimal: rectangle, ellipse, line. Decorative
-artwork may be imported as bitmaps or SVG. Expanding native drawing must never
-delay chart or typography quality.
+Windows-first PC-hosted dashboard editor/player. Local metrics need no internet;
+remote API/weather sensors use their endpoints. V1 supports bitmap/SVG artwork,
+video backgrounds, rectangle/ellipse/line shapes, charts and rich typography.
+Decorative drawing must not delay charts or typography.
 
 ## §31 — One renderer, shared
 
-The editor and the display render through the same code. Rendering a scene twice
-is forbidden: it is how editor and display drift apart. The editor adds
-interaction on top of that one renderer rather than bringing a second.
+Editor and player use the same Fabric scene implementation. Do not maintain a
+second renderer or rebuild generic editor mechanics Vigilia does not own.
 
-**Do not build a general-purpose graphics editor.** The renderer is Fabric and
-the scene graph is its object model; hit testing, transform handles, rotation,
-grouping and z-order are the library's job, not ours. Where Fabric does not
-reach — the artboard fit transform, snapping, the typed chart objects, the
-layout options its text model lacks — we add the minimum, and we add it once, in
-the module both displays import.
+Use `fabricjs-image-editor` as the preferred editor foundation at source level,
+with a permanent Vigilia fork acceptable. Vigilia adds only missing/domain work:
+telemetry, semantic bindings, design tokens, typed charts, artboard behaviour and
+engine gaps.
 
-## §33 — Nothing is done until it is observed
+## §33 — Nothing is done until observed
 
-Treat feature lists, library claims and prior design ideas as **hypotheses**
-until demonstrated. A ticked checkbox without observable behaviour and a test is
-not a pass. Report untested behaviour plainly.
+Library claims and code inspection are hypotheses. Visible changes require a
+rendered/browser check plus tests appropriate to the behaviour. Report what was
+not verified.
 
-Specifically: when a change is meant to be visible, render it and look. Every
-editor defect worth fixing so far was found by driving a browser, and several sat
-under a fully green test suite — one under a test that asserted the bug.
+## §43 — Feasibility
 
-## §43 — Feasibility, already established
+Established: styled live gauges/donut/line-area charts, styled sensor text,
+packaged fonts, bitmap/SVG assets, video background architecture, basic shapes,
+transforms, gradients, layering and JSON round-trip. Chart/text properties are
+edited visually, never as raw engine JSON.
 
-A richly styled live donut/radial gauge and filled line chart, editable sensor
-text with separately styled value and unit, a packaged font, transparent
-artwork, GIF and video — plus rectangle, ellipse and line proving extensible node
-types, transforms and styling. Gradients, outlines, shadows, font metrics, chart
-updates, layering, undo and JSON round-trip verified on desktop and phone
-viewports.
+## §47 — Small display bundle
 
-Chart and text styles are editable through dedicated visual inspectors, never
-raw JSON.
-
-## §47 — The display bundle stays small
-
-The shared renderer must run in a display-only bundle that downloads no editor
-controls or inspectors. Enforced mechanically by a size budget; when it fails,
-find the leaked dependency rather than raising the budget.
-
-Old and low-end phones are in scope. Editor reuse must never force a heavyweight
-player.
+The player must not download editor controls/managers. Enforce a bundle budget
+and import boundaries. Old/low-end phones are in scope, but no physical-device
+validation gate is required.
 
 ## §51 — Artboard
 
-A theme declares a logical width and height. One uniform transform applies to
-**all** content — including UI-bearing backgrounds, strokes, typography and
-shadows.
+A theme has logical width/height. One uniform transform applies to all content,
+including background alignment, strokes, typography and shadows.
 
 ## §53 — Fit modes
 
-*Contain*: scale by the smaller viewport/artboard ratio, centre, and fill the
-remainder with configurable bars. *Cover*: scale by the larger ratio, centre and
-crop; the editor previews the cropping.
+`contain`: fit whole artboard and fill bars. `cover`: fill viewport and crop.
+The editor previews the same result.
 
 ## §55 — Background media
 
-Decorative background media may contain or cover within its own bounds.
-UI-bearing backgrounds must stay aligned with foreground content.
-
-**Video is one background, and nothing more** (decided 2026-09-15). At most one
-video per theme, positioned and scaled, with **the artboard as its cropping
-region** — the same clip the design itself gets. No rotation, no video as a
-node, no video inside a group, no playback controls or timeline. It renders on
-its own layer beneath the scene, because a video drawn into the canvas forces a
-full-scene repaint per frame and cannot hold a frame budget on a low-end phone.
-
-That single-background scope is load-bearing, not a simplification for later:
-it is what keeps the layer's alignment down to the artboard scale and offsets,
-computed by the one owner that also positions the scene, and it removes any
-question of content painting behind the video.
+Background media aligns to the artboard. Video is at most one background layer
+beneath the Fabric canvas, cropped by the artboard. It is not a normal node: no
+grouping, rotation, timeline or playback controls.
 
 ## §57 — Geometry
 
-No automatic element reflow; configuration pages stay responsive. Editor zoom is
-not document geometry. Children are positioned in their parent's space with
-composable transforms, and grouping or ungrouping **preserves world
-appearance**.
-
-Geometry is **whole units** — position, size and rotation are integers. A
-dashboard is laid out on a pixel grid at a fixed artboard size, so sub-unit
-placement buys nothing and costs legibility.
+No automatic reflow. Editor zoom is not document geometry. Group transforms
+compose with child transforms; group/ungroup preserves world appearance.
+Authoring controls use whole artboard units where practical.
 
 ## §61 — Editor controls
 
-Layers with rename, reorder, copy/paste, duplicate, group/ungroup, hide and
-lock. A locked object stays inspectable in the tree but does not transform until
-unlocked.
-
-**A hidden element must remain reachable.** Hit-testing correctly ignores
-invisible elements, so the layer tree is the non-visual route to one — without
-it, hiding an element and clicking away loses it.
-
-Align to artboard, selection or key object; distribute centres or equal gaps.
-Groups act as units; locked objects are excluded.
+Layers: rename, reorder, copy/paste, duplicate, group/ungroup, hide and lock.
+Hidden nodes remain reachable in layers. Align/distribute to artboard,
+selection or key object. Generic mechanics should come from the editor
+foundation rather than custom Vigilia geometry/gesture code.
 
 ## §64 — Rulers, grid and guides
 
-Pixel rulers; configurable grid spacing, subdivisions, colour and visibility;
-add, move and remove guides. Independent grid, guide and object snapping with
-temporary bypass, and a snap tolerance that stays usable across zoom levels.
-Persisted as editor metadata, never as document content.
+Pixel rulers, configurable grid/guides, independent grid/guide/object snapping,
+temporary bypass, zoom-stable tolerance. Persist as editor metadata rather than
+rendered theme content.
 
 ## §67 — Undo
 
-One drag or slider gesture is one transaction. Guide changes are undoable.
-Telemetry, playback, selection and viewport changes never enter document
-history, and a gesture that ends where it started leaves no entry.
-
-While a gesture is live, a keystroke that would commit is **refused** — running
-one against a document the gesture is still previewing corrupts both.
+A generic transform gesture should be one transaction. Telemetry, playback,
+selection and viewport never enter authored history. Chart-specific property
+editing may commit without undo/redo if integrating it cleanly would require
+substantial custom history machinery.
 
 ## §73 — Theme globals
 
-Named, typed constants for palette colours, type presets, spacing and asset
-references.
-
-**Colour and typography are theme-level only.** Palette entries are rgba, and
-cover gradients as well as solids. A type preset bundles font family, size,
-weight, letter spacing and line height as one named unit, because those five are
-only meaningful together. A compatible property **references** a global and
-carries no literal of its own, so re-theming is one edit per token rather than a
-visit to every element — and a future dark/light switch swaps tokens rather than
-hunting element overrides.
-
-Genuinely per-instance properties stay on the element: opacity, geometry, stroke
-width, corner radius.
-
-The vocabulary is author-defined; nothing reserves particular token names.
-Importable palette or preset packs are anticipated, not built.
+Named typed constants for palette, type presets, spacing and assets. Colour and
+typography are theme-level. Palette values include rgba solids and gradients.
+A type preset groups family, size, weight, letter spacing and line height.
+Per-instance properties include opacity, geometry, stroke width and corner
+radius.
 
 ## §75 — References and identity
 
-A style value is **either** a reference **or** a literal, never both, and the
-inspector says which — a bare value whose origin is ambiguous is the thing this
-rule exists to prevent. Property values look like `{"ref":"palette.accent"}` or
-`{"value": 2}`.
-
-Globals keep a stable key plus an editable display name, because a reference is
-made from five places and renaming must not break one. **Nodes have a single
-identifier**: an editable, dash-cased `id`, unique in the document. Nothing
-inside the document references a node id, so a second field bought nothing and
-could disagree with the first.
-
-Deleting a referenced global **requires reassignment**; it falls back to the
-reserved transparent token. Conversion to a literal is not available for colour
-or typography, since element literals do not exist for those. Global edits are
-undoable and update dependents without rewriting their properties.
+A compatible property is either a global reference or literal, never both.
+Globals have stable keys plus editable display names. Nodes have one stable id.
+Deleting a referenced global requires reassignment; colour/typography do not
+silently convert to literals.
 
 ## §77 — Widgets
 
-A widget exposes compatible parameters that bind to theme globals or keep widget
-defaults. Standalone export includes required defaults; import uses explicit
-mapping rather than silently merging same-name globals. Constants and references
-survive JSON round-trip, font and asset packaging, and visual tests.
+Reusable subtrees expose compatible parameters for theme globals/defaults.
+Insertion embeds a copy with fresh ids/provenance. Import maps globals
+explicitly; standalone export includes required defaults/assets.
 
 ## §81 — Chart families
 
-Pie and donut; full, half and arbitrary-sweep radial gauges; horizontal and
-vertical bars and progress bars; multi-series line, sparkline and filled-area
-charts.
+Pie/donut; full/partial radial gauges; horizontal/vertical bars/progress;
+multi-series line/sparkline/area. A chart family need not be changeable after
+creation.
 
-## §83 — Chart styling, and gaps
+## §83 — Chart styling and data gaps
 
-Applicable fills (solid and gradient, with editable stops), opacity, outlines
-and dashes, shadows, rounded caps, tracks, thresholds, labels, legends, axes,
-ranges and time windows. Ring thickness and start/end angles, pie gaps, bar
-width and spacing, line width, interpolation and markers, independent area fill.
-Pie composition is distinct from gauge progress.
+Applicable controls include fills/gradients, opacity, strokes/dashes, shadows,
+rounded caps, tracks, thresholds, labels, legends, axes, ranges/time windows,
+ring angles/thickness, pie gaps, bar spacing, line interpolation/markers and
+area fill.
 
-A gradient paints over the element's **rectangular bounding box**, not its
-visible filled area, so two elements of different shapes sharing one token look
-the same.
+Gradient coordinates use the element bounding box. Raw samples are preserved;
+gauge display may clamp. Missing/non-`ok` samples render gaps, never zero.
 
-**Raw values are preserved while gauge display is clamped, and a missing sample
-renders as a gap — never a zero.** A non-`ok` sample carries no value at all.
+## §85 — Engine gap rule
 
-## §85 — The engine gap rule
-
-Every applicable family/style combination needs an inspector control, a JSON
-representation, a preset and a visual fixture. Where the chart engine cannot
-reproduce a required treatment, mark the gap explicitly and **obtain human
-agreement on the alternative before committing**. Two gaps are currently open:
-gauge ring gradients (approximated in segments) and line thresholds.
+Supported settings need property controls, persisted representation and a visual
+fixture. Where ECharts cannot reproduce a required treatment, expose the gap and
+get human agreement before choosing an approximation. Current open gaps: gauge
+angular gradients and line threshold bands.
 
 ## §87 — Typed chart settings
 
-Typed settings translated into engine configuration. **No raw executable
-options** ever enter the theme format. Style tokens are shared with other
-elements.
+Themes persist typed Vigilia chart settings, not raw ECharts options. Engine
+translation has one owner.
 
 ## §89 — Typography
 
-Inline editing; packaged and imported licensed fonts with fallback handling;
-size, weight, style, letter spacing, line height, alignment, rotation, wrapping
-and explicit clipping or ellipsis. Solid and gradient text fill, outline, shadow
-and opacity.
-
-**Styled runs** so a label, a live value, its unit and any prefix or suffix can
-differ within one text element; a run may override its type preset and its
-colour. Decimal precision, unit display and tabular numerals where the font
-supports them.
-
-Sensor text uses fixed boxes by default, to avoid jitter as digits change width.
+Inline editing; licensed packaged/imported fonts; fallback handling; family,
+size, weight, style, spacing, line height, alignment, rotation, wrapping,
+clipping/ellipsis, fill, outline, shadow and opacity. Styled runs allow label,
+value and unit to differ within one text element. Sensor text uses fixed boxes by
+default to avoid jitter.
 
 ## §91 — Typography in charts
 
-Shared typography tokens apply to chart titles, axis labels, legends and value
-readouts, with a documented support matrix. Where the engine cannot reproduce a
-treatment, use a shared native text overlay — **never a bitmap label**. Reserve
-stable text boxes during font loading and surface missing-font diagnostics.
-Verify multilingual glyphs, changing digit widths, baseline alignment and
-overflow at several artboard scales.
+Chart text uses shared typography tokens where supported. When ECharts cannot
+reproduce a required treatment, use native text overlay rather than bitmap
+labels. Handle fallback/missing fonts and changing digit widths explicitly.
 
 ## §93 — Sensors and semantic binding
 
-A sample carries `sensorId`, `timestamp`, `value`, `unit` and `status`. A
-catalogue entry carries stable provider and sensor identity, value type, display
-name, unit and capabilities.
+Samples carry identity, timestamp, value, unit and status. Themes bind semantic
+keys, never provider instances. Providers report discoverable capabilities.
+Providers acquire; the host schedules and owns timeouts/backoff.
 
-**Themes bind to semantic keys, never to provider instances**, and a mapping
-layer resolves them — so changing what supplies a quantity never requires
-editing a theme. The key vocabulary has one owner. Missing, stale and error
-states are explicit, with remapping available.
+## §97 — Platform boundaries and honest capability
 
-**Providers acquire; the host schedules.** A provider never starts a timer,
-caches history or pushes a sample. The registry supports several provider
-instances, enabling, disabling and replacement, with per-provider timeouts and
-backoff so a failing API cannot stall hardware collection.
-
-## §97 — Platform boundaries, and honesty about capability
-
-Windows hardware APIs, secret storage, startup, tray and firewall integration
-live in platform adapters. Shared contracts, domain logic, API collection and
-rendering must not depend on Windows types.
-
-**Never fabricate a reading.** An unavailable sensor reports unavailable with a
-reason; a provider on another platform reports the capabilities it has rather
-than inventing the ones it lacks. A display never silently falls back to
-synthetic data — a dashboard that quietly invents numbers is indistinguishable
-from one that works.
+Windows-specific hardware/startup/tray/firewall/secret code lives behind
+platform adapters. Never fabricate a reading. Unavailable sensors report why;
+no automatic fallback from real to synthetic data.
 
 ## §99 — Custom API sensors
 
-A desktop wizard for HTTP(S) JSON endpoints, GET polling initially. Configure
-URL, query, headers, interval, timeout and authentication — none, API key,
-bearer token, or Basic over HTTPS — with secret references in headers and query
-values. Map response fields by JSON Pointer into named numeric, string or boolean
-sensors, with units and optional scale and offset. Charts accept numeric sensors
-only. Include a Test Connection with redacted preview and mapping validation.
+Desktop wizard for HTTP(S) JSON GET polling with URL/query/headers/interval/
+timeout/auth; secrets referenced, not embedded. JSON Pointer mappings create
+numeric/string/boolean sensors with units and optional scale/offset. Charts use
+numeric sensors only. Include test/redacted preview.
 
 ## §101 — Credentials and fetching
 
-Fetch on the PC, never on the phone. Credentials go through the platform secret
-adapter, are redacted in requests and errors, and are absent from browser
-responses and exported packages. Custom endpoints require explicit admin
-configuration and are never activated by a theme import. Validate destinations
-and redirects; never forward credentials across origins. Bound response size and
-concurrency, honour rate limits, and share one request across fields from the
-same endpoint.
+Fetch remote APIs on the PC. Secrets use the platform adapter, are redacted from
+logs/errors and never reach themes/browser responses. Validate destinations and
+redirects; bound response size/concurrency; share requests across mapped fields.
 
 ## §105 — Renderer inputs
 
-Document, resolved assets and fonts, metric snapshot and history, viewport and
-clock. The editor and display share render components and adapters; the editor
-adds interaction overlays. Charts update without recreating the scene.
-Reconnecting fetches a current snapshot and bounded history, never an unlimited
-backlog.
+Theme semantics, Fabric scene, resolved assets/fonts, metric snapshot/history,
+viewport and clock. Editor and player share renderer objects; editor adds
+interaction. Charts update without recreating the scene.
 
 ## §111 — Minimal PC overhead
 
-A release requirement, for performance-conscious users including gamers.
-**Subscribe to the union of sensors active clients need and poll once** at the
-required cadence. Opening another phone must not multiply upstream polling.
-Reuse provider connections; avoid repeated discovery.
+Subscribe to the union of sensors active clients need and poll upstream once per
+cadence. Additional displays must not multiply acquisition. Reuse provider
+connections and discovery.
 
 ## §116 — Where work happens
 
 | PC host | Phone display |
 |---|---|
-| Hardware acquisition, shared API fetching, credentials, bounded reconnect history | Dashboard rendering, value and unit formatting, thresholds, chart presentation |
-| Compact batched samples with timestamps and status; cacheable assets | Chart window buffers, animation, GIF/video decoding, asset caching |
+| hardware acquisition, API fetches, credentials, reconnect history | dashboard rendering, formatting, thresholds, chart buffers/animation, video/background decoding, asset cache |
 
-Normal operation requires no PC browser, render loop, bitmap streaming, video
-transcoding or live editor preview.
+Normal operation needs no PC browser, bitmap streaming, video transcoding or
+live editor preview.
 
 ## §120 — Acquisition discipline
 
-Respect providers that acquire sensor groups together; never claim per-sensor
+Respect providers that acquire sensor groups together; do not claim per-sensor
 savings without measurement. Suspend unused acquisition after a grace period
-unless background history is explicitly enabled.
+unless background history is enabled.
 
 ## §122 — Rates and slow clients
 
 Sampling, transmission and animation rates are separate. Batch updates; bound
-per-client queues and **discard obsolete pending snapshots** — a client that
-cannot keep up receives the newest state, never a replayed backlog of stale
-telemetry, because telemetry has no value once superseded.
-
-Phone animations interpolate locally and must not imply additional measured
-samples. Numeric text is never interpolated: digits are read as values.
+queues; discard obsolete pending snapshots. Phone animations may interpolate
+presentation but never imply additional measured samples. Numeric text is not
+interpolated.
 
 ## §124 — One baseline
 
-V1 ships one measured baseline with bounded chart points, history and animation
-work. Performance presets and automatic quality adjustment are future scope.
-Pause unnecessary rendering when hidden or disconnected. Define tested minimum
-browser and WebView versions with a clear compatibility screen.
+V1 has one bounded rendering baseline for chart points/history/animation. Pause
+rendering when hidden/disconnected. Performance presets/auto quality are future
+scope.
 
-## §126 — Budgets, when there is a cost to bound
+## §126 — Budgets when cost is measurable
 
-Record numerical budgets once something measurably costs something. Nothing
-built so far does: the host polls a handful of keys once a second and the
-display renders a bounded scene from a bounded buffer.
-
-**This is a deliberate deferral, not a dismissal.** A budget exists to catch the
-regression nobody predicted, and two on the roadmap plausibly qualify — a
-provider reading a full sensor tree every cycle, and a dense line chart on a
-low-end phone. Reinstate budgets, and the named reference hardware they need,
-the moment either lands.
+Add numerical budgets for actual expensive paths such as dense charts or full
+sensor-tree polling. Use reproducible automated/browser profiles where useful;
+physical-device validation is not a release gate.
 
 ## §132 — Imported artwork
 
-Sanitize SVG before preview; save locally as an undoable element. Preserve
-vectors and multicolour originals; expose size, rotation, flip, opacity and
-monochrome recolouring. Store source and hash plus any supplied licence and
-attribution metadata — **a URL alone does not establish reuse rights.** Preserve
-required notices in packages. Imported icons work offline, with no CDN or
-font-kit dependency.
+Sanitize SVG before preview; preserve vectors/multicolour originals; expose
+size/rotation/flip/opacity/monochrome recolour. Store source/hash and supplied
+licence/attribution metadata. Imported icons work offline.
 
-## §134 — The theme format is ours
+## §134 — Theme format
 
-Own the JSON schema: the envelope, the semantics and the version. A document
-carries `schemaVersion`, its id and metadata, the artboard, globals, assets, and
-the semantic layer — sensor bindings, palette and typography references, typed
-chart settings. **Raw chart options are still not the theme format**, and
-neither is a bare renderer dump with no version, no semantics and no way to
-refuse it.
+Vigilia owns the versioned envelope and semantic data. Fabric's own object JSON
+is the sanctioned persisted representation for the scene tree to avoid a
+parallel geometry/grouping mapping layer.
 
-**The renderer's own object serialisation is a sanctioned part of the format**
-(decided 2026-09-15), for the node tree only. Storing geometry, stacking,
-grouping, visibility and lock in the scene graph's format means they round-trip
-with no conversion code, and the alternative — a parallel tree kept in step by a
-write-back layer on every commit — is the translation engine this avoids.
+Requirements:
 
-Three conditions make that safe rather than merely convenient, and they are
-requirements, not advice:
+- record/pin the Fabric major;
+- Fabric major changes are schema migrations; unsupported old scenes are
+  refused rather than reinterpreted;
+- strip Fabric defaults so absent keys mean defaults of the recorded major;
+- explicitly persist Vigilia identity;
+- custom charts persist authored typed settings only, never built ECharts/runtime
+  data.
 
-- The envelope **records the renderer's major version**, and that version is
-  pinned exactly rather than by range.
-- A renderer major upgrade is a **schema migration**: `schemaVersion` bumps and
-  an older scene is refused, not guessed at (§141).
-- **Every persisted key is an authored deviation, and every absent key means
-  the recorded major's default.** The renderer's own default-stripping is turned
-  **on**, so an object carries only what the author changed; what it does not
-  carry is defined by the version above, which refuses to load under a different
-  major. Nothing is ever reinterpreted under a default that moved, because a
-  build with different defaults does not open the file.
-
-  *Changed 2026-09-15.* This condition previously required geometry to be
-  written with an **explicit origin**, because Fabric 7 changed
-  `originX`/`originY` to default to `center` and a scene relying on the old
-  default would have shifted by half its size, silently. That is still the
-  hazard; it is the mechanism that changed, and it changed because the two could
-  not coexist. Measured: Fabric strips any property equal to its default, an
-  instance cannot opt out, and asking for the origin by name does not rescue it
-  either — so "explicit origin" and "strip defaults" are mutually exclusive for
-  the renderer's built-in classes, and satisfying the old wording meant
-  subclassing six of them.
-
-  The rule chosen is the stronger of the two: an explicit origin protected two
-  keys, and refusing on the recorded major protects all thirty-three. The
-  price, accepted deliberately (user, 2026-09-15), is that a renderer major
-  upgrade makes every saved theme unopenable rather than migratable.
-
-  The origin itself is still **the renderer's supported value, not ours**.
-  Fabric 7 deprecates every origin except `center`, so the format is written in
-  centre coordinates and the adapter converts from Vigilia's top-left boxes in
-  one place. Pinning our own convention would have made the deprecation's
-  removal a migration of every saved theme — trading one silent shift for a
-  scheduled one.
+Human readability of scene JSON is not a goal.
 
 ## §137 — Document and node shape
 
-Document: `schemaVersion`, id and metadata, artboard and background, an ordered
-node tree, typed globals and style references, asset references, editor
-metadata. Future mode overrides extend this document rather than duplicating its
-node tree.
+Envelope: schema version, id/metadata, artboard/background, globals, assets,
+semantic bindings, editor metadata and Fabric scene JSON.
 
-Node: stable id, type, local transform, visibility and lock, style, typed content
-and bindings, ordered children. **Child order alone determines stacking.**
-
-A consequence worth stating: grouping makes its members contiguous in that
-order, so it moves paint order for anything that was interleaved between them.
-That is inherent to a single ordered child list, not a bug to fix.
-
-A **group has its own geometry** — a transform, and children positioned in its
-space — which composes with its children's, so grouping and ungrouping preserve
-world appearance without baking anything (§57, and the schema has always said
-so). A group still has no paint of its own.
-
-*Changed 2026-09-15.* This requirement previously said the opposite: that a
-group was structural with no geometry, and that moving or rotating one rewrote
-its children's values. That position was never adopted by the format — the
-schema and §57 both described composing transforms throughout — and it conflicts
-with the scene graph adopted under §134, whose group carries a transform. Rather
-than flatten every group on save and rebuild it on load, which is the
-translation layer §134 exists to avoid, the rule gives way. The editor still
-implements the old rule and moves at spec 0013 stage 4.
-
-Two clauses of this section are untouched by that change and are what most of
-its citations rely on: **child order alone determines stacking**, and a group
-has children, visibility, lock and a position in that order.
+Fabric child order determines stacking. Fabric groups carry geometry and ordered
+children; transforms compose and group/ungroup preserves world appearance.
 
 ## §138 — Widgets in the document
 
-A reusable subtree with a local artboard, exposed style and data parameters,
-defaults and a preview. V1 insertion embeds a copy with fresh ids and
-provenance; there is no automatic library-update propagation.
+Reusable subtree with local artboard, exposed style/data parameters, defaults
+and preview. V1 insertion embeds a copy with fresh ids/provenance; no automatic
+library-update propagation.
 
 ## §139 — Packages
 
-A ZIP containing `manifest.json`, `theme.json` or `widget.json`, `assets/`, and
-optional preview and licence files. A pack embeds every dependency it requires.
+ZIP with manifest, theme/widget JSON, assets, optional preview and licence files.
+Packages embed required dependencies/assets.
 
 ## §141 — Validation and versioning
 
-Validate schema version, references, types, numeric limits, nesting and fonts.
-An unsupported `schemaVersion` **fails cleanly, naming both versions**, and
-never half-loads. Import into staging; reject traversal, symlinks, decompression
-bombs and executable content. Sanitize SVG, block external resources, impose
-asset and media limits. An unsupported schema leaves the library unchanged.
-
-Save atomically with recoverable drafts. Saving marks history clean **without
-clearing it**. New and Open prompt Save/Discard/Cancel and clear history only
-after a successful replacement. Never export credentials, weather coordinates or
-device tokens.
+Validate schema/Fabric version, references, types, numeric limits, nesting,
+fonts/assets/media. Unsupported versions fail cleanly without mutating the
+library. Reject traversal/symlinks/decompression bombs/executable content and
+external SVG resources. Save atomically; New/Open prompt Save/Discard/Cancel;
+never export credentials or device tokens.
 
 ## §145 — Hosting and settings
 
-Localhost administration stays available when LAN serving is off. Tray controls
-complete process start and stop: **a stopped server cannot restart itself
-through its own website.**
+Localhost administration remains available with LAN off. LAN serving starts
+disabled and requires explicit opt-in/configuration. Pair phones with short-lived
+codes/revocable sessions. Editing is localhost-only by default. Plain LAN HTTP
+has no confidentiality; never suggest internet exposure.
 
-LAN serving starts **disabled**, with explicit interface and port selection and
-firewall guidance. Phones pair with short-lived codes and revocable
-display-scoped sessions. Full editing is localhost-only by default. Enforce
-authorization, host and origin checks, safe asset access and request limits.
-
-**Plain LAN HTTP provides no confidentiality.** Document trusted-network-only
-use; never suggest internet exposure.
-
-Settings cover units, locale and timezone, weather coordinates and provider,
-sensor mapping, libraries, device assignments, fit mode and hosting. Weather keys
-stay server-side.
+Settings cover units/locale/timezone, weather/provider mapping, libraries,
+device assignments, fit mode and hosting.
 
 ## §157 — Sequencing
 
-Gates are an ordering, not a release process. Feasibility, document and
-rendering, and authoring are largely done; live display is partly done; reuse
-and packaging are not started.
+Current order:
 
-| Gate | State |
-|---|---|
-| 0 — Feasibility | done |
-| 1 — Document and rendering | done |
-| 2 — Authoring | in progress — chart settings and layer panel outstanding |
-| 3 — Live display | partly done — host and transport work; pairing, LAN and the extended provider do not |
-| 4 — Reuse and packages | not started |
-| 5 — Release | not started, and not wanted yet (goal 4) |
+1. complete Fabric player flip;
+2. validate/adopt the `fabricjs-image-editor` source fork;
+3. migrate editor and persisted Fabric scene envelope together;
+4. implement schema-v2 globals/property model;
+5. live editor bindings/charts;
+6. video background production path;
+7. delete superseded DOM/custom generic-editor code;
+8. starter theme/storage/LAN/provider/product work.
 
-Seek human review for scope expansion, anything with external effect, and
-product taste. Architecture, schema design and sequencing do not need it.
+Human review is for scope expansion, product taste and external effects, not
+routine architecture/sequencing.
 
-## §170 — Dark and light variants (later)
+## §170 — Dark/light variants (later)
 
-One theme declares dark-only, light-only or both, with an author-selected
-default. Dual-mode themes share one node tree, layout and sensor bindings, and
-store sparse overrides for **globals**, asset references and visibility.
+One theme may declare dark-only, light-only or both. Dual-mode themes share scene
+geometry/bindings and override theme globals/assets/visibility rather than
+maintaining duplicate themes. Do not auto-invert bitmap colours.
 
-Because colour and typography are theme-level only (§73), a dual-mode theme
-overrides **tokens, not elements** — so adding a light mode touches the palette
-and the type presets and no element at all. Do not automatically invert bitmap
-colours. Switching modes per device must not duplicate the theme or save a new
-revision.
+## Later
 
----
-
-## Later, in no committed order
-
-**Icon browser** — collection browsing, search, previews and direct insertion
-over the importer, behind a replaceable adapter, with catalogues kept out of the
-player.
-
-**Performance presets** — per-device Lightweight/Balanced/Full for animation,
-media, chart point count and backing resolution. Preserve artboard geometry;
-never silently remove informative styling.
-
-**Incremental drawing** — per-corner radii, richer fills and strokes, editable
-polygons, general-purpose arcs and rings, in small increments that each reuse the
-node schema, inspector registration, undo and shared renderer. Boolean
-operations and full path editing are deferred.
-
-**Android companion** — a thin WebView shell loading the same PC-hosted display,
-with fullscreen and orientation control, keep-awake, saved pairing and reconnect.
-A delivery shell, not a performance fix or a compatibility fix. Ordinary browser
-access stays fully supported.
+- Icon browser over the existing importer.
+- Per-device performance presets.
+- Incremental native drawing beyond rectangle/ellipse/line.
+- Thin Android WebView companion; normal browser access remains supported.
