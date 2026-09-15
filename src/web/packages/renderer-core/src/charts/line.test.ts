@@ -197,8 +197,10 @@ describe('buildLineOption', () => {
       NOW,
     );
 
-    // A sparkline must reach the element edges the author laid out.
-    expect(option.grid.containLabel).toBe(false);
+    // A sparkline must reach the element edges the author laid out, so the
+    // outer bounds are infinite rather than the canvas. `grid.dom.test.ts`
+    // asserts that this reaches the engine; this asserts the option.
+    expect(option.grid.outerBoundsMode).toBe('none');
     expect(option.grid.left).toBe(0);
     expect(option.grid.right).toBe(0);
     expect(option.xAxis.show).toBe(false);

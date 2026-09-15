@@ -3,6 +3,7 @@ import { hasPlottableValue } from '../types.js';
 import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import { resolveThresholdColor, toLinearGradient } from './fill.js';
 import type { EngineColor, LinearGradientColor } from './fill.js';
+import { cartesianGrid, type CartesianGrid } from './grid.js';
 
 // Part of this module's surface before the shared resolution moved to fill.ts.
 export type { EngineColor, LinearGradientColor };
@@ -117,13 +118,7 @@ export interface SeriesInput {
 
 /** The emitted option shape. Local and explicit, like the gauge adapter's. */
 export interface LineOption extends EngineAnimation {
-  readonly grid: {
-    readonly left: number;
-    readonly right: number;
-    readonly top: number;
-    readonly bottom: number;
-    readonly containLabel: boolean;
-  };
+  readonly grid: CartesianGrid;
   readonly xAxis: {
     readonly type: 'time';
     readonly show: boolean;
@@ -211,15 +206,17 @@ export function buildLineOption(
 
   return {
     ...toEngineAnimation(settings.animation, animate),
-    grid: {
-      left: settings.showAxes ? 8 : 0,
-      right: settings.showAxes ? 8 : 0,
-      top: 8,
-      bottom: settings.showAxes ? 8 : 0,
-      // A sparkline must reach the element edges; axis labels must not steal
-      // space from the artboard geometry the author laid out.
-      containLabel: settings.showAxes,
-    },
+    // A sparkline must reach the element edges; axis labels must not steal
+    // space from the artboard geometry the author laid out.
+    grid: cartesianGrid(
+      {
+        left: settings.showAxes ? 8 : 0,
+        right: settings.showAxes ? 8 : 0,
+        top: 8,
+        bottom: settings.showAxes ? 8 : 0,
+      },
+      settings.showAxes,
+    ),
     xAxis: {
       type: 'time',
       show: settings.showAxes,

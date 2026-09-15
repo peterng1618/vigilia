@@ -260,6 +260,31 @@ comment-only edit to a source file could skip the build. "It is only a comment"
 is a judgement, and AGENTS.md prefers a mechanism; the classifier keys on paths
 and a dropped tier has to be stated in the report.
 
+### Measured: `grid.containLabel` was deprecated, not inert
+
+2026-09-15, correcting spec 0013's own stage-2 finding, which said axis labels
+"reserve no space anywhere". They did. One 400x240 line chart, five-figure y
+labels, plot-area edges via `convertToPixel`:
+
+| grid option | plot left | plot bottom |
+|---|---|---|
+| `containLabel: true` (what shipped) | 61.94 | 212 |
+| `outerBoundsMode: 'same'` + `outerBoundsContain: 'axisLabel'` | 61.94 | 212 |
+| neither, i.e. ECharts' `'auto'` default | 53.94 | 220 |
+| `outerBoundsMode: 'none'` | 8 | 232 |
+
+ECharts 6.1.0 routes `outerBoundsMode: 'auto'` to `'same'` when `containLabel`
+is set, so the deprecated key still worked and the console warning was the only
+symptom. The builders moved to the two replacement keys anyway — identical
+layout, no deprecated key emitted, and no dependence on
+`LegacyGridContainLabel`, which nothing registered.
+
+**The generalisable part, and why this is recorded rather than just fixed:** the
+finding was reached by reading the warning and the registration sites, and the
+inference from "ECharts warns that a key needs a module" to "the key does
+nothing" is not sound. The layout was never measured until the fix was written.
+`grid.dom.test.ts` now measures it.
+
 ---
 
 ## Open — need a human

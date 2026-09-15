@@ -27,7 +27,7 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,157 passed across 56 files (2026-09-15) |
+| Unit tests | 1,159 passed across 57 files (2026-09-15) |
 | Typechecks | six projects, clean locally — **CI checks only five**, `scene-fabric` is absent from `ci.yml:39-44` (2026-09-15) |
 | Browser tests (both projects) | 141 passed, 61 skipped, 0 failed (2026-09-15) — clean on the first attempt on the last run, and on the *third* attempt on the run before it, where the first two each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
 | §47 size gate | 201.1 KB gzip / 400 KB (2026-09-15) |
@@ -269,7 +269,7 @@ throughout (marked *review 2026-09-15*). Ranked:
 | **Node identity was not in the persisted format at all.** Measured: Fabric emits no `id` and drops one passed in; `CHART_SERIALISED_KEYS` has none. Bindings, `PlanIssue.nodeId`, the layer tree and the plan-to-object match all key on it | spec 0013, *Settle before stage 3* — blocks stage 3 |
 | **Three claims cannot all hold**: `plan.ts` untouched, Fabric's format as the tree, no write-back layer. Resolved in favour of Fabric owning geometry and the plan being applied *onto* live objects; `planBox` narrows and `plan.ts` moves from KEEP to ADAPT | spec 0013, *After stage 3, Fabric owns geometry* |
 | **`includeDefaultValues` defaults to `true`**, so a persisted object carries 33 keys, not 10 — and turning it off breaks §134's origin condition for every built-in class, not just the chart. Unchosen either way | spec 0013, *Settle before stage 3* — blocks stage 3 |
-| **`grid.containLabel` has been inert app-wide.** ECharts 6 needs `LegacyGridContainLabel`, registered nowhere; `line.test.ts:201` and `bar.test.ts:144` assert the key and pass regardless. A live defect, pre-existing, not caused by the migration | spec 0013 stage 2 |
+| ~~**`grid.containLabel` has been inert app-wide**~~ — **fixed, and the finding was half wrong.** The deprecation warning was real; "labels reserve no space anywhere" was inferred from it and is false. Measured: the deprecated key lays out *identically* to its replacement. The builders moved to `outerBoundsMode`/`outerBoundsContain` under one owner, `charts/grid.ts`, and `grid.dom.test.ts` measures the layout instead of asserting a key | done; table in `decisions.md` |
 | **`subTargetCheck`, `interactive` and `layoutManager`** are forced into Fabric's own `Group.toObject` — editor state and engine internals in a portable document, with no rule governing them | spec 0013, *Settle before stage 3* |
 | **Custom properties serialise by reference**: `chart.toObject().settings === the live object`, so a later in-place edit rewrites an earlier snapshot. Same defect class as the §67 rule, different door | spec 0013, *Telemetry* |
 | **`jsdom` and `canvas` are undeclared** — both are *optional* deps of `fabric@7.4.0`, and `chart-object.dom.test.ts` needs both | spec 0013 stage 2 |

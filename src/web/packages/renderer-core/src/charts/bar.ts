@@ -7,6 +7,7 @@ import {
   toLinearGradient,
   type EngineColor,
 } from './fill.js';
+import { cartesianGrid, type CartesianGrid } from './grid.js';
 
 /**
  * Typed settings → ECharts option for the bar / progress-bar family (§81).
@@ -134,13 +135,7 @@ interface ValueAxis {
 
 /** The emitted option shape. Local and explicit, like the other adapters'. */
 export interface BarOption extends EngineAnimation {
-  readonly grid: {
-    readonly left: number;
-    readonly right: number;
-    readonly top: number;
-    readonly bottom: number;
-    readonly containLabel: boolean;
-  };
+  readonly grid: CartesianGrid;
   readonly xAxis: CategoryAxis | ValueAxis;
   readonly yAxis: CategoryAxis | ValueAxis;
   readonly series: readonly [
@@ -195,13 +190,15 @@ export function buildBarOption(
 
   return {
     ...toEngineAnimation(settings.animation, animate),
-    grid: {
-      left: settings.showAxes || settings.showCategoryLabels ? 8 : 0,
-      right: 0,
-      top: 0,
-      bottom: settings.showAxes ? 8 : 0,
-      containLabel: settings.showAxes || settings.showCategoryLabels,
-    },
+    grid: cartesianGrid(
+      {
+        left: settings.showAxes || settings.showCategoryLabels ? 8 : 0,
+        right: 0,
+        top: 0,
+        bottom: settings.showAxes ? 8 : 0,
+      },
+      settings.showAxes || settings.showCategoryLabels,
+    ),
     // Orientation is only which axis carries the categories. Everything else —
     // including the data — is identical, which is why one adapter covers both.
     xAxis: horizontal ? valueAxis : categoryAxis,

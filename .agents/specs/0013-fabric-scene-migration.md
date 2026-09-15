@@ -803,17 +803,22 @@ Each stage ends green and committed.
    **Also in this stage, found by the review and all cheap** — none of them is
    worth its own stage and all four are in stage-1 code:
 
-   - **`grid.containLabel` has been inert app-wide, and two unit tests assert
-     it.** Mounting a real line chart prints `[ECharts] Specified
-     grid.containLabel but no use(LegacyGridContainLabel); use grid.outerBounds
-     instead`. `line.ts:221` and `bar.ts:203` set it; **none** of
-     `chart-engine.ts:35`, `player/src/main.ts:58` or `editor/src/main.ts:80`
-     registers it, so axis labels reserve no space anywhere. `line.test.ts:201`
-     and `bar.test.ts:144` pass regardless — a test asserting a key rather than
-     a behaviour. Either `echarts.use([LegacyGridContainLabel])` (exported from
-     `echarts/features`, verified present) or move the builders to
-     `grid.outerBounds`. Do it while `chart-engine.ts` is still the only
-     consumer.
+   - ~~**`grid.containLabel` has been inert app-wide**~~ — **done, and the
+     finding was half wrong.** The deprecation warning is real and printed on
+     every mount; "so axis labels reserve no space anywhere" was an inference
+     from it and is false. Measured: the deprecated key and its replacement lay
+     out *identically*, because ECharts 6.1.0 routes `outerBoundsMode: 'auto'`
+     to `'same'` when `containLabel` is set. The table is in
+     [`decisions.md`](../decisions.md).
+
+     The grid rect now has one owner, `charts/grid.ts`, which both cartesian
+     builders call — they declared the same five keys twice before. It emits
+     `outerBoundsMode`/`outerBoundsContain` rather than registering
+     `LegacyGridContainLabel`: same layout, nothing deprecated in the option,
+     no legacy module. `grid.dom.test.ts` asserts the engine no longer
+     complains — which is the regression guard — and that containment is
+     observable in the layout, which is what the two key-asserting unit tests
+     should have done.
    - **`StaticCanvas.loadFromJSON` has no test**, only `VigiliaChart.fromObject`
      does — yet the canvas path is what stage 3 depends on, and it is the one
      that needs `classRegistry.setClass` to have run and the `sideEffects`
