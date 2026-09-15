@@ -107,5 +107,7 @@ export class DocumentManager implements EditorManager {
     this.#history = replaceDocument(this.#history, next);
   }
 
-  public destroy(): void {}
+  public destroy(): void {
+    // No owned resources.
+  }
 }
