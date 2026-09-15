@@ -260,6 +260,35 @@ comment-only edit to a source file could skip the build. "It is only a comment"
 is a judgement, and AGENTS.md prefers a mechanism; the classifier keys on paths
 and a dropped tier has to be stated in the report.
 
+### Measured: what Fabric costs the display bundle, and what the chart hook does not
+
+2026-09-15, spec 0013 stage 2, both from the shipped build rather than a
+prototype.
+
+**The bundle.** The player is **261.5 KB gzip against the 400 KB §47 budget**,
+up from 201.1 KB — so the Fabric scene graph, the adapter and everything with it
+cost **+60.4 KB** once the SVG chart renderer is dropped. The spec predicted
+~257 KB from component measurements; the 4.4 KB difference is the predicted
+4.6 KB saving from removing `SVGRenderer` not materialising, which is worth
+knowing next time a bundle change is estimated by adding up parts.
+
+**The chart invalidation hook is masked on the player's path.** `chart-object.ts`
+called `zr.on('rendered', …)` "the single most load-bearing line in this file".
+Removing it and re-running the browser suite changes **nothing**: the adapter
+calls `requestRenderAll` at the end of every `apply`, engine animation is forced
+off, so the only engine repaint happens synchronously inside the same
+`setOption`. It is still load-bearing for a repaint the *engine* drives rather
+than the plan — a grouped chart whose siblings did not change, and the editor,
+which does not rebuild a frame every second — so it stays, and its guard is
+`chart-object.dom.test.ts`'s grouped-cache test.
+
+**The generalisable part:** "load-bearing" was asserted from a prototype where
+nothing else re-rendered. A claim about what a line protects is a claim about
+its surroundings, and the surroundings changed when the adapter arrived. Both
+end-to-end tests written to cover it were verified by sabotage and neither
+caught it; what they catch — the update loop not reaching the canvas — is
+recorded in the test instead.
+
 ### Measured: `grid.containLabel` was deprecated, not inert
 
 2026-09-15, correcting spec 0013's own stage-2 finding, which said axis labels

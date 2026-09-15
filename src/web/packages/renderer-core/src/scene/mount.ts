@@ -39,7 +39,17 @@ import type {
 
 /** The chart types the caller must register with ECharts before mounting. */
 export interface SceneHandle {
-  /** The artboard element. Positioned and scaled; do not restyle it. */
+  /**
+   * The element the scene lives in. Positioned by the renderer; do not restyle
+   * it.
+   *
+   * **Two implementations mean two things by it.** Here it is a `<div>`
+   * carrying the artboard's CSS transform, so it is also *scaled*. In
+   * `@vigilia/scene-fabric` it is the `<canvas>`, which is viewport-sized and
+   * never CSS-scaled — the scale lives in the canvas' `viewportTransform`
+   * instead. Anything reading it for geometry wants {@link SceneHandle.transform}
+   * rather than the element's own box.
+   */
   readonly artboard: HTMLElement;
   /**
    * The current document→viewport mapping.
@@ -78,11 +88,6 @@ export interface MountOptions {
    * only the network knows, and only this layer hears about it.
    */
   readonly onAssetError?: (nodeId: string, src: string) => void;
-  /**
-   * Renderer for chart elements. Canvas is the default; SVG trades draw speed
-   * for crisper scaling and is worth measuring on the reference phone (§157).
-   */
-  readonly chartRenderer?: 'canvas' | 'svg';
 }
 
 export function mountScene(options: MountOptions): SceneHandle {
@@ -123,17 +128,7 @@ export function mountScene(options: MountOptions): SceneHandle {
   const applied = new Map<string, PlanNode>();
 
   for (const node of plan.nodes) {
-    artboard.append(
-      createNode(
-        node,
-        charts,
-        texts,
-        media,
-        elements,
-        options.chartRenderer ?? 'canvas',
-        options.onAssetError,
-      ),
-    );
+    artboard.append(createNode(node, charts, texts, media, elements, options.onAssetError));
   }
 
   function applyArtboard(): ArtboardTransform {
@@ -253,7 +248,6 @@ function createNode(
   texts: Map<string, HTMLElement>,
   media: Map<string, HTMLImageElement | HTMLVideoElement>,
   elements: Map<string, HTMLElement>,
-  chartRenderer: 'canvas' | 'svg',
   onAssetError: ((nodeId: string, src: string) => void) | undefined,
 ): HTMLElement {
   const element = document.createElement('div');
@@ -266,9 +260,7 @@ function createNode(
   switch (node.content.kind) {
     case 'group':
       for (const child of node.children) {
-        element.append(
-          createNode(child, charts, texts, media, elements, chartRenderer, onAssetError),
-        );
+        element.append(createNode(child, charts, texts, media, elements, onAssetError));
       }
       break;
 
@@ -300,7 +292,12 @@ function createNode(
     }
 
     case 'chart': {
-      const chart = echarts.init(element, undefined, { renderer: chartRenderer });
+      // Canvas only. The SVG renderer went with the `chartRenderer` option at
+      // spec 0013 stage 2: a Fabric object draws by blitting a canvas and
+      // cannot reach SVG at all, and the two things resting on the choice were
+      // a comparison that is moot once only one is reachable and a determinism
+      // claim the repo's own measurements had already disproved.
+      const chart = echarts.init(element, undefined, { renderer: 'canvas' });
       charts.set(node.id, { element, chart });
       setChartOption(chart, node);
       break;

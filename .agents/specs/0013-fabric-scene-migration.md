@@ -844,6 +844,35 @@ Each stage ends green and committed.
    scene graph would make two different meanings share one parameter across the
    branch's history.
 
+   ### Landed 2026-09-15
+
+   `adapter.ts` (`createSceneAdapter`), with `placement.ts`, `paint.ts`,
+   `text-runs.ts`, `fabric-nodes.ts`, `fabric-text.ts`, `fabric-image.ts` and
+   `scene.ts`. `mount.ts` lost `chartRenderer`, the player lost `?renderer=svg`
+   and `SVGRenderer`, and `PlanChart` gained `settings` — a `VigiliaChart`
+   persists exactly `ChartContent` and that cannot be derived back out of a
+   built option. The four chart variants of `PlanContent` became one mapped type
+   over `ChartContent` and `ChartOptionByFamily`.
+
+   Measured: **261.5 KB gzip of 400 KB**, so Fabric costs **+60.4 KB** against
+   the ~257 KB predicted here. 1,214 unit tests, 158 browser tests, six
+   typechecks. Both figures and the invalidation-hook correction are in
+   [`decisions.md`](../decisions.md).
+
+   **Two defects the tests found and review had not**, both silently wrong: a
+   structural key built from the content kind kept a `Rect` for a node that
+   became an ellipse, since both are `kind: 'shape'`; and the first `apply`
+   cleared a scene it had just adopted, which is precisely the stage-3 path.
+   Class matching is now per node against `constructor` — `instanceof` cannot
+   tell a `Textbox` from a `FabricText` — and the key watches nesting only.
+
+   **Deliberately incomplete, and reported rather than approximated** (§85), so
+   stage 3 does not inherit a hidden list: text `overflow`/clamp and the
+   font-load re-measure (stage 5), §111 monochrome images (stage 7), tabular
+   numerals and per-run opacity, shadow and letter spacing (stage 5, and §85
+   needs human agreement on each alternative first). Every one of these calls
+   `onUnsupported`, which the player logs.
+
    **Also in this stage, found by the review and all cheap** — none of them is
    worth its own stage and all four are in stage-1 code:
 

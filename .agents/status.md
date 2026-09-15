@@ -27,10 +27,10 @@ incompatible settings section.
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,160 passed across 57 files (2026-09-15) |
+| Unit tests | 1,214 passed across 61 files (2026-09-15) |
 | Typechecks | six projects, clean, locally **and in CI** — the step runs `npm run typecheck` rather than a hand-written list (2026-09-15) |
-| Browser tests (both projects) | 141 passed, 61 skipped, 0 failed (2026-09-15) — clean on the first attempt on the last run, and on the *third* attempt on the run before it, where the first two each failed **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
-| §47 size gate | 201.1 KB gzip / 400 KB (2026-09-15) |
+| Browser tests (both projects) | 158 passed, 62 skipped, 0 failed (2026-09-15) — clean on the first attempt, including the new `display-fabric.spec.ts`. An earlier run needed a *third* attempt, the first two each failing **one** test, a *different* one each time, both passing in isolation. Timing-flake class, still undiagnosed, see below |
+| §47 size gate | **261.5 KB** gzip / 400 KB (2026-09-15) — Fabric is now in the display bundle, costing **+60.4 KB** |
 | Host bundle | 34.36 kB, zero runtime deps (2026-09-15) |
 
 **AGENTS.md is an operating manual again** (2026-09-15), remodelled on
@@ -76,7 +76,54 @@ suite is not clean; timing stability remains unverified.
 
 ## Next, in order
 
-**0 — The Fabric migration. Stage 1 landed 2026-09-15.** What exists:
+**0 — The Fabric migration. Stage 2 landed 2026-09-15**, behind an opt-in. What
+exists:
+
+- **`scene-fabric/src/adapter.ts`** — `createSceneAdapter`, the one owner of
+  `ScenePlan` → Fabric, imported by both ends. It reconciles a plan **onto** a
+  canvas and creates an object only for an id it cannot find, which is the
+  direction stage 3 needs; `adoptExisting` indexes objects already on the canvas
+  by their `id`, so a scene revived by `loadFromJSON` will be configured rather
+  than replaced. Every `PlanContent` kind except video, which was measured and
+  rejected as a canvas object.
+- **`?scene=fabric` in the player.** The DOM applier is still the default. Both
+  return the same `SceneHandle`, so `main.ts` branches at one call and the flip
+  deletes a branch — the stage 2/3 boundary was re-cut for this reason, recorded
+  in spec 0013.
+- **`tests/e2e/display-fabric.spec.ts`** — 9 tests, 8 running per project. It
+  asserts what jsdom cannot: that ink lands, that all four chart families draw
+  through a Fabric object in a real browser, that the artboard transform is in
+  `viewportTransform` with a uniform scale and no skew, that each chart's
+  detached canvas is oversampled by the device ratio, and that **both render
+  paths draw the same node ids**.
+- **`grid.ts`, `jsdom`/`canvas` declared, CI typechecking six projects, and a
+  `StaticCanvas.loadFromJSON` test** — the four stage-2 housekeeping items from
+  the review, all four closed, one of them ("labels reserve no space") corrected
+  rather than fixed.
+
+**Measured, not predicted:** the player bundle is **261.5 KB gzip of 400 KB**,
+against the spec's estimate of ~257 KB. 1,214 unit tests across 61 files, six
+typechecks clean, 158 browser tests passed with 0 failures on the first attempt.
+
+**Two claims this stage disproved, both recorded where they were made.** The
+review's `grid.containLabel` finding said axis labels reserved no space
+anywhere; measured, the deprecated key laid out identically to its replacement.
+And `chart-object.ts`'s "single most load-bearing line" — the ECharts
+invalidation hook — is **masked on the player's path**: removing it changes
+nothing in the browser suite, because the adapter re-renders every frame and
+engine animation is off. It still protects a grouped chart whose siblings do not
+change, and the editor, so it stays — but the assertion that covers it is a unit
+test, not an end-to-end one.
+
+**What is not verified.** No screenshot review of the Fabric path yet, so
+nothing is claimed about how it *looks* beyond "ink is present where it should
+be and absent where it should not". Text is deliberately incomplete: ellipsis,
+the line clamp and the font-load re-measure are stage 5, and the renderer
+reports each as a gap rather than approximating it. The monochrome image path
+(§111) reports a gap and draws the artwork unflattened. Nothing has run on a
+physical phone.
+
+**Stage 1 landed 2026-09-15.** What it left:
 
 - **`packages/scene-fabric`**, a sixth workspace package, so Fabric is
   unreachable from `renderer-core` — whose barrel the Node host imports runtime

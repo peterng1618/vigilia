@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",
+    "@vigilia/scene-fabric": "*",
     "echarts": "6.1.0"
   },
   "devDependencies": {

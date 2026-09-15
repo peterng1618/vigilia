@@ -35,8 +35,18 @@ import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
  * Fabric has no idea the detached canvas changed. Without
  * `zr.on('rendered', …)` marking this object dirty, a chart fed new data
  * repaints its own canvas and **nothing reaches the screen** — measured as 0
- * Fabric renders and a visibly frozen chart. That is the single most
- * load-bearing line in this file.
+ * Fabric renders and a visibly frozen chart.
+ *
+ * **Where it is load-bearing, and where it is masked** *(measured 2026-09-15,
+ * stage 2)*. On the player's path it is currently redundant: the adapter calls
+ * `requestRenderAll` at the end of every `apply`, engine animation is forced
+ * off, and the only engine repaint therefore happens synchronously inside that
+ * same `setOption`. Removing the hook and re-running the browser suite changes
+ * nothing. What it still protects is any repaint the *engine* drives rather
+ * than the plan — a grouped chart whose siblings did not change, and the
+ * editor, where a frame is not rebuilt every second. So it stays, and the
+ * assertion that covers it is `chart-object.dom.test.ts`'s grouped-cache test
+ * rather than anything end to end.
  *
  * It goes through `set('dirty', true)` rather than a field assignment, because
  * `FabricObject._set` is what propagates dirtiness to `this.parent`. A Fabric

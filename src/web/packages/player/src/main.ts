@@ -1,7 +1,7 @@
 import * as echarts from 'echarts/core';
 import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent } from 'echarts/components';
-import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
+import { CanvasRenderer } from 'echarts/renderers';
 import {
   SAMPLE_STREAM_PATH,
   buildScenePlan,
@@ -17,6 +17,7 @@ import {
   type SceneHandle,
   type ThemeDocument,
 } from '@vigilia/renderer-core';
+import { mountFabricScene } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 
 /**
@@ -43,27 +44,19 @@ import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 // staying a narrow list — never switch to the `echarts` default bundle here.
 // GridComponent is what the cartesian families (line, bar) need; the gauge and
 // pie families do not use it.
-// Both renderers are registered so the comparison can be measured rather than
-// assumed: SVG trades draw speed for crisper scaling, and which wins depends on
-// the reference phone.
 //
-// This comment used to add that SVG was also how a deterministic chart capture
-// was possible at all. **That was false**, and the repo's own measurement says
-// so: `display.spec.ts`'s determinism tests and `.agents/screenshots/README.md`
-// record that a frame containing a chart is not byte-reproducible on *either*
-// renderer, with the clock frozen and animation off. Nothing rests on `svg`
-// for reproducibility, which is what makes losing it affordable — spec 0013
-// stage 2 removes this registration along with `mount.ts`, because a Fabric
-// object draws by blitting a canvas and cannot reach the SVG renderer at all.
-echarts.use([
-  GaugeChart,
-  LineChart,
-  BarChart,
-  PieChart,
-  GridComponent,
-  CanvasRenderer,
-  SVGRenderer,
-]);
+// **Canvas only.** The SVG renderer was registered so the two could be compared
+// on the reference phone; a Fabric object draws by blitting a canvas and cannot
+// reach SVG at all, so once the scene renders through Fabric the comparison has
+// one reachable side and is moot. The comment here also used to claim SVG was
+// what made a deterministic chart capture possible, and the repo's own
+// measurements disprove it — `display.spec.ts` and
+// `.agents/screenshots/README.md` both record that a frame containing a chart
+// is not byte-reproducible on *either* renderer, clock frozen and animation off.
+//
+// This list only still exists for `mount.ts`, the DOM path. `scene-fabric`
+// registers its own as a module side effect, and this goes when that path does.
+echarts.use([GaugeChart, LineChart, BarChart, PieChart, GridComponent, CanvasRenderer]);
 
 const artboardHost = document.querySelector<HTMLElement>('#artboard');
 
@@ -166,19 +159,37 @@ function start(host: HTMLElement): void {
     });
 
   const first = plan();
-  const chartRenderer = parameters.get('renderer') === 'svg' ? 'svg' : 'canvas';
 
-  const handle = mountScene({
-    host,
-    plan: first,
-    chartRenderer,
-    onAssetError: (nodeId, src) => {
-      // Declared by the theme, absent from what the server actually serves.
-      // On the host this is a packaging bug; here it is a fact worth stating
-      // rather than a blank rectangle nobody can explain.
-      console.warn(`Vigilia: asset for node "${nodeId}" failed to load: ${src}`);
-    },
-  });
+  const onAssetError = (nodeId: string, src: string): void => {
+    // Declared by the theme, absent from what the server actually serves. On
+    // the host this is a packaging bug; here it is a fact worth stating rather
+    // than a blank rectangle nobody can explain.
+    console.warn(`Vigilia: asset for node "${nodeId}" failed to load: ${src}`);
+  };
+
+  // Which scene graph draws the frame. The DOM applier is still the default;
+  // `?scene=fabric` is the migration's opt-in (spec 0013 stage 2), and it is
+  // one call because both return the same `SceneHandle` — everything below,
+  // including the update loop, the resize observer and the diagnostics hook, is
+  // unaware of the choice. Stage 3 deletes the branch by flipping the default.
+  //
+  // Not `?renderer=`: that named the *chart* engine's renderer and is retired
+  // in this same change, so reusing it would give one parameter two meanings.
+  const handle =
+    parameters.get('scene') === 'fabric'
+      ? mountFabricScene({
+          host,
+          plan: first,
+          onAssetError,
+          onUnsupported: (nodeId, reason) => {
+            // §85: a gap is marked, never approximated — and a gap nobody is
+            // told about is indistinguishable from a rendering bug. These are
+            // facts about the *renderer*, which is why they are not plan
+            // issues.
+            console.warn(`Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`);
+          },
+        })
+      : mountScene({ host, plan: first, onAssetError });
 
   reportIssues(first);
   reportMissingFonts(first);
