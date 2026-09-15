@@ -11,44 +11,10 @@ import {
 } from '@vigilia/renderer-core';
 import { nodeLabel } from '../node-label.js';
 
-/**
- * Editing the theme's globals (§73, §75).
- *
- * Pure, like every other command module: document in, document out, untouched
- * branches shared by reference.
- *
- * ## The part that is easy to get wrong
- *
- * A global is referenced from **five** places, not one:
- *
- * | Site | |
- * |---|---|
- * | `artboard.background` | |
- * | `artboard.barColor` | |
- * | `node.style[property]` | every node, recursively |
- * | `node.content.runs[].style[property]` | text runs (§89) |
- * | `node.content.monochrome` | image recolouring (§111) |
- *
- * Miss one and every operation here is subtly wrong in the same direction: a
- * reference count reads low, a rekey leaves a dangling reference behind, and a
- * delete silently breaks an element that looked fine. The list was taken from
- * the schema (`$defs/styleValue` and `$defs/styleMap` call sites) rather than
- * from memory, and {@link visitStyleValues} is the single walk all of them use —
- * so a sixth site means changing one function.
- *
- * ## Keys versus names
- *
- * A reference is `group.key`. The display `name` is separate precisely so
- * renaming is safe (§75), so {@link renameGlobal} touches no references at all.
- * Changing the **key** is a different operation — {@link rekeyGlobal} — and it
- * rewrites every reference.
- */
+/** Pure global-token edits. One walker owns every reference site (§73, §75). */
 
-/** Where one reference to a global lives. */
 export interface GlobalReference {
-  /** Node id, or undefined for an artboard-level reference. */
   readonly nodeId?: string;
-  /** A human-readable location, for telling an author what a change affects. */
   readonly where: string;
 }
 
@@ -63,13 +29,7 @@ export function isValidGlobalKey(key: string): boolean {
   return STABLE_ID_PATTERN.test(key);
 }
 
-/**
- * An unused key in a group, derived from `base`.
- *
- * Adding a token needs a key before the author has typed anything, and a
- * generated one keeps "add" a single click instead of a modal form. The author
- * renames it afterwards, which {@link rekeyGlobal} makes safe.
- */
+/** Generate a free valid key for one-click token creation. */
 export function nextGlobalKey(document_: ThemeDocument, group: GlobalGroupName, base: string): string {
   const entries = document_.globals?.[group] ?? {};
 
@@ -85,12 +45,9 @@ export function nextGlobalKey(document_: ThemeDocument, group: GlobalGroupName, 
     }
   }
 
-  // Unreachable for any real theme; returning the base rather than throwing
-  // means the caller's add is refused instead of the editor falling over.
   return base;
 }
 
-/** Every global in the document, with where each one is used. */
 export function collectGlobalUsage(document_: ThemeDocument): GlobalUsage[] {
   const usage: GlobalUsage[] = [];
 
@@ -114,7 +71,7 @@ export function collectGlobalUsage(document_: ThemeDocument): GlobalUsage[] {
   return usage;
 }
 
-/** Every place one specific token is referenced. */
+/** Every document site that references one token. */
 export function referencesTo(document_: ThemeDocument, ref: GlobalRef): GlobalReference[] {
   const found: GlobalReference[] = [];
 
@@ -129,13 +86,7 @@ export function referencesTo(document_: ThemeDocument, ref: GlobalRef): GlobalRe
   return found;
 }
 
-/**
- * Adds a token.
- *
- * Refuses an invalid or duplicate key rather than overwriting: an add that
- * silently replaced an existing token would change every element referencing
- * it, which is a different operation with a different undo label.
- */
+/** Refuse invalid/duplicate keys; adding must never overwrite an existing token. */
 export function addGlobal(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -149,7 +100,6 @@ export function addGlobal(
   return withGroup(document_, group, { ...document_.globals?.[group], [key]: entry });
 }
 
-/** Changes a token's value. Every reference follows it — that is the point. */
 export function setGlobalValue(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -168,7 +118,7 @@ export function setGlobalValue(
   });
 }
 
-/** Changes a token's display name. References use the key, so none change. */
+/** Display-name changes do not affect key-based references. */
 export function renameGlobal(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -187,13 +137,7 @@ export function renameGlobal(
   });
 }
 
-/**
- * Changes a token's key, rewriting every reference to it.
- *
- * Insertion order is preserved rather than moving the renamed token to the end,
- * because the panel lists tokens in document order and a rename that reorders
- * the list makes the row jump away from the cursor.
- */
+/** Change the reference key everywhere while preserving group insertion order. */
 export function rekeyGlobal(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -229,29 +173,7 @@ export function rekeyGlobal(
   return rewritten;
 }
 
-/**
- * Removes an **unreferenced** token, and refuses a referenced one.
- *
- * ## This behaviour changed, and the old reasoning is worth keeping
- *
- * It used to *inline* the token's resolved value into every reference, argued
- * as the only defensible option of three: refusing made removal "a manual hunt
- * through the document, and there is no UI that lists the sites", and deleting
- * without inlining writes a theme that renders wrong.
- *
- * Spec 0011 D3 removed the premise. Colour and typography are theme-level only,
- * so an element **cannot** hold a literal colour — inlining would now write
- * exactly the document the format forbids, silently, on every referencing node.
- * So: **deletion demands reassignment** (user, 2026-09-13).
- *
- * The old objection is also no longer true. `collectGlobalUsage` gives every
- * token its reference count and the globals panel shows it, so an author can
- * see what is blocking a deletion before attempting it.
- *
- * Refusing is the more honest failure too: inlining *looked* like nothing
- * happened, because the rendering is identical by design, while quietly
- * detaching every element from the token an author was reorganising.
- */
+/** Referenced tokens cannot be deleted until reassigned; literals are not a fallback. */
 export function deleteGlobal(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -264,12 +186,6 @@ export function deleteGlobal(
     return document_;
   }
 
-  // `referencesTo` rather than a local walk. A global is referenced from FIVE
-  // sites — artboard background and bar colour, node styles, text run styles
-  // and image monochrome — and `visitStyleValues` is the single walk that knows
-  // all five. A second, narrower walk here would have missed run styles and
-  // monochrome, allowing exactly the dangling reference this guard exists to
-  // prevent.
   if (referencesTo(document_, `${group}.${key}` as GlobalRef).length > 0) {
     return document_;
   }
@@ -279,7 +195,7 @@ export function deleteGlobal(
   return withGroup(document_, group, rest);
 }
 
-/** Replaces one global group, dropping it entirely when it becomes empty. */
+/** Replace a group; omit empty group/global objects from persisted state. */
 function withGroup(
   document_: ThemeDocument,
   group: GlobalGroupName,
@@ -288,8 +204,6 @@ function withGroup(
   const globals = { ...document_.globals };
 
   if (Object.keys(entries).length === 0) {
-    // An empty object would serialise as `"palette": {}`, which is valid and
-    // says nothing. Absence is the honest representation.
     delete globals[group];
   } else {
     globals[group] = entries;
@@ -304,7 +218,6 @@ function withGroup(
   return { ...document_, globals };
 }
 
-/** One place a {@link StyleValue} lives. */
 interface StyleSite {
   readonly nodeId?: string;
   readonly where: string;
@@ -312,23 +225,12 @@ interface StyleSite {
 
 type StyleVisitor = (value: StyleValue, site: StyleSite) => StyleValue;
 
-/**
- * Reads every style value in the document.
- *
- * Implemented as a fold over {@link mapStyleValues} so there is one walk rather
- * than two that can disagree about where references live.
- */
+/** Read through the same walker used for rewrites so reference-site coverage cannot drift. */
 function visitStyleValues(document_: ThemeDocument, visitor: StyleVisitor): void {
   mapStyleValues(document_, visitor);
 }
 
-/**
- * Rewrites every style value in the document.
- *
- * Returns the same document by reference when the visitor changed nothing, and
- * shares every untouched branch — so an undo entry for "delete one token" costs
- * the nodes that actually referenced it and nothing else.
- */
+/** Rewrite every style-value site, preserving identity for untouched branches. */
 function mapStyleValues(document_: ThemeDocument, visitor: StyleVisitor): ThemeDocument {
   let changed = false;
 
