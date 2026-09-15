@@ -1,37 +1,5 @@
-/**
- * Every editor action, declared once.
- *
- * ## Why this exists
- *
- * The editor grew four ways to invoke the same work — a keyboard handler, a
- * file toolbar, an arrange toolbar, and soon a menu bar and a layer panel —
- * and each one carried its own copy of an action's label, its shortcut and its
- * enablement rule. That duplication had already produced bugs rather than
- * merely threatening to:
- *
- * - The Open and Save buttons hard-coded "(Ctrl+O)" and "(Ctrl+S)" into their
- *   tooltips while the keyboard handler independently implemented those keys.
- *   Two declarations, no compiler relating them.
- * - Enablement was computed by querying the DOM for buttons and inferring the
- *   rule from the button's own id (`startsWith('distribute')` means it needs
- *   three). A selector that was one word too broad disabled Open and Save
- *   until two nodes were selected, and two browser tests timed out on it. The
- *   fix at the time was to narrow the selector; the cause was that the rule
- *   lived in the view.
- *
- * So: **this module declares what an action is, and nothing about how it is
- * invoked.** Labels, shortcuts and enablement come from here, which is what
- * makes a second surface free rather than another copy. The imperative body
- * stays in `main.ts`, where the mutable editor state lives — one body per id,
- * reached through one dispatch.
- *
- * It follows the same split as the rest: this file decides, the DOM layer
- * draws. {@link actionForShortcut} turns a keystroke into an id by lookup
- * rather than a chain of `if`s, so "which key does what" is a table a test can
- * read.
- */
+/** Canonical action ids, labels, shortcuts and enablement for every editor surface. */
 
-/** Stable identifiers. Used as dispatch keys, so they are exhaustive by type. */
 export type ActionId =
   | 'file.open'
   | 'file.save'
@@ -64,53 +32,32 @@ export type ActionId =
   | 'navigate.nudge-up-large'
   | 'navigate.nudge-down-large';
 
-/**
- * Which surface an action belongs to.
- *
- * `navigate` actions are keyboard-only — nudging and Escape are not menu
- * items — and a menu builder shows the groups it wants rather than every
- * action declared here.
- */
+/** `navigate` actions are keyboard-only; surfaces choose which groups they render. */
 export type ActionGroup = 'file' | 'edit' | 'object' | 'arrange' | 'layer' | 'navigate';
 
 export interface ActionShortcut {
-  /** As `KeyboardEvent.key`, matched case-insensitively for letters. */
   readonly key: string;
-  /** Ctrl on Windows/Linux, Cmd on macOS. Omitted means it must not be held. */
+  /** Ctrl on Windows/Linux, Cmd on macOS. Omitted means not held. */
   readonly meta?: boolean;
-  /**
-   * Omitted means **don't care** — Shift+Delete is still a delete. Specified
-   * means it must match exactly, which is what separates Ctrl+Z from
-   * Ctrl+Shift+Z and a small nudge from a large one.
-   */
+  /** Omitted means don't care; specified means exact match. */
   readonly shift?: boolean;
 }
 
-/**
- * What enablement is allowed to depend on.
- *
- * A flat snapshot rather than the document, so a rule is a pure function of a
- * few numbers and a test does not need a theme fixture to assert one.
- */
+/** Minimal pure state needed to compute enablement. */
 export interface ActionContext {
   readonly selectionCount: number;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
-  /** Whether any selected node is a group — what ungrouping needs. */
   readonly hasGroupSelected: boolean;
-  /** Whether every selected node is locked, which §61 says cannot be edited. */
   readonly allSelectedLocked: boolean;
 }
 
 export interface EditorActionSpec {
   readonly id: ActionId;
-  /** Menu and tooltip text. Never written twice — see the module note. */
   readonly label: string;
   readonly group: ActionGroup;
   readonly shortcut?: ActionShortcut;
-  /** Compact toolbar glyph, where a toolbar shows this action. */
   readonly glyph?: string;
-  /** Why it is disabled, shown when it is. */
   readonly requires?: string;
   readonly enabled: (context: ActionContext) => boolean;
 }
@@ -121,7 +68,7 @@ const atLeast =
   (context: ActionContext): boolean =>
     context.selectionCount >= n;
 
-/** Every action, in the order a menu should list it. */
+/** Menu declaration order. */
 export const ACTIONS: readonly EditorActionSpec[] = [
   {
     id: 'file.open',
@@ -149,9 +96,6 @@ export const ACTIONS: readonly EditorActionSpec[] = [
     id: 'edit.redo',
     label: 'Redo',
     group: 'edit',
-    // Both bindings every tool offers. Ctrl+Y is declared as its own entry
-    // below rather than as a second shortcut on this one, because one action
-    // with two keys would make the menu label ambiguous.
     shortcut: { key: 'z', meta: true, shift: true },
     requires: 'something to redo',
     enabled: (context) => context.canRedo,
@@ -180,8 +124,6 @@ export const ACTIONS: readonly EditorActionSpec[] = [
     requires: 'a selected group',
     enabled: (context) => context.hasGroupSelected,
   },
-  // Align needs two nodes, distribute needs three — the rule that used to be
-  // inferred from a button's id.
   {
     id: 'arrange.align-left',
     label: 'Align left',
@@ -302,12 +244,7 @@ export const ACTIONS: readonly EditorActionSpec[] = [
   ...nudges(),
 ];
 
-/**
- * The eight nudges.
- *
- * Generated rather than written out: they differ only by axis and step, and
- * eight hand-written entries is eight chances to bind the wrong arrow.
- */
+/** Generate the eight arrow-key nudge actions from direction + step. */
 function nudges(): readonly EditorActionSpec[] {
   const directions = [
     ['left', 'ArrowLeft'],
@@ -342,12 +279,10 @@ export function actionById(id: ActionId): EditorActionSpec | undefined {
   return BY_ID.get(id);
 }
 
-/** The actions in one group, in declaration order. */
 export function actionsInGroup(group: ActionGroup): readonly EditorActionSpec[] {
   return ACTIONS.filter((action) => action.group === group);
 }
 
-/** A keystroke, reduced to what matching needs. */
 export interface KeyStroke {
   readonly key: string;
   readonly meta: boolean;
@@ -359,28 +294,16 @@ function matches(shortcut: ActionShortcut, stroke: KeyStroke): boolean {
     return false;
   }
 
-  // Omitted meta means the modifier must not be held, so a bare Delete does
-  // not also fire on Ctrl+Delete.
   if ((shortcut.meta ?? false) !== stroke.meta) {
     return false;
   }
 
-  // Omitted shift means don't care.
   return shortcut.shift === undefined || shortcut.shift === stroke.shift;
 }
 
-/**
- * The action a keystroke invokes, or `undefined` for an unbound key.
- *
- * Returns the action even when it is disabled — the caller decides whether a
- * disabled action beeps, does nothing, or explains itself. Hiding it here
- * would make an unbound key and a currently-unusable one indistinguishable.
- *
- * Ctrl+Y is accepted as a second binding for redo. It is handled here rather
- * than as a declared shortcut so that the menu shows one canonical key per
- * action.
- */
+/** Return the bound action even when disabled; caller owns disabled behavior. */
 export function actionForShortcut(stroke: KeyStroke): EditorActionSpec | undefined {
+  // Ctrl+Y is the alternate redo binding; the declaration keeps one canonical label.
   if (stroke.meta && stroke.key.toLowerCase() === 'y') {
     return BY_ID.get('edit.redo');
   }
@@ -390,12 +313,7 @@ export function actionForShortcut(stroke: KeyStroke): EditorActionSpec | undefin
   );
 }
 
-/**
- * A shortcut as a human reads it: `Ctrl+Shift+G`.
- *
- * The only place shortcut text is produced, so a menu item and a tooltip can
- * never disagree with the key that is actually bound.
- */
+/** Canonical human-readable shortcut label. */
 export function shortcutLabel(shortcut: ActionShortcut | undefined): string {
   if (shortcut === undefined) {
     return '';
@@ -411,18 +329,11 @@ export function shortcutLabel(shortcut: ActionShortcut | undefined): string {
     parts.push('Shift');
   }
 
-  // Single letters read as capitals in a menu; named keys keep their own case.
   parts.push(shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key);
 
   return parts.join('+');
 }
 
-/**
- * Why an action is unavailable, or `undefined` when it is available.
- *
- * Lets a surface explain a greyed-out control instead of leaving an author to
- * guess which of selection, lock or history is in the way.
- */
 export function disabledReason(
   action: EditorActionSpec,
   context: ActionContext,
