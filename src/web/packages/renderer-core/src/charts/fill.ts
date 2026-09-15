@@ -1,43 +1,13 @@
 import type { Fill, GradientStop } from '../types.js';
 
 /**
- * Shared {@link Fill} → engine-colour resolution for every chart family.
- *
- * §87 puts one rule on all of this: typed settings in, engine options out. This
- * module is the part of that translation that is *family-independent*, so a
- * `thresholds` fill authored once means the same thing on a gauge ring, a bar and
- * a line.
- *
- * ## Threshold semantics, fixed here for all families
- *
- * A band's `offset` is the **upper** bound of its span, matching ECharts'
- * `[proportion, color]` convention on a gauge axis line. So
- * `[{0.8, green}, {1, red}]` means *0–80 % green, 80–100 % red*, and a value at
- * exactly 0.8 is still green.
- *
- * This convention is not obviously the only one — "offset is where the band
- * starts" is equally defensible — but it must be identical everywhere, because
- * the same authored bands are reused across families by the shared style tokens
- * (§87). {@link resolveThresholdColor} is the single definition.
- *
- * ## Where gradients are real, and where they are not
- *
- * Gradients resolve in cartesian space, so they apply natively to bars and lines
- * and *cannot* follow a gauge arc. That one fact produces both halves of the §85
- * engine-gap matrix: `gauge.ts` approximates an angular gradient with discrete
- * segments, while `thresholds` cannot colour a single line series per value.
- * Neither family is strictly more capable.
+ * Shared chart fill resolution. Threshold offsets are upper bounds, so
+ * `[{0.8, green}, {1, red}]` means 0–80% green, then red.
  */
 
-/**
- * Gradient axis, expressed as the direction colour *travels*.
- *
- * `to-top` exists because a value bar should fade from the axis upward, which is
- * the opposite of the natural top-to-bottom reading order of an area fill.
- */
+/** Direction colour travels through a cartesian gradient. */
 export type GradientDirection = 'to-right' | 'to-bottom' | 'to-top';
 
-/** An ECharts linear-gradient colour object, resolved in cartesian space. */
 export interface LinearGradientColor {
   readonly type: 'linear';
   readonly x: number;
@@ -47,16 +17,9 @@ export interface LinearGradientColor {
   readonly colorStops: readonly { readonly offset: number; readonly color: string }[];
 }
 
-/** A stroke or fill colour as the engine accepts it. */
 export type EngineColor = string | LinearGradientColor;
 
-/**
- * Builds a linear gradient along `direction`.
- *
- * Degenerate inputs return a plain colour string rather than a one-stop gradient
- * object: engines differ on how they treat a gradient with no span, and a string
- * has exactly one interpretation.
- */
+/** Degenerate gradients collapse to a plain colour. */
 export function toLinearGradient(
   stops: readonly GradientStop[],
   direction: GradientDirection,
@@ -96,14 +59,7 @@ function gradientAxis(direction: GradientDirection): {
   }
 }
 
-/**
- * Resolves the threshold band colour that applies at `position` (0–1).
- *
- * Per the module comment, `offset` is a band's upper bound, so this returns the
- * first band whose offset is at or above the position. A position past the last
- * band falls back to that band rather than going transparent — bands that stop
- * short of 1 are an authoring mistake, and leaving the tail unpainted hides it.
- */
+/** First band whose upper bound contains `position`; the last band covers the tail. */
 export function resolveThresholdColor(
   bands: readonly GradientStop[],
   position: number,
@@ -124,14 +80,7 @@ export function resolveThresholdColor(
   return sorted.at(-1)!.color;
 }
 
-/**
- * Resolves a fill to a single flat colour at `position` (0–1).
- *
- * Used where the engine accepts only one colour per drawn item — a per-item bar
- * colour, for instance. A `gradient` fill is *sampled* at the position rather
- * than approximated, because one item is one flat colour; an author wanting a
- * gradient across a single item gets it through {@link toLinearGradient} instead.
- */
+/** Resolve a fill to one flat colour at `position`. */
 export function resolveFlatColor(fill: Fill, position: number): string {
   switch (fill.kind) {
     case 'solid':
@@ -143,12 +92,7 @@ export function resolveFlatColor(fill: Fill, position: number): string {
   }
 }
 
-/**
- * Interpolates the colour of a gradient at `position` (0–1).
- *
- * Positions outside the authored stop range clamp to the nearest endpoint, so a
- * gradient that does not start at 0 still paints its whole span.
- */
+/** Interpolate a gradient at `position`, clamping outside the stop range. */
 export function colorAt(stops: readonly GradientStop[], position: number): string {
   if (stops.length === 0) {
     return 'transparent';
@@ -182,13 +126,7 @@ export function colorAt(stops: readonly GradientStop[], position: number): strin
   return last.color;
 }
 
-/**
- * Mixes two `#rgb`/`#rrggbb` colours in sRGB.
- *
- * Non-hex inputs cannot be interpolated here, so the nearer endpoint is returned
- * rather than emitting an invalid colour. The schema should restrict gradient
- * stops to hex for this reason.
- */
+/** Mix `#rgb`/`#rrggbb`; non-hex values fall back to the nearer endpoint. */
 export function mixHex(from: string, to: string, t: number): string {
   const a = parseHex(from);
   const b = parseHex(to);
@@ -204,16 +142,7 @@ export function mixHex(from: string, to: string, t: number): string {
   return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(bl)}`;
 }
 
-/**
- * Parses `#rgb` or `#rrggbb`. Returns undefined for anything else.
- *
- * The digit check is not redundant with the length check: `red` is three
- * characters, so a length-only test accepted it and `parseInt('rr', 16)`
- * produced `NaN` for one channel, which {@link mixHex} then formatted into an
- * invalid colour that paints nothing. CSS colour keywords are exactly the input
- * an author is most likely to type, so this rejects them here and lets the
- * caller fall back.
- */
+/** Parse `#rgb` or `#rrggbb`; reject CSS names and other formats. */
 export function parseHex(color: string): [number, number, number] | undefined {
   const hex = color.trim().replace(/^#/, '');
 
@@ -243,7 +172,7 @@ function toHexByte(value: number): string {
   return Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0');
 }
 
-/** Normalises a raw value into 0–1 across a range. A zero-width range yields 0. */
+/** Normalise a raw value to 0–1; a zero-width range maps to 0. */
 export function normalizePosition(value: number, min: number, max: number): number {
   const span = max - min;
   if (span === 0) {
