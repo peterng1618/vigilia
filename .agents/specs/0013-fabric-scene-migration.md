@@ -272,7 +272,7 @@ Fabric/Canvas cannot guarantee tabular numerals. Per §32, the accepted
 substitution is the font's natural digit metrics with an explicit renderer
 warning rather than custom glyph layout.
 
-### Stage 4A — editor-foundation spike — mandatory checkpoint
+### Stage 4A — editor-foundation spike — done
 
 Run the source-fork experiment above. Use sub-agents for independent audits of:
 
@@ -285,6 +285,15 @@ Run the source-fork experiment above. Use sub-agents for independent audits of:
 - background/media handling.
 
 Primary agent integrates findings and decides only after concrete comparison.
+
+The adopted fork passed its own typecheck/build/1,808-test suite. Its focused
+loopback-only browser spike created fork-managed text, image and shape objects,
+then selected, moved, rotated, proportionally resized, grouped, duplicated and
+revived `VigiliaChart`; a typed chart stroke control updated authored settings
+and a runtime `setOption` update did not add history.
+No rejection-bar mismatch was found. Before Stage 4B, unify the fork on the
+same pinned `fabric/es` module and replace its snapshot reload with
+disposal-aware Vigilia scene serialization/revival.
 
 ### Stage 4B — editor migration
 
@@ -338,8 +347,8 @@ resume the stock-Fabric/custom-editor fallback with evidence.
 | Fabric scene serialization | **KEEP** |
 | DOM `mount.ts` | **EDITOR-ONLY; DELETE after editor migration** |
 | custom geometry/hit-test/overlay/transform gestures | **DELETE after editor migration** |
-| current `EditorCore` generic managers | **PAUSE; harvest domain logic, fallback only** |
-| `fabricjs-image-editor` source | **PREFERRED EDITOR FOUNDATION** |
+| current `EditorCore` generic managers | **FALLBACK ONLY; harvest domain logic** |
+| `fabricjs-image-editor` source | **ADOPTED EDITOR FOUNDATION** |
 | design tokens / bindings / chart settings | **KEEP VIGILIA-SPECIFIC** |
 | video background layer | **KEEP / IMPLEMENT** |
 | legacy GIF asset handling | **DELETE with schema v2** |

@@ -29,9 +29,9 @@ cannot leak into the Node host.
 
 - Player: Fabric-only `StaticCanvas` path.
 - Editor: still uses the old DOM renderer/custom overlay.
-- Target editor: source fork of `../fabricjs-image-editor` plus Vigilia-specific
-  extensions. The current home-grown `EditorCore` manager expansion is paused
-  pending that source-fork spike.
+- Target editor: adopted source fork at `../fabricjs-image-editor` plus
+  Vigilia-specific extensions. The current home-grown `EditorCore` managers are
+  fallback/harvest-only until their replacements are proven.
 
 ## Runtime data flow
 
@@ -94,8 +94,8 @@ usage. The size gate is a backstop, not the primary boundary.
 
 ## Editor foundation
 
-Generic editor mechanics should come from the `fabricjs-image-editor` source
-fork unless its spike demonstrates a fundamental mismatch.
+Generic editor mechanics come from the adopted `fabricjs-image-editor` source
+fork. It must resolve the same pinned `fabric/es` module as `scene-fabric`.
 
 Expected reusable concerns include:
 
@@ -115,9 +115,9 @@ Vigilia should add only domain-specific behaviour:
 - runtime telemetry separation;
 - theme/package integration.
 
-The fork may replace upstream history or UI pieces. Permanent divergence is
-acceptable. Do not grow the current custom manager framework while the fork
-comparison is open.
+The fork may replace upstream history or UI pieces. Its history must use
+Vigilia's canonical serializer/revival path and dispose removed charts before
+reload. Permanent divergence is acceptable.
 
 ## State categories
 

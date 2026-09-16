@@ -63,22 +63,24 @@ Rules:
 Do not add a parallel simplified node tree plus a bidirectional write-back
 engine merely to make JSON prettier.
 
-### Prefer a source fork of `fabricjs-image-editor` for the editor
+### Use the `fabricjs-image-editor` source fork as the editor foundation
 
-**Decided by:** user, 2026-09-16, reopening the earlier package-level rejection.
+**Decided by:** user, 2026-09-16; adopted after the Stage 4A spike, 2026-09-17.
 
-`../fabricjs-image-editor` should be evaluated as source and, unless a focused
-spike finds a fundamental incompatibility, become the editor foundation. A
-permanent Vigilia fork with no future upstream updates is acceptable.
+`../fabricjs-image-editor` is the editor foundation. The loopback-only Stage 4A
+browser spike selected, transformed, grouped, duplicated and revived a real
+`VigiliaChart`, with a typed property control and no runtime-history mutation.
+A permanent Vigilia fork with no future upstream updates is acceptable.
 
 Missing package types, demo-only property UI, unsuitable stock history or
 missing extension hooks are **not** rejection reasons; a source fork may change
 those. The migration exists specifically to stop owning generic editor mechanics
 such as selection, controls, grouping, clipboard and object tools.
 
-Until that spike is closed, expansion of Vigilia's home-grown generic
-`EditorCore` manager framework is paused. Existing domain logic may be reused;
-the current custom editor remains fallback only.
+The fork and `scene-fabric` must resolve one pinned `fabric/es` module. Replace
+the fork's snapshot serializer/load path with Vigilia's canonical serializer,
+including chart disposal before reload. Existing domain logic may be reused; the
+current custom editor remains fallback only.
 
 ### Editor property UI belongs to the new foundation
 
