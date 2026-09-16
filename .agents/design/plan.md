@@ -35,6 +35,14 @@ with a permanent Vigilia fork acceptable. Vigilia adds only missing/domain work:
 telemetry, semantic bindings, design tokens, typed charts, artboard behaviour and
 engine gaps.
 
+## §32 — Prefer Fabric-native substitutions
+
+When requested behaviour conflicts with the Fabric approach or would require
+disproportionate custom integration, glue or adapters, choose a reasonable
+Fabric-native alternative or substitution. Preserve the user outcome and
+non-negotiable truth, persistence, security and accessibility invariants; do
+not recreate a parallel editor/rendering system for exact feature parity.
+
 ## §33 — Nothing is done until observed
 
 Library claims and code inspection are hypotheses. Visible changes require a
@@ -295,15 +303,14 @@ device assignments, fit mode and hosting.
 
 Current order:
 
-1. complete Fabric player flip;
-2. validate/adopt the `fabricjs-image-editor` source fork;
-3. migrate editor and persisted Fabric scene envelope together;
-4. implement schema-v2 globals/property model and remove legacy GIF asset
+1. validate/adopt the `fabricjs-image-editor` source fork;
+2. migrate editor and persisted Fabric scene envelope together;
+3. implement schema-v2 globals/property model and remove legacy GIF asset
    semantics;
-5. live editor bindings/charts;
-6. video background production path;
-7. delete superseded DOM/custom generic-editor code;
-8. starter theme/storage/LAN/provider/product work.
+4. live editor bindings/charts;
+5. video background production path;
+6. delete superseded DOM/custom generic-editor code;
+7. starter theme/storage/LAN/provider/product work.
 
 Human review is for scope expansion, product taste and external effects, not
 routine architecture/sequencing.

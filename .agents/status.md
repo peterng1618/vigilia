@@ -1,4 +1,4 @@
-# Status — 2026-09-16
+# Status — 2026-09-17
 
 Current handoff only. Durable rules: `AGENTS.md`; architecture:
 `architecture.md`; decisions: `decisions.md`; migration: spec 0013.
@@ -7,14 +7,14 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,251 passed across 64 files |
+| Unit tests | 1,252 passed across 64 files |
 | Typechecks | six projects clean |
-| Browser suite | latest clean run 164 passed / 62 skipped / 0 failed; editor still has a contention-only flake that passes in isolation |
-| Player size | ~262 KB gzip / 400 KB gate with Fabric path |
-| Host bundle | ~34 KB; no Fabric dependency edge |
+| Browser suite | 107 passed / 59 skipped / 0 failed across desktop and phone Chromium |
+| Player size | 260.3 KB gzip / 400 KB gate |
+| Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
+| Visual inspection | desktop assets and phone demo captures inspected; fit modes, recolouring, charts and letterboxing rendered correctly |
 
-These figures predate the documentation-only changes in this session; no source
-behaviour changed.
+These figures are from the Stage 3 completion run in this session.
 
 ## What works
 
@@ -26,12 +26,13 @@ behaviour changed.
   live redraw, proportional resize, serialization and explicit disposal.
 - Fabric text path supports clipping, ellipsis, wrapping/line clamp, vertical
   alignment and font-load re-measure.
-- Player has an opt-in Fabric path (`?scene=fabric`).
+- Player is Fabric-only; its runtime no longer imports the DOM mount or registers ECharts.
+- Player display E2E coverage probes the canvas scene and rendered pixels.
+- Fabric images support contain/cover/stretch and alpha-preserving bitmap/SVG recolouring.
 - Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
 
 ## What has not migrated yet
 
-- Player still defaults to the old DOM renderer.
 - Editor still uses the old DOM renderer/custom interaction overlay.
 - Theme schema still uses the pre-Fabric node-tree shape; envelope switch is
   coordinated with editor migration.
@@ -110,19 +111,17 @@ semantics with schema v2; do not build a workaround.
 
 ## Next, in order
 
-1. **Finish Stage 3:** make Fabric the default player renderer and port useful
-   display E2E coverage.
-2. **Run Stage 4A source-fork spike** before further custom editor work.
-3. Compare fork vs current custom path by concrete ownership:
+1. **Run Stage 4A source-fork spike** before further custom editor work.
+2. Compare fork vs current custom path by concrete ownership:
    - reuse from fork;
    - modify in fork;
    - keep Vigilia-specific;
    - fallback only.
-4. If no fundamental blocker, adopt the fork and update durable docs/package
+3. If no fundamental blocker, adopt the fork and update durable docs/package
    structure before Stage 4B.
-5. Migrate editor + Fabric scene envelope together.
-6. Add schema-v2 tokens/property model, live bindings/charts, then video.
-7. Delete old DOM/custom generic-editor code after replacements are proven.
+4. Migrate editor + Fabric scene envelope together.
+5. Add schema-v2 tokens/property model, live bindings/charts, then video.
+6. Delete old DOM/custom generic-editor code after replacements are proven.
 
 Use sub-agents for independent source audits: manager inventory, history,
 property/demo UI, clipboard/grouping, custom chart lifecycle, persistence and
@@ -151,6 +150,8 @@ or runtime telemetry cannot be separated from authored state.
   `VigiliaChart`.
 - LHM extended telemetry is not implemented.
 - Pairing/revocable sessions and LAN end-to-end flow are not implemented.
+- Accepted limitation: Canvas text uses the font's natural digit metrics when
+  tabular numerals cannot be guaranteed and reports the substitution.
 - Two chart engine gaps remain: gauge angular gradients and line thresholds.
 
 ## Needs a human

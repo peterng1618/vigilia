@@ -27,7 +27,7 @@ cannot leak into the Node host.
 
 ### Current migration state
 
-- Player: old DOM renderer is still default; Fabric path exists.
+- Player: Fabric-only `StaticCanvas` path.
 - Editor: still uses the old DOM renderer/custom overlay.
 - Target editor: source fork of `../fabricjs-image-editor` plus Vigilia-specific
   extensions. The current home-grown `EditorCore` manager expansion is paused

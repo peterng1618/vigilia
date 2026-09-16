@@ -237,8 +237,9 @@ Latest verified branch state before this spec compaction:
   re-measure are implemented;
 - player with Fabric is ~262 KB gzip against the current 400 KB gate;
 - host bundle remains ~34 KB with no Fabric dependency edge;
-- Fabric player path exists behind `?scene=fabric`;
-- old DOM renderer is still the default;
+- player is Fabric-only and no longer registers ECharts or imports the DOM mount;
+- display E2E coverage uses canvas diagnostics and rendered pixels;
+- bitmap/SVG monochrome recolouring is implemented through an alpha-preserving composite;
 - editor still uses the old DOM renderer and custom overlay.
 
 Current run counts belong in `status.md`, not here.
@@ -259,13 +260,17 @@ Current run counts belong in `status.md`, not here.
 - add opt-in Fabric player path;
 - fix visible parity defects.
 
-### Stage 3 — make the player Fabric-only — next
+### Stage 3 — make the player Fabric-only — done
 
 - finish remaining renderer parity needed by current themes;
 - flip Fabric to the player default;
 - port meaningful player E2E assertions to canvas-aware probes;
 - delete DOM-only assertions rather than fabricating equivalent hooks;
-- keep the old DOM renderer only until the new path is proven.
+- keep the old DOM renderer editor-only until the editor migration replaces it.
+
+Fabric/Canvas cannot guarantee tabular numerals. Per §32, the accepted
+substitution is the font's natural digit metrics with an explicit renderer
+warning rather than custom glyph layout.
 
 ### Stage 4A — editor-foundation spike — mandatory checkpoint
 
@@ -331,7 +336,7 @@ resume the stock-Fabric/custom-editor fallback with evidence.
 | `scene-fabric` | **KEEP** |
 | `VigiliaChart` | **KEEP** |
 | Fabric scene serialization | **KEEP** |
-| DOM `mount.ts` | **DELETE after Stage 3** |
+| DOM `mount.ts` | **EDITOR-ONLY; DELETE after editor migration** |
 | custom geometry/hit-test/overlay/transform gestures | **DELETE after editor migration** |
 | current `EditorCore` generic managers | **PAUSE; harvest domain logic, fallback only** |
 | `fabricjs-image-editor` source | **PREFERRED EDITOR FOUNDATION** |

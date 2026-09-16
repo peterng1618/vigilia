@@ -30,6 +30,16 @@ Key constraints:
   not requirements;
 - video is a separate DOM background layer beneath the Fabric canvas.
 
+### Prefer Fabric-native substitutions over expensive compatibility glue
+
+**Decided by:** user, 2026-09-17.
+
+If requested behaviour is incompatible with Fabric or needs disproportionate
+custom integration, use a reasonable Fabric-native alternative. Preserve the
+product outcome and hard correctness boundaries, but do not rebuild parallel
+rendering/editor machinery for exact parity. Canvas text therefore uses the
+font's natural digit metrics when tabular numerals cannot be guaranteed.
+
 ### Persist Fabric scene JSON inside the Vigilia envelope
 
 **Decided by:** user, 2026-09-15 and reaffirmed after review.

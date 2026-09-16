@@ -180,6 +180,16 @@ describe('the player cannot reach the editor', () => {
   });
 });
 
+describe('the player has one renderer', () => {
+  it('does not import the legacy DOM mount', () => {
+    const offenders = importsIn(['player'])
+      .filter((record) => !record.typeOnly && namedBindings(record.clause).includes('mountScene'))
+      .map((record) => record.file);
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('the harness itself works', () => {
   it('finds the sources it is supposed to be checking', () => {
     // A boundary test that silently scans nothing passes forever. This is the

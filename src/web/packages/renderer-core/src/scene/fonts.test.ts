@@ -6,7 +6,7 @@ import type { ThemeDocument, ThemeNode } from '../theme/document.js';
 
 /**
  * Only the pure half is tested here. The metric probe needs a canvas and is
- * covered by `tests/e2e/display.spec.ts`, which is also where the discovery
+ * covered by `tests/e2e/display-fabric.spec.ts`, which is also where the discovery
  * that `document.fonts.check` cannot answer this question is pinned.
  */
 

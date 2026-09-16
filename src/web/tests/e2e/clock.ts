@@ -40,7 +40,7 @@ import type { Page } from '@playwright/test';
  * ECharts renderers and written into three places. It was measuring this bug:
  * each capture happened at a different instant, so the engine correctly drew a
  * different frame. Paused, a chart frame reproduces byte-for-byte —
- * `display.spec.ts`'s inverted determinism test now asserts that, and is the
+ * `display-fabric.spec.ts`'s determinism test now asserts that, and is the
  * regression guard for this module. Committed pixel baselines are still out,
  * for the reason that actually blocks them: CI is Linux, development is
  * Windows, glyphs differ.

@@ -38,13 +38,6 @@ export function buildImage(
     return undefined;
   }
 
-  if (node.content.monochrome !== undefined) {
-    hooks.onUnsupported?.(
-      node.id,
-      'a monochrome image needs an offscreen composite on canvas (stage 7); the artwork is drawn unflattened',
-    );
-  }
-
   const element = document.createElement('img');
   element.alt = '';
 
@@ -56,7 +49,13 @@ export function buildImage(
   const vector = node.content.assetKind === 'svg';
 
   element.addEventListener('load', () => {
-    object.setElement(vector ? rasterise(element, box, options.renderScale) : element);
+    const decoded = vector ? rasterise(element, box, options.renderScale) : element;
+    const rendered =
+      node.content.kind === 'image' && node.content.monochrome !== undefined
+        ? recolour(decoded, node.content.monochrome)
+        : decoded;
+
+    object.setElement(rendered);
     placeImage(object, node, box, fit);
     object.set('dirty', true);
     hooks.onDecoded?.(node.id);
@@ -69,6 +68,45 @@ export function buildImage(
   element.src = src;
 
   return object;
+}
+
+/** Replace source RGB with one colour while preserving its alpha channel. */
+function recolour(
+  source: HTMLImageElement | HTMLCanvasElement,
+  color: string,
+): HTMLCanvasElement {
+  const size = sourceSize(source);
+  const canvas = document.createElement('canvas');
+
+  canvas.width = size.width;
+  canvas.height = size.height;
+
+  const context = canvas.getContext('2d');
+
+  if (context !== null) {
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    context.globalCompositeOperation = 'source-in';
+    context.fillStyle = color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  return canvas;
+}
+
+function sourceSize(
+  source: HTMLImageElement | HTMLCanvasElement,
+): { width: number; height: number } {
+  if (source instanceof HTMLImageElement) {
+    return {
+      width: Math.max(1, source.naturalWidth),
+      height: Math.max(1, source.naturalHeight),
+    };
+  }
+
+  return {
+    width: Math.max(1, source.width),
+    height: Math.max(1, source.height),
+  };
 }
 
 /** Rasterise SVG with the drawImage form Chrome handles for viewBox-only sources. */

@@ -1,14 +1,9 @@
-import * as echarts from 'echarts/core';
-import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts';
-import { GridComponent } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
 import {
   SAMPLE_STREAM_PATH,
   buildScenePlan,
   createAssetResolver,
   createLiveSource,
   missingFontFamilies,
-  mountScene,
   requiredSemanticKeys,
   type LiveSourceHandle,
   type LiveSourceStatus,
@@ -21,9 +16,6 @@ import { mountFabricScene } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
-
-// Keep ECharts imports narrow for the player bundle. This remains only for the legacy DOM scene.
-echarts.use([GaugeChart, LineChart, BarChart, PieChart, GridComponent, CanvasRenderer]);
 
 const artboardHost = document.querySelector<HTMLElement>('#artboard');
 
@@ -86,18 +78,14 @@ function start(host: HTMLElement): void {
     console.warn(`Vigilia: asset for node "${nodeId}" failed to load: ${src}`);
   };
 
-  // Migration switch: both scene paths implement the same SceneHandle contract.
-  const handle =
-    parameters.get('scene') === 'fabric'
-      ? mountFabricScene({
-          host,
-          plan: first,
-          onAssetError,
-          onUnsupported: (nodeId, reason) => {
-            console.warn(`Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`);
-          },
-        })
-      : mountScene({ host, plan: first, onAssetError });
+  const handle = mountFabricScene({
+    host,
+    plan: first,
+    onAssetError,
+    onUnsupported: (nodeId, reason) => {
+      console.warn(`Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`);
+    },
+  });
 
   reportIssues(first);
   reportMissingFonts(first);

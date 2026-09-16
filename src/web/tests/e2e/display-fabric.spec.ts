@@ -1,18 +1,33 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installFixedClock, openPaused } from './clock.js';
+import { openPaused } from './clock.js';
+import {
+  canvasChildOf,
+  canvasHas,
+  canvasProp,
+  canvasText,
+  drawnFractionIn,
+  drawnFractionOf,
+  hasRunStyles,
+  keepsObjectIdentity,
+  openCanvasPlayer,
+  probe,
+  sourceColorFraction,
+} from './canvas-probe.js';
+
+const FIXTURES = [
+  { name: 'demo', charts: true },
+  { name: 'stress', charts: true },
+  { name: 'portrait-cover', charts: true },
+  { name: 'assets', charts: false },
+] as const;
 
 /**
  * The Fabric scene graph, in a real browser.
  *
- * `?scene=fabric` is spec 0013 stage 2's opt-in: the DOM applier is still the
- * default, and this suite is what says the canvas path works before stage 3
- * flips it. `display.spec.ts` keeps covering the default path and is ported
- * onto the canvas then, not now.
+ * ## Why these assertions and not DOM assertions
  *
- * ## Why these assertions and not the DOM suite's
- *
- * `display.spec.ts` asks the DOM 68 questions about elements, spans and
- * computed style. A canvas has none of that, so the equivalent questions are:
+ * The retired DOM suite asked questions about elements, spans and computed
+ * style. A canvas has none of that, so the equivalent questions are:
  * did an object get built for each node, did the transform reach the canvas,
  * and **did ink actually land**. The last one is the reason this file exists at
  * all — `adapter.dom.test.ts` already asserts the arithmetic under jsdom, and
@@ -24,17 +39,6 @@ import { installFixedClock, openPaused } from './clock.js';
  * CI is Linux, development is Windows, glyphs differ. "Some ink, in this box"
  * survives that; a PNG does not.
  */
-
-/** What the diagnostics hook exposes, narrowed to what this suite reads. */
-interface SceneProbe {
-  readonly objectCount: number;
-  readonly ids: readonly string[];
-  readonly viewportTransform: readonly number[];
-  readonly canvasSize: { readonly width: number; readonly height: number };
-  readonly retinaScaling: number;
-  /** The oversample factor each chart object ended up with. */
-  readonly chartRenderScales: readonly number[];
-}
 
 /**
  * The grid measure, installed into the page.
@@ -77,191 +81,6 @@ window.gridProfile = (data, width, height) => {
 type ProfileWindow = typeof window & {
   gridProfile: (data: Uint8ClampedArray, width: number, height: number) => number[];
 };
-
-async function openFabricPlayer(page: Page, theme = 'demo'): Promise<void> {
-  // The pieces rather than `openPaused`, because the profiling helper has to be
-  // injected between installing the clock and navigating. Everything else is
-  // the same sequence, and the reason it must be that sequence is in `clock.ts`.
-  await installFixedClock(page);
-  await page.addInitScript(GRID_PROFILE);
-  await page.goto(`/?scene=fabric&theme=${theme}`);
-  await page.waitForSelector('canvas[data-vigilia="artboard"]');
-  // Advanced rather than left frozen: a chart whose content is entirely
-  // animated draws nothing until its animation progresses.
-  await page.clock.runFor(1500);
-}
-
-/** Reads the scene through the handle the player already exposes. */
-async function probe(page: Page): Promise<SceneProbe> {
-  return page.evaluate(() => {
-    // The player exposes `{ handle, live }` for exactly this; the Fabric handle
-    // adds the canvas. Nothing is serialised across the boundary except the
-    // plain numbers and strings below — a Fabric object would not survive it.
-    const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
-      .vigilia;
-    const canvas = handle['canvas'] as {
-      getObjects(): { get(key: string): unknown }[];
-      viewportTransform: number[];
-      getWidth(): number;
-      getHeight(): number;
-      getRetinaScaling(): number;
-    };
-    const objects = canvas.getObjects();
-    const scales: number[] = [];
-
-    const collect = (list: { get(key: string): unknown }[]): void => {
-      for (const object of list) {
-        // By a property only a chart has, not by `type`: Fabric's instance
-        // getter lower-cases the class name and its own source says not to
-        // build on it ("DO NOT build new code around this type value").
-        if (typeof object.get('family') === 'string') {
-          scales.push(Number(object.get('renderScale')));
-        }
-
-        const children = object.get('_objects');
-
-        if (Array.isArray(children)) {
-          collect(children as { get(key: string): unknown }[]);
-        }
-      }
-    };
-
-    collect(objects);
-
-    return {
-      objectCount: objects.length,
-      ids: objects.map((object) => String(object.get('id'))),
-      viewportTransform: [...canvas.viewportTransform],
-      canvasSize: { width: canvas.getWidth(), height: canvas.getHeight() },
-      retinaScaling: canvas.getRetinaScaling(),
-      chartRenderScales: scales,
-    };
-  });
-}
-
-/**
- * How much of a region is drawn *over* its background, as a fraction of the
- * region's area.
- *
- * ## Why it is not a count of non-transparent pixels
- *
- * That was the first version, and it was **vacuous**: the artboard paints a
- * background, so every pixel inside it has alpha 255 and every region scored
- * 1.0 — including one whose image was missing entirely. Measured, which is the
- * only reason it was noticed.
- *
- * So the measure calibrates itself: it finds the region's most common colour,
- * which for any node box on a flat artboard is the background behind it, and
- * counts the pixels that differ from it. A missing node scores 0, a drawn one
- * scores its own coverage, and the number means the same thing at any device
- * pixel ratio and any artboard scale.
- *
- * Read off the canvas' own backing store rather than from a screenshot, so it
- * is unaffected by page scroll or PNG encoding. `region` is in **CSS** pixels;
- * the backing store may be larger, which is what the ratio corrects for.
- */
-async function drawnFractionIn(
-  page: Page,
-  region: { x: number; y: number; width: number; height: number },
-): Promise<number> {
-  return page.evaluate((box) => {
-    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
-    const context = element?.getContext('2d');
-
-    if (element === null || context === null || context === undefined) {
-      return -1;
-    }
-
-    const ratio = element.width / element.getBoundingClientRect().width;
-    const width = Math.max(1, Math.round(box.width * ratio));
-    const height = Math.max(1, Math.round(box.height * ratio));
-    const data = context.getImageData(
-      Math.round(box.x * ratio),
-      Math.round(box.y * ratio),
-      width,
-      height,
-    ).data;
-
-    const counts = new Map<number, number>();
-
-    for (let index = 0; index < data.length; index += 4) {
-      // One integer per RGBA pixel, so the modal colour is a map lookup rather
-      // than a string key per pixel.
-      const key =
-        ((data[index] ?? 0) << 24) |
-        ((data[index + 1] ?? 0) << 16) |
-        ((data[index + 2] ?? 0) << 8) |
-        (data[index + 3] ?? 0);
-
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-
-    let background = 0;
-    let commonest = 0;
-
-    for (const [key, count] of counts) {
-      if (count > commonest) {
-        commonest = count;
-        background = key;
-      }
-    }
-
-    let drawn = 0;
-
-    for (let index = 0; index < data.length; index += 4) {
-      const key =
-        ((data[index] ?? 0) << 24) |
-        ((data[index + 1] ?? 0) << 16) |
-        ((data[index + 2] ?? 0) << 8) |
-        (data[index + 3] ?? 0);
-
-      if (key !== background) {
-        drawn += 1;
-      }
-    }
-
-    return drawn / (width * height);
-  }, region);
-}
-
-/**
- * The same measure, over one node's own box.
- *
- * The whole-frame version is too coarse to be a guard: it stayed happily over
- * its threshold while **every SVG icon in the assets fixture was missing**. The
- * geometry comes from the renderer itself — the object's bounding rect, mapped
- * through the viewport transform — rather than from a rectangle copied out of a
- * fixture, so it cannot drift from what is actually drawn.
- */
-async function drawnFractionOf(page: Page, nodeId: string): Promise<number> {
-  const region = await page.evaluate((id) => {
-    const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
-      .vigilia;
-    const adapter = handle['adapter'] as {
-      objectFor(nodeId: string):
-        | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
-        | undefined;
-    };
-    const object = adapter.objectFor(id);
-
-    if (object === undefined) {
-      return undefined;
-    }
-
-    const canvas = handle['canvas'] as { viewportTransform: number[] };
-    const rect = object.getBoundingRect();
-    const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
-
-    return {
-      x: rect.left * scale + offsetX,
-      y: rect.top * scale + offsetY,
-      width: rect.width * scale,
-      height: rect.height * scale,
-    };
-  }, nodeId);
-
-  return region === undefined ? -1 : drawnFractionIn(page, region);
-}
 
 /**
  * A coarse spatial profile of what is drawn in a region: the drawn fraction of
@@ -353,7 +172,7 @@ async function profileOfAsset(
 
 test.describe('the scene reaches the canvas', () => {
   test('builds one object per top-level node', async ({ page }) => {
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const scene = await probe(page);
 
@@ -363,10 +182,40 @@ test.describe('the scene reaches the canvas', () => {
     expect(scene.objectCount).toBeGreaterThan(0);
     expect(scene.ids).not.toContain('undefined');
     expect(new Set(scene.ids).size).toBe(scene.ids.length);
+
+    for (const id of [
+      'title',
+      'cpu-panel',
+      'cpu-panel-bg',
+      'cpu-gauge',
+      'cpu-readout',
+      'gpu-gauge',
+      'history-chart',
+      'thermals-bars',
+      'memory-donut',
+      'memory-unmapped',
+    ]) {
+      expect(scene.allIds, `node ${id} is missing`).toContain(id);
+    }
+  });
+
+  test('keeps group children inside their authored group (§57)', async ({ page }) => {
+    await openCanvasPlayer(page);
+
+    expect(await canvasChildOf(page, 'cpu-gauge', 'cpu-panel')).toBe(true);
+  });
+
+  test('shows measured text, styled runs and missing-data placeholders', async ({ page }) => {
+    await openCanvasPlayer(page);
+
+    expect(await canvasText(page, 'cpu-readout')).toMatch(/^\d+%$/);
+    expect(await hasRunStyles(page, 'cpu-readout')).toBe(true);
+    expect(await canvasText(page, 'memory-unmapped')).toContain('—');
+    await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
   });
 
   test('paints something, which is the whole point', async ({ page }) => {
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
     const drawn = await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height });
@@ -378,7 +227,7 @@ test.describe('the scene reaches the canvas', () => {
   });
 
   test('carries the artboard transform in the canvas, not in CSS', async ({ page }) => {
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const scene = await probe(page);
     const [scaleX, skewY, skewX, scaleY] = scene.viewportTransform;
@@ -401,7 +250,7 @@ test.describe('the scene reaches the canvas', () => {
   test('letterboxes a 16:9 design on a taller phone (§53)', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone-chromium', 'The bars only exist on a phone.');
 
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const scene = await probe(page);
     const size = page.viewportSize() ?? { width: 412, height: 915 };
@@ -424,6 +273,32 @@ test.describe('the scene reaches the canvas', () => {
       ).toBe(0);
     }
   });
+
+  test('refits after the viewport changes', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'resizes the desktop viewport');
+
+    await openCanvasPlayer(page);
+    await page.setViewportSize({ width: 900, height: 900 });
+
+    await expect
+      .poll(async () => (await probe(page)).viewportTransform[0])
+      .toBeCloseTo(900 / 1280, 5);
+
+    const scene = await probe(page);
+    expect(scene.canvasSize).toEqual({ width: 900, height: 900 });
+  });
+
+  test('cover mode fills and crops the viewport (§53)', async ({ page }) => {
+    await openCanvasPlayer(page, '/?theme=portrait-cover');
+
+    const scene = await probe(page);
+    const viewport = page.viewportSize()!;
+    const [scale = 0, , , , offsetX = 0, offsetY = 0] = scene.viewportTransform;
+
+    expect(440 * scale).toBeGreaterThanOrEqual(viewport.width - 1);
+    expect(956 * scale).toBeGreaterThanOrEqual(viewport.height - 1);
+    expect(Math.min(offsetX, offsetY)).toBeLessThanOrEqual(0);
+  });
 });
 
 test.describe('charts draw through a Fabric object', () => {
@@ -433,7 +308,7 @@ test.describe('charts draw through a Fabric object', () => {
     // `VigiliaChart._render` blits it. If the invalidation hook were missing,
     // the first frame might still appear and later ones would not — which is
     // what the next test is for.
-    await openFabricPlayer(page, 'stress');
+    await openCanvasPlayer(page, '/?theme=stress');
 
     const scene = await probe(page);
 
@@ -444,6 +319,10 @@ test.describe('charts draw through a Fabric object', () => {
     expect(
       await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height }),
     ).toBeGreaterThan(0.1);
+
+    for (const id of ['half-gauge', 'step-line', 'many-bars', 'sum-pie']) {
+      expect(await drawnFractionOf(page, id), `${id} drew nothing`).toBeGreaterThan(0.01);
+    }
   });
 
   test('keeps repainting as samples arrive', async ({ page }) => {
@@ -458,7 +337,7 @@ test.describe('charts draw through a Fabric object', () => {
     // still load-bearing for a *grouped* chart whose siblings do not change,
     // and `chart-object.dom.test.ts` is where that is asserted. A still frame
     // cannot tell any of this apart, which is why this compares two.
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const before = await page.evaluate(() => {
       const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
@@ -478,6 +357,13 @@ test.describe('charts draw through a Fabric object', () => {
     expect(before).not.toBe('');
     expect(after).not.toBe(before);
   });
+
+  test('updates live objects without recreating them', async ({ page }) => {
+    await openCanvasPlayer(page);
+
+    expect(await keepsObjectIdentity(page, 'cpu-gauge', 3000)).toBe(true);
+    expect(await keepsObjectIdentity(page, 'cpu-readout', 1000)).toBe(true);
+  });
 });
 
 test.describe('device pixels reach the charts', () => {
@@ -488,7 +374,7 @@ test.describe('device pixels reach the charts', () => {
     // draws into a detached canvas Fabric knows nothing about, so its
     // resolution has to be set deliberately — and a chart rasterised at 1x on a
     // 2.6x phone is the bitmap label §91 forbids.
-    await openFabricPlayer(page);
+    await openCanvasPlayer(page);
 
     const scene = await probe(page);
     const dpr = await page.evaluate(() => window.devicePixelRatio);
@@ -544,11 +430,9 @@ test.describe('image assets', () => {
     // is the only form Fabric uses — and the symptom was device-dependent,
     // mangled fragments at 1x and nothing at 4x. `fabric-image.ts` rasterises a
     // vector asset first; this is what says so.
-    await openFabricPlayer(page, 'assets');
+    await openCanvasPlayer(page, '/?theme=assets');
 
-    // Three rings, one PNG, at the three fit modes; then the icon row, where
-    // the first is a vector asset drawn as authored and the next two are the
-    // §111 monochrome gap, still drawn as artwork.
+    // Three rings, one PNG, at the three fit modes; then the icon row.
     for (const nodeId of [
       'fit-contain',
       'fit-cover',
@@ -566,6 +450,30 @@ test.describe('image assets', () => {
     }
   });
 
+  test('applies contain, cover and stretch geometry', async ({ page }) => {
+    await openCanvasPlayer(page, '/?theme=assets');
+
+    const containX = await canvasProp(page, 'fit-contain', 'scaleX');
+    const containY = await canvasProp(page, 'fit-contain', 'scaleY');
+    const coverX = await canvasProp(page, 'fit-cover', 'scaleX');
+    const coverY = await canvasProp(page, 'fit-cover', 'scaleY');
+    const stretchX = await canvasProp(page, 'fit-stretch', 'scaleX');
+    const stretchY = await canvasProp(page, 'fit-stretch', 'scaleY');
+
+    expect(containX).toBeCloseTo(containY as number, 5);
+    expect(coverX).toBeCloseTo(coverY as number, 5);
+    expect(coverX as number).toBeGreaterThan(containX as number);
+    expect(stretchX).not.toBeCloseTo(stretchY as number, 5);
+    expect(await canvasHas(page, 'fit-cover', 'clipPath')).toBe(true);
+  });
+
+  test('recolours bitmap and SVG artwork from source alpha (§132)', async ({ page }) => {
+    await openCanvasPlayer(page, '/?theme=assets');
+
+    expect(await sourceColorFraction(page, 'svg-mono', [255, 171, 0])).toBeGreaterThan(0.8);
+    expect(await sourceColorFraction(page, 'png-mono', [54, 179, 126])).toBeGreaterThan(0.8);
+  });
+
   test('draws a vector icon the shape the asset actually is', async ({ page }) => {
     // Coverage is not enough here, and that is measured: with the vector
     // raster removed, the same icon drew a *mangled* fragment scoring 0.2344
@@ -577,7 +485,8 @@ test.describe('image assets', () => {
     // `drawImage`'s source-rect form, which is the only form Fabric uses. The
     // symptom was device-dependent — fragments at 1x, nothing at 4x — so this
     // is the assertion that holds at every ratio.
-    await openFabricPlayer(page, 'assets');
+    await page.addInitScript(GRID_PROFILE);
+    await openCanvasPlayer(page, '/?theme=assets');
 
     const region = await page.evaluate(() => {
       const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
@@ -631,19 +540,16 @@ test.describe('image assets', () => {
     // §111: a declared-but-absent file must not become a broken-image glyph,
     // which reads as a rendering failure rather than a missing file. The node
     // has no object at all, so the helper reports -1.
-    await openFabricPlayer(page, 'assets');
+    await openCanvasPlayer(page, '/?theme=assets');
 
     expect(await drawnFractionOf(page, 'absent-image')).toBeLessThanOrEqual(0);
   });
 });
 
 test.describe('what it cannot draw, it says', () => {
-  test('warns about a gap rather than approximating it (§85)', async ({ page }) => {
-    // The `assets` fixture carries a monochrome image, which needs an offscreen
-    // composite the canvas path does not have until stage 7. A silent
-    // approximation — the artwork in its original colours, where the author
-    // asked for a flat silhouette — is what §85 forbids, so the renderer has
-    // to say so.
+  test('warns about tabular numerals rather than silently approximating them (§85)', async ({
+    page,
+  }) => {
     const warnings: string[] = [];
 
     page.on('console', (message) => {
@@ -652,30 +558,79 @@ test.describe('what it cannot draw, it says', () => {
       }
     });
 
-    await openFabricPlayer(page, 'assets');
+    await openCanvasPlayer(page);
 
-    expect(warnings.some((text) => text.includes('cannot be drawn as authored'))).toBe(true);
+    expect(warnings.some((text) => text.includes('tabularNumerals'))).toBe(true);
   });
 });
 
-test.describe('both paths agree on the document', () => {
-  test('render the same node ids', async ({ page }) => {
-    // Parity where it is checkable: the two renderers read the same plan, so
-    // the set of top-level nodes each draws must match. This is what would
-    // catch the canvas path silently dropping a kind — the failure mode of an
-    // opt-in path nobody looks at.
-    await openFabricPlayer(page);
+test.describe('every fixture renders', () => {
+  for (const fixture of FIXTURES) {
+    test(`${fixture.name}: mounts, paints and reports no page error`, async ({ page }) => {
+      const errors: string[] = [];
 
-    const fabricIds = (await probe(page)).ids.sort();
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && !message.text().includes('not-shipped.png')) {
+          errors.push(message.text());
+        }
+      });
 
-    await openPaused(page, '/?theme=demo');
+      await openCanvasPlayer(page, `/?theme=${fixture.name}`);
 
-    const domIds = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-vigilia="artboard"] > [data-node-id]')].map(
-        (element) => element.getAttribute('data-node-id') ?? '',
-      ),
-    );
+      const scene = await probe(page);
+      const size = page.viewportSize()!;
 
-    expect(fabricIds).toEqual([...domIds].sort());
+      expect(scene.objectCount).toBeGreaterThan(0);
+      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
+      expect(scene.chartRenderScales.length > 0).toBe(fixture.charts);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test('unknown fixture names fall back to the demo', async ({ page }) => {
+    await openCanvasPlayer(page, '/?theme=does-not-exist');
+
+    expect((await probe(page)).allIds).toContain('title');
+  });
+
+  test('keeps invisible nodes in the scene without painting them', async ({ page }) => {
+    await openCanvasPlayer(page, '/?theme=stress');
+
+    expect(await canvasProp(page, 'hidden-node', 'visible')).toBe(false);
+  });
+
+  test('captures every fixture for visual review', async ({ page }, testInfo) => {
+    const directory =
+      process.env['VIGILIA_CAPTURE'] === undefined
+        ? 'test-results/screenshots'
+        : '../../.agents/screenshots';
+
+    for (const fixture of FIXTURES) {
+      await openCanvasPlayer(page, `/?theme=${fixture.name}&static=1`);
+      const name = `${fixture.name}-${testInfo.project.name}.png`;
+      const screenshot = await page.screenshot({
+        fullPage: false,
+        path: `${directory}/${name}`,
+      });
+
+      await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
+      expect(screenshot.byteLength).toBeGreaterThan(1000);
+    }
+  });
+
+  test('is byte-stable at a fixed clock on one platform', async ({ browser }) => {
+    const capture = async (): Promise<Buffer> => {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await openPaused(page, '/?theme=demo&static=1', 'canvas[data-vigilia="artboard"]');
+      await page.clock.runFor(1500);
+      await page.evaluate(() => document.fonts.ready);
+      const shot = await page.locator('canvas[data-vigilia="artboard"]').screenshot();
+      await page.close();
+      return shot;
+    };
+
+    await capture();
+    expect(Buffer.compare(await capture(), await capture())).toBe(0);
   });
 });

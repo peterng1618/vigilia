@@ -22,7 +22,7 @@ import type { ThemeDocument, ThemeNode } from '../theme/document.js';
  * The visible symptom was a test flake rather than a rendering fault — a
  * Playwright handle resolved from one of those spans detaches mid-assertion,
  * and `getComputedStyle` on a detached element returns empty strings rather
- * than throwing, so `display.spec.ts`'s styled-run test failed intermittently
+ * than throwing, so the former DOM display suite failed intermittently
  * and inexplicably. A browser test cannot assert the absence of churn without
  * catching it in the act; identity comparison here can.
  */
