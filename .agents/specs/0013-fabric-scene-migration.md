@@ -51,11 +51,11 @@ Completed:
 - fork history uses Vigilia serialization/revival and chart disposal hooks;
 - development v2 envelope with Fabric scene JSON;
 - bounded Ctrl/Cmd+O validation/compatibility preflight and Ctrl/Cmd+S export;
-- scalar chart property controls generated from shared descriptors.
+- scalar chart property controls generated from shared descriptors;
+- direct v2 startup through an empty `untitled` Fabric envelope.
 
-Current fork extensions are only charts, persistence and shortcuts. Startup still
-builds the legacy demo theme into a `ScenePlan` rather than starting directly
-from a v2 envelope.
+Current fork extensions are only charts, persistence and shortcuts. The legacy
+demo-theme/`ScenePlan` path does not mount the interactive editor.
 
 ## Stage 4B — finish editor migration
 

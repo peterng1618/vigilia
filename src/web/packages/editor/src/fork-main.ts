@@ -1,8 +1,9 @@
-import { buildScenePlan, fabricEnvelopeInputFor, type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
+import { type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 import { assertFabricThemeEnvelopeCompatible } from '@vigilia/scene-fabric';
-import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
+import { createDemoSource } from '@vigilia/fake-source';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
+import { createNewFabricTheme } from './new-fabric-theme.js';
 import { describeIssues, parseFabricThemeFile } from './persist.js';
 
 async function start(): Promise<void> {
@@ -22,15 +23,14 @@ async function start(): Promise<void> {
   host.parentElement!.append(picker);
 
   let active: { readonly shell: Awaited<ReturnType<typeof mountForkShell>>; readonly extensions: ForkExtensions } | undefined;
-  const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope?: FabricThemeEnvelope; readonly plan?: ReturnType<typeof buildScenePlan> }) => {
-    if (next.envelope !== undefined) assertFabricThemeEnvelopeCompatible(next.envelope);
+  const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope }) => {
+    assertFabricThemeEnvelopeCompatible(next.envelope);
     active?.extensions.destroy();
     active?.shell.destroy();
     const shell = await mountForkShell({
       host,
       artboard: next.input.artboard,
-      ...(next.envelope === undefined ? {} : { envelope: next.envelope }),
-      ...(next.plan === undefined ? {} : { plan: next.plan }),
+      envelope: next.envelope,
     });
     const extensions = new ForkExtensions({
       shell,
@@ -62,10 +62,10 @@ async function start(): Promise<void> {
     });
   });
 
-  const theme = loadDemoTheme(new URLSearchParams(window.location.search).get('theme') ?? 'demo');
+  const theme = createNewFabricTheme();
   await mount({
-    input: fabricEnvelopeInputFor(theme),
-    plan: buildScenePlan({ document: theme, source, nowMs, animate: false }),
+    input: envelopeInputFor(theme),
+    envelope: theme,
   });
   status.textContent = 'Fabric editor ready';
 }
