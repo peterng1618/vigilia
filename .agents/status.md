@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,260 passed across 66 files |
+| Unit tests | 1,261 passed across 67 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |

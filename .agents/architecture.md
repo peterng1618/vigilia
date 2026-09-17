@@ -28,10 +28,10 @@ cannot leak into the Node host.
 ### Current migration state
 
 - Player: Fabric-only `StaticCanvas` path.
-- Editor: still uses the old DOM renderer/custom overlay.
-- Target editor: adopted source fork at `../fabricjs-image-editor` plus
-  Vigilia-specific extensions. The current home-grown `EditorCore` managers are
-  fallback/harvest-only until their replacements are proven.
+- Editor: adopted source fork route with Vigilia-specific extensions; legacy
+  DOM/custom code is fallback-only.
+- The current home-grown `EditorCore` managers are fallback/harvest-only until
+  their replacements are proven.
 
 ## Runtime data flow
 
