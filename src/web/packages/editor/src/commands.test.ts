@@ -155,11 +155,14 @@ describe('updateChartSettings', () => {
       content: { family: 'gauge', settings: { startAngle: 90, endAngle: -270, min: 0, max: 100, thickness: 10, track: { kind: 'solid', color: '#000' }, progress: { kind: 'solid', color: '#fff' }, roundCap: true } },
     } as ThemeNode;
     const source = { ...document_, nodes: [chart, ...document_.nodes] };
+    if (chart.type !== 'chart') throw new Error('fixture is a chart');
     const settings = { ...chart.content.settings, thickness: 20 };
     const next = updateChartSettings(source, 'chart', settings);
 
-    expect(findNode(next.nodes, 'chart')?.content).toEqual({ family: 'gauge', settings });
-    expect(findNode(source.nodes, 'chart')?.content).not.toBe(settings);
+    const nextChart = findNode(next.nodes, 'chart');
+    const sourceChart = findNode(source.nodes, 'chart');
+    expect(nextChart?.type === 'chart' && nextChart.content).toEqual({ family: 'gauge', settings });
+    expect(sourceChart?.type === 'chart' && sourceChart.content.settings).not.toBe(settings);
   });
 });
 

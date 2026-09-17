@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,256 passed across 65 files |
+| Unit tests | 1,258 passed across 66 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -44,6 +44,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - The editor route mounts that fork shell; the legacy DOM route is no longer active.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.
+- The fork property surface generates scalar chart controls from the shared
+  descriptor registry and reapplies the ScenePlan after authored settings change.
 - Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;
   the pinned fork revision is `73657f0`.
 

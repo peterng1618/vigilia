@@ -1,6 +1,12 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
 import type { ScenePlan } from '@vigilia/renderer-core';
-import { createSceneAdapter, disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
+import {
+  createSceneAdapter,
+  disposeScene,
+  reviveScene,
+  serialiseScene,
+  type SceneAdapter,
+} from '@vigilia/scene-fabric';
 
 export interface ForkShellOptions {
   readonly host: HTMLElement;
@@ -13,6 +19,7 @@ export interface ForkShellOptions {
 
 export interface ForkShell {
   readonly editor: ImageEditor;
+  readonly scene?: SceneAdapter;
   destroy(): void;
 }
 
@@ -43,6 +50,7 @@ export async function mountForkShell({ host, artboard, plan }: ForkShellOptions)
 
     return {
       editor,
+      ...(scene === undefined ? {} : { scene }),
       destroy() {
         scene?.dispose();
         disposeScene(editor.canvas);
