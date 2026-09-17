@@ -187,8 +187,20 @@ describe('text (§89)', () => {
     if (content.kind !== 'text') {
       throw new Error('expected a text node');
     }
-    return { segments: content.segments as PlanTextSegment[], issues: result.issues };
+    return { authored: content.authored, segments: content.segments as PlanTextSegment[], issues: result.issues };
   }
+
+  it('keeps authored runs separate from the current resolved value', () => {
+    const runs = [{ kind: 'value', bindingId: 'b', precision: 0 }];
+    const result = segments(
+      storeWith({ 'cpu.temp': ok(61.4, '°C', 'cpu.temp') }),
+      [{ id: 'b', semanticKey: 'cpu.temp' }],
+      runs,
+    );
+
+    expect(result.authored.runs).toEqual(runs);
+    expect(result.segments.map((segment) => segment.text)).toEqual(['61°C']);
+  });
 
   it('mixes literals and live values in one element', () => {
     const result = segments(

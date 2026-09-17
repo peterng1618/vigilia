@@ -75,6 +75,8 @@ export type PlanContent =
     }
   | {
       readonly kind: 'text';
+      /** Authored runs survive Fabric serialization for v2 live text updates. */
+      readonly authored: TextContent;
       readonly segments: readonly PlanTextSegment[];
       readonly layout: PlanTextLayout;
     }
@@ -218,6 +220,7 @@ function planContent(
     case 'text':
       return {
         kind: 'text',
+        authored: node.content,
         segments: planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues),
         layout: planTextLayout(node.content, box.height, style),
       };

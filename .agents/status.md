@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,242 passed across 70 files |
+| Unit tests | 1,244 passed across 70 files |
 | Typechecks | six projects clean |
 | Browser suite | 53 passed / 119 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -57,6 +57,8 @@ the initial camera contains the dashboard at usable stage size.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
   still transitional. Palette/type-preset semantics from spec 0011 are not yet
   represented by the published development schema.
+- Fabric text saves its authored runs beside resolved Fabric text, so a revived
+  v2 scene retains the semantics needed for later live updates.
 
 ### Host/telemetry
 

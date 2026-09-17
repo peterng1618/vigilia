@@ -18,6 +18,9 @@ import { textShapeFor } from './text-runs.js';
 /** Fabric's typings make `Textbox` incompatible with `FabricText` under exact optional types. */
 export type PlanTextObject = FabricText | Textbox;
 
+/** Fabric property that preserves authored text semantics without a parallel scene tree. */
+export const VIGILIA_TEXT_PROPERTY = 'vigiliaText';
+
 const ELLIPSIS = '…';
 
 export function isTextObject(object: object): object is PlanTextObject {
@@ -46,6 +49,7 @@ export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
     : new FabricText('', common);
 
   applyText(object, node, box);
+  object.set(VIGILIA_TEXT_PROPERTY, node.content.authored);
 
   return object;
 }

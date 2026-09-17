@@ -11,6 +11,7 @@ import {
   type Sample,
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
+import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
@@ -187,6 +188,20 @@ describe('Fabric’s own keys are held to the same rule', () => {
 });
 
 describe('identity survives a round trip', () => {
+  it('keeps authored text runs available after Fabric revival', async () => {
+    const authored = { runs: [{ kind: 'literal' as const, text: 'CPU ' }, { kind: 'value' as const, bindingId: 'load' }] };
+    const text = new FabricText('CPU 48%');
+    text.set('id', 'readout');
+    text.set(VIGILIA_TEXT_PROPERTY, authored);
+
+    const scene = serialiseScene(canvasOf(text));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_TEXT_PROPERTY]).toEqual(authored);
+    expect(revived.getObjects()[0]!.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
+  });
+
   it('carries an id on every object, nested ones included', async () => {
     const child = new FabricText('inner');
     child.set('id', 'child');
@@ -359,6 +374,6 @@ describe('there is exactly one owner of scene serialisation', () => {
     expect(
       readdirSync(root).filter((entry: string) => entry.endsWith('.ts')).length,
     ).toBeGreaterThan(10);
-    expect(SCENE_PERSISTED_PROPERTIES).toEqual(['id']);
+    expect(SCENE_PERSISTED_PROPERTIES).toEqual(['id', VIGILIA_TEXT_PROPERTY]);
   });
 });

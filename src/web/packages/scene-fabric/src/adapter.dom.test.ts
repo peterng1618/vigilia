@@ -8,6 +8,7 @@ import {
   type PlanNode,
   type ScenePlan,
   type Sample,
+  type TextContent,
 } from '@vigilia/renderer-core';
 import { createSceneAdapter, type SceneAdapter } from './adapter.js';
 import { VigiliaChart } from './chart-object.js';
@@ -78,12 +79,15 @@ function rectangle(id: string, geometry: Partial<PlanBox>, style: PlanNode['styl
 }
 
 function textNode(id: string, text: string, style: PlanNode['style'] = {}): PlanNode {
+  const authored: TextContent = { runs: [{ kind: 'literal', text }] };
+
   return node({
     id,
     box: box({ width: 100, height: 30 }),
     style,
     content: {
       kind: 'text',
+      authored,
       segments: [{ text, style: {} }],
       layout: { wrap: false, overflow: 'visible', align: 'left', verticalAlign: 'top' },
     },

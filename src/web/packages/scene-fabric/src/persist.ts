@@ -2,13 +2,14 @@ import { Group, version as fabricVersion, type StaticCanvas } from 'fabric/es';
 import type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 // Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
 import { VigiliaChart } from './chart-object.js';
+import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 
 /**
  * Single owner of Fabric scene serialization. Defaults are stripped so persisted
  * keys are authored deviations; `id` is explicitly included because Fabric omits it.
  */
 
-export const SCENE_PERSISTED_PROPERTIES = ['id'] as const;
+export const SCENE_PERSISTED_PROPERTIES = ['id', VIGILIA_TEXT_PROPERTY] as const;
 
 export interface SerialisedScene {
   readonly version: string;
