@@ -34,7 +34,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - `scene-fabric` can construct a schema-v2 Fabric theme envelope and refuses a
   mismatched exact Fabric runtime before revival; the published schema switch is pending.
 - `renderer-core` validates schema-v2 Fabric envelopes before revival, including
-  version-first refusal, object identity/bounds and semantic binding references.
+  version-first refusal, shared semantic envelope fields, object identity/bounds,
+  semantic binding references and the v2 GIF-asset refusal.
 - Ctrl/Cmd+O selects a bounded, v2-only theme file and rebuilds the active fork
   shell from its validated Fabric envelope.
 - `renderer-core` exposes direct chart-option planning from authored chart state

@@ -1,11 +1,10 @@
 import {
-  MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   STABLE_ID_PATTERN,
 } from './document.js';
 import type { FabricThemeEnvelope } from './fabric-envelope.js';
-import type { ValidationIssue } from './validate.js';
+import { validateThemeDocument, type ValidationIssue } from './validate.js';
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
@@ -37,8 +36,9 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   if (typeof input['fabricVersion'] !== 'string' || !/^\d+\.\d+\.\d+$/.test(input['fabricVersion'])) {
     issues.push(issue('wrong-type', '/fabricVersion', 'fabricVersion must be a pinned major.minor.patch version.'));
   }
-  stableId(input['id'], '/id', 'The document id', issues);
-  artboard(input['artboard'], issues);
+  issues.push(...sharedSemanticIssues(input));
+  editorMetadata(input['editorMetadata'], issues);
+  rejectGifAssets(input['assets'], issues);
   const sceneIds = scene(input['scene'], issues);
   bindings(input['bindings'], sceneIds, issues);
 
@@ -47,22 +47,37 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
     : { ok: false, issues };
 }
 
-function artboard(value: unknown, issues: ValidationIssue[]): void {
+/** Reuses the one semantic validator without treating Fabric JSON as a legacy node tree. */
+function sharedSemanticIssues(input: Record<string, unknown>): readonly ValidationIssue[] {
+  const result = validateThemeDocument({
+    schemaVersion: 1,
+    id: input['id'],
+    metadata: input['metadata'],
+    artboard: input['artboard'],
+    globals: input['globals'],
+    assets: input['assets'],
+    editorMetadata: input['editorMetadata'],
+    nodes: [],
+  });
+
+  return result.ok ? [] : result.issues;
+}
+
+function editorMetadata(value: unknown, issues: ValidationIssue[]): void {
+  if (value === undefined) return;
   if (!isRecord(value)) {
-    issues.push(issue('wrong-type', '/artboard', 'artboard must be an object.'));
+    issues.push(issue('wrong-type', '/editorMetadata', 'editorMetadata must be a JSON object.'));
     return;
   }
-  unknownKeys(value, '/artboard', ['width', 'height', 'background', 'fitMode', 'barColor'], 'The artboard', issues);
-  for (const key of ['width', 'height'] as const) {
-    const dimension = value[key];
-    if (typeof dimension !== 'number' || !Number.isFinite(dimension)) {
-      issues.push(issue('wrong-type', `/artboard/${key}`, `${key} must be a finite number.`));
-    } else if (dimension <= 0 || dimension > MAX_ARTBOARD_DIMENSION) {
-      issues.push(issue('out-of-range', `/artboard/${key}`, `${key} must be above 0 and at most ${MAX_ARTBOARD_DIMENSION}.`));
+  jsonSafe(value, '/editorMetadata', 0, issues);
+}
+
+function rejectGifAssets(value: unknown, issues: ValidationIssue[]): void {
+  if (!Array.isArray(value)) return;
+  for (const [index, asset] of value.entries()) {
+    if (isRecord(asset) && asset['kind'] === 'gif') {
+      issues.push(issue('invalid-enum', `/assets/${index}/kind`, 'An asset kind must be one of: image, svg, video, font.'));
     }
-  }
-  if (value['fitMode'] !== undefined && value['fitMode'] !== 'contain' && value['fitMode'] !== 'cover') {
-    issues.push(issue('invalid-enum', '/artboard/fitMode', 'fitMode must be one of: contain, cover.'));
   }
 }
 

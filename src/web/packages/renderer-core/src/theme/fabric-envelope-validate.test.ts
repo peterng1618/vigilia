@@ -60,4 +60,22 @@ describe('Fabric theme envelope validation', () => {
       ]));
     }
   });
+
+  it('keeps shared semantics valid while refusing obsolete GIF assets', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      metadata: { name: 'Valid', unexpected: true },
+      assets: [{ id: 'animated', kind: 'gif', path: 'assets/animated.gif' }],
+      editorMetadata: ['not-an-object'],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'unknown-field', path: '/metadata/unexpected' }),
+        expect.objectContaining({ code: 'invalid-enum', path: '/assets/0/kind' }),
+        expect.objectContaining({ code: 'wrong-type', path: '/editorMetadata' }),
+      ]));
+    }
+  });
 });
