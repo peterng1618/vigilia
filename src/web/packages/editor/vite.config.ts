@@ -13,6 +13,12 @@ export default defineConfig({
       '@vigilia/fake-source': fileURLToPath(
         new URL('../fake-source/src/index.ts', import.meta.url),
       ),
+      // The adopted fork is compiled at its package boundary. Resolve that
+      // entry explicitly: Rolldown 1.2 intermittently misses this Git package's
+      // otherwise valid `exports` map on Windows.
+      '@anu3ev/fabric-image-editor': fileURLToPath(
+        new URL('../../node_modules/@anu3ev/fabric-image-editor/dist/main.js', import.meta.url),
+      ),
     },
   },
   // Served from two different places: `vite preview` and the browser suite put

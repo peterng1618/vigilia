@@ -49,6 +49,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - The adopted fork's `codex/fabric-es` branch pins Fabric 7.4.0 and imports
   `fabric/es` throughout. Vigilia consumes its compiled Git package, keeping
   the fork out of Vigilia's stricter TypeScript program.
+- The editor Vite config resolves the fork's compiled entry explicitly, avoiding
+  Rolldown's intermittent Windows failure to follow this Git package's exports.
 - `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
   to `disposeScene`, and disposes charts before destroying the fork canvas.
 - The fork shell can snapshot its interactive canvas into the v2 envelope;
