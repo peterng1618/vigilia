@@ -1,5 +1,8 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const EDITOR_ROOT = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   resolve: {
@@ -16,8 +19,9 @@ export default defineConfig({
       // The adopted fork is compiled at its package boundary. Resolve that
       // entry explicitly: Rolldown 1.2 intermittently misses this Git package's
       // otherwise valid `exports` map on Windows.
-      '@anu3ev/fabric-image-editor': fileURLToPath(
-        new URL('../../node_modules/@anu3ev/fabric-image-editor/dist/main.js', import.meta.url),
+      '@anu3ev/fabric-image-editor': resolve(
+        EDITOR_ROOT,
+        '../../node_modules/@anu3ev/fabric-image-editor/dist/main.js',
       ),
     },
   },
