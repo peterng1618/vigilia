@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const EDITOR = 'http://127.0.0.1:4174/';
 
@@ -28,6 +28,18 @@ test.describe('Fabric editor route', () => {
       contentType: 'image/png',
     });
     expect(screenshot.byteLength).toBeGreaterThan(1000);
+  });
+
+  test('selects a chart in the starter theme through the visible Fabric canvas', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    const box = await page.locator('#vigilia-fabric-editor canvas.upper-canvas').boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) return;
+
+    await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
+    await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
   });
 
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {
@@ -93,6 +105,47 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Opened roundtrip.json');
   });
 
+  test('persists an ordinary fork drag and restores it through undo', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'movable.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 2,
+        fabricVersion: '7.4.0',
+        id: 'movable',
+        artboard: { width: 320, height: 180 },
+        scene: {
+          version: '7.4.0',
+          objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, fill: '#00b8d9', originX: 'left', originY: 'top' }],
+        },
+      })),
+    });
+    await expect(page.locator('#status')).toHaveText('Opened movable.json');
+
+    const canvas = page.locator('#vigilia-fabric-editor canvas.upper-canvas');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) return;
+
+    const point = (x: number, y: number) => ({ x: box.x + (x / 320) * box.width, y: box.y + (y / 180) * box.height });
+    const start = point(70, 70);
+    const end = point(150, 70);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x, end.y);
+    await page.mouse.up();
+
+    const savedAfterDrag = await saveEnvelope(page);
+    expect(leftFor(savedAfterDrag, 'panel')).toBeGreaterThan(100);
+
+    await page.keyboard.press('Control+z');
+    const savedAfterUndo = await saveEnvelope(page);
+    expect(leftFor(savedAfterUndo, 'panel')).toBeCloseTo(40, 3);
+  });
+
   test('keeps the active document when Fabric cannot revive a schema-valid scene', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
@@ -152,3 +205,19 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Fabric editor ready');
   });
 });
+
+async function saveEnvelope(page: Page): Promise<unknown> {
+  const download = page.waitForEvent('download');
+  await page.keyboard.press('Control+s');
+  const stream = await (await download).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+function leftFor(envelope: unknown, id: string): number {
+  const objects = (envelope as { scene: { objects: Array<{ id?: string; left?: number }> } }).scene.objects;
+  const left = objects.find((object) => object.id === id)?.left;
+  expect(left).toEqual(expect.any(Number));
+  return left!;
+}

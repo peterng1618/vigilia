@@ -31,6 +31,7 @@ export class ChartManager {
     this.#editor.canvas.on('selection:created', this.#drawPanel);
     this.#editor.canvas.on('selection:updated', this.#drawPanel);
     this.#editor.canvas.on('selection:cleared', this.#drawPanel);
+    this.#hydrateRevivedCharts();
     this.#drawPanel();
   }
 
@@ -53,14 +54,27 @@ export class ChartManager {
     const chart = this.#scene.objectFor(id);
 
     if (chart instanceof VigiliaChart) {
-      const plan = buildChartPlan(id, { family: chart.family, settings } as ChartContent, this.#bindings[id] ?? [], {
-        source: this.#source, nowMs: Date.now(), animate: false,
-      }, []);
       chart.set('settings', settings);
-      chart.setOption(plan.option);
+      this.#applyChart(id, chart);
       this.#editor.canvas.requestRenderAll();
     }
     this.#drawPanel();
+  }
+
+  /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
+  #hydrateRevivedCharts(): void {
+    for (const id of Object.keys(this.#bindings)) {
+      const chart = this.#scene.objectFor(id);
+      if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
+    }
+    this.#editor.canvas.requestRenderAll();
+  }
+
+  #applyChart(id: string, chart: VigiliaChart): void {
+    const plan = buildChartPlan(id, { family: chart.family, settings: chart.settings } as ChartContent, this.#bindings[id] ?? [], {
+      source: this.#source, nowMs: Date.now(), animate: false,
+    }, []);
+    chart.setOption(plan.option);
   }
 
   #selectedChart(): VigiliaChart | undefined {

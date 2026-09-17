@@ -27,6 +27,8 @@ describe('ChartManager', () => {
       panelHost: document.body,
     });
 
+    expect(chart.option).toMatchObject({ series: expect.any(Array) });
+
     listeners.get('selection:created')!();
     const thickness = document.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!;
     thickness.value = '24';

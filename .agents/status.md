@@ -8,15 +8,15 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,247 passed across 72 files |
+| Unit tests | 1,248 passed across 72 files |
 | Typechecks | six projects clean |
-| Browser suite | 56 passed / 122 skipped / 0 failed |
+| Browser suite | 59 passed / 125 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
 
-Full gate run on 2026-09-17. Isolated preview confirms direct v2 startup shows
-the static dashboard demo at usable stage size.
+Full gate run on 2026-09-18. Isolated desktop preview confirms direct v2 startup
+shows the static dashboard demo at usable stage size.
 
 ## Current product state
 
@@ -54,8 +54,13 @@ the static dashboard demo at usable stage size.
   so the editor stage neither squeezes nor stretches the dashboard canvas.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
-- Startup creates and revives a static v2 dashboard envelope directly. The
-  legacy demo theme/`ScenePlan` path no longer mounts the interactive editor.
+- Startup creates and revives a static v2 dashboard envelope directly, including
+  supported gradients, SVG-derived paths and all four chart families. The legacy
+  demo theme/`ScenePlan` path no longer mounts the interactive editor.
+- Starter-theme foreground objects remain selectable; only the background is
+  locked. Selecting a chart opens its Vigilia property controls.
+- A visible Fabric drag persists through v2 Save and Ctrl/Cmd+Z restores the
+  saved geometry through fork history.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
   still transitional. Palette/type-preset semantics from spec 0011 are not yet
   represented by the published development schema.
@@ -75,9 +80,8 @@ the static dashboard demo at usable stage size.
 
 ## Current gaps
 
-- Finish Stage 4B editor migration: direct v2 startup, remaining domain property
-  boundaries, normal edit/save/open/history verification, then delete fallback
-  code.
+- Finish Stage 4B editor migration: remaining domain property boundaries, then
+  delete fallback code.
 - Finish spec 0011: palette solids/gradients, type presets, stable reference UI,
   artboard/domain property editing and removal of transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
@@ -90,8 +94,8 @@ the static dashboard demo at usable stage size.
 
 ## Next
 
-1. Finish remaining Stage 4B domain property boundaries and ordinary edit/history
-   verification before deleting fallback code.
+1. Finish remaining Stage 4B domain property boundaries before deleting fallback
+   code.
 2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
 3. Complete the property/token model in spec 0011 before stabilising v2.
