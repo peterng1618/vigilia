@@ -1,41 +1,38 @@
 // @vitest-environment jsdom
-import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
+import { createDemoSource } from '@vigilia/fake-source';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
-import type { SceneAdapter } from '@vigilia/scene-fabric';
+import { VigiliaChart, type SceneAdapter } from '@vigilia/scene-fabric';
 import { describe, expect, it, vi } from 'vitest';
-import { findNode } from '../commands.js';
+import { defaultGaugeSettings } from '@vigilia/renderer-core';
 import { ChartManager } from './index.js';
 
 describe('ChartManager', () => {
-  it('reapplies the shared scene after a selected chart setting changes', () => {
+  it('updates the selected Fabric chart from envelope bindings', () => {
     const listeners = new Map<string, () => void>();
-    let selectedId: string | undefined;
+    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+      id: 'cpu-gauge', family: 'gauge', settings: defaultGaugeSettings,
+    }) as VigiliaChart;
     const canvas = {
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
       off: vi.fn(),
-      getActiveObject: vi.fn(() => selectedId === undefined ? undefined : { get: () => selectedId }),
+      getActiveObject: vi.fn(() => chart),
       requestRenderAll: vi.fn(),
     };
-    const scene = { apply: vi.fn(), objectFor: vi.fn(() => undefined) } as unknown as SceneAdapter;
+    const scene = { objectFor: vi.fn(() => chart) } as unknown as SceneAdapter;
     const manager = new ChartManager({
       editor: { canvas } as unknown as ImageEditor,
       scene,
       source: createDemoSource(0),
-      document: loadDemoTheme('demo'),
+      bindings: { 'cpu-gauge': [{ id: 'cpu', semanticKey: 'cpu.load' }] },
       panelHost: document.body,
     });
 
-    expect(document.body.textContent).toContain('Select a chart');
-    selectedId = 'cpu-gauge';
     listeners.get('selection:created')!();
     const thickness = document.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!;
     thickness.value = '24';
     thickness.dispatchEvent(new Event('change'));
 
-    expect(scene.apply).toHaveBeenCalledTimes(1);
-    expect(findNode(manager.document.nodes, 'cpu-gauge')).toMatchObject({
-      content: { settings: { thickness: 24 } },
-    });
+    expect(chart.settings).toMatchObject({ thickness: 24 });
     expect(document.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!.value).toBe('24');
 
     manager.destroy();

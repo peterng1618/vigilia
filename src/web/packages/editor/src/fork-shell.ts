@@ -1,5 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { fabricEnvelopeInputFor, type FabricThemeEnvelope, type ScenePlan, type ThemeDocument } from '@vigilia/renderer-core';
+import type { FabricThemeEnvelope, FabricThemeEnvelopeInput, ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
   disposeScene,
@@ -21,7 +21,7 @@ export interface ForkShellOptions {
 export interface ForkShell {
   readonly editor: ImageEditor;
   readonly scene?: SceneAdapter;
-  snapshot(document: ThemeDocument): FabricThemeEnvelope;
+  snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   destroy(): void;
 }
 
@@ -53,8 +53,8 @@ export async function mountForkShell({ host, artboard, plan }: ForkShellOptions)
     return {
       editor,
       ...(scene === undefined ? {} : { scene }),
-      snapshot(document) {
-        return serialiseThemeEnvelope(editor.canvas, fabricEnvelopeInputFor(document));
+      snapshot(input) {
+        return serialiseThemeEnvelope(editor.canvas, input);
       },
       destroy() {
         scene?.dispose();

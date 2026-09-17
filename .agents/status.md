@@ -59,8 +59,9 @@ These figures are from the current session's Stage 4B route-migration gate.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.
 - The fork property surface generates scalar chart controls from the shared
-  descriptor registry, rejects schema-invalid edits, and updates adopted charts
-  in place so fork-managed transforms survive authored settings changes.
+  descriptor registry and updates adopted charts from envelope bindings in place,
+  so fork-managed transforms survive authored settings changes without a legacy
+  node tree.
 - `editor/src/chart-manager/` owns the chart-specific fork extension; generic
   selection, transforms and history remain owned by the adopted fork.
 - Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;

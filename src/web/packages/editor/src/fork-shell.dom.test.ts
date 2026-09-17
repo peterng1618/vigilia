@@ -29,7 +29,7 @@ describe('the adopted editor shell', () => {
       reviveHistoryState: reviveScene,
     });
     expect(shell.editor).toBe(editor);
-    expect(shell.snapshot(loadDemoTheme('demo'))).toMatchObject({ schemaVersion: 2, id: 'vigilia-demo-dashboard' });
+    expect(shell.snapshot({ id: 'theme', artboard: { width: 1280, height: 720 } })).toMatchObject({ schemaVersion: 2, id: 'theme' });
   });
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {

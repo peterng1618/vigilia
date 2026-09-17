@@ -1,4 +1,4 @@
-import { buildScenePlan } from '@vigilia/renderer-core';
+import { buildScenePlan, fabricEnvelopeInputFor } from '@vigilia/renderer-core';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
@@ -16,12 +16,13 @@ async function start(): Promise<void> {
   const nowMs = Date.now();
   const source = createDemoSource(nowMs);
   const plan = buildScenePlan({ document: theme, source, nowMs, animate: false });
+  const envelope = fabricEnvelopeInputFor(theme);
 
   const shell = await mountForkShell({ host, artboard: theme.artboard, plan });
   new ForkExtensions({
     shell,
     source,
-    document: theme,
+    envelope,
     panelHost: host.parentElement!,
     onSaved: () => {
       status.textContent = 'Fabric theme saved';

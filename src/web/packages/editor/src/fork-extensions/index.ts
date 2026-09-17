@@ -1,4 +1,4 @@
-import type { SampleSource, ThemeDocument } from '@vigilia/renderer-core';
+import type { FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
 import type { ForkShell } from '../fork-shell.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager } from '../persistence-manager/index.js';
@@ -13,7 +13,7 @@ export class ForkExtensions {
   constructor(options: {
     readonly shell: ForkShell;
     readonly source: SampleSource;
-    readonly document: ThemeDocument;
+    readonly envelope: FabricThemeEnvelopeInput;
     readonly panelHost: HTMLElement;
     readonly onSaved: () => void;
   }) {
@@ -24,11 +24,11 @@ export class ForkExtensions {
       editor: options.shell.editor,
       scene: options.shell.scene,
       source: options.source,
-      document: options.document,
+      ...(options.envelope.bindings === undefined ? {} : { bindings: options.envelope.bindings }),
       panelHost: options.panelHost,
     });
     this.#shortcuts.register('file.save', () => {
-      this.#persistence.save(options.shell.snapshot(this.charts.document));
+      this.#persistence.save(options.shell.snapshot(options.envelope));
       options.onSaved();
     });
   }
