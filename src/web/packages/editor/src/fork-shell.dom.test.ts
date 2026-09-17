@@ -30,6 +30,27 @@ describe('the adopted editor shell', () => {
     expect(shell.editor).toBe(editor);
   });
 
+  it('reconciles a supplied shared scene onto the fork canvas', async () => {
+    const apply = vi.fn();
+    const editor = { canvas: {}, destroy: vi.fn() };
+    initEditor.mockResolvedValue(editor);
+
+    const sceneFabric = await import('@vigilia/scene-fabric');
+    const adapter = vi.spyOn(sceneFabric, 'createSceneAdapter').mockReturnValue({
+      apply,
+      dispose: vi.fn(),
+      objectFor: vi.fn(),
+      setRenderScale: vi.fn(),
+    });
+    const plan = { artboard: {}, nodes: [], issues: [] } as never;
+
+    await mountForkShell({ host: document.createElement('main'), artboard: { width: 1, height: 1 }, plan });
+
+    expect(adapter).toHaveBeenCalledWith({ canvas: editor.canvas });
+    expect(apply).toHaveBeenCalledWith(plan);
+    adapter.mockRestore();
+  });
+
   it('removes its container when initialization fails', async () => {
     initEditor.mockRejectedValue(new Error('fork failed'));
     const host = document.createElement('main');

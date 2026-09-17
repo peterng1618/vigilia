@@ -1,5 +1,6 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
+import type { ScenePlan } from '@vigilia/renderer-core';
+import { createSceneAdapter, disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
 
 export interface ForkShellOptions {
   readonly host: HTMLElement;
@@ -7,6 +8,7 @@ export interface ForkShellOptions {
     readonly width: number;
     readonly height: number;
   };
+  readonly plan?: ScenePlan;
 }
 
 export interface ForkShell {
@@ -17,7 +19,7 @@ export interface ForkShell {
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({ host, artboard }: ForkShellOptions): Promise<ForkShell> {
+export async function mountForkShell({ host, artboard, plan }: ForkShellOptions): Promise<ForkShell> {
   const container = document.createElement('div');
   container.id = FORK_CONTAINER_ID;
   host.replaceChildren(container);
@@ -33,9 +35,16 @@ export async function mountForkShell({ host, artboard }: ForkShellOptions): Prom
       reviveHistoryState: reviveScene,
     });
 
+    const scene = plan === undefined ? undefined : createSceneAdapter({ canvas: editor.canvas });
+
+    if (plan !== undefined) {
+      scene?.apply(plan);
+    }
+
     return {
       editor,
       destroy() {
+        scene?.dispose();
         disposeScene(editor.canvas);
         editor.destroy();
       },
