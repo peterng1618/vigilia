@@ -1,5 +1,7 @@
 import {
   serializeThemeDocument,
+  validateFabricThemeEnvelope,
+  type FabricThemeEnvelope,
   validateThemeDocument,
   type ThemeDocument,
   type ValidationIssue,
@@ -11,11 +13,28 @@ export type ParseResult =
   | { readonly ok: true; readonly document: ThemeDocument }
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
 
+export type FabricParseResult =
+  | { readonly ok: true; readonly envelope: FabricThemeEnvelope }
+  | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
+
 /** Reject unexpectedly large inputs before JSON parsing. */
 export const MAX_THEME_BYTES = 8 * 1024 * 1024;
 
 /** Parses JSON and applies the same document validation used by the player. */
 export function parseThemeFile(text: string): ParseResult {
+  const parsed = parseJson(text);
+  return parsed.ok ? validateThemeDocument(parsed.value) : parsed;
+}
+
+/** Parses the published v2 envelope; the legacy parser remains fallback-only. */
+export function parseFabricThemeFile(text: string): FabricParseResult {
+  const parsed = parseJson(text);
+  return parsed.ok ? validateFabricThemeEnvelope(parsed.value) : parsed;
+}
+
+function parseJson(text: string):
+  | { readonly ok: true; readonly value: unknown }
+  | { readonly ok: false; readonly issues: readonly ValidationIssue[] } {
   if (text.length > MAX_THEME_BYTES) {
     return {
       ok: false,
@@ -46,7 +65,7 @@ export function parseThemeFile(text: string): ParseResult {
     };
   }
 
-  return validateThemeDocument(parsed);
+  return { ok: true, value: parsed };
 }
 
 /** Canonical file representation, including its trailing newline. */

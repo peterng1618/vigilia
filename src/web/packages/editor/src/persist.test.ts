@@ -4,6 +4,7 @@ import {
   MAX_THEME_BYTES,
   describeIssues,
   fileNameFor,
+  parseFabricThemeFile,
   parseThemeFile,
   serializeForFile,
 } from './persist.js';
@@ -66,6 +67,16 @@ describe('parseThemeFile', () => {
 
   it('rejects a JSON array, which parses but is not a document', () => {
     expect(parseThemeFile('[]').ok).toBe(false);
+  });
+});
+
+describe('parseFabricThemeFile', () => {
+  const envelope = { schemaVersion: 2, fabricVersion: '7.4.0', id: 'theme', artboard: { width: 1, height: 1 }, scene: { version: '7.4.0', objects: [] } };
+
+  it('accepts a v2 Fabric envelope and rejects v1 without interpreting it', () => {
+    expect(parseFabricThemeFile(JSON.stringify(envelope))).toMatchObject({ ok: true, envelope });
+    const result = parseFabricThemeFile(JSON.stringify({ ...envelope, schemaVersion: 1, scene: 'wrong' }));
+    expect(result).toMatchObject({ ok: false, issues: [{ code: 'unsupported-schema-version' }] });
   });
 });
 
