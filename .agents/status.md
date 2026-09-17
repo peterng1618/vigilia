@@ -46,7 +46,7 @@ These figures are from the current session's Stage 4B route-migration gate.
 - `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
   to `disposeScene`, and disposes charts before destroying the fork canvas.
 - The fork shell can snapshot its interactive canvas into the v2 envelope;
-  import remains on the v1 path until v2 validation is published.
+  Ctrl/Cmd+S downloads it; import remains on the v1 path until v2 validation is published.
 - The editor route mounts that fork shell; the legacy DOM route is no longer active.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.

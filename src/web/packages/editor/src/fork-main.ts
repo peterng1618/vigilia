@@ -19,8 +19,24 @@ async function start(): Promise<void> {
 
   const shell = await mountForkShell({ host, artboard: theme.artboard, plan });
   if (shell.scene === undefined) throw new Error('The fork shell needs a scene adapter for chart editing.');
-  new ChartManager({ editor: shell.editor, scene: shell.scene, source, document: theme, panelHost: host.parentElement! });
+  const charts = new ChartManager({ editor: shell.editor, scene: shell.scene, source, document: theme, panelHost: host.parentElement! });
+  window.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      downloadTheme(shell.snapshot(charts.document));
+      status.textContent = 'Fabric theme saved';
+    }
+  });
   status.textContent = 'Fabric editor ready';
 }
 
 void start();
+
+function downloadTheme(theme: object): void {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(theme, undefined, 2)], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'vigilia-theme.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
