@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Ellipse, FabricImage, FabricText, Group, Rect, StaticCanvas, Textbox } from 'fabric/es';
+import { Circle, Ellipse, FabricImage, FabricText, Group, Path, Rect, StaticCanvas, Textbox } from 'fabric/es';
 import { describe, expect, it } from 'vitest';
 import {
   buildLineOption,
@@ -257,6 +257,31 @@ describe('identity survives a round trip', () => {
 });
 
 describe('the Fabric theme envelope', () => {
+  it('revives every baseline class used by the v2 demo fixture', async () => {
+    const target = canvasOf();
+    const envelope = {
+      schemaVersion: 2,
+      fabricVersion: '7.4.0',
+      id: 'demo',
+      artboard: { width: 1, height: 1 },
+      scene: {
+        version: '7.4.0',
+        objects: [
+          { type: 'Circle', radius: 1 },
+          { type: 'Path', path: [['M', 0, 0], ['L', 1, 1]] },
+          { type: 'Rect', width: 1, height: 1 },
+          { type: 'Textbox', text: 'demo' },
+        ],
+      },
+    } as const;
+
+    await reviveThemeEnvelope(target, envelope);
+
+    expect(target.getObjects()).toEqual([
+      expect.any(Circle), expect.any(Path), expect.any(Rect), expect.any(Textbox),
+    ]);
+  });
+
   it('records this Fabric version and only authored scene state', () => {
     const rect = new Rect({ width: 10, height: 10 });
     rect.set('id', 'rect');

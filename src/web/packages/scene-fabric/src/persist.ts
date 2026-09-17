@@ -1,8 +1,15 @@
-import { Group, version as fabricVersion, type StaticCanvas } from 'fabric/es';
+import { Circle, Group, Path, Rect, Textbox, classRegistry, version as fabricVersion, type StaticCanvas } from 'fabric/es';
 import type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 // Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
 import { VigiliaChart } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+
+// `fabric/es` is selective: register every baseline scene class that v2 JSON
+// may revive instead of relying on another renderer import to do it first.
+classRegistry.setClass(Circle);
+classRegistry.setClass(Path);
+classRegistry.setClass(Rect);
+classRegistry.setClass(Textbox);
 
 /**
  * Single owner of Fabric scene serialization. Defaults are stripped so persisted

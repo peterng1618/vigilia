@@ -59,4 +59,37 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toContainText('incompatible');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
   });
+
+  test('round-trips an opened v2 Fabric scene through the fork save path', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    const picker = page.locator('input[type="file"]');
+    await picker.setInputFiles({
+      name: 'source.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 2,
+        fabricVersion: '7.4.0',
+        id: 'source',
+        artboard: { width: 320, height: 180 },
+        scene: { version: '7.4.0', objects: [{ type: 'Rect', id: 'panel', width: 100, height: 50 }] },
+      })),
+    });
+    await expect(page.locator('#status')).toHaveText('Opened source.json');
+
+    const download = page.waitForEvent('download');
+    await page.keyboard.press('Control+s');
+    const stream = await (await download).createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    const saved = Buffer.concat(chunks);
+    const envelope = JSON.parse(saved.toString('utf8')) as { id: string; scene: { objects: Array<{ id?: string }> } };
+
+    expect(envelope.id).toBe('source');
+    expect(envelope.scene.objects).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'panel' })]));
+
+    await picker.setInputFiles({ name: 'roundtrip.json', mimeType: 'application/json', buffer: saved });
+    await expect(page.locator('#status')).toHaveText('Opened roundtrip.json');
+  });
 });

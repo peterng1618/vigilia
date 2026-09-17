@@ -11,7 +11,7 @@ import { mountForkShell } from './fork-shell.js';
 
 describe('the adopted editor shell', () => {
   it('installs the disposal-aware history hook at the fork boundary', async () => {
-    const editor = { canvas: { toObject: vi.fn(() => ({ version: '7.4.0', objects: [] })) }, destroy: vi.fn() };
+    const editor = { canvas: { toObject: vi.fn(() => ({ version: '7.4.0', objects: [] })), setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const host = document.createElement('main');
     Object.defineProperties(host, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
@@ -27,18 +27,20 @@ describe('the adopted editor shell', () => {
       montageAreaHeight: 720,
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
-      defaultScale: 1,
+      defaultScale: 0.625,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,
     });
     expect(shell.editor).toBe(editor);
+    expect(editor.canvas.setDimensions).toHaveBeenCalledWith({ width: 800, height: 450 });
+    expect(editor.canvas.setViewportTransform).toHaveBeenCalledWith([0.625, 0, 0, 0.625, 0, 0]);
     expect(shell.snapshot({ id: 'theme', artboard: { width: 1280, height: 720 } })).toMatchObject({ schemaVersion: 2, id: 'theme' });
   });
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {
     const apply = vi.fn();
-    const editor = { canvas: {}, destroy: vi.fn() };
+    const editor = { canvas: { setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
 
     const sceneFabric = await import('@vigilia/scene-fabric');
@@ -58,7 +60,7 @@ describe('the adopted editor shell', () => {
   });
 
   it('validates and revives a supplied Fabric envelope before extensions adopt it', async () => {
-    const editor = { canvas: {}, destroy: vi.fn() };
+    const editor = { canvas: { setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const sceneFabric = await import('@vigilia/scene-fabric');
     const revive = vi.spyOn(sceneFabric, 'reviveThemeEnvelope').mockResolvedValue();

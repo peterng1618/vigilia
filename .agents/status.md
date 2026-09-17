@@ -8,15 +8,15 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,245 passed across 71 files |
+| Unit tests | 1,246 passed across 71 files |
 | Typechecks | six projects clean |
-| Browser suite | 53 passed / 119 skipped / 0 failed |
+| Browser suite | 55 passed / 119 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
 
 Full gate run on 2026-09-17. Isolated preview confirms direct v2 startup shows
-the empty artboard at usable stage size.
+the static dashboard demo at usable stage size.
 
 ## Current product state
 
@@ -51,8 +51,8 @@ the empty artboard at usable stage size.
   so the editor stage neither squeezes nor stretches the dashboard canvas.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
-- Startup creates and revives an empty v2 envelope directly. The legacy demo
-  theme/`ScenePlan` path no longer mounts the interactive editor.
+- Startup creates and revives a static v2 dashboard envelope directly. The
+  legacy demo theme/`ScenePlan` path no longer mounts the interactive editor.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
   still transitional. Palette/type-preset semantics from spec 0011 are not yet
   represented by the published development schema.

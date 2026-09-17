@@ -30,13 +30,30 @@ export interface ForkShell {
 
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 
-function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): void {
+function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): number | undefined {
   const scale = Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
 
-  if (!Number.isFinite(scale) || scale <= 0) return;
+  if (!Number.isFinite(scale) || scale <= 0) return undefined;
 
   container.style.width = `${artboard.width * scale}px`;
   container.style.height = `${artboard.height * scale}px`;
+  return scale;
+}
+
+function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): void {
+  const scale = fitArtboardViewport(container, host, artboard);
+
+  if (scale === undefined) return;
+
+  const width = artboard.width * scale;
+  const height = artboard.height * scale;
+  editor.canvas.setDimensions({ width, height });
+  editor.canvas.setViewportTransform([
+    scale, 0, 0, scale,
+    (width - artboard.width * scale) / 2,
+    (height - artboard.height * scale) / 2,
+  ]);
+  editor.canvas.requestRenderAll();
 }
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
@@ -55,13 +72,13 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   container.style.position = 'absolute';
   container.style.inset = '0';
   container.style.margin = 'auto';
-  fitArtboardViewport(container, host, artboard);
+  const initialScale = fitArtboardViewport(container, host, artboard);
   host.replaceChildren(container);
+  let mounted: ImageEditor | undefined;
   const resize = typeof ResizeObserver === 'undefined'
     ? undefined
     : new ResizeObserver(() => {
-      fitArtboardViewport(container, host, artboard);
-      window.dispatchEvent(new Event('resize'));
+      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, artboard);
     });
   resize?.observe(host);
 
@@ -71,11 +88,13 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       montageAreaHeight: artboard.height,
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
-      defaultScale: 1,
+      defaultScale: initialScale ?? 1,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,
     });
+    mounted = editor;
+    fitCanvasViewport(editor, container, host, artboard);
 
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
