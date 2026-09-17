@@ -37,6 +37,9 @@ this session.
 - The source fork is adopted: its text/image/shape, selection, transforms,
   grouping and duplicate mechanics work with `VigiliaChart`; chart runtime
   updates stay out of its history in the Stage 4A browser spike.
+- The adopted fork's `codex/fabric-es` branch pins Fabric 7.4.0 and imports
+  `fabric/es` throughout; its typecheck, 1,808-test suite and production build
+  passed.
 
 ## What has not migrated yet
 
@@ -114,8 +117,8 @@ semantics with schema v2; do not build a workaround.
 ## Next, in order
 
 1. **Continue Stage 4B:** make the source fork the editor shell.
-2. Unify the fork with Vigilia's pinned `fabric/es` module.
-3. Route fork snapshot reload through disposal-aware `scene-fabric` persistence.
+2. Route fork snapshot reload through disposal-aware `scene-fabric` persistence.
+3. Integrate the fork shell using its `codex/fabric-es` branch.
 4. Move the first Vigilia property controls into the fork UI surface.
 5. Migrate editor + Fabric scene envelope together.
 6. Add schema-v2 tokens/property model, live bindings/charts, then video.
