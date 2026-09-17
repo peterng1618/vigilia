@@ -10,7 +10,14 @@ import {
   type Sample,
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
-import { reviveScene, serialiseScene, SCENE_PERSISTED_PROPERTIES } from './persist.js';
+import {
+  reviveScene,
+  reviveThemeEnvelope,
+  serialiseScene,
+  serialiseThemeEnvelope,
+  SCENE_PERSISTED_PROPERTIES,
+} from './persist.js';
+import type { SerialisedScene } from './persist.js';
 
 /**
  * What a saved scene contains, asserted exactly.
@@ -229,6 +236,33 @@ describe('identity survives a round trip', () => {
 
     expect(keysOf(serialiseScene(canvas))).toContain('id');
     expect(Object.keys(canvas.toObject()['objects'][0] as object)).not.toContain('id');
+  });
+});
+
+describe('the Fabric theme envelope', () => {
+  it('records this Fabric version and only authored scene state', () => {
+    const rect = new Rect({ width: 10, height: 10 });
+    rect.set('id', 'rect');
+
+    const envelope = serialiseThemeEnvelope(canvasOf(rect), {
+      id: 'theme',
+      artboard: { width: 400, height: 300 },
+      bindings: { rect: [] },
+    });
+
+    expect(envelope).toMatchObject({ schemaVersion: 2, id: 'theme', fabricVersion: '7.4.0' });
+    expect((envelope.scene as SerialisedScene).objects[0]).toMatchObject({ id: 'rect', type: 'Rect' });
+  });
+
+  it('refuses a different Fabric version before replacing the scene', async () => {
+    const target = canvasOf(new Rect({ width: 5, height: 5 }));
+    const envelope = serialiseThemeEnvelope(canvasOf(new Rect({ width: 10, height: 10 })), {
+      id: 'theme', artboard: { width: 400, height: 300 },
+    });
+    const incompatible = { ...envelope, fabricVersion: '7.5.0' };
+
+    await expect(reviveThemeEnvelope(target, incompatible)).rejects.toThrow('incompatible');
+    expect(target.getObjects()).toHaveLength(1);
   });
 });
 

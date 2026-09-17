@@ -10,7 +10,16 @@ export { createSceneAdapter } from './adapter.js';
 
 export type { SerialisedScene } from './persist.js';
 
-export { disposeScene, reviveScene, SCENE_PERSISTED_PROPERTIES, serialiseScene } from './persist.js';
+export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
+
+export {
+  disposeScene,
+  reviveScene,
+  reviveThemeEnvelope,
+  SCENE_PERSISTED_PROPERTIES,
+  serialiseScene,
+  serialiseThemeEnvelope,
+} from './persist.js';
 
 export type { FabricSceneHandle, FabricSceneOptions } from './scene.js';
 

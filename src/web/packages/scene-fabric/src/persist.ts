@@ -1,4 +1,5 @@
-import { Group, type StaticCanvas } from 'fabric/es';
+import { Group, version as fabricVersion, type StaticCanvas } from 'fabric/es';
+import type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 // Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
 import { VigiliaChart } from './chart-object.js';
 
@@ -23,6 +24,14 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   return canvas.toObject([...SCENE_PERSISTED_PROPERTIES]) as SerialisedScene;
 }
 
+/** Save the product envelope and Fabric object tree through their single owners. */
+export function serialiseThemeEnvelope(
+  canvas: StaticCanvas,
+  input: FabricThemeEnvelopeInput,
+): FabricThemeEnvelope {
+  return { schemaVersion: 2, fabricVersion, ...input, scene: serialiseScene(canvas) };
+}
+
 /** Release chart engines before Fabric replaces the current object graph. */
 export function disposeScene(canvas: StaticCanvas): void {
   disposeObjects(canvas.getObjects());
@@ -32,6 +41,14 @@ export function disposeScene(canvas: StaticCanvas): void {
 export async function reviveScene(canvas: StaticCanvas, scene: SerialisedScene): Promise<void> {
   disposeScene(canvas);
   await canvas.loadFromJSON(scene);
+}
+
+/** Refuse a different Fabric runtime instead of guessing its serialization semantics. */
+export async function reviveThemeEnvelope(canvas: StaticCanvas, envelope: FabricThemeEnvelope): Promise<void> {
+  if (envelope.fabricVersion !== fabricVersion) {
+    throw new Error(`Fabric ${envelope.fabricVersion} is incompatible with this Fabric ${fabricVersion} runtime.`);
+  }
+  await reviveScene(canvas, envelope.scene as SerialisedScene);
 }
 
 function disposeObjects(objects: readonly object[]): void {

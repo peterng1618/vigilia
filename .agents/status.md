@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,258 passed across 66 files |
+| Unit tests | 1,260 passed across 66 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -31,6 +31,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - Player display E2E coverage probes the canvas scene and rendered pixels.
 - Fabric images support contain/cover/stretch and alpha-preserving bitmap/SVG recolouring.
 - Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
+- `scene-fabric` can construct a schema-v2 Fabric theme envelope and refuses a
+  mismatched exact Fabric runtime before revival; the published schema switch is pending.
 - Scene revival disposes existing `VigiliaChart` engines, including grouped charts,
   before Fabric replaces the object graph.
 - The source fork is adopted: its text/image/shape, selection, transforms,
@@ -47,12 +49,14 @@ These figures are from the current session's Stage 4B route-migration gate.
 - The fork property surface generates scalar chart controls from the shared
   descriptor registry, rejects schema-invalid edits, and reapplies the ScenePlan
   after authored settings change.
+- `editor/src/chart-manager/` owns the chart-specific fork extension; generic
+  selection, transforms and history remain owned by the adopted fork.
 - Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;
   the pinned fork revision is `73657f0`.
 
 ## What has not migrated yet
 
-- Editor still uses the old DOM renderer/custom interaction overlay.
+- Legacy DOM/custom editor code remains fallback-only; the fork route is active.
 - Theme schema still uses the pre-Fabric node-tree shape; envelope switch is
   coordinated with editor migration.
 - Live editor telemetry/bindings remain incomplete.
