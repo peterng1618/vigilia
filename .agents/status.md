@@ -15,8 +15,8 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
 
-Full gate run on 2026-09-17. The refreshed desktop editor screenshot confirms
-the initial camera contains the dashboard at usable stage size.
+Full gate run on 2026-09-17. Isolated preview confirms direct v2 startup shows
+the empty artboard at usable stage size.
 
 ## Current product state
 
