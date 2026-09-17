@@ -8,9 +8,9 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,246 passed across 71 files |
+| Unit tests | 1,247 passed across 72 files |
 | Typechecks | six projects clean |
-| Browser suite | 55 passed / 121 skipped / 0 failed |
+| Browser suite | 56 passed / 122 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
@@ -45,6 +45,9 @@ the static dashboard demo at usable stage size.
 - Ctrl/Cmd+O validates a bounded v2 file, checks exact Fabric compatibility,
   then stages revival before replacing the fork shell. Invalid, incompatible,
   or unrevivable files leave the current editor intact.
+- Open compares the serialized Fabric scene to the saved scene and offers
+  Save/Discard/Cancel before replacing dirty work. A New-document action is not
+  implemented yet.
 - Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
   and `ShortcutManager` composed by `ForkExtensions`.
 - The fork starts at full contain-fit zoom in a centered artboard-aspect viewport,
@@ -87,8 +90,8 @@ the static dashboard demo at usable stage size.
 
 ## Next
 
-1. Finish remaining Stage 4B domain property boundaries, ordinary edit/save/open/
-   history verification, and dirty-document safety before deleting fallback code.
+1. Finish remaining Stage 4B domain property boundaries, ordinary edit/history
+   verification, and New-document safety before deleting fallback code.
 2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
 3. Complete the property/token model in spec 0011 before stabilising v2.
