@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,272 passed across 70 files |
+| Unit tests | 1,242 passed across 70 files |
 | Typechecks | six projects clean |
 | Browser suite | 53 passed / 119 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -31,8 +31,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - Player display E2E coverage probes the canvas scene and rendered pixels.
 - Fabric images support contain/cover/stretch and alpha-preserving bitmap/SVG recolouring.
 - Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
-- `scene-fabric` can construct a schema-v2 Fabric theme envelope and refuses a
-  mismatched exact Fabric runtime before revival; the published schema switch is pending.
+- `scene-fabric` can construct the published schema-v2 Fabric theme envelope and
+  refuses a mismatched exact Fabric runtime before revival.
 - `renderer-core` validates schema-v2 Fabric envelopes before revival, including
   version-first refusal, shared semantic envelope fields, object identity/bounds,
   semantic binding references and the v2 GIF-asset refusal.
@@ -77,8 +77,6 @@ These figures are from the current session's Stage 4B route-migration gate.
 ## What has not migrated yet
 
 - Legacy DOM/custom editor code remains fallback-only; the fork route is active.
-- Theme schema still uses the pre-Fabric node-tree shape; envelope switch is
-  coordinated with editor migration.
 - Live editor telemetry/bindings remain incomplete.
 - Video background production integration is not finished.
 
@@ -175,9 +173,9 @@ or runtime telemetry cannot be separated from authored state.
 ## Not verified / known gaps
 
 - Browser E2E previews bundles directly; it does not exercise the host.
-- Fabric scene JSON is not yet the published theme schema.
-- The route currently loads the legacy demo fixture through the shared ScenePlan;
-  the published Fabric-scene envelope remains the next persistence migration.
+- The route still loads the legacy demo fixture through the shared ScenePlan;
+  converting that fixture and startup path to the published Fabric envelope is
+  the next persistence migration.
 - Legacy DOM editor browser cases are skipped while equivalent Fabric-route coverage is added.
 - LHM extended telemetry is not implemented.
 - Pairing/revocable sessions and LAN end-to-end flow are not implemented.
