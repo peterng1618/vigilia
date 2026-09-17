@@ -35,8 +35,8 @@ These figures are from the current session's Stage 4B route-migration gate.
   mismatched exact Fabric runtime before revival; the published schema switch is pending.
 - `renderer-core` validates schema-v2 Fabric envelopes before revival, including
   version-first refusal, object identity/bounds and semantic binding references.
-- The editor has a bounded, v2-only file parser; routing the validated result to
-  the active fork shell is the remaining Open-file step.
+- Ctrl/Cmd+O selects a bounded, v2-only theme file and rebuilds the active fork
+  shell from its validated Fabric envelope.
 - `renderer-core` exposes direct chart-option planning from authored chart state
   and bindings, so the v2 editor need not rebuild a legacy node tree for charts.
 - `renderer-core` extracts v1 semantic metadata and bindings into the envelope;

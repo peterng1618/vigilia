@@ -15,6 +15,7 @@ export class ForkExtensions {
     readonly source: SampleSource;
     readonly envelope: FabricThemeEnvelopeInput;
     readonly panelHost: HTMLElement;
+    readonly onOpen: () => void;
     readonly onSaved: () => void;
   }) {
     if (options.shell.scene === undefined) {
@@ -31,6 +32,7 @@ export class ForkExtensions {
       this.#persistence.save(options.shell.snapshot(options.envelope));
       options.onSaved();
     });
+    this.#shortcuts.register('file.open', options.onOpen);
   }
 
   destroy(): void {
