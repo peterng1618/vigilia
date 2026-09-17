@@ -1,6 +1,7 @@
 /** Canonical action ids, labels, shortcuts and enablement for every editor surface. */
 
 export type ActionId =
+  | 'file.new'
   | 'file.open'
   | 'file.save'
   | 'edit.undo'
@@ -70,6 +71,13 @@ const atLeast =
 
 /** Menu declaration order. */
 export const ACTIONS: readonly EditorActionSpec[] = [
+  {
+    id: 'file.new',
+    label: 'New',
+    group: 'file',
+    shortcut: { key: 'n', meta: true },
+    enabled: always,
+  },
   {
     id: 'file.open',
     label: 'Open…',

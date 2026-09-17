@@ -132,4 +132,23 @@ test.describe('Fabric editor route', () => {
     await expect(dialog).toHaveCount(0);
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
   });
+
+  test('asks before New discards a changed Fabric scene', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key]) => key.startsWith('vigilia-fabric-editor-'))?.[1] as { canvas: { item(index: number): { set(key: string, value: number): void } | undefined; requestRenderAll(): void } } | undefined;
+      editor?.canvas.item(1)?.set('left', 64);
+      editor?.canvas.requestRenderAll();
+    });
+    await page.keyboard.press('Control+n');
+
+    const dialog = page.locator('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator('#status')).toHaveText('Fabric editor ready');
+  });
 });

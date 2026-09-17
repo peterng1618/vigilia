@@ -15,6 +15,7 @@ export class ForkExtensions {
     readonly source: SampleSource;
     readonly envelope: FabricThemeEnvelopeInput;
     readonly panelHost: HTMLElement;
+    readonly onNew: () => Promise<void>;
     readonly onOpen: () => void;
     readonly onSaved: () => void;
   }) {
@@ -34,6 +35,7 @@ export class ForkExtensions {
       options.onSaved();
     });
     this.#shortcuts.register('file.open', () => { void this.#open(options); });
+    this.#shortcuts.register('file.new', () => { void this.#new(options); });
   }
 
   destroy(): void {
@@ -48,18 +50,36 @@ export class ForkExtensions {
     readonly onOpen: () => void;
     readonly onSaved: () => void;
   }): Promise<void> {
+    if (!await this.#confirmReplacement(options)) return;
+    options.onOpen();
+  }
+
+  async #new(options: {
+    readonly shell: ForkShell;
+    readonly envelope: FabricThemeEnvelopeInput;
+    readonly onNew: () => Promise<void>;
+    readonly onSaved: () => void;
+  }): Promise<void> {
+    if (!await this.#confirmReplacement(options)) return;
+    await options.onNew();
+  }
+
+  async #confirmReplacement(options: {
+    readonly shell: ForkShell;
+    readonly envelope: FabricThemeEnvelopeInput;
+    readonly onSaved: () => void;
+  }): Promise<boolean> {
     const current = options.shell.snapshot(options.envelope);
 
     if (this.#persistence.isDirty(current)) {
       const choice = await confirmDocumentReplacement();
 
-      if (choice === 'cancel') return;
+      if (choice === 'cancel') return false;
       if (choice === 'save') {
         this.#persistence.save(current);
         options.onSaved();
       }
     }
-
-    options.onOpen();
+    return true;
   }
 }

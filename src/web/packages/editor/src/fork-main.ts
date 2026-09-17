@@ -35,6 +35,11 @@ async function start(): Promise<void> {
       source,
       envelope: next.input,
       panelHost: host.parentElement!,
+      onNew: async () => {
+        const fresh = createNewFabricTheme();
+        await mount({ input: envelopeInputFor(fresh), envelope: fresh });
+        status.textContent = 'New Fabric theme';
+      },
       onOpen: () => picker.click(),
       onSaved: () => { status.textContent = 'Fabric theme saved'; },
     });
