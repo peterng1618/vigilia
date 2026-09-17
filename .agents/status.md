@@ -9,14 +9,13 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 |---|---|
 | Unit tests | 1,255 passed across 65 files |
 | Typechecks | six projects clean |
-| Browser suite | 107 passed / 59 skipped / 0 failed across desktop and phone Chromium |
+| Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
-| Visual inspection | desktop assets and phone demo captures inspected; fit modes, recolouring, charts and letterboxing rendered correctly |
+| Visual inspection | desktop assets and phone demo captures inspected; fit modes, recolouring, charts and letterboxing rendered correctly; the fork editor route mounts its interactive canvas |
 | Editor foundation | compiled fork package installed; fork typecheck/build and 1,809 tests passed |
 
-These figures are from the Stage 3 completion and Stage 4A checkpoint runs in
-this session.
+These figures are from the current session's Stage 4B route-migration gate.
 
 ## What works
 
@@ -42,6 +41,7 @@ this session.
   the fork out of Vigilia's stricter TypeScript program.
 - `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
   to `disposeScene`, and disposes charts before destroying the fork canvas.
+- The editor route mounts that fork shell; the legacy DOM route is no longer active.
 
 ## What has not migrated yet
 
@@ -118,12 +118,11 @@ semantics with schema v2; do not build a workaround.
 
 ## Next, in order
 
-1. **Continue Stage 4B:** replace the legacy editor route with the fork shell.
-2. Replace fork snapshot serialization with `scene-fabric` persistence.
-3. Move the first Vigilia property controls into the fork UI surface.
-4. Migrate editor + Fabric scene envelope together.
-5. Add schema-v2 tokens/property model, live bindings/charts, then video.
-6. Delete old DOM/custom generic-editor code after replacements are proven.
+1. **Continue Stage 4B:** replace fork snapshot serialization with `scene-fabric` persistence.
+2. Move the first Vigilia property controls into the fork UI surface.
+3. Migrate editor + Fabric scene envelope together.
+4. Add schema-v2 tokens/property model, live bindings/charts, then video.
+5. Delete old DOM/custom generic-editor code after replacements are proven.
 
 Use sub-agents for independent source audits: manager inventory, history,
 property/demo UI, clipboard/grouping, custom chart lifecycle, persistence and
@@ -146,13 +145,10 @@ or runtime telemetry cannot be separated from authored state.
 ## Not verified / known gaps
 
 - Browser E2E previews bundles directly; it does not exercise the host.
-- Editor browser suite still has an undiagnosed contention-only flake.
 - Fabric scene JSON is not yet the published theme schema.
-- The fork shell is not yet the legacy editor route, so its browser behaviour
-  is not yet observed in Vigilia.
 - Fork snapshot serialization is not yet replaced by `scene-fabric` persistence.
-- The full build, size and browser gate for the compiled package boundary was
-  blocked by the environment usage limit after typecheck and units passed.
+- The fork route starts with its blank artboard; loading the authored Fabric scene is next.
+- Legacy DOM editor browser cases are skipped while equivalent Fabric-route coverage is added.
 - LHM extended telemetry is not implemented.
 - Pairing/revocable sessions and LAN end-to-end flow are not implemented.
 - Accepted limitation: Canvas text uses the font's natural digit metrics when

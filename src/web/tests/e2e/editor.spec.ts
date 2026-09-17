@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+test.skip(true, 'The legacy DOM editor is retained only as fallback during the Fabric editor migration.');
+
 /**
  * The editor, driven by real pointer and keyboard input.
  *

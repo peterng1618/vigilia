@@ -66,11 +66,7 @@
         flex-direction: column;
         height: 100%;
       }
-      /* The stage hosts the renderer's artboard AND the editor overlay. It must
-         be a positioned, clipping box: the artboard is absolutely positioned
-         inside it, and in cover mode the scaled design is larger than the box
-         on purpose. */
-      /* Stage and inspector side by side; the status bar spans both. */
+      /* The fork owns the canvas and its interaction surface. */
       #work {
         display: flex;
         flex: 1;
@@ -85,6 +81,10 @@
            selects the page's text and the gesture fights the browser. */
         user-select: none;
         touch-action: none;
+      }
+      #vigilia-fabric-editor {
+        width: 100%;
+        height: 100%;
       }
       #status {
         flex: none;
@@ -112,18 +112,13 @@
   <body>
     <div id="app">
       <div id="scaffold">
-        SCAFFOLD — synthetic data. Open and Save move a theme through a real file;
-        there is no host to save to yet, so Save downloads a copy.
-        Click to select · shift-click adds or removes · drag to move · handles to resize and
-        rotate · shift constrains a drag · alt resizes from centre · ctrl disables snapping ·
-        double-click enters a group · Esc leaves it · Delete removes ·
-        Ctrl+G / Ctrl+Shift+G group and ungroup · Ctrl+Z / Ctrl+Shift+Z undo and redo
+        Fabric editor foundation — generic selection, transforms and object tools come from the adopted shell.
       </div>
       <div id="work">
         <div id="stage"></div>
       </div>
       <div id="status">starting…</div>
     </div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/fork-main.ts"></script>
   </body>
 </html>
