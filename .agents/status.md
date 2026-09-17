@@ -49,6 +49,8 @@ These figures are from the current session's Stage 4B route-migration gate.
   Ctrl/Cmd+S downloads it; import remains on the v1 path until v2 validation is published.
 - `ShortcutManager` is the sole window listener and dispatches only registered
   Vigilia actions; `PersistenceManager` owns envelope download.
+- `ForkExtensions` composes and destroys the current chart, persistence and
+  shortcut managers above the fork canvas.
 - The editor route mounts that fork shell; the legacy DOM route is no longer active.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.
