@@ -152,6 +152,7 @@ describe('updateChartSettings', () => {
   it('replaces only authored settings on the selected chart', () => {
     const chart = {
       id: 'chart', type: 'chart', transform: { width: 100, height: 100 },
+      bindings: [{ id: 'chart-value', semanticKey: 'cpu.load' }],
       content: { family: 'gauge', settings: { startAngle: 90, endAngle: -270, min: 0, max: 100, thickness: 10, track: { kind: 'solid', color: '#000' }, progress: { kind: 'solid', color: '#fff' }, roundCap: true } },
     } as ThemeNode;
     const source = { ...document_, nodes: [chart, ...document_.nodes] };
@@ -163,6 +164,7 @@ describe('updateChartSettings', () => {
     const sourceChart = findNode(source.nodes, 'chart');
     expect(nextChart?.type === 'chart' && nextChart.content).toEqual({ family: 'gauge', settings });
     expect(sourceChart?.type === 'chart' && sourceChart.content.settings).not.toBe(settings);
+    expect(validateThemeDocument(next).ok).toBe(true);
   });
 });
 

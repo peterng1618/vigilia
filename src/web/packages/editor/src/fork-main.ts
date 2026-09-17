@@ -1,4 +1,4 @@
-import { buildScenePlan } from '@vigilia/renderer-core';
+import { buildScenePlan, validateThemeDocument } from '@vigilia/renderer-core';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { findNode, updateChartSettings } from './commands.js';
 import { createForkChartPanel } from './fork-chart-panel.js';
@@ -20,7 +20,12 @@ async function start(): Promise<void> {
 
   const shell = await mountForkShell({ host, artboard: theme.artboard, plan });
   const panel = createForkChartPanel(host.parentElement!, (id, settings) => {
-    theme = updateChartSettings(theme, id, settings);
+    const next = updateChartSettings(theme, id, settings);
+    if (!validateThemeDocument(next).ok) {
+      drawPanel();
+      return;
+    }
+    theme = next;
     shell.scene?.apply(buildScenePlan({ document: theme, source, nowMs: Date.now(), animate: false }));
     drawPanel();
   });

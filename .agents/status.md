@@ -45,7 +45,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.
 - The fork property surface generates scalar chart controls from the shared
-  descriptor registry and reapplies the ScenePlan after authored settings change.
+  descriptor registry, rejects schema-invalid edits, and reapplies the ScenePlan
+  after authored settings change.
 - Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;
   the pinned fork revision is `73657f0`.
 
