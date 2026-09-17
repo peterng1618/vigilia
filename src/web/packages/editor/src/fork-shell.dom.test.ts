@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
+import { loadDemoTheme } from '@vigilia/fake-source';
 
 const initEditor = vi.hoisted(() => vi.fn());
 
@@ -10,7 +11,7 @@ import { mountForkShell } from './fork-shell.js';
 
 describe('the adopted editor shell', () => {
   it('installs the disposal-aware history hook at the fork boundary', async () => {
-    const editor = { canvas: {}, destroy: vi.fn() };
+    const editor = { canvas: { toObject: vi.fn(() => ({ version: '7.4.0', objects: [] })) }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const host = document.createElement('main');
     host.append(document.createElement('p'));
@@ -28,6 +29,7 @@ describe('the adopted editor shell', () => {
       reviveHistoryState: reviveScene,
     });
     expect(shell.editor).toBe(editor);
+    expect(shell.snapshot(loadDemoTheme('demo'))).toMatchObject({ schemaVersion: 2, id: 'vigilia-demo-dashboard' });
   });
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {
