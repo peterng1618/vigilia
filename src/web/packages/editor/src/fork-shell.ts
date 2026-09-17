@@ -1,9 +1,10 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import type { FabricThemeEnvelope, FabricThemeEnvelopeInput, ScenePlan } from '@vigilia/renderer-core';
+import { validateFabricThemeEnvelope, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
   disposeScene,
   reviveScene,
+  reviveThemeEnvelope,
   serialiseThemeEnvelope,
   serialiseScene,
   type SceneAdapter,
@@ -16,6 +17,8 @@ export interface ForkShellOptions {
     readonly height: number;
   };
   readonly plan?: ScenePlan;
+  /** A validated v2 document revives directly into the interactive fork canvas. */
+  readonly envelope?: FabricThemeEnvelope;
 }
 
 export interface ForkShell {
@@ -28,7 +31,16 @@ export interface ForkShell {
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({ host, artboard, plan }: ForkShellOptions): Promise<ForkShell> {
+export async function mountForkShell({ host, artboard, plan, envelope }: ForkShellOptions): Promise<ForkShell> {
+  if (plan !== undefined && envelope !== undefined) {
+    throw new Error('A fork shell accepts either a scene plan or a Fabric envelope, not both.');
+  }
+  if (envelope !== undefined) {
+    const validation = validateFabricThemeEnvelope(envelope);
+    if (!validation.ok) {
+      throw new Error(`Invalid Fabric theme: ${validation.issues[0]?.message ?? 'unknown validation error'}`);
+    }
+  }
   const container = document.createElement('div');
   container.id = FORK_CONTAINER_ID;
   host.replaceChildren(container);
@@ -44,7 +56,11 @@ export async function mountForkShell({ host, artboard, plan }: ForkShellOptions)
       reviveHistoryState: reviveScene,
     });
 
-    const scene = plan === undefined ? undefined : createSceneAdapter({ canvas: editor.canvas });
+    if (envelope !== undefined) {
+      await reviveThemeEnvelope(editor.canvas, envelope);
+    }
+
+    const scene = plan === undefined && envelope === undefined ? undefined : createSceneAdapter({ canvas: editor.canvas });
 
     if (plan !== undefined) {
       scene?.apply(plan);

@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,269 passed across 70 files |
+| Unit tests | 1,270 passed across 70 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -50,7 +50,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
   to `disposeScene`, and disposes charts before destroying the fork canvas.
 - The fork shell can snapshot its interactive canvas into the v2 envelope;
-  Ctrl/Cmd+S downloads it; import remains on the v1 path until v2 validation is published.
+  Ctrl/Cmd+S downloads it; a validated v2 envelope can now revive directly into
+  its interactive canvas, while route-level file selection remains pending.
 - `ShortcutManager` is the sole window listener and dispatches only registered
   Vigilia actions; `PersistenceManager` owns envelope download.
 - `ForkExtensions` composes and destroys the current chart, persistence and

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
+import { disposeScene, reviveScene, reviveThemeEnvelope, serialiseScene } from '@vigilia/scene-fabric';
 import { loadDemoTheme } from '@vigilia/fake-source';
 
 const initEditor = vi.hoisted(() => vi.fn());
@@ -50,6 +50,24 @@ describe('the adopted editor shell', () => {
 
     expect(adapter).toHaveBeenCalledWith({ canvas: editor.canvas });
     expect(apply).toHaveBeenCalledWith(plan);
+    adapter.mockRestore();
+  });
+
+  it('validates and revives a supplied Fabric envelope before extensions adopt it', async () => {
+    const editor = { canvas: {}, destroy: vi.fn() };
+    initEditor.mockResolvedValue(editor);
+    const sceneFabric = await import('@vigilia/scene-fabric');
+    const revive = vi.spyOn(sceneFabric, 'reviveThemeEnvelope').mockResolvedValue();
+    const adapter = vi.spyOn(sceneFabric, 'createSceneAdapter').mockReturnValue({
+      apply: vi.fn(), dispose: vi.fn(), objectFor: vi.fn(), setRenderScale: vi.fn(),
+    });
+    const envelope = { schemaVersion: 2, fabricVersion: '7.4.0', id: 'theme', artboard: { width: 1, height: 1 }, scene: { version: '7.4.0', objects: [] } } as const;
+
+    await mountForkShell({ host: document.createElement('main'), artboard: envelope.artboard, envelope });
+
+    expect(revive).toHaveBeenCalledWith(editor.canvas, envelope);
+    expect(adapter).toHaveBeenCalledWith({ canvas: editor.canvas });
+    revive.mockRestore();
     adapter.mockRestore();
   });
 
