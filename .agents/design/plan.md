@@ -49,6 +49,28 @@ Library claims and code inspection are hypotheses. Visible changes require a
 rendered/browser check plus tests appropriate to the behaviour. Report what was
 not verified.
 
+## §35 — Frontend application and UI foundation
+
+Keep React + TypeScript + Vite as the application framework. Do not migrate the
+app to another frontend framework as part of the Fabric editor work.
+
+React owns the application shell and domain UI: toolbar, layers/assets panels,
+inspector, dialogs, theme/global editors and application state. Fabric owns the
+artboard, scene objects, selection, transforms, stacking and serialization.
+Keep Fabric imperative behind a small editor/controller boundary; React observes
+meaningful Fabric events and sends commands/property updates rather than trying
+to declaratively mirror every Fabric object.
+
+Adopt shadcn/ui with Base UI primitives as the preferred component foundation,
+Tailwind CSS/CSS variables for shell styling, and Zustand for shared client state
+where it improves the existing design. This is a later-stage shell modernization,
+not a prerequisite for the current Fabric migration. Introduce it incrementally
+after the editor foundation and core authoring paths are stable; do not rewrite
+working editor functionality solely to adopt the UI system.
+
+The editor application's own CSS/theme variables are separate from authored
+Vigilia dashboard theme globals.
+
 ## §43 — Feasibility
 
 Established: styled live gauges/donut/line-area charts, styled sensor text,
@@ -310,7 +332,13 @@ Current order:
 4. live editor bindings/charts;
 5. video background production path;
 6. delete superseded DOM/custom generic-editor code;
-7. starter theme/storage/LAN/provider/product work.
+7. modernize the editor shell incrementally around the stable Fabric core:
+   shadcn/ui + Base UI, Tailwind/CSS variables, Zustand where useful, and the
+   React/Fabric controller boundary from §35;
+8. starter theme/storage/LAN/provider/product work.
+
+Do not block steps 1–6 on the UI-system modernization in step 7. Existing shell
+components may remain until their replacement is useful for product work.
 
 Human review is for scope expansion, product taste and external effects, not
 routine architecture/sequencing.
