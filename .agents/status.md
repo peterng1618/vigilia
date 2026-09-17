@@ -46,8 +46,8 @@ the static dashboard demo at usable stage size.
   then stages revival before replacing the fork shell. Invalid, incompatible,
   or unrevivable files leave the current editor intact.
 - Open compares the serialized Fabric scene to the saved scene and offers
-  Save/Discard/Cancel before replacing dirty work. A New-document action is not
-  implemented yet.
+  Save/Discard/Cancel before replacing dirty work. Ctrl/Cmd+N creates a fresh
+  v2 dashboard document through the same guard.
 - Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
   and `ShortcutManager` composed by `ForkExtensions`.
 - The fork starts at full contain-fit zoom in a centered artboard-aspect viewport,
@@ -90,8 +90,8 @@ the static dashboard demo at usable stage size.
 
 ## Next
 
-1. Finish remaining Stage 4B domain property boundaries, ordinary edit/history
-   verification, and New-document safety before deleting fallback code.
+1. Finish remaining Stage 4B domain property boundaries and ordinary edit/history
+   verification before deleting fallback code.
 2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
 3. Complete the property/token model in spec 0011 before stabilising v2.
