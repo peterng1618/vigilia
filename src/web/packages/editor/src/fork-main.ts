@@ -1,4 +1,5 @@
 import { buildScenePlan, fabricEnvelopeInputFor, type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
+import { assertFabricThemeEnvelopeCompatible } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
@@ -22,6 +23,7 @@ async function start(): Promise<void> {
 
   let active: { readonly shell: Awaited<ReturnType<typeof mountForkShell>>; readonly extensions: ForkExtensions } | undefined;
   const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope?: FabricThemeEnvelope; readonly plan?: ReturnType<typeof buildScenePlan> }) => {
+    if (next.envelope !== undefined) assertFabricThemeEnvelopeCompatible(next.envelope);
     active?.extensions.destroy();
     active?.shell.destroy();
     const shell = await mountForkShell({

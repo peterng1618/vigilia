@@ -13,6 +13,7 @@ export type { SerialisedScene } from './persist.js';
 export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 
 export {
+  assertFabricThemeEnvelopeCompatible,
   disposeScene,
   reviveScene,
   reviveThemeEnvelope,

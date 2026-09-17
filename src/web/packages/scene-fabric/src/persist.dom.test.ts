@@ -12,6 +12,7 @@ import {
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
 import {
+  assertFabricThemeEnvelopeCompatible,
   reviveScene,
   reviveThemeEnvelope,
   serialiseScene,
@@ -263,6 +264,7 @@ describe('the Fabric theme envelope', () => {
     });
     const incompatible = { ...envelope, fabricVersion: '7.5.0' };
 
+    expect(() => assertFabricThemeEnvelopeCompatible(incompatible)).toThrow('incompatible');
     await expect(reviveThemeEnvelope(target, incompatible)).rejects.toThrow('incompatible');
     expect(target.getObjects()).toHaveLength(1);
   });

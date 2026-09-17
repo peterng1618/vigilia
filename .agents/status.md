@@ -37,7 +37,8 @@ These figures are from the current session's Stage 4B route-migration gate.
   version-first refusal, shared semantic envelope fields, object identity/bounds,
   semantic binding references and the v2 GIF-asset refusal.
 - Ctrl/Cmd+O selects a bounded, v2-only theme file and rebuilds the active fork
-  shell from its validated Fabric envelope.
+  shell from its validated Fabric envelope; incompatible Fabric versions fail
+  before replacing the active editor.
 - `renderer-core` exposes direct chart-option planning from authored chart state
   and bindings, so the v2 editor need not rebuild a legacy node tree for charts.
 - `renderer-core` extracts v1 semantic metadata and bindings into the envelope;

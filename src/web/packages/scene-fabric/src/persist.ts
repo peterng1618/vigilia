@@ -45,10 +45,15 @@ export async function reviveScene(canvas: StaticCanvas, scene: SerialisedScene):
 
 /** Refuse a different Fabric runtime instead of guessing its serialization semantics. */
 export async function reviveThemeEnvelope(canvas: StaticCanvas, envelope: FabricThemeEnvelope): Promise<void> {
+  assertFabricThemeEnvelopeCompatible(envelope);
+  await reviveScene(canvas, envelope.scene as SerialisedScene);
+}
+
+/** Checks compatibility before a caller replaces an already-mounted scene. */
+export function assertFabricThemeEnvelopeCompatible(envelope: FabricThemeEnvelope): void {
   if (envelope.fabricVersion !== fabricVersion) {
     throw new Error(`Fabric ${envelope.fabricVersion} is incompatible with this Fabric ${fabricVersion} runtime.`);
   }
-  await reviveScene(canvas, envelope.scene as SerialisedScene);
 }
 
 function disposeObjects(objects: readonly object[]): void {
