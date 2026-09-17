@@ -230,6 +230,7 @@ export {
 
 export type {
   PlanBox,
+  ChartPlanContext,
   PlanChart,
   PlanContent,
   PlanContext,
@@ -244,6 +245,7 @@ export type {
 export {
   MISSING_VALUE_TEXT,
   buildScenePlan,
+  buildChartPlan,
   computeMaxLines,
   formatNumber,
   formatUnit,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MISSING_VALUE_TEXT,
+  buildChartPlan,
   buildScenePlan,
   computeMaxLines,
   formatNumber,
@@ -353,6 +354,19 @@ describe('charts', () => {
     if (content.kind === 'chart' && content.family === 'gauge') {
       expect(content.option.series[0].data[0]!.value).toBe(42);
     }
+  });
+
+  it('derives a chart option without requiring a legacy document tree', () => {
+    const issues = [] as import('./plan.js').PlanIssue[];
+    const chart = buildChartPlan('c', { family: 'gauge', settings: defaultGaugeSettings }, [
+      { id: 'b', semanticKey: 'cpu.load.total' },
+    ], { source: storeWith({ 'cpu.load.total': ok(42) }), nowMs: NOW, animate: false }, issues);
+
+    expect(chart.family).toBe('gauge');
+    if (chart.family === 'gauge') {
+      expect(chart.option.series[0].data[0]!.value).toBe(42);
+    }
+    expect(issues).toEqual([]);
   });
 
   it('applies scale and offset to chart data too', () => {

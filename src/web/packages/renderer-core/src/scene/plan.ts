@@ -133,6 +133,9 @@ export interface PlanContext {
   readonly longUnits?: Readonly<Record<string, string>>;
 }
 
+/** Runtime inputs required to derive one authored chart's display option. */
+export type ChartPlanContext = Pick<PlanContext, 'source' | 'nowMs' | 'animate'>;
+
 export function buildScenePlan(context: PlanContext): ScenePlan {
   const issues: PlanIssue[] = [];
   const globals = context.document.globals ?? {};
@@ -220,7 +223,7 @@ function planContent(
       };
 
     case 'chart':
-      return planChart(node.id, node.content, node.bindings ?? [], context, issues);
+      return buildChartPlan(node.id, node.content, node.bindings ?? [], context, issues);
 
     case 'image': {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
@@ -427,13 +430,13 @@ function spaced(unit: string): string {
   return /^[%°]/.test(unit) ? unit : ` ${unit}`;
 }
 
-function planChart(
+export function buildChartPlan(
   nodeId: string,
   content: ChartContent,
   bindings: readonly Binding[],
-  context: PlanContext,
+  context: ChartPlanContext,
   issues: PlanIssue[],
-): PlanContent {
+): PlanChart {
   const animate = context.animate ?? true;
 
   // Adapters handle absent samples; report unmapped semantic keys separately.
