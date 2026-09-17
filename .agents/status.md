@@ -152,6 +152,9 @@ or runtime telemetry cannot be separated from authored state.
 - Fabric scene JSON is not yet the published theme schema.
 - Fork snapshot reload is not yet routed through `scene-fabric`; it must use its
   disposal-aware revival boundary before live editor use.
+- The fork source cannot yet be imported directly by the editor package: its
+  TypeScript source is checked under Vigilia's stricter compiler settings.
+  Build a compiled/type-isolated fork boundary before product wiring.
 - LHM extended telemetry is not implemented.
 - Pairing/revocable sessions and LAN end-to-end flow are not implemented.
 - Accepted limitation: Canvas text uses the font's natural digit metrics when

@@ -63,13 +63,11 @@ Two further measured facts, because they shape what the player may import:
   `BaseFabricObject`. That is the accepted price of using `Rect`, `FabricText`
   and `Group` rather than hand-rolling them.
 
-## The image-editor is a reference, not a dependency
+## The image-editor source fork
 
-`@anu3ev/fabric-image-editor` (MIT, 0.10.30) is **not installed and is not
-planned to be**. The fork at `../fabricjs-image-editor` is read as a reference
-implementation. It would otherwise have brought `jsondiffpatch`, `jspdf` and
-`nanoid` in behind it; none of those is a Vigilia dependency. The reasoning is
-in [`decisions.md`](decisions.md).
+`@anu3ev/fabric-image-editor` (MIT, 0.10.31) is not yet installed in the
+workspace. Its source entry is incompatible with Vigilia's strict TypeScript
+program, so Stage 4B needs a compiled/type-isolated package boundary first.
 
 **The host has no runtime dependencies at all**: `node:http` to serve, SSE for
 the stream, `node:os` for telemetry.
