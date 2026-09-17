@@ -1,35 +1,36 @@
 # Vigilia
 
-A PC-hosted website for live hardware monitoring over local Wi-Fi. A desktop
-browser runs the design editor; phones each show one assigned dashboard.
-Windows-first, MIT-licensed, **personal-use-first**.
+A Windows-first, PC-hosted hardware-monitoring dashboard. The PC acquires sensor
+data and serves a local website; a desktop browser authors dashboards and phones
+render them over local Wi-Fi.
 
-> **Early and unstable.** The host serves real telemetry and the editor works,
-> but the format is heading for a breaking v2 and there is no release. Nothing
-> here is packaged or published.
+> **Early and unstable.** The host serves real baseline CPU/RAM telemetry and the
+> player is Fabric-based. The editor now runs on the adopted
+> `fabricjs-image-editor` fork and reads/writes the development v2 Fabric theme
+> envelope, but authoring features, live editor telemetry and media integration
+> are still incomplete. Nothing is packaged or published.
 
-## Running it
+## Run locally
 
 From `src/web/`:
 
 ```bash
 npm install
-npm run build                                    # player, editor and host
-node packages/host/bin/vigilia.js                # http://127.0.0.1:5227
+npm run build
+node packages/host/bin/vigilia.js
 ```
 
-Loopback only by default. `--host 0.0.0.0` lets phones connect and serves your
-hardware telemetry to every device on the network — plain LAN HTTP has no
-confidentiality, so trusted networks only, never the internet.
+The host defaults to `http://127.0.0.1:5227`. A non-loopback `--host` exposes the
+player and hardware telemetry to the LAN; the editor remains loopback-only. Plain
+LAN HTTP has no confidentiality, so do not expose it to the internet.
 
-The published binary will be `vigilia-dashboard`. Plain `vigilia` on npm is an
+The eventual CLI name is `vigilia-dashboard`. Plain `vigilia` on npm is an
 unrelated package.
 
-## Everything else
+## Project docs
 
-There is deliberately no user-facing documentation. Project documentation is
-written for whoever works on this next and lives in **[`.agents/`](.agents)** —
-start with [`AGENTS.md`](AGENTS.md), then
-[`.agents/status.md`](.agents/status.md) for current state.
+Start with [`AGENTS.md`](AGENTS.md), then
+[`.agents/status.md`](.agents/status.md). Durable product requirements,
+architecture and active specs live under [`.agents/`](.agents).
 
-Third-party licences: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+Third-party notices: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

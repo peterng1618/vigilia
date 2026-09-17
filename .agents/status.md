@@ -1,189 +1,106 @@
 # Status — 2026-09-17
 
-Current handoff only. Durable rules: `AGENTS.md`; architecture:
-`architecture.md`; decisions: `decisions.md`; migration: spec 0013.
+Current handoff only. Durable rules: `AGENTS.md`; product plan:
+`design/plan.md`; architecture: `architecture.md`; active work: specs 0010,
+0011 and 0013. Spec 0014 is review-only.
 
-## Current evidence
+## Latest recorded verification
 
-| Check | Latest recorded result |
+| Check | Result |
 |---|---|
 | Unit tests | 1,242 passed across 70 files |
 | Typechecks | six projects clean |
-| Browser suite | 53 passed / 119 skipped / 0 failed across desktop and phone Chromium |
+| Browser suite | 53 passed / 119 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
-| Visual inspection | desktop assets and phone demo captures inspected; fit modes, recolouring, charts and letterboxing rendered correctly; the fork editor route mounts its interactive canvas |
-| Editor foundation | compiled fork package installed; fork typecheck/build and 1,809 tests passed |
+| Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
 
-These figures are from the current session's Stage 4B route-migration gate.
+These are the latest code-verification figures recorded before the documentation
+cleanup. No code changed in this pass.
 
-## What works
+## Current product state
 
-- Node/TypeScript host serves real baseline telemetry over SSE.
-- Status-before-value semantics are enforced; missing is not zero.
-- `scene-fabric` renders text, shapes, groups, images/SVG and all four chart
-  families.
-- `VigiliaChart` renders ECharts through a detached canvas, supports rotation,
-  live redraw, proportional resize, serialization and explicit disposal.
-- Fabric text path supports clipping, ellipsis, wrapping/line clamp, vertical
+### Rendering/player
+
+- `scene-fabric` is the shared renderer for text, shapes, groups, images/SVG and
+  all four chart families.
+- Player is Fabric-only and uses `StaticCanvas`; editor UI code is outside its
+  dependency boundary.
+- `VigiliaChart` supports ECharts rendering, rotation, proportional resize, live
+  redraw, serialization/revival and explicit disposal.
+- Fabric text supports clipping, ellipsis, wrapping/line clamp, vertical
   alignment and font-load re-measure.
-- Player is Fabric-only; its runtime no longer imports the DOM mount or registers ECharts.
-- Player display E2E coverage probes the canvas scene and rendered pixels.
-- Fabric images support contain/cover/stretch and alpha-preserving bitmap/SVG recolouring.
-- Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
-- `scene-fabric` can construct the published schema-v2 Fabric theme envelope and
-  refuses a mismatched exact Fabric runtime before revival.
-- `renderer-core` validates schema-v2 Fabric envelopes before revival, including
-  version-first refusal, shared semantic envelope fields, object identity/bounds,
-  semantic binding references and the v2 GIF-asset refusal.
-- Ctrl/Cmd+O selects a bounded, v2-only theme file and rebuilds the active fork
-  shell from its validated Fabric envelope; incompatible Fabric versions fail
-  before replacing the active editor; both paths have browser coverage.
-- `renderer-core` exposes direct chart-option planning from authored chart state
-  and bindings, so the v2 editor need not rebuild a legacy node tree for charts.
-- `renderer-core` extracts v1 semantic metadata and bindings into the envelope;
-  Fabric remains the sole owner of persisted geometry.
-- Scene revival disposes existing `VigiliaChart` engines, including grouped charts,
-  before Fabric replaces the object graph.
-- The source fork is adopted: its text/image/shape, selection, transforms,
-  grouping and duplicate mechanics work with `VigiliaChart`; chart runtime
-  updates stay out of its history in the Stage 4A browser spike.
-- The adopted fork's `codex/fabric-es` branch pins Fabric 7.4.0 and imports
-  `fabric/es` throughout. Vigilia consumes its compiled Git package, keeping
-  the fork out of Vigilia's stricter TypeScript program.
-- The editor Vite config resolves the fork's compiled entry explicitly, avoiding
-  Rolldown's intermittent Windows failure to follow this Git package's exports.
-- `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
-  to `disposeScene`, and disposes charts before destroying the fork canvas.
-- The fork shell can snapshot its interactive canvas into the v2 envelope;
-  Ctrl/Cmd+S downloads it; a validated v2 envelope can now revive directly into
-  its interactive canvas, while route-level file selection remains pending.
-- `ShortcutManager` is the sole window listener and dispatches only registered
-  Vigilia actions; `PersistenceManager` owns envelope download.
-- `ForkExtensions` composes and destroys the current chart, persistence and
-  shortcut managers above the fork canvas.
-- The editor route mounts that fork shell; the legacy DOM route is no longer active.
-- The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
-  so authored scene objects use the same Fabric classes as the player.
-- The fork property surface generates scalar chart controls from the shared
-  descriptor registry and updates adopted charts from envelope bindings in place,
-  so fork-managed transforms survive authored settings changes without a legacy
-  node tree.
-- `editor/src/chart-manager/` owns the chart-specific fork extension; generic
-  selection, transforms and history remain owned by the adopted fork.
-- Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;
-  the pinned fork revision is `73657f0`.
+- Bitmap/SVG contain/cover/stretch and alpha-preserving monochrome recolouring
+  work on the Fabric path.
 
-## What has not migrated yet
+### Editor migration
 
-- Legacy DOM/custom editor code remains fallback-only; the fork route is active.
-- Live editor telemetry/bindings remain incomplete.
-- Video background production integration is not finished.
+- `/editor` mounts the adopted `fabricjs-image-editor` fork; the old DOM/custom
+  route is inactive and its generic editor code is fallback-only.
+- The fork is pinned by the editor manifest to commit `918a454` and resolves
+  Fabric 7.4.0 through `fabric/es`.
+- Fork history uses `scene-fabric` serialization/revival callbacks and disposes
+  charts before scene replacement/destruction.
+- Ctrl/Cmd+S downloads the development v2 Fabric envelope.
+- Ctrl/Cmd+O validates a bounded v2 file, checks exact Fabric compatibility,
+  then rebuilds the fork shell. Invalid/incompatible files leave the current
+  editor intact.
+- Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
+  and `ShortcutManager` composed by `ForkExtensions`.
+- The chart panel supports scalar settings for one selected `VigiliaChart`,
+  generated from the shared descriptor registry and updated in place.
+- Startup still loads the legacy demo theme, builds a `ScenePlan`, then adopts
+  those Fabric objects into the interactive canvas. Direct v2 startup is not
+  finished.
+- The v2 envelope/Fabric scene contract exists, but its globals/property model is
+  still transitional. Palette/type-preset semantics from spec 0011 are not yet
+  represented by the published development schema.
 
-## Direction — do not drift
+### Host/telemetry
 
-### 1. Keep the Fabric renderer work
+- Node/TypeScript host and CLI work with loopback-by-default serving.
+- SSE sample transport, protocol versioning, keep-latest and union-of-requested
+  key polling are implemented.
+- Baseline provider supplies CPU load and RAM from Node built-ins.
+- Disk/network baseline metrics and LibreHardwareMonitor extended telemetry are
+  not implemented.
+- Pairing/revocable sessions, theme storage and a complete LAN product flow are
+  not implemented.
 
-`renderer-core` stays Fabric-free; `scene-fabric` is the shared renderer layer.
-Do not reopen the one-renderer decision without a fundamental blocker.
+## Current gaps
 
-### 2. Keep Fabric scene JSON as the persisted scene
+- Finish Stage 4B editor migration: direct v2 startup, remaining domain property
+  boundaries, normal edit/save/open/history verification, then delete fallback
+  code.
+- Finish spec 0011: palette solids/gradients, type presets, stable reference UI,
+  artboard/domain property editing and removal of transitional globals/literals.
+- Live editor telemetry/bindings are incomplete; current editor source is the
+  fake demo source.
+- Production video background integration is not implemented.
+- The surrounding UI has no React/shadcn stack today. That modernization is
+  deliberately later than the core Fabric migration.
+- Legacy custom-editor behaviours in spec 0014 are **not requirements yet**.
+  Review each against the fork before recreating it.
 
-User decision: optimize for **minimal glue**, not human-readable scene JSON.
-Vigilia keeps its semantic/versioned envelope; Fabric JSON owns scene geometry,
-grouping, stacking, visibility, lock and custom objects.
+## Next
 
-Do not introduce a parallel simplified node tree plus bidirectional write-back
-mapping.
+1. Finish the Stage 4B direct-v2 editor path and retire corresponding legacy
+   startup/persistence assumptions.
+2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
+   behaviour before implementing any of it.
+3. Complete the property/token model in spec 0011 before stabilising v2.
+4. Add live editor bindings/charts, then the video background path.
+5. Remove superseded DOM/custom editor code.
+6. Only after the authoring core is stable, start the React + shadcn/Base UI
+   shell modernization from plan §35.
 
-### 3. Use the adopted `fabricjs-image-editor` source fork
-
-`../fabricjs-image-editor` is the Stage 4B editor foundation. Keep its generic
-selection, controls, grouping, clipboard and object tools; change source where
-Vigilia's typed charts, persistence or property surface need a hook.
-
-The goal of this migration is to **stop owning generic editor mechanics**.
-Selection, controls, grouping, clipboard, text/image/shape tools and similar
-behaviour should come from the fork where practical.
-
-### 4. Keep the custom editor framework fallback-only
-
-Current `EditorCore` work includes document, selection, globals, arrange,
-snapping, layers and inspector managers. Keep it as fallback/harvestable domain
-logic, but do not add more generic-editor infrastructure.
-
-Do not build new custom clipboard, tools, Fabric gesture layers, selection
-controls or generic snapping systems.
-
-### 5. Chart QoL compromises remain accepted
-
-Required:
-
-- correct rendering;
-- move;
-- rotation;
-- proportional resize;
-- complete property controls for supported chart settings.
-
-Optional/acceptable limitations:
-
-- no chart-family conversion;
-- no skew/arbitrary stretch;
-- restricted/no grouping if needed;
-- chart-setting edits may bypass undo/redo;
-- limited direct-manipulation QoL.
-
-Property controls should be integrated into the **new editor foundation**, not
-preserve the old Vigilia inspector by default.
-
-### 6. Media scope
-
-Video remains required: one DOM background beneath the transparent Fabric
-canvas, aligned/cropped by the same artboard transform. It is not a normal
-Fabric node.
-
-Animated GIF elements are **dropped**. Remove the legacy `gif` asset/schema
-semantics with schema v2; do not build a workaround.
-
-## Next, in order
-
-1. **Continue Stage 4B:** move the first Vigilia property controls into the fork UI surface.
-2. Migrate editor + Fabric scene envelope together.
-3. Add schema-v2 tokens/property model, live bindings/charts, then video.
-4. Delete old DOM/custom generic-editor code after replacements are proven.
-
-Use sub-agents for independent source audits: manager inventory, history,
-property/demo UI, clipboard/grouping, custom chart lifecycle, persistence and
-media. Primary agent owns integration and shared contracts.
-
-## Source-fork rejection bar
-
-Do **not** reject for:
-
-- missing npm types;
-- demo-only UI;
-- unsuitable stock history;
-- missing hooks that can be added in the fork;
-- permanent divergence from upstream.
-
-Reject only with evidence of a fundamental mismatch, e.g. custom chart objects
-cannot survive normal editor lifecycle/persistence without pervasive rewrites,
-or runtime telemetry cannot be separated from authored state.
-
-## Not verified / known gaps
+## Unverified / known limitations
 
 - Browser E2E previews bundles directly; it does not exercise the host.
-- The route still loads the legacy demo fixture through the shared ScenePlan;
-  converting that fixture and startup path to the published Fabric envelope is
-  the next persistence migration.
-- Legacy DOM editor browser cases are skipped while equivalent Fabric-route coverage is added.
-- LHM extended telemetry is not implemented.
-- Pairing/revocable sessions and LAN end-to-end flow are not implemented.
-- Accepted limitation: Canvas text uses the font's natural digit metrics when
-  tabular numerals cannot be guaranteed and reports the substitution.
-- Two chart engine gaps remain: gauge angular gradients and line thresholds.
-
-## Needs a human
-
-Nothing before the source-fork checkpoint unless it reveals a genuine product
-trade-off or fundamental blocker.
+- No physical-phone validation gate exists.
+- LAN bind/pairing has not been validated end to end.
+- LHM extended telemetry is still a contract, not an implementation.
+- Canvas text uses natural digit metrics where tabular numerals cannot be
+  guaranteed.
+- Two chart engine gaps remain open: gauge angular gradients and discrete line
+  threshold bands.

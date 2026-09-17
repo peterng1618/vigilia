@@ -1,175 +1,116 @@
-# 0011 — Editor property model
+# 0011 — Editor property and theme-token model
 
-- **Status:** accepted; partially implemented; UI implementation moves with spec 0013
-- **Design sections:** §57, §61, §73, §75, §137, §141, §170
-- **Supersedes in part:** 0006 and 0007 property ownership
+- **Status:** active; chart descriptors/control path partly implemented, token/type model pending
+- **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
-This spec defines **what properties exist and where they live**. It does not
-require the legacy Vigilia inspector; property controls should be implemented in
-the new image-editor-based editor foundation.
+## Goal
+
+Define authored property ownership independently of any particular panel layout.
+The new editor property surface must use this model rather than preserve the old
+Vigilia inspector.
 
 ## Rules
 
-### D0 — Every authorable property has a property control
+### Authorable properties need a UI
 
-If an author can change it, the editor exposes it. A control that cannot work is
-not shown. Raw JSON/engine options are never the normal editing surface.
+If Vigilia supports authoring a property, expose a typed control. Do not make raw
+Fabric/ECharts JSON the normal editing surface. Invalid input is refused rather
+than coerced.
 
-### D1 — Authoring geometry uses whole units
+### Geometry belongs to Fabric
 
-Position, size and rotation controls use whole artboard units. Renderer-internal
-center coordinates may contain halves; that is not author-facing geometry.
+Fabric objects/groups persist geometry and compose transforms. Groups are
+non-painting containers: no fill/stroke/shadow/typography/bindings of their own.
+Author-facing geometry uses whole artboard units where practical.
 
-### D2 — Fabric groups keep geometry
+### Colour is theme-level
 
-Groups persist Fabric geometry and compose with child transforms. Do not flatten
-group transforms into children merely to maintain a simplified theme tree.
-Grouping/ungrouping preserves world appearance.
+Final palette entries are named tokens containing rgba solids or gradients.
+Compatible element paint references tokens; per-instance opacity remains local.
+A gradient has editable rgba stops/positions plus one angle and spans the
+object's rectangular bounding box before clipping.
 
-Groups remain non-painting containers: no fill, stroke, shadow, typography or
-bindings of their own.
+`palette.none` is reserved transparent fallback and cannot be deleted/renamed.
+Deleting another referenced token requires reassignment.
 
-### D3 — Colour is theme-level
+### Typography uses type presets
 
-Palette entries are named tokens. Elements reference palette tokens rather than
-owning literal colours. Palette tokens can be:
+A named type preset groups family, size, weight, letter spacing and line height.
+Text references a preset; styled runs may override preset/colour by reference.
 
-- rgba solid;
-- gradient.
+### Charts are family-specific
 
-Element opacity remains per-instance.
+Each chart family owns typed setting descriptors in `renderer-core`. The editor
+builds controls from those declarations. Existing charts need not change family.
+Raw ECharts options are not persisted or directly edited.
 
-### D4 — Typography uses named type presets
+### Artboard/domain properties
 
-A type preset bundles:
-
-- font family;
-- size;
-- weight;
-- letter spacing;
-- line height.
-
-Text elements reference one preset. Text runs may override preset and colour by
-reference when needed.
-
-The vocabulary is author-defined; names such as `title`/`caption` are examples,
-not reserved keys.
-
-### D5 — Chart settings are family-specific
-
-Each chart family exposes its own typed settings through declarations in
-`renderer-core`. Same-family multi-selection may show shared/mixed values.
-Mixed families need not show a common chart-settings section.
-
-Changing an existing chart to another family is not required.
-
-### D6 — Artboard is editable
-
-Artboard controls include width/height, background token, bar-colour token and
+Artboard authoring includes width/height, background token, bar-colour token and
 fit mode. Resizing the artboard does not rescale scene objects.
 
-### D7 — Reserved transparent token
+Scene objects use one stable Vigilia id rather than separate id/name fields that
+can disagree.
 
-`palette.none` is reserved, transparent, undeletable and unrenameable. Clearing
-a colour property resolves to this token where a colour reference is required.
-Deleting another referenced token requires reassignment; fallback may use
-`palette.none`.
+## Capability summary
 
-### D8 — One node identifier
+| Capability | group | shape | text | image/SVG | chart |
+|---|---:|---:|---:|---:|---:|
+| scene geometry/order/visibility/lock | ✓ | ✓ | ✓ | ✓ | ✓ |
+| opacity | — | ✓ | ✓ | ✓ | ✓ |
+| palette paint | — | applicable | text colour | monochrome where supported | family settings |
+| typography preset/runs | — | — | ✓ | — | chart text where supported |
+| asset source/fit | — | — | — | ✓ | — |
+| sensor binding | — | — | ✓ | — | ✓ |
+| family settings | — | — | — | — | ✓ |
 
-Scene objects use one document-unique id. Do not maintain a second node display
-name that can disagree with it. If future references target node ids, rename
-must update them atomically.
+Multi-selection/mixed-value property UX is **not currently a requirement**; it
+is a review candidate in spec 0014.
 
-### D9 — Gradient token
+## Current implementation state
 
-A gradient token contains:
+Implemented:
 
-- editable stops;
-- stop rgba colour;
-- stop position 0–1;
-- one gradient rotation/angle.
+- Fabric scene geometry/grouping persistence;
+- one chart-setting descriptor owner in `renderer-core`;
+- fork chart panel for scalar settings on one selected `VigiliaChart`;
+- settings update in place without rebuilding the legacy node tree.
 
-The gradient spans the element's rectangular bounding box and is clipped by the
-shape/text glyphs.
+Still transitional/not implemented:
 
-Threshold bands remain a separate data-mapping concept, not a gradient.
+- current development v2 schema still permits local style values and still has
+  `fonts`/`fontSizes` global groups;
+- palette solid/gradient token schema and `palette.none`;
+- type-preset schema;
+- domain property UI for tokens/types, artboard, bindings and assets;
+- final reference traversal/reassignment UI.
 
-### D10 — Grouping can change stacking
-
-Child order is paint order. Grouping makes selected children contiguous, so
-interleaved unselected objects may move relative to them. Preserve selected
-members' relative order and place the group at the frontmost selected position.
-
-## Property capability matrix
-
-This is semantic capability, not a promise about legacy panel rows.
-
-| Property | artboard | group | shape | text | image/SVG | chart |
-|---|---:|---:|---:|---:|---:|---:|
-| id | locked | ✓ | ✓ | ✓ | ✓ | ✓ |
-| visible / locked | locked | ✓ | ✓ | ✓ | ✓ | ✓ |
-| scene order | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| position / size / rotation | size only | ✓ | ✓ | ✓ | ✓ | ✓ |
-| opacity | — | — | ✓ | ✓ | ✓ | ✓ |
-| fill token | — | — | applicable | text colour | monochrome where supported | family settings |
-| stroke/shadow | — | — | applicable | text-specific | — | family settings |
-| corner radius | — | — | rectangle | — | — | — |
-| type preset / runs | — | — | — | ✓ | — | chart text settings where supported |
-| asset source / fit | background only | — | — | — | ✓ | — |
-| sensor bindings | — | — | — | ✓ | — | ✓ |
-| chart settings | — | — | — | — | — | ✓ |
-
-Video is a theme background layer per §55/0013, not a normal scene-node row.
+Because nothing has been released, the development v2 semantic shape may break
+while this spec is completed. The Fabric-scene envelope boundary itself remains
+settled by spec 0013.
 
 ## Ownership
 
 | Concept | Owner |
 |---|---|
-| Node/asset semantic types | `renderer-core/src/theme/` |
-| Property capabilities/vocabulary | `renderer-core/src/theme/capabilities.ts` |
+| Theme semantic types/validation | `renderer-core/src/theme/` |
+| Published development schema | `schema/theme-document.schema.json` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
-| Palette/type presets | theme globals |
-| Scene geometry/grouping | persisted Fabric scene |
-| Property UI | chosen editor foundation + Vigilia extensions |
+| Scene geometry/grouping | Fabric scene via `scene-fabric` persistence |
+| Current chart property UI | `editor/src/chart-manager/` |
 
-Do not duplicate capability lists inside UI panels.
-
-`PropertyPanelManager` composes sections from chart, token/type, artboard,
-asset, binding, media and layer managers. Each domain manager owns its edits;
-the panel owns only selection-driven mounting and teardown.
-
-## Schema v2 changes
-
-The schema change should land with the Fabric editor/envelope migration:
-
-- Fabric scene JSON replaces the old simplified node tree;
-- palette becomes rgba/gradient tokens;
-- `fonts`/`fontSizes` become type presets;
-- add reserved `palette.none`;
-- remove duplicate node `name`;
-- artboard width/height editable;
-- old schema version is refused rather than silently guessed at.
-
-## Multi-selection and validation
-
-- Show/edit a property only when it applies to all selected objects.
-- Equal values show normally; differing values show mixed.
-- Invalid input is refused rather than coerced.
-- Token refs must resolve or remain explicitly marked missing.
-- Binding semantic keys may not be persisted empty.
-- Property editing must not generate schema-invalid authored state.
+Do not create speculative managers/owners for property domains that are not yet
+implemented.
 
 ## Acceptance
 
-- Capability vocabulary has one owner consumed by validation and UI.
-- Unknown property names are rejected explicitly.
-- Palette/type presets serialize as references, not copied resolved values.
-- All chart-family settings are editable through the new property UI and repaint.
-- Group geometry round-trips through Fabric and group/ungroup preserves world
-  appearance.
-- Hidden/locked objects remain inspectable through layers/property UI.
-- Artboard resize changes the canvas, not object scale.
-- `palette.none` semantics are enforced.
+Before stabilising the theme format:
 
-Current implementation evidence belongs in `status.md`.
+- palette/type presets persist as stable references rather than copied values;
+- `palette.none` and reference deletion/reassignment rules are enforced;
+- supported chart settings have typed controls and repaint correctly;
+- artboard/token/type/binding/asset properties have a product editing surface;
+- unknown/invalid authored property values are explicitly rejected;
+- runtime telemetry never becomes persisted authored state.
+
+Current run evidence belongs in `status.md`.

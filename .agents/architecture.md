@@ -1,20 +1,18 @@
 # Architecture
 
-Where Vigilia concepts live. For behaviour read specs; for decisions read
-`decisions.md`; for current work read `status.md`.
+Where current Vigilia concepts live. Behaviour belongs in active specs; product
+requirements in `design/plan.md`; transient progress in `status.md`.
 
-## System shape
-
-One TypeScript/npm workspace at `src/web/`:
+## System
 
 ```text
                          renderer-core
-                 types · theme semantics · plan
+                 types · semantics · planning
                        (no Fabric import)
                          /          \
                         /            \
                     host          scene-fabric
-                 Node/SSE      Fabric objects + adapter
+                 Node/SSE      Fabric objects/persistence
                                   /        \
                                  /          \
                             player          editor
@@ -22,63 +20,80 @@ One TypeScript/npm workspace at `src/web/`:
                                       + image-editor fork
 ```
 
-`renderer-core` is the shared semantic boundary. `scene-fabric` exists so Fabric
-cannot leak into the Node host.
+`renderer-core` is the semantic boundary. `scene-fabric` prevents browser/Fabric
+code from leaking into the Node host.
 
-### Current migration state
+## Current editor boundary
 
-- Player: Fabric-only `StaticCanvas` path.
-- Editor: adopted source fork route with Vigilia-specific extensions; legacy
-  DOM/custom code is fallback-only.
-- The current home-grown `EditorCore` managers are fallback/harvest-only until
-  their replacements are proven.
+The active editor route mounts the compiled `fabricjs-image-editor` fork. Generic
+selection, transforms, grouping, duplication, object tools, canvas lifecycle and
+history infrastructure belong to the fork.
+
+Current Vigilia-owned extensions are:
+
+| Concept | Owner |
+|---|---|
+| Product shortcuts | `editor/src/shortcut-manager/` |
+| Theme download | `editor/src/persistence-manager/` |
+| Chart selection/settings | `editor/src/chart-manager/` |
+| Extension composition | `editor/src/fork-extensions/` |
+| Fork mount/lifecycle | `editor/src/fork-shell.ts` |
+| v2 parsing/file boundary | `editor/src/persist.ts` |
+
+Tokens/types, artboard editing, assets, semantic bindings, media and semantic
+layers do **not** yet have active fork-extension owners. Create those only when
+the corresponding feature is implemented; do not document planned classes as
+current architecture.
+
+The old custom editor directories (`document`, `selection`, `globals`, `arrange`,
+`snapping`, `layers`, `inspector`, `core`) are fallback/harvest-only. Do not add
+new generic behaviour there.
 
 ## Runtime data flow
 
 ```text
 provider.sample()
     ↓
-ProviderRegistry                 one host poll for the union of requested keys
+ProviderRegistry          one poll for the union of connected clients' keys
     ↓
 SampleBatch
     ↓ SSE /ws?keys=…
-createLiveSource / SampleStore   bounded history, keep latest
+createLiveSource / SampleStore
     ↓
-buildScenePlan                  pure domain decisions
+buildScenePlan            pure domain decisions
     ↓
-scene-fabric adapter            draw/update Fabric objects
+scene-fabric
     ↓
 StaticCanvas / interactive Canvas
 ```
 
-Rules:
-
-- non-`ok` samples have no plottable value;
-- missing is a gap, never zero;
-- fake data is dev/test only and never an automatic fallback;
-- providers acquire; the host schedules;
-- themes bind semantic sensor keys, never provider instance IDs.
+Rules: non-`ok` data is a gap, never zero; fake data is test/dev only; providers
+acquire while the host schedules; themes bind semantic keys, not provider IDs.
 
 ## Persisted theme
 
-Vigilia owns the envelope and semantics. Fabric owns the scene representation.
+The development v2 envelope is:
 
 ```text
 Theme envelope
-├── schemaVersion / id / metadata
+├── schemaVersion / fabricVersion / id / metadata
 ├── artboard
-├── globals / assets / bindings
-├── pinned Fabric major
-└── scene: Fabric object JSON
+├── globals / assets / bindings / editor metadata
+└── scene: Fabric JSON
 ```
 
-Do not maintain a second simplified geometry/group tree. Scene persistence goes
-through `scene-fabric/src/persist.ts`.
+Fabric owns geometry, transforms, grouping, stacking, visibility, lock and
+custom-object state. Vigilia owns semantic/versioned envelope data. Do not add a
+parallel simplified scene tree.
 
-A Fabric major change is a schema migration. Unsupported old scenes are refused.
-Defaults are stripped; Vigilia `id` is explicitly included. Runtime/derived
-state such as telemetry samples, built ECharts options and render scale is never
-persisted.
+`scene-fabric/src/persist.ts` is the canonical serializer/revival path. A Fabric
+runtime mismatch is refused before revival. Runtime samples, ECharts options and
+render scale are never persisted.
+
+The v2 **scene ownership** is implemented. The v2 globals/property semantics are
+not final yet: the current schema still carries transitional `fonts`/
+`fontSizes` groups and local style values. Spec 0011 owns that remaining break.
+No external compatibility promise exists before the first release.
 
 ## Rendering boundaries
 
@@ -87,152 +102,79 @@ persisted.
 | Host ↔ browser | `renderer-core` stays Fabric/DOM-free |
 | Player ↔ editor | player may use `scene-fabric`, never editor UI/managers or interactive `Canvas` |
 | Domain ↔ renderer | `renderer-core` decides; `scene-fabric` applies |
-| Chart domain ↔ ECharts | typed Vigilia settings cross through one engine adapter; raw ECharts options do not enter the theme format |
+| Charts ↔ ECharts | typed Vigilia settings cross one adapter; raw ECharts options never enter theme files |
 
 `player/src/boundaries.test.ts` guards the player import boundary and `fabric/es`
-usage. The size gate is a backstop, not the primary boundary.
-
-## Editor foundation
-
-Generic editor mechanics come from the adopted `fabricjs-image-editor` source
-fork, consumed through its compiled Git package boundary. Do not add its raw
-source to Vigilia's strict TypeScript program. It must resolve the same pinned
-`fabric/es` module as `scene-fabric`.
-
-Expected reusable concerns include:
-
-- interactive Canvas lifecycle and controls;
-- selection / transforms / rotation;
-- grouping;
-- clipboard / duplicate / deletion;
-- text, font, image and shape tools;
-- background handling;
-- generic keyboard/action plumbing.
-
-Vigilia should add only domain-specific behaviour:
-
-- theme/design tokens;
-- sensor bindings and formatting;
-- typed chart objects/settings;
-- runtime telemetry separation;
-- theme/package integration.
-
-The fork may replace upstream history or UI pieces. Its history must use
-Vigilia's canonical serializer/revival path and dispose removed charts before
-reload. Permanent divergence is acceptable.
+usage.
 
 ## State categories
 
-Keep these separate regardless of editor foundation:
-
-| State | Examples | Persistence/history |
+| State | Examples | Rule |
 |---|---|---|
-| Authored | geometry, chart settings, token refs | saved; history where supported |
-| Derived | resolved token values, built ECharts option | recomputed |
-| Runtime | telemetry, animation, playback | never saved or undoable |
-| UI transient | selection, viewport, drag/snap state | never saved as document content |
-
-Chart-setting undo/redo is optional. Telemetry entering authored history is not.
+| Authored | geometry, chart settings, token refs | persisted; history where supported |
+| Derived | resolved tokens, built ECharts options | recomputed |
+| Runtime | telemetry, animation/playback | never saved/undoable |
+| UI transient | selection, viewport, gesture state | never document content |
 
 ## Ownership registry
 
-Search here before adding another implementation.
-
-### Shared contracts
+### Shared/domain
 
 | Concept | Owner |
 |---|---|
 | Samples/status | `renderer-core/src/types.ts` |
-| Theme semantic types | `renderer-core/src/theme/` |
-| Published theme schema | `schema/theme-document.schema.json` |
+| Theme semantic types/validation | `renderer-core/src/theme/` |
+| Published development schema | `schema/theme-document.schema.json` |
 | Wire protocol | `renderer-core/src/data/protocol.ts` |
 | Semantic sensor keys | `renderer-core/src/data/semantic-keys.ts` |
-| Provider contract | `host/src/providers/provider.ts` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
+| Provider contract | `host/src/providers/provider.ts` |
 
-### Rendering
+### Fabric renderer
 
 | Concept | Owner |
 |---|---|
-| Pure frame decisions | `renderer-core/src/scene/plan.ts` |
-| ScenePlan → Fabric reconciliation | `scene-fabric/src/adapter.ts` |
-| Fabric mount/artboard viewport | `scene-fabric/src/scene.ts` |
+| Pure frame planning | `renderer-core/src/scene/plan.ts` |
+| ScenePlan reconciliation | `scene-fabric/src/adapter.ts` |
+| Canvas/artboard mount | `scene-fabric/src/scene.ts` |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
-| Custom chart object/lifecycle | `scene-fabric/src/chart-object.ts` |
-| Chart backing resolution limits | `scene-fabric/src/render-scale.ts` |
+| `VigiliaChart` lifecycle | `scene-fabric/src/chart-object.ts` |
+| Chart backing limits | `scene-fabric/src/render-scale.ts` |
 | ECharts registration | `scene-fabric/src/chart-engine.ts` |
-| Node → Fabric object updates | `scene-fabric/src/fabric-nodes.ts` |
+| Fabric node updates | `scene-fabric/src/fabric-nodes.ts` |
 | Text runs | `scene-fabric/src/text-runs.ts` |
-| Image/SVG rendering | `scene-fabric/src/fabric-image.ts` |
-| Style → Fabric paint | `scene-fabric/src/paint.ts` |
-| Placement / top-left ↔ center | `scene-fabric/src/placement.ts` |
-| Unsupported renderer gaps | `scene-fabric` `onUnsupported` reporting |
-
-### Current editor, transitional
-
-These remain until the new editor foundation replaces them. Do not expand their
-generic responsibilities during the source-fork spike.
-
-| Concept | Current owner |
-|---|---|
-| Document/history | `editor/src/document/` |
-| Selection | `editor/src/selection/` |
-| Globals | `editor/src/globals/` |
-| Arrange | `editor/src/arrange/` |
-| Snapping | `editor/src/snapping/` |
-| Layers | `editor/src/layers/` |
-| Inspector/property descriptors | `editor/src/inspector/` |
-| Action vocabulary | `editor/src/actions.ts` |
-| Keyboard routing | `editor/src/keyboard.ts` |
-
-### Fork editor extensions
-
-| Concept | Owner |
-|---|---|
-| Product shortcut dispatch | `editor/src/shortcut-manager/` |
-| Theme file persistence | `editor/src/persistence-manager/` |
-| Chart selection and typed settings | `editor/src/chart-manager/` |
-| Property-section composition | `editor/src/property-panel-manager/` |
-| Tokens/type presets | `editor/src/token-type-manager/` |
-| Artboard settings | `editor/src/artboard-manager/` |
-| Asset settings | `editor/src/asset-manager/` |
-| Semantic bindings/live updates | `editor/src/binding-manager/` |
-| Video background | `editor/src/media-manager/` |
-| Semantic layer rows | `editor/src/layer-manager/` |
-
-Target ownership for generic selection/controls/grouping/clipboard/tools is the
-`fabricjs-image-editor` fork, not new Vigilia modules.
-
-`ShortcutManager`, `PersistenceManager` and `BindingManager` are the sole owners
-of window shortcuts, theme files and runtime telemetry respectively.
+| Image/SVG | `scene-fabric/src/fabric-image.ts` |
+| Paint conversion | `scene-fabric/src/paint.ts` |
 
 ### Host
 
 | Concept | Owner |
 |---|---|
 | CLI flags | `host/src/cli/args.ts` |
-| Static path safety | `host/src/serve/static-path.ts` |
-| Slow-client policy | `host/src/transport/keep-latest.ts` |
-| Provider scheduling | `host/src/providers/registry.ts` |
+| HTTP routing | `host/src/server.ts` |
+| Static-path safety | `host/src/serve/static-path.ts` |
+| SSE connection/keep-latest | `host/src/transport/` |
+| Provider scheduling/failure isolation | `host/src/providers/registry.ts` |
 
 ## Known ownership gaps
 
-Fix the owner before adding another copy:
+Establish one owner when these become active work:
 
-- new-node defaults;
-- handshake vocabulary for `?keys=` / `?data=live`;
+- final v2 palette/type-preset/reference editing;
+- editor live binding/runtime updates;
+- semantic layer UI;
+- artboard/asset/media property editing;
+- new-object defaults;
 - shared colour parsing;
-- asset-path safety rules;
-- theme enum schema/type/validator synchronization;
+- asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.
 
-Do not add a new generic editor owner while the source-fork decision is active.
+Legacy behaviour candidates such as advanced snapping/alignment are review-only
+in spec 0014 and should not acquire owners until retained.
 
-## Test boundaries
+## Verification boundaries
 
-- Unit tests cover pure/domain behaviour and renderer adapters where jsdom/canvas
-  is enough.
-- Browser tests prove actual canvas wiring/ink and editor interaction.
-- Browser tests preview bundles directly; they do not exercise the host.
-- Screenshots are visual evidence, not cross-platform pixel baselines.
-- Visible renderer changes require inspection, not only object/geometry asserts.
+Unit tests cover pure/domain behaviour and adapter contracts. Browser tests prove
+canvas/editor wiring and pixels. Browser tests preview bundles rather than the
+host. Visible renderer changes require inspection; screenshots are evidence, not
+cross-platform golden files.

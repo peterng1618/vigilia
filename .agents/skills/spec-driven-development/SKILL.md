@@ -5,50 +5,45 @@ description: Keep Vigilia specs and implementation aligned. Use when writing, im
 
 # Spec-driven development
 
-Read `.agents/design/plan.md` first, then the relevant spec. The plan sets product
-requirements; the spec refines one feature; code follows both.
+Read `.agents/design/plan.md` first, then the relevant active spec. The plan sets
+product requirements; a spec refines incomplete/current work.
 
 ## Write a spec only when needed
 
 Use a spec for behaviour that is not obvious from the diff: persisted shapes,
-state transitions, edge cases, error handling, engine gaps, or multi-stage work.
+state transitions, edge cases, error handling, engine gaps or multi-stage work.
 Do not write one for routine implementation detail.
 
-A good spec contains only:
+A good spec contains only intent, current contract, required edge cases,
+out-of-scope, acceptance and sequencing when needed. Git stores chronology.
 
-- problem / intent;
-- current decision;
-- required behaviour and edge cases;
-- out of scope;
-- acceptance evidence;
-- migration stages when sequencing matters.
+## Keep the active set small
 
-**Do not write a chronological work log.** Git stores history. Measurements that
-matter to a decision belong in `decisions.md`; transient run counts belong in
-`status.md`.
-
-Target **≤400 lines / ≤20 KB**. If an edited spec is already much larger, compact
-it before adding more. Prefer tables and short bullets over narrative.
+- Once a spec is fully implemented and its durable rules are represented by the
+  plan, architecture, tests or code ownership, delete the spec. Git is the
+  archive.
+- Do not keep separate specs solely as historical behaviour references.
+- If a replaced implementation leaves potentially useful behaviours that no
+  longer exist, collect only those missing behaviours in a **review backlog**
+  like spec 0014. They are not requirements until explicitly retained.
+- Do not copy completed behaviour into multiple docs for safety.
 
 ## While implementing
 
-1. Read the cited `§N` requirements.
-2. Check whether the spec is accepted or draft.
-3. Identify the observable behaviour and test for each criterion.
+1. Read cited `§N` requirements.
+2. Confirm the spec is active/accepted rather than review-only.
+3. Identify observable behaviour and evidence for each criterion.
 4. Implement at the existing owner/boundary.
-5. If behaviour changes intentionally, update the spec in the same commit.
-6. If the engine cannot express a requirement, record the gap and get the
-   required product decision instead of approximating silently.
-
-Do not keep superseded alternatives inline. State the current decision and rely
-on git history for the old one.
+5. Update the spec with intentional behaviour changes in the same change.
+6. If an engine cannot express a requirement, record the gap and get the needed
+   product decision instead of silently approximating it.
 
 ## Verification language
 
 Use only:
 
 - **Met** — observed behaviour plus a test.
-- **Implemented, unverified** — code exists but evidence does not.
+- **Implemented, unverified** — code exists but runtime evidence does not.
 - **Not implemented**.
 
 Do not claim runtime behaviour from source inspection alone.

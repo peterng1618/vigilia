@@ -1,176 +1,86 @@
 # Third-party notices
 
-This project is MIT licensed (see [LICENSE](LICENSE)). It uses the third-party
-components below. **All notices here must be reproduced in distributed packages**
-(§132, §161 of the design document).
+Vigilia is MIT licensed (see [LICENSE](LICENSE)). This file records the current
+development dependency inventory relevant to distribution. The project is not
+released; **re-audit the complete runtime/transitive dependency graph before any
+public package**. Provenance notes live in
+[`.agents/dependency-licences.md`](.agents/dependency-licences.md).
 
-Licensing facts in this file were verified against primary sources on
-**2026-09-12**; see [.agents/dependency-licences.md](.agents/dependency-licences.md)
-for how each was checked. Re-verify before any public release.
+## Runtime/editor dependencies
 
----
+### Apache ECharts 6.1.0 — Apache-2.0
 
-## LibreHardwareMonitorLib — MPL-2.0
+Source: <https://github.com/apache/echarts>
 
-- Source: <https://github.com/LibreHardwareMonitor/LibreHardwareMonitor>
-- License: Mozilla Public License 2.0 (declared as `PackageLicenseExpression` in
-  `LibreHardwareMonitorLib.csproj`)
-- Pinned version: **0.9.6** (latest *stable*; the package also publishes 700+
-  `0.9.7-preNNN` builds which we deliberately do not take — see ADR-0003)
-
-MPL-2.0 is **file-level** copyleft. Consuming the unmodified NuGet package inside
-this MIT-licensed application is permitted under the MPL's "Larger Work" provision.
-Obligations we must honour:
-
-1. Keep this notice and a copy of the MPL-2.0 text in distributed packages.
-2. If we **modify** any MPL-covered file, that modified file must be released
-   under MPL-2.0. Prefer wrapping/extending over editing vendored sources so this
-   never arises.
-3. Make the source of the MPL-covered components available (linking upstream at
-   the pinned version satisfies this).
-
-## PawnIO modules (embedded in LibreHardwareMonitorLib) — LGPL-2.1
-
-- Source: <https://github.com/namazso/PawnIO.Modules> (release **0.2.11**)
-- License: GNU Lesser General Public License 2.1 (`Resources/PawnIo/COPYING`)
-- Form: pre-compiled `.bin` bytecode modules (`IntelMSR.bin`, `RyzenSMU.bin`,
-  `LpcIO.bin`, `SmbusI801.bin`, …) embedded as resources in the library and
-  loaded into the PawnIO driver at runtime.
-
-These are redistributed with the library. LGPL-2.1 permits use by a
-differently-licensed application provided the LGPL components stay replaceable
-and their notices are preserved. **Do not modify the module binaries.**
-
-## PawnIO driver — GPL-2.0 (separate program, not linked)
-
-- Source: <https://github.com/namazso/PawnIO> · <https://pawnio.eu/>
-- License: GNU General Public License 2.0
-
-PawnIO is a signed, scriptable kernel driver **installed separately** by the user
-or by our installer invoking the vendor's own `PawnIO_setup.exe`. Our code
-communicates with it only through the documented device interface
-(`\\?\GLOBALROOT\Device\PawnIO`) as an independent program, so GPL-2.0 does not
-extend to this application.
-
-> **Do not statically link, vendor, or modify the PawnIO driver sources.** Doing
-> so would change the licensing analysis above. If bundling the installer, ship it
-> verbatim with its own licence text intact.
-
-## Apache ECharts — Apache-2.0
-
-- Source: <https://github.com/apache/echarts>
-- License: Apache License 2.0 · Pinned version: **6.1.0**
-
-Apache-2.0 requires preserving the licence, copyright and NOTICE file contents,
-and stating significant changes. Import per-series from `echarts/core` for
-tree-shaking rather than the default bundle.
-
-## Fabric.js — MIT
-
-- Source: <https://github.com/fabricjs/fabric.js>
-- License: MIT (`"license": "MIT"` in the package's own `package.json`, matching
-  the first line of its bundled `LICENSE`) · Pinned version: **7.4.0**
-- Form: the canvas scene graph and interaction layer for the editor and the
-  player. No runtime dependencies of its own.
-
-MIT requires only that the licence and copyright notice travel with the
-distribution. Import from **`fabric/es`**, never bare `fabric` — the default
-entry is a single pre-bundled file no tree-shaker can see into, and it costs
-45 KB gzip more for the identical imports. The `./es` subpath ships the same
-type declarations, so there is nothing given up by taking it.
-
-## @anu3ev/fabric-image-editor — MIT
-
-- Source: <https://github.com/peterng1618/fabricjs-image-editor/tree/9a370711d89611e7f9f1c32261208cc4abebb981>
-- License: MIT (`"license": "MIT"` in the fork's own `package.json`) · Pinned
-  version: **0.10.32**
-- Form: compiled adopted editor foundation. It externalizes and resolves the
-  workspace's pinned `fabric/es` module.
-
-MIT requires only that the licence and copyright notice travel with the
+Used for charts. Apache-2.0 licence/NOTICE obligations must be preserved in a
 distribution.
 
-## @anu3ev/fabric-image-editor — MIT
+### Fabric.js 7.4.0 — MIT
 
-- Source: <https://github.com/peterng1618/fabricjs-image-editor/tree/9a370711d89611e7f9f1c32261208cc4abebb981>
-- License: MIT (`"license": "MIT"` in the fork's own `package.json`) · Pinned
-  version: **0.10.32**
-- Form: compiled adopted editor foundation. It externalizes and resolves the
-  workspace's pinned `fabric/es` module.
+Source: <https://github.com/fabricjs/fabric.js>
 
-MIT requires only that the licence and copyright notice travel with the
-distribution.
+Shared player/editor scene graph. Vigilia imports `fabric/es`; the licence and
+copyright notice must accompany redistribution.
 
-## Fonts, icons and imported assets
+### @anu3ev/fabric-image-editor 0.10.32 — MIT
 
-Packaged fonts and imported SVG icons carry their own licences and must ship with
-attribution metadata and required notices preserved (§132). Font Awesome Free
-terms: <https://fontawesome.com/license/free>. A URL alone does not establish
-reuse rights — record source, hash and supplied licence for every imported asset.
+Source: <https://github.com/peterng1618/fabricjs-image-editor/tree/918a454038551d188d765960f64c0c3e12bf40c1>
 
----
+Compiled editor foundation consumed from the Vigilia fork. The fork currently
+declares runtime dependencies on `jspdf`, `jsondiffpatch` and `nanoid`.
 
-## TypeScript — Apache-2.0
+### jsPDF — MIT
 
-Compiler and type checker. **Build-time only**; nothing from it is bundled, and
-no TypeScript runtime ships. Licence read from the installed package's own
-`package.json`.
+Source: <https://github.com/parallax/jsPDF>
 
-## Vitest — MIT
+Runtime dependency of the editor foundation.
 
-Unit test runner. Test-time only; never bundled.
+### jsondiffpatch — MIT
 
-## jsdom — MIT
+Source: <https://github.com/benjamine/jsondiffpatch>
 
-`jsdom` 26.1.0. Test-time only; never bundled. The environment the
-`*.dom.test.ts` files run in, where `echarts.init` and Fabric need a `document`.
-Licence verified 2026-09-15 from the package's own `package.json`
-(`"license": "MIT"`) and its bundled `LICENSE.txt`.
+Runtime dependency of the editor foundation.
 
-## node-canvas (`canvas`) — MIT
+### nanoid — MIT
 
-`canvas` 3.2.3. Test-time only; never bundled — the browser supplies the real
-thing, and this exists so a `*.dom.test.ts` gets a 2D context that actually
-rasterises. Licence verified 2026-09-15 from the package's own `package.json`
-(`"license": "MIT"`); the published tarball carries no `LICENSE` file.
+Source: <https://github.com/ai/nanoid>
 
-**Native module.** It compiles or downloads a prebuilt binary at install time
-and links against Cairo, Pango and libjpeg, which carry their own licences
-(LGPL-2.1 / MPL-1.1 for Cairo, LGPL-2.1 for Pango). Nothing here is
-redistributed by Vigilia: no published artefact contains it and no runtime
-loads it.
+Runtime dependency of the editor foundation; the fork build may inline it.
 
-## Playwright (`@playwright/test`) — Apache-2.0
+The three editor-foundation dependencies above have their own dependency graphs.
+The final distributed notice set must be generated/audited from the actual
+lockfile/build, not inferred from this direct list.
 
-Browser test runner. Test-time only; never bundled. Downloads its own Chromium
-build, which carries its own licences and is not redistributed by Vigilia.
+## Build/test dependencies
 
-## Vite — MIT
+These are declared by Vigilia but are not intended to ship in the player/editor
+runtime bundle:
 
-Bundler and dev server. Build-time only.
+- TypeScript 7.0.2 — Apache-2.0
+- Vite 8.3.0 — MIT
+- Vitest 5.0.0 — MIT
+- `@playwright/test` 1.63.0 — Apache-2.0
+- jsdom 26.1.0 — MIT
+- canvas 3.2.3 — MIT; native test dependency with its own linked-library
+  licences
+- `@types/node` 22.10.2 — MIT
 
-## @types/node — MIT
+## Imported assets
 
-`@types/node` 22.10.2, a devDependency of `@vigilia/host`. Licence verified
-from the package's own `package.json` (`"license": "MIT"`) and its bundled
-`LICENSE` file (MIT, Copyright (c) Microsoft Corporation), on 2026-09-13.
+Packaged fonts, SVGs and other imported assets retain their own licences and
+attribution requirements. Record source/hash/licence metadata with imported
+assets. A source URL alone does not establish reuse rights.
 
-**Type declarations only.** Nothing from this package exists at runtime — `tsc`
-erases it — so it cannot appear in a distributed bundle and carries no notice
-obligation into one. Recorded here because `AGENTS.md` requires every declared
-dependency to be listed, not because it ships.
+## Not currently distributed
 
-The host itself has **no runtime dependencies** beyond `@vigilia/renderer-core`
-(this repository): serving is `node:http`, the sample stream is Server-Sent
-Events over that same server, and baseline telemetry is `node:os`
-([ADR-0007](.agents/decisions.md)). Adding one —
-`systeminformation` is the intended source for disk and network counters — needs
-an entry here first.
+LibreHardwareMonitor and PawnIO are planned extended-sensor integrations, not
+current Vigilia dependencies. Do not copy their old planned notices into a
+release unless the eventual distribution model actually ships them; re-review
+their licences at that point.
 
----
+## Maintenance
 
-## Maintenance rule
-
-Any new dependency must be added here **with its licence verified from the
-package's own metadata or LICENSE file** — not from a search summary — before it
-is referenced in build files. Gate 0 requires a complete licence inventory (§157).
+Any new dependency must have its licence verified from package/vendor primary
+metadata before it is added. Before release, audit transitive runtime
+components and ship the required licence/NOTICE texts rather than treating this
+hand-maintained summary as exhaustive.

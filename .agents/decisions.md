@@ -1,165 +1,114 @@
 # Decisions
 
-Current architectural positions only. Git history holds superseded reasoning.
-Feature behaviour belongs in specs; current progress belongs in `status.md`.
+Current architectural positions only. Git history stores superseded reasoning.
+Feature behaviour belongs in active specs; progress belongs in `status.md`.
 
 ## Settled
 
-### The host is Node/TypeScript, shipped as `vigilia-dashboard`
+### Host: Node/TypeScript, CLI name `vigilia-dashboard`
 
-The host shares one TypeScript workspace and imports the same wire/theme
-contracts as the browser packages. The unused C# backend and second toolchain are
-gone. Plain `vigilia` on npm is unrelated and must not be used.
+The host shares the TypeScript workspace and imports the same contracts as the
+browser packages. No .NET/Python runtime is required. Plain `vigilia` on npm is
+unrelated.
 
-### Fabric is the renderer for both editor and player
+### Fabric is the single renderer
 
-**Decided by:** user, 2026-09-15.
+Fabric 7.4.0 is the scene graph for player and editor. `renderer-core` stays
+Fabric-free; `scene-fabric` owns Fabric application/persistence. Player uses
+`StaticCanvas`; editor uses interactive `Canvas`. Import `fabric/es`, never bare
+`fabric`.
 
-Fabric 7.4.0 is the shared scene graph. `renderer-core` remains Fabric-free;
-`scene-fabric` owns Fabric objects and plan application. The player uses
-`StaticCanvas`; the editor uses interactive `Canvas` through its editor
-foundation. This satisfies §31's one-renderer rule instead of running a canvas
-editor beside the old DOM renderer.
+### Prefer Fabric-native outcomes over compatibility glue
 
-Key constraints:
+When old/custom behaviour conflicts with Fabric or the adopted editor, preserve
+the user outcome and correctness constraints but do not rebuild parallel editor
+or renderer machinery merely for exact parity.
 
-- import `fabric/es`, not the pre-bundled bare `fabric`;
-- charts use a custom `VigiliaChart` backed by a detached ECharts canvas;
-- chart rotation is required; proportional resize is sufficient;
-- chart skew, arbitrary stretch, family conversion and chart-setting undo are
-  not requirements;
-- video is a separate DOM background layer beneath the Fabric canvas.
+### Persist Fabric JSON inside the Vigilia envelope
 
-### Prefer Fabric-native substitutions over expensive compatibility glue
+The envelope owns product semantics; Fabric serialization owns geometry,
+grouping, stacking, visibility, locking and custom-object state. Do not maintain
+a second simplified scene tree plus bidirectional mapping.
 
-**Decided by:** user, 2026-09-17.
+Fabric is pinned; incompatible runtime versions are refused before revival.
+Custom charts persist authored family/settings only, never ECharts/runtime data.
 
-If requested behaviour is incompatible with Fabric or needs disproportionate
-custom integration, use a reasonable Fabric-native alternative. Preserve the
-product outcome and hard correctness boundaries, but do not rebuild parallel
-rendering/editor machinery for exact parity. Canvas text therefore uses the
-font's natural digit metrics when tabular numerals cannot be guaranteed.
+### Use the `fabricjs-image-editor` fork as editor foundation
 
-### Persist Fabric scene JSON inside the Vigilia envelope
+The fork is adopted for generic selection, transforms, grouping, duplication,
+object tools, canvas lifecycle and history infrastructure. Permanent divergence
+from upstream is acceptable. Vigilia consumes its compiled Git package and keeps
+its own TypeScript program separate.
 
-**Decided by:** user, 2026-09-15 and reaffirmed after review.
+Vigilia adds only domain behaviour: charts, theme semantics, bindings,
+persistence and product-specific UI. Missing upstream hooks may be added to the
+fork; that is not a reason to rebuild a custom editor.
 
-The priority is minimal glue, not short/human-readable scene JSON. The envelope
-keeps Vigilia semantics (`schemaVersion`, metadata, artboard, globals, assets,
-bindings), while Fabric serialization owns scene geometry, grouping, stacking,
-visibility, lock and custom object state.
-
-Rules:
-
-- Fabric is pinned exactly and its major is recorded in the envelope;
-- a Fabric major change is a schema migration; unsupported old scenes are
-  refused rather than guessed at;
-- defaults are stripped so absent values mean defaults of the recorded major;
-- Vigilia `id` is explicitly persisted;
-- chart objects persist authored `family` + typed `settings`, never ECharts
-  options, telemetry or render scale;
-- Fabric groups persist their own geometry.
-
-Do not add a parallel simplified node tree plus a bidirectional write-back
-engine merely to make JSON prettier.
-
-### Use the `fabricjs-image-editor` source fork as the editor foundation
-
-**Decided by:** user, 2026-09-16; adopted after the Stage 4A spike, 2026-09-17.
-
-`../fabricjs-image-editor` is the editor foundation. The loopback-only Stage 4A
-browser spike selected, transformed, grouped, duplicated and revived a real
-`VigiliaChart`, with a typed property control and no runtime-history mutation.
-A permanent Vigilia fork with no future upstream updates is acceptable.
-
-Missing package types, demo-only property UI, unsuitable stock history or
-missing extension hooks are **not** rejection reasons; a source fork may change
-those. The migration exists specifically to stop owning generic editor mechanics
-such as selection, controls, grouping, clipboard and object tools.
-
-The fork and `scene-fabric` must resolve one pinned `fabric/es` module. Replace
-the fork's snapshot serializer/load path with Vigilia's canonical serializer,
-including chart disposal before reload. Existing domain logic may be reused; the
-current custom editor remains fallback only.
-
-Vigilia consumes the fork's compiled Git package, rather than compiling its raw
-source under Vigilia's stricter TypeScript settings.
-
-### Editor property UI belongs to the new foundation
-
-Do not preserve the legacy Vigilia inspector as an architectural requirement.
-Extend the source fork's property/UI architecture for Vigilia-specific design
-tokens, sensor bindings, chart settings and assets.
-
-Every supported chart setting must be editable there. Chart family conversion
-and chart-setting undo/redo are optional.
-
-### Vigilia adds domain managers above the fork
+### Legacy editor behaviour is not automatically inherited
 
 **Decided by:** user, 2026-09-17.
 
-Vigilia owns shortcut dispatch, persistence, property-section composition,
-tokens/types, artboard, assets, bindings, media and semantic layers. The fork
-retains generic canvas mechanics. Product shortcuts win only when declared;
-unmatched strokes reach the fork. V2 is the only supported released file format.
+Old custom-editor specs are not requirements merely because they existed. Any
+behaviour absent from the new editor goes into spec 0014 as a review candidate.
+Verify what the fork already provides, then explicitly keep, replace or drop the
+candidate before implementation.
 
-### Video is one background layer, not a Fabric scene object
+### Development v2 is allowed to break before release
 
-A video drawn through Fabric forces full-canvas repaint each frame. Use one DOM
-video layer beneath the transparent Fabric canvas, aligned/cropped by the same
-artboard transform. No grouping, rotation, timeline or playback controls.
+The v2 Fabric envelope is the only editor file format on the migration branch;
+there is no v1 reader. Scene ownership is settled, but globals/property semantics
+are still transitional and may change incompatibly before the first released
+theme format. Once a format is released, normal version/migration rules apply.
 
-### Two sensor tiers are discovered, never hardcoded
+### Later application shell: React + shadcn/Base UI
 
-Baseline sensors require no extra driver. Extended sensors may legitimately be
-unavailable. Providers report what they can actually read and never substitute
-zero/default values for missing hardware.
+**Decided by:** user, 2026-09-17.
 
-### LibreHardwareMonitor is external
+Vigilia currently has no React dependency. After the Fabric editor core is
+stable, migrate the surrounding application shell incrementally to React +
+TypeScript/Vite, shadcn/ui with Base UI primitives, Tailwind/CSS variables and
+Zustand where useful. Fabric remains imperative behind an editor/controller
+boundary; do not declaratively mirror every Fabric object in React.
 
-Use a prebuilt LHM executable through its local interface; do not compile or
-reference its .NET library. Detect the installed version/capabilities at runtime.
+This modernization must not block the active editor migration.
 
-### Local verification is scoped; CI is the backstop
+### Charts remain typed Vigilia objects over ECharts
 
-`vigilia:verify` selects a prose/unit/E2E/full tier from changed paths. CI still
-runs the full shared checks on push. Unit tests are never path-selected because
-cross-package boundary tests intentionally observe files outside their own
-package.
+`VigiliaChart` uses a detached ECharts canvas. Move, rotation and proportional
+resize are required. Skew, arbitrary stretch, family conversion and perfect
+chart-setting undo are not requirements. Raw ECharts JSON is never an authoring
+surface.
 
-### Performance budgets are introduced when a measurable cost needs one
+### Video is an aligned DOM background
 
-The current player bundle has an explicit size gate. Add further numerical
-budgets when a real cost appears. Reproducible browser profiles are sufficient;
-there is no physical-device validation gate.
+One video may sit beneath the transparent Fabric canvas, sharing the artboard
+transform. It is not a scene object and has no grouping/rotation/timeline
+controls. Animated GIF elements are dropped.
 
-## Measured constraints worth retaining
+### Sensors are capability-driven
 
-Only measurements that affect architecture live here:
+Baseline sensors need no extra driver. Extended sensors may be unavailable.
+Providers report actual capability and never fabricate zero/default readings.
+LibreHardwareMonitor, when implemented, runs as an external prebuilt program;
+Vigilia does not compile/link its .NET library.
 
-- Fabric player path is roughly **262 KB gzip** under the current 400 KB gate;
-- bare `fabric` was substantially larger than equivalent `fabric/es` imports;
-- video-through-Fabric consumed most of a 30 Hz frame under the throttle probe;
-- chart object caching was much slower and blurrier than uncached rendering;
-- removing explicit chart disposal leaked backing/ECharts memory heavily.
+### Performance budgets follow measurable costs
 
-Exact current run counts belong in `status.md`.
+The player has an explicit bundle-size gate. Add other numerical budgets when a
+real expensive path appears. Reproducible browser profiles are sufficient; no
+physical-device release gate is required.
 
-## Open — need a human
+## Open
 
 ### Chart engine gaps
 
-- Gauge angular gradients require approximation by segments.
-- Discrete line-threshold bands have no direct engine equivalent.
+- Gauge angular gradients lack a native ring-gradient representation.
+- Discrete line-threshold bands lack a direct engine equivalent.
 
-Follow §85 before finalising those representations.
+Resolve the authored representation under plan §85 before treating either as a
+stable feature.
 
-### Anti-cheat coexistence
+### Extended-sensor anti-cheat coexistence
 
-PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains unknown and belongs to
-provider validation, not the renderer/editor migration.
-
-## Resolved by specs
-
-- Chart colour/token ownership and the editor property model: spec 0011.
-- Fabric renderer/editor migration: spec 0013.
+PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains unverified and belongs
+to provider validation, not the renderer/editor migration.
