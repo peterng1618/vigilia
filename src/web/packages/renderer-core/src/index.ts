@@ -153,6 +153,10 @@ export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from './theme/fabr
 
 export { fabricEnvelopeInputFor } from './theme/fabric-envelope.js';
 
+export type { FabricEnvelopeValidationResult } from './theme/fabric-envelope-validate.js';
+
+export { validateFabricThemeEnvelope } from './theme/fabric-envelope-validate.js';
+
 export type { AssetResolver, AssetResolverOptions } from './theme/assets.js';
 
 export { createAssetResolver, isSafeAssetPath, noAssets } from './theme/assets.js';

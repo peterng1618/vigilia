@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,264 passed across 69 files |
+| Unit tests | 1,268 passed across 70 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -33,6 +33,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
 - `scene-fabric` can construct a schema-v2 Fabric theme envelope and refuses a
   mismatched exact Fabric runtime before revival; the published schema switch is pending.
+- `renderer-core` validates schema-v2 Fabric envelopes before revival, including
+  version-first refusal, object identity/bounds and semantic binding references.
 - `renderer-core` extracts v1 semantic metadata and bindings into the envelope;
   Fabric remains the sole owner of persisted geometry.
 - Scene revival disposes existing `VigiliaChart` engines, including grouped charts,

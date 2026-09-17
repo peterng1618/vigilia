@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLineOption,
   defaultLineSettings,
+  validateFabricThemeEnvelope,
   type Sample,
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
@@ -252,6 +253,7 @@ describe('the Fabric theme envelope', () => {
 
     expect(envelope).toMatchObject({ schemaVersion: 2, id: 'theme', fabricVersion: '7.4.0' });
     expect((envelope.scene as SerialisedScene).objects[0]).toMatchObject({ id: 'rect', type: 'Rect' });
+    expect(validateFabricThemeEnvelope(envelope)).toMatchObject({ ok: true });
   });
 
   it('refuses a different Fabric version before replacing the scene', async () => {

@@ -1,0 +1,210 @@
+import {
+  MAX_ARTBOARD_DIMENSION,
+  MAX_NODE_COUNT,
+  MAX_NODE_DEPTH,
+  STABLE_ID_PATTERN,
+} from './document.js';
+import type { FabricThemeEnvelope } from './fabric-envelope.js';
+import type { ValidationIssue } from './validate.js';
+
+/** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
+const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
+
+export type FabricEnvelopeValidationResult =
+  | { readonly ok: true; readonly envelope: FabricThemeEnvelope }
+  | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
+
+/** Validates the versioned product envelope; Fabric compatibility remains scene-fabric's boundary. */
+export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValidationResult {
+  if (!isRecord(input)) {
+    return fail('not-an-object', '', 'The Fabric theme must be a JSON object.');
+  }
+
+  // An unknown version cannot be safely interpreted, so report it alone (§141).
+  const version = input['schemaVersion'];
+  if (typeof version !== 'number' || !Number.isInteger(version)) {
+    return fail('missing-field', '/schemaVersion', 'schemaVersion is required and must be an integer.');
+  }
+  if (version > 2) {
+    return fail('newer-schema-version', '/schemaVersion', `This theme was made with a newer version of Vigilia (schema ${version}). Update Vigilia to open it.`);
+  }
+  if (version !== 2) {
+    return fail('unsupported-schema-version', '/schemaVersion', `Schema version ${version} is not supported by this build (expected 2).`);
+  }
+
+  const issues: ValidationIssue[] = [];
+  unknownKeys(input, '', ['schemaVersion', 'fabricVersion', 'id', 'metadata', 'artboard', 'globals', 'assets', 'bindings', 'editorMetadata', 'scene'], 'A Fabric theme', issues);
+  if (typeof input['fabricVersion'] !== 'string' || !/^\d+\.\d+\.\d+$/.test(input['fabricVersion'])) {
+    issues.push(issue('wrong-type', '/fabricVersion', 'fabricVersion must be a pinned major.minor.patch version.'));
+  }
+  stableId(input['id'], '/id', 'The document id', issues);
+  artboard(input['artboard'], issues);
+  const sceneIds = scene(input['scene'], issues);
+  bindings(input['bindings'], sceneIds, issues);
+
+  return issues.length === 0
+    ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
+    : { ok: false, issues };
+}
+
+function artboard(value: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(value)) {
+    issues.push(issue('wrong-type', '/artboard', 'artboard must be an object.'));
+    return;
+  }
+  unknownKeys(value, '/artboard', ['width', 'height', 'background', 'fitMode', 'barColor'], 'The artboard', issues);
+  for (const key of ['width', 'height'] as const) {
+    const dimension = value[key];
+    if (typeof dimension !== 'number' || !Number.isFinite(dimension)) {
+      issues.push(issue('wrong-type', `/artboard/${key}`, `${key} must be a finite number.`));
+    } else if (dimension <= 0 || dimension > MAX_ARTBOARD_DIMENSION) {
+      issues.push(issue('out-of-range', `/artboard/${key}`, `${key} must be above 0 and at most ${MAX_ARTBOARD_DIMENSION}.`));
+    }
+  }
+  if (value['fitMode'] !== undefined && value['fitMode'] !== 'contain' && value['fitMode'] !== 'cover') {
+    issues.push(issue('invalid-enum', '/artboard/fitMode', 'fitMode must be one of: contain, cover.'));
+  }
+}
+
+function bindings(value: unknown, sceneIds: ReadonlySet<string>, issues: ValidationIssue[]): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    issues.push(issue('wrong-type', '/bindings', 'bindings must be an object keyed by Fabric object id.'));
+    return;
+  }
+  const ids = new Set<string>();
+  for (const [objectId, entries] of Object.entries(value)) {
+    stableId(objectId, `/bindings/${objectId}`, 'A bound Fabric object id', issues);
+    if (!sceneIds.has(objectId)) {
+      issues.push(issue('unresolved-binding-ref', `/bindings/${objectId}`, `Fabric object "${objectId}" is not in this scene.`));
+    }
+    if (!Array.isArray(entries)) {
+      issues.push(issue('wrong-type', `/bindings/${objectId}`, 'Bindings for a Fabric object must be an array.'));
+      continue;
+    }
+    for (const [index, entry] of entries.entries()) {
+      const path = `/bindings/${objectId}/${index}`;
+      if (!isRecord(entry)) {
+        issues.push(issue('wrong-type', path, 'A binding must be an object.'));
+        continue;
+      }
+      unknownKeys(entry, path, ['id', 'semanticKey', 'precision', 'unitDisplay', 'scale', 'offset'], 'A binding', issues);
+      if (stableId(entry['id'], `${path}/id`, 'A binding id', issues)) {
+        if (ids.has(entry['id'])) {
+          issues.push(issue('duplicate-id', `${path}/id`, `Binding id "${entry['id']}" is used more than once.`));
+        }
+        ids.add(entry['id']);
+      }
+      if (typeof entry['semanticKey'] !== 'string' || entry['semanticKey'].length === 0 || entry['semanticKey'].length > 120) {
+        issues.push(issue('missing-field', `${path}/semanticKey`, 'A binding needs a semantic key of 1–120 characters.'));
+      }
+      if (entry['precision'] !== undefined && (!Number.isInteger(entry['precision']) || (entry['precision'] as number) < 0 || (entry['precision'] as number) > 6)) {
+        issues.push(issue('out-of-range', `${path}/precision`, 'precision must be an integer from 0 to 6.'));
+      }
+      if (entry['unitDisplay'] !== undefined && !['none', 'short', 'long'].includes(entry['unitDisplay'] as string)) {
+        issues.push(issue('invalid-enum', `${path}/unitDisplay`, 'unitDisplay must be one of: none, short, long.'));
+      }
+      for (const key of ['scale', 'offset'] as const) {
+        if (entry[key] !== undefined && (typeof entry[key] !== 'number' || !Number.isFinite(entry[key]))) {
+          issues.push(issue('wrong-type', `${path}/${key}`, `${key} must be a finite number.`));
+        }
+      }
+    }
+  }
+}
+
+function scene(value: unknown, issues: ValidationIssue[]): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (!isRecord(value)) {
+    issues.push(issue('invalid-fabric-scene', '/scene', 'scene must be a Fabric JSON object.'));
+    return ids;
+  }
+  if (typeof value['version'] !== 'string' || !/^\d+\.\d+\.\d+$/.test(value['version'])) {
+    issues.push(issue('invalid-fabric-scene', '/scene/version', 'scene.version must be a Fabric version string.'));
+  }
+  if (!Array.isArray(value['objects'])) {
+    issues.push(issue('invalid-fabric-scene', '/scene/objects', 'scene.objects must be an array.'));
+    return ids;
+  }
+  const count = { value: 0 };
+  for (const [index, object] of value['objects'].entries()) {
+    sceneObject(object, `/scene/objects/${index}`, 0, ids, count, issues);
+  }
+  return ids;
+}
+
+function sceneObject(value: unknown, path: string, depth: number, ids: Set<string>, count: { value: number }, issues: ValidationIssue[]): void {
+  if (!isRecord(value)) {
+    issues.push(issue('invalid-fabric-scene', path, 'A Fabric scene object must be an object.'));
+    return;
+  }
+  count.value += 1;
+  if (count.value > MAX_NODE_COUNT) {
+    issues.push(issue('too-many-nodes', path, `The scene exceeds the maximum of ${MAX_NODE_COUNT} objects.`));
+    return;
+  }
+  if (depth > MAX_SCENE_DEPTH) {
+    issues.push(issue('too-deep', path, `Scene nesting exceeds the maximum depth of ${MAX_SCENE_DEPTH}.`));
+    return;
+  }
+  if (stableId(value['id'], `${path}/id`, 'A Fabric object id', issues)) {
+    if (ids.has(value['id'])) {
+      issues.push(issue('duplicate-id', `${path}/id`, `Fabric object id "${value['id']}" is used more than once.`));
+    }
+    ids.add(value['id']);
+  }
+  if (typeof value['type'] !== 'string' || value['type'].length === 0) {
+    issues.push(issue('invalid-fabric-scene', `${path}/type`, 'A Fabric scene object needs a type.'));
+  }
+  if (!jsonSafe(value, path, depth, issues)) return;
+  if (value['objects'] !== undefined) {
+    if (!Array.isArray(value['objects'])) {
+      issues.push(issue('invalid-fabric-scene', `${path}/objects`, 'A Fabric group objects property must be an array.'));
+    } else {
+      for (const [index, child] of value['objects'].entries()) {
+        sceneObject(child, `${path}/objects/${index}`, depth + 1, ids, count, issues);
+      }
+    }
+  }
+}
+
+function jsonSafe(value: unknown, path: string, depth: number, issues: ValidationIssue[]): boolean {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') {
+    if (Number.isFinite(value)) return true;
+    issues.push(issue('invalid-fabric-scene', path, 'Fabric scene values must be finite JSON values.'));
+    return false;
+  }
+  if (depth > MAX_SCENE_DEPTH + 8) {
+    issues.push(issue('too-deep', path, 'Fabric scene JSON is too deeply nested.'));
+    return false;
+  }
+  if (Array.isArray(value)) return value.every((item, index) => jsonSafe(item, `${path}/${index}`, depth + 1, issues));
+  if (isRecord(value)) return Object.entries(value).every(([key, item]) => jsonSafe(item, `${path}/${key}`, depth + 1, issues));
+  issues.push(issue('invalid-fabric-scene', path, 'Fabric scene values must be JSON-safe.'));
+  return false;
+}
+
+function stableId(value: unknown, path: string, what: string, issues: ValidationIssue[]): value is string {
+  if (typeof value === 'string' && STABLE_ID_PATTERN.test(value)) return true;
+  issues.push(issue('invalid-id', path, `${what} must match ${STABLE_ID_PATTERN.source} — 1–64 letters, digits, underscores or dashes.`));
+  return false;
+}
+
+function unknownKeys(value: Record<string, unknown>, path: string, allowed: readonly string[], what: string, issues: ValidationIssue[]): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) issues.push(issue('unknown-field', `${path}/${key}`, `${what} has no "${key}" property.`));
+  }
+}
+
+function fail(code: ValidationIssue['code'], path: string, message: string): FabricEnvelopeValidationResult {
+  return { ok: false, issues: [issue(code, path, message)] };
+}
+
+function issue(code: ValidationIssue['code'], path: string, message: string): ValidationIssue {
+  return { code, path, message };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

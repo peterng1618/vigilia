@@ -32,7 +32,8 @@ export type IssueCode =
   | 'binding-count'
   | 'invalid-asset-path'
   | 'too-deep'
-  | 'too-many-nodes';
+  | 'too-many-nodes'
+  | 'invalid-fabric-scene';
 
 export interface ValidationIssue {
   readonly code: IssueCode;
