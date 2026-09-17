@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,262 passed across 68 files |
+| Unit tests | 1,264 passed across 69 files |
 | Typechecks | six projects clean |
 | Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -47,6 +47,8 @@ These figures are from the current session's Stage 4B route-migration gate.
   to `disposeScene`, and disposes charts before destroying the fork canvas.
 - The fork shell can snapshot its interactive canvas into the v2 envelope;
   Ctrl/Cmd+S downloads it; import remains on the v1 path until v2 validation is published.
+- `ShortcutManager` is the sole window listener and dispatches only registered
+  Vigilia actions; `PersistenceManager` owns envelope download.
 - The editor route mounts that fork shell; the legacy DOM route is no longer active.
 - The fork route reconciles the shared demo ScenePlan onto its interactive canvas,
   so authored scene objects use the same Fabric classes as the player.

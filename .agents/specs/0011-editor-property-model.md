@@ -135,6 +135,10 @@ Video is a theme background layer per §55/0013, not a normal scene-node row.
 
 Do not duplicate capability lists inside UI panels.
 
+`PropertyPanelManager` composes sections from chart, token/type, artboard,
+asset, binding, media and layer managers. Each domain manager owns its edits;
+the panel owns only selection-driven mounting and teardown.
+
 ## Schema v2 changes
 
 The schema change should land with the Fabric editor/envelope migration:

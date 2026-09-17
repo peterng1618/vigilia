@@ -94,6 +94,15 @@ tokens, sensor bindings, chart settings and assets.
 Every supported chart setting must be editable there. Chart family conversion
 and chart-setting undo/redo are optional.
 
+### Vigilia adds domain managers above the fork
+
+**Decided by:** user, 2026-09-17.
+
+Vigilia owns shortcut dispatch, persistence, property-section composition,
+tokens/types, artboard, assets, bindings, media and semantic layers. The fork
+retains generic canvas mechanics. Product shortcuts win only when declared;
+unmatched strokes reach the fork. V2 is the only supported released file format.
+
 ### Video is one background layer, not a Fabric scene object
 
 A video drawn through Fabric forces full-canvas repaint each frame. Use one DOM

@@ -311,6 +311,12 @@ If no fundamental blocker is found, use the source fork as the editor shell:
 The initial shell boundary passes `scene-fabric`'s disposal-aware reload hook
 to fork history and disposes charts before the fork canvas is destroyed.
 
+Vigilia extensions are domain managers: shortcuts, persistence, property panel,
+charts, tokens/types, artboard, assets, bindings, media and layers. The
+composition root destroys them before the fork canvas. Generic mechanics remain
+fork-owned. The published v2 envelope is the only supported file format; convert
+the checked-in demo once and do not add a v1 compatibility reader.
+
 Delete superseded custom generic-editor code as each replacement is verified.
 
 If the fork genuinely fails, record the blocker, update this spec/decisions, and

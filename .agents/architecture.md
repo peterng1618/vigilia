@@ -189,10 +189,22 @@ generic responsibilities during the source-fork spike.
 
 | Concept | Owner |
 |---|---|
-| Chart selection, scalar property controls and ScenePlan reapplication | `editor/src/chart-manager/` |
+| Product shortcut dispatch | `editor/src/shortcut-manager/` |
+| Theme file persistence | `editor/src/persistence-manager/` |
+| Chart selection and typed settings | `editor/src/chart-manager/` |
+| Property-section composition | `editor/src/property-panel-manager/` |
+| Tokens/type presets | `editor/src/token-type-manager/` |
+| Artboard settings | `editor/src/artboard-manager/` |
+| Asset settings | `editor/src/asset-manager/` |
+| Semantic bindings/live updates | `editor/src/binding-manager/` |
+| Video background | `editor/src/media-manager/` |
+| Semantic layer rows | `editor/src/layer-manager/` |
 
 Target ownership for generic selection/controls/grouping/clipboard/tools is the
 `fabricjs-image-editor` fork, not new Vigilia modules.
+
+`ShortcutManager`, `PersistenceManager` and `BindingManager` are the sole owners
+of window shortcuts, theme files and runtime telemetry respectively.
 
 ### Host
 
