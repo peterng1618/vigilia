@@ -92,4 +92,24 @@ test.describe('Fabric editor route', () => {
     await picker.setInputFiles({ name: 'roundtrip.json', mimeType: 'application/json', buffer: saved });
     await expect(page.locator('#status')).toHaveText('Opened roundtrip.json');
   });
+
+  test('keeps the active document when Fabric cannot revive a schema-valid scene', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'unrevivable.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 2,
+        fabricVersion: '7.4.0',
+        id: 'unrevivable',
+        artboard: { width: 320, height: 180 },
+        scene: { version: '7.4.0', objects: [{ type: 'UnknownFabricObject' }] },
+      })),
+    });
+
+    await expect(page.locator('#status')).toContainText('Could not open');
+    await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
+  });
 });

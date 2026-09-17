@@ -29,6 +29,7 @@ export interface ForkShell {
 }
 
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
+let nextForkContainer = 1;
 
 function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): number | undefined {
   const scale = Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
@@ -68,12 +69,14 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
     }
   }
   const container = document.createElement('div');
-  container.id = FORK_CONTAINER_ID;
+  container.id = `${FORK_CONTAINER_ID}-${nextForkContainer}`;
+  nextForkContainer += 1;
   container.style.position = 'absolute';
   container.style.inset = '0';
   container.style.margin = 'auto';
+  container.style.visibility = 'hidden';
   const initialScale = fitArtboardViewport(container, host, artboard);
-  host.replaceChildren(container);
+  host.append(container);
   let mounted: ImageEditor | undefined;
   const resize = typeof ResizeObserver === 'undefined'
     ? undefined
@@ -83,7 +86,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   resize?.observe(host);
 
   try {
-    const editor = await initEditor(FORK_CONTAINER_ID, {
+    const editor = await initEditor(container.id, {
       montageAreaWidth: artboard.width,
       montageAreaHeight: artboard.height,
       editorContainerWidth: '100%',
@@ -105,6 +108,10 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
     if (plan !== undefined) {
       scene?.apply(plan);
     }
+
+    host.replaceChildren(container);
+    container.id = FORK_CONTAINER_ID;
+    container.style.visibility = '';
 
     return {
       editor,

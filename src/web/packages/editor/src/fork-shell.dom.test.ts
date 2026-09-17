@@ -22,7 +22,7 @@ describe('the adopted editor shell', () => {
     expect(host.children).toHaveLength(1);
     expect((host.firstElementChild as HTMLElement).style.cssText).toContain('width: 800px');
     expect((host.firstElementChild as HTMLElement).style.cssText).toContain('height: 450px');
-    expect(initEditor).toHaveBeenCalledWith('vigilia-fabric-editor', {
+    expect(initEditor).toHaveBeenCalledWith('vigilia-fabric-editor-1', {
       montageAreaWidth: 1280,
       montageAreaHeight: 720,
       editorContainerWidth: '100%',
@@ -77,12 +77,15 @@ describe('the adopted editor shell', () => {
     adapter.mockRestore();
   });
 
-  it('removes its container when initialization fails', async () => {
+  it('preserves the active stage when initialization fails', async () => {
     initEditor.mockRejectedValue(new Error('fork failed'));
     const host = document.createElement('main');
+    const current = document.createElement('p');
+    host.append(current);
 
     await expect(mountForkShell({ host, artboard: { width: 1, height: 1 } })).rejects.toThrow('fork failed');
 
-    expect(host.children).toHaveLength(0);
+    expect(host.children).toHaveLength(1);
+    expect(host.firstElementChild).toBe(current);
   });
 });

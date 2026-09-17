@@ -25,8 +25,6 @@ async function start(): Promise<void> {
   let active: { readonly shell: Awaited<ReturnType<typeof mountForkShell>>; readonly extensions: ForkExtensions } | undefined;
   const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
-    active?.extensions.destroy();
-    active?.shell.destroy();
     const shell = await mountForkShell({
       host,
       artboard: next.input.artboard,
@@ -40,6 +38,8 @@ async function start(): Promise<void> {
       onOpen: () => picker.click(),
       onSaved: () => { status.textContent = 'Fabric theme saved'; },
     });
+    active?.extensions.destroy();
+    active?.shell.destroy();
     active = { shell, extensions };
   };
 

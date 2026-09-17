@@ -10,7 +10,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 |---|---|
 | Unit tests | 1,246 passed across 71 files |
 | Typechecks | six projects clean |
-| Browser suite | 55 passed / 119 skipped / 0 failed |
+| Browser suite | 55 passed / 121 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
@@ -43,8 +43,8 @@ the static dashboard demo at usable stage size.
   charts before scene replacement/destruction.
 - Ctrl/Cmd+S downloads the development v2 Fabric envelope.
 - Ctrl/Cmd+O validates a bounded v2 file, checks exact Fabric compatibility,
-  then rebuilds the fork shell. Invalid/incompatible files leave the current
-  editor intact.
+  then stages revival before replacing the fork shell. Invalid, incompatible,
+  or unrevivable files leave the current editor intact.
 - Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
   and `ShortcutManager` composed by `ForkExtensions`.
 - The fork starts at full contain-fit zoom in a centered artboard-aspect viewport,
