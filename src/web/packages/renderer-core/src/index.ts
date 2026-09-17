@@ -151,6 +151,8 @@ export { serializeThemeDocument } from './theme/serialize.js';
 
 export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from './theme/fabric-envelope.js';
 
+export { fabricEnvelopeInputFor } from './theme/fabric-envelope.js';
+
 export type { AssetResolver, AssetResolverOptions } from './theme/assets.js';
 
 export { createAssetResolver, isSafeAssetPath, noAssets } from './theme/assets.js';
