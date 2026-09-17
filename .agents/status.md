@@ -7,9 +7,9 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,271 passed across 70 files |
+| Unit tests | 1,272 passed across 70 files |
 | Typechecks | six projects clean |
-| Browser suite | 52 passed / 118 skipped / 0 failed across desktop and phone Chromium |
+| Browser suite | 53 passed / 119 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Visual inspection | desktop assets and phone demo captures inspected; fit modes, recolouring, charts and letterboxing rendered correctly; the fork editor route mounts its interactive canvas |
@@ -38,7 +38,7 @@ These figures are from the current session's Stage 4B route-migration gate.
   semantic binding references and the v2 GIF-asset refusal.
 - Ctrl/Cmd+O selects a bounded, v2-only theme file and rebuilds the active fork
   shell from its validated Fabric envelope; incompatible Fabric versions fail
-  before replacing the active editor.
+  before replacing the active editor; both paths have browser coverage.
 - `renderer-core` exposes direct chart-option planning from authored chart state
   and bindings, so the v2 editor need not rebuild a legacy node tree for charts.
 - `renderer-core` extracts v1 semantic metadata and bindings into the envelope;
