@@ -14,11 +14,14 @@ describe('the adopted editor shell', () => {
     const editor = { canvas: { toObject: vi.fn(() => ({ version: '7.4.0', objects: [] })) }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const host = document.createElement('main');
+    Object.defineProperties(host, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
     host.append(document.createElement('p'));
 
     const shell = await mountForkShell({ host, artboard: { width: 1280, height: 720 } });
 
     expect(host.children).toHaveLength(1);
+    expect((host.firstElementChild as HTMLElement).style.cssText).toContain('width: 800px');
+    expect((host.firstElementChild as HTMLElement).style.cssText).toContain('height: 450px');
     expect(initEditor).toHaveBeenCalledWith('vigilia-fabric-editor', {
       montageAreaWidth: 1280,
       montageAreaHeight: 720,

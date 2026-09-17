@@ -47,8 +47,8 @@ the initial camera contains the dashboard at usable stage size.
   editor intact.
 - Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
   and `ShortcutManager` composed by `ForkExtensions`.
-- The fork starts at full contain-fit zoom rather than its half-fit library
-  default, so the editor stage does not squeeze the dashboard canvas.
+- The fork starts at full contain-fit zoom in a centered artboard-aspect viewport,
+  so the editor stage neither squeezes nor stretches the dashboard canvas.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Startup still loads the legacy demo theme, builds a `ScenePlan`, then adopts

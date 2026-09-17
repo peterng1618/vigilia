@@ -30,6 +30,15 @@ export interface ForkShell {
 
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 
+function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): void {
+  const scale = Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
+
+  if (!Number.isFinite(scale) || scale <= 0) return;
+
+  container.style.width = `${artboard.width * scale}px`;
+  container.style.height = `${artboard.height * scale}px`;
+}
+
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
 export async function mountForkShell({ host, artboard, plan, envelope }: ForkShellOptions): Promise<ForkShell> {
   if (plan !== undefined && envelope !== undefined) {
@@ -43,7 +52,18 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   }
   const container = document.createElement('div');
   container.id = FORK_CONTAINER_ID;
+  container.style.position = 'absolute';
+  container.style.inset = '0';
+  container.style.margin = 'auto';
+  fitArtboardViewport(container, host, artboard);
   host.replaceChildren(container);
+  const resize = typeof ResizeObserver === 'undefined'
+    ? undefined
+    : new ResizeObserver(() => {
+      fitArtboardViewport(container, host, artboard);
+      window.dispatchEvent(new Event('resize'));
+    });
+  resize?.observe(host);
 
   try {
     const editor = await initEditor(FORK_CONTAINER_ID, {
@@ -74,12 +94,14 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
         return serialiseThemeEnvelope(editor.canvas, input);
       },
       destroy() {
+        resize?.disconnect();
         scene?.dispose();
         disposeScene(editor.canvas);
         editor.destroy();
       },
     };
   } catch (error) {
+    resize?.disconnect();
     container.remove();
     throw error;
   }
