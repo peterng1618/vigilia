@@ -40,6 +40,8 @@ this session.
 - The adopted fork's `codex/fabric-es` branch pins Fabric 7.4.0 and imports
   `fabric/es` throughout; its typecheck, 1,808-test suite and production build
   passed.
+- That branch exposes `beforeHistoryStateLoad`, a tested generic pre-reload hook
+  for the future Vigilia shell to call `disposeScene` before snapshot reload.
 
 ## What has not migrated yet
 
@@ -117,8 +119,9 @@ semantics with schema v2; do not build a workaround.
 ## Next, in order
 
 1. **Continue Stage 4B:** make the source fork the editor shell.
-2. Route fork snapshot reload through disposal-aware `scene-fabric` persistence.
-3. Integrate the fork shell using its `codex/fabric-es` branch.
+2. Integrate the fork shell using its `codex/fabric-es` branch and route its
+   snapshot reload through `disposeScene`.
+3. Replace fork snapshot serialization with `scene-fabric` persistence.
 4. Move the first Vigilia property controls into the fork UI surface.
 5. Migrate editor + Fabric scene envelope together.
 6. Add schema-v2 tokens/property model, live bindings/charts, then video.
