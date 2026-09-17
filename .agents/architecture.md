@@ -185,6 +185,12 @@ generic responsibilities during the source-fork spike.
 | Action vocabulary | `editor/src/actions.ts` |
 | Keyboard routing | `editor/src/keyboard.ts` |
 
+### Fork editor extensions
+
+| Concept | Owner |
+|---|---|
+| Chart selection, scalar property controls and ScenePlan reapplication | `editor/src/chart-manager/` |
+
 Target ownership for generic selection/controls/grouping/clipboard/tools is the
 `fabricjs-image-editor` fork, not new Vigilia modules.
 

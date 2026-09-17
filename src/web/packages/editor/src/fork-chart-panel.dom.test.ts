@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { createForkChartPanel } from './fork-chart-panel.js';
+import { createForkChartPanel } from './chart-manager/panel.js';
 
 describe('fork chart property panel', () => {
   it('derives controls from the shared field descriptors and returns authored settings', () => {
