@@ -127,6 +127,9 @@ not only its npm export surface.
 A permanent Vigilia fork is acceptable. Upstream updates are useful while the
 author remains active but are not a product requirement.
 
+Vigilia consumes the fork's compiled Git package. The fork keeps its own
+TypeScript program; do not import its raw source into Vigilia's stricter one.
+
 The previous rejection is reopened because it over-weighted package-level
 limitations such as missing shipped types, demo-only property UI and unsuitable
 snapshot history. Those can be changed in a source fork and do not justify
@@ -304,6 +307,9 @@ If no fundamental blocker is found, use the source fork as the editor shell:
 - shared `scene-fabric` objects;
 - Vigilia property controls and semantic features;
 - Fabric scene JSON inside the Vigilia envelope.
+
+The initial shell boundary passes `scene-fabric`'s disposal-aware reload hook
+to fork history and disposes charts before the fork canvas is destroyed.
 
 Delete superseded custom generic-editor code as each replacement is verified.
 

@@ -1,5 +1,7 @@
 /** Desktop authoring over the shared renderer; generic editor mechanics are migration targets. */
 
+export { mountForkShell, type ForkShell, type ForkShellOptions } from './fork-shell.js';
+
 export type { Bounds, Matrix2D, PlacedNode, Point } from './geometry.js';
 
 export {

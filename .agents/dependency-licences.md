@@ -65,9 +65,12 @@ Two further measured facts, because they shape what the player may import:
 
 ## The image-editor source fork
 
-`@anu3ev/fabric-image-editor` (MIT, 0.10.31) is not yet installed in the
-workspace. Its source entry is incompatible with Vigilia's strict TypeScript
-program, so Stage 4B needs a compiled/type-isolated package boundary first.
+**Method:** the adopted fork's `package.json`, read 2026-09-17 at commit
+`9a370711d89611e7f9f1c32261208cc4abebb981`.
+
+`@anu3ev/fabric-image-editor` 0.10.32 is MIT. Vigilia consumes its compiled
+Git package so the fork retains its own TypeScript program; its `fabric/es`
+external resolves to Vigilia's pinned Fabric 7.4.0.
 
 **The host has no runtime dependencies at all**: `node:http` to serve, SSE for
 the stream, `node:os` for telemetry.

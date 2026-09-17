@@ -95,7 +95,9 @@ usage. The size gate is a backstop, not the primary boundary.
 ## Editor foundation
 
 Generic editor mechanics come from the adopted `fabricjs-image-editor` source
-fork. It must resolve the same pinned `fabric/es` module as `scene-fabric`.
+fork, consumed through its compiled Git package boundary. Do not add its raw
+source to Vigilia's strict TypeScript program. It must resolve the same pinned
+`fabric/es` module as `scene-fabric`.
 
 Expected reusable concerns include:
 

@@ -8,6 +8,7 @@
     "rootDir": "../..",
     "paths": {
       "@vigilia/renderer-core": ["../renderer-core/src/index.ts"],
+      "@vigilia/scene-fabric": ["../scene-fabric/src/index.ts"],
       "@vigilia/fake-source": ["../fake-source/src/index.ts"]
     }
   },

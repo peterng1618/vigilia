@@ -82,6 +82,9 @@ the fork's snapshot serializer/load path with Vigilia's canonical serializer,
 including chart disposal before reload. Existing domain logic may be reused; the
 current custom editor remains fallback only.
 
+Vigilia consumes the fork's compiled Git package, rather than compiling its raw
+source under Vigilia's stricter TypeScript settings.
+
 ### Editor property UI belongs to the new foundation
 
 Do not preserve the legacy Vigilia inspector as an architectural requirement.

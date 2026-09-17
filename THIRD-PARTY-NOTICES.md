@@ -79,6 +79,28 @@ entry is a single pre-bundled file no tree-shaker can see into, and it costs
 45 KB gzip more for the identical imports. The `./es` subpath ships the same
 type declarations, so there is nothing given up by taking it.
 
+## @anu3ev/fabric-image-editor — MIT
+
+- Source: <https://github.com/peterng1618/fabricjs-image-editor/tree/9a370711d89611e7f9f1c32261208cc4abebb981>
+- License: MIT (`"license": "MIT"` in the fork's own `package.json`) · Pinned
+  version: **0.10.32**
+- Form: compiled adopted editor foundation. It externalizes and resolves the
+  workspace's pinned `fabric/es` module.
+
+MIT requires only that the licence and copyright notice travel with the
+distribution.
+
+## @anu3ev/fabric-image-editor — MIT
+
+- Source: <https://github.com/peterng1618/fabricjs-image-editor/tree/9a370711d89611e7f9f1c32261208cc4abebb981>
+- License: MIT (`"license": "MIT"` in the fork's own `package.json`) · Pinned
+  version: **0.10.32**
+- Form: compiled adopted editor foundation. It externalizes and resolves the
+  workspace's pinned `fabric/es` module.
+
+MIT requires only that the licence and copyright notice travel with the
+distribution.
+
 ## Fonts, icons and imported assets
 
 Packaged fonts and imported SVG icons carry their own licences and must ship with
