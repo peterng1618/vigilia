@@ -15,8 +15,8 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
 
-These are the latest code-verification figures recorded before the documentation
-cleanup. No code changed in this pass.
+Full gate run on 2026-09-17. The refreshed desktop editor screenshot confirms
+the initial camera contains the dashboard at usable stage size.
 
 ## Current product state
 
@@ -47,6 +47,8 @@ cleanup. No code changed in this pass.
   editor intact.
 - Current Vigilia extensions are **only** `ChartManager`, `PersistenceManager`
   and `ShortcutManager` composed by `ForkExtensions`.
+- The fork starts at full contain-fit zoom rather than its half-fit library
+  default, so the editor stage does not squeeze the dashboard canvas.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Startup still loads the legacy demo theme, builds a `ScenePlan`, then adopts

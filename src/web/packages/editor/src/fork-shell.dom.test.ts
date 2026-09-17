@@ -24,6 +24,7 @@ describe('the adopted editor shell', () => {
       montageAreaHeight: 720,
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
+      defaultScale: 1,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,

@@ -12,6 +12,7 @@ declare module '@anu3ev/fabric-image-editor' {
     readonly montageAreaHeight?: number;
     readonly editorContainerWidth?: string;
     readonly editorContainerHeight?: string;
+    readonly defaultScale?: number;
     readonly beforeHistoryStateLoad?: (canvas: Canvas) => void | Promise<void>;
     readonly serializeHistoryState?: (canvas: Canvas) => SerialisedScene;
     readonly reviveHistoryState?: (canvas: Canvas, state: SerialisedScene) => void | Promise<void>;

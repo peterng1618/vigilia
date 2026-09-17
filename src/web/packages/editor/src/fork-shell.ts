@@ -51,6 +51,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       montageAreaHeight: artboard.height,
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
+      defaultScale: 1,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,
