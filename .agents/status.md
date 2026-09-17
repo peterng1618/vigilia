@@ -42,6 +42,8 @@ These figures are from the current session's Stage 4B route-migration gate.
 - `editor/src/fork-shell.ts` mounts the fork with `beforeHistoryStateLoad` set
   to `disposeScene`, and disposes charts before destroying the fork canvas.
 - The editor route mounts that fork shell; the legacy DOM route is no longer active.
+- Fork history uses `scene-fabric`'s canonical serializer/revival callbacks;
+  the pinned fork revision is `73657f0`.
 
 ## What has not migrated yet
 
@@ -118,11 +120,10 @@ semantics with schema v2; do not build a workaround.
 
 ## Next, in order
 
-1. **Continue Stage 4B:** replace fork snapshot serialization with `scene-fabric` persistence.
-2. Move the first Vigilia property controls into the fork UI surface.
-3. Migrate editor + Fabric scene envelope together.
-4. Add schema-v2 tokens/property model, live bindings/charts, then video.
-5. Delete old DOM/custom generic-editor code after replacements are proven.
+1. **Continue Stage 4B:** move the first Vigilia property controls into the fork UI surface.
+2. Migrate editor + Fabric scene envelope together.
+3. Add schema-v2 tokens/property model, live bindings/charts, then video.
+4. Delete old DOM/custom generic-editor code after replacements are proven.
 
 Use sub-agents for independent source audits: manager inventory, history,
 property/demo UI, clipboard/grouping, custom chart lifecycle, persistence and
@@ -146,7 +147,6 @@ or runtime telemetry cannot be separated from authored state.
 
 - Browser E2E previews bundles directly; it does not exercise the host.
 - Fabric scene JSON is not yet the published theme schema.
-- Fork snapshot serialization is not yet replaced by `scene-fabric` persistence.
 - The fork route starts with its blank artboard; loading the authored Fabric scene is next.
 - Legacy DOM editor browser cases are skipped while equivalent Fabric-route coverage is added.
 - LHM extended telemetry is not implemented.

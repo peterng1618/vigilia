@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { disposeScene } from '@vigilia/scene-fabric';
+import { disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
 
 const initEditor = vi.hoisted(() => vi.fn());
 
@@ -24,6 +24,8 @@ describe('the adopted editor shell', () => {
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
       beforeHistoryStateLoad: disposeScene,
+      serializeHistoryState: serialiseScene,
+      reviveHistoryState: reviveScene,
     });
     expect(shell.editor).toBe(editor);
   });

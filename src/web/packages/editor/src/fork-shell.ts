@@ -1,5 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { disposeScene } from '@vigilia/scene-fabric';
+import { disposeScene, reviveScene, serialiseScene } from '@vigilia/scene-fabric';
 
 export interface ForkShellOptions {
   readonly host: HTMLElement;
@@ -29,6 +29,8 @@ export async function mountForkShell({ host, artboard }: ForkShellOptions): Prom
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
       beforeHistoryStateLoad: disposeScene,
+      serializeHistoryState: serialiseScene,
+      reviveHistoryState: reviveScene,
     });
 
     return {

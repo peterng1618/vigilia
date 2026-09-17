@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@anu3ev/fabric-image-editor": "github:peterng1618/fabricjs-image-editor#9a370711d89611e7f9f1c32261208cc4abebb981",
+    "@anu3ev/fabric-image-editor": "github:peterng1618/fabricjs-image-editor#73657f0652aa4c656c976de57a25ca5032e4c5c1",
     "@vigilia/renderer-core": "*",
     "@vigilia/scene-fabric": "*",
     "echarts": "6.1.0"
