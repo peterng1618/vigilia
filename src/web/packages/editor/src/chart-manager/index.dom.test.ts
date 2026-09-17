@@ -14,8 +14,9 @@ describe('ChartManager', () => {
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
       off: vi.fn(),
       getActiveObject: vi.fn(() => selectedId === undefined ? undefined : { get: () => selectedId }),
+      requestRenderAll: vi.fn(),
     };
-    const scene = { apply: vi.fn() } as unknown as SceneAdapter;
+    const scene = { apply: vi.fn(), objectFor: vi.fn(() => undefined) } as unknown as SceneAdapter;
     const manager = new ChartManager({
       editor: { canvas } as unknown as ImageEditor,
       scene,

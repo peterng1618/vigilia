@@ -1,11 +1,12 @@
 import {
   buildScenePlan,
   validateThemeDocument,
+  type PlanNode,
   type SampleSource,
   type ThemeDocument,
 } from '@vigilia/renderer-core';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
-import type { SceneAdapter } from '@vigilia/scene-fabric';
+import { VigiliaChart, type SceneAdapter } from '@vigilia/scene-fabric';
 import { findNode, updateChartSettings } from '../commands.js';
 import { createForkChartPanel } from './panel.js';
 
@@ -59,7 +60,27 @@ export class ChartManager {
       return;
     }
     this.#document = next;
-    this.#scene.apply(buildScenePlan({ document: next, source: this.#source, nowMs: Date.now(), animate: false }));
+    const plan = buildScenePlan({ document: next, source: this.#source, nowMs: Date.now(), animate: false });
+    const chart = this.#scene.objectFor(id);
+    const node = planNodeFor(plan.nodes, id);
+
+    if (chart instanceof VigiliaChart && node?.content.kind === 'chart') {
+      chart.set('settings', settings);
+      chart.setOption(node.content.option);
+      this.#editor.canvas.requestRenderAll();
+    } else {
+      // The adapter may not have adopted a revived object yet; retain a safe reconciliation path.
+      this.#scene.apply(plan);
+    }
     this.#drawPanel();
   }
+}
+
+function planNodeFor(nodes: readonly PlanNode[], id: string): PlanNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const child = planNodeFor(node.children ?? [], id);
+    if (child !== undefined) return child;
+  }
+  return undefined;
 }
