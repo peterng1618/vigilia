@@ -7,7 +7,7 @@ Current handoff only. Durable rules: `AGENTS.md`; architecture:
 
 | Check | Latest recorded result |
 |---|---|
-| Unit tests | 1,252 passed across 64 files |
+| Unit tests | 1,253 passed across 64 files |
 | Typechecks | six projects clean |
 | Browser suite | 107 passed / 59 skipped / 0 failed across desktop and phone Chromium |
 | Player size | 260.3 KB gzip / 400 KB gate |
@@ -32,6 +32,8 @@ this session.
 - Player display E2E coverage probes the canvas scene and rendered pixels.
 - Fabric images support contain/cover/stretch and alpha-preserving bitmap/SVG recolouring.
 - Fabric scene serialization/revival exists in `scene-fabric/src/persist.ts`.
+- Scene revival disposes existing `VigiliaChart` engines, including grouped charts,
+  before Fabric replaces the object graph.
 - The source fork is adopted: its text/image/shape, selection, transforms,
   grouping and duplicate mechanics work with `VigiliaChart`; chart runtime
   updates stay out of its history in the Stage 4A browser spike.
@@ -111,9 +113,9 @@ semantics with schema v2; do not build a workaround.
 
 ## Next, in order
 
-1. **Begin Stage 4B:** make the source fork the editor shell.
+1. **Continue Stage 4B:** make the source fork the editor shell.
 2. Unify the fork with Vigilia's pinned `fabric/es` module.
-3. Replace fork snapshot reload with disposal-aware `scene-fabric` persistence.
+3. Route fork snapshot reload through disposal-aware `scene-fabric` persistence.
 4. Move the first Vigilia property controls into the fork UI surface.
 5. Migrate editor + Fabric scene envelope together.
 6. Add schema-v2 tokens/property model, live bindings/charts, then video.
@@ -142,8 +144,8 @@ or runtime telemetry cannot be separated from authored state.
 - Browser E2E previews bundles directly; it does not exercise the host.
 - Editor browser suite still has an undiagnosed contention-only flake.
 - Fabric scene JSON is not yet the published theme schema.
-- Fork snapshot reload currently calls `Canvas.loadFromJSON` without a chart
-  disposal hook; Stage 4B must replace that boundary before live editor use.
+- Fork snapshot reload is not yet routed through `scene-fabric`; it must use its
+  disposal-aware revival boundary before live editor use.
 - LHM extended telemetry is not implemented.
 - Pairing/revocable sessions and LAN end-to-end flow are not implemented.
 - Accepted limitation: Canvas text uses the font's natural digit metrics when

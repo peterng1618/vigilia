@@ -232,6 +232,20 @@ describe('identity survives a round trip', () => {
   });
 });
 
+describe('reviving replaces chart resources', () => {
+  it('disposes existing charts, including charts nested in groups', async () => {
+    const chart = new VigiliaChart(chartOptions());
+    const existing = canvasOf(new Group([chart]));
+    const replacement = serialiseScene(canvasOf(new Rect({ width: 10, height: 10 })));
+
+    await reviveScene(existing, replacement);
+
+    expect(chart.disposed).toBe(true);
+    expect(existing.getObjects()).toHaveLength(1);
+    expect(existing.getObjects()[0]).toBeInstanceOf(Rect);
+  });
+});
+
 describe('a settings object cannot be mutated in place', () => {
   it('freezes what it was given, deeply', () => {
     const settings = { ...defaultLineSettings };
