@@ -1,4 +1,5 @@
 import type {
+  ChartContent,
   StyleMap,
   ThemeDocument,
   ThemeNode,
@@ -6,6 +7,22 @@ import type {
 } from '@vigilia/renderer-core';
 
 /** Pure immutable document edits with structural sharing. */
+
+/** Replace authored chart settings without admitting runtime engine state. */
+export function updateChartSettings(
+  document: ThemeDocument,
+  nodeId: string,
+  settings: ChartContent['settings'],
+): ThemeDocument {
+  return {
+    ...document,
+    nodes: mapNodes(document.nodes, (node) =>
+      node.id === nodeId && node.type === 'chart'
+        ? { ...node, content: { ...node.content, settings } as ChartContent }
+        : node,
+    ),
+  };
+}
 
 export function updateTransforms(
   document: ThemeDocument,

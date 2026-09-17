@@ -8,6 +8,7 @@ import {
   reorderNode,
   setNodeFlags,
   updateStyle,
+  updateChartSettings,
   updateTransforms,
 } from './commands.js';
 import { validateThemeDocument } from '@vigilia/renderer-core';
@@ -144,6 +145,21 @@ describe('updateStyle', () => {
     const next = updateStyle(document_, 'a', { fill: { value: '#ff0000' } });
 
     expect(validateThemeDocument(next).ok).toBe(true);
+  });
+});
+
+describe('updateChartSettings', () => {
+  it('replaces only authored settings on the selected chart', () => {
+    const chart = {
+      id: 'chart', type: 'chart', transform: { width: 100, height: 100 },
+      content: { family: 'gauge', settings: { startAngle: 90, endAngle: -270, min: 0, max: 100, thickness: 10, track: { kind: 'solid', color: '#000' }, progress: { kind: 'solid', color: '#fff' }, roundCap: true } },
+    } as ThemeNode;
+    const source = { ...document_, nodes: [chart, ...document_.nodes] };
+    const settings = { ...chart.content.settings, thickness: 20 };
+    const next = updateChartSettings(source, 'chart', settings);
+
+    expect(findNode(next.nodes, 'chart')?.content).toEqual({ family: 'gauge', settings });
+    expect(findNode(source.nodes, 'chart')?.content).not.toBe(settings);
   });
 });
 
