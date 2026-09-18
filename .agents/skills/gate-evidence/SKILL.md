@@ -14,13 +14,17 @@ in `decisions.md`.
 From `src/web/`:
 
 ```bash
-npx vite build packages/player
-VIGILIA_CAPTURE=1 npx playwright test -g "captures a screenshot" --workers=1
+npm run build
+VIGILIA_CAPTURE=1 npx playwright test -g "visual review" --workers=1
 ```
 
-- Build first; Playwright previews built output.
+- Build first; Playwright previews built output. Before a full browser suite,
+  inspect every generated capture with the image viewer and diagnose any visible
+  failure first.
 - `--workers=1` avoids concurrent writes to the same capture directory.
 - Screenshots are visual evidence, not cross-platform golden baselines.
+- Give each visible user action its own visual-review capture; a mounted-shell
+  screenshot alone does not show selected-state or edited-property failures.
 - Control time/animation when determinism matters; the previous claim that all
   chart frames were inherently non-reproducible was disproved after fixing the
   test clock.

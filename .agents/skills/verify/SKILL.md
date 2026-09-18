@@ -22,8 +22,8 @@ git status --porcelain | cut -c4- | awk '
 |---|---|
 | PROSE | no tests |
 | UNIT | typecheck + full unit suite |
-| E2E | typecheck + units + builds + browser suite |
-| FULL | typecheck + units + builds + size gate + browser suite |
+| E2E | typecheck + units + builds + visual capture/inspection + browser suite |
+| FULL | typecheck + units + builds + visual capture/inspection + size gate + browser suite |
 
 Do not select unit tests by changed path; cross-package boundary tests make that
 unsafe.
@@ -36,12 +36,17 @@ From `src/web/`, in order:
 npm run typecheck
 npm test
 npm run build
+VIGILIA_CAPTURE=1 npx playwright test -g "visual review" --workers=1
 npm run size
 npm run test:e2e
 ```
 
-Stop at the first failure. Build before size/E2E because both consume built
-output. Rebuild after reverting deliberate sabotage.
+For E2E and FULL, inspect every generated screenshot with the image viewer
+before proceeding to the size gate or full browser suite. Stop on a visually
+broken result and diagnose it before treating structural tests as evidence.
+
+Stop at the first failure. Build before visual capture, size and E2E because all
+consume built output. Rebuild after reverting deliberate sabotage.
 
 ## Extra checks when relevant
 
@@ -50,7 +55,9 @@ output. Rebuild after reverting deliberate sabotage.
 - Host serving/base/output changes: build, start
   `node packages/host/bin/vigilia.js --port 5231 --no-browser`, and load both
   player/editor through the host. Playwright preview servers do not test this.
-- Visible rendering changes: inspect the result, not only structural assertions.
+- Visible rendering changes: add or update a visual-review capture that shows
+  the relevant user action from `.agents/screenshots/README.md` and inspect the
+  result, not only structural assertions.
 
 No physical-phone validation is required unless a future product requirement
 explicitly adds it.
@@ -66,5 +73,6 @@ explicitly adds it.
 
 ## Reporting
 
-State the tier, commands run, failures, and material checks skipped. Numbers must
-come from this session's output, not copied from `status.md`.
+State the tier, commands run, screenshots inspected and observations, failures,
+and material checks skipped. Numbers must come from this session's output, not
+copied from `status.md`.

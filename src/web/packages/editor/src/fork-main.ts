@@ -8,10 +8,11 @@ import { describeIssues, parseFabricThemeFile } from './persist.js';
 
 async function start(): Promise<void> {
   const host = document.querySelector<HTMLElement>('#stage');
+  const panelHost = document.querySelector<HTMLElement>('#properties');
   const status = document.querySelector<HTMLElement>('#status');
 
-  if (host === null || status === null) {
-    throw new Error('Editor shell is missing #stage or #status.');
+  if (host === null || panelHost === null || status === null) {
+    throw new Error('Editor shell is missing #stage, #properties or #status.');
   }
 
   const nowMs = Date.now();
@@ -34,7 +35,7 @@ async function start(): Promise<void> {
       shell,
       source,
       envelope: next.input,
-      panelHost: host.parentElement!,
+      panelHost,
       onNew: async () => {
         const fresh = createNewFabricTheme();
         await mount({ input: envelopeInputFor(fresh), envelope: fresh });

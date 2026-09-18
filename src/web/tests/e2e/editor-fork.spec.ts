@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 const EDITOR = 'http://127.0.0.1:4174/';
 
@@ -18,27 +18,56 @@ test.describe('Fabric editor route', () => {
     await page.goto(EDITOR);
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
 
-    const directory = process.env['VIGILIA_CAPTURE'] === undefined
-      ? 'test-results/screenshots'
-      : '../../.agents/screenshots';
-    const screenshot = await page.screenshot({ path: `${directory}/editor-fork-${testInfo.project.name}.png` });
+    await captureVisualReview(page, testInfo, 'editor-fork');
+  });
 
-    await testInfo.attach(`editor-fork-${testInfo.project.name}.png`, {
-      body: screenshot,
-      contentType: 'image/png',
+  test('captures selected chart binding controls for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await selectStarterChart(page);
+    await page.locator('[data-vigilia-binding="cpu-load"]').selectOption('ram.used');
+    const precision = page.locator('[data-vigilia-binding-field="cpu-load.precision"]');
+    await precision.fill('2');
+    await precision.press('Tab');
+    await expect(precision).toHaveValue('2');
+
+    await captureVisualReview(page, testInfo, 'editor-fork-chart-binding');
+  });
+
+  test('captures changed artboard controls for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-artboard-fit-mode]').selectOption('cover');
+    await page.locator('[data-vigilia-artboard-width]').fill('1000');
+    await page.locator('[data-vigilia-artboard-width]').press('Tab');
+    await expect(page.locator('[data-vigilia-artboard-fit-mode]')).toHaveValue('cover');
+
+    await captureVisualReview(page, testInfo, 'editor-fork-artboard');
+  });
+
+  test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key]) => key.startsWith('vigilia-fabric-editor-'))?.[1] as { canvas: { item(index: number): { set(key: string, value: number): void } | undefined; requestRenderAll(): void } } | undefined;
+      editor?.canvas.item(1)?.set('left', 64);
+      editor?.canvas.requestRenderAll();
     });
-    expect(screenshot.byteLength).toBeGreaterThan(1000);
+    await page.keyboard.press('Control+n');
+    await expect(page.locator('dialog')).toBeVisible();
+
+    await captureVisualReview(page, testInfo, 'editor-fork-dirty-replacement');
   });
 
   test('selects a chart in the starter theme through the visible Fabric canvas', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    const box = await page.locator('#vigilia-fabric-editor canvas.upper-canvas').boundingBox();
-    expect(box).not.toBeNull();
-    if (box === null) return;
-
-    await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
+    await selectStarterChart(page);
     await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
   });
 
@@ -60,10 +89,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    const box = await page.locator('#vigilia-fabric-editor canvas.upper-canvas').boundingBox();
-    expect(box).not.toBeNull();
-    if (box === null) return;
-    await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
+    await selectStarterChart(page);
     await page.locator('[data-vigilia-binding="cpu-load"]').selectOption('ram.used');
     const precision = page.locator('[data-vigilia-binding-field="cpu-load.precision"]');
     await precision.fill('2');
@@ -244,6 +270,25 @@ async function saveEnvelope(page: Page): Promise<unknown> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+async function selectStarterChart(page: Page): Promise<void> {
+  const box = await page.locator('#vigilia-fabric-editor canvas.upper-canvas').boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) throw new Error('The editor canvas has no visible bounds.');
+  await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
+  await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
+}
+
+async function captureVisualReview(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  const directory = process.env['VIGILIA_CAPTURE'] === undefined
+    ? 'test-results/screenshots'
+    : '../../.agents/screenshots';
+  const filename = `${name}-${testInfo.project.name}.png`;
+  const screenshot = await page.screenshot({ path: `${directory}/${filename}` });
+
+  await testInfo.attach(filename, { body: screenshot, contentType: 'image/png' });
+  expect(screenshot.byteLength).toBeGreaterThan(1000);
 }
 
 function leftFor(envelope: unknown, id: string): number {

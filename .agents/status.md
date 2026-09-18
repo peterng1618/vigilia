@@ -10,7 +10,8 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 |---|---|
 | Unit tests | 1,250 passed across 73 files |
 | Typechecks | six projects clean |
-| Browser suite | 61 passed / 127 skipped / 0 failed |
+| Visual review | six captures passed; action screenshots inspected before E2E |
+| Browser suite | 64 passed / 130 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
@@ -52,6 +53,8 @@ shows the static dashboard demo at usable stage size.
   v2 dashboard document through the same guard.
 - Current Vigilia extensions are the chart, persistence, shortcut and artboard
   size/preview controls composed by `ForkExtensions`.
+- Product property extensions render in the dedicated sidebar, so selected-chart
+  controls cannot displace the interactive Fabric stage.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
   its persisted artboard control can change width, height and preview fit
   without rescaling Fabric object geometry.
