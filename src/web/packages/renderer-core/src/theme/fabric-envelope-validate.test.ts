@@ -117,6 +117,15 @@ describe('Fabric theme envelope validation', () => {
     expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/fill' })]) });
   });
 
+  it('rejects resolved text type without a preset reference', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { typePresets: { body: { name: 'Body', value: { family: 'Inter', size: 16 } } } },
+      scene: { version: '7.4.0', objects: [{ type: 'Textbox', id: 'label', fontFamily: 'Inter', fontSize: 16 }] },
+    });
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/vigiliaText' })]) });
+  });
+
   it('accepts typed presets as v2 globals', () => {
     expect(validateFabricThemeEnvelope({
       ...envelope(),

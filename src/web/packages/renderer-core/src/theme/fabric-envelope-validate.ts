@@ -43,11 +43,49 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   rejectGifAssets(input['assets'], issues);
   const sceneIds = scene(input['scene'], issues);
   scenePaintReferences(input['scene'], input['globals'], issues);
+  sceneTypeReferences(input['scene'], input['globals'], issues);
   bindings(input['bindings'], sceneIds, issues);
 
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+/** Fabric text font properties are resolved cache; runs own their type-preset references. */
+function sceneTypeReferences(scene: unknown, globals: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(scene) || !Array.isArray(scene['objects'])) return;
+  const presets = isRecord(globals) && isRecord(globals['typePresets']) ? globals['typePresets'] : undefined;
+  const visit = (object: unknown, path: string): void => {
+    if (!isRecord(object)) return;
+    const hasType = ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'lineHeight'].some((property) => object[property] !== undefined);
+    if (hasType) {
+      const runs = isRecord(object['vigiliaText']) && Array.isArray(object['vigiliaText']['runs']) ? object['vigiliaText']['runs'] : undefined;
+      if (runs === undefined || runs.length === 0) {
+        issues.push(issue('unresolved-global-ref', `${path}/vigiliaText`, 'Text font properties need authored runs with typePreset references.'));
+      } else {
+        for (const [index, run] of runs.entries()) {
+          const ref = isRecord(run) ? run['typePreset'] : undefined;
+          const preset = typeof ref === 'string' && ref.startsWith('typePresets.') ? presets?.[ref.slice('typePresets.'.length)] : undefined;
+          if (!isRecord(preset) || !isRecord(preset['value'])) {
+            issues.push(issue('unresolved-global-ref', `${path}/vigiliaText/runs/${index}/typePreset`, 'Text runs must reference an existing type preset.'));
+            continue;
+          }
+          if (index === 0) matchResolvedType(object, preset['value'], path, issues);
+        }
+      }
+    }
+    if (Array.isArray(object['objects'])) object['objects'].forEach((child, index) => visit(child, `${path}/objects/${index}`));
+  };
+  scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
+}
+
+function matchResolvedType(object: Record<string, unknown>, preset: Record<string, unknown>, path: string, issues: ValidationIssue[]): void {
+  const pairs: readonly [string, string][] = [['fontFamily', 'family'], ['fontSize', 'size'], ['fontWeight', 'weight'], ['letterSpacing', 'letterSpacing'], ['lineHeight', 'lineHeight']];
+  for (const [fabricProperty, presetProperty] of pairs) {
+    if (object[fabricProperty] !== undefined && object[fabricProperty] !== preset[presetProperty]) {
+      issues.push(issue('unresolved-global-ref', `${path}/${fabricProperty}`, `${fabricProperty} must equal its referenced type preset.`));
+    }
+  }
 }
 
 /** Resolved Fabric paint is a cache; its authored owner is always a palette token. */
