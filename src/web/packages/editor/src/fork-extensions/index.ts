@@ -2,6 +2,7 @@ import type { Artboard, Binding, FabricPalette, FabricThemeEnvelopeInput, Sample
 import type { ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
+import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
 import { ShortcutManager } from '../shortcut-manager/index.js';
@@ -11,6 +12,7 @@ export class ForkExtensions {
   readonly charts: ChartManager;
   readonly #artboard: ArtboardPanel;
   readonly #palette: PalettePanel;
+  readonly #types: TypePresetPanel;
   readonly #persistence: PersistenceManager;
   readonly #shortcuts = new ShortcutManager();
   #envelope: FabricThemeEnvelopeInput;
@@ -36,6 +38,8 @@ export class ForkExtensions {
     this.#artboard.render(this.#envelope.artboard);
     this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette));
     this.#palette.render(this.#envelope.globals?.palette);
+    this.#types = createTypePresetPanel(options.panelHost, (presets) => this.#setTypes(options.shell, presets));
+    this.#types.render(this.#envelope.globals?.typePresets as TypePresets | undefined);
     this.charts = new ChartManager({
       editor: options.shell.editor,
       scene: options.shell.scene,
@@ -59,6 +63,7 @@ export class ForkExtensions {
     this.charts.destroy();
     this.#artboard.root.remove();
     this.#palette.root.remove();
+    this.#types.root.remove();
   }
 
   async #open(options: {
@@ -115,6 +120,12 @@ export class ForkExtensions {
     shell.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#palette.render(palette);
+  }
+
+  #setTypes(shell: ForkShell, typePresets: TypePresets): void {
+    this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
+    shell.setGlobals(this.#envelope.globals);
+    this.#types.render(typePresets);
   }
 
   #snapshot(shell: ForkShell) {
