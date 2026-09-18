@@ -60,6 +60,14 @@ Defaults select valid authored references when a Vigilia creation command runs.
 They are editor-local derived input, never mutable theme globals or persisted
 document state. Generic object construction and stack ordering remain fork-owned.
 
+### Asset authoring prerequisite
+
+The envelope lists asset references but does not contain asset bytes. Asset import,
+replacement and removal require the §139 package reader/writer to retain the
+declared files atomically and validate them under §141. Until then, no editor
+asset-authoring UI is exposed; a JSON download alone cannot faithfully author an
+asset reference.
+
 ## Capability summary
 
 | Capability | group | shape | text | image/SVG | chart |
@@ -94,11 +102,13 @@ Implemented:
 - type-preset reassignment/deletion across every authored text run;
 - v2 validation rejects legacy global groups and local artboard/text paint or type values;
 - settings update in place without rebuilding the legacy node tree.
+- editor-local paint/text default derivation from the open envelope, without
+  persisting mutable defaults.
 
 Still transitional/not implemented:
 
 - domain property UI for assets;
-- Vigilia new-element creation commands and their derived default factory;
+- Vigilia new-element creation commands that call the derived default factory.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains
