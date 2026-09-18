@@ -64,6 +64,8 @@ active-fork visual evidence and a completed full browser suite.
 - Retired actions, document/history, selection, transforms, arranging,
   snapping, legacy layer UI and their tests are deleted; generic editing comes
   only from the fork.
+- Stage 4B is complete: direct v2 startup, current product properties,
+  fork-native editing/history/save/open safety and legacy cleanup are proven.
 - Product property extensions render in the dedicated sidebar, so selected-chart
   controls cannot displace the interactive Fabric stage.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
@@ -121,7 +123,6 @@ active-fork visual evidence and a completed full browser suite.
 
 ## Current gaps
 
-- Finish Stage 4B editor migration: remaining domain property boundaries.
 - Finish spec 0011: remaining domain-property editing and removal of
   transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
@@ -134,12 +135,11 @@ active-fork visual evidence and a completed full browser suite.
 
 ## Next
 
-1. Finish remaining Stage 4B domain property boundaries.
-2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
+1. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
-3. Complete the property/token model in spec 0011 before stabilising v2.
-4. Add live editor bindings/charts, then the video background path.
-5. Only after the authoring core is stable, start the React + shadcn/Base UI
+2. Complete the property/token model in spec 0011 before stabilising v2.
+3. Add live editor bindings/charts, then the video background path.
+4. Only after the authoring core is stable, start the React + shadcn/Base UI
    shell modernization from plan §35.
 
 ## Unverified / known limitations

@@ -1,6 +1,6 @@
 # 0013 — Fabric scene and editor migration
 
-- **Status:** active; Stage 4B
+- **Status:** Stage 4B complete; follow-on work active
 - **Design sections:** §31, §32, §35, §47, §51, §53, §55, §57, §61, §67, §105, §134, §137, §141, §157
 
 ## Goal
@@ -54,18 +54,17 @@ Completed:
 - scalar chart property controls generated from shared descriptors and persisted selected-chart bindings;
 - direct v2 startup through a static `demo` Fabric envelope.
 
-Current fork extensions are charts, persistence, shortcuts and artboard controls.
+Current fork extensions are charts, persistence, shortcuts, artboard, palette
+and type-preset controls.
 The legacy demo-theme/`ScenePlan` path does not mount the interactive editor.
 
-## Stage 4B — finish editor migration
+## Stage 4B — completed
 
-Required work:
-
-1. make direct v2 envelope startup/document state the normal editor path;
-2. finish the domain property boundary needed for current product features;
-3. verify ordinary edit → history → save/open/revive flows on the fork route;
-4. preserve dirty-document safety from plan §141 before destructive New/Open;
-5. delete each corresponding legacy DOM/custom path once replacement is proven.
+Direct v2 startup, current artboard/palette/type/chart/binding controls,
+fork history/save/open safety and deletion of the retired custom editor are
+verified. Asset declarations remain part of the envelope but have no active
+Fabric-scene reference or package/import workflow; their authoring UI belongs to
+the later property/package work in spec 0011 and plan §139.
 
 Do **not** recreate missing legacy editor QoL during this stage merely for parity.
 Spec 0014 contains those review candidates. An item becomes migration scope only
@@ -89,7 +88,7 @@ Video remains one DOM background beneath the transparent Fabric canvas, aligned
 by the artboard transform. It is not a scene object. Animated GIF elements are
 out of scope.
 
-## After Stage 4B
+## Follow-on work
 
 1. Complete the final v2 token/type/reference model in spec 0011.
 2. Add live editor bindings/charts without polluting authored history.

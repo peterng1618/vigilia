@@ -288,13 +288,13 @@ Current migration order/status:
 
 1. Fabric chart/shared renderer/player migration — **done**.
 2. Source-fork editor feasibility spike — **done**.
-3. Fork editor + v2 Fabric envelope migration — **active** (spec 0013).
+3. Fork editor + v2 Fabric envelope migration — **done** (spec 0013).
 4. Review missing legacy-editor behaviours before recreating them — **pending**
    (spec 0014; review only).
 5. Finish v2 palette/type/reference/property semantics — **pending** (spec 0011).
 6. Live editor bindings/charts — **pending**.
 7. Production video background — **pending**.
-8. Delete superseded DOM/custom editor code — **pending**.
+8. Delete superseded DOM/custom editor code — **done**.
 9. React + shadcn/Base UI shell modernization — **later**, after core authoring
    stabilizes.
 10. Starter theme/storage/LAN/provider/product work continues around those gates.
