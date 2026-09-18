@@ -310,6 +310,23 @@ the theme. Do not auto-invert bitmaps.
 
 ## Later
 
+### Editor research candidates (non-requirements)
+
+  - After spec 0014 retention review, consider fork-owned rulers, guides, hover
+    preselection, crop controls and measured stress fixtures from yft-design.
+  - After §35, consider a creation/assets/templates rail, central artboard,
+    contextual property rail and zoom/status footer. Actions stay visibly
+    labelled and keyboard-accessible; this is not a separate agent-mode UI.
+  - After §139 storage, consider debounced validated-envelope/package autosave,
+    template thumbnails/gallery and export presets. Raw Fabric JSON alone is not
+    a document store.
+  - Do not adopt another editor foundation, UI-state model, literal style
+    defaults, remote-asset URLs or page model.
+
+  Sources: [yft-design](https://github.com/dromara/yft-design),
+  [OpenDesign](https://github.com/clawnify/OpenDesign),
+  [fabric-canvas-editor](https://github.com/onerkiz/fabric-canvas-editor).
+
 - Icon browser over the existing importer.
 - Per-device performance presets.
 - Incremental native drawing beyond basic shapes.

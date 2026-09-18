@@ -109,6 +109,13 @@ external compatibility promise exists before the first release.
 `player/src/boundaries.test.ts` guards the player import boundary and `fabric/es`
 usage.
 
+## External-editor boundary
+
+External editors are interaction references, not foundations. Retained generic
+mechanics belong in the adopted fork after review; v2 envelope/token/package
+boundaries remain Vigilia-owned. Do not import raw-canvas persistence or
+framework UI state across that boundary.
+
 ## State categories
 
 | State | Examples | Rule |
