@@ -1,6 +1,6 @@
 # 0011 — Editor property and theme-token model
 
-- **Status:** active; chart descriptors/control path partly implemented, reference reassignment and remaining domains pending
+- **Status:** active; chart descriptors/control path partly implemented, remaining domains pending
 - **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
 ## Goal
@@ -81,6 +81,7 @@ Implemented:
 - v2 palette validation reserves immutable transparent `palette.none`;
 - structured solid/gradient palette tokens, including CSS-compatible solid colours;
 - fork palette controls to add/edit stable tokens and gradient angles/stops;
+- palette-token reassignment/deletion across Fabric paint/text metadata and artboard paint;
 - type-preset schema/reference validation and per-run shared-plan resolution;
 - persisted Fabric palette/type references with validated save/open semantics;
 - fork type-preset controls for global family, size, weight and line height;
@@ -89,7 +90,6 @@ Implemented:
 Still transitional/not implemented:
 
 - domain property UI for assets;
-- final reference traversal/reassignment UI.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains

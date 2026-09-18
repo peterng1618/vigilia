@@ -2,6 +2,7 @@ import type { Artboard, Binding, FabricPalette, FabricThemeEnvelopeInput, Sample
 import type { ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
+import { reassignObjectPaletteReferences } from '@vigilia/scene-fabric';
 import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
@@ -36,7 +37,7 @@ export class ForkExtensions {
       (artboard) => this.#setArtboard(options.shell, artboard),
     );
     this.#artboard.render(this.#envelope.artboard);
-    this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette));
+    this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette), (id, replacement) => this.#deletePalette(options.shell, id, replacement));
     this.#palette.render(this.#envelope.globals?.palette);
     this.#types = createTypePresetPanel(options.panelHost, (presets) => this.#setTypes(options.shell, presets));
     this.#types.render(this.#envelope.globals?.typePresets as TypePresets | undefined);
@@ -119,6 +120,26 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, palette } };
     shell.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
+    this.#palette.render(palette);
+  }
+
+  #deletePalette(shell: ForkShell, id: string, replacement: string): void {
+    if (id === 'none' || id === replacement) return;
+    const from = `palette.${id}` as const;
+    const to = `palette.${replacement}` as const;
+    reassignObjectPaletteReferences(shell.editor.canvas, from, to);
+    const artboard = { ...this.#envelope.artboard };
+    for (const property of ['background', 'barColor'] as const) {
+      const value = artboard[property];
+      if (value !== undefined && 'ref' in value && value.ref === from) artboard[property] = { ref: to };
+    }
+    const palette = { ...this.#envelope.globals?.palette };
+    delete palette[id];
+    this.#envelope = { ...this.#envelope, artboard, globals: { ...this.#envelope.globals, palette } };
+    shell.setArtboard(artboard);
+    shell.setGlobals(this.#envelope.globals);
+    this.#artboard.setGlobals(this.#envelope.globals);
+    this.#artboard.render(artboard);
     this.#palette.render(palette);
   }
 

@@ -127,6 +127,24 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-palette-solid');
   });
 
+  test('reassigns palette references before deleting a token', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-palette-token]').selectOption('background');
+    await page.locator('[data-vigilia-palette-replacement]').selectOption('bars');
+    await captureVisualReview(page, testInfo, 'editor-fork-palette-reassignment');
+    await page.locator('[data-vigilia-palette-delete]').click();
+    await expect(page.locator('[data-vigilia-palette-token] option[value="background"]')).toHaveCount(0);
+
+    const envelope = await saveEnvelope(page) as {
+      artboard: { background?: { ref: string } };
+      globals: { palette: Record<string, unknown> };
+    };
+    expect(envelope.artboard.background).toEqual({ ref: 'palette.bars' });
+    expect(envelope.globals.palette.background).toBeUndefined();
+  });
+
   test('edits a global type preset through the fork property surface', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

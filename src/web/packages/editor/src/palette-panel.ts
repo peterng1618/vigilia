@@ -6,7 +6,11 @@ export interface PalettePanel {
 }
 
 /** Product-owned palette authoring; tokens retain stable ids so references stay valid. */
-export function createPalettePanel(host: HTMLElement, onChange: (palette: FabricPalette) => void): PalettePanel {
+export function createPalettePanel(
+  host: HTMLElement,
+  onChange: (palette: FabricPalette) => void,
+  onDelete?: (id: string, replacement: string) => void,
+): PalettePanel {
   const root = document.createElement('section');
   const heading = document.createElement('h2');
   heading.textContent = 'Palette';
@@ -69,7 +73,31 @@ export function createPalettePanel(host: HTMLElement, onChange: (palette: Fabric
     const controls = entry.value.kind === 'solid'
       ? solidFields(entry, entry.value, commit)
       : gradientFields(entry, entry.value, commit);
-    return [name.label, name.input, label, kind, ...controls];
+    const deletion = deletionControls();
+    return [name.label, name.input, label, kind, ...controls, ...deletion];
+  };
+  const deletionControls = (): HTMLElement[] => {
+    if (onDelete === undefined) return [];
+    const label = document.createElement('label');
+    label.textContent = 'Reassign to';
+    const replacement = document.createElement('select');
+    replacement.dataset['vigiliaPaletteReplacement'] = '';
+    for (const [id, entry] of Object.entries(palette)) {
+      if (id === selected) continue;
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = entry.name;
+      replacement.append(option);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Delete colour';
+    remove.dataset['vigiliaPaletteDelete'] = '';
+    remove.disabled = replacement.options.length === 0;
+    remove.addEventListener('click', () => {
+      if (replacement.value !== '') onDelete(selected, replacement.value);
+    });
+    return [label, replacement, remove];
   };
   select.addEventListener('change', () => {
     selected = select.value;

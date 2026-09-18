@@ -37,7 +37,7 @@ Current Vigilia-owned extensions are:
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Artboard size/preview fit/paint | `editor/src/artboard-panel.ts` |
-| Palette-token authoring | `editor/src/palette-panel.ts` |
+| Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring | `editor/src/type-preset-panel.ts` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
@@ -163,7 +163,6 @@ usage.
 
 Establish one owner when these become active work:
 
-- v2 reference reassignment editing;
 - editor live binding/runtime updates;
 - semantic layer UI;
 - artboard/asset/media property editing;

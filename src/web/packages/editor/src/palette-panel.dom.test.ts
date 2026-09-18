@@ -70,4 +70,22 @@ describe('palette panel', () => {
     expect(document.querySelector('[data-vigilia-palette-kind]')).toBeNull();
     expect(change).not.toHaveBeenCalled();
   });
+
+  it('requires a replacement before deleting a token', () => {
+    const remove = vi.fn();
+    const panel = createPalettePanel(document.body, vi.fn(), remove);
+    panel.render({
+      ...palette,
+      accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } },
+    });
+    const token = document.querySelector<HTMLSelectElement>('[data-vigilia-palette-token]')!;
+    token.value = 'background';
+    token.dispatchEvent(new Event('change'));
+
+    const replacement = document.querySelector<HTMLSelectElement>('[data-vigilia-palette-replacement]')!;
+    replacement.value = 'accent';
+    document.querySelector<HTMLButtonElement>('[data-vigilia-palette-delete]')!.click();
+
+    expect(remove).toHaveBeenCalledWith('background', 'accent');
+  });
 });

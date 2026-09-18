@@ -8,10 +8,10 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,272 passed across 76 files |
+| Unit tests | 1,273 passed across 76 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 17 active-fork editor tests passed; palette capture inspected |
+| Visual review | 19 active-fork editor tests passed; palette reassignment capture inspected |
 | Browser suite / size | 67 passed, 127 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
 This slice has current typecheck, unit, build, size, focused active-fork visual
@@ -61,8 +61,8 @@ evidence and a completed full browser suite.
   its persisted artboard control changes width, height, preview fit and existing
   palette background/bar tokens without rescaling Fabric object geometry.
 - The palette panel authors stable solid/linear-gradient tokens (including CSS
-  colour strings) and immediately repaints referenced artboard paints; deletion
-  remains unavailable until explicit reassignment exists.
+  colour strings), immediately repaints referenced artboard paints, and requires
+  reassignment before deleting a token.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Existing selected-chart bindings expose semantic key, precision, unit display,
@@ -89,7 +89,8 @@ evidence and a completed full browser suite.
   fields before envelope validation/export; active-fork captures include type
   preset authoring.
 - `scene-fabric` owns palette-reference reassignment across Fabric object paint
-  metadata and authored text runs; fork reassignment UI remains next.
+  metadata and authored text runs; the fork reassigns artboard references before
+  deleting the token.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 
@@ -108,8 +109,8 @@ evidence and a completed full browser suite.
 
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
-- Finish spec 0011: stable reference reassignment, remaining domain-property
-  editing and removal of transitional globals/literals.
+- Finish spec 0011: remaining domain-property editing and removal of
+  transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.
