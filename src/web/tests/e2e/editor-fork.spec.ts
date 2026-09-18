@@ -78,6 +78,39 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-artboard-literal-bar');
   });
 
+  test('renders palette gradients on the native Fabric artboard', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'gradient-artboard.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 2,
+        fabricVersion: '7.4.0',
+        id: 'gradient-artboard',
+        artboard: {
+          width: 1000,
+          height: 720,
+          background: { ref: 'palette.background' },
+          barColor: { ref: 'palette.bars' },
+        },
+        globals: {
+          palette: {
+            none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+            background: { name: 'Background', value: { kind: 'gradient', angle: 0, stops: [{ offset: 0, color: '#102030' }, { offset: 1, color: '#d0e0f0' }] } },
+            bars: { name: 'Bars', value: { kind: 'gradient', angle: 90, stops: [{ offset: 0, color: '#001122' }, { offset: 1, color: '#334455' }] } },
+          },
+        },
+        scene: { version: '7.4.0', objects: [] },
+      })),
+    });
+    await expect(page.locator('#status')).toHaveText('Opened gradient-artboard.json');
+    await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
+
+    await captureVisualReview(page, testInfo, 'editor-fork-artboard-gradient');
+  });
+
   test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

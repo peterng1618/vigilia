@@ -8,11 +8,11 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,256 passed across 73 files |
+| Unit tests | 1,259 passed across 74 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 15 active-fork editor tests passed; five refreshed captures inspected |
-| Browser suite / size | Size gate passed (260.3 KB gzip / 400 KB); full browser suite unverified because it emitted no final summary |
+| Visual review | 16 active-fork editor tests passed; gradient capture inspected |
+| Browser suite / size | Size gate passed (262.3 KB gzip / 400 KB); full browser suite unverified because it emitted no final summary |
 
 The prior full browser gate was 2026-09-18. This slice has current typecheck,
 unit, build, size and focused active-fork visual evidence; its full browser
@@ -74,8 +74,8 @@ suite emitted no final summary.
   saved geometry through fork history.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
   still transitional. `palette.none` and structured solid/linear-gradient
-  palette tokens are enforced in v2; type presets and palette authoring/rendering
-  controls remain pending.
+  palette tokens are enforced in v2 and artboard gradients render on player and
+  fork canvases; type presets and palette authoring controls remain pending.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 

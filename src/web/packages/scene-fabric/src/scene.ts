@@ -7,6 +7,7 @@ import {
 } from '@vigilia/renderer-core';
 import { createSceneAdapter, type SceneAdapter, type SceneAdapterOptions } from './adapter.js';
 import { clampRenderScale } from './render-scale.js';
+import { cssArtboardPaint } from './artboard-paint.js';
 
 /**
  * Owns the canvas element, viewport/artboard fit and DPR. `adapter.ts` owns plan
@@ -60,7 +61,7 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     });
 
     // Letterbox bars are host background, not artboard paint (§53).
-    host.style.background = asCss(plan.artboard.barColor) ?? '#000';
+    host.style.background = cssArtboardPaint(plan.artboard.barColor) ?? '#000';
     element.style.visibility = transform.isDegenerate ? 'hidden' : 'visible';
 
     if (transform.isDegenerate) {
@@ -119,7 +120,6 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     },
   };
 }
-
 /** Forward adapter options explicitly so scene-only options cannot leak through later. */
 function withoutHostAndPlan(options: FabricSceneOptions): Omit<SceneAdapterOptions, 'canvas'> {
   return {
@@ -127,8 +127,4 @@ function withoutHostAndPlan(options: FabricSceneOptions): Omit<SceneAdapterOptio
     ...(options.onAssetError === undefined ? {} : { onAssetError: options.onAssetError }),
     ...(options.onUnsupported === undefined ? {} : { onUnsupported: options.onUnsupported }),
   };
-}
-
-function asCss(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

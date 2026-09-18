@@ -19,6 +19,7 @@ import {
 import { isTextObject, updateText } from './fabric-text.js';
 import { drawnBox, withinGroup } from './placement.js';
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
+import { fabricArtboardPaint } from './artboard-paint.js';
 
 /**
  * Reconcile a pure `ScenePlan` onto existing Fabric objects. Revived scene
@@ -226,7 +227,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
 
 /** Apply artboard paint/clip; viewport transform belongs to `scene.ts`. */
 function applyArtboard(canvas: StaticCanvas, plan: ScenePlan): void {
-  canvas.backgroundColor = asCss(plan.artboard.background) ?? '';
+  canvas.backgroundColor = fabricArtboardPaint(plan.artboard.background, plan.artboard.width, plan.artboard.height) ?? '';
 
   const { width, height } = plan.artboard;
   const clip = canvas.clipPath;

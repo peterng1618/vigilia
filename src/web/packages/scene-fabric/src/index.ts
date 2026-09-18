@@ -7,6 +7,7 @@ export { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './c
 export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
 
 export { createSceneAdapter } from './adapter.js';
+export { cssArtboardPaint, fabricArtboardPaint } from './artboard-paint.js';
 
 export type { SerialisedScene } from './persist.js';
 

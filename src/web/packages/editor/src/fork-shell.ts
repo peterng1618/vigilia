@@ -7,6 +7,8 @@ import {
   reviveThemeEnvelope,
   serialiseThemeEnvelope,
   serialiseScene,
+  cssArtboardPaint,
+  fabricArtboardPaint,
   type SceneAdapter,
 } from '@vigilia/scene-fabric';
 
@@ -60,12 +62,11 @@ function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HT
 
 function applyArtboardPaint(editor: ImageEditor, host: HTMLElement, artboard: Artboard, globals: Globals | undefined): void {
   const issues: Parameters<typeof resolveStyleValue>[3] = [];
-  const resolve = (value: Artboard['background']): string | undefined => {
-    const resolved = resolveStyleValue(value, globals ?? {}, 'artboard', issues);
-    return typeof resolved === 'string' && resolved.length > 0 ? resolved : undefined;
+  const resolve = (value: Artboard['background']): unknown => {
+    return resolveStyleValue(value, globals ?? {}, 'artboard', issues);
   };
-  editor.canvas.backgroundColor = resolve(artboard.background) ?? '';
-  host.style.background = resolve(artboard.barColor) ?? '#000';
+  editor.canvas.backgroundColor = fabricArtboardPaint(resolve(artboard.background), artboard.width, artboard.height) ?? '';
+  host.style.background = cssArtboardPaint(resolve(artboard.barColor)) ?? '#000';
   editor.canvas.requestRenderAll();
 }
 
