@@ -108,6 +108,15 @@ describe('Fabric theme envelope validation', () => {
     })).toMatchObject({ ok: true });
   });
 
+  it('rejects resolved object paint without a palette reference', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { palette: { none: { name: 'None', value: { kind: 'solid', color: 'transparent' } }, ink: { name: 'Ink', value: { kind: 'solid', color: '#fff' } } } },
+      scene: { version: '7.4.0', objects: [{ type: 'Rect', id: 'box', fill: '#fff' }] },
+    });
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/fill' })]) });
+  });
+
   it('accepts typed presets as v2 globals', () => {
     expect(validateFabricThemeEnvelope({
       ...envelope(),

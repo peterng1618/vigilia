@@ -137,7 +137,12 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       editor,
       ...(scene === undefined ? {} : { scene }),
       snapshot(input) {
-        return serialiseThemeEnvelope(editor.canvas, input);
+        const next = serialiseThemeEnvelope(editor.canvas, input);
+        const validation = validateFabricThemeEnvelope(next);
+        if (!validation.ok) {
+          throw new Error(`Invalid Fabric theme: ${validation.issues[0]?.message ?? 'unknown validation error'}`);
+        }
+        return validation.envelope;
       },
       setArtboard(nextArtboard) {
         currentArtboard = nextArtboard;

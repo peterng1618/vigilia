@@ -42,11 +42,31 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   editorMetadata(input['editorMetadata'], issues);
   rejectGifAssets(input['assets'], issues);
   const sceneIds = scene(input['scene'], issues);
+  scenePaintReferences(input['scene'], input['globals'], issues);
   bindings(input['bindings'], sceneIds, issues);
 
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+/** Resolved Fabric paint is a cache; its authored owner is always a palette token. */
+function scenePaintReferences(scene: unknown, globals: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(scene) || !Array.isArray(scene['objects'])) return;
+  const palette = isRecord(globals) && isRecord(globals['palette']) ? globals['palette'] : undefined;
+  const visit = (object: unknown, path: string): void => {
+    if (!isRecord(object)) return;
+    const refs = isRecord(object['vigiliaPaint']) ? object['vigiliaPaint'] : undefined;
+    for (const property of ['fill', 'stroke'] as const) {
+      if (object[property] === undefined || object[property] === null || object[property] === '') continue;
+      const ref = refs?.[property];
+      if (typeof ref !== 'string' || !ref.startsWith('palette.') || palette?.[ref.slice('palette.'.length)] === undefined) {
+        issues.push(issue('unresolved-global-ref', `${path}/${property}`, `${property} must reference an existing palette token through vigiliaPaint.`));
+      }
+    }
+    if (Array.isArray(object['objects'])) object['objects'].forEach((child, index) => visit(child, `${path}/objects/${index}`));
+  };
+  scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
 }
 
 /** `palette.none` is the immutable transparent fallback for v2 authoring. */

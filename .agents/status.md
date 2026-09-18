@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,267 passed across 75 files |
+| Unit tests | 1,268 passed across 75 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 17 active-fork editor tests passed; palette capture inspected |
@@ -79,7 +79,8 @@ evidence and a completed full browser suite.
   tokens and fork palette authoring are implemented; type presets have a shared
   schema/reference contract. Raw Fabric objects can now persist palette-reference
   metadata and reapply it after revival; the starter scene uses palette and
-  type-preset references for its Fabric objects.
+  type-preset references for its Fabric objects. Envelope validation and export
+  reject resolved Fabric fill/stroke without a persisted palette reference.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 
