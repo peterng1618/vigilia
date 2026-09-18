@@ -78,8 +78,8 @@ evidence and a completed full browser suite.
   still transitional. `palette.none`, structured solid/linear-gradient palette
   tokens and fork palette authoring are implemented; type presets have a shared
   schema/reference contract. Raw Fabric objects can now persist palette-reference
-  metadata and reapply it after revival; the starter scene uses palette
-  references for Fabric object paint. Type references remain pending.
+  metadata and reapply it after revival; the starter scene uses palette and
+  type-preset references for its Fabric objects.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 

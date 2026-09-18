@@ -46,6 +46,21 @@ const paletteIds: Readonly<Record<string, keyof typeof starterPalette>> = {
   '#a98bff': 'purple', '#71e7c1': 'green', '#f3c879': 'gold', '#6ee1c0': 'signal', '#48d9b0': 'status',
 };
 
+const starterTypePresets = {
+  '11-400': { name: 'Caption', value: { family: 'Segoe UI, sans-serif', size: 11, weight: '400', lineHeight: 1.18 } },
+  '11-500': { name: 'Caption medium', value: { family: 'Segoe UI, sans-serif', size: 11, weight: '500', lineHeight: 1.18 } },
+  '12-400': { name: 'Overline', value: { family: 'Segoe UI, sans-serif', size: 12, weight: '400', lineHeight: 1.18 } },
+  '13-400': { name: 'Body small', value: { family: 'Segoe UI, sans-serif', size: 13, weight: '400', lineHeight: 1.18 } },
+  '13-600': { name: 'Section label', value: { family: 'Segoe UI, sans-serif', size: 13, weight: '600', lineHeight: 1.18 } },
+  '14-400': { name: 'Body', value: { family: 'Segoe UI, sans-serif', size: 14, weight: '400', lineHeight: 1.18 } },
+  '15-400': { name: 'Body large', value: { family: 'Segoe UI, sans-serif', size: 15, weight: '400', lineHeight: 1.18 } },
+  '16-400': { name: 'Date', value: { family: 'Segoe UI, sans-serif', size: 16, weight: '400', lineHeight: 1.18 } },
+  '17-500': { name: 'Period', value: { family: 'Segoe UI, sans-serif', size: 17, weight: '500', lineHeight: 1.18 } },
+  '32-500': { name: 'Wordmark', value: { family: 'Segoe UI, sans-serif', size: 32, weight: '500', lineHeight: 1.18 } },
+  '36-600': { name: 'Metric', value: { family: 'Segoe UI, sans-serif', size: 36, weight: '600', lineHeight: 1.18 } },
+  '70-300': { name: 'Clock', value: { family: 'Segoe UI, sans-serif', size: 70, weight: '300', lineHeight: 1.18 } },
+} as const;
+
 /** A mockup-inspired v2 starter scene, limited to currently revivable objects. */
 export function createNewFabricTheme(): FabricThemeEnvelope {
   return {
@@ -65,6 +80,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     },
     globals: {
       palette: starterPalette,
+      typePresets: starterTypePresets,
     },
     bindings: {
       'load-gauge': [{ id: 'cpu-load', semanticKey: 'cpu.load', precision: 0 }],
@@ -170,7 +186,13 @@ function circle(id: string, left: number, top: number, radius: number, fill: str
 }
 
 function label(id: string, left: number, top: number, width: number, value: string, fontSize: number, fill: string, fontWeight: string): ObjectJson {
-  return { type: 'Textbox', id, left, top, width, text: value, fontFamily: 'Segoe UI, sans-serif', fontSize, fontWeight, fill, lineHeight: 1.18, vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` }, ...positioned };
+  const typePreset = `typePresets.${fontSize}-${fontWeight}` as const;
+  return {
+    type: 'Textbox', id, left, top, width, text: value, fontFamily: 'Segoe UI, sans-serif', fontSize, fontWeight, fill, lineHeight: 1.18,
+    vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` },
+    vigiliaText: { runs: [{ kind: 'literal', text: value, typePreset, style: { color: { ref: `palette.${paletteIdFor(fill)}` } } }] },
+    ...positioned,
+  };
 }
 
 function path(id: string, left: number, top: number, points: PathData, colour: string, strokeWidth: number): ObjectJson {
