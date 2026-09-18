@@ -8,15 +8,14 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,259 passed across 74 files |
+| Unit tests | 1,262 passed across 75 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 16 active-fork editor tests passed; gradient capture inspected |
-| Browser suite / size | Size gate passed (262.3 KB gzip / 400 KB); full browser suite unverified because it emitted no final summary |
+| Visual review | 17 active-fork editor tests passed; palette capture inspected |
+| Browser suite / size | 67 passed, 127 expected skips; size gate passed (262.3 KB gzip / 400 KB) |
 
-The prior full browser gate was 2026-09-18. This slice has current typecheck,
-unit, build, size and focused active-fork visual evidence; its full browser
-suite emitted no final summary.
+This slice has current typecheck, unit, build, size, focused active-fork visual
+evidence and a completed full browser suite.
 
 ## Current product state
 
@@ -61,6 +60,9 @@ suite emitted no final summary.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
   its persisted artboard control changes width, height, preview fit and existing
   palette background/bar tokens without rescaling Fabric object geometry.
+- The palette panel authors stable solid/linear-gradient tokens (including CSS
+  colour strings) and immediately repaints referenced artboard paints; deletion
+  remains unavailable until explicit reassignment exists.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Existing selected-chart bindings expose semantic key, precision, unit display,
@@ -94,9 +96,8 @@ suite emitted no final summary.
 
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
-- Finish spec 0011: palette/type authoring controls, type presets, stable
-  reference UI, remaining domain-property editing and removal of transitional
-  globals/literals.
+- Finish spec 0011: type presets, stable reference UI, remaining domain-property
+  editing and removal of transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.

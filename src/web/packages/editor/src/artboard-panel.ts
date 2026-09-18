@@ -3,6 +3,7 @@ import { MAX_ARTBOARD_DIMENSION, type Artboard, type Globals } from '@vigilia/re
 export interface ArtboardPanel {
   readonly root: HTMLElement;
   render(artboard: Artboard): void;
+  setGlobals(globals: Globals | undefined): void;
 }
 
 /** Product-owned document preview controls; Fabric objects retain their geometry. */
@@ -26,8 +27,10 @@ export function createArtboardPanel(
     option.textContent = fitMode[0]!.toUpperCase() + fitMode.slice(1);
     select.append(option);
   }
-  const background = paletteInput('Background', 'background', globals);
-  const bars = paletteInput('Bar colour', 'barColor', globals);
+  const background = paletteInput('Background', 'background');
+  const bars = paletteInput('Bar colour', 'barColor');
+  refreshPaletteOptions(background.select, globals);
+  refreshPaletteOptions(bars.select, globals);
   let current: Artboard;
   const submit = (): void => {
     const nextWidth = Number(width.input.value);
@@ -73,18 +76,28 @@ export function createArtboardPanel(
   return {
     root,
     render,
+    setGlobals(nextGlobals) {
+      refreshPaletteOptions(background.select, nextGlobals);
+      refreshPaletteOptions(bars.select, nextGlobals);
+      render(current);
+    },
   };
 }
 
 function paletteInput(
   text: string,
   property: 'background' | 'barColor',
-  globals: Globals | undefined,
 ): { readonly label: HTMLLabelElement; readonly select: HTMLSelectElement } {
   const label = document.createElement('label');
   label.textContent = text;
   const select = document.createElement('select');
   select.dataset[`vigiliaArtboard${property[0]!.toUpperCase()}${property.slice(1)}`] = '';
+  return { label, select };
+}
+
+function refreshPaletteOptions(select: HTMLSelectElement, globals: Globals | undefined): void {
+  const value = select.value;
+  select.replaceChildren();
   const none = document.createElement('option');
   none.value = '';
   none.textContent = 'Not set';
@@ -95,7 +108,7 @@ function paletteInput(
     option.textContent = entry.name;
     select.append(option);
   }
-  return { label, select };
+  select.value = value;
 }
 
 function paletteReference(value: Artboard['background']): string {

@@ -1,6 +1,7 @@
-import type { Artboard, Binding, FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
+import type { Artboard, Binding, FabricPalette, FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
 import type { ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
+import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
 import { ShortcutManager } from '../shortcut-manager/index.js';
@@ -9,6 +10,7 @@ import { ShortcutManager } from '../shortcut-manager/index.js';
 export class ForkExtensions {
   readonly charts: ChartManager;
   readonly #artboard: ArtboardPanel;
+  readonly #palette: PalettePanel;
   readonly #persistence: PersistenceManager;
   readonly #shortcuts = new ShortcutManager();
   #envelope: FabricThemeEnvelopeInput;
@@ -32,6 +34,8 @@ export class ForkExtensions {
       (artboard) => this.#setArtboard(options.shell, artboard),
     );
     this.#artboard.render(this.#envelope.artboard);
+    this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette));
+    this.#palette.render(this.#envelope.globals?.palette);
     this.charts = new ChartManager({
       editor: options.shell.editor,
       scene: options.shell.scene,
@@ -54,6 +58,7 @@ export class ForkExtensions {
     this.#persistence.destroy();
     this.charts.destroy();
     this.#artboard.root.remove();
+    this.#palette.root.remove();
   }
 
   async #open(options: {
@@ -103,6 +108,13 @@ export class ForkExtensions {
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
     this.#envelope = { ...this.#envelope, bindings: { ...this.#envelope.bindings, [id]: bindings } };
+  }
+
+  #setPalette(shell: ForkShell, palette: FabricPalette): void {
+    this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, palette } };
+    shell.setGlobals(this.#envelope.globals);
+    this.#artboard.setGlobals(this.#envelope.globals);
+    this.#palette.render(palette);
   }
 
   #snapshot(shell: ForkShell) {

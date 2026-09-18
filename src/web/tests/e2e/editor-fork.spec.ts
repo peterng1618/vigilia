@@ -111,6 +111,22 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-artboard-gradient');
   });
 
+  test('edits an artboard palette token through the fork property surface', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-palette-token]').selectOption('background');
+    const color = page.locator('[data-vigilia-palette-color]');
+    await color.fill('rgb(16 32 48)');
+    await color.press('Tab');
+    await expect(color).toHaveValue('rgb(16 32 48)');
+
+    const envelope = await saveEnvelope(page) as { globals: { palette: { background: { value: unknown } } } };
+    expect(envelope.globals.palette.background.value).toEqual({ kind: 'solid', color: 'rgb(16 32 48)' });
+
+    await captureVisualReview(page, testInfo, 'editor-fork-palette-solid');
+  });
+
   test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

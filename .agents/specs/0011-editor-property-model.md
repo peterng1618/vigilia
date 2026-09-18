@@ -25,9 +25,9 @@ Author-facing geometry uses whole artboard units where practical.
 
 ### Colour is theme-level
 
-Final palette entries are named tokens containing rgba solids or gradients.
-Compatible element paint references tokens; per-instance opacity remains local.
-A gradient has editable rgba stops/positions plus one angle and spans the
+Final palette entries are named tokens containing CSS-compatible solids or
+gradients. Compatible element paint references tokens; per-instance opacity
+remains local. A gradient has editable colour stops/positions plus one angle and spans the
 object's rectangular bounding box before clipping.
 
 `palette.none` is reserved transparent fallback and cannot be deleted/renamed.
@@ -78,15 +78,16 @@ Implemented:
 - fork artboard control for persisted width/height, contain/cover preview and palette-token paint;
 - selected-chart binding controls for shared semantic keys, precision, unit display, scale and offset;
 - v2 palette validation reserves immutable transparent `palette.none`;
+- structured solid/gradient palette tokens, including CSS-compatible solid colours;
+- fork palette controls to add/edit stable tokens and gradient angles/stops;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:
 
 - current development v2 schema still permits local style values and still has
   `fonts`/`fontSizes` global groups;
-- palette solid/gradient token schema;
 - type-preset schema;
-- domain property UI for tokens/types, artboard, bindings and assets;
+- domain property UI for types and assets;
 - final reference traversal/reassignment UI.
 
 Because nothing has been released, the development v2 semantic shape may break

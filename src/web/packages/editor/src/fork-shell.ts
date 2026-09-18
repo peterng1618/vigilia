@@ -25,6 +25,7 @@ export interface ForkShell {
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
+  setGlobals(globals: Globals | undefined): void;
   setFitMode(fitMode: FitMode): void;
   destroy(): void;
 }
@@ -89,7 +90,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   container.style.margin = 'auto';
   container.style.visibility = 'hidden';
   let currentArtboard = artboard;
-  const globals = envelope?.globals;
+  let globals: Globals | undefined = envelope?.globals;
   let fitMode: FitMode = currentArtboard.fitMode ?? 'contain';
   const initialScale = fitArtboardViewport(container, host, currentArtboard, fitMode);
   host.append(container);
@@ -140,6 +141,10 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
         currentArtboard = nextArtboard;
         fitMode = currentArtboard.fitMode ?? 'contain';
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+        applyArtboardPaint(editor, host, currentArtboard, globals);
+      },
+      setGlobals(nextGlobals) {
+        globals = nextGlobals;
         applyArtboardPaint(editor, host, currentArtboard, globals);
       },
       setFitMode(nextFitMode) {
