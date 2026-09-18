@@ -127,6 +127,21 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-palette-solid');
   });
 
+  test('edits a global type preset through the fork property surface', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-type-preset]').selectOption('32-500');
+    const size = page.locator('[data-vigilia-type-size]');
+    await size.fill('34');
+    await size.press('Tab');
+    await expect(size).toHaveValue('34');
+
+    const envelope = await saveEnvelope(page) as { globals: { typePresets: { '32-500': { value: { size: number } } } } };
+    expect(envelope.globals.typePresets['32-500'].value.size).toBe(34);
+    await captureVisualReview(page, testInfo, 'editor-fork-type-preset');
+  });
+
   test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
@@ -256,9 +271,10 @@ test.describe('Fabric editor route', () => {
         fabricVersion: '7.4.0',
         id: 'movable',
         artboard: { width: 320, height: 180 },
+        globals: { palette: { none: { name: 'None', value: { kind: 'solid', color: 'transparent' } }, accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } } } },
         scene: {
           version: '7.4.0',
-          objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, fill: '#00b8d9', originX: 'left', originY: 'top' }],
+          objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, fill: '#00b8d9', vigiliaPaint: { fill: 'palette.accent' }, originX: 'left', originY: 'top' }],
         },
       })),
     });

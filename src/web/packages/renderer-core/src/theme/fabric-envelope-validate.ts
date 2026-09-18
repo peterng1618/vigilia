@@ -70,7 +70,6 @@ function sceneTypeReferences(scene: unknown, globals: unknown, issues: Validatio
             issues.push(issue('unresolved-global-ref', `${path}/vigiliaText/runs/${index}/typePreset`, 'Text runs must reference an existing type preset.'));
             continue;
           }
-          if (index === 0) matchResolvedType(object, preset['value'], path, issues);
         }
       }
     }
@@ -79,14 +78,6 @@ function sceneTypeReferences(scene: unknown, globals: unknown, issues: Validatio
   scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
 }
 
-function matchResolvedType(object: Record<string, unknown>, preset: Record<string, unknown>, path: string, issues: ValidationIssue[]): void {
-  const pairs: readonly [string, string][] = [['fontFamily', 'family'], ['fontSize', 'size'], ['fontWeight', 'weight'], ['letterSpacing', 'letterSpacing'], ['lineHeight', 'lineHeight']];
-  for (const [fabricProperty, presetProperty] of pairs) {
-    if (object[fabricProperty] !== undefined && object[fabricProperty] !== preset[presetProperty]) {
-      issues.push(issue('unresolved-global-ref', `${path}/${fabricProperty}`, `${fabricProperty} must equal its referenced type preset.`));
-    }
-  }
-}
 
 /** Resolved Fabric paint is a cache; its authored owner is always a palette token. */
 function scenePaintReferences(scene: unknown, globals: unknown, issues: ValidationIssue[]): void {

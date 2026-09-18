@@ -85,6 +85,9 @@ evidence and a completed full browser suite.
   reapply both resolved object paint and first-run text type cache.
 - Fork type-preset controls edit global family, size, weight and line-height
   values; referenced starter text updates without local type settings.
+- Canonical scene serialization removes Fabric's in-memory undefined gradient
+  fields before envelope validation/export; active-fork captures include type
+  preset authoring.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 

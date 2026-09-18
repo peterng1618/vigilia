@@ -29,8 +29,9 @@ export interface SerialisedScene {
 export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   // Keep the canvas in the same mode so stray serialization cannot emit a different shape.
   canvas.includeDefaultValues = false;
-
-  return canvas.toObject([...SCENE_PERSISTED_PROPERTIES]) as SerialisedScene;
+  // Fabric gradients retain undefined transform entries in memory; JSON export
+  // is canonical persisted state, so normalize through JSON before validation.
+  return JSON.parse(JSON.stringify(canvas.toObject([...SCENE_PERSISTED_PROPERTIES]))) as SerialisedScene;
 }
 
 /** Save the product envelope and Fabric object tree through their single owners. */

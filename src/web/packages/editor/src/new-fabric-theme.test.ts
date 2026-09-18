@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StaticCanvas } from 'fabric/es';
-import { reviveThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
+import { reviveThemeEnvelope, serialiseThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
 import { describe, expect, it } from 'vitest';
 import { validateFabricThemeEnvelope } from '@vigilia/renderer-core';
 import { createNewFabricTheme } from './new-fabric-theme.js';
@@ -35,6 +35,10 @@ describe('the new Fabric document', () => {
 
     expect(canvas.getObjects().find((object) => object.get('id') === 'background')?.fill).toMatchObject({ type: 'linear' });
     expect(canvas.getObjects().filter((object) => object instanceof VigiliaChart)).toHaveLength(4);
+    const saved = serialiseThemeEnvelope(canvas, theme);
+    const validation = validateFabricThemeEnvelope(saved);
+    if (!validation.ok) throw new Error(validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'));
+    expect(validation).toMatchObject({ ok: true });
     canvas.dispose();
   });
 });
