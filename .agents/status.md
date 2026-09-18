@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,271 passed across 76 files |
+| Unit tests | 1,272 passed across 76 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 17 active-fork editor tests passed; palette capture inspected |
@@ -88,6 +88,8 @@ evidence and a completed full browser suite.
 - Canonical scene serialization removes Fabric's in-memory undefined gradient
   fields before envelope validation/export; active-fork captures include type
   preset authoring.
+- `scene-fabric` owns palette-reference reassignment across Fabric object paint
+  metadata and authored text runs; fork reassignment UI remains next.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 

@@ -10,6 +10,7 @@ export { createSceneAdapter } from './adapter.js';
 export { cssArtboardPaint, fabricArtboardPaint } from './artboard-paint.js';
 export { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY, type FabricPaintRefs } from './object-paint.js';
 export { applyObjectTypePresets } from './object-type.js';
+export { reassignObjectPaletteReferences } from './palette-references.js';
 
 export type { SerialisedScene } from './persist.js';
 
