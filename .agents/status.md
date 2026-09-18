@@ -12,7 +12,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 20 active-fork editor tests passed; type reassignment capture inspected |
-| Browser suite / size | 69 passed, 131 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
+| Browser suite / size | 69 passed, 23 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
 The current cleanup slice has current typecheck, unit, build, size, focused
 active-fork visual evidence and a completed full browser suite.
@@ -57,6 +57,8 @@ active-fork visual evidence and a completed full browser suite.
   active editor entry remains `fork-main.ts`.
 - The editor package barrel exposes only the adopted fork shell; legacy
   DOM-editor utilities are no longer public API.
+- The skipped legacy DOM-editor browser suite is deleted; `editor-fork.spec.ts`
+  is the active editor browser contract.
 - Visual-review coverage renders only the active fork route; obsolete fallback
   editor/globals/inspector captures were removed.
 - Product property extensions render in the dedicated sidebar, so selected-chart
