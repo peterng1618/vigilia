@@ -160,6 +160,25 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-type-preset');
   });
 
+  test('reassigns text type presets before deleting one', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-type-preset]').selectOption('11-400');
+    await page.locator('[data-vigilia-type-replacement]').selectOption('11-500');
+    await page.locator('[data-vigilia-type-delete]').scrollIntoViewIfNeeded();
+    await captureVisualReview(page, testInfo, 'editor-fork-type-reassignment');
+    await page.locator('[data-vigilia-type-delete]').click();
+    await expect(page.locator('[data-vigilia-type-preset] option[value="11-400"]')).toHaveCount(0);
+
+    const envelope = await saveEnvelope(page) as {
+      globals: { typePresets: Record<string, unknown> };
+      scene: { objects: Array<{ id?: string; vigiliaText?: { runs: Array<{ typePreset?: string }> } }> };
+    };
+    expect(envelope.globals.typePresets['11-400']).toBeUndefined();
+    expect(envelope.scene.objects.find((object) => object.id === 'trend-legend')?.vigiliaText?.runs[0]?.typePreset).toBe('typePresets.11-500');
+  });
+
   test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

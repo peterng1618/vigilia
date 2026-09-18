@@ -13,7 +13,7 @@ import {
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 import { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY } from './object-paint.js';
-import { applyObjectTypePresets } from './object-type.js';
+import { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
 import { reassignObjectPaletteReferences } from './palette-references.js';
 import {
   assertFabricThemeEnvelopeCompatible,
@@ -224,6 +224,22 @@ describe('identity survives a round trip', () => {
     expect(reassignObjectPaletteReferences(canvas, 'palette.old', 'palette.new')).toBe(2);
     expect(text.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: 'palette.new' });
     expect(text.get(VIGILIA_TEXT_PROPERTY)).toMatchObject({ runs: [{ style: { color: { ref: 'palette.new' } } }] });
+  });
+
+  it('reassigns every authored text-run type preset before deletion', () => {
+    const text = new Textbox('CPU 42%');
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [
+        { kind: 'literal', text: 'CPU ', typePreset: 'typePresets.old' },
+        { kind: 'literal', text: '42%', typePreset: 'typePresets.old' },
+      ],
+    });
+    const canvas = canvasOf(text);
+
+    expect(reassignObjectTypePresetReferences(canvas, 'typePresets.old', 'typePresets.new')).toBe(2);
+    expect(text.get(VIGILIA_TEXT_PROPERTY)).toMatchObject({
+      runs: [{ typePreset: 'typePresets.new' }, { typePreset: 'typePresets.new' }],
+    });
   });
 
   it('keeps authored text runs available after Fabric revival', async () => {

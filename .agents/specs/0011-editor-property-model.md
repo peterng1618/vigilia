@@ -85,6 +85,7 @@ Implemented:
 - type-preset schema/reference validation and per-run shared-plan resolution;
 - persisted Fabric palette/type references with validated save/open semantics;
 - fork type-preset controls for global family, size, weight and line height;
+- type-preset reassignment/deletion across every authored text run;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:

@@ -8,11 +8,11 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,273 passed across 76 files |
+| Unit tests | 1,275 passed across 76 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 19 active-fork editor tests passed; palette reassignment capture inspected |
-| Browser suite / size | 67 passed, 127 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
+| Visual review | 20 active-fork editor tests passed; type reassignment capture inspected |
+| Browser suite / size | 69 passed, 127 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
 This slice has current typecheck, unit, build, size, focused active-fork visual
 evidence and a completed full browser suite.
@@ -84,13 +84,16 @@ evidence and a completed full browser suite.
   resolved text type without an authored type-preset reference. Global changes
   reapply both resolved object paint and first-run text type cache.
 - Fork type-preset controls edit global family, size, weight and line-height
-  values; referenced starter text updates without local type settings.
+  values; they require reassignment before deletion, and referenced starter text
+  updates without local type settings.
 - Canonical scene serialization removes Fabric's in-memory undefined gradient
   fields before envelope validation/export; active-fork captures include type
   preset authoring.
 - `scene-fabric` owns palette-reference reassignment across Fabric object paint
   metadata and authored text runs; the fork reassigns artboard references before
   deleting the token.
+- `scene-fabric` owns type-preset reassignment across every authored text run;
+  the fork reassigns those runs before deleting the preset.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 

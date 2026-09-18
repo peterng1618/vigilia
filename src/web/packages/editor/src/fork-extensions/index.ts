@@ -2,7 +2,7 @@ import type { Artboard, Binding, FabricPalette, FabricThemeEnvelopeInput, Sample
 import type { ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
-import { reassignObjectPaletteReferences } from '@vigilia/scene-fabric';
+import { reassignObjectPaletteReferences, reassignObjectTypePresetReferences } from '@vigilia/scene-fabric';
 import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
@@ -39,7 +39,11 @@ export class ForkExtensions {
     this.#artboard.render(this.#envelope.artboard);
     this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette), (id, replacement) => this.#deletePalette(options.shell, id, replacement));
     this.#palette.render(this.#envelope.globals?.palette);
-    this.#types = createTypePresetPanel(options.panelHost, (presets) => this.#setTypes(options.shell, presets));
+    this.#types = createTypePresetPanel(
+      options.panelHost,
+      (presets) => this.#setTypes(options.shell, presets),
+      (id, replacement) => this.#deleteType(options.shell, id, replacement),
+    );
     this.#types.render(this.#envelope.globals?.typePresets as TypePresets | undefined);
     this.charts = new ChartManager({
       editor: options.shell.editor,
@@ -147,6 +151,18 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
     shell.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
+  }
+
+  #deleteType(shell: ForkShell, id: string, replacement: string): void {
+    if (id === replacement) return;
+    const from = `typePresets.${id}` as const;
+    const to = `typePresets.${replacement}` as const;
+    reassignObjectTypePresetReferences(shell.editor.canvas, from, to);
+    const typePresets = { ...this.#envelope.globals?.typePresets };
+    delete typePresets[id];
+    this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
+    shell.setGlobals(this.#envelope.globals);
+    this.#types.render(typePresets as TypePresets);
   }
 
   #snapshot(shell: ForkShell) {
