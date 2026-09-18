@@ -42,14 +42,18 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
   });
 
-  test('persists the selected artboard preview fit mode', async ({ page }, testInfo) => {
+  test('persists artboard properties without rescaling Fabric objects', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
     await page.locator('[data-vigilia-artboard-fit-mode]').selectOption('cover');
+    await page.locator('[data-vigilia-artboard-width]').fill('1000');
+    await page.locator('[data-vigilia-artboard-width]').press('Tab');
 
-    const envelope = await saveEnvelope(page) as { artboard: { fitMode?: string } };
+    const envelope = await saveEnvelope(page) as { artboard: { fitMode?: string; width: number }; scene: { objects: Array<{ id?: string; left?: number }> } };
     expect(envelope.artboard.fitMode).toBe('cover');
+    expect(envelope.artboard.width).toBe(1000);
+    expect(leftFor(envelope, 'wordmark')).toBe(54);
   });
 
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {

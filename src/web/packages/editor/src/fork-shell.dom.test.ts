@@ -40,6 +40,10 @@ describe('the adopted editor shell', () => {
     shell.setFitMode('cover');
     expect(editor.canvas.setDimensions).toHaveBeenLastCalledWith({ width: 1066.6666666666667, height: 600 });
     expect(editor.canvas.setViewportTransform).toHaveBeenLastCalledWith([0.8333333333333334, 0, 0, 0.8333333333333334, 0, 0]);
+
+    shell.setArtboard({ width: 800, height: 600 });
+    expect(editor.canvas.setDimensions).toHaveBeenLastCalledWith({ width: 800, height: 600 });
+    expect(editor.canvas.setViewportTransform).toHaveBeenLastCalledWith([1, 0, 0, 1, 0, 0]);
   });
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {

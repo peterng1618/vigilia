@@ -22,6 +22,7 @@ export interface ForkShell {
   readonly editor: ImageEditor;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
+  setArtboard(artboard: Artboard): void;
   setFitMode(fitMode: FitMode): void;
   destroy(): void;
 }
@@ -75,14 +76,15 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   container.style.inset = '0';
   container.style.margin = 'auto';
   container.style.visibility = 'hidden';
-  let fitMode: FitMode = artboard.fitMode ?? 'contain';
-  const initialScale = fitArtboardViewport(container, host, artboard, fitMode);
+  let currentArtboard = artboard;
+  let fitMode: FitMode = currentArtboard.fitMode ?? 'contain';
+  const initialScale = fitArtboardViewport(container, host, currentArtboard, fitMode);
   host.append(container);
   let mounted: ImageEditor | undefined;
   const resize = typeof ResizeObserver === 'undefined'
     ? undefined
     : new ResizeObserver(() => {
-      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, artboard, fitMode);
+      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, currentArtboard, fitMode);
     });
   resize?.observe(host);
 
@@ -98,7 +100,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       reviveHistoryState: reviveScene,
     });
     mounted = editor;
-    fitCanvasViewport(editor, container, host, artboard, fitMode);
+    fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
 
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
@@ -120,9 +122,14 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       snapshot(input) {
         return serialiseThemeEnvelope(editor.canvas, input);
       },
+      setArtboard(nextArtboard) {
+        currentArtboard = nextArtboard;
+        fitMode = currentArtboard.fitMode ?? 'contain';
+        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+      },
       setFitMode(nextFitMode) {
         fitMode = nextFitMode;
-        fitCanvasViewport(editor, container, host, artboard, fitMode);
+        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
       },
       destroy() {
         resize?.disconnect();

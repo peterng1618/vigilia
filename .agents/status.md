@@ -51,9 +51,10 @@ shows the static dashboard demo at usable stage size.
   Save/Discard/Cancel before replacing dirty work. Ctrl/Cmd+N creates a fresh
   v2 dashboard document through the same guard.
 - Current Vigilia extensions are the chart, persistence, shortcut and artboard
-  preview-fit controls composed by `ForkExtensions`.
+  size/preview controls composed by `ForkExtensions`.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
-  the persisted artboard control can switch the editor preview to cover.
+  its persisted artboard control can change width, height and preview fit
+  without rescaling Fabric object geometry.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Startup creates and revives a static v2 dashboard envelope directly, including
