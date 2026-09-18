@@ -75,6 +75,7 @@ Implemented:
 - one chart-setting descriptor owner in `renderer-core`;
 - fork chart panel for scalar settings on one selected `VigiliaChart`;
 - fork artboard control for persisted width/height and contain/cover preview;
+- selected-chart binding controls from the shared semantic-key vocabulary;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:

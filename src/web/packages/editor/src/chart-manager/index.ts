@@ -14,7 +14,7 @@ export class ChartManager {
   readonly #scene: SceneAdapter;
   readonly #source: SampleSource;
   readonly #panel;
-  readonly #bindings: Readonly<Record<string, readonly Binding[]>>;
+  #bindings: Readonly<Record<string, readonly Binding[]>>;
 
   constructor(options: {
     readonly editor: ImageEditor;
@@ -22,12 +22,17 @@ export class ChartManager {
     readonly source: SampleSource;
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
     readonly panelHost: HTMLElement;
+    readonly onBindingsChange?: (id: string, bindings: readonly Binding[]) => void;
   }) {
     this.#editor = options.editor;
     this.#scene = options.scene;
     this.#source = options.source;
     this.#bindings = options.bindings ?? {};
-    this.#panel = createForkChartPanel(options.panelHost, (id, settings) => this.#updateSettings(id, settings));
+    this.#panel = createForkChartPanel(
+      options.panelHost,
+      (id, settings) => this.#updateSettings(id, settings),
+      (id, bindingId, semanticKey) => this.#updateBinding(id, bindingId, semanticKey, options.onBindingsChange),
+    );
     this.#editor.canvas.on('selection:created', this.#drawPanel);
     this.#editor.canvas.on('selection:updated', this.#drawPanel);
     this.#editor.canvas.on('selection:cleared', this.#drawPanel);
@@ -47,7 +52,11 @@ export class ChartManager {
     const id = chart?.get('id');
     this.#panel.render(chart === undefined || typeof id !== 'string'
       ? undefined
-      : { id, content: { family: chart.family, settings: chart.settings } as ChartContent });
+      : {
+        id,
+        content: { family: chart.family, settings: chart.settings } as ChartContent,
+        bindings: this.#bindings[id] ?? [],
+      });
   };
 
   #updateSettings(id: string, settings: ChartContent['settings']): void {
@@ -58,6 +67,22 @@ export class ChartManager {
       this.#applyChart(id, chart);
       this.#editor.canvas.requestRenderAll();
     }
+    this.#drawPanel();
+  }
+
+  #updateBinding(
+    id: string,
+    bindingId: string,
+    semanticKey: string,
+    onBindingsChange: ((id: string, bindings: readonly Binding[]) => void) | undefined,
+  ): void {
+    const current = this.#bindings[id] ?? [];
+    const bindings = current.map((binding) => binding.id === bindingId ? { ...binding, semanticKey } : binding);
+    this.#bindings = { ...this.#bindings, [id]: bindings };
+    const chart = this.#scene.objectFor(id);
+    if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
+    this.#editor.canvas.requestRenderAll();
+    onBindingsChange?.(id, bindings);
     this.#drawPanel();
   }
 

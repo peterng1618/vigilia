@@ -5,7 +5,7 @@ import { createForkChartPanel } from './chart-manager/panel.js';
 describe('fork chart property panel', () => {
   it('derives controls from the shared field descriptors and returns authored settings', () => {
     const change = vi.fn();
-    const panel = createForkChartPanel(document.body, change);
+    const panel = createForkChartPanel(document.body, change, vi.fn());
     const content = {
       family: 'gauge' as const,
       settings: {
@@ -14,7 +14,7 @@ describe('fork chart property panel', () => {
       },
     };
 
-    panel.render({ id: 'cpu-gauge', content });
+    panel.render({ id: 'cpu-gauge', content, bindings: [{ id: 'cpu', semanticKey: 'cpu.load' }] });
 
     const thickness = panel.root.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!;
     expect(thickness.value).toBe('10');

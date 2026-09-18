@@ -56,6 +56,20 @@ test.describe('Fabric editor route', () => {
     expect(leftFor(envelope, 'wordmark')).toBe(54);
   });
 
+  test('persists a selected chart binding', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    const box = await page.locator('#vigilia-fabric-editor canvas.upper-canvas').boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) return;
+    await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
+    await page.locator('[data-vigilia-binding="cpu-load"]').selectOption('ram.used');
+
+    const envelope = await saveEnvelope(page) as { bindings: Record<string, Array<{ id: string; semanticKey: string }>> };
+    expect(envelope.bindings['load-gauge']).toContainEqual({ id: 'cpu-load', semanticKey: 'ram.used', precision: 0 });
+  });
+
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

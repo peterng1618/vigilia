@@ -57,6 +57,8 @@ shows the static dashboard demo at usable stage size.
   without rescaling Fabric object geometry.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
+- Selected-chart bindings use the shared semantic-key vocabulary, repaint the
+  live chart, and persist as envelope data.
 - Startup creates and revives a static v2 dashboard envelope directly, including
   supported gradients, SVG-derived paths and all four chart families. The legacy
   demo theme/`ScenePlan` path no longer mounts the interactive editor.

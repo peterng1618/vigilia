@@ -1,4 +1,4 @@
-import type { Artboard, FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
+import type { Artboard, Binding, FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
 import type { ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
@@ -34,6 +34,7 @@ export class ForkExtensions {
       source: options.source,
       ...(options.envelope.bindings === undefined ? {} : { bindings: options.envelope.bindings }),
       panelHost: options.panelHost,
+      onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
     this.#persistence = new PersistenceManager(this.#snapshot(options.shell));
     this.#shortcuts.register('file.save', () => {
@@ -94,6 +95,10 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, artboard };
     shell.setArtboard(artboard);
     this.#artboard.render(artboard);
+  }
+
+  #setBindings(id: string, bindings: readonly Binding[]): void {
+    this.#envelope = { ...this.#envelope, bindings: { ...this.#envelope.bindings, [id]: bindings } };
   }
 
   #snapshot(shell: ForkShell) {

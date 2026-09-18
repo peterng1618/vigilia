@@ -30,6 +30,11 @@ describe('ChartManager', () => {
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
 
     listeners.get('selection:created')!();
+    const binding = document.querySelector<HTMLSelectElement>('[data-vigilia-binding="cpu"]')!;
+    binding.value = 'ram.used';
+    binding.dispatchEvent(new Event('change'));
+    expect(chart.option).toMatchObject({ series: expect.any(Array) });
+
     const thickness = document.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!;
     thickness.value = '24';
     thickness.dispatchEvent(new Event('change'));

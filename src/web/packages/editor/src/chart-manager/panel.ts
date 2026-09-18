@@ -1,13 +1,14 @@
-import { settingsFieldsFor, type ChartContent } from '@vigilia/renderer-core';
+import { SEMANTIC_KEYS, settingsFieldsFor, type Binding, type ChartContent } from '@vigilia/renderer-core';
 
 export interface ForkChartPanel {
   readonly root: HTMLElement;
-  render(chart: { readonly id: string; readonly content: ChartContent } | undefined): void;
+  render(chart: { readonly id: string; readonly content: ChartContent; readonly bindings: readonly Binding[] } | undefined): void;
 }
 
 export function createForkChartPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent['settings']) => void,
+  onBindingChange: (id: string, bindingId: string, semanticKey: string) => void,
 ): ForkChartPanel {
   const root = document.createElement('section');
   host.append(root);
@@ -23,6 +24,22 @@ export function createForkChartPanel(
       const heading = document.createElement('h2');
       heading.textContent = `${chart.content.family} chart`;
       root.append(heading);
+      for (const binding of chart.bindings) {
+        const label = document.createElement('label');
+        label.textContent = `Binding: ${binding.id}`;
+        const select = document.createElement('select');
+        select.dataset['vigiliaBinding'] = binding.id;
+        const keys = new Set([binding.semanticKey, ...SEMANTIC_KEYS.map((descriptor) => descriptor.key)]);
+        for (const key of keys) {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = SEMANTIC_KEYS.find((descriptor) => descriptor.key === key)?.label ?? key;
+          select.append(option);
+        }
+        select.value = binding.semanticKey;
+        select.addEventListener('change', () => onBindingChange(chart.id, binding.id, select.value));
+        root.append(label, select);
+      }
       for (const field of settingsFieldsFor(chart.content.family)) {
         const label = document.createElement('label');
         label.textContent = field.label;
