@@ -34,38 +34,25 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
-    "styleValue": {
-      "oneOf": [
-        { "type": "object", "additionalProperties": false, "required": ["ref"], "properties": { "ref": { "type": "string", "pattern": "^(palette|fonts|fontSizes|spacing|assets)\\.[A-Za-z0-9_-]{1,64}$" } } },
-        { "type": "object", "additionalProperties": false, "required": ["value"], "properties": { "value": { "$ref": "#/$defs/jsonValue" } } }
-      ]
+    "paletteReference": {
+      "type": "object", "additionalProperties": false, "required": ["ref"],
+      "properties": { "ref": { "type": "string", "pattern": "^palette\\.[A-Za-z0-9_-]{1,64}$" } }
     },
     "artboard": {
       "type": "object", "additionalProperties": false, "required": ["width", "height"],
       "properties": {
         "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
         "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
-        "background": { "$ref": "#/$defs/styleValue" },
+        "background": { "$ref": "#/$defs/paletteReference" },
         "fitMode": { "enum": ["contain", "cover"] },
-        "barColor": { "$ref": "#/$defs/styleValue" }
+        "barColor": { "$ref": "#/$defs/paletteReference" }
       }
     },
     "globals": {
       "type": "object", "additionalProperties": false,
       "properties": {
         "palette": { "$ref": "#/$defs/paletteGroup" },
-        "typePresets": { "$ref": "#/$defs/typePresetGroup" },
-        "fonts": { "$ref": "#/$defs/globalGroup" },
-        "fontSizes": { "$ref": "#/$defs/globalGroup" },
-        "spacing": { "$ref": "#/$defs/globalGroup" },
-        "assets": { "$ref": "#/$defs/globalGroup" }
-      }
-    },
-    "globalGroup": {
-      "type": "object", "propertyNames": { "$ref": "#/$defs/stableId" },
-      "additionalProperties": {
-        "type": "object", "additionalProperties": false, "required": ["name", "value"],
-        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/jsonValue" } }
+        "typePresets": { "$ref": "#/$defs/typePresetGroup" }
       }
     },
     "paletteGroup": {

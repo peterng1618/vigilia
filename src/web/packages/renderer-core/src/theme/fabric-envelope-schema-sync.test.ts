@@ -49,12 +49,18 @@ describe('published Fabric theme schema', () => {
     expect(paint['oneOf']).toHaveLength(2);
   });
 
-  it('publishes typed typography presets separately from style references', () => {
+  it('publishes only v2 palette/type-preset globals and palette artboard paint', () => {
     const document = schema();
     const globals = document.$defs['globals']!['properties'] as Record<string, Record<string, unknown>>;
     const preset = document.$defs['typePreset']!;
+    const artboard = document.$defs['artboard']!['properties'] as Record<string, Record<string, unknown>>;
 
+    expect(Object.keys(globals)).toEqual(['palette', 'typePresets']);
     expect(globals['typePresets']).toEqual({ $ref: '#/$defs/typePresetGroup' });
     expect(preset['required']).toEqual(['family', 'size']);
+    expect(artboard['background']).toEqual({ $ref: '#/$defs/paletteReference' });
+    expect(artboard['barColor']).toEqual({ $ref: '#/$defs/paletteReference' });
+    expect(document.$defs['styleValue']).toBeUndefined();
+    expect(document.$defs['globalGroup']).toBeUndefined();
   });
 });
