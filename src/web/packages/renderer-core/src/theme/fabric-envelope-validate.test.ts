@@ -132,4 +132,39 @@ describe('Fabric theme envelope validation', () => {
       globals: { typePresets: { metric: { name: 'Metric', value: { family: 'Inter', size: 32, weight: 700, lineHeight: 1.1 } } } },
     })).toMatchObject({ ok: true });
   });
+
+  it('rejects transitional globals and literal artboard paint', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      artboard: { width: 400, height: 300, background: { value: '#101216' } },
+      globals: { fonts: { body: { name: 'Body', value: 'Inter' } } },
+    });
+
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ code: 'unknown-field', path: '/globals/fonts' }),
+      expect.objectContaining({ code: 'unresolved-global-ref', path: '/artboard/background' }),
+    ]) });
+  });
+
+  it('rejects local text-run colour and type settings', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: {
+        palette: { none: { name: 'None', value: { kind: 'solid', color: 'transparent' } }, text: { name: 'Text', value: { kind: 'solid', color: '#fff' } } },
+        typePresets: { body: { name: 'Body', value: { family: 'Inter', size: 16 } } },
+      },
+      scene: {
+        version: '7.4.0',
+        objects: [{
+          type: 'Textbox', id: 'label', fill: '#fff', vigiliaPaint: { fill: 'palette.text' },
+          vigiliaText: { runs: [{ kind: 'literal', text: 'CPU', typePreset: 'typePresets.body', style: { color: { value: '#fff' }, fontSize: { value: 16 } } }] },
+        }],
+      },
+    });
+
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ code: 'unknown-field', path: '/scene/objects/0/vigiliaText/runs/0/style/fontSize' }),
+      expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/vigiliaText/runs/0/style/color' }),
+    ]) });
+  });
 });

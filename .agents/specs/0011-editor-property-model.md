@@ -86,6 +86,7 @@ Implemented:
 - persisted Fabric palette/type references with validated save/open semantics;
 - fork type-preset controls for global family, size, weight and line height;
 - type-preset reassignment/deletion across every authored text run;
+- v2 validation rejects legacy global groups and local artboard/text paint or type values;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:

@@ -93,10 +93,9 @@ parallel simplified scene tree.
 runtime mismatch is refused before revival. Runtime samples, ECharts options and
 render scale are never persisted.
 
-The v2 **scene ownership** is implemented. The v2 globals/property semantics are
-not final yet: the current schema still carries transitional `fonts`/
-`fontSizes` groups and local style values. Spec 0011 owns that remaining break.
-No external compatibility promise exists before the first release.
+The v2 **scene ownership** and palette/type-preset semantics are implemented.
+Envelope validation rejects legacy global groups and local paint/type values. No
+external compatibility promise exists before the first release.
 
 ## Rendering boundaries
 

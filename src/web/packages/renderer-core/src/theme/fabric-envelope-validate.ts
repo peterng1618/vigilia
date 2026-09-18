@@ -37,6 +37,8 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
     issues.push(issue('wrong-type', '/fabricVersion', 'fabricVersion must be a pinned major.minor.patch version.'));
   }
   issues.push(...sharedSemanticIssues(input));
+  v2Globals(input['globals'], issues);
+  artboardPaintReferences(input['artboard'], input['globals'], issues);
   paletteNone(input['globals'], issues);
   palettePaints(input['globals'], issues);
   editorMetadata(input['editorMetadata'], issues);
@@ -55,20 +57,30 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
 function sceneTypeReferences(scene: unknown, globals: unknown, issues: ValidationIssue[]): void {
   if (!isRecord(scene) || !Array.isArray(scene['objects'])) return;
   const presets = isRecord(globals) && isRecord(globals['typePresets']) ? globals['typePresets'] : undefined;
+  const palette = isRecord(globals) && isRecord(globals['palette']) ? globals['palette'] : undefined;
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
-    const hasType = ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'lineHeight'].some((property) => object[property] !== undefined);
-    if (hasType) {
+    if (isTextObject(object)) {
       const runs = isRecord(object['vigiliaText']) && Array.isArray(object['vigiliaText']['runs']) ? object['vigiliaText']['runs'] : undefined;
       if (runs === undefined || runs.length === 0) {
-        issues.push(issue('unresolved-global-ref', `${path}/vigiliaText`, 'Text font properties need authored runs with typePreset references.'));
+        issues.push(issue('unresolved-global-ref', `${path}/vigiliaText`, 'Text objects need authored runs with typePreset and palette references.'));
       } else {
         for (const [index, run] of runs.entries()) {
           const ref = isRecord(run) ? run['typePreset'] : undefined;
           const preset = typeof ref === 'string' && ref.startsWith('typePresets.') ? presets?.[ref.slice('typePresets.'.length)] : undefined;
           if (!isRecord(preset) || !isRecord(preset['value'])) {
             issues.push(issue('unresolved-global-ref', `${path}/vigiliaText/runs/${index}/typePreset`, 'Text runs must reference an existing type preset.'));
+          }
+          const style = isRecord(run) && run['style'] !== undefined ? run['style'] : undefined;
+          if (style !== undefined && !isRecord(style)) {
+            issues.push(issue('wrong-type', `${path}/vigiliaText/runs/${index}/style`, 'Text run style must be an object.'));
             continue;
+          }
+          if (style !== undefined) unknownKeys(style, `${path}/vigiliaText/runs/${index}/style`, ['color'], 'A text run style', issues);
+          const color = style?.['color'];
+          const colorRef = isRecord(color) ? color['ref'] : undefined;
+          if (typeof colorRef !== 'string' || !colorRef.startsWith('palette.') || palette?.[colorRef.slice('palette.'.length)] === undefined) {
+            issues.push(issue('unresolved-global-ref', `${path}/vigiliaText/runs/${index}/style/color`, 'Text runs must reference an existing palette token for colour.'));
           }
         }
       }
@@ -76,6 +88,34 @@ function sceneTypeReferences(scene: unknown, globals: unknown, issues: Validatio
     if (Array.isArray(object['objects'])) object['objects'].forEach((child, index) => visit(child, `${path}/objects/${index}`));
   };
   scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
+}
+
+function isTextObject(object: Record<string, unknown>): boolean {
+  return object['type'] === 'Textbox' || object['type'] === 'IText' || object['type'] === 'FabricText';
+}
+
+/** v2 removes legacy global groups; palette and type presets own authored style. */
+function v2Globals(value: unknown, issues: ValidationIssue[]): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    issues.push(issue('wrong-type', '/globals', 'v2 globals must be an object.'));
+    return;
+  }
+  unknownKeys(value, '/globals', ['palette', 'typePresets'], 'v2 globals', issues);
+}
+
+/** Artboard paint is authored through palette tokens, never a local literal. */
+function artboardPaintReferences(artboard: unknown, globals: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(artboard)) return;
+  const palette = isRecord(globals) && isRecord(globals['palette']) ? globals['palette'] : undefined;
+  for (const property of ['background', 'barColor'] as const) {
+    const value = artboard[property];
+    if (value === undefined) continue;
+    const ref = isRecord(value) ? value['ref'] : undefined;
+    if (typeof ref !== 'string' || !ref.startsWith('palette.') || palette?.[ref.slice('palette.'.length)] === undefined) {
+      issues.push(issue('unresolved-global-ref', `/artboard/${property}`, `${property} must reference an existing palette token.`));
+    }
+  }
 }
 
 

@@ -15,7 +15,8 @@ export interface FabricPaletteEntry {
 }
 
 export type FabricPalette = Readonly<Record<string, FabricPaletteEntry>>;
-export type FabricGlobals = Omit<Globals, 'palette'> & { readonly palette?: FabricPalette };
+/** Development v2 has one global owner for paint and one for typography. */
+export type FabricGlobals = Pick<Globals, 'typePresets'> & { readonly palette?: FabricPalette };
 
 /** Versioned Vigilia metadata around the opaque Fabric-authored scene. */
 export interface FabricThemeEnvelope {
@@ -56,12 +57,13 @@ export function fabricEnvelopeInputFor(document: ThemeDocument): FabricThemeEnve
 /** The legacy document writer had untyped palette values; carry CSS solids forward into v2. */
 function fabricGlobalsFor(globals: Globals): FabricGlobals {
   const palette = globals.palette;
-  if (palette === undefined) return globals as FabricGlobals;
   return {
-    ...globals,
-    palette: Object.fromEntries(Object.entries(palette).map(([id, entry]) => [id, {
-      ...entry,
-      value: typeof entry.value === 'string' ? { kind: 'solid' as const, color: entry.value } : entry.value,
-    }])) as FabricPalette,
+    ...(globals.typePresets === undefined ? {} : { typePresets: globals.typePresets }),
+    ...(palette === undefined ? {} : {
+      palette: Object.fromEntries(Object.entries(palette).map(([id, entry]) => [id, {
+        ...entry,
+        value: typeof entry.value === 'string' ? { kind: 'solid' as const, color: entry.value } : entry.value,
+      }])) as FabricPalette,
+    }),
   };
 }

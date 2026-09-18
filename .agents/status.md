@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,275 passed across 76 files |
+| Unit tests | 1,278 passed across 76 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 20 active-fork editor tests passed; type reassignment capture inspected |
@@ -96,6 +96,8 @@ evidence and a completed full browser suite.
   the fork reassigns those runs before deleting the preset.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
+- v2 validation rejects legacy global groups and literal artboard/text paint or
+  type values; v1-to-v2 conversion retains only palette and type presets.
 
 ### Host/telemetry
 
