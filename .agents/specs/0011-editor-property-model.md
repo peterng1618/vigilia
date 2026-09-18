@@ -54,6 +54,12 @@ fit mode. Resizing the artboard does not rescale scene objects.
 Scene objects use one stable Vigilia id rather than separate id/name fields that
 can disagree.
 
+### New-element defaults
+
+Defaults select valid authored references when a Vigilia creation command runs.
+They are editor-local derived input, never mutable theme globals or persisted
+document state. Generic object construction and stack ordering remain fork-owned.
+
 ## Capability summary
 
 | Capability | group | shape | text | image/SVG | chart |
@@ -92,6 +98,7 @@ Implemented:
 Still transitional/not implemented:
 
 - domain property UI for assets;
+- Vigilia new-element creation commands and their derived default factory;
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains

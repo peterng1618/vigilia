@@ -26,8 +26,8 @@ code from leaking into the Node host.
 ## Current editor boundary
 
 The active editor route mounts the compiled `fabricjs-image-editor` fork. Generic
-selection, transforms, grouping, duplication, object tools, canvas lifecycle and
-history infrastructure belong to the fork.
+selection, transforms, grouping, duplication, object tools, canvas lifecycle,
+history and stack ordering belong to the fork.
 
 Current Vigilia-owned extensions are:
 
@@ -42,6 +42,7 @@ Current Vigilia-owned extensions are:
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
+| Generic layer ordering | adopted fork `layerManager` |
 
 Assets, media and semantic layers do
 **not** yet have active fork-extension owners. Create those only when the
@@ -49,8 +50,8 @@ corresponding feature is implemented; do not document planned classes as current
 architecture.
 
 The old custom editor directories (`document`, `selection`, `globals`, `arrange`,
-`snapping`, `layers`, `inspector`, `core`) are fallback/harvest-only. Do not add
-new generic behaviour there.
+`snapping`, `layers`, `inspector`, `core`) are fallback/harvest-only. The fork's
+`layerManager` already owns z-order actions; no Vigilia semantic layer tree exists.
 
 ## Runtime data flow
 
@@ -165,7 +166,8 @@ Establish one owner when these become active work:
 - editor live binding/runtime updates;
 - semantic layer UI;
 - artboard/asset/media property editing;
-- new-object defaults;
+- new-object defaults, when insertion is implemented: an editor-side pure
+  factory, not persisted document state;
 - shared colour parsing;
 - asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.

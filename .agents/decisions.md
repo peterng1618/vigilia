@@ -39,6 +39,14 @@ Each run carries its own optional type-preset reference; a text object has no
 base preset. This preserves independent label/value/unit typography without
 inventing inherited state. **Decided by:** user, 2026-09-18.
 
+### New-element defaults are editor-local and derived
+
+New-element creation will use a pure editor-side default factory, not a mutable
+theme global or persisted store. It derives valid palette/type-preset references
+from the open envelope, while the fork owns generic object construction and
+layer ordering. A created object persists only its authored properties; user
+preferences, if needed later, are application settings outside the theme.
+
 ### Use the `fabricjs-image-editor` fork as editor foundation
 
 The fork is adopted for generic selection, transforms, grouping, duplication,
