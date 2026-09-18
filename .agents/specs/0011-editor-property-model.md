@@ -105,10 +105,13 @@ Implemented:
 - editor-local paint/text default derivation from the open envelope, without
   persisting mutable defaults.
 - fork-created text command with derived v2 references and save coverage.
+- chart paint persisted as palette references (or threshold bands of solid
+  palette references), resolved only while building engine options.
 
 Still transitional/not implemented:
 
 - domain property UI for assets;
+- chart paint/threshold controls;
 - broader Vigilia new-element creation commands beyond the current text command.
 
 Because nothing has been released, the development v2 semantic shape may break

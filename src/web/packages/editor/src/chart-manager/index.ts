@@ -2,6 +2,7 @@ import {
   buildChartPlan,
   type Binding,
   type ChartContent,
+  type FabricGlobals,
   type SampleSource,
 } from '@vigilia/renderer-core';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
@@ -15,12 +16,14 @@ export class ChartManager {
   readonly #source: SampleSource;
   readonly #panel;
   #bindings: Readonly<Record<string, readonly Binding[]>>;
+  #globals: FabricGlobals | undefined;
 
   constructor(options: {
     readonly editor: ImageEditor;
     readonly scene: SceneAdapter;
     readonly source: SampleSource;
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
+    readonly globals?: FabricGlobals;
     readonly panelHost: HTMLElement;
     readonly onBindingsChange?: (id: string, bindings: readonly Binding[]) => void;
   }) {
@@ -28,6 +31,7 @@ export class ChartManager {
     this.#scene = options.scene;
     this.#source = options.source;
     this.#bindings = options.bindings ?? {};
+    this.#globals = options.globals;
     this.#panel = createForkChartPanel(
       options.panelHost,
       (id, settings) => this.#updateSettings(id, settings),
@@ -45,6 +49,11 @@ export class ChartManager {
     this.#editor.canvas.off('selection:updated', this.#drawPanel);
     this.#editor.canvas.off('selection:cleared', this.#drawPanel);
     this.#panel.root.remove();
+  }
+
+  setGlobals(globals: FabricGlobals | undefined): void {
+    this.#globals = globals;
+    this.#hydrateRevivedCharts();
   }
 
   readonly #drawPanel = (): void => {
@@ -97,7 +106,7 @@ export class ChartManager {
   #applyChart(id: string, chart: VigiliaChart): void {
     const plan = buildChartPlan(id, { family: chart.family, settings: chart.settings } as ChartContent, this.#bindings[id] ?? [], {
       source: this.#source, nowMs: Date.now(), animate: false,
-    }, []);
+    }, [], this.#globals?.palette);
     chart.setOption(plan.option);
   }
 

@@ -15,10 +15,9 @@ import type { ChartFamily } from '../theme/document.js';
  * Scalar settings only: numbers, booleans and enumerations. **Paint is not
  * here.** `track`, `progress`, `stroke`, `fill`, `area`, `remainderFill` and
  * the two `palette` arrays are all `Fill` — `solid | thresholds | gradient` —
- * and spec 0011 D3 puts colour at the theme level. A `Fill` editor that wrote
- * a literal colour onto an element would contradict that the day it shipped,
- * so gradients and threshold bands become a theme-level globals group with
- * schema v2 rather than an element-level control now.
+ * and spec 0011 puts colour at the theme level. Persisted chart paint now
+ * references palette tokens; its control still needs to author those references
+ * and threshold-band offsets without writing literal colours onto a chart.
  *
  * ## It does not restate the defaults
  *

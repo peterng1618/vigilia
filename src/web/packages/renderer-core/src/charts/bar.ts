@@ -1,4 +1,4 @@
-import type { Fill, Sample } from '../types.js';
+import type { ChartPaint, Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
 import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import {
@@ -8,6 +8,8 @@ import {
   type EngineColor,
 } from './fill.js';
 import { cartesianGrid, type CartesianGrid } from './grid.js';
+import { resolveChartPaint } from './chart-paint.js';
+import type { FabricPalette } from '../theme/fabric-envelope.js';
 
 /**
  * Bar/progress adapter. Thresholds are native per bar; one-category bars with a
@@ -24,9 +26,9 @@ export interface BarSettings {
   /** Gap between category slots, as a percentage. */
   readonly categoryGapPercent: number;
   readonly cornerRadius: number;
-  readonly fill: Fill;
+  readonly fill: ChartPaint;
   /** Unfilled remainder; present makes this a progress bar. */
-  readonly track?: Fill;
+  readonly track?: ChartPaint;
   readonly showAxes: boolean;
   readonly showCategoryLabels: boolean;
   readonly animation?: AnimationSettings;
@@ -98,6 +100,7 @@ export function buildBarOption(
   settings: BarSettings,
   inputs: readonly BarInput[],
   animate = true,
+  palette?: FabricPalette,
 ): BarOption {
   const horizontal = settings.orientation === 'horizontal';
 
@@ -138,13 +141,13 @@ export function buildBarOption(
     series: [
       {
         type: 'bar',
-        data: inputs.map((input) => toBarDataItem(settings, input)),
+        data: inputs.map((input) => toBarDataItem(settings, input, palette)),
         ...(settings.barWidth === undefined ? {} : { barWidth: settings.barWidth }),
         barCategoryGap: `${clampPercent(settings.categoryGapPercent)}%`,
         showBackground: settings.track !== undefined,
         ...(settings.track === undefined
           ? {}
-          : { backgroundStyle: { color: toTrackColor(settings) } }),
+          : { backgroundStyle: { color: toTrackColor(settings, palette) } }),
         silent: true,
       },
     ],
@@ -152,7 +155,7 @@ export function buildBarOption(
 }
 
 /** Missing samples return `null`; a zero-length bar would be indistinguishable from real zero. */
-export function toBarDataItem(settings: BarSettings, input: BarInput): BarDataItem {
+export function toBarDataItem(settings: BarSettings, input: BarInput, palette?: FabricPalette): BarDataItem {
   const borderRadius = Math.max(0, settings.cornerRadius);
 
   if (!hasPlottableValue(input.sample)) {
@@ -169,38 +172,40 @@ export function toBarDataItem(settings: BarSettings, input: BarInput): BarDataIt
 
   return {
     value: display,
-    itemStyle: { color: toBarColor(settings, position), borderRadius },
+    itemStyle: { color: toBarColor(settings, position, palette), borderRadius },
   };
 }
 
 /** Resolve per-bar solid/threshold colour or a cartesian growth-direction gradient. */
-export function toBarColor(settings: BarSettings, position: number): EngineColor {
-  if (settings.fill.kind === 'gradient') {
+export function toBarColor(settings: BarSettings, position: number, palette?: FabricPalette): EngineColor {
+  const fill = resolveChartPaint(settings.fill, palette);
+  if (fill.kind === 'gradient') {
     return toLinearGradient(
-      settings.fill.stops,
+      fill.stops,
       settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
     );
   }
 
-  return resolveFlatColor(settings.fill, position);
+  return resolveFlatColor(fill, position);
 }
 
 /** Track gradients span the whole slot; threshold tracks resolve to their top band. */
-function toTrackColor(settings: BarSettings): EngineColor {
+function toTrackColor(settings: BarSettings, palette: FabricPalette | undefined): EngineColor {
   const track = settings.track;
 
   if (track === undefined) {
     return 'transparent';
   }
 
-  if (track.kind === 'gradient') {
+  const resolved = resolveChartPaint(track, palette);
+  if (resolved.kind === 'gradient') {
     return toLinearGradient(
-      track.stops,
+      resolved.stops,
       settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
     );
   }
 
-  return resolveFlatColor(track, 1);
+  return resolveFlatColor(resolved, 1);
 }
 
 function clampPercent(value: number): number {

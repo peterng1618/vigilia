@@ -1,7 +1,9 @@
-import type { Fill, Sample } from '../types.js';
+import type { ChartPaint, Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
 import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import { resolveFlatColor, type EngineColor } from './fill.js';
+import { resolveChartPaint } from './chart-paint.js';
+import type { FabricPalette } from '../theme/fabric-envelope.js';
 
 /**
  * Pie/donut adapter. Composition differs from gauge progress: missing parts must
@@ -22,8 +24,8 @@ export interface PieSettings {
   readonly cornerRadius: number;
   readonly total: PieTotal;
   /** Drawn only for fixed totals, where the remainder is measurable. */
-  readonly remainderFill?: Fill;
-  readonly palette: readonly Fill[];
+  readonly remainderFill?: ChartPaint;
+  readonly palette: readonly ChartPaint[];
   /** Engine labels are normally off; shared text owns typography (§91). */
   readonly showLabels: boolean;
   readonly animation?: AnimationSettings;
@@ -152,13 +154,14 @@ export function buildPieOption(
   settings: PieSettings,
   inputs: readonly PieSliceInput[],
   animate = true,
+  palette?: FabricPalette,
 ): PieOption {
   const composition = computeComposition(settings, inputs);
   const borderRadius = Math.max(0, settings.cornerRadius);
 
   const data: PieDataItem[] = composition.slices.map((slice, index) => {
     const declared = inputs.find((i) => i.sensorId === slice.sensorId)?.fill;
-    const fill = declared ?? paletteAt(settings.palette, index);
+    const fill = declared ?? resolveChartPaint(paletteAt(settings.palette, index), palette);
 
     return {
       name: slice.label,
@@ -176,7 +179,7 @@ export function buildPieOption(
       value: composition.remainder,
       itemStyle: {
         color: resolveFlatColor(
-          settings.remainderFill ?? { kind: 'solid', color: '#2a2f3a' },
+          resolveChartPaint(settings.remainderFill ?? { kind: 'solid', color: '#2a2f3a' }, palette),
           1,
         ),
         borderRadius,
@@ -208,7 +211,7 @@ export function buildPieOption(
   };
 }
 
-function paletteAt(palette: readonly Fill[], index: number): Fill {
+function paletteAt(palette: readonly ChartPaint[], index: number): ChartPaint {
   if (palette.length === 0) {
     return { kind: 'solid', color: '#8993a4' };
   }

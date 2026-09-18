@@ -46,6 +46,7 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   const sceneIds = scene(input['scene'], issues);
   scenePaintReferences(input['scene'], input['globals'], issues);
   sceneTypeReferences(input['scene'], input['globals'], issues);
+  chartPaintReferences(input['scene'], input['globals'], issues);
   bindings(input['bindings'], sceneIds, issues);
 
   return issues.length === 0
@@ -136,6 +137,60 @@ function scenePaintReferences(scene: unknown, globals: unknown, issues: Validati
     if (Array.isArray(object['objects'])) object['objects'].forEach((child, index) => visit(child, `${path}/objects/${index}`));
   };
   scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
+}
+
+/** Chart settings are semantic authored paint, never embedded literal colours. */
+function chartPaintReferences(scene: unknown, globals: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(scene) || !Array.isArray(scene['objects'])) return;
+  const palette = isRecord(globals) && isRecord(globals['palette']) ? globals['palette'] : undefined;
+  const fields: Readonly<Record<string, readonly string[]>> = {
+    gauge: ['track', 'progress'], line: ['stroke', 'area', 'palette'],
+    bar: ['fill', 'track'], pie: ['remainderFill', 'palette'],
+  };
+  const visit = (object: unknown, path: string): void => {
+    if (!isRecord(object)) return;
+    if (object['type'] === 'VigiliaChart' && typeof object['family'] === 'string' && isRecord(object['settings'])) {
+      for (const field of fields[object['family']] ?? []) {
+        const value = object['settings'][field];
+        if (value === undefined) continue;
+        const paints = Array.isArray(value) ? value : [value];
+        paints.forEach((paint, index) => chartPaint(paint, `${path}/settings/${field}${Array.isArray(value) ? `/${index}` : ''}`, palette, issues));
+      }
+    }
+    if (Array.isArray(object['objects'])) object['objects'].forEach((child, index) => visit(child, `${path}/objects/${index}`));
+  };
+  scene['objects'].forEach((object, index) => visit(object, `/scene/objects/${index}`));
+}
+
+function chartPaint(value: unknown, path: string, palette: Record<string, unknown> | undefined, issues: ValidationIssue[]): void {
+  if (!isRecord(value)) {
+    issues.push(issue('unresolved-global-ref', path, 'Chart paint must reference a palette token.'));
+    return;
+  }
+  if (typeof value['ref'] === 'string') {
+    const id = value['ref'].startsWith('palette.') ? value['ref'].slice('palette.'.length) : '';
+    if (id === '' || palette?.[id] === undefined || Object.keys(value).length !== 1) {
+      issues.push(issue('unresolved-global-ref', path, 'Chart paint must reference an existing palette token.'));
+    }
+    return;
+  }
+  if (value['kind'] === 'thresholds' && Array.isArray(value['bands'])) {
+    value['bands'].forEach((band, index) => chartPaintBand(band, `${path}/bands/${index}`, palette, issues));
+    return;
+  }
+  issues.push(issue('unresolved-global-ref', path, 'Chart paint must reference a palette token or threshold bands of solid tokens.'));
+}
+
+function chartPaintBand(value: unknown, path: string, palette: Record<string, unknown> | undefined, issues: ValidationIssue[]): void {
+  if (!isRecord(value) || !Number.isFinite(value['offset']) || typeof value['ref'] !== 'string' || !value['ref'].startsWith('palette.')) {
+    issues.push(issue('unresolved-global-ref', path, 'A chart threshold band needs an offset and palette token reference.'));
+    return;
+  }
+  const id = value['ref'].slice('palette.'.length);
+  const entry = palette?.[id];
+  if (!isRecord(entry) || !isRecord(entry['value']) || entry['value']['kind'] !== 'solid') {
+    issues.push(issue('unresolved-global-ref', path, 'A chart threshold band must reference an existing solid palette token.'));
+  }
 }
 
 /** `palette.none` is the immutable transparent fallback for v2 authoring. */

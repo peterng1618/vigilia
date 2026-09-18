@@ -21,6 +21,7 @@ export function hasPlottableValue(sample: Sample | undefined): sample is Sample 
 
 // GaugeSettings remains here historically; animation imports do not form a runtime cycle.
 import type { AnimationSettings } from './charts/animation.js';
+import type { ChartPaint } from './charts/chart-paint.js';
 
 export interface GradientStop {
   readonly offset: number;
@@ -33,6 +34,8 @@ export type Fill =
   | { readonly kind: 'thresholds'; readonly bands: readonly GradientStop[] }
   | { readonly kind: 'gradient'; readonly stops: readonly GradientStop[] };
 
+export type { ChartPaint } from './charts/chart-paint.js';
+
 /** Typed gauge settings translated internally to ECharts options. */
 export interface GaugeSettings {
   readonly startAngle: number;
@@ -40,8 +43,8 @@ export interface GaugeSettings {
   readonly min: number;
   readonly max: number;
   readonly thickness: number;
-  readonly track: Fill;
-  readonly progress: Fill;
+  readonly track: ChartPaint;
+  readonly progress: ChartPaint;
   readonly roundCap: boolean;
   /** Segment count for approximating angular gradients on the ring. */
   readonly gradientSegments?: number;

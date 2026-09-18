@@ -117,6 +117,29 @@ describe('Fabric theme envelope validation', () => {
     expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/fill' })]) });
   });
 
+  it('requires palette references for persisted chart paint', () => {
+    const base = {
+      ...envelope(),
+      globals: { palette: {
+        none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+        accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } },
+      } },
+    };
+    const valid = validateFabricThemeEnvelope({
+      ...base,
+      scene: { version: '7.4.0', objects: [{ type: 'VigiliaChart', id: 'chart', family: 'gauge', settings: { track: { ref: 'palette.none' }, progress: { ref: 'palette.accent' } } }] },
+    });
+    const literal = validateFabricThemeEnvelope({
+      ...base,
+      scene: { version: '7.4.0', objects: [{ type: 'VigiliaChart', id: 'chart', family: 'gauge', settings: { track: { kind: 'solid', color: '#000' }, progress: { ref: 'palette.accent' } } }] },
+    });
+
+    expect(valid).toMatchObject({ ok: true });
+    expect(literal).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ code: 'unresolved-global-ref', path: '/scene/objects/0/settings/track' }),
+    ]) });
+  });
+
   it('rejects resolved text type without a preset reference', () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),

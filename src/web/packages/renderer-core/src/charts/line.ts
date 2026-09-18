@@ -1,9 +1,11 @@
-import type { Fill, Sample } from '../types.js';
+import type { ChartPaint, Fill, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
 import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
 import { resolveThresholdColor, toLinearGradient } from './fill.js';
 import type { EngineColor, LinearGradientColor } from './fill.js';
 import { cartesianGrid, type CartesianGrid } from './grid.js';
+import { resolveChartPaint } from './chart-paint.js';
+import type { FabricPalette } from '../theme/fabric-envelope.js';
 
 // Preserved public exports; implementation moved to fill.ts.
 export type { EngineColor, LinearGradientColor };
@@ -21,12 +23,12 @@ export interface LineSettings {
   readonly lineWidth: number;
   readonly interpolation: Interpolation;
   /** First-series stroke and palette fallback. */
-  readonly stroke: Fill;
+  readonly stroke: ChartPaint;
   /** Per-series strokes, cycled by index. */
-  readonly palette?: readonly Fill[];
+  readonly palette?: readonly ChartPaint[];
   readonly dash?: DashPattern;
   /** Independent area fill; omit for a plain line. */
-  readonly area?: Fill;
+  readonly area?: ChartPaint;
   readonly showMarkers: boolean;
   readonly markerSize: number;
   readonly windowSeconds: number;
@@ -135,6 +137,7 @@ export function buildLineOption(
   series: readonly SeriesInput[],
   nowMs: number,
   animate = true,
+  palette?: FabricPalette,
 ): LineOption {
   const windowStart = nowMs - settings.windowSeconds * 1000;
   const sampling = settings.sampling && settings.sampling !== 'none' ? settings.sampling : undefined;
@@ -174,13 +177,13 @@ export function buildLineOption(
       connectNulls: false as const,
       lineStyle: {
         width: settings.lineWidth,
-        color: toEngineColor(strokeFor(settings, index), 'stroke'),
+        color: toEngineColor(resolveChartPaint(strokeFor(settings, index), palette), 'stroke'),
         type: settings.dash ?? 'solid',
       },
       // Area fill is intentionally limited to the first series for readability.
       ...(settings.area === undefined || index > 0
         ? {}
-        : { areaStyle: { color: toEngineColor(settings.area, 'area') } }),
+        : { areaStyle: { color: toEngineColor(resolveChartPaint(settings.area, palette), 'area') } }),
       ...(sampling === undefined ? {} : { sampling }),
       silent: true as const,
     })),
@@ -188,7 +191,7 @@ export function buildLineOption(
 }
 
 /** Palette entry for one series, falling back to `stroke`. */
-export function strokeFor(settings: LineSettings, index: number): Fill {
+export function strokeFor(settings: LineSettings, index: number): ChartPaint {
   const palette = settings.palette;
 
   if (palette === undefined || palette.length === 0) {

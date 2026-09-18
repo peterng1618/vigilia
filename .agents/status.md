@@ -8,14 +8,13 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 847 passed across 52 files |
+| Unit tests | 855 passed across 55 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 6 passed, 4 expected phone skips; four active-fork captures inspected |
-| Browser suite / size | 69 passed, 23 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
+| Visual review | focused active-fork capture inspected; palette-referenced charts render |
 
-The current cleanup slice has current typecheck, unit, build, size, focused
-active-fork visual evidence and a completed full browser suite.
+The current chart-paint slice has current typecheck, unit, editor build and
+focused active-fork visual evidence.
 
 ## Current product state
 
@@ -127,8 +126,8 @@ active-fork visual evidence and a completed full browser suite.
   1. **Met:** the published v2 schema permits only palette/type-preset globals and palette references for artboard paint; schema-sync coverage, all typechecks and 847 unit tests passed.
   2. **Met:** the Add Text command delegates construction/history to the fork and saves derived palette/type-preset references; desktop Chromium evidence is current.
   3. **Not implemented:** asset authoring waits on the §139 package reader/writer; 0011 now defines that JSON downloads cannot retain asset bytes.
-  4. **Not implemented:** chart paint, threshold and gradient controls need a
-     palette-reference styling slice.
+  4. **Implemented:** chart paint now persists palette references and the
+     starter scene renders them; palette/threshold editor controls remain.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.

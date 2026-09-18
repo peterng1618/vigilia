@@ -38,6 +38,13 @@ const starterPalette = {
   gold: { name: 'Gold', value: { kind: 'solid', color: '#f3c879' } },
   signal: { name: 'Signal', value: { kind: 'solid', color: '#6ee1c0' } },
   status: { name: 'Status', value: { kind: 'solid', color: '#48d9b0' } },
+  chartTrack: { name: 'Chart track', value: { kind: 'solid', color: '#2a2f3a' } },
+  chartBlue: { name: 'Chart blue', value: { kind: 'solid', color: '#4db8ff' } },
+  chartPurple: { name: 'Chart purple', value: { kind: 'solid', color: '#ae7cff' } },
+  gaugeProgress: { name: 'Gauge progress', value: { kind: 'gradient', angle: 0, stops: [{ offset: 0, color: '#41b8ff' }, { offset: 1, color: '#bc75ff' }] } },
+  trendArea: { name: 'Trend area', value: { kind: 'gradient', angle: 90, stops: [{ offset: 0, color: '#4db8ff66' }, { offset: 1, color: '#4db8ff00' }] } },
+  thermalFill: { name: 'Thermal fill', value: { kind: 'gradient', angle: 0, stops: [{ offset: 0, color: '#48d9b0' }, { offset: 1, color: '#f3bb68' }] } },
+  thermalTrack: { name: 'Thermal track', value: { kind: 'solid', color: '#183145' } },
 } as const satisfies FabricPalette;
 
 const paletteIds: Readonly<Record<string, keyof typeof starterPalette>> = {
@@ -123,7 +130,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         chart('load-gauge', 432, 418, 112, 88, 'gauge', {
           ...defaultGaugeSettings,
           thickness: 14,
-          progress: { kind: 'gradient', stops: [{ offset: 0, color: '#41b8ff' }, { offset: 1, color: '#bc75ff' }] },
+          track: { ref: 'palette.chartTrack' }, progress: { ref: 'palette.gaugeProgress' },
         }),
         label('gauge-caption', 364, 466, 140, 'LIVE', 11, dim, '500'),
 
@@ -133,8 +140,9 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         label('trend-legend', 989, 342, 190, '● CPU    ● GPU', 11, dim, '400'),
         chart('trend-line', 888, 428, 612, 92, 'line', {
           ...defaultLineSettings,
-          palette: [{ kind: 'solid', color: '#4db8ff' }, { kind: 'solid', color: '#ae7cff' }],
-          area: { kind: 'gradient', stops: [{ offset: 0, color: '#4db8ff66' }, { offset: 1, color: '#4db8ff00' }] },
+          stroke: { ref: 'palette.chartBlue' },
+          palette: [{ ref: 'palette.chartBlue' }, { ref: 'palette.chartPurple' }],
+          area: { ref: 'palette.trendArea' },
           min: 0, max: 100, showAxes: false,
         }),
 
@@ -144,8 +152,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         chart('thermal-bars', 605, 607, 190, 54, 'bar', {
           ...defaultBarSettings,
           min: 20, max: 100, barWidth: 16,
-          fill: { kind: 'gradient', stops: [{ offset: 0, color: '#48d9b0' }, { offset: 1, color: '#f3bb68' }] },
-          track: { kind: 'solid', color: '#183145' },
+          fill: { ref: 'palette.thermalFill' }, track: { ref: 'palette.thermalTrack' },
         }),
         label('thermal-caption', 356, 642, 150, 'CPU & GPU · °C', 11, dim, '400'),
 
@@ -156,7 +163,8 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
           ...defaultPieSettings,
           innerRadiusPercent: 64,
           padAngle: 3,
-          palette: [{ kind: 'solid', color: '#4db8ff' }, { kind: 'solid', color: '#ae7cff' }, { kind: 'solid', color: '#48d9b0' }],
+          palette: [{ ref: 'palette.chartBlue' }, { ref: 'palette.chartPurple' }, { ref: 'palette.status' }],
+          remainderFill: { ref: 'palette.chartTrack' },
         }),
         label('resource-caption', 912, 596, 66, 'LIVE\nMIX', 11, dim, '500'),
 

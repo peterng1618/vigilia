@@ -441,6 +441,7 @@ export function buildChartPlan(
   bindings: readonly Binding[],
   context: ChartPlanContext,
   issues: PlanIssue[],
+  palette?: import('../theme/fabric-envelope.js').FabricPalette,
 ): PlanChart {
   const animate = context.animate ?? true;
 
@@ -464,7 +465,7 @@ export function buildChartPlan(
         kind: 'chart',
         family: 'gauge',
         settings: content.settings,
-        option: buildGaugeOption(content.settings, applyTransform(sample, binding), animate),
+        option: buildGaugeOption(content.settings, applyTransform(sample, binding), animate, palette),
       };
     }
 
@@ -480,7 +481,7 @@ export function buildChartPlan(
         kind: 'chart',
         family: 'line',
         settings: content.settings,
-        option: buildLineOption(content.settings, series, context.nowMs, animate),
+        option: buildLineOption(content.settings, series, context.nowMs, animate, palette),
       };
     }
 
@@ -494,7 +495,7 @@ export function buildChartPlan(
         kind: 'chart',
         family: 'bar',
         settings: content.settings,
-        option: buildBarOption(content.settings, inputs, animate),
+        option: buildBarOption(content.settings, inputs, animate, palette),
       };
     }
 
@@ -508,7 +509,7 @@ export function buildChartPlan(
         kind: 'chart',
         family: 'pie',
         settings: content.settings,
-        option: buildPieOption(content.settings, slices, animate),
+        option: buildPieOption(content.settings, slices, animate, palette),
       };
     }
   }

@@ -35,6 +35,8 @@ export type {
   LinearGradientColor,
 } from './charts/fill.js';
 
+export { resolveChartPaint } from './charts/chart-paint.js';
+
 export {
   colorAt,
   normalizePosition,

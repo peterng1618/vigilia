@@ -53,6 +53,7 @@ export class ForkExtensions {
       scene: options.shell.scene,
       source: options.source,
       ...(options.envelope.bindings === undefined ? {} : { bindings: options.envelope.bindings }),
+      ...(options.envelope.globals === undefined ? {} : { globals: options.envelope.globals }),
       panelHost: options.panelHost,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
@@ -127,6 +128,7 @@ export class ForkExtensions {
   #setPalette(shell: ForkShell, palette: FabricPalette): void {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, palette } };
     shell.setGlobals(this.#envelope.globals);
+    this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#palette.render(palette);
@@ -147,6 +149,7 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, artboard, globals: { ...this.#envelope.globals, palette } };
     shell.setArtboard(artboard);
     shell.setGlobals(this.#envelope.globals);
+    this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#artboard.render(artboard);

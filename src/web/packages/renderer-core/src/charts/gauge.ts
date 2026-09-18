@@ -1,4 +1,4 @@
-import type { Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
+import type { ChartPaint, Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
 import { hasPlottableValue } from '../types.js';
 import { toEngineAnimation, type EngineAnimation } from './animation.js';
 import {
@@ -9,6 +9,8 @@ import {
   toLinearGradient,
   type EngineColor,
 } from './fill.js';
+import { resolveChartPaint } from './chart-paint.js';
+import type { FabricPalette } from '../theme/fabric-envelope.js';
 
 // Preserved public export; implementation moved to fill.ts.
 export { mixHex };
@@ -56,6 +58,7 @@ export function buildGaugeOption(
   settings: GaugeSettings,
   sample: Sample | undefined,
   animate = true,
+  palette?: FabricPalette,
 ): GaugeOption {
   const plottable = hasPlottableValue(sample);
 
@@ -76,7 +79,7 @@ export function buildGaugeOption(
           roundCap: settings.roundCap,
           lineStyle: {
             width: settings.thickness,
-            color: toColorSegments(settings.track, settings),
+            color: toColorSegments(resolveChartPaint(settings.track, palette), settings),
           },
         },
         progress: {
@@ -84,7 +87,7 @@ export function buildGaugeOption(
           show: plottable,
           width: settings.thickness,
           roundCap: settings.roundCap,
-          ...progressItemStyle(settings.progress, settings, displayValue),
+        ...progressItemStyle(resolveChartPaint(settings.progress, palette), settings, displayValue),
         },
         // Chart typography is rendered by shared text elements (§91).
         pointer: { show: false },
