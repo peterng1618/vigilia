@@ -5,6 +5,7 @@ import {
   defaultPieSettings,
   type FabricThemeEnvelope,
 } from '@vigilia/renderer-core';
+import type { FabricPalette } from '@vigilia/renderer-core';
 
 type ObjectJson = Readonly<Record<string, unknown>>;
 type PathData = readonly (readonly [string, ...number[]])[];
@@ -15,6 +16,35 @@ const backgroundOnly = { ...positioned, selectable: false, evented: false } as c
 const text = '#ecf5ff';
 const dim = '#a8bed0';
 const panel = '#081523d9';
+
+const starterPalette = {
+  none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+  background: { name: 'Background', value: { kind: 'solid', color: '#0c0e13' } },
+  bars: { name: 'Letterbox bars', value: { kind: 'solid', color: '#000000' } },
+  scene: { name: 'Scene background', value: { kind: 'gradient', angle: 90, stops: [{ offset: 0, color: '#355473' }, { offset: 0.42, color: '#16283d' }, { offset: 1, color: '#07111d' }] } },
+  headerWash: { name: 'Header wash', value: { kind: 'solid', color: '#06101a70' } },
+  text: { name: 'Text', value: { kind: 'solid', color: text } },
+  dim: { name: 'Muted text', value: { kind: 'solid', color: dim } },
+  panel: { name: 'Panel', value: { kind: 'solid', color: panel } },
+  panelStroke: { name: 'Panel outline', value: { kind: 'solid', color: '#9fc7e52b' } },
+  cyan: { name: 'Cyan', value: { kind: 'solid', color: '#7dbde0' } },
+  cyanMuted: { name: 'Muted cyan', value: { kind: 'solid', color: '#7dbde044' } },
+  lightCyan: { name: 'Light cyan', value: { kind: 'solid', color: '#82c8e9' } },
+  iconBlue: { name: 'Icon blue', value: { kind: 'solid', color: '#7ec7f0' } },
+  cloud: { name: 'Cloud', value: { kind: 'solid', color: '#b9d7f2' } },
+  pin: { name: 'Location pin', value: { kind: 'solid', color: '#8fc6e6' } },
+  purple: { name: 'Purple', value: { kind: 'solid', color: '#a98bff' } },
+  green: { name: 'Green', value: { kind: 'solid', color: '#71e7c1' } },
+  gold: { name: 'Gold', value: { kind: 'solid', color: '#f3c879' } },
+  signal: { name: 'Signal', value: { kind: 'solid', color: '#6ee1c0' } },
+  status: { name: 'Status', value: { kind: 'solid', color: '#48d9b0' } },
+} as const satisfies FabricPalette;
+
+const paletteIds: Readonly<Record<string, keyof typeof starterPalette>> = {
+  [text]: 'text', [dim]: 'dim', [panel]: 'panel', '#06101a70': 'headerWash', '#9fc7e52b': 'panelStroke',
+  '#7dbde0': 'cyan', '#7dbde044': 'cyanMuted', '#82c8e9': 'lightCyan', '#7ec7f0': 'iconBlue', '#b9d7f2': 'cloud', '#8fc6e6': 'pin',
+  '#a98bff': 'purple', '#71e7c1': 'green', '#f3c879': 'gold', '#6ee1c0': 'signal', '#48d9b0': 'status',
+};
 
 /** A mockup-inspired v2 starter scene, limited to currently revivable objects. */
 export function createNewFabricTheme(): FabricThemeEnvelope {
@@ -34,11 +64,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       barColor: { ref: 'palette.bars' },
     },
     globals: {
-      palette: {
-        none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
-        background: { name: 'Background', value: { kind: 'solid', color: '#0c0e13' } },
-        bars: { name: 'Letterbox bars', value: { kind: 'solid', color: '#000000' } },
-      },
+      palette: starterPalette,
     },
     bindings: {
       'load-gauge': [{ id: 'cpu-load', semanticKey: 'cpu.load', precision: 0 }],
@@ -53,7 +79,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     scene: {
       version: '7.4.0',
       objects: [
-        rect('background', 0, 0, 1280, 720, twilightGradient, 0, backgroundOnly),
+        rect('background', 0, 0, 1280, 720, twilightGradient, 0, backgroundOnly, 'scene'),
         rect('header-wash', 0, 0, 1280, 142, '#06101a70', 0),
         label('wordmark', 54, 38, 520, 'V I G I L I A', 32, text, '500'),
         label('strapline', 58, 82, 520, 'YOUR SYSTEM. A CLEARER TOMORROW.', 12, dim, '400'),
@@ -130,26 +156,32 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
   };
 }
 
-function rect(id: string, left: number, top: number, width: number, height: number, fill: unknown, radius: number, interaction: ObjectJson = positioned): ObjectJson {
-  return { type: 'Rect', id, left, top, width, height, fill, rx: radius, ry: radius, ...interaction };
+function rect(id: string, left: number, top: number, width: number, height: number, fill: unknown, radius: number, interaction: ObjectJson = positioned, paletteId?: keyof typeof starterPalette): ObjectJson {
+  const reference = paletteId ?? paletteIdFor(fill);
+  return { type: 'Rect', id, left, top, width, height, fill, rx: radius, ry: radius, vigiliaPaint: { fill: `palette.${reference}` }, ...interaction };
 }
 
 function card(id: string, left: number, top: number, width: number, height: number): ObjectJson {
-  return { ...rect(id, left, top, width, height, panel, 18), stroke: '#9fc7e52b', strokeWidth: 1 };
+  return { ...rect(id, left, top, width, height, panel, 18), stroke: '#9fc7e52b', strokeWidth: 1, vigiliaPaint: { fill: 'palette.panel', stroke: 'palette.panelStroke' } };
 }
 
 function circle(id: string, left: number, top: number, radius: number, fill: string): ObjectJson {
-  return { type: 'Circle', id, left, top, radius, fill, ...positioned };
+  return { type: 'Circle', id, left, top, radius, fill, vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` }, ...positioned };
 }
 
 function label(id: string, left: number, top: number, width: number, value: string, fontSize: number, fill: string, fontWeight: string): ObjectJson {
-  return { type: 'Textbox', id, left, top, width, text: value, fontFamily: 'Segoe UI, sans-serif', fontSize, fontWeight, fill, lineHeight: 1.18, ...positioned };
+  return { type: 'Textbox', id, left, top, width, text: value, fontFamily: 'Segoe UI, sans-serif', fontSize, fontWeight, fill, lineHeight: 1.18, vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` }, ...positioned };
 }
 
 function path(id: string, left: number, top: number, points: PathData, colour: string, strokeWidth: number): ObjectJson {
   return strokeWidth === 0
-    ? { type: 'Path', id, left, top, path: points, fill: colour, stroke: null, ...positioned }
-    : { type: 'Path', id, left, top, path: points, fill: null, stroke: colour, strokeWidth, ...positioned };
+    ? { type: 'Path', id, left, top, path: points, fill: colour, stroke: null, vigiliaPaint: { fill: `palette.${paletteIdFor(colour)}` }, ...positioned }
+    : { type: 'Path', id, left, top, path: points, fill: null, stroke: colour, strokeWidth, vigiliaPaint: { stroke: `palette.${paletteIdFor(colour)}` }, ...positioned };
+}
+
+function paletteIdFor(value: unknown): keyof typeof starterPalette {
+  if (typeof value === 'string' && paletteIds[value] !== undefined) return paletteIds[value];
+  throw new Error(`Starter scene paint "${String(value)}" has no palette token.`);
 }
 
 function chart(id: string, left: number, top: number, width: number, height: number, family: string, settings: unknown): ObjectJson {
