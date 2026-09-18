@@ -1,9 +1,12 @@
 declare module '@anu3ev/fabric-image-editor' {
-  import type { Canvas } from 'fabric/es';
+  import type { Canvas, FabricObject } from 'fabric/es';
   import type { SerialisedScene } from '@vigilia/scene-fabric';
 
   export interface ImageEditor {
     readonly canvas: Canvas;
+    readonly textManager: {
+      addText(options?: Readonly<Record<string, unknown>>): FabricObject;
+    };
     destroy(): void;
   }
 

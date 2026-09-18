@@ -125,7 +125,7 @@ active-fork visual evidence and a completed full browser suite.
 
 - Finish spec 0011 in this order:
   1. **Met:** the published v2 schema permits only palette/type-preset globals and palette references for artboard paint; schema-sync coverage, all typechecks and 847 unit tests passed.
-  2. **Met:** the editor-local factory derives non-local palette/type-preset references for new paintable objects and text; generic fork construction remains unwired until a Vigilia creation command is added.
+  2. **Met:** the Add Text command delegates construction/history to the fork and saves derived palette/type-preset references; desktop Chromium evidence is current.
   3. **Not implemented:** asset authoring waits on the §139 package reader/writer; 0011 now defines that JSON downloads cannot retain asset bytes.
   4. Treat chart paint/threshold/gradient controls as a separate styling slice.
 - Live editor telemetry/bindings are incomplete; current editor source is the

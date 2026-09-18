@@ -4,6 +4,7 @@ import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
 import { reassignObjectPaletteReferences, reassignObjectTypePresetReferences } from '@vigilia/scene-fabric';
 import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
+import { createNewObjectPanel, type NewObjectPanel } from '../new-object-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
 import { ShortcutManager } from '../shortcut-manager/index.js';
@@ -14,6 +15,7 @@ export class ForkExtensions {
   readonly #artboard: ArtboardPanel;
   readonly #palette: PalettePanel;
   readonly #types: TypePresetPanel;
+  readonly #newObjects: NewObjectPanel;
   readonly #persistence: PersistenceManager;
   readonly #shortcuts = new ShortcutManager();
   #envelope: FabricThemeEnvelopeInput;
@@ -31,6 +33,7 @@ export class ForkExtensions {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
+    this.#newObjects = createNewObjectPanel(options.panelHost, options.shell.editor, this.#envelope.globals);
     this.#artboard = createArtboardPanel(
       options.panelHost,
       this.#envelope.globals,
@@ -69,6 +72,7 @@ export class ForkExtensions {
     this.#artboard.root.remove();
     this.#palette.root.remove();
     this.#types.root.remove();
+    this.#newObjects.root.remove();
   }
 
   async #open(options: {
@@ -123,6 +127,7 @@ export class ForkExtensions {
   #setPalette(shell: ForkShell, palette: FabricPalette): void {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, palette } };
     shell.setGlobals(this.#envelope.globals);
+    this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#palette.render(palette);
   }
@@ -142,6 +147,7 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, artboard, globals: { ...this.#envelope.globals, palette } };
     shell.setArtboard(artboard);
     shell.setGlobals(this.#envelope.globals);
+    this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#artboard.render(artboard);
     this.#palette.render(palette);
@@ -150,6 +156,7 @@ export class ForkExtensions {
   #setTypes(shell: ForkShell, typePresets: TypePresets): void {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
     shell.setGlobals(this.#envelope.globals);
+    this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
   }
 
@@ -162,6 +169,7 @@ export class ForkExtensions {
     delete typePresets[id];
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
     shell.setGlobals(this.#envelope.globals);
+    this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets as TypePresets);
   }
 

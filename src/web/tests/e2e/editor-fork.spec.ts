@@ -12,6 +12,22 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Fabric editor ready');
   });
 
+  test('creates and saves text with derived v2 references', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('#properties section').first().getByRole('button', { name: 'Text' }).click();
+
+    const envelope = await saveEnvelope(page) as {
+      scene: { objects: Array<{ vigiliaPaint?: { fill?: string }; vigiliaText?: { runs: Array<{ text?: string; typePreset?: string; style?: { color?: { ref?: string } } }> } }> };
+    };
+    const text = envelope.scene.objects.find((object) => object.vigiliaText?.runs[0]?.text === 'New text');
+    expect(text).toMatchObject({
+      vigiliaPaint: { fill: 'palette.background' },
+      vigiliaText: { runs: [{ typePreset: 'typePresets.11-400', style: { color: { ref: 'palette.background' } } }] },
+    });
+  });
+
   test('captures the mounted editor for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

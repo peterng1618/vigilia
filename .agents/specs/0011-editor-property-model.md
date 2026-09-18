@@ -104,11 +104,12 @@ Implemented:
 - settings update in place without rebuilding the legacy node tree.
 - editor-local paint/text default derivation from the open envelope, without
   persisting mutable defaults.
+- fork-created text command with derived v2 references and save coverage.
 
 Still transitional/not implemented:
 
 - domain property UI for assets;
-- Vigilia new-element creation commands that call the derived default factory.
+- broader Vigilia new-element creation commands beyond the current text command.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains
