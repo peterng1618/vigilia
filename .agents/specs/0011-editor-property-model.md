@@ -76,13 +76,14 @@ Implemented:
 - fork chart panel for scalar settings on one selected `VigiliaChart`;
 - fork artboard control for persisted width/height, contain/cover preview and palette-token paint;
 - selected-chart binding controls for shared semantic keys, precision, unit display, scale and offset;
+- v2 palette validation reserves immutable transparent `palette.none`;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:
 
 - current development v2 schema still permits local style values and still has
   `fonts`/`fontSizes` global groups;
-- palette solid/gradient token schema and `palette.none`;
+- palette solid/gradient token schema;
 - type-preset schema;
 - domain property UI for tokens/types, artboard, bindings and assets;
 - final reference traversal/reassignment UI.

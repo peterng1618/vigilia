@@ -80,7 +80,7 @@ describe('the adopted editor shell', () => {
       fabricVersion: '7.4.0',
       id: 'theme',
       artboard: { width: 1, height: 1, background: { ref: 'palette.background' }, barColor: { ref: 'palette.bars' } },
-      globals: { palette: { background: { name: 'Background', value: '#101216' }, bars: { name: 'Bars', value: '#000000' } } },
+      globals: { palette: { none: { name: 'None', value: 'transparent' }, background: { name: 'Background', value: '#101216' }, bars: { name: 'Bars', value: '#000000' } } },
       scene: { version: '7.4.0', objects: [] },
     } as const;
     const host = document.createElement('main');

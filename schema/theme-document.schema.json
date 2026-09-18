@@ -53,7 +53,7 @@
     "globals": {
       "type": "object", "additionalProperties": false,
       "properties": {
-        "palette": { "$ref": "#/$defs/globalGroup" },
+        "palette": { "$ref": "#/$defs/paletteGroup" },
         "fonts": { "$ref": "#/$defs/globalGroup" },
         "fontSizes": { "$ref": "#/$defs/globalGroup" },
         "spacing": { "$ref": "#/$defs/globalGroup" },
@@ -62,6 +62,19 @@
     },
     "globalGroup": {
       "type": "object", "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["name", "value"],
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/jsonValue" } }
+      }
+    },
+    "paletteGroup": {
+      "type": "object", "required": ["none"], "propertyNames": { "$ref": "#/$defs/stableId" },
+      "properties": {
+        "none": {
+          "type": "object", "additionalProperties": false, "required": ["name", "value"],
+          "properties": { "name": { "const": "None" }, "value": { "const": "transparent" } }
+        }
+      },
       "additionalProperties": {
         "type": "object", "additionalProperties": false, "required": ["name", "value"],
         "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/jsonValue" } }

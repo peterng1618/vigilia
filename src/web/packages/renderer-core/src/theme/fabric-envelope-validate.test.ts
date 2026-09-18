@@ -78,4 +78,22 @@ describe('Fabric theme envelope validation', () => {
       ]));
     }
   });
+
+  it('requires an immutable transparent palette.none whenever a palette is present', () => {
+    const missing = validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { palette: { accent: { name: 'Accent', value: '#00b8d9' } } },
+    });
+    const renamed = validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { palette: { none: { name: 'Clear', value: 'transparent' } } },
+    });
+
+    expect(missing).toMatchObject({ ok: false, issues: [expect.objectContaining({ path: '/globals/palette/none' })] });
+    expect(renamed).toMatchObject({ ok: false, issues: [expect.objectContaining({ path: '/globals/palette/none' })] });
+    expect(validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { palette: { none: { name: 'None', value: 'transparent' } } },
+    })).toMatchObject({ ok: true });
+  });
 });

@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,251 passed across 73 files |
+| Unit tests | 1,252 passed across 73 files |
 | Typechecks | six projects clean |
 | Visual review | six captures passed; action screenshots inspected before E2E |
 | Browser suite | 64 passed / 130 skipped / 0 failed |

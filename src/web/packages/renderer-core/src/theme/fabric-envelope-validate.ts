@@ -37,6 +37,7 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
     issues.push(issue('wrong-type', '/fabricVersion', 'fabricVersion must be a pinned major.minor.patch version.'));
   }
   issues.push(...sharedSemanticIssues(input));
+  paletteNone(input['globals'], issues);
   editorMetadata(input['editorMetadata'], issues);
   rejectGifAssets(input['assets'], issues);
   const sceneIds = scene(input['scene'], issues);
@@ -45,6 +46,17 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+/** `palette.none` is the immutable transparent fallback for v2 authoring. */
+function paletteNone(value: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(value) || value['palette'] === undefined) return;
+  const palette = value['palette'];
+  if (!isRecord(palette)) return;
+  const none = palette['none'];
+  if (!isRecord(none) || none['name'] !== 'None' || none['value'] !== 'transparent') {
+    issues.push(issue('missing-field', '/globals/palette/none', 'palette.none must be the immutable transparent token.'));
+  }
 }
 
 /** Reuses the one semantic validator without treating Fabric JSON as a legacy node tree. */
