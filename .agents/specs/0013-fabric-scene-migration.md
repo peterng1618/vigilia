@@ -94,8 +94,7 @@ out of scope.
 1. Complete the final v2 token/type/reference model in spec 0011.
 2. Add live editor bindings/charts without polluting authored history.
 3. Add production video-background integration.
-4. Delete remaining DOM/custom editor infrastructure.
-5. Later, modernize the surrounding shell to React + shadcn/Base UI per plan
+4. Later, modernize the surrounding shell to React + shadcn/Base UI per plan
    §35. This is separate from the Fabric migration.
 
 ## Acceptance

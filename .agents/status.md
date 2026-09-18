@@ -1,4 +1,4 @@
-# Status — 2026-09-18
+# Status — 2026-09-19
 
 Current handoff only. Durable rules: `AGENTS.md`; product plan:
 `design/plan.md`; architecture: `architecture.md`; active work: specs 0010,
@@ -8,10 +8,10 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,276 passed across 76 files |
+| Unit tests | 847 passed across 52 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | 20 active-fork editor tests passed; type reassignment capture inspected |
+| Visual review | 6 passed, 4 expected phone skips; four active-fork captures inspected |
 | Browser suite / size | 69 passed, 23 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
 The current cleanup slice has current typecheck, unit, build, size, focused
@@ -34,8 +34,8 @@ active-fork visual evidence and a completed full browser suite.
 
 ### Editor migration
 
-- `/editor` mounts the adopted `fabricjs-image-editor` fork; the old DOM/custom
-  route is inactive and its generic editor code is fallback-only.
+- `/editor` mounts the adopted `fabricjs-image-editor` fork; its retired
+  DOM/custom generic-editor implementation is deleted.
 - The fork is pinned by the editor manifest to commit `918a454` and resolves
   Fabric 7.4.0 through `fabric/es`.
 - Fork history uses `scene-fabric` serialization/revival callbacks and disposes
@@ -61,6 +61,9 @@ active-fork visual evidence and a completed full browser suite.
   is the active editor browser contract.
 - Visual-review coverage renders only the active fork route; obsolete fallback
   editor/globals/inspector captures were removed.
+- Retired actions, document/history, selection, transforms, arranging,
+  snapping, legacy layer UI and their tests are deleted; generic editing comes
+  only from the fork.
 - Product property extensions render in the dedicated sidebar, so selected-chart
   controls cannot displace the interactive Fabric stage.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
@@ -118,8 +121,7 @@ active-fork visual evidence and a completed full browser suite.
 
 ## Current gaps
 
-- Finish Stage 4B editor migration: remaining domain property boundaries, then
-  delete fallback code.
+- Finish Stage 4B editor migration: remaining domain property boundaries.
 - Finish spec 0011: remaining domain-property editing and removal of
   transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
@@ -132,14 +134,12 @@ active-fork visual evidence and a completed full browser suite.
 
 ## Next
 
-1. Finish remaining Stage 4B domain property boundaries before deleting fallback
-   code.
+1. Finish remaining Stage 4B domain property boundaries.
 2. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
 3. Complete the property/token model in spec 0011 before stabilising v2.
 4. Add live editor bindings/charts, then the video background path.
-5. Remove superseded DOM/custom editor code.
-6. Only after the authoring core is stable, start the React + shadcn/Base UI
+5. Only after the authoring core is stable, start the React + shadcn/Base UI
    shell modernization from plan §35.
 
 ## Unverified / known limitations

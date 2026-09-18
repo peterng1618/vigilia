@@ -49,9 +49,8 @@ Assets, media and semantic layers do
 corresponding feature is implemented; do not document planned classes as current
 architecture.
 
-The old custom editor directories (`document`, `selection`, `globals`, `arrange`,
-`snapping`, `layers`, `inspector`, `core`) are fallback/harvest-only. The fork's
-`layerManager` already owns z-order actions; no Vigilia semantic layer tree exists.
+The retired custom-editor implementation is deleted. The fork's `layerManager`
+owns z-order actions; no Vigilia semantic layer tree exists.
 
 ## Runtime data flow
 
