@@ -125,7 +125,7 @@ active-fork visual evidence and a completed full browser suite.
 
 - Finish spec 0011 in this order:
   1. **Met:** the published v2 schema permits only palette/type-preset globals and palette references for artboard paint; schema-sync coverage, all typechecks and 847 unit tests passed.
-  2. Add an editor-local derived-default factory for newly created Fabric objects.
+  2. **Met:** the editor-local factory derives non-local palette/type-preset references for new paintable objects and text; generic fork construction remains unwired until a Vigilia creation command is added.
   3. Specify package-backed asset persistence before implementing asset authoring UI.
   4. Treat chart paint/threshold/gradient controls as a separate styling slice.
 - Live editor telemetry/bindings are incomplete; current editor source is the

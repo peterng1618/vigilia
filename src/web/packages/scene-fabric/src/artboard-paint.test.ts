@@ -24,6 +24,11 @@ describe('artboard paint', () => {
     });
   });
 
+  it('converts a structured solid palette token', () => {
+    expect(fabricArtboardPaint({ kind: 'solid', color: '#102030' }, 1, 1)).toBe('#102030');
+    expect(cssArtboardPaint({ kind: 'solid', color: '#102030' })).toBe('#102030');
+  });
+
   it('uses the corresponding CSS gradient for letterbox bars', () => {
     expect(cssArtboardPaint(gradient)).toBe('linear-gradient(90deg, #102030 0%, #d0e0f0 100%)');
   });
