@@ -8,14 +8,14 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,278 passed across 76 files |
+| Unit tests | 1,276 passed across 76 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 20 active-fork editor tests passed; type reassignment capture inspected |
-| Browser suite / size | 69 passed, 127 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
+| Browser suite / size | 69 passed, 131 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
-This slice has current typecheck, unit, build, size, focused active-fork visual
-evidence and a completed full browser suite.
+The current cleanup slice has current typecheck, unit, build, size, focused
+active-fork visual evidence and a completed full browser suite.
 
 ## Current product state
 
@@ -53,6 +53,8 @@ evidence and a completed full browser suite.
   size/preview controls composed by `ForkExtensions`.
 - The fork's New/Open/Save dispatcher no longer imports the fallback action or
   keyboard model; it owns only product file shortcuts.
+- The inactive legacy `main.ts` route and its size exception are deleted; the
+  active editor entry remains `fork-main.ts`.
 - Visual-review coverage renders only the active fork route; obsolete fallback
   editor/globals/inspector captures were removed.
 - Product property extensions render in the dedicated sidebar, so selected-chart

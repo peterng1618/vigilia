@@ -129,20 +129,10 @@ describe('peers are reached through the root, not by importing each other', () =
 });
 
 /**
- * Files currently over the ceiling, with the count they may not exceed.
- *
- * A ratchet rather than an exemption: an entry here cannot grow, and it is
- * deleted when the file drops under the limit. `main.ts` is the subject of the
- * restructure and loses this entry in Phase 4.
- *
  * The ceiling is editor-only for now. `renderer-core/src/theme/validate.ts`
- * (1,138) is the other file over it repo-wide; Phase 6 splits it into
- * `validate/` role files, and this test widens to every package then.
+ * is the other file over it repo-wide; this test widens when that package is
+ * split by responsibility.
  */
-const RATCHET: Readonly<Record<string, number>> = {
-  'main.ts': 1192,
-};
-
 const MAX_LINES = 800;
 
 describe('the size ceiling', () => {
@@ -154,37 +144,12 @@ describe('the size ceiling', () => {
     lines: readFileSync(file, 'utf8').replace(/\n$/, '').split('\n').length,
   }));
 
-  it('holds for every file that is not on the ratchet', () => {
-    // 800 is the stop. It exists because main.ts reached 1,349 lines holding
-    // nine unrelated concerns and nothing objected.
+  it('holds for every file', () => {
+    // A small source file keeps one responsibility readable and testable.
     const over = measured
-      .filter((file) => file.lines > MAX_LINES && RATCHET[file.path] === undefined)
+      .filter((file) => file.lines > MAX_LINES)
       .map((file) => `${file.path} is ${file.lines} lines (max ${MAX_LINES})`);
 
     expect(over).toEqual([]);
-  });
-
-  it('does not let a ratcheted file grow', () => {
-    const grown = measured
-      .filter((file) => {
-        const allowed = RATCHET[file.path];
-
-        return allowed !== undefined && file.lines > allowed;
-      })
-      .map((file) => `${file.path} grew to ${file.lines}, over its ${RATCHET[file.path]!} ratchet`);
-
-    expect(grown).toEqual([]);
-  });
-
-  it('has no stale ratchet entries', () => {
-    // An entry for a file that is now under the limit, or gone, reads as a
-    // live exemption. Deleting it is part of finishing the work.
-    const stale = Object.keys(RATCHET).filter((path) => {
-      const file = measured.find((candidate) => candidate.path === path);
-
-      return file === undefined || file.lines <= MAX_LINES;
-    });
-
-    expect(stale).toEqual([]);
   });
 });
