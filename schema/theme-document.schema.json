@@ -72,13 +72,23 @@
       "properties": {
         "none": {
           "type": "object", "additionalProperties": false, "required": ["name", "value"],
-          "properties": { "name": { "const": "None" }, "value": { "const": "transparent" } }
+          "properties": { "name": { "const": "None" }, "value": { "$ref": "#/$defs/transparentPaint" } }
         }
       },
       "additionalProperties": {
         "type": "object", "additionalProperties": false, "required": ["name", "value"],
-        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/jsonValue" } }
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/palettePaint" } }
       }
+    },
+    "transparentPaint": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "color"],
+      "properties": { "kind": { "const": "solid" }, "color": { "const": "transparent" } }
+    },
+    "palettePaint": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "color"], "properties": { "kind": { "const": "solid" }, "color": { "type": "string", "minLength": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "angle", "stops"], "properties": { "kind": { "const": "gradient" }, "angle": { "type": "number" }, "stops": { "type": "array", "minItems": 2, "items": { "type": "object", "additionalProperties": false, "required": ["offset", "color"], "properties": { "offset": { "type": "number", "minimum": 0, "maximum": 1 }, "color": { "type": "string", "minLength": 1 } } } } } }
+      ]
     },
     "assetReference": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "path"],

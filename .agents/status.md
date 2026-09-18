@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,254 passed across 73 files |
+| Unit tests | 1,256 passed across 73 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 15 active-fork editor tests passed; five refreshed captures inspected |
@@ -73,9 +73,9 @@ suite emitted no final summary.
 - A visible Fabric drag persists through v2 Save and Ctrl/Cmd+Z restores the
   saved geometry through fork history.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
-  still transitional. `palette.none` is enforced for v2 palettes; final palette
-  solids/gradients and per-run type-preset semantics from spec 0011 are not yet
-  represented by the published development schema.
+  still transitional. `palette.none` and structured solid/linear-gradient
+  palette tokens are enforced in v2; type presets and palette authoring/rendering
+  controls remain pending.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 
@@ -94,8 +94,9 @@ suite emitted no final summary.
 
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
-- Finish spec 0011: palette solids/gradients, type presets, stable reference UI,
-  remaining domain-property editing and removal of transitional globals/literals.
+- Finish spec 0011: palette/type authoring controls, type presets, stable
+  reference UI, remaining domain-property editing and removal of transitional
+  globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.

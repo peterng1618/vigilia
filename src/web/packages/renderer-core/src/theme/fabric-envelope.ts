@@ -4,9 +4,18 @@ import {
   type AssetReference,
   type Binding,
   type Globals,
+  type PalettePaint,
   type ThemeDocument,
   type ThemeMetadata,
 } from './document.js';
+
+export interface FabricPaletteEntry {
+  readonly name: string;
+  readonly value: PalettePaint;
+}
+
+export type FabricPalette = Readonly<Record<string, FabricPaletteEntry>>;
+export type FabricGlobals = Omit<Globals, 'palette'> & { readonly palette?: FabricPalette };
 
 /** Versioned Vigilia metadata around the opaque Fabric-authored scene. */
 export interface FabricThemeEnvelope {
@@ -16,7 +25,7 @@ export interface FabricThemeEnvelope {
   readonly artboard: Artboard;
   readonly scene: Readonly<Record<string, unknown>>;
   readonly metadata?: ThemeMetadata;
-  readonly globals?: Globals;
+  readonly globals?: FabricGlobals;
   readonly assets?: readonly AssetReference[];
   /** Semantic bindings remain Vigilia data, keyed by Fabric object id. */
   readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
@@ -37,9 +46,22 @@ export function fabricEnvelopeInputFor(document: ThemeDocument): FabricThemeEnve
     id: document.id,
     artboard: document.artboard,
     ...(document.metadata === undefined ? {} : { metadata: document.metadata }),
-    ...(document.globals === undefined ? {} : { globals: document.globals }),
+    ...(document.globals === undefined ? {} : { globals: fabricGlobalsFor(document.globals) }),
     ...(document.assets === undefined ? {} : { assets: document.assets }),
     ...(Object.keys(bindings).length === 0 ? {} : { bindings }),
     ...(document.editorMetadata === undefined ? {} : { editorMetadata: document.editorMetadata }),
+  };
+}
+
+/** The legacy document writer had untyped palette values; carry CSS solids forward into v2. */
+function fabricGlobalsFor(globals: Globals): FabricGlobals {
+  const palette = globals.palette;
+  if (palette === undefined) return globals as FabricGlobals;
+  return {
+    ...globals,
+    palette: Object.fromEntries(Object.entries(palette).map(([id, entry]) => [id, {
+      ...entry,
+      value: typeof entry.value === 'string' ? { kind: 'solid' as const, color: entry.value } : entry.value,
+    }])) as FabricPalette,
   };
 }

@@ -587,5 +587,12 @@ export function resolveStyleValue(
     return undefined;
   }
 
-  return entry.value;
+  const palette = entry.value;
+  return isSolidPalettePaint(palette) ? palette.color : palette;
+}
+
+function isSolidPalettePaint(value: unknown): value is { readonly kind: 'solid'; readonly color: string } {
+  return typeof value === 'object' && value !== null &&
+    (value as Record<string, unknown>)['kind'] === 'solid' &&
+    typeof (value as Record<string, unknown>)['color'] === 'string';
 }

@@ -38,6 +38,7 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   }
   issues.push(...sharedSemanticIssues(input));
   paletteNone(input['globals'], issues);
+  palettePaints(input['globals'], issues);
   editorMetadata(input['editorMetadata'], issues);
   rejectGifAssets(input['assets'], issues);
   const sceneIds = scene(input['scene'], issues);
@@ -54,8 +55,37 @@ function paletteNone(value: unknown, issues: ValidationIssue[]): void {
   const palette = value['palette'];
   if (!isRecord(palette)) return;
   const none = palette['none'];
-  if (!isRecord(none) || none['name'] !== 'None' || none['value'] !== 'transparent') {
+  if (!isRecord(none) || none['name'] !== 'None' || !isRecord(none['value']) || none['value']['kind'] !== 'solid' || none['value']['color'] !== 'transparent') {
     issues.push(issue('missing-field', '/globals/palette/none', 'palette.none must be the immutable transparent token.'));
+  }
+}
+
+/** v2 palette tokens are paints, not untyped values carried from the old document model. */
+function palettePaints(value: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(value) || !isRecord(value['palette'])) return;
+  for (const [id, entry] of Object.entries(value['palette'])) {
+    const path = `/globals/palette/${id}/value`;
+    if (!isRecord(entry) || !isRecord(entry['value'])) {
+      issues.push(issue('wrong-type', path, 'A palette value must be a solid or linear gradient paint.'));
+      continue;
+    }
+    const paint = entry['value'];
+    if (paint['kind'] === 'solid') {
+      if (typeof paint['color'] !== 'string' || paint['color'].length === 0 || Object.keys(paint).length !== 2) {
+        issues.push(issue('wrong-type', path, 'A solid palette paint needs only a non-empty CSS colour.'));
+      }
+      continue;
+    }
+    if (paint['kind'] !== 'gradient' || !Number.isFinite(paint['angle']) || !Array.isArray(paint['stops']) || paint['stops'].length < 2 || Object.keys(paint).length !== 3) {
+      issues.push(issue('wrong-type', path, 'A gradient palette paint needs an angle and at least two stops.'));
+      continue;
+    }
+    let previous = -1;
+    for (const [index, stop] of paint['stops'].entries()) {
+      if (!isRecord(stop) || !Number.isFinite(stop['offset']) || (stop['offset'] as number) < 0 || (stop['offset'] as number) > 1 || (stop['offset'] as number) < previous || typeof stop['color'] !== 'string' || stop['color'].length === 0 || Object.keys(stop).length !== 2) {
+        issues.push(issue('wrong-type', `${path}/stops/${index}`, 'Gradient stops need ascending 0–1 offsets and non-empty CSS colours.'));
+      } else previous = stop['offset'] as number;
+    }
   }
 }
 

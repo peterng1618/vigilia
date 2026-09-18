@@ -35,9 +35,9 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     },
     globals: {
       palette: {
-        none: { name: 'None', value: 'transparent' },
-        background: { name: 'Background', value: '#0c0e13' },
-        bars: { name: 'Letterbox bars', value: '#000000' },
+        none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+        background: { name: 'Background', value: { kind: 'solid', color: '#0c0e13' } },
+        bars: { name: 'Letterbox bars', value: { kind: 'solid', color: '#000000' } },
       },
     },
     bindings: {

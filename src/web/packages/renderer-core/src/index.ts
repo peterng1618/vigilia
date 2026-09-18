@@ -114,6 +114,7 @@ export type {
   GlobalGroupName,
   GlobalRef,
   Globals,
+  PalettePaint,
   ImageContent,
   NodeType,
   RectangleContent,
@@ -149,7 +150,13 @@ export { validateThemeDocument } from './theme/validate.js';
 
 export { serializeThemeDocument } from './theme/serialize.js';
 
-export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from './theme/fabric-envelope.js';
+export type {
+  FabricGlobals,
+  FabricPalette,
+  FabricPaletteEntry,
+  FabricThemeEnvelope,
+  FabricThemeEnvelopeInput,
+} from './theme/fabric-envelope.js';
 
 export { fabricEnvelopeInputFor } from './theme/fabric-envelope.js';
 

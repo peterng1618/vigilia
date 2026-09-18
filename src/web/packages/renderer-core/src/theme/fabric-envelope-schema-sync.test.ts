@@ -36,4 +36,16 @@ describe('published Fabric theme schema', () => {
     expect(binding['required']).toContain('id');
     expect(document.properties['bindings']).toBeDefined();
   });
+
+  it('publishes structured palette paints while allowing CSS-compatible colours', () => {
+    const document = schema();
+    const palette = document.$defs['paletteGroup']!;
+    const paint = document.$defs['palettePaint']!;
+
+    expect(palette['required']).toEqual(['none']);
+    expect(palette['additionalProperties']).toMatchObject({
+      properties: { value: { $ref: '#/$defs/palettePaint' } },
+    });
+    expect(paint['oneOf']).toHaveLength(2);
+  });
 });

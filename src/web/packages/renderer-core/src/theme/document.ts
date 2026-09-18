@@ -53,6 +53,11 @@ export interface GlobalEntry {
   readonly value: unknown;
 }
 
+/** Palette paint is structured so gradients retain their authored geometry. */
+export type PalettePaint =
+  | { readonly kind: 'solid'; readonly color: string }
+  | { readonly kind: 'gradient'; readonly angle: number; readonly stops: readonly { readonly offset: number; readonly color: string }[] };
+
 export type GlobalGroup = Readonly<Record<string, GlobalEntry>>;
 export type Globals = Readonly<Partial<Record<GlobalGroupName, GlobalGroup>>>;
 

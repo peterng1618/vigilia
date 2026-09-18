@@ -82,18 +82,29 @@ describe('Fabric theme envelope validation', () => {
   it('requires an immutable transparent palette.none whenever a palette is present', () => {
     const missing = validateFabricThemeEnvelope({
       ...envelope(),
-      globals: { palette: { accent: { name: 'Accent', value: '#00b8d9' } } },
+      globals: { palette: { accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } } } },
     });
     const renamed = validateFabricThemeEnvelope({
       ...envelope(),
-      globals: { palette: { none: { name: 'Clear', value: 'transparent' } } },
+      globals: { palette: { none: { name: 'Clear', value: { kind: 'solid', color: 'transparent' } } } },
     });
 
     expect(missing).toMatchObject({ ok: false, issues: [expect.objectContaining({ path: '/globals/palette/none' })] });
     expect(renamed).toMatchObject({ ok: false, issues: [expect.objectContaining({ path: '/globals/palette/none' })] });
     expect(validateFabricThemeEnvelope({
       ...envelope(),
-      globals: { palette: { none: { name: 'None', value: 'transparent' } } },
+      globals: { palette: { none: { name: 'None', value: { kind: 'solid', color: 'transparent' } } } },
+    })).toMatchObject({ ok: true });
+  });
+
+  it('accepts CSS-compatible solid colours and ordered angled gradients', () => {
+    expect(validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { palette: {
+        none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+        ink: { name: 'Ink', value: { kind: 'solid', color: '#101216' } },
+        glow: { name: 'Glow', value: { kind: 'gradient', angle: 45, stops: [{ offset: 0, color: 'rgb(0, 0, 0)' }, { offset: 1, color: '#ffffff' }] } },
+      } },
     })).toMatchObject({ ok: true });
   });
 });
