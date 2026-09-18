@@ -1,6 +1,6 @@
 # 0011 — Editor property and theme-token model
 
-- **Status:** active; chart descriptors/control path partly implemented, active Fabric token/type conversion pending
+- **Status:** active; chart descriptors/control path partly implemented, reference reassignment and remaining domains pending
 - **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
 ## Goal
@@ -82,14 +82,13 @@ Implemented:
 - structured solid/gradient palette tokens, including CSS-compatible solid colours;
 - fork palette controls to add/edit stable tokens and gradient angles/stops;
 - type-preset schema/reference validation and per-run shared-plan resolution;
+- persisted Fabric palette/type references with validated save/open semantics;
+- fork type-preset controls for global family, size, weight and line height;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:
 
-- token-only paint/type enforcement needs stable Fabric metadata plus a one-time
-  starter-scene conversion; legacy semantic fixtures remain readable until that
-  migration is complete;
-- domain property UI for types and assets;
+- domain property UI for assets;
 - final reference traversal/reassignment UI.
 
 Because nothing has been released, the development v2 semantic shape may break
@@ -105,6 +104,7 @@ settled by spec 0013.
 | Chart setting descriptors | `renderer-core/src/charts/` |
 | Scene geometry/grouping | Fabric scene via `scene-fabric` persistence |
 | Current chart property UI | `editor/src/chart-manager/` |
+| Current palette/type property UI | `editor/src/palette-panel.ts`, `editor/src/type-preset-panel.ts` |
 
 Do not create speculative managers/owners for property domains that are not yet
 implemented.

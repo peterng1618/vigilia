@@ -106,8 +106,8 @@ evidence and a completed full browser suite.
 
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
-- Finish spec 0011: Fabric paint/type references, stable reference UI, remaining
-  domain-property editing and removal of transitional globals/literals.
+- Finish spec 0011: stable reference reassignment, remaining domain-property
+  editing and removal of transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.

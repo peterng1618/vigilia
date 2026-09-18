@@ -38,11 +38,12 @@ Current Vigilia-owned extensions are:
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Artboard size/preview fit/paint | `editor/src/artboard-panel.ts` |
 | Palette-token authoring | `editor/src/palette-panel.ts` |
+| Type-preset authoring | `editor/src/type-preset-panel.ts` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 
-Types, remaining artboard paint properties, assets, media and semantic layers do
+Assets, media and semantic layers do
 **not** yet have active fork-extension owners. Create those only when the
 corresponding feature is implemented; do not document planned classes as current
 architecture.
@@ -162,7 +163,7 @@ usage.
 
 Establish one owner when these become active work:
 
-- final v2 palette/type-preset/reference editing;
+- v2 reference reassignment editing;
 - editor live binding/runtime updates;
 - semantic layer UI;
 - artboard/asset/media property editing;
