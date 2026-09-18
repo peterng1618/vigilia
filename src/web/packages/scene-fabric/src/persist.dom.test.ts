@@ -12,6 +12,7 @@ import {
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+import { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY } from './object-paint.js';
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
@@ -188,6 +189,20 @@ describe('Fabric’s own keys are held to the same rule', () => {
 });
 
 describe('identity survives a round trip', () => {
+  it('persists palette references and reapplies their resolved paint', async () => {
+    const rect = new Rect({ width: 10, height: 10, fill: '#000' });
+    rect.set('id', 'panel');
+    rect.set(VIGILIA_PAINT_PROPERTY, { fill: 'palette.panel' });
+    const scene = serialiseScene(canvasOf(rect));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, scene);
+
+    applyObjectPalettePaints(revived, { palette: { panel: { name: 'Panel', value: '#123456' } } });
+
+    expect(scene.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({ fill: 'palette.panel' });
+    expect(revived.getObjects()[0]!.fill).toBe('#123456');
+  });
+
   it('keeps authored text runs available after Fabric revival', async () => {
     const authored = { runs: [{ kind: 'literal' as const, text: 'CPU ' }, { kind: 'value' as const, bindingId: 'load' }] };
     const text = new FabricText('CPU 48%');
@@ -399,6 +414,6 @@ describe('there is exactly one owner of scene serialisation', () => {
     expect(
       readdirSync(root).filter((entry: string) => entry.endsWith('.ts')).length,
     ).toBeGreaterThan(10);
-    expect(SCENE_PERSISTED_PROPERTIES).toEqual(['id', VIGILIA_TEXT_PROPERTY]);
+    expect(SCENE_PERSISTED_PROPERTIES).toEqual(['id', VIGILIA_TEXT_PROPERTY, VIGILIA_PAINT_PROPERTY]);
   });
 });

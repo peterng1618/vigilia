@@ -9,6 +9,7 @@ import {
   serialiseScene,
   cssArtboardPaint,
   fabricArtboardPaint,
+  applyObjectPalettePaints,
   type SceneAdapter,
 } from '@vigilia/scene-fabric';
 
@@ -68,6 +69,7 @@ function applyArtboardPaint(editor: ImageEditor, host: HTMLElement, artboard: Ar
   };
   editor.canvas.backgroundColor = fabricArtboardPaint(resolve(artboard.background), artboard.width, artboard.height) ?? '';
   host.style.background = cssArtboardPaint(resolve(artboard.barColor)) ?? '#000';
+  applyObjectPalettePaints(editor.canvas, globals);
   editor.canvas.requestRenderAll();
 }
 

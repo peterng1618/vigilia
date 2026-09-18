@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,266 passed across 75 files |
+| Unit tests | 1,267 passed across 75 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 17 active-fork editor tests passed; palette capture inspected |
@@ -77,8 +77,9 @@ evidence and a completed full browser suite.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
   still transitional. `palette.none`, structured solid/linear-gradient palette
   tokens and fork palette authoring are implemented; type presets have a shared
-  schema/reference contract. Applying token-only paint/type semantics to raw
-  Fabric objects needs persisted reference metadata and a starter-scene pass.
+  schema/reference contract. Raw Fabric objects can now persist palette-reference
+  metadata and reapply it after revival; the starter-scene conversion and type
+  references remain pending.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 
