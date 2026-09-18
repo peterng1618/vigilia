@@ -8,15 +8,15 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,253 passed across 73 files |
+| Unit tests | 1,254 passed across 73 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | Unverified: Playwright cannot start in this WSL host (`UtilBindVsockAnyPort`) |
-| Browser suite / size | Unverified for current change: visual capture could not run first |
+| Visual review | 15 active-fork editor tests passed; five refreshed captures inspected |
+| Browser suite / size | Size gate passed (260.3 KB gzip / 400 KB); full browser suite unverified because it emitted no final summary |
 
-The prior full gate was 2026-09-18. Its browser, size and screenshot evidence
-predates the current change; this slice has current typecheck, unit and build
-evidence only.
+The prior full browser gate was 2026-09-18. This slice has current typecheck,
+unit, build, size and focused active-fork visual evidence; its full browser
+suite emitted no final summary.
 
 ## Current product state
 
@@ -52,6 +52,10 @@ evidence only.
   v2 dashboard document through the same guard.
 - Current Vigilia extensions are the chart, persistence, shortcut and artboard
   size/preview controls composed by `ForkExtensions`.
+- The fork's New/Open/Save dispatcher no longer imports the fallback action or
+  keyboard model; it owns only product file shortcuts.
+- Visual-review coverage renders only the active fork route; obsolete fallback
+  editor/globals/inspector captures were removed.
 - Product property extensions render in the dedicated sidebar, so selected-chart
   controls cannot displace the interactive Fabric stage.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;

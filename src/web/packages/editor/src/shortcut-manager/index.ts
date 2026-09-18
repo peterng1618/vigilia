@@ -1,25 +1,23 @@
-import { actionForShortcut, type ActionId } from '../actions.js';
-import { deferToTarget } from '../keyboard.js';
-
 export type ShortcutHandler = () => void;
+export type ProductShortcutId = 'file.new' | 'file.open' | 'file.save';
+
+const FILE_SHORTCUTS: Readonly<Record<string, ProductShortcutId>> = {
+  n: 'file.new',
+  o: 'file.open',
+  s: 'file.save',
+};
 
 /** The sole window-level dispatcher for Vigilia product actions above the fork. */
 export class ShortcutManager {
-  readonly #handlers = new Map<ActionId, ShortcutHandler>();
+  readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
   readonly #onKeyDown = (event: KeyboardEvent): void => {
-    const action = actionForShortcut({
-      key: event.key,
-      meta: event.ctrlKey || event.metaKey,
-      shift: event.shiftKey,
-    });
-    const handler = action === undefined ? undefined : this.#handlers.get(action.id);
+    const action = event.ctrlKey || event.metaKey
+      ? FILE_SHORTCUTS[event.key.toLowerCase()]
+      : undefined;
+    const handler = action === undefined ? undefined : this.#handlers.get(action);
 
     const target = event.target;
-    const deferred = target instanceof HTMLElement && deferToTarget(
-      { tagName: target.tagName, type: target.getAttribute('type') ?? undefined, isContentEditable: target.isContentEditable },
-      event.key,
-      event.ctrlKey || event.metaKey,
-    );
+    const deferred = action === 'file.new' && isTextEntryTarget(target);
 
     if (handler === undefined || deferred) {
       return;
@@ -33,7 +31,7 @@ export class ShortcutManager {
     window.addEventListener('keydown', this.#onKeyDown);
   }
 
-  register(action: ActionId, handler: ShortcutHandler): void {
+  register(action: ProductShortcutId, handler: ShortcutHandler): void {
     this.#handlers.set(action, handler);
   }
 
@@ -41,4 +39,14 @@ export class ShortcutManager {
     window.removeEventListener('keydown', this.#onKeyDown);
     this.#handlers.clear();
   }
+}
+
+/** Save/Open deliberately override text-entry defaults; New does not. */
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
+  return target instanceof HTMLInputElement && !new Set([
+    'button', 'checkbox', 'color', 'file', 'image', 'radio', 'reset', 'submit',
+  ]).has(target.type.toLowerCase());
 }
