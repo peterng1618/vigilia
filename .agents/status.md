@@ -42,6 +42,8 @@ shows the static dashboard demo at usable stage size.
 - Fork history uses `scene-fabric` serialization/revival callbacks and disposes
   charts before scene replacement/destruction.
 - Ctrl/Cmd+S downloads the development v2 Fabric envelope.
+- Dirty-document checks compare the complete v2 envelope, so authored semantic
+  changes cannot be discarded as though only fork scene state mattered.
 - Ctrl/Cmd+O validates a bounded v2 file, checks exact Fabric compatibility,
   then stages revival before replacing the fork shell. Invalid, incompatible,
   or unrevivable files leave the current editor intact.

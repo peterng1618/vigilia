@@ -10,13 +10,17 @@ const baseline = {
 } as const;
 
 describe('PersistenceManager', () => {
-  it('detects changes from the saved Fabric scene rather than fork events', () => {
+  it('detects authored scene and envelope changes rather than fork events', () => {
     const persistence = new PersistenceManager(baseline);
 
     expect(persistence.isDirty(baseline)).toBe(false);
     expect(persistence.isDirty({
       ...baseline,
       scene: { ...baseline.scene, objects: [{ type: 'Rect', id: 'panel' }] },
+    })).toBe(true);
+    expect(persistence.isDirty({
+      ...baseline,
+      metadata: { name: 'Renamed theme' },
     })).toBe(true);
   });
 });

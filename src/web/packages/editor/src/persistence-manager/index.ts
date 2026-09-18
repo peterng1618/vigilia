@@ -2,14 +2,14 @@ import type { FabricThemeEnvelope } from '@vigilia/renderer-core';
 
 /** Product file export; envelope parsing/import arrives with v2 validation. */
 export class PersistenceManager {
-  #savedScene: string;
+  #savedDocument: string;
 
   constructor(initial: FabricThemeEnvelope) {
-    this.#savedScene = sceneKey(initial);
+    this.#savedDocument = documentKey(initial);
   }
 
   isDirty(theme: FabricThemeEnvelope): boolean {
-    return sceneKey(theme) !== this.#savedScene;
+    return documentKey(theme) !== this.#savedDocument;
   }
 
   save(theme: FabricThemeEnvelope): void {
@@ -19,7 +19,7 @@ export class PersistenceManager {
     link.download = 'vigilia-theme.json';
     link.click();
     URL.revokeObjectURL(url);
-    this.#savedScene = sceneKey(theme);
+    this.#savedDocument = documentKey(theme);
   }
 
   destroy(): void {}
@@ -39,6 +39,6 @@ export async function confirmDocumentReplacement(): Promise<'save' | 'discard' |
   });
 }
 
-function sceneKey(theme: FabricThemeEnvelope): string {
-  return JSON.stringify(theme.scene);
+function documentKey(theme: FabricThemeEnvelope): string {
+  return JSON.stringify(theme);
 }
