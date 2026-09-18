@@ -55,6 +55,8 @@ active-fork visual evidence and a completed full browser suite.
   keyboard model; it owns only product file shortcuts.
 - The inactive legacy `main.ts` route and its size exception are deleted; the
   active editor entry remains `fork-main.ts`.
+- The editor package barrel exposes only the adopted fork shell; legacy
+  DOM-editor utilities are no longer public API.
 - Visual-review coverage renders only the active fork route; obsolete fallback
   editor/globals/inspector captures were removed.
 - Product property extensions render in the dedicated sidebar, so selected-chart
