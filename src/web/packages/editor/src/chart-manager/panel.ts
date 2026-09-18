@@ -8,7 +8,7 @@ export interface ForkChartPanel {
 export function createForkChartPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent['settings']) => void,
-  onBindingChange: (id: string, bindingId: string, semanticKey: string) => void,
+  onBindingChange: (id: string, binding: Binding) => void,
 ): ForkChartPanel {
   const root = document.createElement('section');
   host.append(root);
@@ -37,8 +37,15 @@ export function createForkChartPanel(
           select.append(option);
         }
         select.value = binding.semanticKey;
-        select.addEventListener('change', () => onBindingChange(chart.id, binding.id, select.value));
-        root.append(label, select);
+        select.addEventListener('change', () => onBindingChange(chart.id, { ...binding, semanticKey: select.value }));
+        root.append(
+          label,
+          select,
+          ...bindingNumber(binding.id, 'precision', 'Precision', binding.precision, 0, 6, (precision) => onBindingChange(chart.id, without(binding, 'precision', precision))),
+          ...unitDisplay(binding, (unitDisplay) => onBindingChange(chart.id, without(binding, 'unitDisplay', unitDisplay))),
+          ...bindingNumber(binding.id, 'scale', 'Scale', binding.scale, undefined, undefined, (scale) => onBindingChange(chart.id, without(binding, 'scale', scale))),
+          ...bindingNumber(binding.id, 'offset', 'Offset', binding.offset, undefined, undefined, (offset) => onBindingChange(chart.id, without(binding, 'offset', offset))),
+        );
       }
       for (const field of settingsFieldsFor(chart.content.family)) {
         const label = document.createElement('label');
@@ -74,4 +81,60 @@ export function createForkChartPanel(
       }
     },
   };
+}
+
+function bindingNumber(
+  bindingId: string,
+  property: 'precision' | 'scale' | 'offset',
+  labelText: string,
+  value: number | undefined,
+  min: number | undefined,
+  max: number | undefined,
+  onChange: (value: number | undefined) => void,
+): readonly [HTMLLabelElement, HTMLInputElement] {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  const input = document.createElement('input');
+  input.dataset['vigiliaBindingField'] = `${bindingId}.${property}`;
+  input.type = 'number';
+  input.value = value === undefined ? '' : String(value);
+  if (min !== undefined) input.min = String(min);
+  if (max !== undefined) input.max = String(max);
+  input.addEventListener('change', () => {
+    if (input.value === '') {
+      onChange(undefined);
+      return;
+    }
+    const next = Number(input.value);
+    if (!Number.isFinite(next) || (min !== undefined && next < min) || (max !== undefined && next > max) || (labelText === 'Precision' && !Number.isInteger(next))) {
+      input.value = value === undefined ? '' : String(value);
+      return;
+    }
+    onChange(next);
+  });
+  return [label, input];
+}
+
+function unitDisplay(binding: Binding, onChange: (value: Binding['unitDisplay']) => void): readonly [HTMLLabelElement, HTMLSelectElement] {
+  const label = document.createElement('label');
+  label.textContent = 'Unit display';
+  const select = document.createElement('select');
+  select.dataset['vigiliaBindingField'] = `${binding.id}.unitDisplay`;
+  for (const [value, text] of [['', 'Default'], ['none', 'None'], ['short', 'Short'], ['long', 'Long']] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    select.append(option);
+  }
+  select.value = binding.unitDisplay ?? '';
+  select.addEventListener('change', () => onChange(select.value === '' ? undefined : select.value as Binding['unitDisplay']));
+  return [label, select];
+}
+
+function without<K extends keyof Binding>(binding: Binding, key: K, value: Binding[K] | undefined): Binding {
+  if (value === undefined) {
+    const { [key]: _removed, ...rest } = binding;
+    return rest as Binding;
+  }
+  return { ...binding, [key]: value } as Binding;
 }

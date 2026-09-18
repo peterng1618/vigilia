@@ -1,4 +1,4 @@
-# Status — 2026-09-17
+# Status — 2026-09-18
 
 Current handoff only. Durable rules: `AGENTS.md`; product plan:
 `design/plan.md`; architecture: `architecture.md`; active work: specs 0010,
@@ -8,9 +8,9 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,248 passed across 72 files |
+| Unit tests | 1,250 passed across 73 files |
 | Typechecks | six projects clean |
-| Browser suite | 59 passed / 125 skipped / 0 failed |
+| Browser suite | 61 passed / 127 skipped / 0 failed |
 | Player size | 260.3 KB gzip / 400 KB gate |
 | Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
 | Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
@@ -57,8 +57,8 @@ shows the static dashboard demo at usable stage size.
   without rescaling Fabric object geometry.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
-- Selected-chart bindings use the shared semantic-key vocabulary, repaint the
-  live chart, and persist as envelope data.
+- Existing selected-chart bindings expose semantic key, precision, unit display,
+  scale and offset controls; they repaint live and persist as envelope data.
 - Startup creates and revives a static v2 dashboard envelope directly, including
   supported gradients, SVG-derived paths and all four chart families. The legacy
   demo theme/`ScenePlan` path no longer mounts the interactive editor.

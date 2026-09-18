@@ -31,7 +31,7 @@ export class ChartManager {
     this.#panel = createForkChartPanel(
       options.panelHost,
       (id, settings) => this.#updateSettings(id, settings),
-      (id, bindingId, semanticKey) => this.#updateBinding(id, bindingId, semanticKey, options.onBindingsChange),
+      (id, binding) => this.#updateBinding(id, binding, options.onBindingsChange),
     );
     this.#editor.canvas.on('selection:created', this.#drawPanel);
     this.#editor.canvas.on('selection:updated', this.#drawPanel);
@@ -72,12 +72,11 @@ export class ChartManager {
 
   #updateBinding(
     id: string,
-    bindingId: string,
-    semanticKey: string,
+    nextBinding: Binding,
     onBindingsChange: ((id: string, bindings: readonly Binding[]) => void) | undefined,
   ): void {
     const current = this.#bindings[id] ?? [];
-    const bindings = current.map((binding) => binding.id === bindingId ? { ...binding, semanticKey } : binding);
+    const bindings = current.map((binding) => binding.id === nextBinding.id ? nextBinding : binding);
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#scene.objectFor(id);
     if (chart instanceof VigiliaChart) this.#applyChart(id, chart);

@@ -65,9 +65,12 @@ test.describe('Fabric editor route', () => {
     if (box === null) return;
     await page.mouse.click(box.x + (432 / 1280) * box.width, box.y + (418 / 720) * box.height);
     await page.locator('[data-vigilia-binding="cpu-load"]').selectOption('ram.used');
+    const precision = page.locator('[data-vigilia-binding-field="cpu-load.precision"]');
+    await precision.fill('2');
+    await precision.press('Tab');
 
     const envelope = await saveEnvelope(page) as { bindings: Record<string, Array<{ id: string; semanticKey: string }>> };
-    expect(envelope.bindings['load-gauge']).toContainEqual({ id: 'cpu-load', semanticKey: 'ram.used', precision: 0 });
+    expect(envelope.bindings['load-gauge']).toContainEqual({ id: 'cpu-load', semanticKey: 'ram.used', precision: 2 });
   });
 
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {
