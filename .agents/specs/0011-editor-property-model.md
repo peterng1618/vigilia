@@ -36,7 +36,8 @@ Deleting another referenced token requires reassignment.
 ### Typography uses type presets
 
 A named type preset groups family, size, weight, letter spacing and line height.
-Text references a preset; styled runs may override preset/colour by reference.
+Each styled run independently references its preset and colour by reference;
+there is no text-object-level preset.
 
 ### Charts are family-specific
 

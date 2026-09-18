@@ -39,6 +39,7 @@ result of the action, not merely the editor after loading.
 | Chart properties | Change a binding semantic key or scalar transform | `editor-fork-chart-binding` |
 | Chart properties | Change a family-specific scalar setting | add when that control changes |
 | Artboard | Change width/height or contain/cover preview | `editor-fork-artboard` |
+| Artboard | Change dimensions while retaining a literal letterbox colour | `editor-fork-artboard-literal-bar` |
 | Session/file | See the dirty-document New/Open confirmation | `editor-fork-dirty-replacement` |
 | Session/file | Open a valid, invalid or Fabric-incompatible file | add when file UI changes |
 | Persistence/history | Save a changed document or undo a visible drag | add when save/history UI changes |

@@ -8,16 +8,15 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,252 passed across 73 files |
+| Unit tests | 1,253 passed across 73 files |
 | Typechecks | six projects clean |
-| Visual review | six captures passed; action screenshots inspected before E2E |
-| Browser suite | 64 passed / 130 skipped / 0 failed |
-| Player size | 260.3 KB gzip / 400 KB gate |
-| Host bundle | 25.36 KB raw / 8.34 KB gzip; no Fabric dependency edge |
-| Fork | compiled package installed; fork typecheck/build and 1,809 tests passed |
+| Builds | player, editor and host clean |
+| Visual review | Unverified: Playwright cannot start in this WSL host (`UtilBindVsockAnyPort`) |
+| Browser suite / size | Unverified for current change: visual capture could not run first |
 
-Full gate run on 2026-09-18. Isolated desktop preview confirms direct v2 startup
-shows the static dashboard demo at usable stage size.
+The prior full gate was 2026-09-18. Its browser, size and screenshot evidence
+predates the current change; this slice has current typecheck, unit and build
+evidence only.
 
 ## Current product state
 
@@ -70,7 +69,8 @@ shows the static dashboard demo at usable stage size.
 - A visible Fabric drag persists through v2 Save and Ctrl/Cmd+Z restores the
   saved geometry through fork history.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
-  still transitional. Palette/type-preset semantics from spec 0011 are not yet
+  still transitional. `palette.none` is enforced for v2 palettes; final palette
+  solids/gradients and per-run type-preset semantics from spec 0011 are not yet
   represented by the published development schema.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
@@ -91,7 +91,7 @@ shows the static dashboard demo at usable stage size.
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
 - Finish spec 0011: palette solids/gradients, type presets, stable reference UI,
-  artboard/domain property editing and removal of transitional globals/literals.
+  remaining domain-property editing and removal of transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.

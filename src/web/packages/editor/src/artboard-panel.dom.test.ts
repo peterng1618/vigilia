@@ -58,4 +58,26 @@ describe('artboard panel', () => {
     background.dispatchEvent(new Event('change'));
     expect(change).toHaveBeenLastCalledWith(expect.objectContaining({ background: { ref: 'palette.bars' } }));
   });
+
+  it('keeps an uneditable literal bar colour when another artboard field changes', () => {
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, {
+      palette: { background: { name: 'Background', value: '#101216' } },
+    }, change);
+    panel.render({
+      width: 1280,
+      height: 720,
+      background: { ref: 'palette.background' },
+      barColor: { value: '#e20074' },
+    });
+
+    const width = panel.root.querySelector<HTMLInputElement>('[data-vigilia-artboard-width]')!;
+    width.value = '1000';
+    width.dispatchEvent(new Event('change'));
+
+    expect(change).toHaveBeenLastCalledWith(expect.objectContaining({
+      width: 1000,
+      barColor: { value: '#e20074' },
+    }));
+  });
 });

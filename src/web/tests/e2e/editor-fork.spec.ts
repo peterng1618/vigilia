@@ -49,6 +49,35 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-artboard');
   });
 
+  test('captures literal letterbox paint retained after an artboard resize for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'literal-bars.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 2,
+        fabricVersion: '7.4.0',
+        id: 'literal-bars',
+        artboard: {
+          width: 1000,
+          height: 720,
+          background: { value: '#101216' },
+          barColor: { value: '#e20074' },
+        },
+        scene: { version: '7.4.0', objects: [] },
+      })),
+    });
+    await expect(page.locator('#status')).toHaveText('Opened literal-bars.json');
+    const width = page.locator('[data-vigilia-artboard-width]');
+    await width.fill('900');
+    await width.press('Tab');
+    await expect(width).toHaveValue('900');
+
+    await captureVisualReview(page, testInfo, 'editor-fork-artboard-literal-bar');
+  });
+
   test('captures dirty document replacement confirmation for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

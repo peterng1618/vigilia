@@ -33,6 +33,12 @@ a second simplified scene tree plus bidirectional mapping.
 Fabric is pinned; incompatible runtime versions are refused before revival.
 Custom charts persist authored family/settings only, never ECharts/runtime data.
 
+### Type presets belong to individual styled text runs
+
+Each run carries its own optional type-preset reference; a text object has no
+base preset. This preserves independent label/value/unit typography without
+inventing inherited state. **Decided by:** user, 2026-09-18.
+
 ### Use the `fabricjs-image-editor` fork as editor foundation
 
 The fork is adopted for generic selection, transforms, grouping, duplication,
