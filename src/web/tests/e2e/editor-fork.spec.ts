@@ -42,6 +42,16 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
   });
 
+  test('persists the selected artboard preview fit mode', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-artboard-fit-mode]').selectOption('cover');
+
+    const envelope = await saveEnvelope(page) as { artboard: { fitMode?: string } };
+    expect(envelope.artboard.fitMode).toBe('cover');
+  });
+
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

@@ -1,5 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { validateFabricThemeEnvelope, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type ScenePlan } from '@vigilia/renderer-core';
+import { validateFabricThemeEnvelope, type Artboard, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
   disposeScene,
@@ -12,10 +12,7 @@ import {
 
 export interface ForkShellOptions {
   readonly host: HTMLElement;
-  readonly artboard: {
-    readonly width: number;
-    readonly height: number;
-  };
+  readonly artboard: Artboard;
   readonly plan?: ScenePlan;
   /** A validated v2 document revives directly into the interactive fork canvas. */
   readonly envelope?: FabricThemeEnvelope;
@@ -25,14 +22,17 @@ export interface ForkShell {
   readonly editor: ImageEditor;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
+  setFitMode(fitMode: FitMode): void;
   destroy(): void;
 }
 
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 let nextForkContainer = 1;
 
-function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): number | undefined {
-  const scale = Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
+function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard'], fitMode: FitMode): number | undefined {
+  const scale = fitMode === 'contain'
+    ? Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height)
+    : Math.max(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
 
   if (!Number.isFinite(scale) || scale <= 0) return undefined;
 
@@ -41,8 +41,8 @@ function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard
   return scale;
 }
 
-function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard']): void {
-  const scale = fitArtboardViewport(container, host, artboard);
+function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard'], fitMode: FitMode): void {
+  const scale = fitArtboardViewport(container, host, artboard, fitMode);
 
   if (scale === undefined) return;
 
@@ -75,13 +75,14 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   container.style.inset = '0';
   container.style.margin = 'auto';
   container.style.visibility = 'hidden';
-  const initialScale = fitArtboardViewport(container, host, artboard);
+  let fitMode: FitMode = artboard.fitMode ?? 'contain';
+  const initialScale = fitArtboardViewport(container, host, artboard, fitMode);
   host.append(container);
   let mounted: ImageEditor | undefined;
   const resize = typeof ResizeObserver === 'undefined'
     ? undefined
     : new ResizeObserver(() => {
-      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, artboard);
+      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, artboard, fitMode);
     });
   resize?.observe(host);
 
@@ -97,7 +98,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       reviveHistoryState: reviveScene,
     });
     mounted = editor;
-    fitCanvasViewport(editor, container, host, artboard);
+    fitCanvasViewport(editor, container, host, artboard, fitMode);
 
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
@@ -118,6 +119,10 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       ...(scene === undefined ? {} : { scene }),
       snapshot(input) {
         return serialiseThemeEnvelope(editor.canvas, input);
+      },
+      setFitMode(nextFitMode) {
+        fitMode = nextFitMode;
+        fitCanvasViewport(editor, container, host, artboard, fitMode);
       },
       destroy() {
         resize?.disconnect();

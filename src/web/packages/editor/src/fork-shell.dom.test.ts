@@ -36,6 +36,10 @@ describe('the adopted editor shell', () => {
     expect(editor.canvas.setDimensions).toHaveBeenCalledWith({ width: 800, height: 450 });
     expect(editor.canvas.setViewportTransform).toHaveBeenCalledWith([0.625, 0, 0, 0.625, 0, 0]);
     expect(shell.snapshot({ id: 'theme', artboard: { width: 1280, height: 720 } })).toMatchObject({ schemaVersion: 2, id: 'theme' });
+
+    shell.setFitMode('cover');
+    expect(editor.canvas.setDimensions).toHaveBeenLastCalledWith({ width: 1066.6666666666667, height: 600 });
+    expect(editor.canvas.setViewportTransform).toHaveBeenLastCalledWith([0.8333333333333334, 0, 0, 0.8333333333333334, 0, 0]);
   });
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {

@@ -9,8 +9,7 @@ export function createForkChartPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent['settings']) => void,
 ): ForkChartPanel {
-  const root = document.createElement('aside');
-  root.id = 'properties';
+  const root = document.createElement('section');
   host.append(root);
 
   return {

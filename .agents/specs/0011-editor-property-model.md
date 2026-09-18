@@ -74,6 +74,7 @@ Implemented:
 - Fabric scene geometry/grouping persistence;
 - one chart-setting descriptor owner in `renderer-core`;
 - fork chart panel for scalar settings on one selected `VigiliaChart`;
+- fork artboard control for persisted contain/cover preview mode;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:
