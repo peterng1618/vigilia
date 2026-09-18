@@ -107,4 +107,11 @@ describe('Fabric theme envelope validation', () => {
       } },
     })).toMatchObject({ ok: true });
   });
+
+  it('accepts typed presets as v2 globals', () => {
+    expect(validateFabricThemeEnvelope({
+      ...envelope(),
+      globals: { typePresets: { metric: { name: 'Metric', value: { family: 'Inter', size: 32, weight: 700, lineHeight: 1.1 } } } },
+    })).toMatchObject({ ok: true });
+  });
 });

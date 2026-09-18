@@ -15,6 +15,7 @@ import type {
   StyleValue,
   TextContent,
   TextRun,
+  TypePreset,
   ThemeDocument,
   ThemeNode,
 } from '../theme/document.js';
@@ -218,11 +219,12 @@ function planContent(
       return { kind: 'shape', shape: 'line', cornerRadius: 0 };
 
     case 'text':
+      const segments = planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues);
       return {
         kind: 'text',
         authored: node.content,
-        segments: planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues),
-        layout: planTextLayout(node.content, box.height, style),
+        segments,
+        layout: planTextLayout(node.content, box.height, segments[0]?.style ?? {}),
       };
 
     case 'chart':
@@ -332,7 +334,7 @@ function planTextSegments(
   issues: PlanIssue[],
 ): PlanTextSegment[] {
   return runs.map((run) => {
-    const style = resolveStyleMap(run.style, globals, nodeId, issues);
+    const style = { ...resolveTypePreset(run.typePreset, globals, nodeId, issues), ...resolveStyleMap(run.style, globals, nodeId, issues) };
 
     if (run.kind === 'literal') {
       return { text: run.text, style };
@@ -589,6 +591,39 @@ export function resolveStyleValue(
 
   const palette = entry.value;
   return isSolidPalettePaint(palette) ? palette.color : palette;
+}
+
+/** Presets are resolved per run so label, value and unit never inherit one text-object preset. */
+function resolveTypePreset(
+  ref: TextRun['typePreset'],
+  globals: Globals,
+  nodeId: string,
+  issues: PlanIssue[],
+): ResolvedStyle {
+  if (ref === undefined) return {};
+  const id = ref.slice('typePresets.'.length);
+  const value = globals.typePresets?.[id]?.value;
+  if (!isTypePreset(value)) {
+    issues.push({ code: 'unresolved-global', nodeId, detail: `Type preset "${ref}" is not defined or invalid.` });
+    return {};
+  }
+  return {
+    fontFamily: value.family,
+    fontSize: value.size,
+    ...(value.weight === undefined ? {} : { fontWeight: value.weight }),
+    ...(value.letterSpacing === undefined ? {} : { letterSpacing: value.letterSpacing }),
+    ...(value.lineHeight === undefined ? {} : { lineHeight: value.lineHeight }),
+  };
+}
+
+function isTypePreset(value: unknown): value is TypePreset {
+  if (typeof value !== 'object' || value === null) return false;
+  const preset = value as Record<string, unknown>;
+  return typeof preset['family'] === 'string' && preset['family'].length > 0 &&
+    typeof preset['size'] === 'number' && Number.isFinite(preset['size']) && preset['size'] > 0 &&
+    (preset['weight'] === undefined || typeof preset['weight'] === 'string' || typeof preset['weight'] === 'number') &&
+    (preset['letterSpacing'] === undefined || typeof preset['letterSpacing'] === 'number' && Number.isFinite(preset['letterSpacing'])) &&
+    (preset['lineHeight'] === undefined || typeof preset['lineHeight'] === 'number' && Number.isFinite(preset['lineHeight']) && preset['lineHeight'] > 0);
 }
 
 function isSolidPalettePaint(value: unknown): value is { readonly kind: 'solid'; readonly color: string } {

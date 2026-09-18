@@ -20,7 +20,7 @@ export const ASSET_PATH_PATTERN = /^assets\/[A-Za-z0-9._/-]{1,200}$/;
 export const MAX_NODE_DEPTH = 32;
 export const MAX_NODE_COUNT = 5000;
 
-export const GLOBAL_GROUPS = ['palette', 'fonts', 'fontSizes', 'spacing', 'assets'] as const;
+export const GLOBAL_GROUPS = ['palette', 'typePresets', 'fonts', 'fontSizes', 'spacing', 'assets'] as const;
 export type GlobalGroupName = (typeof GLOBAL_GROUPS)[number];
 
 export const NODE_TYPES = [
@@ -58,6 +58,15 @@ export type PalettePaint =
   | { readonly kind: 'solid'; readonly color: string }
   | { readonly kind: 'gradient'; readonly angle: number; readonly stops: readonly { readonly offset: number; readonly color: string }[] };
 
+/** One reusable typography treatment, applied independently to each text run. */
+export interface TypePreset {
+  readonly family: string;
+  readonly size: number;
+  readonly weight?: string | number;
+  readonly letterSpacing?: number;
+  readonly lineHeight?: number;
+}
+
 export type GlobalGroup = Readonly<Record<string, GlobalEntry>>;
 export type Globals = Readonly<Partial<Record<GlobalGroupName, GlobalGroup>>>;
 
@@ -94,6 +103,7 @@ export type TextRun =
   | {
       readonly kind: 'literal';
       readonly text: string;
+      readonly typePreset?: `typePresets.${string}`;
       readonly style?: StyleMap;
     }
   | {
@@ -102,6 +112,7 @@ export type TextRun =
       readonly bindingId: string;
       readonly precision?: number;
       readonly unitDisplay?: 'none' | 'short' | 'long';
+      readonly typePreset?: `typePresets.${string}`;
       readonly style?: StyleMap;
     };
 

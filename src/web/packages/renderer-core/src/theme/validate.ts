@@ -92,8 +92,8 @@ const KNOWN_KEYS = {
   ],
   binding: ['id', 'semanticKey', 'precision', 'unitDisplay', 'scale', 'offset'],
   textContent: ['runs', 'wrap', 'overflow', 'align', 'verticalAlign'],
-  literalRun: ['kind', 'text', 'style'],
-  valueRun: ['kind', 'bindingId', 'precision', 'unitDisplay', 'style'],
+  literalRun: ['kind', 'text', 'typePreset', 'style'],
+  valueRun: ['kind', 'bindingId', 'precision', 'unitDisplay', 'typePreset', 'style'],
   chartContent: ['family', 'settings'],
   rectangleContent: ['cornerRadius'],
   imageContent: ['assetId', 'fit', 'monochrome'],
@@ -101,6 +101,7 @@ const KNOWN_KEYS = {
   assetReference: ['id', 'kind', 'path', 'sha256', 'sourceUrl', 'license'],
   widgetProvenance: ['widgetId', 'widgetName', 'widgetVersion', 'insertedAt'],
   globalEntry: ['name', 'value'],
+  typePreset: ['family', 'size', 'weight', 'letterSpacing', 'lineHeight'],
   gaugeSettings: [
     'startAngle',
     'endAngle',
@@ -386,11 +387,37 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
         issues.add('missing-field', `${entryPath}/value`, 'A global entry needs a value.');
       }
 
+      if (groupName === 'typePresets') {
+        validateTypePreset(issues, entry['value'], `${entryPath}/value`);
+      }
+
       keys.add(`${groupName}.${entryId}`);
     }
   }
 
   return keys;
+}
+
+function validateTypePreset(issues: Issues, value: unknown, path: string): void {
+  if (!issues.object(value, path, 'A type preset')) return;
+  issues.unknownKeys(value, path, 'typePreset', 'A type preset');
+  if (typeof value['family'] !== 'string' || value['family'].trim().length === 0) {
+    issues.add('missing-field', `${path}/family`, 'A type preset needs a font family.');
+  }
+  if (!issues.finiteNumber(value['size'], `${path}/size`, 'size') || (value['size'] as number) <= 0) {
+    issues.add('out-of-range', `${path}/size`, 'A type preset size must be above 0.');
+  }
+  const weight = value['weight'];
+  if (weight !== undefined && typeof weight !== 'string' && (typeof weight !== 'number' || !Number.isFinite(weight))) {
+    issues.add('wrong-type', `${path}/weight`, 'A type preset weight must be a string or finite number.');
+  }
+  for (const key of ['letterSpacing', 'lineHeight'] as const) {
+    const raw = value[key];
+    if (raw !== undefined && !issues.finiteNumber(raw, `${path}/${key}`, key)) continue;
+    if (key === 'lineHeight' && raw !== undefined && (raw as number) <= 0) {
+      issues.add('out-of-range', `${path}/${key}`, 'A type preset lineHeight must be above 0.');
+    }
+  }
 }
 
 /** Returns declared asset IDs. */
@@ -911,6 +938,16 @@ function validateTextContent(
     }
 
     validateStyleMap(issues, run['style'], `${runPath}/style`, globalKeys);
+    validateTypePresetReference(issues, run['typePreset'], `${runPath}/typePreset`, globalKeys);
+  }
+}
+
+function validateTypePresetReference(issues: Issues, value: unknown, path: string, globalKeys: Set<string>): void {
+  if (value === undefined) return;
+  if (typeof value !== 'string' || !/^typePresets\.[A-Za-z0-9_-]{1,64}$/.test(value)) {
+    issues.add('unresolved-global-ref', path, 'A text run typePreset must reference typePresets.<id>.');
+  } else if (!globalKeys.has(value)) {
+    issues.add('unresolved-global-ref', path, `Type preset "${value}" is not defined in this document.`);
   }
 }
 

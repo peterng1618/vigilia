@@ -1,6 +1,6 @@
 # 0011 — Editor property and theme-token model
 
-- **Status:** active; chart descriptors/control path partly implemented, token/type model pending
+- **Status:** active; chart descriptors/control path partly implemented, active Fabric token/type conversion pending
 - **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
 ## Goal
@@ -26,8 +26,9 @@ Author-facing geometry uses whole artboard units where practical.
 ### Colour is theme-level
 
 Final palette entries are named tokens containing CSS-compatible solids or
-gradients. Compatible element paint references tokens; per-instance opacity
-remains local. A gradient has editable colour stops/positions plus one angle and spans the
+gradients. Every authored element paint, including `fill`, stroke and text
+colour, references a palette token; per-instance opacity remains local. A
+gradient has editable colour stops/positions plus one angle and spans the
 object's rectangular bounding box before clipping.
 
 `palette.none` is reserved transparent fallback and cannot be deleted/renamed.
@@ -36,8 +37,8 @@ Deleting another referenced token requires reassignment.
 ### Typography uses type presets
 
 A named type preset groups family, size, weight, letter spacing and line height.
-Each styled run independently references its preset and colour by reference;
-there is no text-object-level preset.
+Each styled run independently references its preset and palette colour; local
+typography is invalid and there is no text-object-level preset.
 
 ### Charts are family-specific
 
@@ -80,13 +81,14 @@ Implemented:
 - v2 palette validation reserves immutable transparent `palette.none`;
 - structured solid/gradient palette tokens, including CSS-compatible solid colours;
 - fork palette controls to add/edit stable tokens and gradient angles/stops;
+- type-preset schema/reference validation and per-run shared-plan resolution;
 - settings update in place without rebuilding the legacy node tree.
 
 Still transitional/not implemented:
 
-- current development v2 schema still permits local style values and still has
-  `fonts`/`fontSizes` global groups;
-- type-preset schema;
+- token-only paint/type enforcement needs stable Fabric metadata plus a one-time
+  starter-scene conversion; legacy semantic fixtures remain readable until that
+  migration is complete;
 - domain property UI for types and assets;
 - final reference traversal/reassignment UI.
 

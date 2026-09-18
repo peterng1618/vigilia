@@ -48,4 +48,13 @@ describe('published Fabric theme schema', () => {
     });
     expect(paint['oneOf']).toHaveLength(2);
   });
+
+  it('publishes typed typography presets separately from style references', () => {
+    const document = schema();
+    const globals = document.$defs['globals']!['properties'] as Record<string, Record<string, unknown>>;
+    const preset = document.$defs['typePreset']!;
+
+    expect(globals['typePresets']).toEqual({ $ref: '#/$defs/typePresetGroup' });
+    expect(preset['required']).toEqual(['family', 'size']);
+  });
 });

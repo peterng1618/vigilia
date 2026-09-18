@@ -122,6 +122,7 @@ export type {
   StyleValue,
   TextContent,
   TextRun,
+  TypePreset,
   ThemeDocument,
   ThemeMetadata,
   ThemeNode,

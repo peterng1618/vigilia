@@ -108,11 +108,11 @@ describe('style values (§75)', () => {
     expectValid(withStyle({ fill: { ref: 'palette.accent' } }));
   });
 
-  it('accepts a local literal', () => {
+  it('accepts a local fill literal', () => {
     expectValid(withStyle({ fill: { value: '#ff0000' } }));
   });
 
-  it.each(STYLE_PROPERTIES)('accepts the known style name %s', (property) => {
+  it.each(STYLE_PROPERTIES)('accepts a local style name %s', (property) => {
     expectValid(withStyle({ [property]: { value: 1 } }));
   });
 
@@ -179,6 +179,7 @@ describe('style values (§75)', () => {
       }),
     ).toContain('unresolved-global-ref');
   });
+
 });
 
 describe('globals', () => {
@@ -198,6 +199,21 @@ describe('globals', () => {
     expect(codes({ ...baseDocument(), globals: { palette: { 'not valid': { name: 'x', value: 1 } } } })).toContain(
       'invalid-id',
     );
+  });
+
+  it('accepts a typed preset and refuses malformed run references', () => {
+    const globals = { typePresets: { body: { name: 'Body', value: { family: 'Inter', size: 16, weight: 500, letterSpacing: 0.2, lineHeight: 1.2 } } } };
+    expectValid({
+      ...baseDocument(), globals,
+      nodes: [{ id: 'label', type: 'text', content: { runs: [{ kind: 'literal', text: 'CPU', typePreset: 'typePresets.body' }] } }],
+    });
+    expect(codes({
+      ...baseDocument(), globals,
+      nodes: [{ id: 'label', type: 'text', content: { runs: [{ kind: 'literal', text: 'CPU', typePreset: 'fonts.body' }] } }],
+    })).toContain('unresolved-global-ref');
+    expect(codes({
+      ...baseDocument(), globals: { typePresets: { body: { name: 'Body', value: { family: '', size: 0 } } } },
+    })).toEqual(expect.arrayContaining(['missing-field', 'out-of-range']));
   });
 });
 
@@ -712,10 +728,14 @@ describe('unknown fields', () => {
         width: 100,
         height: 100,
         fitMode: 'cover',
-        background: { value: '#000' },
-        barColor: { value: '#111' },
+        background: { ref: 'palette.background' },
+        barColor: { ref: 'palette.bars' },
       },
-      globals: { palette: { a: { name: 'A', value: '#fff' } } },
+      globals: { palette: {
+        a: { name: 'A', value: '#fff' },
+        background: { name: 'Background', value: '#000' },
+        bars: { name: 'Bars', value: '#111' },
+      } },
       assets: [
         {
           id: 'asset1',
@@ -748,7 +768,7 @@ describe('unknown fields', () => {
           ],
           content: {
             runs: [
-              { kind: 'literal', text: 'x', style: { color: { value: '#fff' } } },
+              { kind: 'literal', text: 'x', style: { color: { ref: 'palette.a' } } },
               { kind: 'value', bindingId: 'bind1', precision: 1, unitDisplay: 'none', style: {} },
             ],
             wrap: true,

@@ -113,13 +113,15 @@ migration blocker unless explicitly retained after review.
 ## §73 — Theme globals
 
 Named typed globals cover palette, typography presets, spacing and assets.
-Palette values include rgba solids and gradients. Per-instance properties such
-as opacity/geometry remain local.
+Palette values include CSS-compatible solids and gradients. All authored paint,
+including `fill`, resolves through the palette; only non-paint properties such
+as opacity and geometry remain local.
 
 ## §75 — References and identity
 
-Compatible authored styles resolve through stable global keys; globals also have
-editable display names. Deleting a referenced global requires reassignment.
+Compatible authored styles resolve through stable global keys; typography resolves
+through named type presets and paint resolves through palette tokens. Globals also
+have editable display names. Deleting a referenced global requires reassignment.
 Scene objects have one stable Vigilia id.
 
 ## §77 — Widgets

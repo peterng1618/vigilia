@@ -75,6 +75,35 @@ describe('artboard', () => {
   });
 });
 
+describe('type presets', () => {
+  it('resolves each text run through its own preset and palette token', () => {
+    const result = plan(documentWith([{
+      id: 'readout',
+      type: 'text',
+      content: {
+        runs: [
+          { kind: 'literal', text: 'CPU ', typePreset: 'typePresets.label', style: { color: { ref: 'palette.ink' } } },
+          { kind: 'literal', text: '48%', typePreset: 'typePresets.value' },
+        ],
+      },
+    }], {
+      palette: { ink: { name: 'Ink', value: '#ffffff' } },
+      typePresets: {
+        label: { name: 'Label', value: { family: 'Inter', size: 14, weight: 500, letterSpacing: 1.2, lineHeight: 1.1 } },
+        value: { name: 'Value', value: { family: 'Inter', size: 32, weight: 700 } },
+      },
+    }));
+    const content = result.nodes[0]!.content;
+    expect(content).toMatchObject({
+      kind: 'text',
+      segments: [
+        { text: 'CPU ', style: { fontFamily: 'Inter', fontSize: 14, fontWeight: 500, letterSpacing: 1.2, lineHeight: 1.1, color: '#ffffff' } },
+        { text: '48%', style: { fontFamily: 'Inter', fontSize: 32, fontWeight: 700 } },
+      ],
+    });
+  });
+});
+
 describe('geometry', () => {
   it('defaults an absent transform to a zero-sized box at the origin', () => {
     // Defaulting to a visible size would put a rectangle on screen that the
@@ -338,16 +367,19 @@ describe('text (§89)', () => {
   });
 
   it('resolves per-run styles independently', () => {
-    const result = segments(
-      emptySampleSource,
-      [],
-      [
-        { kind: 'literal', text: 'a', style: { fontSize: { value: 12 } } },
-        { kind: 'literal', text: 'b', style: { fontSize: { value: 48 } } },
-      ],
-    );
+    const result = plan(documentWith([node([], [
+      { kind: 'literal', text: 'a', typePreset: 'typePresets.small' },
+      { kind: 'literal', text: 'b', typePreset: 'typePresets.large' },
+    ])], {
+      typePresets: {
+        small: { name: 'Small', value: { family: 'Inter', size: 12 } },
+        large: { name: 'Large', value: { family: 'Inter', size: 48 } },
+      },
+    }));
+    const content = result.nodes[0]!.content;
+    if (content.kind !== 'text') throw new Error('expected a text node');
 
-    expect(result.segments.map((s) => s.style['fontSize'])).toEqual([12, 48]);
+    expect(content.segments.map((segment) => segment.style['fontSize'])).toEqual([12, 48]);
   });
 });
 
@@ -549,16 +581,20 @@ describe('formatUnit', () => {
 });
 
 describe('text layout (§89)', () => {
-  const layoutOf = (content: unknown, style?: unknown, height = 60) => {
+  const layoutOf = (content: { runs: unknown[]; [key: string]: unknown }, height = 60) => {
+    const runs = content.runs.length === 0
+      ? [{ kind: 'literal', text: '', typePreset: 'typePresets.layout' }]
+      : content.runs;
     const node = {
       id: 't',
       type: 'text',
       transform: { width: 200, height },
-      ...(style === undefined ? {} : { style }),
-      content,
+      content: { ...content, runs },
     } as unknown as ThemeNode;
 
-    const result = plan(documentWith([node]));
+    const result = plan(documentWith([node], {
+      typePresets: { layout: { name: 'Layout', value: { family: 'Inter', size: 20, lineHeight: 1.5 } } },
+    }));
     const planned = result.nodes[0]!.content;
     if (planned.kind !== 'text') {
       throw new Error('expected a text node');
@@ -591,16 +627,14 @@ describe('text layout (§89)', () => {
   it('computes a line clamp only for wrapped, ellipsised text', () => {
     // text-overflow: ellipsis applies to a single line; only a clamp ellipsises
     // wrapped text, and a clamp needs a line count.
-    const style = { fontSize: { value: 20 }, lineHeight: { value: 1.5 } };
-
-    expect(layoutOf({ runs: [], wrap: true, overflow: 'ellipsis' }, style, 60).maxLines).toBe(2);
-    expect(layoutOf({ runs: [], wrap: false, overflow: 'ellipsis' }, style, 60).maxLines).toBeUndefined();
-    expect(layoutOf({ runs: [], wrap: true, overflow: 'clip' }, style, 60).maxLines).toBeUndefined();
+    expect(layoutOf({ runs: [], wrap: true, overflow: 'ellipsis' }, 60).maxLines).toBe(2);
+    expect(layoutOf({ runs: [], wrap: false, overflow: 'ellipsis' }, 60).maxLines).toBeUndefined();
+    expect(layoutOf({ runs: [], wrap: true, overflow: 'clip' }, 60).maxLines).toBeUndefined();
   });
 
   it('omits the clamp when the type size is not resolvable', () => {
     // A wrong clamp is worse than none: it hides text that would have fitted.
-    expect(layoutOf({ runs: [], wrap: true, overflow: 'ellipsis' }, {}, 60).maxLines).toBeUndefined();
+    expect(layoutOf({ runs: [{ kind: 'literal', text: '' }], wrap: true, overflow: 'ellipsis' }, 60).maxLines).toBeUndefined();
   });
 });
 

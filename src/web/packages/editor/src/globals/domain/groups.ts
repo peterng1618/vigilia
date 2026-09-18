@@ -18,9 +18,10 @@ import type { GlobalGroupName } from '@vigilia/renderer-core';
  */
 export const GLOBAL_GROUP_META: Record<
   GlobalGroupName,
-  { readonly label: string; readonly kind: 'colour' | 'number' | 'text'; readonly seed: unknown }
+  { readonly label: string; readonly kind: 'colour' | 'number' | 'text' | 'type'; readonly seed: unknown }
 > = {
   palette: { label: 'Palette', kind: 'colour', seed: '#8a97ab' },
+  typePresets: { label: 'Type presets', kind: 'type', seed: { family: 'system-ui, sans-serif', size: 16 } },
   fonts: { label: 'Fonts', kind: 'text', seed: 'system-ui, sans-serif' },
   fontSizes: { label: 'Font sizes', kind: 'number', seed: 16 },
   spacing: { label: 'Spacing', kind: 'number', seed: 8 },

@@ -103,7 +103,7 @@ function renderGroup(
 
 function renderRow(
   usage: GlobalUsage,
-  kind: 'colour' | 'number' | 'text',
+  kind: 'colour' | 'number' | 'text' | 'type',
   callbacks: GlobalsCallbacks,
 ): HTMLElement {
   const { group, key, entry } = usage;
@@ -135,19 +135,28 @@ function renderRow(
   row.append(keyInput);
 
   const value = document.createElement('input');
-  value.type = kind === 'number' ? 'number' : 'text';
-  value.value = entry.value === undefined ? '' : String(entry.value);
-  value.dataset['vigiliaGlobalValue'] = id;
-  value.style.cssText = inputStyle('inherit');
-  value.addEventListener('change', () => {
-    callbacks.onAction({
-      kind: 'value',
-      group,
-      key,
-      value: kind === 'number' ? Number(value.value) : value.value,
+  if (kind === 'type') {
+    value.type = 'text';
+    value.value = 'Type presets are not editable in this legacy panel.';
+    value.disabled = true;
+    value.title = 'A type preset is a structured global token.';
+    value.style.cssText = inputStyle('inherit');
+    row.append(value);
+  } else {
+    value.type = kind === 'number' ? 'number' : 'text';
+    value.value = entry.value === undefined ? '' : String(entry.value);
+    value.dataset['vigiliaGlobalValue'] = id;
+    value.style.cssText = inputStyle('inherit');
+    value.addEventListener('change', () => {
+      callbacks.onAction({
+        kind: 'value',
+        group,
+        key,
+        value: kind === 'number' ? Number(value.value) : value.value,
+      });
     });
-  });
-  row.append(value);
+    row.append(value);
+  }
 
   if (kind === 'colour') {
     // Text input accepts arbitrary CSS colours; the colour well only accepts #rrggbb.

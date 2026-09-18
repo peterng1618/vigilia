@@ -54,6 +54,7 @@
       "type": "object", "additionalProperties": false,
       "properties": {
         "palette": { "$ref": "#/$defs/paletteGroup" },
+        "typePresets": { "$ref": "#/$defs/typePresetGroup" },
         "fonts": { "$ref": "#/$defs/globalGroup" },
         "fontSizes": { "$ref": "#/$defs/globalGroup" },
         "spacing": { "$ref": "#/$defs/globalGroup" },
@@ -78,6 +79,23 @@
       "additionalProperties": {
         "type": "object", "additionalProperties": false, "required": ["name", "value"],
         "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/palettePaint" } }
+      }
+    },
+    "typePresetGroup": {
+      "type": "object", "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["name", "value"],
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 }, "value": { "$ref": "#/$defs/typePreset" } }
+      }
+    },
+    "typePreset": {
+      "type": "object", "additionalProperties": false, "required": ["family", "size"],
+      "properties": {
+        "family": { "type": "string", "minLength": 1 },
+        "size": { "type": "number", "exclusiveMinimum": 0 },
+        "weight": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "letterSpacing": { "type": "number" },
+        "lineHeight": { "type": "number", "exclusiveMinimum": 0 }
       }
     },
     "transparentPaint": {

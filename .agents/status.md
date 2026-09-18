@@ -8,11 +8,11 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,262 passed across 75 files |
+| Unit tests | 1,266 passed across 75 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
 | Visual review | 17 active-fork editor tests passed; palette capture inspected |
-| Browser suite / size | 67 passed, 127 expected skips; size gate passed (262.3 KB gzip / 400 KB) |
+| Browser suite / size | 67 passed, 127 expected skips; size gate passed (262.8 KB gzip / 400 KB) |
 
 This slice has current typecheck, unit, build, size, focused active-fork visual
 evidence and a completed full browser suite.
@@ -75,9 +75,10 @@ evidence and a completed full browser suite.
 - A visible Fabric drag persists through v2 Save and Ctrl/Cmd+Z restores the
   saved geometry through fork history.
 - The v2 envelope/Fabric scene contract exists, but its globals/property model is
-  still transitional. `palette.none` and structured solid/linear-gradient
-  palette tokens are enforced in v2 and artboard gradients render on player and
-  fork canvases; type presets and palette authoring controls remain pending.
+  still transitional. `palette.none`, structured solid/linear-gradient palette
+  tokens and fork palette authoring are implemented; type presets have a shared
+  schema/reference contract. Applying token-only paint/type semantics to raw
+  Fabric objects needs persisted reference metadata and a starter-scene pass.
 - Fabric text saves its authored runs beside resolved Fabric text, so a revived
   v2 scene retains the semantics needed for later live updates.
 
@@ -96,8 +97,8 @@ evidence and a completed full browser suite.
 
 - Finish Stage 4B editor migration: remaining domain property boundaries, then
   delete fallback code.
-- Finish spec 0011: type presets, stable reference UI, remaining domain-property
-  editing and removal of transitional globals/literals.
+- Finish spec 0011: Fabric paint/type references, stable reference UI, remaining
+  domain-property editing and removal of transitional globals/literals.
 - Live editor telemetry/bindings are incomplete; current editor source is the
   fake demo source.
 - Production video background integration is not implemented.
