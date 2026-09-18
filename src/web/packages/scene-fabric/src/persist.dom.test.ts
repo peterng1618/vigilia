@@ -13,6 +13,7 @@ import {
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 import { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY } from './object-paint.js';
+import { applyObjectTypePresets } from './object-type.js';
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
@@ -201,6 +202,16 @@ describe('identity survives a round trip', () => {
 
     expect(scene.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({ fill: 'palette.panel' });
     expect(revived.getObjects()[0]!.fill).toBe('#123456');
+  });
+
+  it('reapplies a persisted text run type preset', () => {
+    const text = new Textbox('CPU', { fontFamily: 'Old', fontSize: 10 });
+    text.set(VIGILIA_TEXT_PROPERTY, { runs: [{ kind: 'literal', text: 'CPU', typePreset: 'typePresets.metric' }] });
+    const canvas = canvasOf(text);
+
+    applyObjectTypePresets(canvas, { typePresets: { metric: { name: 'Metric', value: { family: 'Inter', size: 32, weight: 700, lineHeight: 1.1 } } } });
+
+    expect(text).toMatchObject({ fontFamily: 'Inter', fontSize: 32, fontWeight: 700, lineHeight: 1.1 });
   });
 
   it('keeps authored text runs available after Fabric revival', async () => {
