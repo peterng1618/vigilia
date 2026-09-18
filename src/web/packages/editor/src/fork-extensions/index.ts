@@ -26,7 +26,11 @@ export class ForkExtensions {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
-    this.#artboard = createArtboardPanel(options.panelHost, (artboard) => this.#setArtboard(options.shell, artboard));
+    this.#artboard = createArtboardPanel(
+      options.panelHost,
+      this.#envelope.globals,
+      (artboard) => this.#setArtboard(options.shell, artboard),
+    );
     this.#artboard.render(this.#envelope.artboard);
     this.charts = new ChartManager({
       editor: options.shell.editor,

@@ -42,7 +42,9 @@ test.describe('Fabric editor route', () => {
     await page.locator('[data-vigilia-artboard-fit-mode]').selectOption('cover');
     await page.locator('[data-vigilia-artboard-width]').fill('1000');
     await page.locator('[data-vigilia-artboard-width]').press('Tab');
+    await page.locator('[data-vigilia-artboard-background]').selectOption('palette.bars');
     await expect(page.locator('[data-vigilia-artboard-fit-mode]')).toHaveValue('cover');
+    await expect(page.locator('[data-vigilia-artboard-background]')).toHaveValue('palette.bars');
 
     await captureVisualReview(page, testInfo, 'editor-fork-artboard');
   });
@@ -78,10 +80,12 @@ test.describe('Fabric editor route', () => {
     await page.locator('[data-vigilia-artboard-fit-mode]').selectOption('cover');
     await page.locator('[data-vigilia-artboard-width]').fill('1000');
     await page.locator('[data-vigilia-artboard-width]').press('Tab');
+    await page.locator('[data-vigilia-artboard-background]').selectOption('palette.bars');
 
-    const envelope = await saveEnvelope(page) as { artboard: { fitMode?: string; width: number }; scene: { objects: Array<{ id?: string; left?: number }> } };
+    const envelope = await saveEnvelope(page) as { artboard: { fitMode?: string; width: number; background?: { ref: string } }; scene: { objects: Array<{ id?: string; left?: number }> } };
     expect(envelope.artboard.fitMode).toBe('cover');
     expect(envelope.artboard.width).toBe(1000);
+    expect(envelope.artboard.background).toEqual({ ref: 'palette.bars' });
     expect(leftFor(envelope, 'wordmark')).toBe(54);
   });
 

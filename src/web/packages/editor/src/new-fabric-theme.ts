@@ -27,7 +27,19 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       author: 'Vigilia',
       description: 'A v2 scene exercising supported Fabric primitives and every chart family.',
     },
-    artboard: { width: 1280, height: 720 },
+    artboard: {
+      width: 1280,
+      height: 720,
+      background: { ref: 'palette.background' },
+      barColor: { ref: 'palette.bars' },
+    },
+    globals: {
+      palette: {
+        none: { name: 'None', value: 'transparent' },
+        background: { name: 'Background', value: '#0c0e13' },
+        bars: { name: 'Letterbox bars', value: '#000000' },
+      },
+    },
     bindings: {
       'load-gauge': [{ id: 'cpu-load', semanticKey: 'cpu.load', precision: 0 }],
       'trend-line': [{ id: 'trend-cpu', semanticKey: 'cpu.load' }, { id: 'trend-gpu', semanticKey: 'gpu.load' }],

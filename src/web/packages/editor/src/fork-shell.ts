@@ -1,5 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { validateFabricThemeEnvelope, type Artboard, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type ScenePlan } from '@vigilia/renderer-core';
+import { resolveStyleValue, validateFabricThemeEnvelope, type Artboard, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type Globals, type ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
   disposeScene,
@@ -58,6 +58,17 @@ function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HT
   editor.canvas.requestRenderAll();
 }
 
+function applyArtboardPaint(editor: ImageEditor, host: HTMLElement, artboard: Artboard, globals: Globals | undefined): void {
+  const issues: Parameters<typeof resolveStyleValue>[3] = [];
+  const resolve = (value: Artboard['background']): string | undefined => {
+    const resolved = resolveStyleValue(value, globals ?? {}, 'artboard', issues);
+    return typeof resolved === 'string' && resolved.length > 0 ? resolved : undefined;
+  };
+  editor.canvas.backgroundColor = resolve(artboard.background) ?? '';
+  host.style.background = resolve(artboard.barColor) ?? '#000';
+  editor.canvas.requestRenderAll();
+}
+
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
 export async function mountForkShell({ host, artboard, plan, envelope }: ForkShellOptions): Promise<ForkShell> {
   if (plan !== undefined && envelope !== undefined) {
@@ -77,6 +88,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
   container.style.margin = 'auto';
   container.style.visibility = 'hidden';
   let currentArtboard = artboard;
+  const globals = envelope?.globals;
   let fitMode: FitMode = currentArtboard.fitMode ?? 'contain';
   const initialScale = fitArtboardViewport(container, host, currentArtboard, fitMode);
   host.append(container);
@@ -105,6 +117,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
     }
+    applyArtboardPaint(editor, host, currentArtboard, globals);
 
     const scene = plan === undefined && envelope === undefined ? undefined : createSceneAdapter({ canvas: editor.canvas });
 
@@ -126,6 +139,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
         currentArtboard = nextArtboard;
         fitMode = currentArtboard.fitMode ?? 'contain';
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+        applyArtboardPaint(editor, host, currentArtboard, globals);
       },
       setFitMode(nextFitMode) {
         fitMode = nextFitMode;

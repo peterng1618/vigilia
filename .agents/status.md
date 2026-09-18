@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 1,250 passed across 73 files |
+| Unit tests | 1,251 passed across 73 files |
 | Typechecks | six projects clean |
 | Visual review | six captures passed; action screenshots inspected before E2E |
 | Browser suite | 64 passed / 130 skipped / 0 failed |
@@ -56,8 +56,8 @@ shows the static dashboard demo at usable stage size.
 - Product property extensions render in the dedicated sidebar, so selected-chart
   controls cannot displace the interactive Fabric stage.
 - The fork starts at contain-fit zoom in a centered artboard-aspect viewport;
-  its persisted artboard control can change width, height and preview fit
-  without rescaling Fabric object geometry.
+  its persisted artboard control changes width, height, preview fit and existing
+  palette background/bar tokens without rescaling Fabric object geometry.
 - The chart panel supports scalar settings for one selected `VigiliaChart`,
   generated from the shared descriptor registry and updated in place.
 - Existing selected-chart bindings expose semantic key, precision, unit display,

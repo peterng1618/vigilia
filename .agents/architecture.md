@@ -36,7 +36,7 @@ Current Vigilia-owned extensions are:
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
-| Artboard size/preview fit | `editor/src/artboard-panel.ts` |
+| Artboard size/preview fit/paint | `editor/src/artboard-panel.ts` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |

@@ -48,7 +48,7 @@ describe('the adopted editor shell', () => {
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {
     const apply = vi.fn();
-    const editor = { canvas: { setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    const editor = { canvas: { backgroundColor: undefined as string | undefined, setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
 
     const sceneFabric = await import('@vigilia/scene-fabric');
@@ -68,19 +68,29 @@ describe('the adopted editor shell', () => {
   });
 
   it('validates and revives a supplied Fabric envelope before extensions adopt it', async () => {
-    const editor = { canvas: { setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    const editor = { canvas: { backgroundColor: undefined as string | undefined, setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const sceneFabric = await import('@vigilia/scene-fabric');
     const revive = vi.spyOn(sceneFabric, 'reviveThemeEnvelope').mockResolvedValue();
     const adapter = vi.spyOn(sceneFabric, 'createSceneAdapter').mockReturnValue({
       apply: vi.fn(), dispose: vi.fn(), objectFor: vi.fn(), setRenderScale: vi.fn(),
     });
-    const envelope = { schemaVersion: 2, fabricVersion: '7.4.0', id: 'theme', artboard: { width: 1, height: 1 }, scene: { version: '7.4.0', objects: [] } } as const;
+    const envelope = {
+      schemaVersion: 2,
+      fabricVersion: '7.4.0',
+      id: 'theme',
+      artboard: { width: 1, height: 1, background: { ref: 'palette.background' }, barColor: { ref: 'palette.bars' } },
+      globals: { palette: { background: { name: 'Background', value: '#101216' }, bars: { name: 'Bars', value: '#000000' } } },
+      scene: { version: '7.4.0', objects: [] },
+    } as const;
+    const host = document.createElement('main');
 
-    await mountForkShell({ host: document.createElement('main'), artboard: envelope.artboard, envelope });
+    await mountForkShell({ host, artboard: envelope.artboard, envelope });
 
     expect(revive).toHaveBeenCalledWith(editor.canvas, envelope);
     expect(adapter).toHaveBeenCalledWith({ canvas: editor.canvas });
+    expect(editor.canvas.backgroundColor).toBe('#101216');
+    expect(host.style.background).toBe('rgb(0, 0, 0)');
     revive.mockRestore();
     adapter.mockRestore();
   });
