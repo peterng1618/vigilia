@@ -1,4 +1,4 @@
-# Status — 2026-09-19
+# Status — 2026-09-20
 
 Current handoff only. Durable rules: `AGENTS.md`; product: `design/plan.md`;
 architecture: `architecture.md`; active work: specs 0010, 0011 and 0013.
@@ -51,7 +51,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Add font and video authoring only after image/SVG authoring is stable.
+1. Implement approved Theme settings/background-media authoring, then fonts.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per plan §35 only after the authoring core is stable.
 

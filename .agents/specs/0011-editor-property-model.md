@@ -46,10 +46,30 @@ Each chart family owns typed setting descriptors in `renderer-core`. The editor
 builds controls from those declarations. Existing charts need not change family.
 Raw ECharts options are not persisted or directly edited.
 
-### Artboard/domain properties
+### Theme settings and artboard properties
 
-Artboard authoring includes width/height, background token, bar-colour token and
-fit mode. Resizing the artboard does not rescale scene objects.
+One Theme settings surface owns editable theme metadata (name, description,
+author and optional SemVer release version), artboard width/height, viewport fit
+mode, palette background/bar-colour tokens, and background media. Resizing the
+artboard does not rescale scene objects.
+
+Ordinary Save never changes the release version. A Release action validates the
+theme package, prompts for a major/minor/patch bump, updates the optional SemVer
+version (initially `0.1.0`), then writes the package.
+
+The artboard always has palette-referenced paint. Its optional
+`backgroundMedia: { assetId, fit: 'contain' | 'cover' }` references one
+packaged PNG, JPEG, WebP, SVG, MP4 or WebM asset. Image/SVG and video are
+mutually exclusive, are not Fabric scene objects, and use this media-fit
+setting. `contain` exposes the artboard paint in letterbox space; `cover` crops
+to fill. This is distinct from artboard viewport fit (`contain`/`cover`), which
+only positions the entire artboard in the player or editor. Video autoplays
+muted, loops and has no authored playback controls.
+
+Missing, deleted or incompatible referenced media is an invalid package.
+Clearing background media returns to paint-only. Media bytes remain in the
+package asset map; object URLs and DOM media are disposed on replacement,
+New/Open and unmount. GIF and remote URLs are not supported.
 
 Scene objects use one stable Vigilia id rather than separate id/name fields that
 can disagree.
@@ -95,10 +115,10 @@ bytes; Save and host-library Save write the envelope and exact asset map through
 the §139 package boundary. Dirty tracking includes asset bytes.
 
 SVG is sanitized before preview and its original bytes are retained. Raster
-previews use revocable object URLs. GIF, video, font and URL imports are out of
-scope. A future URL importer may fetch Font Awesome SVG or Unsplash imagery,
-then apply this same local asset boundary with explicit remote validation and
-attribution handling.
+previews use revocable object URLs. GIF, font and URL imports are out of scope.
+A future URL importer may fetch Font Awesome SVG or Unsplash imagery, then apply
+this same local asset boundary with explicit remote validation and attribution
+handling.
 
 ## Capability summary
 
@@ -122,8 +142,8 @@ palette and type-preset authoring/reassignment; semantic text creation; semantic
 layers with inherited visibility/lock/order; and selection-relative
 align/distribute.
 
-Still incomplete: image/SVG asset authoring, chart paint/threshold controls, and
-broader Vigilia creation commands.
+Still incomplete: background image/video authoring, release-version controls,
+chart paint/threshold controls, and broader Vigilia creation commands.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled by spec 0013.
@@ -156,6 +176,8 @@ Before stabilising the theme format:
 - alignment requires two objects, distribution requires three, and both preserve
   the active selection;
 - artboard/token/type/binding/asset properties have a product editing surface;
+- Theme settings preserve metadata and release versions; background paint/media
+  has the specified crop, playback and package lifecycle behaviour;
 - unknown/invalid authored property values are explicitly rejected;
 - runtime telemetry never becomes persisted authored state.
 

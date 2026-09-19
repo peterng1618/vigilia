@@ -38,7 +38,7 @@ demo path is not its source.
 
 1. Finish spec 0011 property/asset authoring.
 2. Add live editor telemetry without authored-history pollution.
-3. Add production video-background integration.
+3. Add Theme settings with production background image/video integration.
 4. Modernize the outer shell later per plan §35.
 
 Do not restore legacy QoL for parity. Spec 0014 is review-only.
@@ -50,8 +50,9 @@ dispose explicitly, expose typed properties and accept runtime updates outside
 authored history. Family conversion, skew/arbitrary stretch and perfect
 chart-setting undo are not requirements.
 
-Video is one DOM background beneath the Fabric canvas, aligned to the artboard.
-It is not a scene object. Animated GIF elements are out of scope.
+Background media is one DOM image or video beneath the Fabric canvas, aligned to
+the artboard. It is not a scene object. Video autoplays muted and loops; GIF
+elements are out of scope. Spec 0011 owns the authored media/package contract.
 
 ## Completion
 
