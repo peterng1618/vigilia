@@ -126,7 +126,7 @@ focused active-fork visual evidence.
 - Finish spec 0011 in this order:
   1. **Met:** the published v2 schema permits only palette/type-preset globals and palette references for artboard paint; schema-sync coverage, all typechecks and 847 unit tests passed.
   2. **Met:** the Add Text command delegates construction/history to the fork and saves derived palette/type-preset references; desktop Chromium evidence is current.
-  3. **Active:** the §139 package reader/writer (spec 0015) precedes asset
+  3. **Met:** the §139 package reader/writer (spec 0015) precedes asset
      authoring; JSON downloads cannot retain asset bytes.
      The initial portable package workspace round-trips a validated envelope
      with exactly its declared asset bytes; the reader now bounds archive and
@@ -146,8 +146,7 @@ focused active-fork visual evidence.
 
 1. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
-2. Build the bounded §139 package reader/writer (spec 0015), then asset
-   authoring in spec 0011.
+2. Implement asset authoring in spec 0011 over the package boundary.
 3. Add live editor bindings/charts, then packaged video background.
 4. Only after the authoring core is stable, start the React + shadcn/Base UI
    shell modernization from plan §35.

@@ -294,7 +294,7 @@ Current migration order/status:
 3. Fork editor + v2 Fabric envelope migration — **done** (spec 0013).
 4. Review missing legacy-editor behaviours before recreating them — **pending**
    (spec 0014; review only).
-5. Build the bounded theme-package reader/writer — **active** (spec 0015).
+5. Build the bounded theme-package reader/writer — **done** (spec 0015).
 6. Finish v2 palette/type/reference/property semantics, including asset
    authoring over the package boundary — **pending** (spec 0011).
 7. Live editor bindings/charts — **pending**.

@@ -1,6 +1,6 @@
 # 0015 — Theme package boundary
 
-- **Status:** active
+- **Status:** implemented
 - **Design sections:** §132, §134, §137, §139, §141, §157
 
 ## Goal
