@@ -8,15 +8,16 @@ Spec 0014 is review-only; 0015 is implemented.
 
 | Check | Result |
 |---|---|
-| Package/library editor slice | all typechecks, 887 units, builds, focused package E2E and six captures pass/inspect |
-| Unit tests | 887 passed across 62 files |
+| Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
+| Unit tests | 895 passed across 65 files |
 | Typechecks | seven projects clean |
 | Builds | player, editor and host clean |
-| Player size gate | 263.0 KB gzip JS; 0.0 KB gzip CSS |
-| Visual review | refreshed active-fork captures inspected; layers/arrange and existing property states are visible |
+| Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
+| Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
+| Browser suite | 70 passed; four existing failures remain |
 
-Package/library has current typecheck, unit, build, size and browser evidence.
-Six refreshed editor captures were inspected; package/library controls are visible.
+Preview/live source controls and hosted player loading have current typecheck,
+unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Current product state
 
@@ -49,9 +50,9 @@ Six refreshed editor captures were inspected; package/library controls are visib
 
 ## Next
 
-1. Continue `docs/superpowers/plans/2026-09-19-hosted-theme-authoring.md`:
-   live editor preview, then player proof for existing authored features.
-2. Implement image/SVG, font and video authoring only after that workflow works.
+1. Design the first image/SVG asset-authoring slice over the validated package
+   boundary; no asset UI exists yet.
+2. Add font and video authoring only after image/SVG authoring is stable.
 3. Revisit remaining spec-0014 candidates only when needed.
 4. Modernize the shell per plan §35 only after the authoring core is stable.
 
@@ -61,6 +62,7 @@ Six refreshed editor captures were inspected; package/library controls are visib
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- The full editor E2E spec has two unrelated existing failures: adding Text
-  times out and selecting `load-gauge` never updates `aria-pressed`.
+- The full browser suite has four unrelated existing failures: unknown fixture
+  fallback times out on desktop and phone; adding Text times out; selecting
+  `load-gauge` never updates `aria-pressed`.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.
