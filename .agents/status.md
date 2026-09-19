@@ -8,14 +8,15 @@ Spec 0014 is review-only; 0015 is implemented.
 
 | Check | Result |
 |---|---|
-| Unit tests | 868 passed across 59 files |
+| Package/library editor slice | all typechecks, 887 units, builds, focused package E2E and six captures pass/inspect |
+| Unit tests | 887 passed across 62 files |
 | Typechecks | seven projects clean |
 | Builds | player, editor and host clean |
 | Player size gate | 263.0 KB gzip JS; 0.0 KB gzip CSS |
 | Visual review | refreshed active-fork captures inspected; layers/arrange and existing property states are visible |
 
-Layer/capture has current typecheck, units, builds and size evidence. Browser
-automation remains unavailable in this runtime.
+Package/library has current typecheck, unit, build, size and browser evidence.
+Six refreshed editor captures were inspected; package/library controls are visible.
 
 ## Current product state
 
@@ -35,20 +36,21 @@ automation remains unavailable in this runtime.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
-- Theme-package support exists; asset authoring UI does not.
+- Theme-package-only Open/Save and host-library Open/Save are active; asset
+  authoring UI does not exist.
 - Live editor telemetry and production video integration remain incomplete.
 
 ### Host
 
 - Node/TypeScript host, CLI, SSE transport and baseline CPU/RAM telemetry work.
 - Disk/network and LibreHardwareMonitor telemetry are not implemented.
-- Pairing/revocable sessions, host theme storage and the full LAN flow are not implemented.
+- Package storage and loopback-only mutation work; pairing/revocable sessions
+  and the full LAN flow are not implemented.
 
 ## Next
 
-1. Execute `docs/superpowers/plans/2026-09-19-hosted-theme-authoring.md`:
-   host package storage, package-only editor save/open, live editor preview and
-   player proof for existing authored features.
+1. Continue `docs/superpowers/plans/2026-09-19-hosted-theme-authoring.md`:
+   live editor preview, then player proof for existing authored features.
 2. Implement image/SVG, font and video authoring only after that workflow works.
 3. Revisit remaining spec-0014 candidates only when needed.
 4. Modernize the shell per plan §35 only after the authoring core is stable.
@@ -59,5 +61,6 @@ automation remains unavailable in this runtime.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- Current-session Playwright could not launch: runtime returned `spawn EPERM`.
+- The full editor E2E spec has two unrelated existing failures: adding Text
+  times out and selecting `load-gauge` never updates `aria-pressed`.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.

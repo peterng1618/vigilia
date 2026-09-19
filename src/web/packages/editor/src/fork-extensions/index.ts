@@ -1,14 +1,40 @@
-import type { Artboard, Binding, FabricPalette, FabricThemeEnvelopeInput, SampleSource } from '@vigilia/renderer-core';
-import type { ForkShell } from '../fork-shell.js';
+import {
+  type Artboard,
+  type Binding,
+  type FabricPalette,
+  type FabricThemeEnvelope,
+  type FabricThemeEnvelopeInput,
+  type SampleSource,
+} from '@vigilia/renderer-core';
+import {
+  reassignObjectPaletteReferences,
+  reassignObjectTypePresetReferences,
+} from '@vigilia/scene-fabric';
+import { type ForkShell } from '../fork-shell.js';
 import { createArtboardPanel, type ArtboardPanel } from '../artboard-panel.js';
 import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
-import { reassignObjectPaletteReferences, reassignObjectTypePresetReferences } from '@vigilia/scene-fabric';
 import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
 import { createNewObjectPanel, type NewObjectPanel } from '../new-object-panel.js';
 import { createLayerPanel, type LayerPanel } from '../layer-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
 import { ShortcutManager } from '../shortcut-manager/index.js';
+import { serializeThemePackage, parseThemePackage } from '../persist.js';
+import { createThemeLibraryClient, type ThemeLibraryClient, type ThemeLibraryEntry } from '../theme-library-client.js';
+
+export interface ForkExtensionsOptions {
+  readonly shell: ForkShell;
+  readonly source: SampleSource;
+  readonly envelope: FabricThemeEnvelopeInput;
+  readonly panelHost: HTMLElement;
+  readonly libraryClient?: ThemeLibraryClient;
+  readonly onNew: () => Promise<void>;
+  readonly onOpen?: () => void;
+  readonly onOpenPackage?: () => void;
+  readonly onOpenTheme?: (envelope: FabricThemeEnvelope) => Promise<void>;
+  readonly onSaved: (message?: string) => void;
+  readonly onError?: (message: string) => void;
+}
 
 /** Composition root for Vigilia-specific behaviour layered above the fork. */
 export class ForkExtensions {
@@ -20,21 +46,45 @@ export class ForkExtensions {
   readonly #layers: LayerPanel;
   readonly #persistence: PersistenceManager;
   readonly #shortcuts = new ShortcutManager();
+  readonly #fileSection: HTMLElement;
   #envelope: FabricThemeEnvelopeInput;
 
-  constructor(options: {
-    readonly shell: ForkShell;
-    readonly source: SampleSource;
-    readonly envelope: FabricThemeEnvelopeInput;
-    readonly panelHost: HTMLElement;
-    readonly onNew: () => Promise<void>;
-    readonly onOpen: () => void;
-    readonly onSaved: () => void;
-  }) {
+  constructor(options: ForkExtensionsOptions) {
     if (options.shell.scene === undefined) {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
+
+    const fileSection = document.createElement('section');
+    fileSection.dataset['vigiliaFileActions'] = '';
+    const fileHeading = document.createElement('h2');
+    fileHeading.textContent = 'Package & Library';
+    fileSection.append(fileHeading);
+
+    const openPackageBtn = document.createElement('button');
+    openPackageBtn.type = 'button';
+    openPackageBtn.textContent = 'Open package';
+    openPackageBtn.addEventListener('click', () => { void this.#open(options); });
+
+    const savePackageBtn = document.createElement('button');
+    savePackageBtn.type = 'button';
+    savePackageBtn.textContent = 'Save package';
+    savePackageBtn.addEventListener('click', () => { void this.#save(options); });
+
+    const openLibraryBtn = document.createElement('button');
+    openLibraryBtn.type = 'button';
+    openLibraryBtn.textContent = 'Open library';
+    openLibraryBtn.addEventListener('click', () => { void this.#openLibrary(options); });
+
+    const saveLibraryBtn = document.createElement('button');
+    saveLibraryBtn.type = 'button';
+    saveLibraryBtn.textContent = 'Save to library';
+    saveLibraryBtn.addEventListener('click', () => { void this.#saveLibrary(options); });
+
+    fileSection.append(openPackageBtn, savePackageBtn, openLibraryBtn, saveLibraryBtn);
+    options.panelHost.prepend(fileSection);
+    this.#fileSection = fileSection;
+
     this.#newObjects = createNewObjectPanel(options.panelHost, options.shell.editor, this.#envelope.globals);
     this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
     this.#artboard = createArtboardPanel(
@@ -43,7 +93,11 @@ export class ForkExtensions {
       (artboard) => this.#setArtboard(options.shell, artboard),
     );
     this.#artboard.render(this.#envelope.artboard);
-    this.#palette = createPalettePanel(options.panelHost, (palette) => this.#setPalette(options.shell, palette), (id, replacement) => this.#deletePalette(options.shell, id, replacement));
+    this.#palette = createPalettePanel(
+      options.panelHost,
+      (palette) => this.#setPalette(options.shell, palette),
+      (id, replacement) => this.#deletePalette(options.shell, id, replacement),
+    );
     this.#palette.render(this.#envelope.globals?.palette);
     this.#types = createTypePresetPanel(
       options.panelHost,
@@ -62,8 +116,7 @@ export class ForkExtensions {
     });
     this.#persistence = new PersistenceManager(this.#snapshot(options.shell));
     this.#shortcuts.register('file.save', () => {
-      this.#persistence.save(this.#snapshot(options.shell));
-      options.onSaved();
+      void this.#save(options);
     });
     this.#shortcuts.register('file.open', () => { void this.#open(options); });
     this.#shortcuts.register('file.new', () => { void this.#new(options); });
@@ -73,6 +126,7 @@ export class ForkExtensions {
     this.#shortcuts.destroy();
     this.#persistence.destroy();
     this.charts.destroy();
+    this.#fileSection.remove();
     this.#artboard.root.remove();
     this.#palette.root.remove();
     this.#types.root.remove();
@@ -80,30 +134,76 @@ export class ForkExtensions {
     this.#layers.destroy();
   }
 
-  async #open(options: {
-    readonly shell: ForkShell;
-    readonly envelope: FabricThemeEnvelopeInput;
-    readonly onOpen: () => void;
-    readonly onSaved: () => void;
-  }): Promise<void> {
-    if (!await this.#confirmReplacement(options)) return;
-    options.onOpen();
+  async #save(options: ForkExtensionsOptions): Promise<void> {
+    const current = this.#snapshot(options.shell);
+    try {
+      await this.#persistence.save(current);
+      options.onSaved('Theme package saved');
+    } catch (error) {
+      options.onError?.(error instanceof Error ? error.message : String(error));
+    }
   }
 
-  async #new(options: {
-    readonly shell: ForkShell;
-    readonly envelope: FabricThemeEnvelopeInput;
-    readonly onNew: () => Promise<void>;
-    readonly onSaved: () => void;
-  }): Promise<void> {
+  async #saveLibrary(options: ForkExtensionsOptions): Promise<void> {
+    const current = this.#snapshot(options.shell);
+    const result = serializeThemePackage(current);
+    if (!result.ok) {
+      options.onError?.(result.message);
+      return;
+    }
+    const client = options.libraryClient ?? createThemeLibraryClient();
+    try {
+      await client.save(current.id, result.bytes);
+      this.#persistence.markSaved(current);
+      options.onSaved('Saved to library');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      options.onError?.(`Could not save to library: ${msg}`);
+    }
+  }
+
+  async #openLibrary(options: ForkExtensionsOptions): Promise<void> {
+    if (!await this.#confirmReplacement(options)) return;
+    const client = options.libraryClient ?? createThemeLibraryClient();
+    try {
+      const themes = await client.list();
+      if (themes.length === 0) {
+        options.onError?.('No themes in host library.');
+        return;
+      }
+      const selectedId = await promptThemeSelection(themes);
+      if (selectedId === undefined) return;
+      const bytes = await client.open(selectedId);
+      const parsed = parseThemePackage(bytes);
+      if (!parsed.ok) {
+        options.onError?.(`Could not open theme: ${parsed.message}`);
+        return;
+      }
+      if (options.onOpenTheme !== undefined) {
+        await options.onOpenTheme(parsed.envelope);
+      }
+    } catch (error) {
+      options.onError?.(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async #open(options: ForkExtensionsOptions): Promise<void> {
+    if (!await this.#confirmReplacement(options)) return;
+    if (options.onOpenPackage !== undefined) {
+      options.onOpenPackage();
+    } else if (options.onOpen !== undefined) {
+      options.onOpen();
+    }
+  }
+
+  async #new(options: ForkExtensionsOptions): Promise<void> {
     if (!await this.#confirmReplacement(options)) return;
     await options.onNew();
   }
 
   async #confirmReplacement(options: {
     readonly shell: ForkShell;
-    readonly envelope: FabricThemeEnvelopeInput;
-    readonly onSaved: () => void;
+    readonly onSaved: (message?: string) => void;
   }): Promise<boolean> {
     const current = this.#snapshot(options.shell);
 
@@ -112,8 +212,8 @@ export class ForkExtensions {
 
       if (choice === 'cancel') return false;
       if (choice === 'save') {
-        this.#persistence.save(current);
-        options.onSaved();
+        await this.#persistence.save(current);
+        options.onSaved('Theme package saved');
       }
     }
     return true;
@@ -181,7 +281,41 @@ export class ForkExtensions {
     this.#types.render(typePresets as TypePresets);
   }
 
-  #snapshot(shell: ForkShell) {
+  #snapshot(shell: ForkShell): FabricThemeEnvelope {
     return shell.snapshot(this.#envelope);
   }
+}
+
+export async function promptThemeSelection(
+  themes: readonly ThemeLibraryEntry[],
+): Promise<string | undefined> {
+  const dialog = document.createElement('dialog');
+  const select = document.createElement('select');
+  for (const t of themes) {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = `${t.name} (${t.id})`;
+    select.append(opt);
+  }
+  dialog.innerHTML = '<form method="dialog"><p>Open from library:</p><div class="theme-select-container"></div><button value="open">Open</button><button value="cancel">Cancel</button></form>';
+  dialog.querySelector('.theme-select-container')?.append(select);
+  document.body.append(dialog);
+
+  return new Promise((resolve) => {
+    dialog.addEventListener(
+      'close',
+      () => {
+        const value = dialog.returnValue === 'open' ? select.value : undefined;
+        dialog.remove();
+        resolve(value);
+      },
+      { once: true },
+    );
+    if (typeof dialog.showModal === 'function') {
+      dialog.showModal();
+    } else {
+      dialog.returnValue = 'open';
+      dialog.dispatchEvent(new Event('close'));
+    }
+  });
 }

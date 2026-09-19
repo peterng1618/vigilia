@@ -1,4 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { readThemePackage, writeThemePackage } from '@vigilia/theme-package';
+import { strToU8, zipSync } from 'fflate';
 
 const EDITOR = 'http://127.0.0.1:4174/';
 
@@ -86,10 +88,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'literal-bars.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({
+    await setUncheckedThemePackage(page, 'literal-bars.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
         id: 'literal-bars',
@@ -100,8 +99,7 @@ test.describe('Fabric editor route', () => {
           barColor: { value: '#e20074' },
         },
         scene: { version: '7.4.0', objects: [] },
-      })),
-    });
+      });
     await expect(page.locator('#status')).toContainText('Could not open');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
   });
@@ -110,10 +108,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'gradient-artboard.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({
+    await setThemePackage(page, 'gradient-artboard.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
         id: 'gradient-artboard',
@@ -131,9 +126,8 @@ test.describe('Fabric editor route', () => {
           },
         },
         scene: { version: '7.4.0', objects: [] },
-      })),
-    });
-    await expect(page.locator('#status')).toHaveText('Opened gradient-artboard.json');
+      });
+    await expect(page.locator('#status')).toHaveText('Opened gradient-artboard.vigilia-theme');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
 
     await captureVisualReview(page, testInfo, 'editor-fork-artboard-gradient');
@@ -303,19 +297,11 @@ test.describe('Fabric editor route', () => {
       scene: { version: '7.4.0', objects: [{ type: 'Rect', id: 'panel', width: 100, height: 50 }] },
     };
 
-    await picker.setInputFiles({
-      name: 'opened.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(envelope)),
-    });
-    await expect(page.locator('#status')).toHaveText('Opened opened.json');
+    await setThemePackage(page, 'opened.vigilia-theme', envelope);
+    await expect(page.locator('#status')).toHaveText('Opened opened.vigilia-theme');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
 
-    await picker.setInputFiles({
-      name: 'incompatible.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({ ...envelope, fabricVersion: '7.5.0' })),
-    });
+    await setThemePackage(page, 'incompatible.vigilia-theme', { ...envelope, fabricVersion: '7.5.0' });
     await expect(page.locator('#status')).toContainText('incompatible');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
   });
@@ -325,18 +311,14 @@ test.describe('Fabric editor route', () => {
 
     await page.goto(EDITOR);
     const picker = page.locator('input[type="file"]');
-    await picker.setInputFiles({
-      name: 'source.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({
+    await setThemePackage(page, 'source.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
         id: 'source',
         artboard: { width: 320, height: 180 },
         scene: { version: '7.4.0', objects: [{ type: 'Rect', id: 'panel', width: 100, height: 50 }] },
-      })),
-    });
-    await expect(page.locator('#status')).toHaveText('Opened source.json');
+      });
+    await expect(page.locator('#status')).toHaveText('Opened source.vigilia-theme');
 
     const download = page.waitForEvent('download');
     await page.keyboard.press('Control+s');
@@ -344,23 +326,23 @@ test.describe('Fabric editor route', () => {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.from(chunk));
     const saved = Buffer.concat(chunks);
-    const envelope = JSON.parse(saved.toString('utf8')) as { id: string; scene: { objects: Array<{ id?: string }> } };
+    const parsed = readThemePackage(saved);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const envelope = parsed.envelope as { id: string; scene: { objects: Array<{ id?: string }> } };
 
     expect(envelope.id).toBe('source');
     expect(envelope.scene.objects).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'panel' })]));
 
-    await picker.setInputFiles({ name: 'roundtrip.json', mimeType: 'application/json', buffer: saved });
-    await expect(page.locator('#status')).toHaveText('Opened roundtrip.json');
+    await picker.setInputFiles({ name: 'roundtrip.vigilia-theme', mimeType: 'application/octet-stream', buffer: saved });
+    await expect(page.locator('#status')).toHaveText('Opened roundtrip.vigilia-theme');
   });
 
   test('persists an ordinary fork drag and restores it through undo', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'movable.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({
+    await setThemePackage(page, 'movable.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
         id: 'movable',
@@ -370,9 +352,8 @@ test.describe('Fabric editor route', () => {
           version: '7.4.0',
           objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, fill: '#00b8d9', vigiliaPaint: { fill: 'palette.accent' }, originX: 'left', originY: 'top' }],
         },
-      })),
-    });
-    await expect(page.locator('#status')).toHaveText('Opened movable.json');
+      });
+    await expect(page.locator('#status')).toHaveText('Opened movable.vigilia-theme');
 
     const canvas = page.locator('#vigilia-fabric-editor canvas.upper-canvas');
     const box = await canvas.boundingBox();
@@ -399,17 +380,13 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'unrevivable.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({
+    await setUncheckedThemePackage(page, 'unrevivable.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
         id: 'unrevivable',
         artboard: { width: 320, height: 180 },
         scene: { version: '7.4.0', objects: [{ type: 'UnknownFabricObject' }] },
-      })),
-    });
+      });
 
     await expect(page.locator('#status')).toContainText('Could not open');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
@@ -461,7 +438,33 @@ async function saveEnvelope(page: Page): Promise<unknown> {
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const parsed = readThemePackage(Buffer.concat(chunks));
+  expect(parsed.ok).toBe(true);
+  if (!parsed.ok) throw new Error(parsed.message);
+  return parsed.envelope;
+}
+
+async function setThemePackage(page: Page, name: string, envelope: Parameters<typeof writeThemePackage>[0]['envelope']): Promise<void> {
+  const result = writeThemePackage({ envelope, assets: {} });
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.message);
+  await page.locator('input[type="file"]').setInputFiles({
+    name,
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(result.bytes),
+  });
+}
+
+async function setUncheckedThemePackage(page: Page, name: string, envelope: unknown): Promise<void> {
+  const buffer = zipSync({
+    'manifest.json': strToU8(JSON.stringify({ format: 'vigilia-theme-package', version: 1, theme: 'theme.json' })),
+    'theme.json': strToU8(JSON.stringify(envelope)),
+  });
+  await page.locator('input[type="file"]').setInputFiles({
+    name,
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(buffer),
+  });
 }
 
 async function selectStarterChart(page: Page): Promise<void> {
