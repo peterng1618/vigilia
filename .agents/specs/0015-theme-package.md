@@ -1,55 +1,34 @@
 # 0015 — Theme package boundary
 
-- **Status:** implemented
+- **Status:** implemented; delete after remaining callers depend on it
 - **Design sections:** §132, §134, §137, §139, §141, §157
 
-## Goal
+## Contract
 
-Make a self-contained, bounded ZIP package the only asset-bearing theme file.
-It carries one validated v2 Fabric envelope and the bytes declared by that
-envelope, so later asset authoring, imported fonts and video do not depend on
-raw JSON downloads or remote URLs.
+`@vigilia/theme-package` owns the self-contained ZIP format for asset-bearing
+themes. A package contains:
 
-## Format v1
+- `manifest.json`: format `vigilia-theme-package`, version 1, theme `theme.json`;
+- one validated v2 Fabric envelope at `theme.json`;
+- exactly the files declared by `theme.assets`, under `assets/`.
 
-The archive has exactly these entries:
+The writer rejects invalid envelopes, undeclared/missing assets, duplicates and
+unsafe paths. The reader rejects invalid ZIPs, unsafe/duplicate/unexpected
+entries, unsupported manifests, asset mismatches and invalid envelopes before
+document replacement.
 
-- `manifest.json`: `{ "format": "vigilia-theme-package", "version": 1,
-  "theme": "theme.json" }`;
-- `theme.json`: one v2 `FabricThemeEnvelope`;
-- each path declared in `theme.assets`, under `assets/`.
+Read limits: 64 MiB archive, 128 entries, 128 MiB expanded total, 32 MiB per
+entry; only stored/deflated entries are accepted.
 
-The writer rejects an invalid envelope, an undeclared asset, missing declared
-bytes, duplicate names and unsafe paths. It produces a deterministic entry set.
-The reader rejects non-ZIP input, unsafe/duplicate/unexpected names, missing or
-extra assets, unsupported manifest versions and an envelope rejected by the
-existing v2 validator. Validation finishes before a caller replaces its open
-document.
+`renderer-core` owns envelope/schema validation. Callers own file UI/storage.
+The player must not import this package.
 
-Read inputs are bounded: 64 MiB archive bytes, 128 entries, 128 MiB total
-expanded bytes and 32 MiB per entry. The reader accepts only stored or deflated
-entries. Those limits are package safety limits, not media-quality limits.
+## Out of scope
 
-## Ownership
+Asset-management UI, host storage/autosave, previews/templates, media/font
+rendering, remote fetching and legacy migration.
 
-`@vigilia/theme-package` owns ZIP layout, byte bounds and archive validation.
-`renderer-core` remains the owner of envelope/schema validation. Callers own
-file pickers, downloads and any later host storage; the package API is pure and
-portable between browser and Node.
+## Evidence
 
-## Non-goals
-
-- editor asset-import/replacement/removal UI;
-- host-backed storage, autosave or save-in-place;
-- package previews, licence files, widgets or templates;
-- video/font rendering and remote-asset fetching;
-- reading legacy JSON as a package or providing a v1 theme migration.
-
-## Acceptance
-
-- a valid v2 envelope plus declared bytes round-trips through the package;
-- missing, extra, duplicate, unsafe, oversized or compressed-bomb-like input
-  is rejected before revival;
-- the player bundle does not import the package implementation;
-- package code depends on the existing envelope validator rather than copying
-  theme validation.
+Round-trip, entry/path validation, expansion bounds and player-boundary tests
+cover the contract. Current run counts belong in `status.md`.
