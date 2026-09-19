@@ -17,7 +17,7 @@
 - Images/SVG, fonts, video, widgets, new shape creation and broader text editing are explicitly out of scope; themes will not use them yet.
 - Host storage validates the complete package before atomic replacement; mutation is loopback-only while player reads may reach displays.
 - Player does not import `@vigilia/theme-package`, editor code, or interactive `Canvas`.
-- Runtime samples, connection state and fake data never enter envelope/package/history/dirty state. Fake source is explicit `?data=fake`; host routes default to live data.
+- Runtime samples, connection state and preview data never enter envelope/package/history/dirty state. Editor defaults to a deterministic fluctuating `PreviewSource`; Live host telemetry is an explicit switch. Player routes default to live data.
 - Preserve `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `fabric/es`, v2 validation and player size/import gates.
 
 ## Review Focus
@@ -26,7 +26,7 @@
 - LAN peers can read a selected theme but cannot mutate storage; Task 1 tests the two paths.
 - Empty-asset packages package, save, load and render; Tasks 1–4 test the supported no-asset case.
 - Artboard values, token/type references, chart settings/bindings and Fabric geometry survive save/open; Tasks 2 and 4 test this.
-- Telemetry loss stays missing/stale without changing bytes or history; Task 3 tests it.
+- Preview values fluctuate reproducibly without per-sensor controls, and a live disconnect stays missing/stale without changing bytes or history; Task 3 tests both.
 
 ---
 
@@ -147,11 +147,13 @@ git add src/web/packages/editor/src/theme-library-client.ts src/web/packages/edi
 git commit -m "feat(editor): save complete theme packages"
 ```
 
-### Task 3: Use real host telemetry in editor previews without persistence leakage
+### Task 3: Add fluctuating editor preview data with an explicit live switch
 
 **Files:**
 - Create: `src/web/packages/editor/src/live-source.ts`
 - Create: `src/web/packages/editor/src/live-source.test.ts`
+- Create: `src/web/packages/editor/src/preview-source.ts`
+- Create: `src/web/packages/editor/src/preview-source.test.ts`
 - Modify: `src/web/packages/editor/src/fork-main.ts`
 - Modify: `src/web/packages/editor/src/chart-manager/index.ts`
 - Modify: `src/web/packages/editor/src/chart-manager/index.dom.test.ts`
@@ -159,49 +161,55 @@ git commit -m "feat(editor): save complete theme packages"
 - Modify: `src/web/packages/host/src/server.ts`
 - Modify: `src/web/packages/host/src/server.test.ts`
 
-**Interfaces:** Consumes `createLiveSource`, bindings and SSE. Produces `createEditorSource({ mode, keys, onStatus })` and a ChartManager source update path.
+**Interfaces:** Consumes `createLiveSource`, the existing fake-source waveform utilities, bindings and SSE. Produces `createPreviewSource`, `createEditorSource({ mode, keys, onStatus })` and a ChartManager source update path.
 
 - [ ] **Step 1: Write failing live-editor tests**
 
 ```ts
-const handle = createEditorSource({ mode: 'live', keys: ['cpu.load'], onStatus });
-expect(handle.source.sample('cpu.load').status).toBe('missing');
-handle.receive(batchWithCpuLoad(42));
-expect(chartCanvasWasRedrawn()).toBe(true);
+const preview = createPreviewSource({ keys: ['cpu.load'], now: () => clock.now });
+const first = preview.source.sample('cpu.load');
+clock.now += 1_000;
+const next = preview.source.sample('cpu.load');
+expect(next.value).not.toBe(first.value);
 expect(snapshotAfterLiveUpdate()).toEqual(snapshotBeforeLiveUpdate());
 ```
 
-Test explicit `?data=fake`, host `/editor/` defaulting to `?data=live`, honest disconnect state and no `historyManager.saveState` from incoming samples.
+Test deterministic fluctuation for every requested key, bounded preview history, an explicit Preview/Live control, honest live disconnect state and no `historyManager.saveState` from preview or incoming samples.
 
 - [ ] **Step 2: Run tests to verify failure**
 
-Run: `cmd.exe /d /s /c "npm test -- --run packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
+Run: `cmd.exe /d /s /c "npm test -- --run packages/editor/src/preview-source.test.ts packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
 
-Expected: FAIL because editor always uses demo data and host does not default editor to live mode.
+Expected: FAIL because editor has no first-class preview source or source-mode control.
 
-- [ ] **Step 3: Implement explicit live/fake source selection**
+- [ ] **Step 3: Implement preview/live source selection**
 
 ```ts
+export function createPreviewSource(options: {
+  readonly keys: readonly string[];
+  readonly now: () => number;
+}): { readonly source: SampleSource };
+
 export function createEditorSource(options: {
-  readonly mode: 'live' | 'fake';
+  readonly mode: 'preview' | 'live';
   readonly keys: readonly string[];
   readonly onStatus: (status: LiveSourceStatus, detail?: string) => void;
 }): { readonly source: SampleSource; close(): void };
 ```
 
-Derive key union from current envelope bindings and reconnect after authored binding changes. Redraw through runtime chart paths only; transport callbacks must not call persistence, dirty tracking or history. Host editor defaults live; Vite/tests request fake.
+Derive the key union from current envelope bindings and reconnect live telemetry after authored binding changes. `PreviewSource` uses a seeded, time-based waveform per semantic key and the existing bounded history rules, so a reopened document renders the same animation at the same test clock without knowing any chart family. It has no value fields, scenarios or persisted settings. Add one labelled Preview/Live source control; Preview is the initial editor mode and Live is an explicit author choice. Redraw through runtime chart paths only; callbacks must not call persistence, dirty tracking or history.
 
 - [ ] **Step 4: Run focused proof**
 
-Run: `cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm run typecheck -w @vigilia/host && npm test -- --run packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
+Run: `cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm run typecheck -w @vigilia/host && npm test -- --run packages/editor/src/preview-source.test.ts packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
 
-Expected: batches repaint charts, disconnect is honest and envelope/package/history do not change.
+Expected: preview updates animate charts, live batches repaint charts, disconnect is honest and envelope/package/history do not change.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/editor/src/live-source.ts src/web/packages/editor/src/live-source.test.ts src/web/packages/editor/src/fork-main.ts src/web/packages/editor/src/chart-manager/index.ts src/web/packages/editor/src/chart-manager/index.dom.test.ts src/web/packages/editor/src/fork-shell.dom.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
-git commit -m "feat(editor): preview live host telemetry"
+git add src/web/packages/editor/src/live-source.ts src/web/packages/editor/src/live-source.test.ts src/web/packages/editor/src/preview-source.ts src/web/packages/editor/src/preview-source.test.ts src/web/packages/editor/src/fork-main.ts src/web/packages/editor/src/chart-manager/index.ts src/web/packages/editor/src/chart-manager/index.dom.test.ts src/web/packages/editor/src/fork-shell.dom.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
+git commit -m "feat(editor): add animated preview source"
 ```
 
 ### Task 4: Load hosted themes in player and prove the author-to-display workflow
@@ -256,7 +264,7 @@ export async function loadHostedTheme(id: string, fetcher: typeof fetch): Promis
 }
 ```
 
-Host redirects `/` to a saved default only when one exists; otherwise player shows a clear no-theme failure. Keep `?theme=demo&data=fake` only for Vite/testing. Preserve the player import boundary.
+Host redirects `/` to a saved default only when one exists; otherwise player shows a clear no-theme failure. Keep `?theme=demo` only as a Vite/test fixture; the player itself remains live-only. Preserve the player import boundary.
 
 - [ ] **Step 4: Run full verification and inspect evidence**
 
@@ -275,7 +283,7 @@ Expected: typechecks, units, builds and size pass; inspect generated captures be
 
 - [ ] **Step 5: Update observed docs and commit**
 
-Record host storage, package-only editor persistence, player loading and editor live telemetry only after observed tests. Leave image/SVG, font and video authoring explicitly not implemented.
+Record host storage, package-only editor persistence, player loading and editor Preview/Live telemetry only after observed tests. Leave image/SVG, font and video authoring explicitly not implemented.
 
 ```bash
 git add src/web/packages/player/src/theme-loader.ts src/web/packages/player/src/theme-loader.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/boundaries.test.ts src/web/tests/e2e/theme-authoring-workflow.spec.ts src/web/tests/e2e/editor-fork.spec.ts .agents/screenshots/theme-authoring-workflow-desktop-chromium.png .agents/screenshots/README.md .agents/specs/0010-host-cli-and-live-telemetry.md .agents/specs/0011-editor-property-model.md .agents/specs/0013-fabric-scene-migration.md .agents/architecture.md .agents/status.md
@@ -284,7 +292,7 @@ git commit -m "test(theme): verify hosted authoring workflow"
 
 ## Self-review
 
-- Task 1 makes packages durable/safe; Task 2 gives existing authoring package-only save/open; Task 3 provides honest live preview; Task 4 proves saved authored state in player.
+- Task 1 makes packages durable/safe; Task 2 gives existing authoring package-only save/open; Task 3 provides animated preview plus honest optional live telemetry; Task 4 proves saved authored state in player.
 - There are no raw JSON, demo-substitution or browser-only bridges in the host workflow.
-- `ThemeStore` owns host bytes, `ThemeLibraryClient` transports full bytes, envelope validation stays at each boundary, and `createEditorSource` owns runtime lifecycle.
-- Stored replacement/LAN mutation are Task 1; empty package/editor preservation Task 2; runtime honesty Task 3; player fidelity Task 4.
+- `ThemeStore` owns host bytes, `ThemeLibraryClient` transports full bytes, envelope validation stays at each boundary, `PreviewSource` owns generated animation and `createEditorSource` owns runtime lifecycle.
+- Stored replacement/LAN mutation are Task 1; empty package/editor preservation Task 2; preview determinism and runtime honesty Task 3; player fidelity Task 4.
