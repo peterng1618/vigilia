@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Group, Rect, Textbox } from 'fabric/es';
+import { ActiveSelection, Group, Rect, Textbox } from 'fabric/es';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLayerPanel } from './layer-panel.js';
@@ -54,6 +54,20 @@ describe('semantic layer panel', () => {
     expect(canvas.canvas.off).toHaveBeenCalledTimes(6);
     expect(panel.root.isConnected).toBe(false);
   });
+
+  it('offers alignment for two selected objects but disables distribution', () => {
+    const { canvas, foreground, group, historyManager, activeObject } = editorFixture();
+    activeObject.mockReturnValue(new ActiveSelection([foreground, group]));
+    const panel = createLayerPanel(document.body, canvas);
+
+    const align = panel.root.querySelector<HTMLButtonElement>('[data-vigilia-arrange="align-left"]')!;
+    const distribute = panel.root.querySelector<HTMLButtonElement>('[data-vigilia-arrange="distribute-x"]')!;
+    expect(align.disabled).toBe(false);
+    expect(distribute.disabled).toBe(true);
+
+    align.click();
+    expect(historyManager.saveState).toHaveBeenCalledTimes(1);
+  });
 });
 
 function editorFixture() {
@@ -66,10 +80,12 @@ function editorFixture() {
   const foreground = new Rect();
   foreground.set('id', 'foreground');
   const listeners = new Map<string, () => void>();
+  const activeObject = vi.fn();
+  const historyManager = { saveState: vi.fn() };
   const canvas = {
     canvas: {
       getObjects: vi.fn(() => [background, group, foreground]),
-      getActiveObject: vi.fn(),
+      getActiveObject: activeObject,
       setActiveObject: vi.fn(),
       requestRenderAll: vi.fn(),
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
@@ -79,9 +95,9 @@ function editorFixture() {
       bringToFront: vi.fn(), bringForward: vi.fn(), sendToBack: vi.fn(), sendBackwards: vi.fn(),
     },
     objectLockManager: { lockObject: vi.fn(), unlockObject: vi.fn() },
-    historyManager: { saveState: vi.fn() },
+    historyManager,
   } as unknown as ImageEditor;
-  return { canvas, background, child, group, foreground, listeners };
+  return { canvas, background, child, group, foreground, listeners, activeObject, historyManager };
 }
 
 function layer(root: HTMLElement, id: string): HTMLElement {

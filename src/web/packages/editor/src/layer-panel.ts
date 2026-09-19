@@ -1,5 +1,6 @@
 import { Group, type FabricObject } from 'fabric/es';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+import { applyArrange, canArrange, type ArrangeAction } from './arrange.js';
 
 export interface LayerPanel {
   readonly root: HTMLElement;
@@ -48,6 +49,7 @@ function render(root: HTMLElement, editor: ImageEditor): void {
   for (const entry of entries(editor.canvas.getObjects() as LayerObject[])) {
     root.append(row(entry, editor));
   }
+  root.append(arrangeControls(root, editor));
 }
 
 function entries(objects: readonly LayerObject[], ancestors: readonly LayerObject[] = [], select?: LayerObject): readonly LayerEntry[] {
@@ -100,6 +102,29 @@ function control(action: string, label: string, handler: () => void): HTMLButton
     handler();
   });
   return button;
+}
+
+function arrangeControls(root: HTMLElement, editor: ImageEditor): HTMLElement {
+  const section = document.createElement('section');
+  const heading = document.createElement('h2');
+  heading.textContent = 'Arrange';
+  section.append(heading);
+  for (const [action, label] of [
+    ['align-left', 'Align left'], ['align-center-x', 'Centre horizontally'], ['align-right', 'Align right'],
+    ['align-top', 'Align top'], ['align-center-y', 'Centre vertically'], ['align-bottom', 'Align bottom'],
+    ['distribute-x', 'Distribute horizontally'], ['distribute-y', 'Distribute vertically'],
+  ] as const satisfies readonly (readonly [ArrangeAction, string])[]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset['vigiliaArrange'] = action;
+    button.textContent = label;
+    button.disabled = !canArrange(editor, action);
+    button.addEventListener('click', () => {
+      if (applyArrange(editor, action)) render(root, editor);
+    });
+    section.append(button);
+  }
+  return section;
 }
 
 function select(entry: LayerEntry, editor: ImageEditor): void {

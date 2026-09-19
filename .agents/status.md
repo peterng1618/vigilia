@@ -55,7 +55,9 @@ focused active-fork visual evidence.
   locking and history APIs required by the accepted layer workflow.
 - The semantic layer panel derives top-most-first Fabric hierarchy and effective
   parent state, and routes selection, visibility recovery, lock and order
-  actions without a parallel persisted tree. Arrange commands remain pending.
+  actions without a parallel persisted tree. Its align/distribute actions use
+  rendered Fabric bounds, reject locked/undersized selections, and save once
+  through fork history.
 - The fork's New/Open/Save dispatcher no longer imports the fallback action or
   keyboard model; it owns only product file shortcuts.
 - The inactive legacy `main.ts` route and its size exception are deleted; the

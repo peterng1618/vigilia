@@ -1,0 +1,104 @@
+import { ActiveSelection, Point, type FabricObject } from 'fabric/es';
+import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+
+export type ArrangeAction =
+  | 'align-left' | 'align-center-x' | 'align-right'
+  | 'align-top' | 'align-center-y' | 'align-bottom'
+  | 'distribute-x' | 'distribute-y';
+
+interface ArrangeObject extends FabricObject {
+  readonly locked?: boolean;
+}
+
+interface Bounds {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Moves the current Fabric selection without introducing a separate geometry model. */
+export function applyArrange(editor: ImageEditor, action: ArrangeAction): boolean {
+  const active = editor.canvas.getActiveObject();
+  if (!(active instanceof ActiveSelection) || !canArrange(editor, action)) return false;
+  const objects = active.getObjects() as ArrangeObject[];
+
+  if (action === 'distribute-x' || action === 'distribute-y') distribute(objects, action === 'distribute-x' ? 'x' : 'y');
+  else align(objects, action);
+
+  editor.canvas.setActiveObject(active);
+  editor.canvas.requestRenderAll();
+  editor.historyManager.saveState();
+  return true;
+}
+
+/** Mirrors command eligibility so controls cannot advertise an invalid action. */
+export function canArrange(editor: ImageEditor, action: ArrangeAction): boolean {
+  const active = editor.canvas.getActiveObject();
+  if (!(active instanceof ActiveSelection)) return false;
+  const objects = active.getObjects() as ArrangeObject[];
+  return !objects.some((object) => object.locked) && objects.length >= minimum(action);
+}
+
+function minimum(action: ArrangeAction): number {
+  return action === 'distribute-x' || action === 'distribute-y' ? 3 : 2;
+}
+
+function align(objects: readonly ArrangeObject[], action: Exclude<ArrangeAction, 'distribute-x' | 'distribute-y'>): void {
+  const bounds = union(objects);
+  const horizontal = action === 'align-left' || action === 'align-center-x' || action === 'align-right';
+  const target = horizontal
+    ? action === 'align-left' ? bounds.left : action === 'align-right' ? bounds.left + bounds.width : bounds.left + bounds.width / 2
+    : action === 'align-top' ? bounds.top : action === 'align-bottom' ? bounds.top + bounds.height : bounds.top + bounds.height / 2;
+
+  for (const object of objects) {
+    const current = object.getBoundingRect();
+    const position = horizontal
+      ? action === 'align-left' ? current.left : action === 'align-right' ? current.left + current.width : current.left + current.width / 2
+      : action === 'align-top' ? current.top : action === 'align-bottom' ? current.top + current.height : current.top + current.height / 2;
+    move(object, horizontal ? target - position : 0, horizontal ? 0 : target - position);
+  }
+}
+
+function distribute(objects: readonly ArrangeObject[], axis: 'x' | 'y'): void {
+  const ordered = objects.slice().sort((left, right) => start(left, axis) - start(right, axis));
+  const first = ordered[0]!;
+  const last = ordered.at(-1)!;
+  const inner = ordered.slice(1, -1);
+  const gap = (start(last, axis) - end(first, axis) - inner.reduce((sum, object) => sum + size(object, axis), 0)) / (ordered.length - 1);
+  let next = end(first, axis) + gap;
+
+  for (const object of inner) {
+    move(object, axis === 'x' ? next - start(object, axis) : 0, axis === 'y' ? next - start(object, axis) : 0);
+    next += size(object, axis) + gap;
+  }
+}
+
+function union(objects: readonly ArrangeObject[]): Bounds {
+  const rectangles = objects.map((object) => object.getBoundingRect());
+  const left = Math.min(...rectangles.map((rectangle) => rectangle.left));
+  const top = Math.min(...rectangles.map((rectangle) => rectangle.top));
+  const right = Math.max(...rectangles.map((rectangle) => rectangle.left + rectangle.width));
+  const bottom = Math.max(...rectangles.map((rectangle) => rectangle.top + rectangle.height));
+  return { left, top, width: right - left, height: bottom - top };
+}
+
+function start(object: ArrangeObject, axis: 'x' | 'y'): number {
+  const bounds = object.getBoundingRect();
+  return axis === 'x' ? bounds.left : bounds.top;
+}
+
+function end(object: ArrangeObject, axis: 'x' | 'y'): number {
+  return start(object, axis) + size(object, axis);
+}
+
+function size(object: ArrangeObject, axis: 'x' | 'y'): number {
+  const bounds = object.getBoundingRect();
+  return axis === 'x' ? bounds.width : bounds.height;
+}
+
+function move(object: ArrangeObject, dx: number, dy: number): void {
+  const center = object.getCenterPoint();
+  object.setPositionByOrigin(new Point(center.x + dx, center.y + dy), 'center', 'center');
+  object.setCoords();
+}

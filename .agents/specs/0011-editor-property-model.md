@@ -129,13 +129,14 @@ Implemented:
   palette references), resolved only while building engine options.
 - semantic layer projection of current Fabric hierarchy, inherited state,
   selection, and fork-owned lock/order actions.
+- selection-relative Fabric alignment and equal-gap distribution with
+  cardinality/lock rejection and fork-history preservation.
 
 Still transitional/not implemented:
 
 - domain property UI for assets;
 - chart paint/threshold controls;
 - broader Vigilia new-element creation commands beyond the current text command.
-- selection-relative align/distribute commands.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains
@@ -149,7 +150,7 @@ settled by spec 0013.
 | Published development schema | `schema/theme-document.schema.json` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
 | Scene geometry/grouping | Fabric scene via `scene-fabric` persistence |
-| Semantic layer projection and arrange UI | `editor/src/layer-panel.ts` |
+| Semantic layer projection and arrange UI | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Current chart property UI | `editor/src/chart-manager/` |
 | Current palette/type property UI | `editor/src/palette-panel.ts`, `editor/src/type-preset-panel.ts` |
 
