@@ -108,6 +108,7 @@ export {
 
 export type {
   Artboard,
+  BackgroundMedia,
   AssetLicense,
   AssetReference,
   Binding,
@@ -144,6 +145,8 @@ export {
   NODE_TYPES,
   STABLE_ID_PATTERN,
   SUPPORTED_SCHEMA_VERSION,
+  bumpSemanticVersion,
+  isSemanticVersion,
   requiredSemanticKeys,
   walkBindings,
   walkNodes,

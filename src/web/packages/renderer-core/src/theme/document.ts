@@ -20,6 +20,24 @@ export const ASSET_PATH_PATTERN = /^assets\/[A-Za-z0-9._/-]{1,200}$/;
 export const MAX_NODE_DEPTH = 32;
 export const MAX_NODE_COUNT = 5000;
 
+const SEMANTIC_VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
+
+export function isSemanticVersion(value: string): boolean {
+  return SEMANTIC_VERSION.test(value);
+}
+
+export function bumpSemanticVersion(version: string | undefined, level: 'major' | 'minor' | 'patch'): string {
+  if (version === undefined) return '0.1.0';
+  const parts = SEMANTIC_VERSION.exec(version);
+  if (parts === null) throw new Error('A release version must be semantic major.minor.patch.');
+  const major = Number(parts[1]);
+  const minor = Number(parts[2]);
+  const patch = Number(parts[3]);
+  if (level === 'major') return `${major + 1}.0.0`;
+  if (level === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
 export const GLOBAL_GROUPS = ['palette', 'typePresets', 'fonts', 'fontSizes', 'spacing', 'assets'] as const;
 export type GlobalGroupName = (typeof GLOBAL_GROUPS)[number];
 
@@ -87,6 +105,11 @@ export interface Artboard {
   readonly background?: StyleValue;
   readonly fitMode?: 'contain' | 'cover';
   readonly barColor?: StyleValue;
+  readonly backgroundMedia?: BackgroundMedia;
+}
+export interface BackgroundMedia {
+  readonly assetId: string;
+  readonly fit: 'contain' | 'cover';
 }
 
 /** Themes bind semantic keys, never provider-instance IDs. */
@@ -199,6 +222,7 @@ export interface ThemeMetadata {
   readonly name?: string;
   readonly author?: string;
   readonly description?: string;
+  readonly version?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
 }

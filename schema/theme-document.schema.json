@@ -30,6 +30,7 @@
         "name": { "type": "string", "maxLength": 200 },
         "author": { "type": "string", "maxLength": 200 },
         "description": { "type": "string", "maxLength": 2000 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
@@ -45,9 +46,11 @@
         "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
         "background": { "$ref": "#/$defs/paletteReference" },
         "fitMode": { "enum": ["contain", "cover"] },
-        "barColor": { "$ref": "#/$defs/paletteReference" }
+        "barColor": { "$ref": "#/$defs/paletteReference" },
+        "backgroundMedia": { "$ref": "#/$defs/backgroundMedia" }
       }
     },
+    "backgroundMedia": { "type": "object", "additionalProperties": false, "required": ["assetId", "fit"], "properties": { "assetId": { "$ref": "#/$defs/stableId" }, "fit": { "enum": ["contain", "cover"] } } },
     "globals": {
       "type": "object", "additionalProperties": false,
       "properties": {

@@ -20,6 +20,30 @@ describe('Fabric theme envelope validation', () => {
     expect(validateFabricThemeEnvelope(envelope())).toMatchObject({ ok: true });
   });
 
+  it('accepts one declared background image or video and a semantic release version', () => {
+    expect(validateFabricThemeEnvelope({
+      ...envelope(),
+      metadata: { version: '1.2.3' },
+      artboard: { width: 400, height: 300, backgroundMedia: { assetId: 'clip', fit: 'cover' } },
+      assets: [{ id: 'clip', kind: 'video', path: 'assets/clip.mp4' }],
+    })).toMatchObject({ ok: true });
+  });
+
+  it('rejects malformed versions and invalid background-media references', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelope(),
+      metadata: { version: 'v1.2.3' },
+      artboard: { width: 400, height: 300, backgroundMedia: { assetId: 'font', fit: 'stretch' } },
+      assets: [{ id: 'font', kind: 'font', path: 'assets/body.woff2' }],
+    });
+
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ path: '/metadata/version' }),
+      expect.objectContaining({ path: '/artboard/backgroundMedia/fit' }),
+      expect.objectContaining({ path: '/artboard/backgroundMedia/assetId' }),
+    ]) });
+  });
+
   it('reports an unknown version alone before interpreting the envelope', () => {
     const result = validateFabricThemeEnvelope({ ...envelope(), schemaVersion: 3, artboard: 'wrong' });
 

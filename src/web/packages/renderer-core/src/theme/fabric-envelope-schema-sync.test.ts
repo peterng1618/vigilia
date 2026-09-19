@@ -60,6 +60,8 @@ describe('published Fabric theme schema', () => {
     expect(preset['required']).toEqual(['family', 'size']);
     expect(artboard['background']).toEqual({ $ref: '#/$defs/paletteReference' });
     expect(artboard['barColor']).toEqual({ $ref: '#/$defs/paletteReference' });
+    expect(artboard['backgroundMedia']).toEqual({ $ref: '#/$defs/backgroundMedia' });
+    expect(document.$defs['metadata']?.['properties']).toMatchObject({ version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' } });
     expect(document.$defs['styleValue']).toBeUndefined();
     expect(document.$defs['globalGroup']).toBeUndefined();
   });

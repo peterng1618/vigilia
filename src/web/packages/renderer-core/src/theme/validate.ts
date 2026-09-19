@@ -74,8 +74,8 @@ const CHART_BINDING_ARITY: Record<
 /** Known keys mirror schema shapes with `additionalProperties: false`. */
 const KNOWN_KEYS = {
   document: ['schemaVersion', 'id', 'metadata', 'artboard', 'globals', 'nodes', 'assets', 'editorMetadata'],
-  metadata: ['name', 'author', 'description', 'createdAt', 'updatedAt'],
-  artboard: ['width', 'height', 'background', 'fitMode', 'barColor'],
+  metadata: ['name', 'author', 'description', 'version', 'createdAt', 'updatedAt'],
+  artboard: ['width', 'height', 'background', 'fitMode', 'barColor', 'backgroundMedia'],
   transform: ['x', 'y', 'width', 'height', 'rotation', 'scaleX', 'scaleY'],
   node: [
     'id',
@@ -259,6 +259,9 @@ export function validateThemeDocument(input: unknown): ValidationResult {
   const metadata = input['metadata'];
   if (metadata !== undefined && issues.object(metadata, '/metadata', 'metadata')) {
     issues.unknownKeys(metadata, '/metadata', 'metadata', 'Document metadata');
+    if (metadata['version'] !== undefined && (typeof metadata['version'] !== 'string' || !/^\d+\.\d+\.\d+$/.test(metadata['version']))) {
+      issues.add('wrong-type', '/metadata/version', 'version must be a semantic major.minor.patch string.');
+    }
   }
 
   if (!issues.stableId(input['id'], '/id', 'The document id')) {
@@ -269,6 +272,7 @@ export function validateThemeDocument(input: unknown): ValidationResult {
 
   const globalKeys = validateGlobals(issues, input['globals']);
   const assetIds = validateAssets(issues, input['assets']);
+  validateBackgroundMedia(issues, resolveOptional(input['artboard'], 'backgroundMedia'), input['assets']);
 
   validateStyleValue(issues, resolveOptional(input['artboard'], 'background'), '/artboard/background', globalKeys);
   validateStyleValue(issues, resolveOptional(input['artboard'], 'barColor'), '/artboard/barColor', globalKeys);
@@ -396,6 +400,17 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
   }
 
   return keys;
+}
+
+function validateBackgroundMedia(issues: Issues, value: unknown, assets: unknown): void {
+  if (value === undefined) return;
+  if (!issues.object(value, '/artboard/backgroundMedia', 'backgroundMedia')) return;
+  for (const key of Object.keys(value)) if (key !== 'assetId' && key !== 'fit') issues.add('unknown-field', `/artboard/backgroundMedia/${key}`, `backgroundMedia has no "${key}" property.`);
+  issues.enumValue(value['fit'], ['contain', 'cover'] as const, '/artboard/backgroundMedia/fit', 'fit');
+  const asset = Array.isArray(assets) ? assets.find((entry) => isRecord(entry) && entry['id'] === value['assetId']) : undefined;
+  if (!isRecord(asset) || !['image', 'svg', 'video'].includes(String(asset['kind']))) {
+    issues.add('unresolved-asset-ref', '/artboard/backgroundMedia/assetId', 'backgroundMedia must reference a declared image, SVG or video asset.');
+  }
 }
 
 function validateTypePreset(issues: Issues, value: unknown, path: string): void {
