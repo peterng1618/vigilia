@@ -35,7 +35,7 @@ export type {
   LinearGradientColor,
 } from './charts/fill.js';
 
-export { resolveChartPaint } from './charts/chart-paint.js';
+export { reassignChartPaintReferences, resolveChartPaint } from './charts/chart-paint.js';
 
 export {
   colorAt,
@@ -95,10 +95,12 @@ export type {
 
 export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
 
-export type { SettingsFieldDescriptor, SettingsFieldKind } from './charts/settings-fields.js';
+export type { ChartPaintFieldDescriptor, SettingsFieldDescriptor, SettingsFieldKind } from './charts/settings-fields.js';
 
 export {
   CHART_SETTINGS_FIELDS,
+  CHART_PAINT_FIELDS,
+  chartPaintFieldsFor,
   NON_SCALAR_SETTINGS,
   settingsFieldsFor,
   settingsKeyFor,

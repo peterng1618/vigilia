@@ -47,6 +47,9 @@ test.describe('Fabric editor route', () => {
     await precision.fill('2');
     await precision.press('Tab');
     await expect(precision).toHaveValue('2');
+    const progressPaint = page.locator('[data-vigilia-chart-paint="progress"]');
+    await progressPaint.scrollIntoViewIfNeeded();
+    await expect(progressPaint).toBeVisible();
 
     await captureVisualReview(page, testInfo, 'editor-fork-chart-binding');
   });
@@ -156,6 +159,22 @@ test.describe('Fabric editor route', () => {
     expect(envelope.globals.palette.background).toBeUndefined();
   });
 
+  test('reassigns chart paint before deleting its palette token', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-palette-token]').selectOption('chartTrack');
+    await page.locator('[data-vigilia-palette-replacement]').selectOption('bars');
+    await page.locator('[data-vigilia-palette-delete]').click();
+
+    const envelope = await saveEnvelope(page) as {
+      globals: { palette: Record<string, unknown> };
+      scene: { objects: Array<{ id?: string; settings?: { track?: { ref?: string } } }> };
+    };
+    expect(envelope.globals.palette.chartTrack).toBeUndefined();
+    expect(envelope.scene.objects.find((object) => object.id === 'load-gauge')?.settings?.track).toEqual({ ref: 'palette.bars' });
+  });
+
   test('edits a global type preset through the fork property surface', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
@@ -242,6 +261,19 @@ test.describe('Fabric editor route', () => {
 
     const envelope = await saveEnvelope(page) as { bindings: Record<string, Array<{ id: string; semanticKey: string }>> };
     expect(envelope.bindings['load-gauge']).toContainEqual({ id: 'cpu-load', semanticKey: 'ram.used', precision: 2 });
+  });
+
+  test('persists selected chart paint as a palette reference', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await selectStarterChart(page);
+    await page.locator('[data-vigilia-chart-paint="progress"]').selectOption('palette.chartTrack');
+
+    const envelope = await saveEnvelope(page) as {
+      scene: { objects: Array<{ id?: string; settings?: { progress?: { ref?: string } } }> };
+    };
+    expect(envelope.scene.objects.find((object) => object.id === 'load-gauge')?.settings?.progress).toEqual({ ref: 'palette.chartTrack' });
   });
 
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {

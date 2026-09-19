@@ -7,6 +7,8 @@ import { defaultBarSettings } from './bar.js';
 import { defaultPieSettings } from './pie.js';
 import {
   CHART_SETTINGS_FIELDS,
+  CHART_PAINT_FIELDS,
+  chartPaintFieldsFor,
   NON_SCALAR_SETTINGS,
   settingsFieldsFor,
   settingsKeyFor,
@@ -51,6 +53,18 @@ describe('the chart settings declaration', () => {
       for (const field of settingsFieldsFor(family)) {
         expect('default' in field).toBe(false);
       }
+    }
+  });
+});
+
+describe('the chart paint declaration', () => {
+  it('has a labelled row for every persisted paint setting', () => {
+    expect(Object.keys(CHART_PAINT_FIELDS).sort()).toEqual([...CHART_FAMILIES].sort());
+    for (const family of CHART_FAMILIES) {
+      const properties = chartPaintFieldsFor(family).map((field) => field.property);
+      expect(new Set(properties).size).toBe(properties.length);
+      expect(properties).toEqual(NON_SCALAR_SETTINGS[family].filter((property) => property !== 'animation' && property !== 'total'));
+      expect(chartPaintFieldsFor(family).every((field) => field.label.length > 0)).toBe(true);
     }
   });
 });

@@ -1,5 +1,6 @@
 import {
   buildChartPlan,
+  reassignChartPaintReferences,
   type Binding,
   type ChartContent,
   type FabricGlobals,
@@ -56,6 +57,26 @@ export class ChartManager {
     this.#hydrateRevivedCharts();
   }
 
+  reassignPaletteReferences(from: string, to: string): void {
+    const visit = (object: { get(key: string): unknown }): void => {
+      if (object instanceof VigiliaChart) {
+        const settings = reassignChartPaintReferences(object.settings, from, to);
+        if (settings !== object.settings) {
+          object.set('settings', settings);
+          const id = object.get('id');
+          if (typeof id === 'string') this.#applyChart(id, object);
+        }
+      }
+      const children = object.get('objects');
+      if (Array.isArray(children)) children.forEach((child) => {
+        if (typeof child === 'object' && child !== null && 'get' in child && typeof child.get === 'function') visit(child as { get(key: string): unknown });
+      });
+    };
+    this.#editor.canvas.getObjects().forEach(visit);
+    this.#editor.canvas.requestRenderAll();
+    this.#drawPanel();
+  }
+
   readonly #drawPanel = (): void => {
     const chart = this.#selectedChart();
     const id = chart?.get('id');
@@ -65,7 +86,7 @@ export class ChartManager {
         id,
         content: { family: chart.family, settings: chart.settings } as ChartContent,
         bindings: this.#bindings[id] ?? [],
-      });
+      }, this.#globals?.palette);
   };
 
   #updateSettings(id: string, settings: ChartContent['settings']): void {

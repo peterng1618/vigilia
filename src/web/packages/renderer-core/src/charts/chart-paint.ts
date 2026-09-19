@@ -17,6 +17,19 @@ export function resolveChartPaint(paint: ChartPaint, palette: FabricPalette | un
   };
 }
 
+/** Reassign token references without touching engine-only resolved fills. */
+export function reassignChartPaintReferences<T>(value: T, from: string, to: string): T {
+  if (Array.isArray(value)) {
+    const next = value.map((entry) => reassignChartPaintReferences(entry, from, to));
+    return next.some((entry, index) => entry !== value[index]) ? next as T : value;
+  }
+  if (typeof value !== 'object' || value === null) return value;
+  const record = value as Record<string, unknown>;
+  if (record['ref'] === from) return { ...record, ref: to } as T;
+  const entries = Object.entries(record).map(([key, entry]) => [key, reassignChartPaintReferences(entry, from, to)] as const);
+  return entries.some(([key, entry]) => entry !== record[key]) ? Object.fromEntries(entries) as T : value;
+}
+
 function paletteFill(ref: string, palette: FabricPalette | undefined): Fill {
   const value = token(ref, palette)?.value;
   if (value?.kind === 'solid') return { kind: 'solid', color: value.color };

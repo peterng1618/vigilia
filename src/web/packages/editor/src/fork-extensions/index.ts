@@ -139,6 +139,7 @@ export class ForkExtensions {
     const from = `palette.${id}` as const;
     const to = `palette.${replacement}` as const;
     reassignObjectPaletteReferences(shell.editor.canvas, from, to);
+    this.charts.reassignPaletteReferences(from, to);
     const artboard = { ...this.#envelope.artboard };
     for (const property of ['background', 'barColor'] as const) {
       const value = artboard[property];

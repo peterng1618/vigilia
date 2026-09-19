@@ -8,10 +8,11 @@ Current handoff only. Durable rules: `AGENTS.md`; product plan:
 
 | Check | Result |
 |---|---|
-| Unit tests | 855 passed across 55 files |
+| Unit tests | 857 passed across 55 files |
 | Typechecks | six projects clean |
 | Builds | player, editor and host clean |
-| Visual review | focused active-fork capture inspected; palette-referenced charts render |
+| Player size gate | 263.0 KB gzip JS; 0.0 KB gzip CSS |
+| Visual review | inspected active-fork chart-paint capture; selected gauge and token selectors remain visible |
 
 The current chart-paint slice has current typecheck, unit, editor build and
 focused active-fork visual evidence.
@@ -153,5 +154,7 @@ focused active-fork visual evidence.
 - LHM extended telemetry is still a contract, not an implementation.
 - Canvas text uses natural digit metrics where tabular numerals cannot be
   guaranteed.
+- Current-session Playwright capture/browser gates could not launch because the
+  runtime returned `spawn EPERM` before a browser process started.
 - Two chart engine gaps remain open: gauge angular gradients and discrete line
   threshold bands.

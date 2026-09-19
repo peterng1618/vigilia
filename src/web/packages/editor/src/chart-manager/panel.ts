@@ -1,8 +1,8 @@
-import { SEMANTIC_KEYS, settingsFieldsFor, type Binding, type ChartContent } from '@vigilia/renderer-core';
+import { SEMANTIC_KEYS, chartPaintFieldsFor, settingsFieldsFor, type Binding, type ChartContent, type FabricPalette } from '@vigilia/renderer-core';
 
 export interface ForkChartPanel {
   readonly root: HTMLElement;
-  render(chart: { readonly id: string; readonly content: ChartContent; readonly bindings: readonly Binding[] } | undefined): void;
+  render(chart: { readonly id: string; readonly content: ChartContent; readonly bindings: readonly Binding[] } | undefined, palette?: FabricPalette): void;
 }
 
 export function createForkChartPanel(
@@ -11,11 +11,11 @@ export function createForkChartPanel(
   onBindingChange: (id: string, binding: Binding) => void,
 ): ForkChartPanel {
   const root = document.createElement('section');
-  host.append(root);
+  host.prepend(root);
 
   return {
     root,
-    render(chart) {
+    render(chart, palette) {
       root.replaceChildren();
       if (chart === undefined) {
         root.textContent = 'Select a chart to edit its settings.';
@@ -79,8 +79,50 @@ export function createForkChartPanel(
         });
         root.append(label, input);
       }
+      for (const field of chartPaintFieldsFor(chart.content.family)) {
+        const value = (chart.content.settings as unknown as Record<string, unknown>)[field.property];
+        if (field.multiple && Array.isArray(value)) {
+          value.forEach((paint, index) => root.append(...paintPicker(
+            `${field.label} ${index + 1}`, `${field.property}.${index}`, paint, palette,
+            (ref) => onChange(chart.id, { ...chart.content.settings, [field.property]: value.map((entry, item) => item === index ? { ref } : entry) } as ChartContent['settings']),
+          )));
+        } else if (!Array.isArray(value) && value !== undefined) {
+          root.append(...paintPicker(
+            field.label, field.property, value, palette,
+            (ref) => onChange(chart.id, { ...chart.content.settings, [field.property]: { ref } } as ChartContent['settings']),
+          ));
+        }
+      }
     },
   };
+}
+
+function paintPicker(
+  labelText: string,
+  key: string,
+  value: unknown,
+  palette: FabricPalette | undefined,
+  onChange: (ref: string) => void,
+): readonly [HTMLLabelElement, HTMLSelectElement] {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  const select = document.createElement('select');
+  select.dataset['vigiliaChartPaint'] = key;
+  const current = isPaletteReference(value) ? value.ref : '';
+  for (const [id, entry] of Object.entries(palette ?? {})) {
+    const option = document.createElement('option');
+    option.value = `palette.${id}`;
+    option.textContent = entry.name;
+    select.append(option);
+  }
+  select.value = current;
+  select.disabled = current === '' || select.options.length === 0;
+  select.addEventListener('change', () => onChange(select.value));
+  return [label, select];
+}
+
+function isPaletteReference(value: unknown): value is { readonly ref: string } {
+  return typeof value === 'object' && value !== null && typeof (value as Record<string, unknown>)['ref'] === 'string';
 }
 
 function bindingNumber(

@@ -10,7 +10,7 @@ describe('ChartManager', () => {
   it('updates the selected Fabric chart from envelope bindings', () => {
     const listeners = new Map<string, () => void>();
     const chart = Object.assign(Object.create(VigiliaChart.prototype), {
-      id: 'cpu-gauge', family: 'gauge', settings: defaultGaugeSettings,
+      id: 'cpu-gauge', family: 'gauge', settings: { ...defaultGaugeSettings, track: { ref: 'palette.track' }, progress: { ref: 'palette.accent' } },
     }) as VigiliaChart;
     const canvas = {
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
@@ -24,6 +24,11 @@ describe('ChartManager', () => {
       scene,
       source: createDemoSource(0),
       bindings: { 'cpu-gauge': [{ id: 'cpu', semanticKey: 'cpu.load' }] },
+      globals: { palette: {
+        none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+        track: { name: 'Track', value: { kind: 'solid', color: '#223344' } },
+        accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } },
+      } },
       panelHost: document.body,
     });
 
@@ -41,6 +46,11 @@ describe('ChartManager', () => {
 
     expect(chart.settings).toMatchObject({ thickness: 24 });
     expect(document.querySelector<HTMLInputElement>('[data-vigilia-chart-setting="thickness"]')!.value).toBe('24');
+
+    const progress = document.querySelector<HTMLSelectElement>('[data-vigilia-chart-paint="progress"]')!;
+    progress.value = 'palette.track';
+    progress.dispatchEvent(new Event('change'));
+    expect(chart.settings).toMatchObject({ progress: { ref: 'palette.track' } });
 
     manager.destroy();
     expect(canvas.off).toHaveBeenCalledTimes(3);

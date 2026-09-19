@@ -55,6 +55,14 @@ export interface SettingsFieldDescriptor {
   readonly hint?: string;
 }
 
+/** Persisted chart paint settings; token choice is shared across editor surfaces. */
+export interface ChartPaintFieldDescriptor {
+  readonly property: string;
+  readonly label: string;
+  /** A palette assigns one token to each existing series slot. */
+  readonly multiple?: true;
+}
+
 const INTERPOLATION = [
   { value: 'linear', label: 'Linear' },
   { value: 'smooth', label: 'Smooth' },
@@ -167,6 +175,17 @@ export const CHART_SETTINGS_FIELDS: Readonly<
 /** The editable scalar settings for one family. */
 export function settingsFieldsFor(family: ChartFamily): readonly SettingsFieldDescriptor[] {
   return CHART_SETTINGS_FIELDS[family];
+}
+
+export const CHART_PAINT_FIELDS: Readonly<Record<ChartFamily, readonly ChartPaintFieldDescriptor[]>> = {
+  gauge: [{ property: 'track', label: 'Track paint' }, { property: 'progress', label: 'Progress paint' }],
+  line: [{ property: 'stroke', label: 'Stroke paint' }, { property: 'palette', label: 'Series paint', multiple: true }, { property: 'area', label: 'Area paint' }],
+  bar: [{ property: 'fill', label: 'Fill paint' }, { property: 'track', label: 'Track paint' }],
+  pie: [{ property: 'remainderFill', label: 'Remainder paint' }, { property: 'palette', label: 'Slice paint', multiple: true }],
+};
+
+export function chartPaintFieldsFor(family: ChartFamily): readonly ChartPaintFieldDescriptor[] {
+  return CHART_PAINT_FIELDS[family];
 }
 
 /**
