@@ -269,6 +269,11 @@ it rejects unexpected paths, duplicate/missing assets and bounded hostile input
 before a document is revived. Preview/licence files and widget packages follow
 only when they have an authoring workflow.
 
+Local folders may expose the same `theme.json` and `assets/` layout for external
+asset editing. They are authoring workspaces: detect changed asset hashes and
+reload deliberately, then export an immutable ZIP for sharing, libraries and a
+future store. Do not silently synchronize folder and package copies.
+
 ## §141 — Validation and versioning
 
 Validate schema/Fabric version, references, types, bounds, nesting and assets.
