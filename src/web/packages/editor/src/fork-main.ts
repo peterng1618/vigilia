@@ -66,7 +66,7 @@ async function start(): Promise<void> {
   picker.hidden = true;
   host.parentElement!.append(picker);
 
-  const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope }) => {
+  const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope; readonly assets?: Readonly<Record<string, Uint8Array>> }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
     const source = createSource(next.input);
     const shell = await mountForkShell({
@@ -78,6 +78,7 @@ async function start(): Promise<void> {
       shell,
       source: source.source,
       envelope: next.input,
+      ...(next.assets === undefined ? {} : { assets: next.assets }),
       panelHost,
       libraryClient,
       onBindingsChange: replaceSource,
@@ -87,13 +88,14 @@ async function start(): Promise<void> {
         status.textContent = 'New Fabric theme';
       },
       onOpenPackage: () => picker.click(),
-      onOpenTheme: async (envelope) => {
-        await mount({ input: envelopeInputFor(envelope), envelope });
+      onOpenTheme: async (envelope, assets) => {
+        await mount({ input: envelopeInputFor(envelope), envelope, assets });
         status.textContent = `Opened ${envelope.metadata?.name ?? envelope.id}`;
       },
       onSaved: (msg) => { status.textContent = msg ?? 'Fabric theme saved'; },
       onError: (msg) => { status.textContent = msg; },
     });
+    await extensions.hydrateAssets(shell);
     active?.extensions.destroy();
     active?.shell.destroy();
     active?.source.close();
@@ -112,7 +114,7 @@ async function start(): Promise<void> {
         return;
       }
       try {
-        await mount({ input: envelopeInputFor(parsed.envelope), envelope: parsed.envelope });
+        await mount({ input: envelopeInputFor(parsed.envelope), envelope: parsed.envelope, assets: parsed.assets });
         status.textContent = `Opened ${file.name}`;
       } catch (error) {
         status.textContent = `Could not open: ${error instanceof Error ? error.message : String(error)}`;

@@ -1,6 +1,8 @@
 import { FabricImage, Group, type StaticCanvas } from 'fabric/es';
 import type { AssetReference, FabricThemeEnvelope } from '@vigilia/renderer-core';
 import { objectAssetReference } from '@vigilia/scene-fabric';
+import { setObjectAssetReference } from '@vigilia/scene-fabric';
+import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 
 const TYPES = {
   png: { mime: 'image/png', kind: 'image' },
@@ -12,22 +14,23 @@ const TYPES = {
 
 type AssetExtension = keyof typeof TYPES;
 type AssetKind = (typeof TYPES)[AssetExtension]['kind'];
+type LocalAssetReference = AssetReference & { readonly kind: AssetKind };
 
 /** Owns declared package bytes and the disposable browser previews derived from them. */
 export class AssetManager {
   #assets: Record<string, Uint8Array> = {};
-  #declarations: AssetReference[] = [];
+  #declarations: LocalAssetReference[] = [];
   #previewUrls = new Map<string, string>();
 
   get assets(): Readonly<Record<string, Uint8Array>> {
     return { ...this.#assets };
   }
 
-  get declarations(): readonly AssetReference[] {
+  get declarations(): readonly LocalAssetReference[] {
     return this.#declarations;
   }
 
-  async import(file: File): Promise<AssetReference> {
+  async import(file: File): Promise<LocalAssetReference> {
     const extension = extensionOf(file.name);
     if (extension === undefined) throw new Error('Unsupported asset file type.');
     const type = TYPES[extension];
@@ -36,7 +39,7 @@ export class AssetManager {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const previewBytes = extension === 'svg' ? sanitisedSvg(bytes) : bytes;
     const { id, path } = this.#allocate(file.name, extension);
-    const reference: AssetReference = { id, kind: type.kind, path, sha256: await sha256(bytes) };
+    const reference: LocalAssetReference = { id, kind: type.kind, path, sha256: await sha256(bytes) };
 
     this.#assets[path] = bytes;
     this.#declarations.push(reference);
@@ -55,7 +58,7 @@ export class AssetManager {
 
   load(envelope: Pick<FabricThemeEnvelope, 'assets'>, assets: Readonly<Record<string, Uint8Array>>): void {
     this.destroy();
-    this.#declarations = [...(envelope.assets ?? [])];
+    this.#declarations = (envelope.assets ?? []).filter((asset): asset is LocalAssetReference => asset.kind === 'image' || asset.kind === 'svg');
     this.#assets = Object.fromEntries(Object.entries(assets).map(([path, bytes]) => [path, new Uint8Array(bytes)]));
   }
 
@@ -82,7 +85,7 @@ export class AssetManager {
     this.#previewUrls.clear();
   }
 
-  #preview(asset: AssetReference): string {
+  #preview(asset: LocalAssetReference): string {
     const existing = this.#previewUrls.get(asset.id);
     if (existing !== undefined) return existing;
     const bytes = this.#assets[asset.path];
@@ -112,6 +115,61 @@ export class AssetManager {
     if (url !== undefined) URL.revokeObjectURL(url);
     this.#previewUrls.delete(assetId);
   }
+}
+
+/** Local-file controls; the fork continues to own canvas selection and history. */
+export function createAssetPanel(host: HTMLElement, manager: AssetManager, editor: ImageEditor, changed: () => void): HTMLElement {
+  const root = document.createElement('section');
+  const select = document.createElement('select');
+  const importInput = input('data-vigilia-asset-import');
+  const replaceInput = input('data-vigilia-asset-replace');
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.dataset['vigiliaAssetRemove'] = '';
+  remove.textContent = 'Remove asset';
+  root.append(Object.assign(document.createElement('h2'), { textContent: 'Assets' }), select, importInput, replaceInput, remove);
+  host.append(root);
+  const render = (): void => {
+    select.replaceChildren(...manager.declarations.map((asset) => Object.assign(document.createElement('option'), { value: asset.id, textContent: asset.id })));
+  };
+  const add = async (file: File, replaceSelected: boolean): Promise<void> => {
+    const asset = await manager.import(file);
+    const url = manager.previewUrl(asset.id);
+    if (url === undefined) return;
+    const image = await FabricImage.fromURL(url);
+    const target = editor.canvas.getActiveObject();
+    if (replaceSelected && target instanceof FabricImage && objectAssetReference(target) !== undefined) {
+      setObjectAssetReference(target, { assetId: asset.id, kind: asset.kind });
+      target.setElement(image.getElement());
+    } else {
+      image.set({ left: editor.canvas.width / 2, top: editor.canvas.height / 2, originX: 'center', originY: 'center' });
+      setObjectAssetReference(image, { assetId: asset.id, kind: asset.kind });
+      editor.canvas.add(image);
+      editor.canvas.setActiveObject(image);
+    }
+    editor.historyManager.saveState();
+    editor.canvas.requestRenderAll();
+    changed();
+    render();
+  };
+  importInput.addEventListener('change', () => { const file = importInput.files?.[0]; if (file !== undefined) void add(file, false); importInput.value = ''; });
+  replaceInput.addEventListener('change', () => { const file = replaceInput.files?.[0]; if (file !== undefined) void add(file, true); replaceInput.value = ''; });
+  remove.addEventListener('click', () => {
+    const id = select.value;
+    if ([...editor.canvas.getObjects()].some((object) => objectAssetReference(object)?.assetId === id)) return;
+    if (manager.remove(id)) { changed(); render(); }
+  });
+  render();
+  return root;
+}
+
+function input(data: 'data-vigilia-asset-import' | 'data-vigilia-asset-replace'): HTMLInputElement {
+  const element = document.createElement('input');
+  element.type = 'file';
+  element.accept = '.png,.jpg,.jpeg,.webp,.svg';
+  element.hidden = true;
+  element.setAttribute(data, '');
+  return element;
 }
 
 function extensionOf(name: string): AssetExtension | undefined {

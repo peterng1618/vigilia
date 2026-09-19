@@ -37,7 +37,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
-- Fabric image/SVG references serialise and revive; package Open/Save parsing and dirty tracking retain declared bytes. Editor control wiring remains in progress.
+- Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, and retains package bytes through Open/Save. Browser evidence remains pending.
 - Theme-package-only Open/Save and host-library Open/Save are active; asset
   authoring UI does not exist.
 - Live editor telemetry and production video integration remain incomplete.

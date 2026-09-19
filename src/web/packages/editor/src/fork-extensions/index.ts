@@ -21,17 +21,19 @@ import { PersistenceManager, confirmDocumentReplacement } from '../persistence-m
 import { ShortcutManager } from '../shortcut-manager/index.js';
 import { serializeThemePackage, parseThemePackage } from '../persist.js';
 import { createThemeLibraryClient, type ThemeLibraryClient, type ThemeLibraryEntry } from '../theme-library-client.js';
+import { AssetManager, createAssetPanel } from '../asset-manager/index.js';
 
 export interface ForkExtensionsOptions {
   readonly shell: ForkShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
+  readonly assets?: Readonly<Record<string, Uint8Array>>;
   readonly panelHost: HTMLElement;
   readonly libraryClient?: ThemeLibraryClient;
   readonly onNew: () => Promise<void>;
   readonly onOpen?: () => void;
   readonly onOpenPackage?: () => void;
-  readonly onOpenTheme?: (envelope: FabricThemeEnvelope) => Promise<void>;
+  readonly onOpenTheme?: (envelope: FabricThemeEnvelope, assets: Readonly<Record<string, Uint8Array>>) => Promise<void>;
   readonly onSaved: (message?: string) => void;
   readonly onError?: (message: string) => void;
   readonly onBindingsChange?: () => void;
@@ -46,6 +48,8 @@ export class ForkExtensions {
   readonly #newObjects: NewObjectPanel;
   readonly #layers: LayerPanel;
   readonly #persistence: PersistenceManager;
+  readonly #assets = new AssetManager();
+  readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #fileSection: HTMLElement;
   #envelope: FabricThemeEnvelopeInput;
@@ -56,6 +60,7 @@ export class ForkExtensions {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
+    this.#assets.load(options.envelope.assets === undefined ? {} : { assets: options.envelope.assets }, options.assets ?? {});
     this.#onBindingsChange = options.onBindingsChange;
 
     const fileSection = document.createElement('section');
@@ -117,7 +122,8 @@ export class ForkExtensions {
       panelHost: options.panelHost,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
-    this.#persistence = new PersistenceManager(this.#snapshot(options.shell));
+    this.#assetPanel = createAssetPanel(options.panelHost, this.#assets, options.shell.editor, () => {});
+    this.#persistence = new PersistenceManager(this.#snapshot(options.shell), this.#assets.assets);
     this.#shortcuts.register('file.save', () => {
       void this.#save(options);
     });
@@ -133,9 +139,15 @@ export class ForkExtensions {
     this.charts.setSource(source);
   }
 
+  async hydrateAssets(shell: ForkShell): Promise<void> {
+    await this.#assets.hydrate(shell.editor.canvas);
+  }
+
   destroy(): void {
     this.#shortcuts.destroy();
     this.#persistence.destroy();
+    this.#assets.destroy();
+    this.#assetPanel.remove();
     this.charts.destroy();
     this.#fileSection.remove();
     this.#artboard.root.remove();
@@ -148,7 +160,7 @@ export class ForkExtensions {
   async #save(options: ForkExtensionsOptions): Promise<void> {
     const current = this.#snapshot(options.shell);
     try {
-      await this.#persistence.save(current);
+      await this.#persistence.save(current, this.#assets.assets);
       options.onSaved('Theme package saved');
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -157,7 +169,7 @@ export class ForkExtensions {
 
   async #saveLibrary(options: ForkExtensionsOptions): Promise<void> {
     const current = this.#snapshot(options.shell);
-    const result = serializeThemePackage(current);
+    const result = serializeThemePackage(current, this.#assets.assets);
     if (!result.ok) {
       options.onError?.(result.message);
       return;
@@ -165,7 +177,7 @@ export class ForkExtensions {
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
       await client.save(current.id, result.bytes);
-      this.#persistence.markSaved(current);
+      this.#persistence.markSaved(current, this.#assets.assets);
       options.onSaved('Saved to library');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -191,7 +203,7 @@ export class ForkExtensions {
         return;
       }
       if (options.onOpenTheme !== undefined) {
-        await options.onOpenTheme(parsed.envelope);
+        await options.onOpenTheme(parsed.envelope, parsed.assets);
       }
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -218,12 +230,12 @@ export class ForkExtensions {
   }): Promise<boolean> {
     const current = this.#snapshot(options.shell);
 
-    if (this.#persistence.isDirty(current)) {
+    if (this.#persistence.isDirty(current, this.#assets.assets)) {
       const choice = await confirmDocumentReplacement();
 
       if (choice === 'cancel') return false;
       if (choice === 'save') {
-        await this.#persistence.save(current);
+        await this.#persistence.save(current, this.#assets.assets);
         options.onSaved('Theme package saved');
       }
     }
@@ -294,7 +306,7 @@ export class ForkExtensions {
   }
 
   #snapshot(shell: ForkShell): FabricThemeEnvelope {
-    return shell.snapshot(this.#envelope);
+    return shell.snapshot({ ...this.#envelope, ...(this.#assets.declarations.length === 0 ? {} : { assets: this.#assets.declarations }) });
   }
 }
 
