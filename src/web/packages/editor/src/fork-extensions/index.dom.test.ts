@@ -107,11 +107,13 @@ describe('ForkExtensions', () => {
     const saveLibraryBtn = Array.from(document.body.querySelectorAll('button')).find(
       (b) => b.textContent === 'Save to library',
     );
+    const releaseBtn = document.body.querySelector<HTMLButtonElement>('[data-vigilia-theme-release]');
 
     expect(openPackageBtn).toBeDefined();
     expect(savePackageBtn).toBeDefined();
     expect(openLibraryBtn).toBeDefined();
     expect(saveLibraryBtn).toBeDefined();
+    expect(releaseBtn).toBeDefined();
 
     openPackageBtn?.click();
     await Promise.resolve();
@@ -131,5 +133,5 @@ describe('ForkExtensions', () => {
 });
 
 function panel() {
-  return { root: document.createElement('section'), render: vi.fn(), setGlobals: vi.fn() };
+  return { root: document.createElement('section'), render: vi.fn(), setAssets: vi.fn(), setGlobals: vi.fn() };
 }

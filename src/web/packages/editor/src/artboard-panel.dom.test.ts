@@ -80,4 +80,28 @@ describe('artboard panel', () => {
       barColor: { value: '#e20074' },
     }));
   });
+
+  it('emits declared background media and theme metadata', () => {
+    const artboardChange = vi.fn();
+    const metadataChange = vi.fn();
+    const panel = createArtboardPanel(
+      document.body,
+      undefined,
+      artboardChange,
+      { assets: [{ id: 'clip', kind: 'video', path: 'assets/clip.mp4' }], onMetadataChange: metadataChange },
+    );
+    panel.render({ width: 1280, height: 720 }, { name: 'Before' });
+
+    const name = panel.root.querySelector<HTMLInputElement>('[data-vigilia-theme-name]')!;
+    name.value = 'Living Room';
+    name.dispatchEvent(new Event('change'));
+    expect(metadataChange).toHaveBeenLastCalledWith({ name: 'Living Room' });
+
+    const source = panel.root.querySelector<HTMLSelectElement>('[data-vigilia-background-asset]')!;
+    source.value = 'clip';
+    source.dispatchEvent(new Event('change'));
+    expect(artboardChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      backgroundMedia: { assetId: 'clip', fit: 'cover' },
+    }));
+  });
 });

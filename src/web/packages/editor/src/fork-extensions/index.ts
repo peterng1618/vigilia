@@ -1,6 +1,7 @@
 import {
   type Artboard,
   type Binding,
+  bumpSemanticVersion,
   type FabricPalette,
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
@@ -79,6 +80,12 @@ export class ForkExtensions {
     savePackageBtn.textContent = 'Save package';
     savePackageBtn.addEventListener('click', () => { void this.#save(options); });
 
+    const releaseBtn = document.createElement('button');
+    releaseBtn.type = 'button';
+    releaseBtn.dataset['vigiliaThemeRelease'] = '';
+    releaseBtn.textContent = 'Release package';
+    releaseBtn.addEventListener('click', () => { void this.#release(options); });
+
     const openLibraryBtn = document.createElement('button');
     openLibraryBtn.type = 'button';
     openLibraryBtn.textContent = 'Open library';
@@ -89,7 +96,7 @@ export class ForkExtensions {
     saveLibraryBtn.textContent = 'Save to library';
     saveLibraryBtn.addEventListener('click', () => { void this.#saveLibrary(options); });
 
-    fileSection.append(openPackageBtn, savePackageBtn, openLibraryBtn, saveLibraryBtn);
+    fileSection.append(openPackageBtn, savePackageBtn, releaseBtn, openLibraryBtn, saveLibraryBtn);
     options.panelHost.prepend(fileSection);
     this.#fileSection = fileSection;
 
@@ -99,8 +106,12 @@ export class ForkExtensions {
       options.panelHost,
       this.#envelope.globals,
       (artboard) => this.#setArtboard(options.shell, artboard),
+      {
+        assets: this.#assets.declarations,
+        onMetadataChange: (metadata) => this.#setMetadata(metadata),
+      },
     );
-    this.#artboard.render(this.#envelope.artboard);
+    this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);
     this.#palette = createPalettePanel(
       options.panelHost,
       (palette) => this.#setPalette(options.shell, palette),
@@ -126,7 +137,10 @@ export class ForkExtensions {
       options.panelHost,
       this.#assets,
       options.shell.editor,
-      () => this.#refreshBackgroundMedia(options.shell),
+      () => {
+        this.#artboard.setAssets(this.#assets.declarations);
+        this.#refreshBackgroundMedia(options.shell);
+      },
       (assetId) => this.#envelope.artboard.backgroundMedia?.assetId === assetId,
     );
     this.#refreshBackgroundMedia(options.shell);
@@ -252,7 +266,32 @@ export class ForkExtensions {
   #setArtboard(shell: ForkShell, artboard: Artboard): void {
     this.#envelope = { ...this.#envelope, artboard };
     shell.setArtboard(artboard);
-    this.#artboard.render(artboard);
+    this.#refreshBackgroundMedia(shell);
+    this.#artboard.render(artboard, this.#envelope.metadata);
+  }
+
+  async #release(options: ForkExtensionsOptions): Promise<void> {
+    const level = window.prompt('Release bump: major, minor or patch', 'patch');
+    if (level !== 'major' && level !== 'minor' && level !== 'patch') return;
+    try {
+      const beforeRelease = serializeThemePackage(this.#snapshot(options.shell), this.#assets.assets);
+      if (!beforeRelease.ok) throw new Error(beforeRelease.message);
+      const version = bumpSemanticVersion(this.#envelope.metadata?.version, level);
+      this.#setMetadata({ ...this.#envelope.metadata, version });
+      await this.#save(options);
+      options.onSaved(`Released ${version}`);
+    } catch (error) {
+      options.onError?.(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  #setMetadata(metadata: FabricThemeEnvelopeInput['metadata']): void {
+    if (metadata === undefined || Object.keys(metadata).length === 0) {
+      const { metadata: _metadata, ...withoutMetadata } = this.#envelope;
+      this.#envelope = withoutMetadata;
+    } else {
+      this.#envelope = { ...this.#envelope, metadata };
+    }
   }
 
   #refreshBackgroundMedia(shell: ForkShell): void {

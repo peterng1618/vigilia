@@ -18,6 +18,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background-media mount | 910 units, seven typechecks, builds and size gate passed; browser evidence pending Task 5 |
 | Background-media assets | 913 units, seven typechecks, builds and size gate passed; Theme settings/browser evidence pending Tasks 4-5 |
+| Theme settings | focused editor typecheck and 14 panel/persistence tests passed; player/browser evidence pending Task 5 |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
