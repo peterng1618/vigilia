@@ -14,6 +14,7 @@ export interface BackgroundMediaOptions {
 
 export interface BackgroundMediaHandle {
   update(options: Omit<BackgroundMediaOptions, 'host'>): void;
+  setBounds(bounds: { readonly left: number; readonly top: number; readonly width: number; readonly height: number }): void;
   destroy(): void;
 }
 
@@ -51,6 +52,14 @@ export function mountBackgroundMedia(options: BackgroundMediaOptions): Backgroun
   update(options);
   return {
     update,
+    setBounds(bounds) {
+      layer.style.left = `${bounds.left}px`;
+      layer.style.top = `${bounds.top}px`;
+      layer.style.right = '';
+      layer.style.bottom = '';
+      layer.style.width = `${bounds.width}px`;
+      layer.style.height = `${bounds.height}px`;
+    },
     destroy() {
       disposeSource?.();
       disposeSource = undefined;

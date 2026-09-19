@@ -98,6 +98,12 @@ function startFixtureTheme(
   const handle = mountFabricScene({
     host,
     plan: first,
+    artboard: theme.artboard,
+    assets: theme.assets ?? [],
+    resolveAsset: (assetId) => {
+      const url = resolveAsset(assetId);
+      return url === undefined ? undefined : { url };
+    },
     onAssetError,
     onUnsupported: (nodeId, reason) => {
       console.warn(`Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`);
@@ -171,7 +177,11 @@ async function startHostedTheme(
     url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
     onStatus: (status, detail) => showConnectionState(status, keys.length, detail),
   });
-  const handle = mountFabricScene({ host, plan: envelopePlan(theme) });
+  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: `/api/themes/${encodeURIComponent(parameters.get('theme') ?? '')}/` });
+  const handle = mountFabricScene({ host, plan: envelopePlan(theme), artboard: theme.artboard, assets: theme.assets ?? [], resolveAsset: (assetId) => {
+    const url = resolveAsset(assetId);
+    return url === undefined ? undefined : { url };
+  } });
   await reviveThemeEnvelope(handle.canvas, theme);
   const refresh = (): void => {
     hydrateCharts(handle.canvas.getObjects(), theme.bindings ?? {}, liveHandle.source);

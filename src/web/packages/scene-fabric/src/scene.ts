@@ -2,12 +2,15 @@ import { StaticCanvas } from 'fabric/es';
 import {
   computeArtboardTransform,
   type ArtboardTransform,
+  type Artboard,
   type ScenePlan,
   type SceneHandle,
+  type AssetReference,
 } from '@vigilia/renderer-core';
 import { createSceneAdapter, type SceneAdapter, type SceneAdapterOptions } from './adapter.js';
 import { clampRenderScale } from './render-scale.js';
 import { cssArtboardPaint } from './artboard-paint.js';
+import { mountBackgroundMedia, type BackgroundMediaSource } from './background-media.js';
 
 /**
  * Owns the canvas element, viewport/artboard fit and DPR. `adapter.ts` owns plan
@@ -17,6 +20,9 @@ import { cssArtboardPaint } from './artboard-paint.js';
 export interface FabricSceneOptions extends Omit<SceneAdapterOptions, 'canvas'> {
   readonly host: HTMLElement;
   readonly plan: ScenePlan;
+  readonly artboard?: Artboard;
+  readonly assets?: readonly AssetReference[];
+  readonly resolveAsset?: (assetId: string) => BackgroundMediaSource | undefined;
 }
 
 export interface FabricSceneHandle extends SceneHandle {
@@ -50,6 +56,7 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
   });
 
   const adapter = createSceneAdapter({ canvas, ...withoutHostAndPlan(options) });
+  const media = options.resolveAsset === undefined || options.artboard === undefined ? undefined : mountBackgroundMedia({ host, artboard: options.artboard, assets: options.assets, resolveAsset: options.resolveAsset });
 
   let currentTransform = fit();
 
@@ -63,6 +70,7 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     // Letterbox bars are host background, not artboard paint (§53).
     host.style.background = cssArtboardPaint(plan.artboard.barColor) ?? '#000';
     element.style.visibility = transform.isDegenerate ? 'hidden' : 'visible';
+    if (!transform.isDegenerate) media?.setBounds({ left: transform.offsetX, top: transform.offsetY, width: plan.artboard.width * transform.scale, height: plan.artboard.height * transform.scale });
 
     if (transform.isDegenerate) {
       return transform;
@@ -114,6 +122,7 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
 
     dispose(): void {
       adapter.dispose();
+      media?.destroy();
       // `destroy()` also disposes remaining Fabric objects.
       void canvas.destroy();
       host.textContent = '';

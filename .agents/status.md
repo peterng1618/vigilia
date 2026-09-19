@@ -19,6 +19,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Background-media mount | 910 units, seven typechecks, builds and size gate passed; browser evidence pending Task 5 |
 | Background-media assets | 913 units, seven typechecks, builds and size gate passed; Theme settings/browser evidence pending Tasks 4-5 |
 | Theme settings | focused editor typecheck and 14 panel/persistence tests passed; player/browser evidence pending Task 5 |
+| Player background media | seven typechecks, 914 units, builds and size gate passed; focused browser capture remains unverified |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
