@@ -21,6 +21,7 @@ result, not merely a mounted editor.
 |---|---|---|
 | Workspace | Load starter document | `editor-fork` |
 | Selection/bindings | Select chart; change semantic key/transform | `editor-fork-chart-binding` |
+| Layers/arrange | Select a semantic layer and expose its layer/arrange controls | `editor-layer-arrange` |
 | Chart settings | Change family-specific scalar setting | add when changed |
 | Artboard | Change dimensions or preview fit | `editor-fork-artboard` |
 | Artboard | Retain literal letterbox colour while resizing | `editor-fork-artboard-literal-bar` |

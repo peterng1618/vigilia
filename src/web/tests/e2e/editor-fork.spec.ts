@@ -54,6 +54,20 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-chart-binding');
   });
 
+  test('captures semantic layer controls for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    const layer = page.locator('[data-vigilia-layer="load-gauge"]');
+    await expect(layer).toBeVisible();
+    await layer.click();
+    await expect(layer).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-vigilia-arrange="align-left"]')).toBeVisible();
+    await expect(page.locator('[data-vigilia-arrange="distribute-x"]')).toBeDisabled();
+
+    await captureVisualReview(page, testInfo, 'editor-layer-arrange');
+  });
+
   test('captures changed artboard controls for visual review', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

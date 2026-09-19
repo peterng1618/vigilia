@@ -47,7 +47,7 @@ function render(root: HTMLElement, editor: ImageEditor): void {
   heading.textContent = 'Layers';
   root.append(heading);
   for (const entry of entries(editor.canvas.getObjects() as LayerObject[])) {
-    root.append(row(entry, editor));
+    root.append(row(entry, editor, () => render(root, editor)));
   }
   root.append(arrangeControls(root, editor));
 }
@@ -62,14 +62,17 @@ function entries(objects: readonly LayerObject[], ancestors: readonly LayerObjec
   });
 }
 
-function row(entry: LayerEntry, editor: ImageEditor): HTMLElement {
+function row(entry: LayerEntry, editor: ImageEditor, refresh: () => void): HTMLElement {
   const root = document.createElement('div');
   const id = objectId(entry.object);
   const { visible, locked } = effectiveState(entry);
   root.dataset['vigiliaLayer'] = id;
   root.textContent = `${entry.object.type} ${id}`;
   root.setAttribute('aria-pressed', String(editor.canvas.getActiveObject() === entry.select));
-  root.addEventListener('click', () => select(entry, editor));
+  root.addEventListener('click', () => {
+    select(entry, editor);
+    refresh();
+  });
 
   root.append(
     control(visible ? 'hide' : 'show', visible ? 'Hide' : 'Show', () => {
@@ -78,16 +81,17 @@ function row(entry: LayerEntry, editor: ImageEditor): HTMLElement {
       entry.object.setCoords();
       select(entry, editor);
       editor.historyManager.saveState();
+      refresh();
     }),
     control(locked ? 'unlock' : 'lock', locked ? 'Unlock' : 'Lock', () => {
       if (locked) editor.objectLockManager.unlockObject({ object: entry.select });
       else editor.objectLockManager.lockObject({ object: entry.select });
-      redraw(editor);
+      refresh();
     }),
-    control('front', 'Front', () => { editor.layerManager.bringToFront(entry.select); redraw(editor); }),
-    control('forward', 'Forward', () => { editor.layerManager.bringForward(entry.select); redraw(editor); }),
-    control('backward', 'Backward', () => { editor.layerManager.sendBackwards(entry.select); redraw(editor); }),
-    control('back', 'Back', () => { editor.layerManager.sendToBack(entry.select); redraw(editor); }),
+    control('front', 'Front', () => { editor.layerManager.bringToFront(entry.select); refresh(); }),
+    control('forward', 'Forward', () => { editor.layerManager.bringForward(entry.select); refresh(); }),
+    control('backward', 'Backward', () => { editor.layerManager.sendBackwards(entry.select); refresh(); }),
+    control('back', 'Back', () => { editor.layerManager.sendToBack(entry.select); refresh(); }),
   );
   return root;
 }
@@ -141,10 +145,6 @@ function reveal(entry: LayerEntry): void {
 function effectiveState(entry: LayerEntry): { readonly visible: boolean; readonly locked: boolean } {
   const path = [...entry.ancestors, entry.object];
   return { visible: path.every((object) => object.visible), locked: path.some((object) => object.locked) };
-}
-
-function redraw(editor: ImageEditor): void {
-  editor.canvas.requestRenderAll();
 }
 
 function objectId(object: LayerObject): string {

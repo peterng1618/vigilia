@@ -35,6 +35,7 @@ describe('semantic layer panel', () => {
     expect(canvas.canvas.requestRenderAll).toHaveBeenCalledTimes(1);
     expect(canvas.historyManager.saveState).toHaveBeenCalledTimes(1);
     expect(canvas.canvas.setActiveObject).toHaveBeenCalledWith(group);
+    expect(layer(panel.root, 'child').querySelector('[data-vigilia-layer-action="hide"]')).not.toBeNull();
 
     action(layer(panel.root, 'foreground'), 'lock').click();
     action(layer(panel.root, 'foreground'), 'front').click();
