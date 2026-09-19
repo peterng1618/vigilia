@@ -338,6 +338,55 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Opened roundtrip.vigilia-theme');
   });
 
+  test('imports and round-trips packaged images', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-asset-import]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAAIklEQVQ4jWNk2HHzPwMVARM1DRs1cNTAUQNHDRw1cCgZCAC1HQK4IWYK+QAAAABJRU5ErkJggg==', 'base64') });
+    await expect(page.locator('[data-vigilia-asset-import]').locator('xpath=..').locator('option')).toHaveCount(1);
+    await page.locator('[data-vigilia-asset-replace]').setInputFiles({ name: 'logo.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="#00b8d9"/></svg>') });
+    await expect(page.locator('[data-vigilia-asset-import]').locator('xpath=..').locator('option')).toHaveCount(2);
+    await expect(page.locator('[data-vigilia-asset-import]').locator('xpath=..').locator('select')).toHaveValue('logo');
+    await expect(assetReferences(page)).resolves.toContainEqual({ assetId: 'logo-2', kind: 'svg' });
+    await expect(page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+          && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as {
+            canvas: { getActiveObject(): { hasBorders: boolean; hasControls: boolean; controls: Record<string, { visible?: boolean }>; get(name: string): unknown; getCoords(): Array<{ x: number; y: number }> } | undefined };
+          };
+      const image = editor.canvas.getActiveObject();
+      return image === undefined ? undefined : {
+        hasBorders: image.hasBorders,
+        hasControls: image.hasControls,
+        format: image.get('format'),
+        controls: Object.fromEntries(Object.entries(image.controls).map(([key, control]) => [key, control.visible])),
+        hasSelectionGeometry: (() => {
+          const [topLeft, topRight, bottomRight] = image.getCoords();
+          return topLeft !== undefined && topRight !== undefined && bottomRight !== undefined
+            && topRight.x - topLeft.x > 50 && bottomRight.y - topRight.y > 50;
+        })(),
+      };
+    })).resolves.toMatchObject({
+      hasBorders: true,
+      hasControls: true,
+      format: 'png',
+      controls: { tl: true, tr: true, bl: true, br: true },
+      hasSelectionGeometry: true,
+    });
+    await page.getByRole('heading', { name: 'Assets' }).scrollIntoViewIfNeeded();
+    await captureVisualReview(page, testInfo, 'editor-fork-assets');
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) return;
+    expect(saved.parsed.assets['assets/logo.svg']).toBeDefined();
+    expect(saved.parsed.envelope.scene.objects).toEqual(expect.arrayContaining([
+      expect.objectContaining({ vigiliaAsset: { assetId: 'logo-2', kind: 'svg' } }),
+    ]));
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({ name: 'assets.vigilia-theme', mimeType: 'application/octet-stream', buffer: saved.bytes });
+    await expect(page.locator('#status')).toHaveText('Opened assets.vigilia-theme');
+    await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
+    await expect(assetReferences(page)).resolves.toContainEqual({ assetId: 'logo-2', kind: 'svg' });
+  });
+
   test('persists an ordinary fork drag and restores it through undo', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
@@ -433,15 +482,21 @@ test.describe('Fabric editor route', () => {
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
-  const download = page.waitForEvent('download');
-  await page.keyboard.press('Control+s');
-  const stream = await (await download).createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  const parsed = readThemePackage(Buffer.concat(chunks));
+  const { parsed } = await savePackage(page);
   expect(parsed.ok).toBe(true);
   if (!parsed.ok) throw new Error(parsed.message);
   return parsed.envelope;
+}
+
+async function savePackage(page: Page): Promise<{ readonly parsed: ReturnType<typeof readThemePackage>; readonly bytes: Buffer }> {
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save package' }).click();
+  await expect(page.locator('#status')).toHaveText('Theme package saved');
+  const stream = await (await download).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  const bytes = Buffer.concat(chunks);
+  return { parsed: readThemePackage(bytes), bytes };
 }
 
 async function setThemePackage(page: Page, name: string, envelope: Parameters<typeof writeThemePackage>[0]['envelope']): Promise<void> {
@@ -484,6 +539,17 @@ async function captureVisualReview(page: Page, testInfo: TestInfo, name: string)
 
   await testInfo.attach(filename, { body: screenshot, contentType: 'image/png' });
   expect(screenshot.byteLength).toBeGreaterThan(1000);
+}
+
+async function assetReferences(page: Page): Promise<unknown[]> {
+  return page.evaluate(() => {
+    const editor = Object.entries(window as unknown as Record<string, unknown>)
+      .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+        && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as { canvas: { getObjects(): Array<{ get(name: string): unknown }> } } | undefined;
+    return editor?.canvas.getObjects()
+      .filter((object) => object.get('type') === 'image')
+      .map((object) => object.get('vigiliaAsset')) ?? [];
+  });
 }
 
 function leftFor(envelope: unknown, id: string): number {

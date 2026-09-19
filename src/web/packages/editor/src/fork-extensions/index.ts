@@ -158,8 +158,8 @@ export class ForkExtensions {
   }
 
   async #save(options: ForkExtensionsOptions): Promise<void> {
-    const current = this.#snapshot(options.shell);
     try {
+      const current = this.#snapshot(options.shell);
       await this.#persistence.save(current, this.#assets.assets);
       options.onSaved('Theme package saved');
     } catch (error) {

@@ -30,6 +30,7 @@ result, not merely a mounted editor.
 | History | Save changed document or undo visible drag | add when changed |
 | Fork mechanics | Transform/group/duplicate/delete/reorder | add when integration changes |
 | Object tools | Add/edit shape, text, image or SVG | add when integration changes |
+| Assets | Import, replace and reopen a packaged image | `editor-fork-assets-desktop-chromium` |
 | Viewport | Resize or change zoom | add when changed |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 

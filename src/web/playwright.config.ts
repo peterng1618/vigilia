@@ -5,6 +5,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   retries: 0,
   fullyParallel: true,
+  // Failure traces share test-results on Windows; parallel cleanup races them.
+  workers: 1,
   // JSON summary feeds dev-status without rerunning the browser suite.
   reporter: [
     [process.env['CI'] === undefined ? 'list' : 'github'],

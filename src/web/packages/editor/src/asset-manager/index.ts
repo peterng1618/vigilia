@@ -101,13 +101,19 @@ export class AssetManager {
 
   #allocate(name: string, extension: AssetExtension): { id: string; path: string } {
     const base = name.slice(0, -(extension.length + 1)).replaceAll(/[^A-Za-z0-9_-]+/g, '-').replaceAll(/^-+|-+$/g, '') || 'asset';
-    let suffix = 1;
-    while (true) {
-      const candidate = suffix === 1 ? base : `${base}-${suffix}`;
-      const path = `assets/${candidate}.${extension}`;
-      if (!this.#declarations.some((asset) => asset.id === candidate || asset.path === path)) return { id: candidate, path };
-      suffix += 1;
+    let pathSuffix = 1;
+    let path = `assets/${base}.${extension}`;
+    while (this.#declarations.some((asset) => asset.path === path)) {
+      pathSuffix += 1;
+      path = `assets/${base}-${pathSuffix}.${extension}`;
     }
+    let idSuffix = 1;
+    let id = base;
+    while (this.#declarations.some((asset) => asset.id === id)) {
+      idSuffix += 1;
+      id = `${base}-${idSuffix}`;
+    }
+    return { id, path };
   }
 
   #revoke(assetId: string): void {
@@ -134,18 +140,20 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
   };
   const add = async (file: File, replaceSelected: boolean): Promise<void> => {
     const asset = await manager.import(file);
-    const url = manager.previewUrl(asset.id);
-    if (url === undefined) return;
-    const image = await FabricImage.fromURL(url);
     const target = editor.canvas.getActiveObject();
     if (replaceSelected && target instanceof FabricImage && objectAssetReference(target) !== undefined) {
+      const url = manager.previewUrl(asset.id);
+      if (url === undefined) return;
+      const image = await FabricImage.fromURL(url);
       setObjectAssetReference(target, { assetId: asset.id, kind: asset.kind });
       target.setElement(image.getElement());
+      target.setCoords();
     } else {
-      image.set({ left: editor.canvas.width / 2, top: editor.canvas.height / 2, originX: 'center', originY: 'center' });
-      setObjectAssetReference(image, { assetId: asset.id, kind: asset.kind });
-      editor.canvas.add(image);
-      editor.canvas.setActiveObject(image);
+      const imported = await editor.imageManager.importImage({ source: file, scale: 'image-contain', withoutSave: true });
+      if (imported === null || !(imported.image instanceof FabricImage)) return;
+      setObjectAssetReference(imported.image, { assetId: asset.id, kind: asset.kind });
+      imported.image.setCoords();
+      editor.canvas.setActiveObject(imported.image);
     }
     editor.historyManager.saveState();
     editor.canvas.requestRenderAll();

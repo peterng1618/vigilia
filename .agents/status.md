@@ -15,6 +15,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
 | Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
 | Browser suite | 74 passed; 26 desktop-only editor checks skipped on phone |
+| Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -37,9 +38,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
-- Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, and retains package bytes through Open/Save. Browser evidence remains pending.
-- Theme-package-only Open/Save and host-library Open/Save are active; asset
-  authoring UI does not exist.
+- Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.
+- Theme-package-only Open/Save and host-library Open/Save are active.
 - Live editor telemetry and production video integration remain incomplete.
 
 ### Host
@@ -51,15 +51,15 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Review `.agents/plans/2026-09-19-image-svg-asset-authoring.md`, then
-   implement the approved local image/SVG asset-authoring slice.
-2. Add font and video authoring only after image/SVG authoring is stable.
-3. Revisit remaining spec-0014 candidates only when needed.
-4. Modernize the shell per plan §35 only after the authoring core is stable.
+1. Add font and video authoring only after image/SVG authoring is stable.
+2. Revisit remaining spec-0014 candidates only when needed.
+3. Modernize the shell per plan §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 
 - Browser E2E previews bundles; it does not exercise the host.
+- The full 102-test browser command exited after its tenth desktop check twice
+  without a result summary; its overall result is unverified.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
