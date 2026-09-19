@@ -147,7 +147,8 @@ focused active-fork visual evidence.
 
 ## Next
 
-1. Implement the accepted semantic layer/arrange behaviour in spec 0011.
+1. Execute `docs/superpowers/plans/2026-09-19-semantic-layer-arrange.md` for
+   the accepted semantic layer/arrange behaviour in spec 0011.
 2. Implement asset authoring in spec 0011 over the package boundary.
 3. Continue the remaining spec-0014 review independently of accepted work.
 4. Add live editor bindings/charts, then packaged video background.
