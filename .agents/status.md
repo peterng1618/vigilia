@@ -62,7 +62,6 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- The full browser suite has four unrelated existing failures: unknown fixture
-  fallback times out on desktop and phone; adding Text times out; selecting
-  `load-gauge` never updates `aria-pressed`.
+- The full browser suite has two existing editor failures: adding Text times
+  out and selecting `load-gauge` never updates `aria-pressed`.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.
