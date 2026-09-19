@@ -5,6 +5,7 @@ import { lanAddress, listenWithFallback, openBrowser, waitUntilReachable } from 
 import { OsSensorProvider } from './providers/os.js';
 import { ProviderRegistry } from './providers/registry.js';
 import { createHostServer } from './server.js';
+import { createThemeStore } from './themes/store.js';
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
 
@@ -28,7 +29,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     return 1;
   }
 
-  const { port: wanted, host, openBrowser: shouldOpen } = parsed.options;
+  const { port: wanted, host, openBrowser: shouldOpen, themesDir } = parsed.options;
 
   // Provider order defines ownership priority; baseline OS sensors come first.
   const registry = new ProviderRegistry([new OsSensorProvider()]);
@@ -42,6 +43,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       player: path.join(packagesDir, 'player', 'dist'),
       editor: path.join(packagesDir, 'editor', 'dist'),
     },
+    themeStore: createThemeStore(themesDir),
   });
 
   let bound: number;

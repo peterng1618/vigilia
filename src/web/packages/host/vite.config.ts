@@ -8,6 +8,9 @@ export default defineConfig({
       '@vigilia/renderer-core': fileURLToPath(
         new URL('../renderer-core/src/index.ts', import.meta.url),
       ),
+      '@vigilia/theme-package': fileURLToPath(
+        new URL('../theme-package/src/index.ts', import.meta.url),
+      ),
     },
   },
   build: {

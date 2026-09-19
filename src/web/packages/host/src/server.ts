@@ -2,11 +2,13 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { SAMPLE_STREAM_PATH, createBatch } from '@vigilia/renderer-core';
-import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './serve/static-path.js';
+import { DEFAULT_THEMES_DIR } from './cli/args.js';
 import { ProviderRegistry, unionOfKeys } from './providers/registry.js';
+import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './serve/static-path.js';
+import { createThemeStore, isValidThemeId, type ThemeStore } from './themes/store.js';
 import { SseConnection } from './transport/sse.js';
 
-/** HTTP routing for bundles, discovery, and sample streaming. */
+/** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
 
 export interface BundleRoots {
   readonly player: string;
@@ -16,6 +18,7 @@ export interface BundleRoots {
 export interface HostServerOptions {
   readonly registry: ProviderRegistry;
   readonly bundles: BundleRoots;
+  readonly themeStore?: ThemeStore;
   /** Chosen baseline cadence; not a measured performance budget. */
   readonly sampleIntervalMs?: number;
   readonly now?: () => number;
@@ -28,6 +31,7 @@ export interface HostServer {
 }
 
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
+const MAX_THEME_UPLOAD_BYTES = 64 * 1024 * 1024;
 
 /** Recognizes loopback forms Node may report. */
 function isLoopbackRemote(address: string | undefined): boolean {
@@ -96,6 +100,7 @@ async function serveStatic(
 
 export function createHostServer(options: HostServerOptions): HostServer {
   const { registry, bundles } = options;
+  const themeStore = options.themeStore ?? createThemeStore(DEFAULT_THEMES_DIR);
   const intervalMs = options.sampleIntervalMs ?? DEFAULT_SAMPLE_INTERVAL_MS;
   const now = options.now ?? (() => Date.now());
   const connections = new Set<SseConnection>();
@@ -109,6 +114,99 @@ export function createHostServer(options: HostServerOptions): HostServer {
     response: http.ServerResponse,
   ): Promise<void> {
     const url = new URL(request.url ?? '/', 'http://host.invalid');
+
+    if (url.pathname === '/api/themes') {
+      if (request.method !== 'GET') {
+        sendText(response, 405, 'Only GET is supported.');
+        return;
+      }
+      sendJson(response, 200, { themes: await themeStore.list() });
+      return;
+    }
+
+    const docMatch = url.pathname.match(/^\/api\/themes\/([^/]+)\/document$/);
+    if (docMatch) {
+      if (request.method !== 'GET') {
+        sendText(response, 405, 'Only GET is supported.');
+        return;
+      }
+      const rawId = decodeURIComponent(docMatch[1] ?? '');
+      if (!isValidThemeId(rawId)) {
+        sendText(response, 400, 'Invalid theme id.');
+        return;
+      }
+      const record = await themeStore.read(rawId);
+      if (record === undefined) {
+        sendText(response, 404, 'Theme not found.');
+        return;
+      }
+      sendJson(response, 200, record.envelope);
+      return;
+    }
+
+    const themeMatch = url.pathname.match(/^\/api\/themes\/([^/]+)$/);
+    if (themeMatch) {
+      const rawId = decodeURIComponent(themeMatch[1] ?? '');
+      if (request.method === 'GET') {
+        if (!isValidThemeId(rawId)) {
+          sendText(response, 400, 'Invalid theme id.');
+          return;
+        }
+        const record = await themeStore.read(rawId);
+        if (record === undefined) {
+          sendText(response, 404, 'Theme not found.');
+          return;
+        }
+        response.writeHead(200, {
+          'content-type': 'application/octet-stream',
+          'cache-control': 'no-store',
+        });
+        response.end(Buffer.from(record.bytes));
+        return;
+      }
+
+      if (request.method === 'PUT') {
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(response, 403, 'Theme modification is loopback only.');
+          return;
+        }
+        if (!isValidThemeId(rawId)) {
+          sendText(response, 400, 'Invalid theme id.');
+          return;
+        }
+
+        let receivedBytes = 0;
+        const chunks: Buffer[] = [];
+        let aborted = false;
+
+        for await (const chunk of request) {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          receivedBytes += buf.byteLength;
+          if (receivedBytes > MAX_THEME_UPLOAD_BYTES) {
+            aborted = true;
+            break;
+          }
+          chunks.push(buf);
+        }
+
+        if (aborted) {
+          sendText(response, 413, 'Theme package exceeds maximum size of 64 MiB.');
+          return;
+        }
+
+        const body = new Uint8Array(Buffer.concat(chunks));
+        try {
+          const entry = await themeStore.write(rawId, body);
+          sendJson(response, 200, { ok: true, ...entry });
+        } catch (error) {
+          sendText(response, 400, error instanceof Error ? error.message : String(error));
+        }
+        return;
+      }
+
+      sendText(response, 405, 'Only GET and PUT are supported.');
+      return;
+    }
 
     if (request.method !== 'GET') {
       sendText(response, 405, 'Only GET is supported.');

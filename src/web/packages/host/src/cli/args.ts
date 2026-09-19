@@ -1,15 +1,22 @@
+import os from 'node:os';
+import path from 'node:path';
+
 /** Pure command-line parsing. */
 
 export interface HostOptions {
   readonly port: number;
   readonly host: string;
   readonly openBrowser: boolean;
+  readonly themesDir: string;
 }
 
 export const DEFAULT_PORT = 5227;
 
 /** Loopback by default; LAN exposure must be explicit. */
 export const DEFAULT_HOST = '127.0.0.1';
+
+/** Stable Vigilia data location for theme packages across platforms. */
+export const DEFAULT_THEMES_DIR = path.join(os.homedir(), '.vigilia', 'themes');
 
 /** Bounded upward port fallback. */
 export const MAX_PORT_ATTEMPTS = 10;
@@ -22,11 +29,12 @@ export type ArgsResult =
 export const HELP_TEXT = `Usage: vigilia-dashboard [options]
 
 Options:
-  -p, --port <port>   Port to listen on (default: ${DEFAULT_PORT})
-  -H, --host <addr>   Address to bind (default: ${DEFAULT_HOST}, loopback only)
-  -n, --no-browser    Do not open a browser
-  -v, --version       Print the version
-  -h, --help          Print this help
+  -p, --port <port>       Port to listen on (default: ${DEFAULT_PORT})
+  -H, --host <addr>       Address to bind (default: ${DEFAULT_HOST}, loopback only)
+  -n, --no-browser        Do not open a browser
+      --themes-dir <dir>  Directory for saved theme packages
+  -v, --version           Print the version
+  -h, --help              Print this help
 
 LAN access is off by default. Passing --host 0.0.0.0 serves your hardware
 telemetry to every device on the network; plain LAN HTTP has no
@@ -55,6 +63,7 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
   let port = DEFAULT_PORT;
   let host = DEFAULT_HOST;
   let openBrowser = true;
+  let themesDir = DEFAULT_THEMES_DIR;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -102,10 +111,22 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
         break;
       }
 
+      case '--themes-dir': {
+        const value = argv[index + 1];
+
+        if (value === undefined || value.startsWith('-')) {
+          return { kind: 'error', message: `${arg} needs a directory path.` };
+        }
+
+        themesDir = path.resolve(value);
+        index += 1;
+        break;
+      }
+
       default:
         return { kind: 'error', message: `Unknown option ${arg ?? ''}. Try --help.` };
     }
   }
 
-  return { kind: 'run', options: { port, host, openBrowser } };
+  return { kind: 'run', options: { port, host, openBrowser, themesDir } };
 }
