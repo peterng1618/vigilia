@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { strToU8, zipSync } from 'fflate';
 import { readThemePackage, writeThemePackage } from './index.js';
 
 const envelope = {
@@ -16,5 +17,17 @@ describe('theme package', () => {
     const read = readThemePackage(written.bytes);
     expect(read).toMatchObject({ ok: true, envelope });
     if (read.ok) expect(read.assets['assets/logo.png']).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it('refuses a valid ZIP whose declared entry exceeds the package bound', () => {
+    const large = new Uint8Array(32 * 1024 * 1024 + 1);
+    const theme = { ...envelope, assets: [{ id: 'large', kind: 'image' as const, path: 'assets/large.bin' }] };
+    const bytes = zipSync({
+      'manifest.json': strToU8(JSON.stringify({ format: 'vigilia-theme-package', version: 1, theme: 'theme.json' })),
+      'theme.json': strToU8(JSON.stringify(theme)),
+      'assets/large.bin': [large, { level: 0 }],
+    });
+
+    expect(readThemePackage(bytes)).toMatchObject({ ok: false });
   });
 });
