@@ -23,6 +23,11 @@ entry; only stored/deflated entries are accepted.
 `renderer-core` owns envelope/schema validation. Callers own file UI/storage.
 The player must not import this package.
 
+A package is the immutable sharing, library and future-store artifact. A local
+folder may be an authoring workspace with the same validated `theme.json` and
+`assets/` layout, but export is explicit; it is not silently synchronized with
+a package.
+
 ## Out of scope
 
 Asset-management UI, host storage/autosave, previews/templates, media/font

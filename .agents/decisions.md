@@ -29,8 +29,13 @@ settings, never ECharts/runtime data.
 ### Theme packages own asset-bearing files
 
 `@vigilia/theme-package` owns portable ZIP layout and bounded validation,
-reusing `renderer-core` envelope validation. The player does not import it;
-callers own file UI/storage.
+reusing `renderer-core` envelope validation. A validated ZIP is the immutable
+share, library and future-store release artifact; the player does not import it.
+Callers own file UI/storage.
+
+Local folders may be authoring workspaces, never a competing published format.
+They export explicitly to a ZIP snapshot; do not silently synchronize folder
+and package state. **Decided by:** user, 2026-09-19.
 
 ### Type presets belong to styled runs
 
