@@ -588,10 +588,10 @@ test.describe('every fixture renders', () => {
     });
   }
 
-  test('unknown fixture names fall back to the demo', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=does-not-exist');
+  test('unknown hosted themes show a clear load failure', async ({ page }) => {
+    await page.goto('/?theme=does-not-exist');
 
-    expect((await probe(page)).allIds).toContain('title');
+    await expect(page.locator('#artboard')).toHaveText(/Vigilia could not load this theme/);
   });
 
   test('keeps invisible nodes in the scene without painting them', async ({ page }) => {
