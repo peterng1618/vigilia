@@ -105,42 +105,17 @@ Multi-selection/mixed-value property UX is not a requirement.
 
 ## Current implementation state
 
-Implemented:
+Implemented: Fabric scene/group persistence; typed chart descriptors and scalar
+controls; artboard size/fit/paint; chart bindings and palette-referenced paint;
+palette and type-preset authoring/reassignment; semantic text creation; semantic
+layers with inherited visibility/lock/order; and selection-relative
+align/distribute.
 
-- Fabric scene geometry/grouping persistence;
-- one chart-setting descriptor owner in `renderer-core`;
-- fork chart panel for scalar settings on one selected `VigiliaChart`;
-- fork artboard control for persisted width/height, contain/cover preview and palette-token paint;
-- selected-chart binding controls for shared semantic keys, precision, unit display, scale and offset;
-- v2 palette validation reserves immutable transparent `palette.none`;
-- structured solid/gradient palette tokens, including CSS-compatible solid colours;
-- fork palette controls to add/edit stable tokens and gradient angles/stops;
-- palette-token reassignment/deletion across Fabric paint/text metadata and artboard paint;
-- type-preset schema/reference validation and per-run shared-plan resolution;
-- persisted Fabric palette/type references with validated save/open semantics;
-- fork type-preset controls for global family, size, weight and line height;
-- type-preset reassignment/deletion across every authored text run;
-- v2 validation rejects legacy global groups and local artboard/text paint or type values;
-- settings update in place without rebuilding the legacy node tree.
-- editor-local paint/text default derivation from the open envelope, without
-  persisting mutable defaults.
-- fork-created text command with derived v2 references and save coverage.
-- chart paint persisted as palette references (or threshold bands of solid
-  palette references), resolved only while building engine options.
-- semantic layer projection of current Fabric hierarchy, inherited state,
-  selection, and fork-owned lock/order actions.
-- selection-relative Fabric alignment and equal-gap distribution with
-  cardinality/lock rejection and fork-history preservation.
+Still incomplete: asset property UI, chart paint/threshold controls, and broader
+Vigilia creation commands.
 
-Still transitional/not implemented:
-
-- domain property UI for assets;
-- chart paint/threshold controls;
-- broader Vigilia new-element creation commands beyond the current text command.
-
-Because nothing has been released, the development v2 semantic shape may break
-while this spec is completed. The Fabric-scene envelope boundary itself remains
-settled by spec 0013.
+The development v2 semantic shape may still break before release; the Fabric
+scene envelope boundary is settled by spec 0013.
 
 ## Ownership
 
