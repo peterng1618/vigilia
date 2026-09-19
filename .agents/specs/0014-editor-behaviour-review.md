@@ -33,7 +33,7 @@ The retained outcome needs:
 - recovery/selection of hidden objects;
 - visibility/lock toggles and effective parent state;
 - explicit sibling z-order controls;
-- group/child navigation from a tree.
+- group/child navigation from a tree without independent child editing.
 
 Prefer fork-native object/layer UI if it provides the needed outcome.
 

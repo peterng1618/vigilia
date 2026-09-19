@@ -64,21 +64,22 @@ document state. Generic object construction and stack ordering remain fork-owned
 
 The editor projects the current Fabric object graph into a semantic layer tree;
 it never persists or maintains a second scene tree. Entries use each object's
-stable Vigilia id plus its Fabric kind, in top-most-first paint order. Nested
-groups project their current ordered children. Selection is bidirectional:
-selecting a tree entry selects its Fabric object, and canvas selection updates
-the tree.
+derived Fabric kind plus stable Vigilia id, in top-most-first paint order.
+Nested groups project their current ordered children. Top-level and group
+entries synchronize selection with the canvas. Child entries navigate to their
+owning group; they are not independently editable until the fork supports safe
+group entry.
 
 Tree visibility, lock and sibling z-order actions operate on the corresponding
-Fabric object through the fork. Grouping and ungrouping remain fork-owned, but
-the projection must refresh so the tree immediately reflects reparenting and
-reordering. A tree can expose an otherwise hidden object for recovery without
-inventing a second visibility model.
+Fabric object through the fork. It shows effective inherited visibility/lock;
+revealing a hidden child reveals its hidden parent path before selecting its
+owning group. Grouping and ungrouping remain fork-owned, but the projection must
+refresh so the tree immediately reflects reparenting and reordering.
 
 Dedicated align/distribute commands act on the current multi-selection only.
-They align edges or centres, or distribute equal gaps, within the selection's
-current bounds. They refuse fewer than two selected objects and do not add an
-artboard or key-object target.
+Alignment needs at least two objects; equal-gap distribution needs at least
+three. Both use the objects' rendered Fabric bounding boxes, preserve the active
+selection, and do not add an artboard or key-object target.
 
 ### Asset authoring prerequisite
 
@@ -160,8 +161,10 @@ Before stabilising the theme format:
 - palette/type presets persist as stable references rather than copied values;
 - `palette.none` and reference deletion/reassignment rules are enforced;
 - supported chart settings have typed controls and repaint correctly;
-- layer navigation reflects Fabric hierarchy, selection, grouping and sibling order;
-- align/distribute refuses invalid selections and preserves the active selection;
+- layer navigation reflects Fabric hierarchy, effective parent state, grouping
+  and sibling order without a parallel scene tree;
+- alignment requires two objects, distribution requires three, and both preserve
+  the active selection;
 - artboard/token/type/binding/asset properties have a product editing surface;
 - unknown/invalid authored property values are explicitly rejected;
 - runtime telemetry never becomes persisted authored state.
