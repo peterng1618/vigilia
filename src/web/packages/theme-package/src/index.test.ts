@@ -30,4 +30,14 @@ describe('theme package', () => {
 
     expect(readThemePackage(bytes)).toMatchObject({ ok: false });
   });
+
+  it('refuses an archive asset that the envelope does not declare', () => {
+    const bytes = zipSync({
+      'manifest.json': strToU8(JSON.stringify({ format: 'vigilia-theme-package', version: 1, theme: 'theme.json' })),
+      'theme.json': strToU8(JSON.stringify({ ...envelope, assets: [] })),
+      'assets/extra.png': new Uint8Array([1]),
+    });
+
+    expect(readThemePackage(bytes)).toMatchObject({ ok: false });
+  });
 });
