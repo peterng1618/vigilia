@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
-import { ActiveSelection, Group, Rect, Textbox } from 'fabric/es';
+import { ActiveSelection, Group, Rect, Textbox, type FabricObject } from 'fabric/es';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLayerPanel } from './layer-panel.js';
 
 describe('semantic layer panel', () => {
-  afterEach(() => document.body.replaceChildren());
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.replaceChildren();
+  });
 
   it('projects paint order and navigates a child through its owning group', () => {
+    vi.useFakeTimers();
     const { canvas, foreground, group } = editorFixture();
     const panel = createLayerPanel(document.body, canvas);
 
@@ -17,11 +21,15 @@ describe('semantic layer panel', () => {
     expect(panel.root.textContent).toContain('group');
     expect(panel.root.textContent).toContain('child');
 
-    layer(panel.root, 'foreground').click();
+    selectLayer(layer(panel.root, 'foreground'));
+    vi.runAllTimers();
     expect(canvas.canvas.setActiveObject).toHaveBeenCalledWith(foreground);
+    expect(layer(panel.root, 'foreground').getAttribute('aria-pressed')).toBe('true');
 
-    layer(panel.root, 'child').click();
+    selectLayer(layer(panel.root, 'child'));
+    vi.runAllTimers();
     expect(canvas.canvas.setActiveObject).toHaveBeenLastCalledWith(group);
+    expect(layer(panel.root, 'child').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('reveals a hidden parent path and delegates layer controls to the fork', () => {
@@ -81,13 +89,14 @@ function editorFixture() {
   const foreground = new Rect();
   foreground.set('id', 'foreground');
   const listeners = new Map<string, () => void>();
-  const activeObject = vi.fn();
+  let selected: FabricObject | undefined;
+  const activeObject = vi.fn(() => selected);
   const historyManager = { saveState: vi.fn() };
   const canvas = {
     canvas: {
       getObjects: vi.fn(() => [background, group, foreground]),
       getActiveObject: activeObject,
-      setActiveObject: vi.fn(),
+      setActiveObject: vi.fn((object: FabricObject) => { selected = object; }),
       requestRenderAll: vi.fn(),
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
       off: vi.fn(),
@@ -107,4 +116,8 @@ function layer(root: HTMLElement, id: string): HTMLElement {
 
 function action(row: HTMLElement, name: string): HTMLButtonElement {
   return row.querySelector<HTMLButtonElement>(`[data-vigilia-layer-action="${name}"]`)!;
+}
+
+function selectLayer(row: HTMLElement): void {
+  row.dispatchEvent(new Event('pointerdown', { bubbles: true }));
 }

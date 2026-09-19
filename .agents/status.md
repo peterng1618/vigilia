@@ -11,10 +11,10 @@ Spec 0014 is review-only; 0015 is implemented.
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
 | Unit tests | 895 passed across 65 files |
 | Typechecks | seven projects clean |
-| Builds | player, editor and host clean |
+| Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
 | Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
 | Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
-| Browser suite | 72 passed; two existing editor failures remain |
+| Browser suite | 74 passed; 26 desktop-only editor checks skipped on phone |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -62,6 +62,4 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- The full browser suite has two existing editor failures: adding Text times
-  out and selecting `load-gauge` never updates `aria-pressed`.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.

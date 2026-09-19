@@ -18,7 +18,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    await page.locator('#properties section').first().getByRole('button', { name: 'Text' }).click();
+    await page.locator('[data-vigilia-panel="add"]').getByRole('button', { name: 'Text' }).click();
 
     const envelope = await saveEnvelope(page) as {
       scene: { objects: Array<{ vigiliaPaint?: { fill?: string }; vigiliaText?: { runs: Array<{ text?: string; typePreset?: string; style?: { color?: { ref?: string } } }> } }> };

@@ -15,6 +15,7 @@ export function createNewObjectPanel(
 ): NewObjectPanel {
   let currentGlobals = globals;
   const root = document.createElement('section');
+  root.dataset['vigiliaPanel'] = 'add';
   const heading = document.createElement('h2');
   heading.textContent = 'Add';
   const text = document.createElement('button');

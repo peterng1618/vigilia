@@ -21,7 +21,13 @@ interface LayerEntry {
 /** Projects Fabric's current hierarchy without maintaining a second scene tree. */
 export function createLayerPanel(host: HTMLElement, editor: ImageEditor): LayerPanel {
   const root = document.createElement('section');
-  const redraw = (): void => render(root, editor);
+  let currentEntries = new Map<string, LayerEntry>();
+  let selectionTimer: number | undefined;
+  const redraw = (): void => {
+    const entries = entriesFor(editor.canvas.getObjects() as LayerObject[]);
+    currentEntries = new Map(entries.map((entry) => [objectId(entry.object), entry]));
+    render(root, editor, entries, redraw);
+  };
   const events = [
     'selection:created', 'selection:updated', 'selection:cleared',
     'object:added', 'object:removed', 'object:modified',
@@ -29,34 +35,47 @@ export function createLayerPanel(host: HTMLElement, editor: ImageEditor): LayerP
 
   root.dataset['vigiliaPanel'] = 'layers';
   host.append(root);
+  root.addEventListener('pointerdown', (event) => {
+    const target = event.target as Element;
+    const row = target.closest<HTMLElement>('[data-vigilia-layer]');
+    const entry = row === null ? undefined : currentEntries.get(row.dataset['vigiliaLayer'] ?? '');
+    if (entry === undefined) return;
+    if (selectionTimer !== undefined) window.clearTimeout(selectionTimer);
+    selectionTimer = window.setTimeout(() => {
+      selectionTimer = undefined;
+      select(entry, editor);
+      redraw();
+    });
+  }, true);
   for (const event of events) editor.canvas.on(event, redraw);
   redraw();
 
   return {
     root,
     destroy() {
+      if (selectionTimer !== undefined) window.clearTimeout(selectionTimer);
       for (const event of events) editor.canvas.off(event, redraw);
       root.remove();
     },
   };
 }
 
-function render(root: HTMLElement, editor: ImageEditor): void {
+function render(root: HTMLElement, editor: ImageEditor, entries: readonly LayerEntry[], refresh: () => void): void {
   root.replaceChildren();
   const heading = document.createElement('h2');
   heading.textContent = 'Layers';
   root.append(heading);
-  for (const entry of entries(editor.canvas.getObjects() as LayerObject[])) {
-    root.append(row(entry, editor, () => render(root, editor)));
+  for (const entry of entries) {
+    root.append(row(entry, editor, refresh));
   }
-  root.append(arrangeControls(root, editor));
+  root.append(arrangeControls(editor, refresh));
 }
 
-function entries(objects: readonly LayerObject[], ancestors: readonly LayerObject[] = [], select?: LayerObject): readonly LayerEntry[] {
+function entriesFor(objects: readonly LayerObject[], ancestors: readonly LayerObject[] = [], select?: LayerObject): readonly LayerEntry[] {
   return objects.slice().reverse().flatMap((object) => {
     const entry: LayerEntry = { object, select: select ?? object, ancestors };
     const children = object instanceof Group
-      ? entries(object.getObjects() as LayerObject[], [...ancestors, object], object)
+      ? entriesFor(object.getObjects() as LayerObject[], [...ancestors, object], object)
       : [];
     return [entry, ...children];
   });
@@ -69,11 +88,6 @@ function row(entry: LayerEntry, editor: ImageEditor, refresh: () => void): HTMLE
   root.dataset['vigiliaLayer'] = id;
   root.textContent = `${entry.object.type} ${id}`;
   root.setAttribute('aria-pressed', String(editor.canvas.getActiveObject() === entry.select));
-  root.addEventListener('click', () => {
-    select(entry, editor);
-    refresh();
-  });
-
   root.append(
     control(visible ? 'hide' : 'show', visible ? 'Hide' : 'Show', () => {
       if (visible) entry.object.set('visible', false);
@@ -108,7 +122,7 @@ function control(action: string, label: string, handler: () => void): HTMLButton
   return button;
 }
 
-function arrangeControls(root: HTMLElement, editor: ImageEditor): HTMLElement {
+function arrangeControls(editor: ImageEditor, refresh: () => void): HTMLElement {
   const section = document.createElement('section');
   const heading = document.createElement('h2');
   heading.textContent = 'Arrange';
@@ -124,7 +138,7 @@ function arrangeControls(root: HTMLElement, editor: ImageEditor): HTMLElement {
     button.textContent = label;
     button.disabled = !canArrange(editor, action);
     button.addEventListener('click', () => {
-      if (applyArrange(editor, action)) render(root, editor);
+      if (applyArrange(editor, action)) refresh();
     });
     section.append(button);
   }

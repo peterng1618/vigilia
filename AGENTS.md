@@ -83,6 +83,16 @@ Prefer workspace scripts over hand-written project lists.
 - Symlinks are not reliable in tracked content in this repo.
 - Bare gitignore patterns match at any depth.
 
+## Windows terminal methods
+
+- Keep commands rooted at the current working directory; do not repeat `src/web/`
+  after changing into it.
+- Quote Playwright `--grep` values with single quotes in PowerShell so spaces
+  and `|` reach Playwright unchanged.
+- The PowerShell `apply_patch.bat` wrapper does not preserve multiline patch
+  arguments. Invoke its underlying `codex.exe --codex-run-as-apply-patch` with
+  a UTF-8 patch file when a Windows patch must span lines.
+
 ## Testing
 
 - Unit-test pure decisions; browser-test wiring and visuals.
