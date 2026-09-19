@@ -33,6 +33,12 @@ a second simplified scene tree plus bidirectional mapping.
 Fabric is pinned; incompatible runtime versions are refused before revival.
 Custom charts persist authored family/settings only, never ECharts/runtime data.
 
+### Theme packages own asset-bearing files
+
+`@vigilia/theme-package` owns the portable ZIP layout and its bounded read/write
+validation. It reuses `renderer-core` envelope validation and is not imported by
+the player; browser download/picker and later host storage remain caller-owned.
+
 ### Type presets belong to individual styled text runs
 
 Each run carries its own optional type-preset reference; a text object has no

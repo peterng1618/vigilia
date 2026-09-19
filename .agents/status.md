@@ -2,7 +2,7 @@
 
 Current handoff only. Durable rules: `AGENTS.md`; product plan:
 `design/plan.md`; architecture: `architecture.md`; active work: specs 0010,
-0011 and 0013. Spec 0014 is review-only.
+0011, 0013 and 0015. Spec 0014 is review-only.
 
 ## Latest recorded verification
 
@@ -126,7 +126,8 @@ focused active-fork visual evidence.
 - Finish spec 0011 in this order:
   1. **Met:** the published v2 schema permits only palette/type-preset globals and palette references for artboard paint; schema-sync coverage, all typechecks and 847 unit tests passed.
   2. **Met:** the Add Text command delegates construction/history to the fork and saves derived palette/type-preset references; desktop Chromium evidence is current.
-  3. **Not implemented:** asset authoring waits on the §139 package reader/writer; 0011 now defines that JSON downloads cannot retain asset bytes.
+  3. **Active:** the §139 package reader/writer (spec 0015) precedes asset
+     authoring; JSON downloads cannot retain asset bytes.
   4. **Implemented:** chart paint now persists palette references and the
      starter scene renders them; palette/threshold editor controls remain.
 - Live editor telemetry/bindings are incomplete; current editor source is the
@@ -141,8 +142,9 @@ focused active-fork visual evidence.
 
 1. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
    behaviour before implementing any of it.
-2. Complete the property/token model in spec 0011 before stabilising v2.
-3. Add live editor bindings/charts, then the video background path.
+2. Build the bounded §139 package reader/writer (spec 0015), then asset
+   authoring in spec 0011.
+3. Add live editor bindings/charts, then packaged video background.
 4. Only after the authoring core is stable, start the React + shadcn/Base UI
    shell modernization from plan §35.
 

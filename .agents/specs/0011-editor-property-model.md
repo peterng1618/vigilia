@@ -63,7 +63,7 @@ document state. Generic object construction and stack ordering remain fork-owned
 ### Asset authoring prerequisite
 
 The envelope lists asset references but does not contain asset bytes. Asset import,
-replacement and removal require the §139 package reader/writer to retain the
+replacement and removal require the §139 package reader/writer (spec 0015) to retain the
 declared files atomically and validate them under §141. Until then, no editor
 asset-authoring UI is exposed; a JSON download alone cannot faithfully author an
 asset reference.

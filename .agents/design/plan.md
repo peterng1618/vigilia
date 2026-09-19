@@ -261,8 +261,11 @@ library-update propagation.
 
 ## §139 — Packages
 
-ZIP with manifest, theme/widget JSON, assets, optional preview and licence files.
-Packages embed required dependencies/assets.
+ZIP packages embed required theme/widget dependencies and assets. The first
+theme-package format is one v2 theme envelope plus its declared `assets/` bytes;
+it rejects unexpected paths, duplicate/missing assets and bounded hostile input
+before a document is revived. Preview/licence files and widget packages follow
+only when they have an authoring workflow.
 
 ## §141 — Validation and versioning
 
@@ -291,13 +294,15 @@ Current migration order/status:
 3. Fork editor + v2 Fabric envelope migration — **done** (spec 0013).
 4. Review missing legacy-editor behaviours before recreating them — **pending**
    (spec 0014; review only).
-5. Finish v2 palette/type/reference/property semantics — **pending** (spec 0011).
-6. Live editor bindings/charts — **pending**.
-7. Production video background — **pending**.
-8. Delete superseded DOM/custom editor code — **done**.
-9. React + shadcn/Base UI shell modernization — **later**, after core authoring
+5. Build the bounded theme-package reader/writer — **active** (spec 0015).
+6. Finish v2 palette/type/reference/property semantics, including asset
+   authoring over the package boundary — **pending** (spec 0011).
+7. Live editor bindings/charts — **pending**.
+8. Production video background over packaged media — **pending**.
+9. Delete superseded DOM/custom editor code — **done**.
+10. React + shadcn/Base UI shell modernization — **later**, after core authoring
    stabilizes.
-10. Starter theme/storage/LAN/provider/product work continues around those gates.
+11. Starter theme/storage/LAN/provider/product work continues around those gates.
 
 Human review is for scope expansion, product taste and external effects, not
 routine architecture/sequencing.
