@@ -8,6 +8,12 @@ export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
 
 export { createSceneAdapter } from './adapter.js';
 export { cssArtboardPaint, fabricArtboardPaint } from './artboard-paint.js';
+export {
+  mountBackgroundMedia,
+  type BackgroundMediaHandle,
+  type BackgroundMediaOptions,
+  type BackgroundMediaSource,
+} from './background-media.js';
 export { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY, type FabricPaintRefs } from './object-paint.js';
 export { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 export {

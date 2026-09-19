@@ -57,7 +57,7 @@ describe('the adopted editor shell', () => {
 
   it('reconciles a supplied shared scene onto the fork canvas', async () => {
     const apply = vi.fn();
-    const editor = { canvas: { backgroundColor: undefined as string | undefined, setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    const editor = { canvas: { backgroundColor: undefined as string | undefined, getObjects: vi.fn(() => []), setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
 
     const sceneFabric = await import('@vigilia/scene-fabric');
@@ -102,6 +102,22 @@ describe('the adopted editor shell', () => {
     expect(host.style.background).toBe('rgb(0, 0, 0)');
     revive.mockRestore();
     adapter.mockRestore();
+  });
+
+  it('mounts resolved background media below the fork canvas', async () => {
+    const editor = { canvas: { backgroundColor: undefined as string | undefined, getObjects: vi.fn(() => []), setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    initEditor.mockResolvedValue(editor);
+    const host = document.createElement('main');
+    const shell = await mountForkShell({
+      host,
+      artboard: { width: 1, height: 1, backgroundMedia: { assetId: 'hero', fit: 'cover' } },
+      resolveAsset: () => ({ url: 'blob:hero' }),
+      assets: [{ id: 'hero', kind: 'image', path: 'assets/hero.png' }],
+    });
+
+    expect(host.querySelector<HTMLImageElement>('[data-vigilia-background-media] img')?.src).toBe('blob:hero');
+
+    shell.destroy();
   });
 
   it('preserves the active stage when initialization fails', async () => {

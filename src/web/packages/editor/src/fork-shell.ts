@@ -1,5 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { resolveStyleValue, validateFabricThemeEnvelope, type Artboard, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type Globals, type ScenePlan } from '@vigilia/renderer-core';
+import { resolveStyleValue, validateFabricThemeEnvelope, type Artboard, type AssetReference, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type Globals, type ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
   disposeScene,
@@ -11,6 +11,8 @@ import {
   fabricArtboardPaint,
   applyObjectPalettePaints,
   applyObjectTypePresets,
+  mountBackgroundMedia,
+  type BackgroundMediaSource,
   type SceneAdapter,
 } from '@vigilia/scene-fabric';
 
@@ -20,6 +22,8 @@ export interface ForkShellOptions {
   readonly plan?: ScenePlan;
   /** A validated v2 document revives directly into the interactive fork canvas. */
   readonly envelope?: FabricThemeEnvelope;
+  readonly assets?: readonly AssetReference[];
+  readonly resolveAsset?: (assetId: string) => BackgroundMediaSource | undefined;
 }
 
 export interface ForkShell {
@@ -76,7 +80,7 @@ function applyArtboardPaint(editor: ImageEditor, host: HTMLElement, artboard: Ar
 }
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({ host, artboard, plan, envelope }: ForkShellOptions): Promise<ForkShell> {
+export async function mountForkShell({ host, artboard, plan, envelope, assets, resolveAsset }: ForkShellOptions): Promise<ForkShell> {
   if (plan !== undefined && envelope !== undefined) {
     throw new Error('A fork shell accepts either a scene plan or a Fabric envelope, not both.');
   }
@@ -134,6 +138,13 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
     host.replaceChildren(container);
     container.id = FORK_CONTAINER_ID;
     container.style.visibility = '';
+    const mediaResolve = resolveAsset;
+    const media = mediaResolve === undefined ? undefined : mountBackgroundMedia({
+      host: container,
+      artboard: currentArtboard,
+      assets: assets ?? envelope?.assets,
+      resolveAsset: mediaResolve,
+    });
 
     return {
       editor,
@@ -151,6 +162,9 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
         fitMode = currentArtboard.fitMode ?? 'contain';
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
         applyArtboardPaint(editor, host, currentArtboard, globals);
+        if (media !== undefined && mediaResolve !== undefined) {
+          media.update({ artboard: currentArtboard, assets: assets ?? envelope?.assets, resolveAsset: mediaResolve });
+        }
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;
@@ -162,6 +176,7 @@ export async function mountForkShell({ host, artboard, plan, envelope }: ForkShe
       },
       destroy() {
         resize?.disconnect();
+        media?.destroy();
         scene?.dispose();
         disposeScene(editor.canvas);
         editor.destroy();

@@ -16,6 +16,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
 | Browser suite | 74 passed; 26 desktop-only editor checks skipped on phone |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
+| Background-media mount | 910 units, seven typechecks, builds and size gate passed; browser evidence pending Task 5 |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
