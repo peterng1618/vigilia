@@ -64,6 +64,9 @@ focused active-fork visual evidence.
 - Retired actions, document/history, selection, transforms, arranging,
   snapping, legacy layer UI and their tests are deleted; generic editing comes
   only from the fork.
+- Review outcome: retain a Vigilia semantic layer tree and dedicated
+  align/distribute commands; grouping and ungrouping must rearrange the tree.
+  Bulk multi-selection property editing is dropped.
 - Stage 4B is complete: direct v2 startup, current product properties,
   fork-native editing/history/save/open safety and legacy cleanup are proven.
 - Product property extensions render in the dedicated sidebar, so selected-chart
@@ -139,16 +142,16 @@ focused active-fork visual evidence.
 - Production video background integration is not implemented.
 - The surrounding UI has no React/shadcn stack today. That modernization is
   deliberately later than the core Fabric migration.
-- Legacy custom-editor behaviours in spec 0014 are **not requirements yet**.
-  Review each against the fork before recreating it.
+- Semantic layers and selection-relative align/distribute are accepted in spec
+  0011. Other spec-0014 behaviours remain review-only.
 
 ## Next
 
-1. Review spec 0014 and explicitly keep/drop/replace each missing legacy editor
-   behaviour before implementing any of it.
+1. Implement the accepted semantic layer/arrange behaviour in spec 0011.
 2. Implement asset authoring in spec 0011 over the package boundary.
-3. Add live editor bindings/charts, then packaged video background.
-4. Only after the authoring core is stable, start the React + shadcn/Base UI
+3. Continue the remaining spec-0014 review independently of accepted work.
+4. Add live editor bindings/charts, then packaged video background.
+5. Only after the authoring core is stable, start the React + shadcn/Base UI
    shell modernization from plan §35.
 
 ## Unverified / known limitations

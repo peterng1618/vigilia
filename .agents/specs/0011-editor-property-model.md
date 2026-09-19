@@ -60,6 +60,26 @@ Defaults select valid authored references when a Vigilia creation command runs.
 They are editor-local derived input, never mutable theme globals or persisted
 document state. Generic object construction and stack ordering remain fork-owned.
 
+### Semantic layers and arrange actions
+
+The editor projects the current Fabric object graph into a semantic layer tree;
+it never persists or maintains a second scene tree. Entries use each object's
+stable Vigilia id plus its Fabric kind, in top-most-first paint order. Nested
+groups project their current ordered children. Selection is bidirectional:
+selecting a tree entry selects its Fabric object, and canvas selection updates
+the tree.
+
+Tree visibility, lock and sibling z-order actions operate on the corresponding
+Fabric object through the fork. Grouping and ungrouping remain fork-owned, but
+the projection must refresh so the tree immediately reflects reparenting and
+reordering. A tree can expose an otherwise hidden object for recovery without
+inventing a second visibility model.
+
+Dedicated align/distribute commands act on the current multi-selection only.
+They align edges or centres, or distribute equal gaps, within the selection's
+current bounds. They refuse fewer than two selected objects and do not add an
+artboard or key-object target.
+
 ### Asset authoring prerequisite
 
 The envelope lists asset references but does not contain asset bytes. Asset import,
@@ -80,8 +100,7 @@ asset reference.
 | sensor binding | — | — | ✓ | — | ✓ |
 | family settings | — | — | — | — | ✓ |
 
-Multi-selection/mixed-value property UX is **not currently a requirement**; it
-is a review candidate in spec 0014.
+Multi-selection/mixed-value property UX is not a requirement.
 
 ## Current implementation state
 
@@ -113,6 +132,7 @@ Still transitional/not implemented:
 - domain property UI for assets;
 - chart paint/threshold controls;
 - broader Vigilia new-element creation commands beyond the current text command.
+- semantic layer tree and selection-relative align/distribute commands.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains
@@ -126,6 +146,7 @@ settled by spec 0013.
 | Published development schema | `schema/theme-document.schema.json` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
 | Scene geometry/grouping | Fabric scene via `scene-fabric` persistence |
+| Semantic layer projection and arrange UI | `editor/src/layer-panel.ts` |
 | Current chart property UI | `editor/src/chart-manager/` |
 | Current palette/type property UI | `editor/src/palette-panel.ts`, `editor/src/type-preset-panel.ts` |
 
@@ -139,6 +160,8 @@ Before stabilising the theme format:
 - palette/type presets persist as stable references rather than copied values;
 - `palette.none` and reference deletion/reassignment rules are enforced;
 - supported chart settings have typed controls and repaint correctly;
+- layer navigation reflects Fabric hierarchy, selection, grouping and sibling order;
+- align/distribute refuses invalid selections and preserves the active selection;
 - artboard/token/type/binding/asset properties have a product editing surface;
 - unknown/invalid authored property values are explicitly rejected;
 - runtime telemetry never becomes persisted authored state.

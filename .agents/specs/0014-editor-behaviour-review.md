@@ -12,13 +12,22 @@ Before implementing an item, inspect the fork/current workflow and choose one:
 **keep**, **replace with editor-native behaviour**, or **drop**. If kept, promote
 it into the relevant product/spec acceptance criteria first.
 
+## Review outcomes
+
+- **Keep:** a Vigilia semantic layer tree and dedicated align/distribute
+  commands. Spec 0011 defines their accepted behaviour.
+- **Drop:** bulk multi-selection property editing. Single-selection domain
+  controls remain the property-model baseline.
+
 ## Review candidates
 
 ### Layers/tree navigation
 
 Currently no Vigilia semantic layer tree exists on the fork route.
 
-Review whether the product still needs:
+Keep a semantic layer tree. Spec 0011 defines its accepted behaviour.
+
+The retained outcome needs:
 
 - a hierarchy list independent of canvas hit-testing;
 - recovery/selection of hidden objects;
@@ -34,8 +43,8 @@ Old custom code supported selection-relative edge/centre alignment and equal-gap
 distribution. The fork already owns grouping/transforms, so do not port the old
 matrix math.
 
-Review whether dedicated align/distribute actions are still valuable and, if so,
-which targets matter: selection, artboard, or key object.
+Keep dedicated align/distribute actions. Spec 0011 defines their target
+semantics.
 
 ### Rulers, grid, guides and snapping
 
@@ -48,8 +57,7 @@ default.
 
 Current Vigilia chart controls edit one selected chart. The old inspector had a
 planned/common-field model for mixed multi-selection values and bulk edits.
-Review whether this is worth adding after the single-selection property model is
-complete.
+Drop this behaviour. It is not part of the v2 property model.
 
 ### Global-management UX
 

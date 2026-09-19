@@ -42,15 +42,15 @@ Current Vigilia-owned extensions are:
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
-| Generic layer ordering | adopted fork `layerManager` |
+| Generic layer ordering, grouping and locks | adopted fork `layerManager` and `objectLockManager` |
 
-Assets, media and semantic layers do
-**not** yet have active fork-extension owners. Create those only when the
-corresponding feature is implemented; do not document planned classes as current
-architecture.
+Assets and media do **not** yet have active fork-extension owners. Create those
+only when the corresponding feature is implemented; do not document planned
+classes as current architecture.
 
-The retired custom-editor implementation is deleted. The fork's `layerManager`
-owns z-order actions; no Vigilia semantic layer tree exists.
+The retired custom-editor implementation is deleted. The fork retains generic
+z-order, grouping and locks; the pending Vigilia layer panel will project that
+state without a parallel scene tree.
 
 ## Runtime data flow
 
@@ -171,7 +171,6 @@ framework UI state across that boundary.
 Establish one owner when these become active work:
 
 - editor live binding/runtime updates;
-- semantic layer UI;
 - artboard/asset/media property editing;
 - new-object defaults, when insertion is implemented: an editor-side pure
   factory, not persisted document state;
@@ -179,8 +178,8 @@ Establish one owner when these become active work:
 - asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.
 
-Legacy behaviour candidates such as advanced snapping/alignment are review-only
-in spec 0014 and should not acquire owners until retained.
+Legacy behaviour candidates such as advanced snapping remain review-only in
+spec 0014.
 
 ## Verification boundaries
 
