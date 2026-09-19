@@ -1,11 +1,18 @@
 import { type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
 import { assertFabricThemeEnvelopeCompatible } from '@vigilia/scene-fabric';
-import { createDemoSource } from '@vigilia/fake-source';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
+import { createEditorSource } from './live-source.js';
 import { createNewFabricTheme } from './new-fabric-theme.js';
 import { parseThemePackage } from './persist.js';
 import { createThemeLibraryClient } from './theme-library-client.js';
+
+type EditorSource = ReturnType<typeof createEditorSource>;
+type ActiveEditor = {
+  readonly shell: Awaited<ReturnType<typeof mountForkShell>>;
+  readonly extensions: ForkExtensions;
+  source: EditorSource;
+};
 
 async function start(): Promise<void> {
   const host = document.querySelector<HTMLElement>('#stage');
@@ -16,9 +23,42 @@ async function start(): Promise<void> {
     throw new Error('Editor shell is missing #stage, #properties or #status.');
   }
 
-  const nowMs = Date.now();
-  const source = createDemoSource(nowMs);
   const libraryClient = createThemeLibraryClient();
+  let mode: 'preview' | 'live' = 'preview';
+  let active: ActiveEditor | undefined;
+
+  const sourceControl = document.createElement('label');
+  sourceControl.textContent = 'Data source';
+  const sourceMode = document.createElement('select');
+  for (const value of ['preview', 'live'] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value === 'preview' ? 'Preview' : 'Live';
+    sourceMode.append(option);
+  }
+  sourceControl.append(sourceMode);
+  panelHost.append(sourceControl);
+
+  const createSource = (envelope: FabricThemeEnvelopeInput): EditorSource => createEditorSource({
+    mode,
+    keys: semanticKeys(envelope),
+    onStatus: (sourceStatus, detail) => {
+      status.textContent = `${mode === 'preview' ? 'Preview' : 'Live'}: ${detail ?? sourceStatus}`;
+    },
+  });
+
+  const replaceSource = (): void => {
+    if (active === undefined) return;
+    const source = createSource(active.extensions.envelope);
+    active.source.close();
+    active.extensions.setSource(source.source);
+    active.source = source;
+  };
+
+  sourceMode.addEventListener('change', () => {
+    mode = sourceMode.value === 'live' ? 'live' : 'preview';
+    replaceSource();
+  });
 
   const picker = document.createElement('input');
   picker.type = 'file';
@@ -26,9 +66,9 @@ async function start(): Promise<void> {
   picker.hidden = true;
   host.parentElement!.append(picker);
 
-  let active: { readonly shell: Awaited<ReturnType<typeof mountForkShell>>; readonly extensions: ForkExtensions } | undefined;
   const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
+    const source = createSource(next.input);
     const shell = await mountForkShell({
       host,
       artboard: next.input.artboard,
@@ -36,10 +76,11 @@ async function start(): Promise<void> {
     });
     const extensions = new ForkExtensions({
       shell,
-      source,
+      source: source.source,
       envelope: next.input,
       panelHost,
       libraryClient,
+      onBindingsChange: replaceSource,
       onNew: async () => {
         const fresh = createNewFabricTheme();
         await mount({ input: envelopeInputFor(fresh), envelope: fresh });
@@ -55,7 +96,8 @@ async function start(): Promise<void> {
     });
     active?.extensions.destroy();
     active?.shell.destroy();
-    active = { shell, extensions };
+    active?.source.close();
+    active = { shell, extensions, source };
   };
 
   picker.addEventListener('change', () => {
@@ -78,6 +120,8 @@ async function start(): Promise<void> {
     });
   });
 
+  window.setInterval(() => active?.extensions.charts.refresh(), 1_000);
+
   const theme = createNewFabricTheme();
   await mount({
     input: envelopeInputFor(theme),
@@ -87,6 +131,11 @@ async function start(): Promise<void> {
 }
 
 void start();
+
+function semanticKeys(envelope: FabricThemeEnvelopeInput): readonly string[] {
+  return [...new Set(Object.values(envelope.bindings ?? {}).flatMap((bindings) =>
+    bindings.map((binding) => binding.semanticKey)))];
+}
 
 function envelopeInputFor(envelope: FabricThemeEnvelope): FabricThemeEnvelopeInput {
   const { schemaVersion: _schemaVersion, fabricVersion: _fabricVersion, scene: _scene, ...input } = envelope;

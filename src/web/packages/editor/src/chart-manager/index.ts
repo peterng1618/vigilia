@@ -14,7 +14,7 @@ import { createForkChartPanel } from './panel.js';
 export class ChartManager {
   readonly #editor: ImageEditor;
   readonly #scene: SceneAdapter;
-  readonly #source: SampleSource;
+  #source: SampleSource;
   readonly #panel;
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #globals: FabricGlobals | undefined;
@@ -54,6 +54,15 @@ export class ChartManager {
 
   setGlobals(globals: FabricGlobals | undefined): void {
     this.#globals = globals;
+    this.refresh();
+  }
+
+  setSource(source: SampleSource): void {
+    this.#source = source;
+    this.refresh();
+  }
+
+  refresh(): void {
     this.#hydrateRevivedCharts();
   }
 

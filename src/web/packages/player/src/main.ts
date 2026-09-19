@@ -1,6 +1,7 @@
 import {
   SAMPLE_STREAM_PATH,
   buildScenePlan,
+  buildChartPlan,
   createAssetResolver,
   createLiveSource,
   missingFontFamilies,
@@ -10,10 +11,14 @@ import {
   type SampleSource,
   type ScenePlan,
   type SceneHandle,
+  type Binding,
+  type ChartContent,
+  type FabricThemeEnvelope,
   type ThemeDocument,
 } from '@vigilia/renderer-core';
-import { mountFabricScene } from '@vigilia/scene-fabric';
+import { mountFabricScene, reviveThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
+import { loadHostedTheme } from './theme-loader.js';
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
 
@@ -25,24 +30,36 @@ if (!artboardHost) {
 
 /** Data refresh cadence; chart interpolation is independent. */
 const DATA_TICK_MS = 1000;
+const FIXTURE_THEME_IDS = new Set(['demo', 'stress', 'portrait-cover', 'assets']);
 
-function start(host: HTMLElement): void {
-  let theme: ThemeDocument;
-
-  // Fixture selection is temporary until assigned themes are delivered by the host.
+async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
-  const requested = parameters.get('theme') ?? 'demo';
+  const requested = parameters.get('theme');
 
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
   const animate = parameters.get('static') !== '1' && !reducedMotion;
 
+  if (requested === null || (requested !== null && FIXTURE_THEME_IDS.has(requested))) {
+    startFixtureTheme(host, loadDemoTheme(requested ?? 'demo'), parameters, requested, animate);
+    return;
+  }
+
   try {
-    theme = loadDemoTheme(requested);
+    await startHostedTheme(host, await loadHostedTheme(requested, window.fetch.bind(window)), parameters);
   } catch (error) {
     showFailure(host, error instanceof Error ? error.message : String(error));
     return;
   }
 
+}
+
+function startFixtureTheme(
+  host: HTMLElement,
+  theme: ThemeDocument,
+  parameters: URLSearchParams,
+  requested: string | null,
+  animate: boolean,
+): void {
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get('data') === 'live';
   const fake = live ? undefined : createDemoSource(Date.now());
@@ -93,7 +110,7 @@ function start(host: HTMLElement): void {
   if (fake === undefined) {
     showConnectionState('connecting', requiredSemanticKeys(theme).length);
   } else {
-    showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested);
+    showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested ?? 'demo');
   }
 
   let timer: number | undefined;
@@ -142,6 +159,71 @@ function start(host: HTMLElement): void {
 
   run();
   exposeForDiagnostics(handle, liveHandle);
+}
+
+async function startHostedTheme(
+  host: HTMLElement,
+  theme: FabricThemeEnvelope,
+  parameters: URLSearchParams,
+): Promise<void> {
+  const keys = Object.values(theme.bindings ?? {}).flat().map((binding) => binding.semanticKey);
+  const liveHandle = createLiveSource({
+    url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
+    onStatus: (status, detail) => showConnectionState(status, keys.length, detail),
+  });
+  const handle = mountFabricScene({ host, plan: envelopePlan(theme) });
+  await reviveThemeEnvelope(handle.canvas, theme);
+  const refresh = (): void => {
+    hydrateCharts(handle.canvas.getObjects(), theme.bindings ?? {}, liveHandle.source);
+    handle.canvas.requestRenderAll();
+  };
+
+  refresh();
+  showConnectionState('connecting', keys.length);
+  const timer = window.setInterval(refresh, DATA_TICK_MS);
+  const observer = new ResizeObserver(() => handle.resize());
+  observer.observe(host);
+  window.addEventListener('pagehide', () => {
+    window.clearInterval(timer);
+    observer.disconnect();
+    liveHandle.close();
+  }, { once: true });
+  exposeForDiagnostics(handle, liveHandle);
+}
+
+function envelopePlan(theme: FabricThemeEnvelope): ScenePlan {
+  return {
+    artboard: {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+      fitMode: theme.artboard.fitMode ?? 'contain',
+      background: theme.artboard.background ?? '#000',
+      barColor: theme.artboard.barColor ?? '#000',
+    },
+    nodes: [],
+    issues: [],
+  };
+}
+
+function hydrateCharts(
+  objects: readonly { get(key: string): unknown }[],
+  bindings: Readonly<Record<string, readonly Binding[]>>,
+  source: SampleSource,
+): void {
+  for (const object of objects) {
+    if (object instanceof VigiliaChart) {
+      const id = object.get('id');
+      if (typeof id === 'string') {
+        const content = { family: object.family, settings: object.settings } as ChartContent;
+        const plan = buildChartPlan(id, content, bindings[id] ?? [], {
+          source,
+          nowMs: Date.now(),
+          animate: false,
+        }, [], undefined);
+        object.setOption(plan.option);
+      }
+    }
+  }
 }
 
 /** Logs frame issues while affected values remain visibly missing rather than fabricated. */
@@ -233,4 +315,4 @@ function exposeForDiagnostics(handle: SceneHandle, live?: LiveSourceHandle): voi
   Reflect.set(window, 'vigilia', { handle, live });
 }
 
-start(artboardHost);
+void start(artboardHost);

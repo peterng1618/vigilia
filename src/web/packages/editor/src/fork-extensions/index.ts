@@ -34,6 +34,7 @@ export interface ForkExtensionsOptions {
   readonly onOpenTheme?: (envelope: FabricThemeEnvelope) => Promise<void>;
   readonly onSaved: (message?: string) => void;
   readonly onError?: (message: string) => void;
+  readonly onBindingsChange?: () => void;
 }
 
 /** Composition root for Vigilia-specific behaviour layered above the fork. */
@@ -48,12 +49,14 @@ export class ForkExtensions {
   readonly #shortcuts = new ShortcutManager();
   readonly #fileSection: HTMLElement;
   #envelope: FabricThemeEnvelopeInput;
+  readonly #onBindingsChange: (() => void) | undefined;
 
   constructor(options: ForkExtensionsOptions) {
     if (options.shell.scene === undefined) {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
+    this.#onBindingsChange = options.onBindingsChange;
 
     const fileSection = document.createElement('section');
     fileSection.dataset['vigiliaFileActions'] = '';
@@ -120,6 +123,14 @@ export class ForkExtensions {
     });
     this.#shortcuts.register('file.open', () => { void this.#open(options); });
     this.#shortcuts.register('file.new', () => { void this.#new(options); });
+  }
+
+  get envelope(): FabricThemeEnvelopeInput {
+    return this.#envelope;
+  }
+
+  setSource(source: SampleSource): void {
+    this.charts.setSource(source);
   }
 
   destroy(): void {
@@ -227,6 +238,7 @@ export class ForkExtensions {
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
     this.#envelope = { ...this.#envelope, bindings: { ...this.#envelope.bindings, [id]: bindings } };
+    this.#onBindingsChange?.();
   }
 
   #setPalette(shell: ForkShell, palette: FabricPalette): void {

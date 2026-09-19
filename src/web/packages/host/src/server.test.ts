@@ -182,4 +182,18 @@ describe('Host theme routes', () => {
     const res = await request(hosted.server, 'GET', '/api/themes/not-found/document');
     expect(res.status).toBe(404);
   });
+
+  it('redirects the root to the first stored theme with live data', async () => {
+    await request(hosted.server, 'PUT', '/api/themes/living-room', validEmptyAssetPackage);
+
+    const res = await request(hosted.server, 'GET', '/');
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/?theme=living-room&data=live');
+  });
+
+  it('returns a clear root error when storage is empty', async () => {
+    const res = await request(hosted.server, 'GET', '/');
+    expect(res.status).toBe(404);
+    expect(res.text()).toContain('No hosted theme is available');
+  });
 });

@@ -258,8 +258,14 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    // Host-served player defaults explicitly to real data; standalone preview stays deterministic.
+    // Host-served player uses a stored theme and live data; standalone preview stays deterministic.
     if (url.pathname === '/' && !url.searchParams.has('data')) {
+      const theme = url.searchParams.get('theme') ?? (await themeStore.list()).at(0)?.id;
+      if (theme === undefined) {
+        sendText(response, 404, 'No hosted theme is available. Save a theme from the editor first.');
+        return;
+      }
+      url.searchParams.set('theme', theme);
       url.searchParams.set('data', 'live');
       response.writeHead(302, {
         location: `${url.pathname}?${url.searchParams.toString()}`,
