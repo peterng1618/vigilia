@@ -12,6 +12,10 @@ const TYPES = {
   svg: { mime: 'image/svg+xml', kind: 'svg' },
   mp4: { mime: 'video/mp4', kind: 'video' },
   webm: { mime: 'video/webm', kind: 'video' },
+  woff2: { mime: 'font/woff2', kind: 'font' },
+  woff: { mime: 'font/woff', kind: 'font' },
+  ttf: { mime: 'font/ttf', kind: 'font' },
+  otf: { mime: 'font/otf', kind: 'font' },
 } as const;
 
 type AssetExtension = keyof typeof TYPES;
@@ -45,7 +49,7 @@ export class AssetManager {
 
     this.#assets[path] = bytes;
     this.#declarations.push(reference);
-    if (type.kind !== 'video') {
+    if (type.kind === 'image' || type.kind === 'svg') {
       this.#previewUrls.set(id, URL.createObjectURL(new Blob([previewBytes as unknown as BlobPart], { type: type.mime })));
     }
     return reference;
@@ -62,7 +66,7 @@ export class AssetManager {
 
   load(envelope: Pick<FabricThemeEnvelope, 'assets'>, assets: Readonly<Record<string, Uint8Array>>): void {
     this.destroy();
-    this.#declarations = (envelope.assets ?? []).filter((asset): asset is LocalAssetReference => asset.kind === 'image' || asset.kind === 'svg' || asset.kind === 'video');
+    this.#declarations = (envelope.assets ?? []).filter((asset): asset is LocalAssetReference => asset.kind === 'image' || asset.kind === 'svg' || asset.kind === 'video' || asset.kind === 'font');
     this.#assets = Object.fromEntries(Object.entries(assets).map(([path, bytes]) => [path, new Uint8Array(bytes)]));
   }
 
@@ -156,7 +160,7 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
   };
   const add = async (file: File, replaceSelected: boolean): Promise<void> => {
     const asset = await manager.import(file);
-    if (asset.kind === 'video') {
+    if (asset.kind === 'video' || asset.kind === 'font') {
       changed();
       render();
       return;
@@ -195,7 +199,7 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
 function input(data: 'data-vigilia-asset-import' | 'data-vigilia-asset-replace'): HTMLInputElement {
   const element = document.createElement('input');
   element.type = 'file';
-  element.accept = '.png,.jpg,.jpeg,.webp,.svg,.mp4,.webm';
+  element.accept = '.png,.jpg,.jpeg,.webp,.svg,.mp4,.webm,.woff2,.woff,.ttf,.otf';
   element.hidden = true;
   element.setAttribute(data, '');
   return element;

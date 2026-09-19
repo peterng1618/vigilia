@@ -288,7 +288,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    const picker = page.locator('input[type="file"]');
+    const picker = page.locator('input[accept=".vigilia-theme"]');
     const envelope = {
       schemaVersion: 2,
       fabricVersion: '7.4.0',
@@ -310,7 +310,7 @@ test.describe('Fabric editor route', () => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 
     await page.goto(EDITOR);
-    const picker = page.locator('input[type="file"]');
+    const picker = page.locator('input[accept=".vigilia-theme"]');
     await setThemePackage(page, 'source.vigilia-theme', {
         schemaVersion: 2,
         fabricVersion: '7.4.0',
@@ -385,6 +385,23 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Opened assets.vigilia-theme');
     await expect(page.locator('#vigilia-fabric-editor canvas.upper-canvas')).toBeVisible();
     await expect(assetReferences(page)).resolves.toContainEqual({ assetId: 'logo-2', kind: 'svg' });
+  });
+
+  test('authors a packaged background image through Theme settings', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-asset-import]').setInputFiles({ name: 'hero.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAAIklEQVQ4jWNk2HHzPwMVARM1DRs1cNTAUQNHDRw1cCgZCAC1HQK4IWYK+QAAAABJRU5ErkJggg==', 'base64') });
+    await page.locator('[data-vigilia-background-asset]').selectOption('hero');
+    await page.locator('[data-vigilia-background-media-fit]').selectOption('contain');
+    await expect(page.locator('[data-vigilia-background-asset]')).toHaveValue('hero');
+    await page.locator('[data-vigilia-background-asset]').scrollIntoViewIfNeeded();
+    await captureVisualReview(page, testInfo, 'editor-fork-background-media');
+
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) return;
+    expect(saved.parsed.envelope.artboard.backgroundMedia).toEqual({ assetId: 'hero', fit: 'contain' });
+    expect(saved.parsed.assets['assets/hero.png']).toBeDefined();
   });
 
   test('persists an ordinary fork drag and restores it through undo', async ({ page }, testInfo) => {
@@ -503,7 +520,7 @@ async function setThemePackage(page: Page, name: string, envelope: Parameters<ty
   const result = writeThemePackage({ envelope, assets: {} });
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(result.message);
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
     name,
     mimeType: 'application/octet-stream',
     buffer: Buffer.from(result.bytes),
@@ -515,7 +532,7 @@ async function setUncheckedThemePackage(page: Page, name: string, envelope: unkn
     'manifest.json': strToU8(JSON.stringify({ format: 'vigilia-theme-package', version: 1, theme: 'theme.json' })),
     'theme.json': strToU8(JSON.stringify(envelope)),
   });
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
     name,
     mimeType: 'application/octet-stream',
     buffer: Buffer.from(buffer),

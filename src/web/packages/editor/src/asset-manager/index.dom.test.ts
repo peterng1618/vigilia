@@ -52,6 +52,15 @@ describe('AssetManager', () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
   });
 
+  it('copies a declared WOFF2 face into package storage', async () => {
+    const manager = new AssetManager();
+
+    const asset = await manager.import(file(new Uint8Array([0, 1, 2]), 'metric.woff2', 'font/woff2'));
+
+    expect(asset).toMatchObject({ id: 'metric', kind: 'font', path: 'assets/metric.woff2' });
+    expect(manager.assets['assets/metric.woff2']).toEqual(new Uint8Array([0, 1, 2]));
+  });
+
   it('rejects a MIME type that does not match a WebM extension', async () => {
     const manager = new AssetManager();
 
