@@ -4,6 +4,7 @@ import type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/ren
 import { VigiliaChart } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 import { VIGILIA_PAINT_PROPERTY } from './object-paint.js';
+import { VIGILIA_ASSET_PROPERTY } from './object-asset.js';
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON
 // may revive instead of relying on another renderer import to do it first.
@@ -17,7 +18,7 @@ classRegistry.setClass(Textbox);
  * keys are authored deviations; `id` is explicitly included because Fabric omits it.
  */
 
-export const SCENE_PERSISTED_PROPERTIES = ['id', VIGILIA_TEXT_PROPERTY, VIGILIA_PAINT_PROPERTY] as const;
+export const SCENE_PERSISTED_PROPERTIES = ['id', VIGILIA_TEXT_PROPERTY, VIGILIA_PAINT_PROPERTY, VIGILIA_ASSET_PROPERTY] as const;
 
 export interface SerialisedScene {
   readonly version: string;
