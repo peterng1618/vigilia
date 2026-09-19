@@ -50,8 +50,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Design the first image/SVG asset-authoring slice over the validated package
-   boundary; no asset UI exists yet.
+1. Review the approved local image/SVG asset-authoring design in spec 0011,
+   then implement it over the validated package boundary.
 2. Add font and video authoring only after image/SVG authoring is stable.
 3. Revisit remaining spec-0014 candidates only when needed.
 4. Modernize the shell per plan §35 only after the authoring core is stable.

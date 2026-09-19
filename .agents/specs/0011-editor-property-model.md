@@ -81,13 +81,24 @@ Alignment needs at least two objects; equal-gap distribution needs at least
 three. Both use the objects' rendered Fabric bounding boxes, preserve the active
 selection, and do not add an artboard or key-object target.
 
-### Asset authoring prerequisite
+### Image/SVG asset authoring
 
-The envelope lists asset references but does not contain asset bytes. Asset import,
-replacement and removal require the §139 package reader/writer (spec 0015) to retain the
-declared files atomically and validate them under §141. Until then, no editor
-asset-authoring UI is exposed; a JSON download alone cannot faithfully author an
-asset reference.
+The editor owns the open package's declared asset bytes until New/Open replaces
+it. Import accepts local PNG, JPEG, WebP and SVG files, copies each file into
+the package's embedded `assets/` directory, then inserts a Fabric image whose
+stable `assetId` references that declaration. The original local file is never
+modified.
+
+Replacing a selected image changes its `assetId`; an imported replacement is
+copied first. Removing a referenced asset is refused. Open retains declared
+bytes; Save and host-library Save write the envelope and exact asset map through
+the §139 package boundary. Dirty tracking includes asset bytes.
+
+SVG is sanitized before preview and its original bytes are retained. Raster
+previews use revocable object URLs. GIF, video, font and URL imports are out of
+scope. A future URL importer may fetch Font Awesome SVG or Unsplash imagery,
+then apply this same local asset boundary with explicit remote validation and
+attribution handling.
 
 ## Capability summary
 
@@ -111,8 +122,8 @@ palette and type-preset authoring/reassignment; semantic text creation; semantic
 layers with inherited visibility/lock/order; and selection-relative
 align/distribute.
 
-Still incomplete: asset property UI, chart paint/threshold controls, and broader
-Vigilia creation commands.
+Still incomplete: image/SVG asset authoring, chart paint/threshold controls, and
+broader Vigilia creation commands.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled by spec 0013.
@@ -128,6 +139,7 @@ scene envelope boundary is settled by spec 0013.
 | Semantic layer projection and arrange UI | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Current chart property UI | `editor/src/chart-manager/` |
 | Current palette/type property UI | `editor/src/palette-panel.ts`, `editor/src/type-preset-panel.ts` |
+| Open-package image/SVG bytes and controls | `editor/src/asset-manager/` |
 
 Do not create speculative managers/owners for property domains that are not yet
 implemented.

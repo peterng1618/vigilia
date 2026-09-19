@@ -235,7 +235,9 @@ browser profiles where useful; physical-device validation is not a release gate.
 
 Sanitize SVG before preview; preserve vector/multicolour originals; expose
 size/rotation/flip/opacity/monochrome recolour. Store source/hash and supplied
-licence/attribution metadata. Imported icons work offline.
+licence/attribution metadata. Imported icons work offline. A future URL-import
+flow may ingest Font Awesome SVG or Unsplash imagery only after remote input,
+licence and attribution behaviour is defined.
 
 ## §134 — Theme format
 

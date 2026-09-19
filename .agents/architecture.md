@@ -40,14 +40,15 @@ Current Vigilia-owned extensions are:
 | Semantic layer projection and arrange actions | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
+| Open-package image/SVG bytes and controls | `editor/src/asset-manager/` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 | Generic layer ordering, grouping and locks | adopted fork `layerManager` and `objectLockManager` |
 
-Assets and media do **not** yet have active fork-extension owners. Create those
-only when the corresponding feature is implemented; do not document planned
-classes as current architecture.
+Media does **not** yet have an active fork-extension owner. Create one only when
+its authoring feature is implemented; do not document planned classes as current
+architecture.
 
 The retired custom-editor implementation is deleted. The fork retains generic
 z-order, grouping and locks; the Vigilia layer panel projects that state without
@@ -172,7 +173,7 @@ framework UI state across that boundary.
 Establish one owner when these become active work:
 
 - editor live binding/runtime updates;
-- artboard/asset/media property editing;
+- artboard/media property editing;
 - new-object defaults, when insertion is implemented: an editor-side pure
   factory, not persisted document state;
 - shared colour parsing;
