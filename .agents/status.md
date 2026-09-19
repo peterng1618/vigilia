@@ -51,7 +51,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement `.agents/plans/2026-09-20-theme-settings-background-media.md`, then fonts.
+1. Implement Theme settings/background media, then the approved packaged-font slice.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per plan §35 only after the authoring core is stable.
 

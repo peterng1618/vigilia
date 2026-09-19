@@ -40,6 +40,21 @@ A named type preset groups family, size, weight, letter spacing and line height.
 Each styled run independently references its preset and palette colour; local
 typography is invalid and there is no text-object-level preset.
 
+Each preset selects one declared packaged font face by family, weight and style;
+the renderer never synthesizes missing bold or italic variants. Font assets are
+local WOFF2, WOFF, TTF or OTF bytes with their family, weight, style, format,
+source URL and license metadata. Variable fonts and axis controls are out of
+scope.
+
+Theme settings owns font authoring after background media. Google Fonts uses an
+entered family plus requested face, retrieves its CSS endpoint and downloads the
+referenced WOFF2 into the package. Custom import requires the author to provide
+family, weight and style. Type-preset controls offer only declared faces.
+Open/Save/Release retain exact bytes; player/editor load them through `FontFace`
+before measuring or rendering text. A missing or incompatible preset face
+invalidates the package; runtime load failure is visible, never silently
+replaced by a synthesized face. No runtime Google CDN dependency is persisted.
+
 ### Charts are family-specific
 
 Each chart family owns typed setting descriptors in `renderer-core`. The editor
@@ -142,8 +157,9 @@ palette and type-preset authoring/reassignment; semantic text creation; semantic
 layers with inherited visibility/lock/order; and selection-relative
 align/distribute.
 
-Still incomplete: background image/video authoring, release-version controls,
-chart paint/threshold controls, and broader Vigilia creation commands.
+Still incomplete: background image/video authoring, packaged font authoring,
+release-version controls, chart paint/threshold controls, and broader Vigilia
+creation commands.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled by spec 0013.
