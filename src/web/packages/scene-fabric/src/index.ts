@@ -10,6 +10,12 @@ export { createSceneAdapter } from './adapter.js';
 export { cssArtboardPaint, fabricArtboardPaint } from './artboard-paint.js';
 export { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY, type FabricPaintRefs } from './object-paint.js';
 export { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+export {
+  objectAssetReference,
+  setObjectAssetReference,
+  VIGILIA_ASSET_PROPERTY,
+  type FabricAssetReference,
+} from './object-asset.js';
 export { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
 export { reassignObjectPaletteReferences } from './palette-references.js';
 

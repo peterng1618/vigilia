@@ -37,6 +37,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
+- Fabric image/SVG asset references serialise and revive; package-byte authoring remains in progress.
 - Theme-package-only Open/Save and host-library Open/Save are active; asset
   authoring UI does not exist.
 - Live editor telemetry and production video integration remain incomplete.

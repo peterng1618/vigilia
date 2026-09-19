@@ -12,6 +12,7 @@ import {
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
 import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+import { objectAssetReference, setObjectAssetReference, VIGILIA_ASSET_PROPERTY } from './object-asset.js';
 import { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY } from './object-paint.js';
 import { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
 import { reassignObjectPaletteReferences } from './palette-references.js';
@@ -191,6 +192,18 @@ describe('Fabric’s own keys are held to the same rule', () => {
 });
 
 describe('identity survives a round trip', () => {
+  it('retains an image asset reference without serialising its preview URL', async () => {
+    const source = image();
+    setObjectAssetReference(source, { assetId: 'logo', kind: 'svg' });
+    const scene = serialiseScene(canvasOf(source));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({ assetId: 'logo', kind: 'svg' });
+    expect(objectAssetReference(revived.getObjects()[0]!)).toEqual({ assetId: 'logo', kind: 'svg' });
+  });
+
   it('persists palette references and reapplies their resolved paint', async () => {
     const rect = new Rect({ width: 10, height: 10, fill: '#000' });
     rect.set('id', 'panel');
@@ -453,6 +466,8 @@ describe('there is exactly one owner of scene serialisation', () => {
     expect(
       readdirSync(root).filter((entry: string) => entry.endsWith('.ts')).length,
     ).toBeGreaterThan(10);
-    expect(SCENE_PERSISTED_PROPERTIES).toEqual(['id', VIGILIA_TEXT_PROPERTY, VIGILIA_PAINT_PROPERTY]);
+    expect(SCENE_PERSISTED_PROPERTIES).toEqual([
+      'id', VIGILIA_TEXT_PROPERTY, VIGILIA_PAINT_PROPERTY, VIGILIA_ASSET_PROPERTY,
+    ]);
   });
 });
