@@ -16,10 +16,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
 | Browser suite | 74 passed; 26 desktop-only editor checks skipped on phone |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
-| Background-media mount | 910 units, seven typechecks, builds and size gate passed; browser evidence pending Task 5 |
-| Background-media assets | 913 units, seven typechecks, builds and size gate passed; Theme settings/browser evidence pending Tasks 4-5 |
-| Theme settings | focused editor typecheck and 14 panel/persistence tests passed; player/browser evidence pending Task 5 |
-| Player background media | seven typechecks, 914 units, builds and size gate passed; focused browser capture remains unverified |
+| Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -55,7 +52,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement Theme settings/background media, then the approved packaged-font slice.
+1. Implement the approved packaged-font slice.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per plan §35 only after the authoring core is stable.
 
