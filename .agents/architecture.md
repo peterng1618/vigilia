@@ -133,6 +133,7 @@ framework UI state across that boundary.
 |---|---|
 | Samples/status | `renderer-core/src/types.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
+| Theme ZIP layout and bounds | `theme-package/src/` |
 | Published development schema | `schema/theme-document.schema.json` |
 | Wire protocol | `renderer-core/src/data/protocol.ts` |
 | Semantic sensor keys | `renderer-core/src/data/semantic-keys.ts` |

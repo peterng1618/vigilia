@@ -128,6 +128,8 @@ focused active-fork visual evidence.
   2. **Met:** the Add Text command delegates construction/history to the fork and saves derived palette/type-preset references; desktop Chromium evidence is current.
   3. **Active:** the §139 package reader/writer (spec 0015) precedes asset
      authoring; JSON downloads cannot retain asset bytes.
+     The initial portable package workspace round-trips a validated envelope
+     with exactly its declared asset bytes; archive hardening remains active.
   4. **Implemented:** chart paint now persists palette references and the
      starter scene renders them; palette/threshold editor controls remain.
 - Live editor telemetry/bindings are incomplete; current editor source is the

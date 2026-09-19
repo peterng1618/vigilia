@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "rootDir": "../..", "paths": { "@vigilia/renderer-core": ["../renderer-core/src/index.ts"] } },
+  "include": ["src/**/*.ts", "../renderer-core/src/node-builtins.d.ts"]
+}

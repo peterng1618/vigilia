@@ -27,6 +27,11 @@ Verified from Fabric 7.4.0 package metadata/LICENSE: MIT, no runtime dependencie
 Use `fabric/es`; the default entry is pre-bundled and measured substantially
 larger. Player uses `StaticCanvas` to exclude the interaction layer.
 
+## fflate
+
+fflate 0.8.3 is MIT. `@vigilia/theme-package` uses its browser/Node ZIP codec;
+the player does not depend on that package.
+
 ## Adopted image-editor fork
 
 Current editor manifest pins

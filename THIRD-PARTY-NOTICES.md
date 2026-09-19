@@ -19,6 +19,14 @@ distribution.
 
 Source: <https://github.com/fabricjs/fabric.js>
 
+### fflate 0.8.3 — MIT
+
+Source: <https://github.com/101arrowz/fflate>
+
+### fflate 0.8.3 — MIT
+
+Source: <https://github.com/101arrowz/fflate>
+
 Shared player/editor scene graph. Vigilia imports `fabric/es`; the licence and
 copyright notice must accompany redistribution.
 
