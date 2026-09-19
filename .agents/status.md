@@ -14,7 +14,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Builds | player, editor and host clean |
 | Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
 | Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
-| Browser suite | 70 passed; four existing failures remain |
+| Browser suite | 72 passed; two existing editor failures remain |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
