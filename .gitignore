@@ -34,6 +34,7 @@ secrets.local.json
 # Throwaway implementation plans are not repository content. Tracked specs live
 # in .agents/specs/ instead.
 .claude/plans/
+.worktrees/
 
 # Credentials, at any depth. A Claude Code process launched with a cwd inside
 # this repo and a home that did not resolve once created a whole config home
