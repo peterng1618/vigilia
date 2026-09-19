@@ -10,6 +10,8 @@ const TYPES = {
   jpeg: { mime: 'image/jpeg', kind: 'image' },
   webp: { mime: 'image/webp', kind: 'image' },
   svg: { mime: 'image/svg+xml', kind: 'svg' },
+  mp4: { mime: 'video/mp4', kind: 'video' },
+  webm: { mime: 'video/webm', kind: 'video' },
 } as const;
 
 type AssetExtension = keyof typeof TYPES;
@@ -43,7 +45,9 @@ export class AssetManager {
 
     this.#assets[path] = bytes;
     this.#declarations.push(reference);
-    this.#previewUrls.set(id, URL.createObjectURL(new Blob([previewBytes as unknown as BlobPart], { type: type.mime })));
+    if (type.kind !== 'video') {
+      this.#previewUrls.set(id, URL.createObjectURL(new Blob([previewBytes as unknown as BlobPart], { type: type.mime })));
+    }
     return reference;
   }
 
@@ -58,7 +62,7 @@ export class AssetManager {
 
   load(envelope: Pick<FabricThemeEnvelope, 'assets'>, assets: Readonly<Record<string, Uint8Array>>): void {
     this.destroy();
-    this.#declarations = (envelope.assets ?? []).filter((asset): asset is LocalAssetReference => asset.kind === 'image' || asset.kind === 'svg');
+    this.#declarations = (envelope.assets ?? []).filter((asset): asset is LocalAssetReference => asset.kind === 'image' || asset.kind === 'svg' || asset.kind === 'video');
     this.#assets = Object.fromEntries(Object.entries(assets).map(([path, bytes]) => [path, new Uint8Array(bytes)]));
   }
 
@@ -77,7 +81,19 @@ export class AssetManager {
 
   previewUrl(assetId: string): string | undefined {
     const asset = this.#declarations.find((candidate) => candidate.id === assetId);
-    return asset === undefined ? undefined : this.#preview(asset);
+    return asset === undefined || asset.kind === 'video' ? undefined : this.#preview(asset);
+  }
+
+  backgroundSource(assetId: string): { readonly url: string; readonly dispose: () => void } | undefined {
+    const asset = this.#declarations.find((candidate) => candidate.id === assetId);
+    if (asset === undefined || !['image', 'svg', 'video'].includes(asset.kind)) return undefined;
+    const bytes = this.#assets[asset.path];
+    const extension = extensionOf(asset.path);
+    const type = extension === undefined ? undefined : TYPES[extension];
+    if (bytes === undefined || type === undefined || type.kind !== asset.kind) return undefined;
+    const preview = asset.kind === 'svg' ? sanitisedSvg(bytes) : bytes;
+    const url = URL.createObjectURL(new Blob([preview as unknown as BlobPart], { type: type.mime }));
+    return { url, dispose: () => URL.revokeObjectURL(url) };
   }
 
   destroy(): void {
@@ -92,7 +108,7 @@ export class AssetManager {
     if (bytes === undefined) throw new Error(`Missing declared asset bytes for ${asset.id}.`);
     const extension = extensionOf(asset.path);
     const type = extension === undefined ? undefined : TYPES[extension];
-    if (type === undefined || type.kind !== asset.kind) throw new Error(`Unsupported declared asset ${asset.id}.`);
+    if (type === undefined || type.kind !== asset.kind || type.kind === 'video') throw new Error(`Unsupported declared asset ${asset.id}.`);
     const preview = extension === 'svg' ? sanitisedSvg(bytes) : bytes;
     const url = URL.createObjectURL(new Blob([preview as unknown as BlobPart], { type: type.mime }));
     this.#previewUrls.set(asset.id, url);
@@ -124,7 +140,7 @@ export class AssetManager {
 }
 
 /** Local-file controls; the fork continues to own canvas selection and history. */
-export function createAssetPanel(host: HTMLElement, manager: AssetManager, editor: ImageEditor, changed: () => void): HTMLElement {
+export function createAssetPanel(host: HTMLElement, manager: AssetManager, editor: ImageEditor, changed: () => void, isReferenced?: (assetId: string) => boolean): HTMLElement {
   const root = document.createElement('section');
   const select = document.createElement('select');
   const importInput = input('data-vigilia-asset-import');
@@ -140,6 +156,11 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
   };
   const add = async (file: File, replaceSelected: boolean): Promise<void> => {
     const asset = await manager.import(file);
+    if (asset.kind === 'video') {
+      changed();
+      render();
+      return;
+    }
     const target = editor.canvas.getActiveObject();
     if (replaceSelected && target instanceof FabricImage && objectAssetReference(target) !== undefined) {
       const url = manager.previewUrl(asset.id);
@@ -164,7 +185,7 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
   replaceInput.addEventListener('change', () => { const file = replaceInput.files?.[0]; if (file !== undefined) void add(file, true); replaceInput.value = ''; });
   remove.addEventListener('click', () => {
     const id = select.value;
-    if ([...editor.canvas.getObjects()].some((object) => objectAssetReference(object)?.assetId === id)) return;
+    if ([...editor.canvas.getObjects()].some((object) => objectAssetReference(object)?.assetId === id) || isReferenced?.(id) === true) return;
     if (manager.remove(id)) { changed(); render(); }
   });
   render();
@@ -174,7 +195,7 @@ export function createAssetPanel(host: HTMLElement, manager: AssetManager, edito
 function input(data: 'data-vigilia-asset-import' | 'data-vigilia-asset-replace'): HTMLInputElement {
   const element = document.createElement('input');
   element.type = 'file';
-  element.accept = '.png,.jpg,.jpeg,.webp,.svg';
+  element.accept = '.png,.jpg,.jpeg,.webp,.svg,.mp4,.webm';
   element.hidden = true;
   element.setAttribute(data, '');
   return element;

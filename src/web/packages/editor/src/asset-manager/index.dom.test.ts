@@ -36,6 +36,30 @@ describe('AssetManager', () => {
     expect(manager.assets).toEqual({});
   });
 
+  it('retains MP4 bytes and supplies a disposable background source', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:loop');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const manager = new AssetManager();
+
+    const asset = await manager.import(file(new Uint8Array([0, 1, 2]), 'loop.mp4', 'video/mp4'));
+    const source = manager.backgroundSource(asset.id);
+
+    expect(asset).toMatchObject({ kind: 'video', path: 'assets/loop.mp4' });
+    expect(manager.assets['assets/loop.mp4']).toEqual(new Uint8Array([0, 1, 2]));
+    expect(source?.url).toBe('blob:loop');
+    source?.dispose?.();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:loop');
+    expect(createObjectURL).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a MIME type that does not match a WebM extension', async () => {
+    const manager = new AssetManager();
+
+    await expect(manager.import(file(PNG, 'loop.webm', 'video/mp4'))).rejects.toThrow('MIME type');
+
+    expect(manager.assets).toEqual({});
+  });
+
   it('revokes each preview URL when the manager is destroyed', async () => {
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:logo');
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);

@@ -31,6 +31,7 @@ export interface ForkShell {
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
+  setBackgroundMedia(assets: readonly AssetReference[], resolveAsset: (assetId: string) => BackgroundMediaSource | undefined): void;
   setGlobals(globals: Globals | undefined): void;
   setFitMode(fitMode: FitMode): void;
   destroy(): void;
@@ -138,11 +139,12 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
     host.replaceChildren(container);
     container.id = FORK_CONTAINER_ID;
     container.style.visibility = '';
-    const mediaResolve = resolveAsset;
-    const media = mediaResolve === undefined ? undefined : mountBackgroundMedia({
+    let mediaAssets = assets ?? envelope?.assets;
+    let mediaResolve = resolveAsset;
+    let media = mediaResolve === undefined ? undefined : mountBackgroundMedia({
       host: container,
       artboard: currentArtboard,
-      assets: assets ?? envelope?.assets,
+      assets: mediaAssets,
       resolveAsset: mediaResolve,
     });
 
@@ -163,8 +165,14 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
         applyArtboardPaint(editor, host, currentArtboard, globals);
         if (media !== undefined && mediaResolve !== undefined) {
-          media.update({ artboard: currentArtboard, assets: assets ?? envelope?.assets, resolveAsset: mediaResolve });
+          media.update({ artboard: currentArtboard, assets: mediaAssets, resolveAsset: mediaResolve });
         }
+      },
+      setBackgroundMedia(nextAssets, nextResolveAsset) {
+        media?.destroy();
+        mediaAssets = nextAssets;
+        mediaResolve = nextResolveAsset;
+        media = mountBackgroundMedia({ host: container, artboard: currentArtboard, assets: mediaAssets, resolveAsset: mediaResolve });
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;

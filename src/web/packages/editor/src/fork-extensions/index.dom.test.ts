@@ -60,7 +60,7 @@ describe('ForkExtensions', () => {
   it('owns the semantic layer panel lifecycle', () => {
     const editor = { canvas: { on: vi.fn(), off: vi.fn() } };
     const extensions = new ForkExtensions({
-      shell: { editor, scene: {}, snapshot: vi.fn(() => envelope) } as never,
+      shell: { editor, scene: {}, snapshot: vi.fn(() => envelope), setBackgroundMedia: vi.fn() } as never,
       source: {} as never,
       envelope,
       panelHost: document.body,
@@ -85,7 +85,7 @@ describe('ForkExtensions', () => {
     };
 
     const extensions = new ForkExtensions({
-      shell: { editor, scene: {}, snapshot: vi.fn(() => envelope) } as never,
+      shell: { editor, scene: {}, snapshot: vi.fn(() => envelope), setBackgroundMedia: vi.fn() } as never,
       source: {} as never,
       envelope,
       panelHost: document.body,

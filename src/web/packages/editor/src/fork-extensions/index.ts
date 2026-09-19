@@ -122,7 +122,14 @@ export class ForkExtensions {
       panelHost: options.panelHost,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
-    this.#assetPanel = createAssetPanel(options.panelHost, this.#assets, options.shell.editor, () => {});
+    this.#assetPanel = createAssetPanel(
+      options.panelHost,
+      this.#assets,
+      options.shell.editor,
+      () => this.#refreshBackgroundMedia(options.shell),
+      (assetId) => this.#envelope.artboard.backgroundMedia?.assetId === assetId,
+    );
+    this.#refreshBackgroundMedia(options.shell);
     this.#persistence = new PersistenceManager(this.#snapshot(options.shell), this.#assets.assets);
     this.#shortcuts.register('file.save', () => {
       void this.#save(options);
@@ -247,6 +254,11 @@ export class ForkExtensions {
     shell.setArtboard(artboard);
     this.#artboard.render(artboard);
   }
+
+  #refreshBackgroundMedia(shell: ForkShell): void {
+    shell.setBackgroundMedia(this.#assets.declarations, (assetId) => this.#assets.backgroundSource(assetId));
+  }
+
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
     this.#envelope = { ...this.#envelope, bindings: { ...this.#envelope.bindings, [id]: bindings } };

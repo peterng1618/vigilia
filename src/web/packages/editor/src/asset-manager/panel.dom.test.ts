@@ -16,4 +16,15 @@ describe('asset panel', () => {
     (panel.querySelector('[data-vigilia-asset-remove]') as HTMLButtonElement).click();
     expect(remove).not.toHaveBeenCalled();
   });
+
+  it('refuses removal when an artboard background references the asset', () => {
+    const remove = vi.fn(() => false);
+    const manager = { declarations: [{ id: 'hero', kind: 'image', path: 'assets/hero.png' }], remove };
+    const editor = { canvas: { getObjects: () => [] } };
+
+    const panel = createAssetPanel(document.body, manager as never, editor as never, vi.fn(), (id) => id === 'hero');
+    (panel.querySelector('[data-vigilia-asset-remove]') as HTMLButtonElement).click();
+
+    expect(remove).not.toHaveBeenCalled();
+  });
 });
