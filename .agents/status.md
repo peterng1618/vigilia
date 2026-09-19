@@ -8,13 +8,14 @@ Spec 0014 is review-only; 0015 is implemented.
 
 | Check | Result |
 |---|---|
-| Unit tests | 857 passed across 55 files |
-| Typechecks | six projects clean |
+| Unit tests | 868 passed across 59 files |
+| Typechecks | seven projects clean |
 | Builds | player, editor and host clean |
 | Player size gate | 263.0 KB gzip JS; 0.0 KB gzip CSS |
-| Visual review | active-fork chart-paint capture inspected; selected gauge and token selectors visible |
+| Visual review | refreshed active-fork captures inspected; layers/arrange and existing property states are visible |
 
-Chart-paint has current typecheck, unit, editor-build and focused visual evidence.
+Layer/capture has current typecheck, units, builds and size evidence. Browser
+automation remains unavailable in this runtime.
 
 ## Current product state
 
