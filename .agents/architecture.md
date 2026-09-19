@@ -37,6 +37,7 @@ Current Vigilia-owned extensions are:
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Artboard size/preview fit/paint | `editor/src/artboard-panel.ts` |
+| Semantic layer projection | `editor/src/layer-panel.ts` |
 | Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
 | Extension composition | `editor/src/fork-extensions/` |
@@ -49,8 +50,8 @@ only when the corresponding feature is implemented; do not document planned
 classes as current architecture.
 
 The retired custom-editor implementation is deleted. The fork retains generic
-z-order, grouping and locks; the pending Vigilia layer panel will project that
-state without a parallel scene tree.
+z-order, grouping and locks; the Vigilia layer panel projects that state without
+a parallel scene tree.
 
 ## Runtime data flow
 

@@ -5,6 +5,7 @@ import { createPalettePanel, type PalettePanel } from '../palette-panel.js';
 import { reassignObjectPaletteReferences, reassignObjectTypePresetReferences } from '@vigilia/scene-fabric';
 import { createTypePresetPanel, type TypePresetPanel, type TypePresets } from '../type-preset-panel.js';
 import { createNewObjectPanel, type NewObjectPanel } from '../new-object-panel.js';
+import { createLayerPanel, type LayerPanel } from '../layer-panel.js';
 import { ChartManager } from '../chart-manager/index.js';
 import { PersistenceManager, confirmDocumentReplacement } from '../persistence-manager/index.js';
 import { ShortcutManager } from '../shortcut-manager/index.js';
@@ -16,6 +17,7 @@ export class ForkExtensions {
   readonly #palette: PalettePanel;
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
+  readonly #layers: LayerPanel;
   readonly #persistence: PersistenceManager;
   readonly #shortcuts = new ShortcutManager();
   #envelope: FabricThemeEnvelopeInput;
@@ -34,6 +36,7 @@ export class ForkExtensions {
     }
     this.#envelope = options.envelope;
     this.#newObjects = createNewObjectPanel(options.panelHost, options.shell.editor, this.#envelope.globals);
+    this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
     this.#artboard = createArtboardPanel(
       options.panelHost,
       this.#envelope.globals,
@@ -74,6 +77,7 @@ export class ForkExtensions {
     this.#palette.root.remove();
     this.#types.root.remove();
     this.#newObjects.root.remove();
+    this.#layers.destroy();
   }
 
   async #open(options: {

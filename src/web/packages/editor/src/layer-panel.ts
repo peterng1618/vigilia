@@ -1,0 +1,127 @@
+import { Group, type FabricObject } from 'fabric/es';
+import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+
+export interface LayerPanel {
+  readonly root: HTMLElement;
+  destroy(): void;
+}
+
+interface LayerObject extends FabricObject {
+  readonly id?: string;
+  readonly locked?: boolean;
+}
+
+interface LayerEntry {
+  readonly object: LayerObject;
+  readonly select: LayerObject;
+  readonly ancestors: readonly LayerObject[];
+}
+
+/** Projects Fabric's current hierarchy without maintaining a second scene tree. */
+export function createLayerPanel(host: HTMLElement, editor: ImageEditor): LayerPanel {
+  const root = document.createElement('section');
+  const redraw = (): void => render(root, editor);
+  const events = [
+    'selection:created', 'selection:updated', 'selection:cleared',
+    'object:added', 'object:removed', 'object:modified',
+  ] as const;
+
+  root.dataset['vigiliaPanel'] = 'layers';
+  host.append(root);
+  for (const event of events) editor.canvas.on(event, redraw);
+  redraw();
+
+  return {
+    root,
+    destroy() {
+      for (const event of events) editor.canvas.off(event, redraw);
+      root.remove();
+    },
+  };
+}
+
+function render(root: HTMLElement, editor: ImageEditor): void {
+  root.replaceChildren();
+  const heading = document.createElement('h2');
+  heading.textContent = 'Layers';
+  root.append(heading);
+  for (const entry of entries(editor.canvas.getObjects() as LayerObject[])) {
+    root.append(row(entry, editor));
+  }
+}
+
+function entries(objects: readonly LayerObject[], ancestors: readonly LayerObject[] = [], select?: LayerObject): readonly LayerEntry[] {
+  return objects.slice().reverse().flatMap((object) => {
+    const entry: LayerEntry = { object, select: select ?? object, ancestors };
+    const children = object instanceof Group
+      ? entries(object.getObjects() as LayerObject[], [...ancestors, object], object)
+      : [];
+    return [entry, ...children];
+  });
+}
+
+function row(entry: LayerEntry, editor: ImageEditor): HTMLElement {
+  const root = document.createElement('div');
+  const id = objectId(entry.object);
+  const { visible, locked } = effectiveState(entry);
+  root.dataset['vigiliaLayer'] = id;
+  root.textContent = `${entry.object.type} ${id}`;
+  root.setAttribute('aria-pressed', String(editor.canvas.getActiveObject() === entry.select));
+  root.addEventListener('click', () => select(entry, editor));
+
+  root.append(
+    control(visible ? 'hide' : 'show', visible ? 'Hide' : 'Show', () => {
+      if (visible) entry.object.set('visible', false);
+      else reveal(entry);
+      entry.object.setCoords();
+      select(entry, editor);
+      editor.historyManager.saveState();
+    }),
+    control(locked ? 'unlock' : 'lock', locked ? 'Unlock' : 'Lock', () => {
+      if (locked) editor.objectLockManager.unlockObject({ object: entry.select });
+      else editor.objectLockManager.lockObject({ object: entry.select });
+      redraw(editor);
+    }),
+    control('front', 'Front', () => { editor.layerManager.bringToFront(entry.select); redraw(editor); }),
+    control('forward', 'Forward', () => { editor.layerManager.bringForward(entry.select); redraw(editor); }),
+    control('backward', 'Backward', () => { editor.layerManager.sendBackwards(entry.select); redraw(editor); }),
+    control('back', 'Back', () => { editor.layerManager.sendToBack(entry.select); redraw(editor); }),
+  );
+  return root;
+}
+
+function control(action: string, label: string, handler: () => void): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset['vigiliaLayerAction'] = action;
+  button.textContent = label;
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    handler();
+  });
+  return button;
+}
+
+function select(entry: LayerEntry, editor: ImageEditor): void {
+  editor.canvas.setActiveObject(entry.select);
+  editor.canvas.requestRenderAll();
+}
+
+function reveal(entry: LayerEntry): void {
+  for (const object of [...entry.ancestors, entry.object]) {
+    if (!object.visible) object.set('visible', true);
+  }
+}
+
+function effectiveState(entry: LayerEntry): { readonly visible: boolean; readonly locked: boolean } {
+  const path = [...entry.ancestors, entry.object];
+  return { visible: path.every((object) => object.visible), locked: path.some((object) => object.locked) };
+}
+
+function redraw(editor: ImageEditor): void {
+  editor.canvas.requestRenderAll();
+}
+
+function objectId(object: LayerObject): string {
+  return object.id ?? 'unidentified';
+}

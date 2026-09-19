@@ -1,0 +1,93 @@
+// @vitest-environment jsdom
+import { Group, Rect, Textbox } from 'fabric/es';
+import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createLayerPanel } from './layer-panel.js';
+
+describe('semantic layer panel', () => {
+  afterEach(() => document.body.replaceChildren());
+
+  it('projects paint order and navigates a child through its owning group', () => {
+    const { canvas, foreground, group } = editorFixture();
+    const panel = createLayerPanel(document.body, canvas);
+
+    expect([...panel.root.querySelectorAll<HTMLElement>('[data-vigilia-layer]')].map((row) => row.dataset['vigiliaLayer']))
+      .toEqual(['foreground', 'group', 'child', 'background']);
+    expect(panel.root.textContent).toContain('foreground');
+    expect(panel.root.textContent).toContain('group');
+    expect(panel.root.textContent).toContain('child');
+
+    layer(panel.root, 'foreground').click();
+    expect(canvas.canvas.setActiveObject).toHaveBeenCalledWith(foreground);
+
+    layer(panel.root, 'child').click();
+    expect(canvas.canvas.setActiveObject).toHaveBeenLastCalledWith(group);
+  });
+
+  it('reveals a hidden parent path and delegates layer controls to the fork', () => {
+    const { canvas, group, child, foreground } = editorFixture();
+    group.set('visible', false);
+    const panel = createLayerPanel(document.body, canvas);
+
+    action(layer(panel.root, 'child'), 'show').click();
+    expect(group.visible).toBe(true);
+    expect(child.visible).toBe(true);
+    expect(canvas.canvas.requestRenderAll).toHaveBeenCalledTimes(1);
+    expect(canvas.historyManager.saveState).toHaveBeenCalledTimes(1);
+    expect(canvas.canvas.setActiveObject).toHaveBeenCalledWith(group);
+
+    action(layer(panel.root, 'foreground'), 'lock').click();
+    action(layer(panel.root, 'foreground'), 'front').click();
+    expect(canvas.objectLockManager.lockObject).toHaveBeenCalledWith({ object: foreground });
+    expect(canvas.layerManager.bringToFront).toHaveBeenCalledWith(foreground);
+  });
+
+  it('refreshes from canvas events and unregisters them on teardown', () => {
+    const { canvas, listeners } = editorFixture();
+    const panel = createLayerPanel(document.body, canvas);
+
+    listeners.get('object:modified')!();
+    listeners.get('selection:created')!();
+    expect(canvas.canvas.getObjects).toHaveBeenCalledTimes(3);
+
+    panel.destroy();
+    expect(canvas.canvas.off).toHaveBeenCalledTimes(6);
+    expect(panel.root.isConnected).toBe(false);
+  });
+});
+
+function editorFixture() {
+  const background = new Rect();
+  background.set('id', 'background');
+  const child = new Textbox('child');
+  child.set('id', 'child');
+  const group = new Group([child]);
+  group.set('id', 'group');
+  const foreground = new Rect();
+  foreground.set('id', 'foreground');
+  const listeners = new Map<string, () => void>();
+  const canvas = {
+    canvas: {
+      getObjects: vi.fn(() => [background, group, foreground]),
+      getActiveObject: vi.fn(),
+      setActiveObject: vi.fn(),
+      requestRenderAll: vi.fn(),
+      on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
+      off: vi.fn(),
+    },
+    layerManager: {
+      bringToFront: vi.fn(), bringForward: vi.fn(), sendToBack: vi.fn(), sendBackwards: vi.fn(),
+    },
+    objectLockManager: { lockObject: vi.fn(), unlockObject: vi.fn() },
+    historyManager: { saveState: vi.fn() },
+  } as unknown as ImageEditor;
+  return { canvas, background, child, group, foreground, listeners };
+}
+
+function layer(root: HTMLElement, id: string): HTMLElement {
+  return root.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+}
+
+function action(row: HTMLElement, name: string): HTMLButtonElement {
+  return row.querySelector<HTMLButtonElement>(`[data-vigilia-layer-action="${name}"]`)!;
+}

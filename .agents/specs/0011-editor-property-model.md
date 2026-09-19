@@ -127,13 +127,15 @@ Implemented:
 - fork-created text command with derived v2 references and save coverage.
 - chart paint persisted as palette references (or threshold bands of solid
   palette references), resolved only while building engine options.
+- semantic layer projection of current Fabric hierarchy, inherited state,
+  selection, and fork-owned lock/order actions.
 
 Still transitional/not implemented:
 
 - domain property UI for assets;
 - chart paint/threshold controls;
 - broader Vigilia new-element creation commands beyond the current text command.
-- semantic layer tree and selection-relative align/distribute commands.
+- selection-relative align/distribute commands.
 
 Because nothing has been released, the development v2 semantic shape may break
 while this spec is completed. The Fabric-scene envelope boundary itself remains

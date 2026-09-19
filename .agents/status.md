@@ -53,6 +53,9 @@ focused active-fork visual evidence.
   size/preview controls composed by `ForkExtensions`.
 - The editor's narrow fork declaration exposes the fork-owned layer ordering,
   locking and history APIs required by the accepted layer workflow.
+- The semantic layer panel derives top-most-first Fabric hierarchy and effective
+  parent state, and routes selection, visibility recovery, lock and order
+  actions without a parallel persisted tree. Arrange commands remain pending.
 - The fork's New/Open/Save dispatcher no longer imports the fallback action or
   keyboard model; it owns only product file shortcuts.
 - The inactive legacy `main.ts` route and its size exception are deleted; the
