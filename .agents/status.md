@@ -46,11 +46,12 @@ automation remains unavailable in this runtime.
 
 ## Next
 
-1. Finish asset/property authoring in spec 0011.
-2. Connect live telemetry to the editor without authored-history pollution.
-3. Integrate production video.
-4. Revisit remaining spec-0014 candidates only when needed.
-5. Modernize the shell per plan §35 only after the authoring core is stable.
+1. Execute `docs/superpowers/plans/2026-09-19-hosted-theme-authoring.md`:
+   host package storage, package-only editor save/open, live editor preview and
+   player proof for existing authored features.
+2. Implement image/SVG, font and video authoring only after that workflow works.
+3. Revisit remaining spec-0014 candidates only when needed.
+4. Modernize the shell per plan §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 
