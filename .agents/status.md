@@ -51,6 +51,8 @@ focused active-fork visual evidence.
   v2 dashboard document through the same guard.
 - Current Vigilia extensions are the chart, persistence, shortcut and artboard
   size/preview controls composed by `ForkExtensions`.
+- The editor's narrow fork declaration exposes the fork-owned layer ordering,
+  locking and history APIs required by the accepted layer workflow.
 - The fork's New/Open/Save dispatcher no longer imports the fallback action or
   keyboard model; it owns only product file shortcuts.
 - The inactive legacy `main.ts` route and its size exception are deleted; the

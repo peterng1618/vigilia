@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
+import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 import { disposeScene, reviveScene, reviveThemeEnvelope, serialiseScene } from '@vigilia/scene-fabric';
 import { loadDemoTheme } from '@vigilia/fake-source';
 
@@ -8,6 +9,14 @@ const initEditor = vi.hoisted(() => vi.fn());
 vi.mock('@anu3ev/fabric-image-editor', () => ({ default: initEditor }));
 
 import { mountForkShell } from './fork-shell.js';
+
+function invokesForkLayerManagers(editor: ImageEditor): void {
+  editor.layerManager.bringToFront();
+  editor.objectLockManager.lockObject();
+  editor.historyManager.saveState();
+}
+
+void invokesForkLayerManagers;
 
 describe('the adopted editor shell', () => {
   it('installs the disposal-aware history hook at the fork boundary', async () => {

@@ -7,6 +7,19 @@ declare module '@anu3ev/fabric-image-editor' {
     readonly textManager: {
       addText(options?: Readonly<Record<string, unknown>>): FabricObject;
     };
+    readonly layerManager: {
+      bringToFront(object?: FabricObject): void;
+      bringForward(object?: FabricObject): void;
+      sendToBack(object?: FabricObject): void;
+      sendBackwards(object?: FabricObject): void;
+    };
+    readonly objectLockManager: {
+      lockObject(input?: { readonly object?: FabricObject }): void;
+      unlockObject(input?: { readonly object?: FabricObject }): void;
+    };
+    readonly historyManager: {
+      saveState(): void;
+    };
     destroy(): void;
   }
 
