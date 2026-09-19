@@ -11,23 +11,24 @@ const baseline = {
 } as const;
 
 describe('PersistenceManager', () => {
-  it('detects authored scene and envelope changes rather than fork events', () => {
-    const persistence = new PersistenceManager(baseline);
+  it('detects authored scene, envelope, and asset-byte changes', () => {
+    const persistence = new PersistenceManager(baseline, {});
 
-    expect(persistence.isDirty(baseline)).toBe(false);
+    expect(persistence.isDirty(baseline, {})).toBe(false);
     expect(persistence.isDirty({
       ...baseline,
       scene: { ...baseline.scene, objects: [{ type: 'Rect', id: 'panel' }] },
-    })).toBe(true);
+    }, {})).toBe(true);
     expect(persistence.isDirty({
       ...baseline,
       metadata: { name: 'Renamed theme' },
-    })).toBe(true);
+    }, {})).toBe(true);
+    expect(persistence.isDirty(baseline, { 'assets/logo.png': new Uint8Array([1]) })).toBe(true);
   });
 
   it('saves empty-asset themes as valid .vigilia-theme packages', async () => {
     let downloaded: { name: string; bytes: Uint8Array } | undefined;
-    const manager = new PersistenceManager(baseline, {
+    const manager = new PersistenceManager(baseline, {}, {
       downloader: (name, bytes) => {
         downloaded = { name, bytes };
       },
@@ -39,20 +40,20 @@ describe('PersistenceManager', () => {
       metadata: { name: 'Living Room' },
     };
 
-    await manager.save(changedEnvelope);
+    await manager.save(changedEnvelope, {});
     expect(downloaded?.name).toBe('living-room.vigilia-theme');
     expect(readThemePackage(downloaded!.bytes)).toMatchObject({
       ok: true,
       envelope: changedEnvelope,
     });
-    expect(manager.isDirty(changedEnvelope)).toBe(false);
+    expect(manager.isDirty(changedEnvelope, {})).toBe(false);
   });
 
   it('marks theme as clean after remote save', () => {
-    const manager = new PersistenceManager(baseline);
+    const manager = new PersistenceManager(baseline, {});
     const changed = { ...baseline, id: 'changed' };
-    expect(manager.isDirty(changed)).toBe(true);
-    manager.markSaved(changed);
-    expect(manager.isDirty(changed)).toBe(false);
+    expect(manager.isDirty(changed, {})).toBe(true);
+    manager.markSaved(changed, {});
+    expect(manager.isDirty(changed, {})).toBe(false);
   });
 });

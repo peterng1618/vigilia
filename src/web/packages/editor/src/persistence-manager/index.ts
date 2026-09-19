@@ -20,27 +20,28 @@ export class PersistenceManager {
 
   constructor(
     initial: FabricThemeEnvelope,
+    initialAssets: Readonly<Record<string, Uint8Array>> = {},
     options?: { readonly downloader?: Downloader },
   ) {
-    this.#savedDocument = documentKey(initial);
+    this.#savedDocument = documentKey(initial, initialAssets);
     this.#downloader = options?.downloader ?? defaultDownloader;
   }
 
-  isDirty(theme: FabricThemeEnvelope): boolean {
-    return documentKey(theme) !== this.#savedDocument;
+  isDirty(theme: FabricThemeEnvelope, assets: Readonly<Record<string, Uint8Array>> = {}): boolean {
+    return documentKey(theme, assets) !== this.#savedDocument;
   }
 
-  markSaved(theme: FabricThemeEnvelope): void {
-    this.#savedDocument = documentKey(theme);
+  markSaved(theme: FabricThemeEnvelope, assets: Readonly<Record<string, Uint8Array>> = {}): void {
+    this.#savedDocument = documentKey(theme, assets);
   }
 
-  async save(theme: FabricThemeEnvelope): Promise<void> {
-    const result = serializeThemePackage(theme);
+  async save(theme: FabricThemeEnvelope, assets: Readonly<Record<string, Uint8Array>> = {}): Promise<void> {
+    const result = serializeThemePackage(theme, assets);
     if (!result.ok) {
       throw new Error(result.message);
     }
     this.#downloader(fileNameFor(theme), result.bytes);
-    this.#savedDocument = documentKey(theme);
+    this.#savedDocument = documentKey(theme, assets);
   }
 
   destroy(): void {}
@@ -64,6 +65,6 @@ export async function confirmDocumentReplacement(): Promise<'save' | 'discard' |
   });
 }
 
-function documentKey(theme: FabricThemeEnvelope): string {
-  return JSON.stringify(theme);
+function documentKey(theme: FabricThemeEnvelope, assets: Readonly<Record<string, Uint8Array>>): string {
+  return JSON.stringify([theme, Object.entries(assets).sort(([a], [b]) => a.localeCompare(b)).map(([path, bytes]) => [path, [...bytes]])]);
 }

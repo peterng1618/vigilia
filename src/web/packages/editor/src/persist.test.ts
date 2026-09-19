@@ -34,13 +34,13 @@ describe('parseThemePackage', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('rejects asset-bearing packages until asset authoring is supported', () => {
+  it('preserves each declared package asset', () => {
     const envelopeWithAssets: FabricThemeEnvelope = {
       ...validEnvelope,
       assets: [
         {
           id: 'img1',
-          kind: 'image',
+          kind: 'image' as const,
           path: 'assets/image.png',
         },
       ],
@@ -53,10 +53,8 @@ describe('parseThemePackage', () => {
     if (!pkg.ok) return;
 
     const result = parseThemePackage(pkg.bytes);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.message).toContain('Asset authoring is not yet supported');
-    }
+    expect(result).toMatchObject({ ok: true, envelope: envelopeWithAssets });
+    if (result.ok) expect(result.assets['assets/image.png']).toEqual(new Uint8Array([1, 2, 3]));
   });
 });
 
@@ -70,18 +68,19 @@ describe('serializeThemePackage', () => {
     }
   });
 
-  it('refuses envelopes with assets', () => {
-    const result = serializeThemePackage({
+  it('serializes assets with their declaration', () => {
+    const envelope = {
       ...validEnvelope,
       assets: [
         {
           id: 'img1',
-          kind: 'image',
+          kind: 'image' as const,
           path: 'assets/test.png',
         },
       ],
-    });
-    expect(result.ok).toBe(false);
+    };
+    const result = serializeThemePackage(envelope, { 'assets/test.png': new Uint8Array([1, 2, 3]) });
+    expect(result).toMatchObject({ ok: true });
   });
 });
 
