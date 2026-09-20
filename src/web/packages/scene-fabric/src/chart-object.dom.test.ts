@@ -82,7 +82,8 @@ describe("constructing a chart", () => {
       1_000,
     );
     const chart = new VigiliaChart(chartOptions({ option }));
-    const element = (chart as unknown as { _element: HTMLCanvasElement })._element;
+    const element = (chart as unknown as { _element: HTMLCanvasElement })
+      ._element;
 
     // At the default 2x raster scale, the five authored-pixel gutter is ten
     // backing pixels; Fabric still draws only the first 600 pixels.

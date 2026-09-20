@@ -298,7 +298,10 @@ export class VigiliaChart extends FabricObject {
     }
 
     const size = this._backingSize();
-    if (this._element?.width === size.width && this._element.height === size.height) {
+    if (
+      this._element?.width === size.width &&
+      this._element.height === size.height
+    ) {
       return;
     }
     chart.resize(size);

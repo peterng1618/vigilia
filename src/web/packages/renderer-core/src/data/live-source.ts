@@ -108,10 +108,13 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     const timestamp = now();
     const presentationTimestamp = new Date(timestamp).toISOString();
     store.ingest(
-      result.batch.samples.map((entry) => [
-        entry.semanticKey,
-        { ...entry.sample, presentationTimestamp },
-      ] as const),
+      result.batch.samples.map(
+        (entry) =>
+          [
+            entry.semanticKey,
+            { ...entry.sample, presentationTimestamp },
+          ] as const,
+      ),
       timestamp,
     );
 

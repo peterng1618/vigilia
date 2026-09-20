@@ -49,7 +49,9 @@ export function createForkChartPanel(
           button.type = "button";
           button.dataset["vigiliaChartAspect"] = String(ratio);
           button.textContent = `${ratio}:1`;
-          button.addEventListener("click", () => onAspectChange(chart.id, ratio));
+          button.addEventListener("click", () =>
+            onAspectChange(chart.id, ratio),
+          );
           aspect.append(button);
         }
         root.append(aspect);

@@ -195,12 +195,7 @@ export function buildLineOption(
     series: series.map((input, index) => ({
       type: "line" as const,
       name: input.label ?? input.sensorId,
-      data: toSeriesPoints(
-        input.samples,
-        settings,
-        nowMs,
-        windowStart,
-      ),
+      data: toSeriesPoints(input.samples, settings, nowMs, windowStart),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
       smooth: settings.interpolation === "smooth",

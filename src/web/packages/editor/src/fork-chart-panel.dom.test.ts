@@ -28,9 +28,15 @@ describe("fork chart property panel", () => {
       panel.root.querySelector('[data-vigilia-chart-setting="windowSeconds"]')
         ?.previousSibling?.textContent,
     ).toBe("Visible history (s)");
-    expect(panel.root.querySelector('[data-vigilia-chart-aspect="2"]')).not.toBeNull();
-    expect(panel.root.querySelector('[data-vigilia-chart-aspect="3"]')).not.toBeNull();
-    expect(panel.root.querySelector('[data-vigilia-chart-aspect="4"]')).not.toBeNull();
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-aspect="2"]'),
+    ).not.toBeNull();
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-aspect="3"]'),
+    ).not.toBeNull();
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-aspect="4"]'),
+    ).not.toBeNull();
     panel.root
       .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="2"]')!
       .click();
@@ -40,7 +46,12 @@ describe("fork chart property panel", () => {
   it("derives controls from the shared field descriptors and returns authored settings", () => {
     const change = vi.fn();
     const bindingChange = vi.fn();
-    const panel = createForkChartPanel(document.body, change, bindingChange, vi.fn());
+    const panel = createForkChartPanel(
+      document.body,
+      change,
+      bindingChange,
+      vi.fn(),
+    );
     const content = {
       family: "gauge" as const,
       settings: {

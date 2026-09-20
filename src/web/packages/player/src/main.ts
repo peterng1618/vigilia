@@ -35,11 +35,7 @@ if (!artboardHost) {
   throw new Error("Artboard host element is missing.");
 }
 
-const FIXTURE_THEME_IDS = new Set([
-  "stress",
-  "portrait-cover",
-  "assets",
-]);
+const FIXTURE_THEME_IDS = new Set(["stress", "portrait-cover", "assets"]);
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
   const requested = parameters.get("theme");
@@ -57,13 +53,7 @@ async function start(host: HTMLElement): Promise<void> {
     if (!result.ok) {
       throw new Error(`Fixture theme "${requested}" is invalid.`);
     }
-    startFixtureTheme(
-      host,
-      result.document,
-      parameters,
-      requested,
-      animate,
-    );
+    startFixtureTheme(host, result.document, parameters, requested, animate);
     return;
   }
 

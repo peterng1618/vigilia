@@ -168,7 +168,11 @@ export class ChartManager {
   #resizeToAspect(id: string, ratio: number): void {
     const chart = this.#chartFor(id);
     const width = chart === undefined ? 0 : chart.width * chart.scaleX;
-    if (!(chart instanceof VigiliaChart) || !Number.isFinite(width) || width <= 0) {
+    if (
+      !(chart instanceof VigiliaChart) ||
+      !Number.isFinite(width) ||
+      width <= 0
+    ) {
       return;
     }
     chart.resizeTo(width, width / ratio);
@@ -181,7 +185,12 @@ export class ChartManager {
     if (!(chart instanceof VigiliaChart)) return;
     const width = chart.width * chart.scaleX;
     const height = chart.height * chart.scaleY;
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
       return;
     }
     chart.resizeTo(width, height);
