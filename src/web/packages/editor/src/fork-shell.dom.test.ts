@@ -37,6 +37,7 @@ describe('the adopted editor shell', () => {
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
       defaultScale: 0.625,
+      resetObjectFitByDoubleClick: false,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,
@@ -77,7 +78,7 @@ describe('the adopted editor shell', () => {
   });
 
   it('validates and revives a supplied Fabric envelope before extensions adopt it', async () => {
-    const editor = { canvas: { backgroundColor: undefined as string | undefined, setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    const editor = { canvas: { backgroundColor: undefined as string | undefined, setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, historyManager: { resetHistory: vi.fn() }, destroy: vi.fn() };
     initEditor.mockResolvedValue(editor);
     const sceneFabric = await import('@vigilia/scene-fabric');
     const revive = vi.spyOn(sceneFabric, 'reviveThemeEnvelope').mockResolvedValue();
@@ -97,6 +98,7 @@ describe('the adopted editor shell', () => {
     await mountForkShell({ host, artboard: envelope.artboard, envelope });
 
     expect(revive).toHaveBeenCalledWith(editor.canvas, envelope);
+    expect(editor.historyManager.resetHistory).toHaveBeenCalledTimes(1);
     expect(adapter).toHaveBeenCalledWith({ canvas: editor.canvas });
     expect(editor.canvas.backgroundColor).toBe('#101216');
     expect(host.style.background).toBe('rgb(0, 0, 0)');

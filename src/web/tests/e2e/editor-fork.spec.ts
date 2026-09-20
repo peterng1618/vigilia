@@ -438,17 +438,23 @@ test.describe('Fabric editor route', () => {
         globals: { palette: { none: { name: 'None', value: { kind: 'solid', color: 'transparent' } }, accent: { name: 'Accent', value: { kind: 'solid', color: '#00b8d9' } } } },
         scene: {
           version: '7.4.0',
-          objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, fill: '#00b8d9', vigiliaPaint: { fill: 'palette.accent' }, originX: 'left', originY: 'top' }],
+          objects: [{ type: 'Rect', id: 'panel', left: 40, top: 50, width: 60, height: 40, scaleX: 1.2, scaleY: 0.8, angle: 30, fill: '#00b8d9', vigiliaPaint: { fill: 'palette.accent' }, originX: 'left', originY: 'top' }],
         },
-      });
+    });
     await expect(page.locator('#status')).toHaveText('Opened movable.vigilia-theme');
 
     const canvas = page.locator('#vigilia-fabric-editor canvas.upper-canvas');
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     if (box === null) return;
-
     const point = (x: number, y: number) => ({ x: box.x + (x / 320) * box.width, y: box.y + (y / 180) * box.height });
+    const center = point(76, 66);
+    await page.mouse.dblclick(center.x, center.y);
+    expect(await saveEnvelope(page)).toMatchObject({ scene: { objects: [expect.objectContaining({ id: 'panel', left: 40, top: 50, scaleX: 1.2, scaleY: 0.8, angle: 30 })] } });
+
+    await page.keyboard.press('Control+z');
+    expect(leftFor(await saveEnvelope(page), 'panel')).toBeCloseTo(40, 3);
+
     const start = point(70, 70);
     const end = point(150, 70);
     await page.mouse.move(start.x, start.y);

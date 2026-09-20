@@ -6,14 +6,15 @@ import { applyArrange, canArrange } from './arrange.js';
 
 describe('selection-relative arrange actions', () => {
   it('aligns rendered left edges and preserves the active selection', () => {
-    const first = rectangle(10, 20, 20, 10);
-    const rotated = rectangle(80, 30, 20, 10, 45);
+    const first = rectangle(80, 20, 20, 10);
+    const rotated = rectangle(10, 30, 20, 10, 45);
     const last = rectangle(140, 40, 10, 20);
     const { editor, selection, historyManager } = editorFor(first, rotated, last);
+    const anchorLeft = first.getBoundingRect().left;
 
     expect(applyArrange(editor, 'align-left')).toBe(true);
     expect([first, rotated, last].map((object) => object.getBoundingRect().left)).toEqual([
-      first.getBoundingRect().left, first.getBoundingRect().left, first.getBoundingRect().left,
+      anchorLeft, anchorLeft, anchorLeft,
     ]);
     expect(editor.canvas.getActiveObject()).toBe(selection);
     expect(historyManager.saveState).toHaveBeenCalledTimes(1);

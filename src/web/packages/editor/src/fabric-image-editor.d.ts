@@ -27,6 +27,7 @@ declare module '@anu3ev/fabric-image-editor' {
     };
     readonly historyManager: {
       saveState(): void;
+      resetHistory(): void;
     };
     destroy(): void;
   }
@@ -37,6 +38,7 @@ declare module '@anu3ev/fabric-image-editor' {
     readonly editorContainerWidth?: string;
     readonly editorContainerHeight?: string;
     readonly defaultScale?: number;
+    readonly resetObjectFitByDoubleClick?: boolean;
     readonly beforeHistoryStateLoad?: (canvas: Canvas) => void | Promise<void>;
     readonly serializeHistoryState?: (canvas: Canvas) => SerialisedScene;
     readonly reviveHistoryState?: (canvas: Canvas, state: SerialisedScene) => void | Promise<void>;

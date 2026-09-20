@@ -10,13 +10,6 @@ interface ArrangeObject extends FabricObject {
   readonly locked?: boolean;
 }
 
-interface Bounds {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-}
-
 /** Moves the current Fabric selection without introducing a separate geometry model. */
 export function applyArrange(editor: ImageEditor, action: ArrangeAction): boolean {
   const active = editor.canvas.getActiveObject();
@@ -45,7 +38,8 @@ function minimum(action: ArrangeAction): number {
 }
 
 function align(objects: readonly ArrangeObject[], action: Exclude<ArrangeAction, 'distribute-x' | 'distribute-y'>): void {
-  const bounds = union(objects);
+  const anchor = objects[0]!;
+  const bounds = anchor.getBoundingRect();
   const horizontal = action === 'align-left' || action === 'align-center-x' || action === 'align-right';
   const target = horizontal
     ? action === 'align-left' ? bounds.left : action === 'align-right' ? bounds.left + bounds.width : bounds.left + bounds.width / 2
@@ -72,15 +66,6 @@ function distribute(objects: readonly ArrangeObject[], axis: 'x' | 'y'): void {
     move(object, axis === 'x' ? next - start(object, axis) : 0, axis === 'y' ? next - start(object, axis) : 0);
     next += size(object, axis) + gap;
   }
-}
-
-function union(objects: readonly ArrangeObject[]): Bounds {
-  const rectangles = objects.map((object) => object.getBoundingRect());
-  const left = Math.min(...rectangles.map((rectangle) => rectangle.left));
-  const top = Math.min(...rectangles.map((rectangle) => rectangle.top));
-  const right = Math.max(...rectangles.map((rectangle) => rectangle.left + rectangle.width));
-  const bottom = Math.max(...rectangles.map((rectangle) => rectangle.top + rectangle.height));
-  return { left, top, width: right - left, height: bottom - top };
 }
 
 function start(object: ArrangeObject, axis: 'x' | 'y'): number {

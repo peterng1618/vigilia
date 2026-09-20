@@ -118,6 +118,7 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
       editorContainerWidth: '100%',
       editorContainerHeight: '100%',
       defaultScale: initialScale ?? 1,
+      resetObjectFitByDoubleClick: false,
       beforeHistoryStateLoad: disposeScene,
       serializeHistoryState: serialiseScene,
       reviveHistoryState: reviveScene,
@@ -127,6 +128,7 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
 
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
+      editor.historyManager.resetHistory();
     }
     applyArtboardPaint(editor, host, currentArtboard, globals);
 
