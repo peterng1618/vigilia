@@ -1,6 +1,6 @@
 import type { FabricThemeEnvelope } from '@vigilia/renderer-core';
 import { describe, expect, it, vi } from 'vitest';
-import { loadHostedTheme } from './theme-loader.js';
+import { loadHostedFontAssets, loadHostedTheme } from './theme-loader.js';
 
 const envelope: FabricThemeEnvelope = {
   schemaVersion: 2,
@@ -32,5 +32,16 @@ describe('loadHostedTheme', () => {
   it('rejects an invalid hosted envelope', async () => {
     await expect(loadHostedTheme('living-room', async () => Response.json({ ...envelope, schemaVersion: 3 })))
       .rejects.toThrow('newer version');
+  });
+
+  it('fetches exact bytes for declared font assets only', async () => {
+    const theme: FabricThemeEnvelope = { ...envelope, assets: [
+      { id: 'inter-400', kind: 'font', path: 'assets/inter-400.woff2' },
+      { id: 'logo', kind: 'image', path: 'assets/logo.png' },
+    ] };
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(new Uint8Array([1, 2])));
+
+    await expect(loadHostedFontAssets('living-room', theme, fetcher)).resolves.toEqual({ 'assets/inter-400.woff2': new Uint8Array([1, 2]) });
+    expect(fetcher).toHaveBeenCalledWith('/api/themes/living-room/assets/assets%2Finter-400.woff2');
   });
 });

@@ -11,7 +11,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
 | Font editor slice | 23 focused tests, seven typechecks, editor build and inspected `editor-fork-font-trio-desktop-chromium.png` passed |
-| Hosted font route | 10 host route tests and host typecheck passed; player font retrieval remains pending |
+| Hosted font route | 10 host route tests, 13 player loader/boundary tests, and host/player typechecks passed; player FontFace lifecycle remains pending |
 | Typechecks | seven projects clean |
 | Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
 | Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
