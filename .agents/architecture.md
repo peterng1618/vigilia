@@ -40,7 +40,7 @@ Current Vigilia-owned extensions are:
 | Semantic layer projection and arrange actions | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
-| Open-package image/SVG bytes and controls | `editor/src/asset-manager/` |
+| Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
@@ -49,6 +49,15 @@ Current Vigilia-owned extensions are:
 Media does **not** yet have an active fork-extension owner. Create one only when
 its authoring feature is implemented; do not document planned classes as current
 architecture.
+
+## Approved packaged-font ownership
+
+Not implemented. The approved slice assigns font-face declarations and preset
+validation to `renderer-core/src/theme/`; curated trio metadata and transient
+preview to `editor/src/font-catalog.ts` and `editor/src/font-preview.ts`; picker
+adoption/trio application to the existing editor type-preset and asset boundaries;
+and packaged `FontFace` loading/release to `scene-fabric/src/font-assets.ts`.
+The UI adapter must not own catalog, preview or adoption semantics.
 
 The retired custom-editor implementation is deleted. The fork retains generic
 z-order, grouping and locks; the Vigilia layer panel projects that state without

@@ -35,6 +35,11 @@ linked-library obligations.
 Imported assets retain their own licence requirements; record source/hash/licence
 metadata.
 
+The approved curated-font slice will copy pairing metadata from
+[Fonttrio](https://github.com/kapishdima/fonttrio) as data, not a runtime
+dependency. Fonttrio is MIT licensed; preserve its attribution when shipping
+derived pairing data.
+
 LibreHardwareMonitor and PawnIO are planned integrations, not current
 dependencies. Re-review their licences if Vigilia starts shipping them.
 

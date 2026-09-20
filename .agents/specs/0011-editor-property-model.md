@@ -36,24 +36,33 @@ Deleting another referenced token requires reassignment.
 
 ### Typography uses type presets
 
-A named type preset groups family, size, weight, letter spacing and line height.
-Each styled run independently references its preset and palette colour; local
-typography is invalid and there is no text-object-level preset.
+A named type preset is a complete global treatment: declared font face, size,
+weight, letter spacing and line height. Each styled run independently references
+its preset and palette colour; local typography is invalid and there is no
+text-object-level preset.
 
-Each preset selects one declared packaged font face by family, weight and style;
-the renderer never synthesizes missing bold or italic variants. Font assets are
-local WOFF2, WOFF, TTF or OTF bytes with their family, weight, style, format,
-source URL and license metadata. Variable fonts and axis controls are out of
-scope.
+Each preset selects one declared packaged font face. The renderer never
+synthesizes missing bold or italic variants. Font assets are exact local WOFF2
+bytes with family, weight, style, format, pinned Fontsource source URL and
+licence metadata. Variable fonts, axes, arbitrary URLs and custom font import
+are out of scope.
 
-Theme settings owns font authoring after background media. Google Fonts uses an
-entered family plus requested face, retrieves its CSS endpoint and downloads the
-referenced WOFF2 into the package. Custom import requires the author to provide
-family, weight and style. Type-preset controls offer only declared faces.
-Open/Save/Release retain exact bytes; player/editor load them through `FontFace`
-before measuring or rendering text. A missing or incompatible preset face
-invalidates the package; runtime load failure is visible, never silently
-replaced by a synthesized face. No runtime Google CDN dependency is persisted.
+New themes contain presets assigned to `heading`, `body` and `mono` trio roles;
+additional scale presets may share a role. Mono is for technical/code treatments,
+never the default for large metrics, which use heading-role faces. Curated trios
+provide one face per role. Applying a trio changes only faces on every
+role-assigned preset, preserving size, weight, letter spacing and line height;
+unassigned custom presets remain unchanged. Applying one face to a preset has
+the same face-only rule and lasts until a later trio Apply replaces it.
+
+Theme settings owns font authoring. The picker previews curated candidates
+transiently: preview bytes, URLs and `FontFace` instances do
+not enter assets, history, dirty state or persisted data. Apply packages the
+selected pinned WOFF2 bytes and metadata. Type-preset controls offer the curated
+catalog only. Open/Save/Release retain exact bytes; player/editor load them
+through `FontFace` before measuring or rendering text. A missing or incompatible
+preset face invalidates the package; runtime load failure is visible, never
+silently replaced. No runtime CDN dependency is persisted.
 
 ### Charts are family-specific
 
@@ -157,9 +166,8 @@ palette and type-preset authoring/reassignment; semantic text creation; semantic
 layers with inherited visibility/lock/order; and selection-relative
 align/distribute.
 
-Still incomplete: background image/video authoring, packaged font authoring,
-release-version controls, chart paint/threshold controls, and broader Vigilia
-creation commands.
+Still incomplete: packaged-font trio authoring, release-version controls, chart
+paint/threshold controls, and broader Vigilia creation commands.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled by spec 0013.
@@ -175,10 +183,12 @@ scene envelope boundary is settled by spec 0013.
 | Semantic layer projection and arrange UI | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Current chart property UI | `editor/src/chart-manager/` |
 | Current palette/type property UI | `editor/src/palette-panel.ts`, `editor/src/type-preset-panel.ts` |
-| Open-package image/SVG bytes and controls | `editor/src/asset-manager/` |
+| Curated font trio metadata and transient preview | `editor/src/font-catalog.ts`, `editor/src/font-preview.ts` |
+| Open-package asset bytes and controls | `editor/src/asset-manager/` |
+| Packaged font runtime lifecycle | `scene-fabric/src/font-assets.ts` |
 
-Do not create speculative managers/owners for property domains that are not yet
-implemented.
+The font rows are approved pending owners. Do not create additional speculative
+managers/owners for property domains that are not yet implemented.
 
 ## Acceptance
 

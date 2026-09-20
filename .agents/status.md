@@ -39,6 +39,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
+- Packaged font faces, curated trios and the font picker are not implemented.
 - Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.
 - Theme-package-only Open/Save and host-library Open/Save are active.
 - Live editor telemetry and production video integration remain incomplete.
@@ -52,7 +53,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement the approved packaged-font slice.
+1. Implement the approved packaged-font trio slice from
+   `.agents/plans/2026-09-20-packaged-fonts.md`.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per plan §35 only after the authoring core is stable.
 
@@ -64,4 +66,6 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
+- Font previews/adoption and packaged `FontFace` lifecycle are unverified because
+  the approved font-trio slice has not started.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.

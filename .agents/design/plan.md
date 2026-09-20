@@ -45,14 +45,13 @@ verification plus appropriate tests. State what was not verified.
 
 Today the Vigilia shell is TypeScript/Vite and the adopted editor fork; there is
 no React dependency. After the Fabric migration/core authoring path stabilizes,
-migrate the surrounding shell incrementally to React + TypeScript/Vite,
-shadcn/ui with Base UI primitives, Tailwind/CSS variables and Zustand where
-useful.
+modernize the surrounding shell incrementally with shadcn and Base UI patterns,
+Tailwind/CSS variables, and the existing imperative TypeScript boundary.
 
-React owns application/domain UI; Fabric remains imperative behind an
-editor/controller boundary. Do not mirror every Fabric object declaratively in
-React. Editor-shell theming is separate from authored dashboard theme globals.
-This modernization must not block the current migration.
+Fabric remains imperative behind an editor/controller boundary. Do not mirror
+Fabric objects declaratively. Editor-shell theming is separate from authored
+dashboard theme globals. This modernization must not block the current
+migration.
 
 ## §43 — Feasibility
 
@@ -156,10 +155,10 @@ translation has one owner.
 
 ## §89 — Typography
 
-Support inline editing, packaged/imported fonts and rich family/size/weight/
-style/spacing/line-height/alignment/rotation/wrapping/clipping/fill/outline/
-shadow/opacity controls. Styled runs may differentiate label/value/unit. Sensor
-text uses fixed boxes by default to avoid jitter.
+Support inline editing, curated packaged font faces and rich
+family/size/weight/style/spacing/line-height/alignment/rotation/wrapping/
+clipping/fill/outline/shadow/opacity controls. Styled runs may differentiate
+label/value/unit. Sensor text uses fixed boxes by default to avoid jitter.
 
 ## §91 — Typography in charts
 
@@ -308,7 +307,7 @@ Current migration order/status:
 7. Live editor bindings/charts — **pending**.
 8. Production video background over packaged media — **pending**.
 9. Delete superseded DOM/custom editor code — **done**.
-10. React + shadcn/Base UI shell modernization — **later**, after core authoring
+10. shadcn/Base UI shell modernization — **later**, after core authoring
    stabilizes.
 11. Starter theme/storage/LAN/provider/product work continues around those gates.
 

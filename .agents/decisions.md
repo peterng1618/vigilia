@@ -65,12 +65,12 @@ The v2 Fabric envelope is the migration branch format; there is no v1 reader.
 Unreleased semantic/property shapes may change incompatibly. Released formats
 require normal migration/version rules.
 
-### Later shell: React + shadcn/Base UI
+### Later shell: shadcn/Base UI
 
 After the Fabric authoring core stabilizes, migrate the outer shell incrementally
-to React/TypeScript/Vite, shadcn/Base UI, Tailwind/CSS variables and Zustand
-where useful. Fabric stays imperative behind an editor/controller boundary.
-This must not block the migration. **Decided by:** user, 2026-09-17.
+to shadcn/Base UI patterns and Tailwind/CSS variables while retaining the
+TypeScript/Vite shell. Fabric stays imperative behind an editor/controller
+boundary. This must not block the migration. **Decided by:** user, 2026-09-20.
 
 ### Charts remain typed Vigilia objects over ECharts
 
