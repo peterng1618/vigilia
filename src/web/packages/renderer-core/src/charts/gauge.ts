@@ -1,10 +1,4 @@
-import type {
-  ChartPaint,
-  Fill,
-  GaugeSettings,
-  GradientStop,
-  Sample,
-} from "../types.js";
+import type { Fill, GaugeSettings, GradientStop, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import { toEngineAnimation, type EngineAnimation } from "./animation.js";
 import {

@@ -1,4 +1,4 @@
-import type { ChartPaint, Fill, Sample } from "../types.js";
+import type { ChartPaint, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import {
   toEngineAnimation,

@@ -779,7 +779,6 @@ test.describe("Fabric editor route", () => {
     );
 
     await page.goto(EDITOR);
-    const picker = page.locator('input[accept=".vigilia-theme"]');
     const envelope = {
       schemaVersion: 2,
       fabricVersion: "7.4.0",

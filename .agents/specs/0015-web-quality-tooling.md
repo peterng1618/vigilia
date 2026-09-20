@@ -19,9 +19,8 @@ installed.
 
 ## Rules
 
-Formatting is delegated to Biome. Linting initially enforces strict equality
-only. Unused imports/variables and floating promises have existing violations;
-add them only with their focused cleanup. The initial adoption formats the
+Formatting is delegated to Biome. Linting enforces strict equality, unused
+imports/variables and floating promises. The initial adoption formats the
 repository once; later formatting is enforced by the check.
 
 ## Verification

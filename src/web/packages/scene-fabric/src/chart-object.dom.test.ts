@@ -252,7 +252,7 @@ describe("the canvas round trip", () => {
     source.add(chart);
 
     const json = source.toObject();
-    source.dispose();
+    await source.dispose();
 
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
     await revived.loadFromJSON(json);
@@ -273,7 +273,7 @@ describe("the canvas round trip", () => {
     // normal render path.
     expect((first as VigiliaChart).option).toBeUndefined();
 
-    revived.dispose();
+    await revived.dispose();
   });
 });
 

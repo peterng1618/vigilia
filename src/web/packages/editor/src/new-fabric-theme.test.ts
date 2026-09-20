@@ -100,6 +100,6 @@ describe("the new Fabric document", () => {
           .join("\n"),
       );
     expect(validation).toMatchObject({ ok: true });
-    canvas.dispose();
+    await canvas.dispose();
   });
 });

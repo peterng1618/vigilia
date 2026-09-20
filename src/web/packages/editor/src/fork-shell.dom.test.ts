@@ -5,10 +5,8 @@ import type { ImageEditor } from "@anu3ev/fabric-image-editor";
 import {
   disposeScene,
   reviveScene,
-  reviveThemeEnvelope,
   serialiseScene,
 } from "@vigilia/scene-fabric";
-import { loadDemoTheme } from "@vigilia/fake-source";
 
 const initEditor = vi.hoisted(() => vi.fn());
 

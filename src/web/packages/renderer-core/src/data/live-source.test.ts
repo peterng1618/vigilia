@@ -138,7 +138,7 @@ describe("createLiveSource", () => {
   });
 
   it("keeps the source identity stable, so the plan builder can hold it", () => {
-    const { handle, sendBatch, advance } = setup();
+    const { handle, sendBatch } = setup();
     const before = handle.source;
 
     sendBatch(["cpu.load", ok(1)]);

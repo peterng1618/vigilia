@@ -375,7 +375,3 @@ function structureKeyFor(nodes: readonly WalkedNode[]): string {
     .map(({ node, parent }) => `${parent?.id ?? ""}>${node.id}`)
     .join(",");
 }
-
-function asCss(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}

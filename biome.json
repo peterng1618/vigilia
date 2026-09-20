@@ -7,6 +7,11 @@
     "enabled": true,
     "rules": {
       "recommended": false,
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "nursery": { "noFloatingPromises": "error" },
       "suspicious": { "noDoubleEquals": "error" }
     }
   }
