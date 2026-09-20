@@ -71,7 +71,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 ## Next
 
 1. Revisit remaining spec-0014 candidates only when needed.
-2. Modernize the shell per product requirements §35 only after the authoring core is stable.
+2. Review approved editor shell design, then write its implementation plan.
 
 ## Unverified / limitations
 
