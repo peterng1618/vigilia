@@ -1,78 +1,72 @@
 ---
 name: vigilia:verify
-description: Run the appropriate Vigilia pre-commit checks and report exactly what was verified.
+description: Run the smallest local proof for a Vigilia change; CI owns the full gate.
 ---
 
 # Verifying Vigilia
 
-CI runs typecheck, unit tests, builds, size gate and desktop Chromium. Scope local
-verification by changed paths; unknown paths are FULL.
+CI is the complete gate: full workspace typecheck, unit suite, player/editor/host
+builds, player size and desktop Chromium browser suite on pull requests and
+pushes to `main` or `develop`. Do not repeat that suite locally for an ordinary,
+well-bounded change. Inspect the CI run for the pushed commit before reporting
+the full gate as passed.
 
-```bash
-git status --porcelain | cut -c4- | awk '
-  /^\.agents\//             { next }
-  /\.md$/                   { next }
-  /\.test\.ts$/             { t=1; next }
-  /^src\/web\/tests\/e2e\// { e=1; next }
-                            { f=1 }
-  END { print f ? "FULL" : e ? "E2E" : t ? "UNIT" : "PROSE" }'
-```
+## Local proof
 
-| Tier | Run |
+Choose the narrowest applicable row. Unknown impact is `CROSS-CUTTING`.
+
+| Change | Run locally |
 |---|---|
-| PROSE | no tests |
-| UNIT | typecheck + full unit suite |
-| E2E | typecheck + units + builds + visual capture/inspection + browser suite |
-| FULL | typecheck + units + builds + visual capture/inspection + size gate + browser suite |
+| Prose only | no tests |
+| One workspace's pure/DOM code | owning workspace typecheck and nearest focused Vitest files |
+| Entry/bundle or static asset path | above plus affected package build |
+| Browser wiring | above plus the named focused Playwright test on built bundles |
+| Visible result | above plus its selected capture and inspection |
+| Schema/persistence, shared renderer/viewport, dependency/toolchain, or unknown impact | full local gate only when CI is unavailable or diagnosis needs it |
 
-Do not select unit tests by changed path; cross-package boundary tests make that
-unsafe.
+Use workspace scripts and explicit test files. Do not select a subset merely
+because the full suite is slow; select the nearest tests that prove the changed
+decision. A visible action's capture name and title are in
+`.agents/screenshots/README.md`.
 
-## Commands
-
-From `src/web/`, in order:
-
-```bash
-npm run typecheck
-npm test
-npm run build
-VIGILIA_CAPTURE=1 npx playwright test -g "visual review" --workers=1
-npm run size
-npm run test:e2e
+```powershell
+# From src/web/
+npm run typecheck -w @vigilia/editor
+npm test -- --run packages/editor/src/artboard-panel.dom.test.ts
+npm run build -w @vigilia/editor
+npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'changed artboard controls'
+$env:VIGILIA_CAPTURE='1'; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'captures changed artboard controls' --workers=1
 ```
 
-For E2E and FULL, inspect every generated screenshot with the image viewer
-before proceeding to the size gate or full browser suite. Stop on a visually
-broken result and diagnose it before treating structural tests as evidence.
+Build player and editor before Playwright: its configured preview servers start
+both bundles. `VIGILIA_CAPTURE=1` writes evidence only for selected capture
+tests; without it, those tests still run their behavioural assertions. Inspect
+only the generated image(s). Stop at the first failure.
 
-Stop at the first failure. Build before visual capture, size and E2E because all
-consume built output. Rebuild after reverting deliberate sabotage.
+## CI evidence
 
-## Extra checks when relevant
+After push, find the CI run for that commit in GitHub Actions and inspect its
+job outcome/logs. This machine has no GitHub CLI, so use the Actions UI or an
+authenticated GitHub integration; do not install tooling solely to read a run.
 
-- Renderer/player viewport changes: run the `phone-chromium` project locally as
-  well as normal CI coverage.
-- Host serving/base/output changes: build, start
-  `node packages/host/bin/vigilia.js --port 5231 --no-browser`, and load both
-  player/editor through the host. Playwright preview servers do not test this.
-- Visible rendering changes: add or update a visual-review capture that shows
-  the relevant user action from `.agents/screenshots/README.md` and inspect the
-  result, not only structural assertions.
+For visible work, dispatch **Visual evidence** on the pushed branch with the
+specific Playwright title regex and desktop/phone project from the screenshot
+registry. Download its `visual-evidence` artifact, inspect only the selected
+PNGs, then record the run URL/commit and observation in `status.md`. It builds
+the two browser bundles and runs only the requested capture; it is not a
+replacement for CI's full gate.
 
-No physical-phone validation is required unless a future product requirement
-explicitly adds it.
+## Extra checks
 
-## Traps
-
-- `check-size.mjs` measures `dist/`; stale builds give stale answers.
-- If the size gate fails, find the dependency leak rather than raising the gate
-  to make it pass.
-- Another agent may be writing the tree/build output. Check `git status --short`
-  before running/staging and never discard unknown changes.
-- Stage explicit paths; never `git add -A` or `git commit -a`.
+- Renderer/player viewport changes: capture the affected desktop and phone
+  visual actions.
+- Host serving/base/output changes: locally build and start the host, then load
+  player and editor through it. Playwright previews do not cover this.
+- CI unavailable: run the prior full local sequence as a fallback:
+  `npm run typecheck`, `npm test`, `npm run build`, `npm run size`, and
+  `npm run test:e2e`; run only selected visual capture(s) separately.
 
 ## Reporting
 
-State the tier, commands run, screenshots inspected and observations, failures,
-and material checks skipped. Numbers must come from this session's output, not
-copied from `status.md`.
+State local commands, selected screenshots and observations, CI run result, and
+any checks not run. Never call the full gate green from local partial evidence.

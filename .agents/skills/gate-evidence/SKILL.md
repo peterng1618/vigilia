@@ -1,6 +1,6 @@
 ---
 name: vigilia:gate-evidence
-description: Capture screenshots or record measured evidence for Vigilia.
+description: Capture only the visual evidence affected by a Vigilia change.
 ---
 
 # Gate evidence
@@ -11,23 +11,25 @@ in `decisions.md`.
 
 ## Screenshots
 
-From `src/web/`:
+Select the visual action(s) affected by the change from
+`.agents/screenshots/README.md`; do not regenerate unrelated captures. Build
+both browser bundles, run only the matching title, and inspect only its PNGs.
 
-```bash
-npm run build
-VIGILIA_CAPTURE=1 npx playwright test -g "visual review" --workers=1
+```powershell
+cd src/web
+npm run build -w @vigilia/player
+npm run build -w @vigilia/editor
+$env:VIGILIA_CAPTURE='1'
+npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'captures changed artboard controls' --workers=1
 ```
 
-- Build first; Playwright previews built output. Before a full browser suite,
-  inspect every generated capture with the image viewer and diagnose any visible
-  failure first.
-- `--workers=1` avoids concurrent writes to the same capture directory.
-- Screenshots are visual evidence, not cross-platform golden baselines.
-- Give each visible user action its own visual-review capture; a mounted-shell
-  screenshot alone does not show selected-state or edited-property failures.
-- Control time/animation when determinism matters; the previous claim that all
-  chart frames were inherently non-reproducible was disproved after fixing the
-  test clock.
+For pushed visible work, prefer the manual **Visual evidence** GitHub Actions
+workflow. It uploads the selected result as `visual-evidence`; download and
+inspect it without running the full browser suite locally. Use a local capture
+only to diagnose before push or when CI is unavailable.
+
+Screenshots are evidence, not cross-platform pixel baselines. One capture shows
+one affected user action. Control time/animation when determinism matters.
 
 ## Measurements
 

@@ -11,13 +11,9 @@ description: Creates a pull request for Vigilia with a Conventional Commit title
 git remote -v
 ```
 
-**At the time of writing there is no remote and no commits.** If that is still
-true, a PR is impossible — say so and stop. Do not create a GitHub repository or
-push anywhere without the user explicitly asking; publishing is theirs to
-authorise.
-
-`gh` is **not installed** on this machine. If a remote exists, either use the
-GitHub web UI or ask before installing tooling.
+Do not create a GitHub repository or push/open a PR without the user's explicit
+authorisation. This machine has no GitHub CLI; use the GitHub web UI or an
+authenticated integration when publishing is authorised.
 
 ## Commit convention
 
@@ -74,12 +70,12 @@ Whether both sides of the contract mirror changed.
 
 ## Before opening
 
-- [ ] Frontend: `npx vitest run`, both `tsc --noEmit` projects, `vite build packages/player`, `check-size.mjs` — all from `src/web/`
-- [ ] .NET: build and test **if an SDK exists**; otherwise say so explicitly
+- [ ] Local proof follows `vigilia:verify`; the matching GitHub Actions CI run
+  is green before merge
 - [ ] Contract mirror changed on **both** sides if either changed
 - [ ] New dependency added to `THIRD-PARTY-NOTICES.md` with its licence verified from the package's own metadata
 - [ ] `schemaVersion` considered if the theme schema changed
-- [ ] Measurements recorded in `.agents/decisions.md`, and screenshots in `.agents/screenshots/`
+- [ ] Measurements and selected visual-evidence observations are recorded where relevant
 
 ## Hygiene
 

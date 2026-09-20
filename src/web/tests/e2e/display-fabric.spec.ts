@@ -602,14 +602,13 @@ test.describe('every fixture renders', () => {
 
   for (const fixture of FIXTURES) {
     test(`captures ${fixture.name} for visual review`, async ({ page }, testInfo) => {
-      const directory =
-        process.env['VIGILIA_CAPTURE'] === undefined
-          ? 'test-results/screenshots'
-          : '../../.agents/screenshots';
+      const directory = process.env['VIGILIA_CAPTURE_DIR']
+        ?? (process.env['VIGILIA_CAPTURE'] === undefined ? 'test-results/screenshots' : '../../.agents/screenshots');
 
       await openCanvasPlayer(page, `/?theme=${fixture.name}`);
       const size = page.viewportSize()!;
       expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
+      if (process.env['VIGILIA_CAPTURE'] === undefined) return;
       const name = `${fixture.name}-${testInfo.project.name}.png`;
       const screenshot = await page.screenshot({
         fullPage: false,

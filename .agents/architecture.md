@@ -199,5 +199,5 @@ spec 0014.
 
 Unit tests cover pure/domain behaviour and adapter contracts. Browser tests prove
 canvas/editor wiring and pixels. Browser tests preview bundles rather than the
-host. Visible renderer changes require inspection; screenshots are evidence, not
-cross-platform golden files.
+host. Visible renderer changes require inspection of selected affected evidence;
+screenshots are evidence, not cross-platform golden files.

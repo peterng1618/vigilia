@@ -1,0 +1,54 @@
+name: Visual evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: Playwright title regex for the affected visual capture
+        required: true
+        type: string
+      project:
+        description: Playwright project (desktop-chromium or phone-chromium)
+        default: desktop-chromium
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    env:
+      VIGILIA_CAPTURE: '1'
+      VIGILIA_CAPTURE_DIR: test-results/screenshots
+      VIGILIA_GREP: ${{ inputs.grep }}
+      VIGILIA_PROJECT: ${{ inputs.project }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - run: npm ci
+      - run: npx vite build packages/player
+      - run: npx vite build packages/editor
+      - run: npx playwright install --with-deps chromium
+      - name: Capture selected visual evidence
+        run: npx playwright test --project="$VIGILIA_PROJECT" --grep "$VIGILIA_GREP"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-evidence
+          path: src/web/test-results/screenshots/
+          if-no-files-found: error

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
@@ -74,16 +74,6 @@ jobs:
 
       - name: Display tests (browser)
         run: npx playwright test --project=desktop-chromium
-
-      - name: Upload dashboard screenshots
-        # Evidence for review, not a pass/fail baseline — glyph rasterisation
-        # differs between this runner and a Windows development machine.
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dashboard-screenshots
-          path: src/web/test-results/screenshots/
-          if-no-files-found: warn
 
   licences:
     name: Licence notices present

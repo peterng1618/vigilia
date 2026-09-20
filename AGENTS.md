@@ -77,7 +77,8 @@ Prefer workspace scripts over hand-written project lists.
 - Playwright previews built bundles. Rebuild after source changes and after
   reverting a deliberate test break.
 - Install Chromium with `npx playwright install chromium` if needed.
-- Screenshot capture requires `VIGILIA_CAPTURE=1` and `--workers=1`.
+- Screenshot capture requires `VIGILIA_CAPTURE=1` and `--workers=1`; capture
+  only affected visual actions from `.agents/screenshots/README.md`.
 - Vite 8 uses Rolldown; `manualChunks` must be a function.
 - Use `fileURLToPath` for file URLs on Windows.
 - Symlinks are not reliable in tracked content in this repo.
@@ -152,7 +153,7 @@ one agent. The primary agent integrates results and owns architecture.
 
 - Check status before staging. Stage explicit paths; never `git add -A` or
   `git commit -a`.
-- Inspect every regenerated screenshot before staging it for a commit.
+- Inspect each selected visual-evidence artifact before staging its capture.
 - Never discard user changes or use destructive git commands without explicit
   instruction.
 - Update `.agents/status.md` before commit/push.

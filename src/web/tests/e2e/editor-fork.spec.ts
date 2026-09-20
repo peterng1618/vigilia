@@ -570,9 +570,9 @@ async function selectStarterChart(page: Page): Promise<void> {
 }
 
 async function captureVisualReview(page: Page, testInfo: TestInfo, name: string): Promise<void> {
-  const directory = process.env['VIGILIA_CAPTURE'] === undefined
-    ? 'test-results/screenshots'
-    : '../../.agents/screenshots';
+  if (process.env['VIGILIA_CAPTURE'] === undefined) return;
+  const directory = process.env['VIGILIA_CAPTURE_DIR']
+    ?? (process.env['VIGILIA_CAPTURE'] === undefined ? 'test-results/screenshots' : '../../.agents/screenshots');
   const filename = `${name}-${testInfo.project.name}.png`;
   const screenshot = await page.screenshot({ path: `${directory}/${filename}` });
 
