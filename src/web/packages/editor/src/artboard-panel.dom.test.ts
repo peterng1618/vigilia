@@ -145,4 +145,31 @@ describe("artboard panel", () => {
       }),
     );
   });
+
+  it("preserves the displayed release version during metadata edits", () => {
+    const metadataChange = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
+      onMetadataChange: metadataChange,
+    });
+    panel.render(
+      { width: 1280, height: 720 },
+      { name: "Before", version: "1.2.3" },
+    );
+
+    const name = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-theme-name]",
+    )!;
+    const version = panel.root.querySelector<HTMLOutputElement>(
+      "[data-vigilia-theme-version]",
+    )!;
+    name.value = "After";
+    name.dispatchEvent(new Event("change"));
+
+    expect(metadataChange).toHaveBeenLastCalledWith({
+      name: "After",
+      version: "1.2.3",
+    });
+    expect(version.tagName).toBe("OUTPUT");
+    expect(version.value).toBe("1.2.3");
+  });
 });

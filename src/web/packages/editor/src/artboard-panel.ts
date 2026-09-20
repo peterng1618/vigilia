@@ -31,7 +31,10 @@ export function createArtboardPanel(
   const name = textInput("Name", "vigiliaThemeName");
   const author = textInput("Author", "vigiliaThemeAuthor");
   const description = textInput("Description", "vigiliaThemeDescription");
-  const version = textInput("Release version", "vigiliaThemeVersion");
+  const versionLabel = document.createElement("label");
+  versionLabel.textContent = "Release version";
+  const version = document.createElement("output");
+  version.dataset["vigiliaThemeVersion"] = "";
   const width = dimensionInput("Width");
   const height = dimensionInput("Height");
   const label = document.createElement("label");
@@ -91,10 +94,10 @@ export function createArtboardPanel(
   };
   const submitMetadata = (): void => {
     const next = compactMetadata({
+      ...currentMetadata,
       name: name.input.value,
       author: author.input.value,
       description: description.input.value,
-      version: version.input.value,
     });
     currentMetadata = next;
     options.onMetadataChange?.(next);
@@ -109,7 +112,6 @@ export function createArtboardPanel(
   name.input.addEventListener("change", submitMetadata);
   author.input.addEventListener("change", submitMetadata);
   description.input.addEventListener("change", submitMetadata);
-  version.input.addEventListener("change", submitMetadata);
   root.append(
     heading,
     name.label,
@@ -118,8 +120,8 @@ export function createArtboardPanel(
     author.input,
     description.label,
     description.input,
-    version.label,
-    version.input,
+    versionLabel,
+    version,
     width.label,
     width.input,
     height.label,
@@ -157,7 +159,7 @@ export function createArtboardPanel(
     name.input.value = metadata?.name ?? "";
     author.input.value = metadata?.author ?? "";
     description.input.value = metadata?.description ?? "";
-    version.input.value = metadata?.version ?? "";
+    version.value = metadata?.version ?? "";
   };
 
   return {

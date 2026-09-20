@@ -151,6 +151,45 @@ describe("ForkExtensions", () => {
     extensions.destroy();
   });
 
+  it("bumps the release version only from Release", async () => {
+    vi.stubGlobal("prompt", vi.fn(() => "patch"));
+    const shell = {
+      editor: { canvas: { on: vi.fn(), off: vi.fn() } },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+    };
+    const extensions = new ForkExtensions({
+      shell: shell as never,
+      source: {} as never,
+      envelope: { ...envelope, metadata: { version: "1.2.3" } },
+      panelHost: document.body,
+      onNew: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const save = Array.from(document.body.querySelectorAll("button")).find(
+      (button) => button.textContent === "Save package",
+    )!;
+    save.click();
+    await Promise.resolve();
+    expect(saveMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: { version: "1.2.3" } }),
+      expect.anything(),
+    );
+
+    document
+      .querySelector<HTMLButtonElement>("[data-vigilia-theme-release]")!
+      .click();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: { version: "1.2.4" } }),
+      expect.anything(),
+    );
+    extensions.destroy();
+  });
+
   it("adopts a trio and replaces every assigned preset face", async () => {
     const fetch = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
     vi.stubGlobal("fetch", fetch);
