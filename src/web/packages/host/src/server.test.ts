@@ -24,6 +24,17 @@ function createValidPackage(id = 'living-room', name = 'Living Room'): Uint8Arra
   return result.bytes;
 }
 
+function createPackageWithAsset(path: string, bytes: readonly number[]): Uint8Array {
+  const envelope: FabricThemeEnvelope = {
+    schemaVersion: 2, fabricVersion: '7.4.0', id: 'living-room', artboard: { width: 1920, height: 1080 },
+    scene: { version: '7.4.0', objects: [] },
+    assets: [{ id: 'inter-400', kind: 'font', path, family: 'Inter', weight: 400, style: 'normal', format: 'woff2', sourceUrl: 'https://example.test/inter.woff2', license: { name: 'SIL Open Font License 1.1', url: 'https://openfontlicense.org/' } } as never],
+  };
+  const result = writeThemePackage({ envelope, assets: { [path]: new Uint8Array(bytes) } });
+  if (!result.ok) throw new Error(result.message);
+  return result.bytes;
+}
+
 function request(
   server: http.Server,
   method: string,
@@ -136,6 +147,22 @@ describe('Host theme routes', () => {
     const rawRes = await request(hosted.server, 'GET', '/api/themes/living-room');
     expect(rawRes.status).toBe(200);
     expect(new Uint8Array(rawRes.body)).toEqual(validEmptyAssetPackage);
+  });
+
+  it('serves only declared package asset bytes', async () => {
+    await request(hosted.server, 'PUT', '/api/themes/living-room', createPackageWithAsset('assets/inter-400.woff2', [1, 2]));
+
+    const asset = await request(hosted.server, 'GET', '/api/themes/living-room/assets/assets%2Finter-400.woff2');
+    expect(asset.status).toBe(200);
+    expect([...asset.body]).toEqual([1, 2]);
+    expect(asset.headers['content-type']).toContain('application/octet-stream');
+  });
+
+  it('refuses undeclared and traversal-like asset paths', async () => {
+    await request(hosted.server, 'PUT', '/api/themes/living-room', createPackageWithAsset('assets/inter-400.woff2', [1, 2]));
+
+    expect((await request(hosted.server, 'GET', '/api/themes/living-room/assets/assets%2Fmissing.woff2')).status).toBe(404);
+    expect((await request(hosted.server, 'GET', '/api/themes/living-room/assets/%2e%2e%2Fsecret')).status).toBe(404);
   });
 
   it('forbids PUT from non-loopback addresses (§7)', async () => {

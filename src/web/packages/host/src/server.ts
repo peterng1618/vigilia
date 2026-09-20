@@ -124,6 +124,33 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    const assetMatch = url.pathname.match(/^\/api\/themes\/([^/]+)\/assets\/(.+)$/);
+    if (assetMatch) {
+      if (request.method !== 'GET') {
+        sendText(response, 405, 'Only GET is supported.');
+        return;
+      }
+      let id: string;
+      let assetPath: string;
+      try {
+        id = decodeURIComponent(assetMatch[1] ?? '');
+        assetPath = decodeURIComponent(assetMatch[2] ?? '');
+      } catch {
+        sendText(response, 400, 'Invalid theme asset path.');
+        return;
+      }
+      const record = isValidThemeId(id) ? await themeStore.read(id) : undefined;
+      const declared = record?.envelope.assets?.find((asset) => asset.path === assetPath);
+      const bytes = declared === undefined ? undefined : record?.assets[declared.path];
+      if (bytes === undefined) {
+        sendText(response, 404, 'Theme asset not found.');
+        return;
+      }
+      response.writeHead(200, { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' });
+      response.end(Buffer.from(bytes));
+      return;
+    }
+
     const docMatch = url.pathname.match(/^\/api\/themes\/([^/]+)\/document$/);
     if (docMatch) {
       if (request.method !== 'GET') {
