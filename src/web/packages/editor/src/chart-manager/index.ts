@@ -247,10 +247,15 @@ export class ChartManager {
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
   readonly #hydrateRevivedCharts = (): void => {
-    for (const id of Object.keys(this.#bindings)) {
-      const chart = this.#chartFor(id);
-      if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
-    }
+    const hydrate = (objects: readonly object[]): void => {
+      for (const object of objects) {
+        if (object instanceof VigiliaChart) {
+          const id = object.get("id");
+          if (typeof id === "string") this.#applyChart(id, object);
+        } else if (object instanceof Group) hydrate(object.getObjects());
+      }
+    };
+    hydrate(this.#editor.canvas.getObjects());
     this.#editor.canvas.requestRenderAll();
   };
 

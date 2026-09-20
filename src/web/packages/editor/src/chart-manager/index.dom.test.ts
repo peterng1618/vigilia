@@ -75,6 +75,40 @@ describe("ChartManager", () => {
     manager.destroy();
   });
 
+  it("hydrates a revived chart without bindings", () => {
+    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+      id: "unbound-gauge",
+      family: "gauge",
+      settings: {
+        ...defaultGaugeSettings,
+        track: { ref: "palette.track" },
+        progress: { ref: "palette.accent" },
+      },
+    }) as VigiliaChart;
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => [chart]),
+      requestRenderAll: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: { canvas } as unknown as ImageEditor,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      globals: {
+        palette: {
+          track: { name: "Track", value: { kind: "solid", color: "#223344" } },
+          accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+        },
+      },
+      panelHost: document.body,
+    });
+
+    expect(chart.option).toMatchObject({ series: expect.any(Array) });
+    manager.destroy();
+  });
+
   it("updates the selected Fabric chart from envelope bindings", () => {
     const listeners = new Map<string, (event?: unknown) => void>();
     const chart = Object.assign(Object.create(VigiliaChart.prototype), {
