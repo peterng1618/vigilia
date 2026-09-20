@@ -152,7 +152,10 @@ describe("ForkExtensions", () => {
   });
 
   it("bumps the release version only from Release", async () => {
-    vi.stubGlobal("prompt", vi.fn(() => "patch"));
+    vi.stubGlobal(
+      "prompt",
+      vi.fn(() => "patch"),
+    );
     const shell = {
       editor: { canvas: { on: vi.fn(), off: vi.fn() } },
       scene: {},

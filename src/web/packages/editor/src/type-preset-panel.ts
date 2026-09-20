@@ -129,7 +129,8 @@ export function createTypePresetPanel(
             : { ...withoutLineHeight, lineHeight: nextLine };
       }
       if (changed === "letterSpacing") {
-        const { letterSpacing: _letterSpacing, ...withoutLetterSpacing } = value;
+        const { letterSpacing: _letterSpacing, ...withoutLetterSpacing } =
+          value;
         value =
           nextLetter === undefined
             ? withoutLetterSpacing
