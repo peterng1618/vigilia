@@ -1,4 +1,4 @@
-import type { Artboard, AssetReference } from '@vigilia/renderer-core';
+import type { Artboard, AssetReference } from "@vigilia/renderer-core";
 
 export interface BackgroundMediaSource {
   readonly url: string;
@@ -13,30 +13,44 @@ export interface BackgroundMediaOptions {
 }
 
 export interface BackgroundMediaHandle {
-  update(options: Omit<BackgroundMediaOptions, 'host'>): void;
-  setBounds(bounds: { readonly left: number; readonly top: number; readonly width: number; readonly height: number }): void;
+  update(options: Omit<BackgroundMediaOptions, "host">): void;
+  setBounds(bounds: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  }): void;
   destroy(): void;
 }
 
 /** Mounts the optional DOM-only artboard background below the caller's canvas. */
-export function mountBackgroundMedia(options: BackgroundMediaOptions): BackgroundMediaHandle {
-  const layer = document.createElement('div');
-  layer.dataset['vigiliaBackgroundMedia'] = '';
-  layer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
+export function mountBackgroundMedia(
+  options: BackgroundMediaOptions,
+): BackgroundMediaHandle {
+  const layer = document.createElement("div");
+  layer.dataset["vigiliaBackgroundMedia"] = "";
+  layer.style.cssText =
+    "position:absolute;inset:0;overflow:hidden;pointer-events:none;";
   options.host.prepend(layer);
   let disposeSource: (() => void) | undefined;
 
-  const update = (next: Omit<BackgroundMediaOptions, 'host'>): void => {
+  const update = (next: Omit<BackgroundMediaOptions, "host">): void => {
     disposeSource?.();
     disposeSource = undefined;
     layer.replaceChildren();
     const media = next.artboard.backgroundMedia;
-    const asset = next.assets?.find((candidate) => candidate.id === media?.assetId);
-    if (media === undefined || asset === undefined || !isBackgroundAsset(asset)) return;
+    const asset = next.assets?.find(
+      (candidate) => candidate.id === media?.assetId,
+    );
+    if (media === undefined || asset === undefined || !isBackgroundAsset(asset))
+      return;
     const source = next.resolveAsset(asset.id);
     if (source === undefined) return;
 
-    const element = asset.kind === 'video' ? document.createElement('video') : document.createElement('img');
+    const element =
+      asset.kind === "video"
+        ? document.createElement("video")
+        : document.createElement("img");
     element.src = source.url;
     element.style.cssText = `display:block;width:100%;height:100%;object-fit:${media.fit};`;
     if (element instanceof HTMLVideoElement) {
@@ -55,8 +69,8 @@ export function mountBackgroundMedia(options: BackgroundMediaOptions): Backgroun
     setBounds(bounds) {
       layer.style.left = `${bounds.left}px`;
       layer.style.top = `${bounds.top}px`;
-      layer.style.right = '';
-      layer.style.bottom = '';
+      layer.style.right = "";
+      layer.style.bottom = "";
       layer.style.width = `${bounds.width}px`;
       layer.style.height = `${bounds.height}px`;
     },
@@ -68,6 +82,10 @@ export function mountBackgroundMedia(options: BackgroundMediaOptions): Backgroun
   };
 }
 
-function isBackgroundAsset(asset: AssetReference): asset is AssetReference & { readonly kind: 'image' | 'svg' | 'video' } {
-  return asset.kind === 'image' || asset.kind === 'svg' || asset.kind === 'video';
+function isBackgroundAsset(
+  asset: AssetReference,
+): asset is AssetReference & { readonly kind: "image" | "svg" | "video" } {
+  return (
+    asset.kind === "image" || asset.kind === "svg" || asset.kind === "video"
+  );
 }

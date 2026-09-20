@@ -13,10 +13,20 @@ export const DEFAULT_RENDER_SCALE = 2;
  * Bound oversampling by both factor and backing area. Never return below 1x;
  * oversized-at-1x charts are a layout problem, not a reason to blur silently.
  */
-export function clampRenderScale(scale: number, width: number, height: number): number {
-  const requested = Number.isFinite(scale) && scale > 0 ? scale : DEFAULT_RENDER_SCALE;
+export function clampRenderScale(
+  scale: number,
+  width: number,
+  height: number,
+): number {
+  const requested =
+    Number.isFinite(scale) && scale > 0 ? scale : DEFAULT_RENDER_SCALE;
 
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
     return Math.min(requested, MAX_RENDER_SCALE);
   }
 

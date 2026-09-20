@@ -1,5 +1,9 @@
-import { STYLE_PROPERTIES, type PlanTextSegment, type ResolvedStyle } from '@vigilia/renderer-core';
-import { paintFor } from './paint.js';
+import {
+  STYLE_PROPERTIES,
+  type PlanTextSegment,
+  type ResolvedStyle,
+} from "@vigilia/renderer-core";
+import { paintFor } from "./paint.js";
 
 /**
  * Convert styled runs to Fabric per-grapheme styles on one text object. The
@@ -21,15 +25,17 @@ export type GraphemeSplitter = (value: string) => readonly string[];
 
 /** Fabric per-character key → authored properties that may feed it. */
 const PER_RUN_PAINT_SOURCES: Readonly<Record<string, readonly string[]>> = {
-  fill: ['color', 'fill'],
-  fontFamily: ['fontFamily'],
-  fontSize: ['fontSize'],
-  fontWeight: ['fontWeight'],
-  stroke: ['strokeColor'],
-  strokeWidth: ['strokeWidth'],
+  fill: ["color", "fill"],
+  fontFamily: ["fontFamily"],
+  fontSize: ["fontSize"],
+  fontWeight: ["fontWeight"],
+  stroke: ["strokeColor"],
+  strokeWidth: ["strokeWidth"],
 };
 
-const PER_RUN_STYLE_PROPERTIES: readonly string[] = Object.values(PER_RUN_PAINT_SOURCES).flat();
+const PER_RUN_STYLE_PROPERTIES: readonly string[] = Object.values(
+  PER_RUN_PAINT_SOURCES,
+).flat();
 
 type MutableStyles = Record<number, Record<number, Record<string, unknown>>>;
 
@@ -38,7 +44,7 @@ export function textShapeFor(
   nodeStyle: ResolvedStyle,
   splitGraphemes: GraphemeSplitter,
 ): FabricTextShape {
-  const text = segments.map((segment) => segment.text).join('');
+  const text = segments.map((segment) => segment.text).join("");
 
   if (segments.length <= 1) {
     return { text, styles: {}, unsupported: [] };
@@ -51,11 +57,13 @@ export function textShapeFor(
   let grapheme = 0;
 
   for (const segment of segments) {
-    const paint = paintFor(segment.style, 'text');
+    const paint = paintFor(segment.style, "text");
     // Per-character styles override object paint, so include authored keys only.
     const perRun = Object.fromEntries(
       Object.entries(paint).filter(([key]) =>
-        (PER_RUN_PAINT_SOURCES[key] ?? []).some((property) => property in segment.style),
+        (PER_RUN_PAINT_SOURCES[key] ?? []).some(
+          (property) => property in segment.style,
+        ),
       ),
     );
 
@@ -64,7 +72,10 @@ export function textShapeFor(
         continue;
       }
 
-      if (property in segment.style && segment.style[property] !== nodeStyle[property]) {
+      if (
+        property in segment.style &&
+        segment.style[property] !== nodeStyle[property]
+      ) {
         unsupported.add(property);
       }
     }

@@ -1,6 +1,10 @@
-import type { Binding, FabricGlobals, SampleSource } from '@vigilia/renderer-core';
-import { refreshBoundText } from '@vigilia/scene-fabric';
-import type { StaticCanvas } from 'fabric/es';
+import type {
+  Binding,
+  FabricGlobals,
+  SampleSource,
+} from "@vigilia/renderer-core";
+import { refreshBoundText } from "@vigilia/scene-fabric";
+import type { StaticCanvas } from "fabric/es";
 
 /** Runtime samples update Fabric objects without becoming authored editor state. */
 export class LiveRuntime {

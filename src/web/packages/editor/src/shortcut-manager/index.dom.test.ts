@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { ShortcutManager } from './index.js';
+import { describe, expect, it, vi } from "vitest";
+import { ShortcutManager } from "./index.js";
 
-describe('ShortcutManager', () => {
-  it('claims registered Vigilia actions and leaves all other fork keys alone', () => {
+describe("ShortcutManager", () => {
+  it("claims registered Vigilia actions and leaves all other fork keys alone", () => {
     const manager = new ShortcutManager();
     const save = vi.fn();
-    manager.register('file.save', save);
-    const handled = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true });
-    const forkKey = new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, cancelable: true });
+    manager.register("file.save", save);
+    const handled = new KeyboardEvent("keydown", {
+      key: "s",
+      ctrlKey: true,
+      cancelable: true,
+    });
+    const forkKey = new KeyboardEvent("keydown", {
+      key: "g",
+      ctrlKey: true,
+      cancelable: true,
+    });
 
     window.dispatchEvent(handled);
     window.dispatchEvent(forkKey);
@@ -19,13 +27,18 @@ describe('ShortcutManager', () => {
     manager.destroy();
   });
 
-  it('does not steal New from an editable field', () => {
+  it("does not steal New from an editable field", () => {
     const manager = new ShortcutManager();
     const create = vi.fn();
-    manager.register('file.new', create);
-    const input = document.createElement('input');
+    manager.register("file.new", create);
+    const input = document.createElement("input");
     document.body.append(input);
-    const event = new KeyboardEvent('keydown', { key: 'n', ctrlKey: true, bubbles: true, cancelable: true });
+    const event = new KeyboardEvent("keydown", {
+      key: "n",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
     input.dispatchEvent(event);
 
     expect(create).not.toHaveBeenCalled();
@@ -34,13 +47,18 @@ describe('ShortcutManager', () => {
     manager.destroy();
   });
 
-  it('keeps Save available while a text field has focus', () => {
+  it("keeps Save available while a text field has focus", () => {
     const manager = new ShortcutManager();
     const save = vi.fn();
-    manager.register('file.save', save);
-    const input = document.createElement('input');
+    manager.register("file.save", save);
+    const input = document.createElement("input");
     document.body.append(input);
-    const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true });
+    const event = new KeyboardEvent("keydown", {
+      key: "s",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
     input.dispatchEvent(event);
 
     expect(save).toHaveBeenCalledOnce();

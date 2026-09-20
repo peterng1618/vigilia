@@ -88,10 +88,18 @@
           "id": "fit-contain-label",
           "type": "text",
           "transform": { "x": 0, "y": 158, "width": 260, "height": 20 },
-          "style": { "fontSize": { "ref": "fontSizes.label" }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "ref": "fontSizes.label" },
+            "color": { "ref": "palette.dim" }
+          },
           "content": {
             "align": "center",
-            "runs": [{ "kind": "literal", "text": "contain — whole image, letterboxed" }]
+            "runs": [
+              {
+                "kind": "literal",
+                "text": "contain — whole image, letterboxed"
+              }
+            ]
           }
         },
 
@@ -112,10 +120,15 @@
           "id": "fit-cover-label",
           "type": "text",
           "transform": { "x": 300, "y": 158, "width": 260, "height": 20 },
-          "style": { "fontSize": { "ref": "fontSizes.label" }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "ref": "fontSizes.label" },
+            "color": { "ref": "palette.dim" }
+          },
           "content": {
             "align": "center",
-            "runs": [{ "kind": "literal", "text": "cover — fills, crops the ring" }]
+            "runs": [
+              { "kind": "literal", "text": "cover — fills, crops the ring" }
+            ]
           }
         },
 
@@ -136,10 +149,15 @@
           "id": "fit-stretch-label",
           "type": "text",
           "transform": { "x": 600, "y": 158, "width": 260, "height": 20 },
-          "style": { "fontSize": { "ref": "fontSizes.label" }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "ref": "fontSizes.label" },
+            "color": { "ref": "palette.dim" }
+          },
           "content": {
             "align": "center",
-            "runs": [{ "kind": "literal", "text": "stretch — distorts, and shows it" }]
+            "runs": [
+              { "kind": "literal", "text": "stretch — distorts, and shows it" }
+            ]
           }
         }
       ]
@@ -184,9 +202,17 @@
           "id": "mono-label",
           "type": "text",
           "transform": { "x": 0, "y": 104, "width": 360, "height": 20 },
-          "style": { "fontSize": { "ref": "fontSizes.label" }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "ref": "fontSizes.label" },
+            "color": { "ref": "palette.dim" }
+          },
           "content": {
-            "runs": [{ "kind": "literal", "text": "as authored · recoloured · recoloured" }]
+            "runs": [
+              {
+                "kind": "literal",
+                "text": "as authored · recoloured · recoloured"
+              }
+            ]
           }
         },
 
@@ -201,7 +227,10 @@
           "id": "absent-label",
           "type": "text",
           "transform": { "x": 560, "y": 104, "width": 320, "height": 40 },
-          "style": { "fontSize": { "ref": "fontSizes.label" }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "ref": "fontSizes.label" },
+            "color": { "ref": "palette.dim" }
+          },
           "content": {
             "wrap": true,
             "overflow": "visible",

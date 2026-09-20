@@ -1,4 +1,8 @@
-import type { Sample, SampleSource, SensorStatus } from '@vigilia/renderer-core';
+import type {
+  Sample,
+  SampleSource,
+  SensorStatus,
+} from "@vigilia/renderer-core";
 
 /** Deterministic synthetic SampleSource for development/tests. Never real telemetry. */
 
@@ -7,11 +11,15 @@ export {
   demoSourceOptions,
   demoThemeSource,
   loadDemoTheme,
-} from './demo.js';
+} from "./demo.js";
 
-export type { InvalidThemeFixture, ValidThemeFixture } from './themes/index.js';
+export type { InvalidThemeFixture, ValidThemeFixture } from "./themes/index.js";
 
-export { INVALID_THEMES, VALID_THEMES, validThemeByName } from './themes/index.js';
+export {
+  INVALID_THEMES,
+  VALID_THEMES,
+  validThemeByName,
+} from "./themes/index.js";
 
 /** Synthetic behaviour selected by the final semantic-key segment. */
 export interface SensorProfile {
@@ -24,18 +32,24 @@ export interface SensorProfile {
 
 /** Plausible dev ranges, not hardware measurements. */
 export const PROFILES: Readonly<Record<string, SensorProfile>> = {
-  load: { unit: '%', min: 2, max: 97, periodSeconds: 23, spikiness: 2.5 },
-  temp: { unit: '°C', min: 34, max: 82, periodSeconds: 47, spikiness: 1 },
-  clock: { unit: 'MHz', min: 800, max: 5200, periodSeconds: 31, spikiness: 1.8 },
-  fan: { unit: 'RPM', min: 600, max: 2100, periodSeconds: 61, spikiness: 1 },
-  power: { unit: 'W', min: 15, max: 220, periodSeconds: 19, spikiness: 2.2 },
-  used: { unit: 'GB', min: 6.5, max: 22.5, periodSeconds: 97, spikiness: 1 },
-  ratio: { unit: '', min: 0, max: 1, periodSeconds: 29, spikiness: 1.4 },
-  fps: { unit: 'FPS', min: 48, max: 165, periodSeconds: 13, spikiness: 3 },
+  load: { unit: "%", min: 2, max: 97, periodSeconds: 23, spikiness: 2.5 },
+  temp: { unit: "°C", min: 34, max: 82, periodSeconds: 47, spikiness: 1 },
+  clock: {
+    unit: "MHz",
+    min: 800,
+    max: 5200,
+    periodSeconds: 31,
+    spikiness: 1.8,
+  },
+  fan: { unit: "RPM", min: 600, max: 2100, periodSeconds: 61, spikiness: 1 },
+  power: { unit: "W", min: 15, max: 220, periodSeconds: 19, spikiness: 2.2 },
+  used: { unit: "GB", min: 6.5, max: 22.5, periodSeconds: 97, spikiness: 1 },
+  ratio: { unit: "", min: 0, max: 1, periodSeconds: 29, spikiness: 1.4 },
+  fps: { unit: "FPS", min: 48, max: 165, periodSeconds: 13, spikiness: 3 },
 };
 
 const FALLBACK_PROFILE: SensorProfile = {
-  unit: '',
+  unit: "",
   min: 0,
   max: 100,
   periodSeconds: 37,
@@ -47,13 +61,13 @@ export interface OutageRule {
   readonly semanticKey: string;
   readonly everySeconds: number;
   readonly forSeconds: number;
-  readonly status?: Exclude<SensorStatus, 'ok'>;
+  readonly status?: Exclude<SensorStatus, "ok">;
 }
 
 export interface FakeSourceOptions {
   /** Sampling cadence. Values remain constant between these ticks. */
   readonly sampleIntervalMs?: number;
-  readonly forcedStatus?: Readonly<Record<string, Exclude<SensorStatus, 'ok'>>>;
+  readonly forcedStatus?: Readonly<Record<string, Exclude<SensorStatus, "ok">>>;
   readonly outages?: readonly OutageRule[];
   readonly textValues?: Readonly<Record<string, string>>;
   /** `latest` returns undefined for these keys, modelling an unmapped sensor. */
@@ -64,7 +78,7 @@ export interface FakeSourceOptions {
 
 export class FakeSampleSource implements SampleSource {
   readonly #intervalMs: number;
-  readonly #forcedStatus: Readonly<Record<string, Exclude<SensorStatus, 'ok'>>>;
+  readonly #forcedStatus: Readonly<Record<string, Exclude<SensorStatus, "ok">>>;
   readonly #outages: readonly OutageRule[];
   readonly #textValues: Readonly<Record<string, string>>;
   readonly #unmapped: ReadonlySet<string>;
@@ -141,7 +155,12 @@ export class FakeSampleSource implements SampleSource {
 
     const text = this.#textValues[semanticKey];
     if (text !== undefined) {
-      return { sensorId: semanticKey, timestamp, status: 'ok', textValue: text };
+      return {
+        sensorId: semanticKey,
+        timestamp,
+        status: "ok",
+        textValue: text,
+      };
     }
 
     const profile = profileFor(semanticKey);
@@ -149,7 +168,7 @@ export class FakeSampleSource implements SampleSource {
     return {
       sensorId: semanticKey,
       timestamp,
-      status: 'ok',
+      status: "ok",
       value: waveform(semanticKey, timeMs, profile, this.#seed),
       unit: profile.unit,
     };
@@ -159,7 +178,10 @@ export class FakeSampleSource implements SampleSource {
     return Math.floor(timeMs / this.#intervalMs) * this.#intervalMs;
   }
 
-  #outageAt(semanticKey: string, timeMs: number): Exclude<SensorStatus, 'ok'> | undefined {
+  #outageAt(
+    semanticKey: string,
+    timeMs: number,
+  ): Exclude<SensorStatus, "ok"> | undefined {
     for (const rule of this.#outages) {
       if (rule.semanticKey !== semanticKey || rule.everySeconds <= 0) {
         continue;
@@ -167,10 +189,10 @@ export class FakeSampleSource implements SampleSource {
 
       const cycleMs = rule.everySeconds * 1000;
       // Hash offset prevents multiple outage rules from lining up by default.
-      const phase = (timeMs + stableHash(semanticKey) % cycleMs) % cycleMs;
+      const phase = (timeMs + (stableHash(semanticKey) % cycleMs)) % cycleMs;
 
       if (phase < rule.forSeconds * 1000) {
-        return rule.status ?? 'error';
+        return rule.status ?? "error";
       }
     }
 
@@ -179,7 +201,7 @@ export class FakeSampleSource implements SampleSource {
 }
 
 export function profileFor(semanticKey: string): SensorProfile {
-  const segment = semanticKey.split('.').at(-1) ?? '';
+  const segment = semanticKey.split(".").at(-1) ?? "";
   return PROFILES[segment] ?? FALLBACK_PROFILE;
 }
 
@@ -191,14 +213,19 @@ export function waveform(
   seed = 0,
 ): number {
   const hash = stableHash(semanticKey) + seed;
-  const phase = (hash % 1000) / 1000 * Math.PI * 2;
+  const phase = ((hash % 1000) / 1000) * Math.PI * 2;
   const seconds = timeMs / 1000;
 
-  const fast = Math.sin((seconds / profile.periodSeconds) * Math.PI * 2 + phase);
-  const slow = Math.sin((seconds / (profile.periodSeconds * 1.618)) * Math.PI * 2 + phase * 1.7);
+  const fast = Math.sin(
+    (seconds / profile.periodSeconds) * Math.PI * 2 + phase,
+  );
+  const slow = Math.sin(
+    (seconds / (profile.periodSeconds * 1.618)) * Math.PI * 2 + phase * 1.7,
+  );
 
   const mixed = (fast * 0.65 + slow * 0.35 + 1) / 2;
-  const shaped = profile.spikiness === 1 ? mixed : Math.pow(mixed, profile.spikiness);
+  const shaped =
+    profile.spikiness === 1 ? mixed : Math.pow(mixed, profile.spikiness);
   const value = profile.min + shaped * (profile.max - profile.min);
 
   return Math.round(value * 1000) / 1000;

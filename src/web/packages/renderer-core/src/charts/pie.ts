@@ -1,9 +1,13 @@
-import type { ChartPaint, Fill, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
-import { resolveFlatColor, type EngineColor } from './fill.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+import type { ChartPaint, Fill, Sample } from "../types.js";
+import { hasPlottableValue } from "../types.js";
+import {
+  toEngineAnimation,
+  type AnimationSettings,
+  type EngineAnimation,
+} from "./animation.js";
+import { resolveFlatColor, type EngineColor } from "./fill.js";
+import { resolveChartPaint } from "./chart-paint.js";
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 
 /**
  * Pie/donut adapter. Composition differs from gauge progress: missing parts must
@@ -11,8 +15,8 @@ import type { FabricPalette } from '../theme/fabric-envelope.js';
  */
 
 export type PieTotal =
-  | { readonly kind: 'sum' }
-  | { readonly kind: 'fixed'; readonly value: number };
+  | { readonly kind: "sum" }
+  | { readonly kind: "fixed"; readonly value: number };
 
 export interface PieSettings {
   /** 0 is a pie; values above 0 produce a donut. */
@@ -37,15 +41,15 @@ export const defaultPieSettings: PieSettings = {
   startAngle: 90,
   padAngle: 2,
   cornerRadius: 4,
-  total: { kind: 'sum' },
+  total: { kind: "sum" },
   palette: [
-    { kind: 'solid', color: '#00b8d9' },
-    { kind: 'solid', color: '#6554c0' },
-    { kind: 'solid', color: '#36b37e' },
-    { kind: 'solid', color: '#ffab00' },
-    { kind: 'solid', color: '#ff5630' },
+    { kind: "solid", color: "#00b8d9" },
+    { kind: "solid", color: "#6554c0" },
+    { kind: "solid", color: "#36b37e" },
+    { kind: "solid", color: "#ffab00" },
+    { kind: "solid", color: "#ff5630" },
   ],
-  remainderFill: { kind: 'solid', color: '#2a2f3a' },
+  remainderFill: { kind: "solid", color: "#2a2f3a" },
   showLabels: false,
 };
 
@@ -79,15 +83,18 @@ export interface PieComposition {
 export interface PieDataItem {
   readonly name: string;
   readonly value: number;
-  readonly itemStyle: { readonly color: EngineColor; readonly borderRadius: number };
+  readonly itemStyle: {
+    readonly color: EngineColor;
+    readonly borderRadius: number;
+  };
 }
 
 export interface PieOption extends EngineAnimation {
   readonly series: readonly [
     {
-      readonly type: 'pie';
+      readonly type: "pie";
       readonly radius: readonly [string, string];
-      readonly center: readonly ['50%', '50%'];
+      readonly center: readonly ["50%", "50%"];
       readonly startAngle: number;
       readonly endAngle?: number;
       readonly padAngle: number;
@@ -123,7 +130,10 @@ export function computeComposition(
 
   const knownTotal = present.reduce((sum, p) => sum + p.value, 0);
 
-  const fixedTotal = settings.total.kind === 'fixed' ? Math.max(0, settings.total.value) : undefined;
+  const fixedTotal =
+    settings.total.kind === "fixed"
+      ? Math.max(0, settings.total.value)
+      : undefined;
   const overflow = fixedTotal !== undefined && knownTotal > fixedTotal;
 
   // Keep geometry coherent on overflow and expose the misconfiguration separately.
@@ -161,7 +171,9 @@ export function buildPieOption(
 
   const data: PieDataItem[] = composition.slices.map((slice, index) => {
     const declared = inputs.find((i) => i.sensorId === slice.sensorId)?.fill;
-    const fill = declared ?? resolveChartPaint(paletteAt(settings.palette, index), palette);
+    const fill =
+      declared ??
+      resolveChartPaint(paletteAt(settings.palette, index), palette);
 
     return {
       name: slice.label,
@@ -175,11 +187,14 @@ export function buildPieOption(
 
   if (composition.remainder !== undefined && composition.remainder > 0) {
     data.push({
-      name: 'remainder',
+      name: "remainder",
       value: composition.remainder,
       itemStyle: {
         color: resolveFlatColor(
-          resolveChartPaint(settings.remainderFill ?? { kind: 'solid', color: '#2a2f3a' }, palette),
+          resolveChartPaint(
+            settings.remainderFill ?? { kind: "solid", color: "#2a2f3a" },
+            palette,
+          ),
           1,
         ),
         borderRadius,
@@ -191,14 +206,16 @@ export function buildPieOption(
     ...toEngineAnimation(settings.animation, animate),
     series: [
       {
-        type: 'pie',
+        type: "pie",
         radius: [
           `${clampPercent(settings.innerRadiusPercent)}%`,
           `${clampPercent(settings.outerRadiusPercent)}%`,
         ],
-        center: ['50%', '50%'],
+        center: ["50%", "50%"],
         startAngle: settings.startAngle,
-        ...(settings.endAngle === undefined ? {} : { endAngle: settings.endAngle }),
+        ...(settings.endAngle === undefined
+          ? {}
+          : { endAngle: settings.endAngle }),
         padAngle: Math.max(0, settings.padAngle),
         label: { show: settings.showLabels },
         labelLine: { show: settings.showLabels },
@@ -213,7 +230,7 @@ export function buildPieOption(
 
 function paletteAt(palette: readonly ChartPaint[], index: number): ChartPaint {
   if (palette.length === 0) {
-    return { kind: 'solid', color: '#8993a4' };
+    return { kind: "solid", color: "#8993a4" };
   }
   return palette[index % palette.length]!;
 }

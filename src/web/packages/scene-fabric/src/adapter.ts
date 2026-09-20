@@ -7,19 +7,19 @@ import {
   Textbox,
   type FabricObject,
   type StaticCanvas,
-} from 'fabric/es';
-import type { PlanBox, PlanNode, ScenePlan } from '@vigilia/renderer-core';
-import { VigiliaChart } from './chart-object.js';
+} from "fabric/es";
+import type { PlanBox, PlanNode, ScenePlan } from "@vigilia/renderer-core";
+import { VigiliaChart } from "./chart-object.js";
 import {
   createNodeObject,
   updateNodeObject,
   type NodeContext,
   type UnsupportedReporter,
-} from './fabric-nodes.js';
-import { isTextObject, updateText } from './fabric-text.js';
-import { drawnBox, withinGroup } from './placement.js';
-import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
-import { fabricArtboardPaint } from './artboard-paint.js';
+} from "./fabric-nodes.js";
+import { isTextObject, updateText } from "./fabric-text.js";
+import { drawnBox, withinGroup } from "./placement.js";
+import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
+import { fabricArtboardPaint } from "./artboard-paint.js";
 
 /**
  * Reconcile a pure `ScenePlan` onto existing Fabric objects. Revived scene
@@ -52,10 +52,14 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   let structure: string | undefined;
   /** Last drawn boxes let font loads remeasure text without rebuilding the plan. */
   const boxes = new Map<string, PlanBox>();
-  let renderScale = clampRenderScale(options.renderScale ?? DEFAULT_RENDER_SCALE, 1, 1);
+  let renderScale = clampRenderScale(
+    options.renderScale ?? DEFAULT_RENDER_SCALE,
+    1,
+    1,
+  );
 
   // `canvas.remove()` does not dispose; charts must release ECharts/backing pixels.
-  canvas.on('object:removed', ({ target }) => {
+  canvas.on("object:removed", ({ target }) => {
     target.dispose();
   });
 
@@ -64,8 +68,12 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   function context(): NodeContext {
     return {
       renderScale,
-      ...(options.onUnsupported === undefined ? {} : { onUnsupported: options.onUnsupported }),
-      ...(options.onAssetError === undefined ? {} : { onAssetError: options.onAssetError }),
+      ...(options.onUnsupported === undefined
+        ? {}
+        : { onUnsupported: options.onUnsupported }),
+      ...(options.onAssetError === undefined
+        ? {}
+        : { onAssetError: options.onAssetError }),
       onDecoded: () => {
         canvas.requestRenderAll();
       },
@@ -109,7 +117,9 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
       }
 
       structure = nextStructure;
-      order = nodes.filter(({ parent }) => parent === undefined).map(({ node }) => node.id);
+      order = nodes
+        .filter(({ parent }) => parent === undefined)
+        .map(({ node }) => node.id);
 
       applyArtboard(canvas, plan);
 
@@ -117,16 +127,29 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
         const existing = reusable(node);
         // Existing grouped children are center-local; `Group.add()` handles this on creation.
         const box =
-          parent === undefined ? drawnBox(node) : withinGroup(drawnBox(node), drawnBox(parent));
+          parent === undefined
+            ? drawnBox(node)
+            : withinGroup(drawnBox(node), drawnBox(parent));
 
         if (existing === undefined) {
-          const created = createNodeObject(node, drawnBox(node), context(), register);
+          const created = createNodeObject(
+            node,
+            drawnBox(node),
+            context(),
+            register,
+          );
 
           if (created !== undefined && parent === undefined) {
             canvas.add(created);
           }
         } else {
-          updateNodeObject(existing, node, applied.get(node.id), box, context());
+          updateNodeObject(
+            existing,
+            node,
+            applied.get(node.id),
+            box,
+            context(),
+          );
         }
 
         applied.set(node.id, node);
@@ -227,7 +250,12 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
 
 /** Apply artboard paint/clip; viewport transform belongs to `scene.ts`. */
 function applyArtboard(canvas: StaticCanvas, plan: ScenePlan): void {
-  canvas.backgroundColor = fabricArtboardPaint(plan.artboard.background, plan.artboard.width, plan.artboard.height) ?? '';
+  canvas.backgroundColor =
+    fabricArtboardPaint(
+      plan.artboard.background,
+      plan.artboard.width,
+      plan.artboard.height,
+    ) ?? "";
 
   const { width, height } = plan.artboard;
   const clip = canvas.clipPath;
@@ -240,20 +268,23 @@ function applyArtboard(canvas: StaticCanvas, plan: ScenePlan): void {
       height,
       left: width / 2,
       top: height / 2,
-      originX: 'center',
-      originY: 'center',
+      originX: "center",
+      originY: "center",
       absolutePositioned: true,
     });
   }
 }
 
 /** Index revived Fabric objects by persisted Vigilia id, including group children. */
-function adoptExisting(canvas: StaticCanvas, objects: Map<string, FabricObject>): void {
+function adoptExisting(
+  canvas: StaticCanvas,
+  objects: Map<string, FabricObject>,
+): void {
   const visit = (list: readonly FabricObject[]): void => {
     for (const object of list) {
-      const id = object.get('id');
+      const id = object.get("id");
 
-      if (typeof id === 'string' && id.length > 0) {
+      if (typeof id === "string" && id.length > 0) {
         objects.set(id, object);
       }
 
@@ -268,7 +299,7 @@ function adoptExisting(canvas: StaticCanvas, objects: Map<string, FabricObject>)
 
 /** Remeasure canvas text when existing or later-loaded fonts finish loading. */
 function watchFontLoads(remeasure: () => void): () => void {
-  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  const fonts = typeof document === "undefined" ? undefined : document.fonts;
 
   if (fonts === undefined) {
     return () => {};
@@ -281,12 +312,12 @@ function watchFontLoads(remeasure: () => void): () => void {
     }
   };
 
-  fonts.addEventListener('loadingdone', onLoad);
+  fonts.addEventListener("loadingdone", onLoad);
   void fonts.ready.then(onLoad);
 
   return () => {
     live = false;
-    fonts.removeEventListener('loadingdone', onLoad);
+    fonts.removeEventListener("loadingdone", onLoad);
   };
 }
 
@@ -300,7 +331,10 @@ function* walk(
   parent?: PlanNode,
 ): Generator<WalkedNode> {
   for (const node of nodes) {
-    yield { node, ...(parent === undefined ? { parent: undefined } : { parent }) };
+    yield {
+      node,
+      ...(parent === undefined ? { parent: undefined } : { parent }),
+    };
     yield* walk(node.children, node);
   }
 }
@@ -310,22 +344,22 @@ type FabricObjectClass = abstract new (...args: never[]) => FabricObject;
 /** Single mapping from plan content to required Fabric class. */
 function classFor(node: PlanNode): FabricObjectClass | undefined {
   switch (node.content.kind) {
-    case 'group':
+    case "group":
       return Group;
 
-    case 'shape':
-      return node.content.shape === 'ellipse' ? Ellipse : Rect;
+    case "shape":
+      return node.content.shape === "ellipse" ? Ellipse : Rect;
 
-    case 'text':
+    case "text":
       return node.content.layout.wrap ? Textbox : FabricText;
 
-    case 'chart':
+    case "chart":
       return VigiliaChart;
 
-    case 'image':
+    case "image":
       return FabricImage;
 
-    case 'video':
+    case "video":
       return undefined;
   }
 }
@@ -337,9 +371,11 @@ function isRightClass(object: FabricObject, node: PlanNode): boolean {
 
 /** Parent/id topology only; class changes are handled per node. */
 function structureKeyFor(nodes: readonly WalkedNode[]): string {
-  return nodes.map(({ node, parent }) => `${parent?.id ?? ''}>${node.id}`).join(',');
+  return nodes
+    .map(({ node, parent }) => `${parent?.id ?? ""}>${node.id}`)
+    .join(",");
 }
 
 function asCss(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }

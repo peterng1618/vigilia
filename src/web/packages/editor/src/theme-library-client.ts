@@ -17,7 +17,7 @@ export function createThemeLibraryClient(options?: {
   readonly fetch?: typeof fetch;
 }): ThemeLibraryClient {
   const fetcher = options?.fetch ?? globalThis.fetch.bind(globalThis);
-  const baseUrl = options?.baseUrl ?? '';
+  const baseUrl = options?.baseUrl ?? "";
 
   return {
     async list(): Promise<readonly ThemeLibraryEntry[]> {
@@ -25,11 +25,18 @@ export function createThemeLibraryClient(options?: {
       if (!response.ok) {
         throw new Error(`Could not list themes (${response.status}).`);
       }
-      const data = (await response.json()) as { themes?: readonly ThemeLibraryEntry[] } | readonly ThemeLibraryEntry[];
+      const data = (await response.json()) as
+        | { themes?: readonly ThemeLibraryEntry[] }
+        | readonly ThemeLibraryEntry[];
       if (Array.isArray(data)) {
         return data;
       }
-      if (typeof data === 'object' && data !== null && 'themes' in data && Array.isArray(data.themes)) {
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "themes" in data &&
+        Array.isArray(data.themes)
+      ) {
         return data.themes;
       }
       return [];
@@ -37,9 +44,11 @@ export function createThemeLibraryClient(options?: {
 
     async open(id: string): Promise<Uint8Array> {
       if (!THEME_ID_REGEX.test(id)) {
-        throw new Error('Invalid theme id.');
+        throw new Error("Invalid theme id.");
       }
-      const response = await fetcher(`${baseUrl}/api/themes/${encodeURIComponent(id)}`);
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(id)}`,
+      );
       if (!response.ok) {
         throw new Error(`Could not open theme "${id}" (${response.status}).`);
       }
@@ -49,18 +58,23 @@ export function createThemeLibraryClient(options?: {
 
     async save(id: string, bytes: Uint8Array): Promise<void> {
       if (!THEME_ID_REGEX.test(id)) {
-        throw new Error('Invalid theme id.');
+        throw new Error("Invalid theme id.");
       }
-      const response = await fetcher(`${baseUrl}/api/themes/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/octet-stream',
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/octet-stream",
+          },
+          body: bytes as unknown as BodyInit,
         },
-        body: bytes as unknown as BodyInit,
-      });
+      );
       if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(`Could not save theme "${id}" (${response.status}): ${errorText}`);
+        const errorText = await response.text().catch(() => "");
+        throw new Error(
+          `Could not save theme "${id}" (${response.status}): ${errorText}`,
+        );
       }
     },
   };

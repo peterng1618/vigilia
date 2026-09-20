@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
-import { Ellipse, Group, Rect, StaticCanvas, type FabricObject } from 'fabric/es';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  Ellipse,
+  Group,
+  Rect,
+  StaticCanvas,
+  type FabricObject,
+} from "fabric/es";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildLineOption,
   defaultLineSettings,
@@ -9,9 +15,9 @@ import {
   type ScenePlan,
   type Sample,
   type TextContent,
-} from '@vigilia/renderer-core';
-import { createSceneAdapter, type SceneAdapter } from './adapter.js';
-import { VigiliaChart } from './chart-object.js';
+} from "@vigilia/renderer-core";
+import { createSceneAdapter, type SceneAdapter } from "./adapter.js";
+import { VigiliaChart } from "./chart-object.js";
 
 /**
  * The reconciler, against real Fabric.
@@ -56,10 +62,21 @@ afterEach(() => {
 });
 
 function box(overrides: Partial<PlanBox> = {}): PlanBox {
-  return { x: 0, y: 0, width: 0, height: 0, rotation: 0, scaleX: 1, scaleY: 1, ...overrides };
+  return {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+    ...overrides,
+  };
 }
 
-function node(overrides: Partial<PlanNode> & Pick<PlanNode, 'id' | 'content'>): PlanNode {
+function node(
+  overrides: Partial<PlanNode> & Pick<PlanNode, "id" | "content">,
+): PlanNode {
   return {
     box: box(),
     visible: true,
@@ -69,39 +86,55 @@ function node(overrides: Partial<PlanNode> & Pick<PlanNode, 'id' | 'content'>): 
   };
 }
 
-function rectangle(id: string, geometry: Partial<PlanBox>, style: PlanNode['style'] = {}): PlanNode {
+function rectangle(
+  id: string,
+  geometry: Partial<PlanBox>,
+  style: PlanNode["style"] = {},
+): PlanNode {
   return node({
     id,
-    content: { kind: 'shape', shape: 'rectangle', cornerRadius: 0 },
+    content: { kind: "shape", shape: "rectangle", cornerRadius: 0 },
     box: box(geometry),
     style,
   });
 }
 
-function textNode(id: string, text: string, style: PlanNode['style'] = {}): PlanNode {
-  const authored: TextContent = { runs: [{ kind: 'literal', text }] };
+function textNode(
+  id: string,
+  text: string,
+  style: PlanNode["style"] = {},
+): PlanNode {
+  const authored: TextContent = { runs: [{ kind: "literal", text }] };
 
   return node({
     id,
     box: box({ width: 100, height: 30 }),
     style,
     content: {
-      kind: 'text',
+      kind: "text",
       authored,
       segments: [{ text, style: {} }],
-      layout: { wrap: false, overflow: 'visible', align: 'left', verticalAlign: 'top' },
+      layout: {
+        wrap: false,
+        overflow: "visible",
+        align: "left",
+        verticalAlign: "top",
+      },
     },
   });
 }
 
-function plan(nodes: readonly PlanNode[], artboard: Partial<ScenePlan['artboard']> = {}): ScenePlan {
+function plan(
+  nodes: readonly PlanNode[],
+  artboard: Partial<ScenePlan["artboard"]> = {},
+): ScenePlan {
   return {
     artboard: {
       width: 1920,
       height: 1080,
-      fitMode: 'contain',
-      background: '#101216',
-      barColor: '#000',
+      fitMode: "contain",
+      background: "#101216",
+      barColor: "#000",
       ...artboard,
     },
     nodes,
@@ -111,24 +144,33 @@ function plan(nodes: readonly PlanNode[], artboard: Partial<ScenePlan['artboard'
 
 function sample(value: number, offsetMs = 0): Sample {
   return {
-    sensorId: 'cpu.load',
+    sensorId: "cpu.load",
     timestamp: new Date(NOW_MS - offsetMs).toISOString(),
-    status: 'ok',
+    status: "ok",
     value,
   };
 }
 
-function chartNode(id: string, geometry: Partial<PlanBox>, value = 42): PlanNode {
+function chartNode(
+  id: string,
+  geometry: Partial<PlanBox>,
+  value = 42,
+): PlanNode {
   return node({
     id,
     box: box(geometry),
     content: {
-      kind: 'chart',
-      family: 'line',
+      kind: "chart",
+      family: "line",
       settings: defaultLineSettings,
       option: buildLineOption(
         defaultLineSettings,
-        [{ sensorId: 'cpu.load', samples: [sample(value, 1000), sample(value)] }],
+        [
+          {
+            sensorId: "cpu.load",
+            samples: [sample(value, 1000), sample(value)],
+          },
+        ],
         NOW_MS,
         false,
       ),
@@ -136,10 +178,18 @@ function chartNode(id: string, geometry: Partial<PlanBox>, value = 42): PlanNode
   });
 }
 
-function mount(options: Parameters<typeof createSceneAdapter>[0] extends never ? never : {
-  readonly onUnsupported?: (nodeId: string, reason: string) => void;
-} = {}): { canvas: StaticCanvas; adapter: SceneAdapter } {
-  const canvas = new StaticCanvas(undefined, { width: 1920, height: 1080, renderOnAddRemove: false });
+function mount(
+  options: Parameters<typeof createSceneAdapter>[0] extends never
+    ? never
+    : {
+        readonly onUnsupported?: (nodeId: string, reason: string) => void;
+      } = {},
+): { canvas: StaticCanvas; adapter: SceneAdapter } {
+  const canvas = new StaticCanvas(undefined, {
+    width: 1920,
+    height: 1080,
+    renderOnAddRemove: false,
+  });
   const adapter = createSceneAdapter({ canvas, ...options });
 
   canvases.push(canvas);
@@ -157,36 +207,49 @@ function absoluteCentre(object: FabricObject): { x: number; y: number } {
   return { x: matrix[4], y: matrix[5] };
 }
 
-describe('creating a scene', () => {
-  it('draws one object per node, findable by id', () => {
+describe("creating a scene", () => {
+  it("draws one object per node, findable by id", () => {
     const { canvas, adapter } = mount();
 
-    adapter.apply(plan([rectangle('bg', { width: 100, height: 50 }), rectangle('fg', { width: 10, height: 10 })]));
+    adapter.apply(
+      plan([
+        rectangle("bg", { width: 100, height: 50 }),
+        rectangle("fg", { width: 10, height: 10 }),
+      ]),
+    );
 
     expect(canvas.getObjects()).toHaveLength(2);
-    expect(adapter.objectFor('bg')).toBeInstanceOf(Rect);
-    expect(adapter.objectFor('nope')).toBeUndefined();
+    expect(adapter.objectFor("bg")).toBeInstanceOf(Rect);
+    expect(adapter.objectFor("nope")).toBeUndefined();
   });
 
-  it('puts an object where the document put it, centre origin and all', () => {
+  it("puts an object where the document put it, centre origin and all", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([rectangle('r', { x: 10, y: 20, width: 100, height: 50 })]));
+    adapter.apply(
+      plan([rectangle("r", { x: 10, y: 20, width: 100, height: 50 })]),
+    );
 
-    expect(absoluteCentre(adapter.objectFor('r')!)).toEqual({ x: 60, y: 45 });
+    expect(absoluteCentre(adapter.objectFor("r")!)).toEqual({ x: 60, y: 45 });
   });
 
-  it('keeps the authored box as the OUTER box when a stroke is painted', () => {
+  it("keeps the authored box as the OUTER box when a stroke is painted", () => {
     // `mount.ts` had `box-sizing: border-box`; Fabric centres a stroke on the
     // path. Without the inset a 4 px outline would make this 104 px wide and
     // push every neighbour's alignment out by 2 px.
     const { adapter } = mount();
 
     adapter.apply(
-      plan([rectangle('r', { x: 0, y: 0, width: 100, height: 50 }, { strokeColor: '#f00', strokeWidth: 4 })]),
+      plan([
+        rectangle(
+          "r",
+          { x: 0, y: 0, width: 100, height: 50 },
+          { strokeColor: "#f00", strokeWidth: 4 },
+        ),
+      ]),
     );
 
-    const object = adapter.objectFor('r')!;
+    const object = adapter.objectFor("r")!;
 
     expect(object.width).toBe(96);
     expect(object.height).toBe(46);
@@ -195,7 +258,7 @@ describe('creating a scene', () => {
     expect(absoluteCentre(object)).toEqual({ x: 50, y: 25 });
   });
 
-  it('clamps a corner radius the way CSS does, not the way Fabric does', () => {
+  it("clamps a corner radius the way CSS does, not the way Fabric does", () => {
     // `cornerRadius: 999` means "fully rounded". Fabric caps each axis on its
     // own, which turns a wide box into a full ellipse; CSS scales both radii by
     // one factor, giving a capsule. The stress fixture draws visibly different
@@ -205,83 +268,116 @@ describe('creating a scene', () => {
     adapter.apply(
       plan([
         node({
-          id: 'pill',
+          id: "pill",
           box: box({ width: 120, height: 40 }),
-          content: { kind: 'shape', shape: 'rectangle', cornerRadius: 999 },
+          content: { kind: "shape", shape: "rectangle", cornerRadius: 999 },
         }),
       ]),
     );
 
-    expect(adapter.objectFor('pill')).toMatchObject({ rx: 20, ry: 20 });
+    expect(adapter.objectFor("pill")).toMatchObject({ rx: 20, ry: 20 });
   });
 
-  it('gives an ellipse radii rather than a width and a height', () => {
+  it("gives an ellipse radii rather than a width and a height", () => {
     const { adapter } = mount();
 
     adapter.apply(
       plan([
         node({
-          id: 'e',
+          id: "e",
           box: box({ width: 80, height: 40 }),
-          content: { kind: 'shape', shape: 'ellipse', cornerRadius: 0 },
+          content: { kind: "shape", shape: "ellipse", cornerRadius: 0 },
         }),
       ]),
     );
 
-    const ellipse = adapter.objectFor('e');
+    const ellipse = adapter.objectFor("e");
 
     expect(ellipse).toBeInstanceOf(Ellipse);
     expect(ellipse).toMatchObject({ rx: 40, ry: 20, width: 80, height: 40 });
   });
 
-  it('stacks objects in the plan’s order', () => {
+  it("stacks objects in the plan’s order", () => {
     const { canvas, adapter } = mount();
 
-    adapter.apply(plan([rectangle('a', {}), rectangle('b', {}), rectangle('c', {})]));
+    adapter.apply(
+      plan([rectangle("a", {}), rectangle("b", {}), rectangle("c", {})]),
+    );
 
-    expect(canvas.getObjects().map((object) => object.get('id'))).toEqual(['a', 'b', 'c']);
+    expect(canvas.getObjects().map((object) => object.get("id"))).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
   });
 
-  it('clips to the artboard and paints its background', () => {
+  it("clips to the artboard and paints its background", () => {
     // §53: content outside the artboard must not paint over the letterbox
     // bars, which are the host's background showing where the design is not.
     const { canvas, adapter } = mount();
 
-    adapter.apply(plan([rectangle('r', {})], { width: 800, height: 600, background: '#123456' }));
+    adapter.apply(
+      plan([rectangle("r", {})], {
+        width: 800,
+        height: 600,
+        background: "#123456",
+      }),
+    );
 
-    expect(canvas.backgroundColor).toBe('#123456');
+    expect(canvas.backgroundColor).toBe("#123456");
     expect(canvas.clipPath).toBeInstanceOf(Rect);
-    expect(canvas.clipPath).toMatchObject({ width: 800, height: 600, absolutePositioned: true });
+    expect(canvas.clipPath).toMatchObject({
+      width: 800,
+      height: 600,
+      absolutePositioned: true,
+    });
   });
 });
 
-describe('it actually draws', () => {
+describe("it actually draws", () => {
   /** One pixel, straight off the canvas' own backing store. */
-  function pixelAt(canvas: StaticCanvas, x: number, y: number): readonly number[] {
+  function pixelAt(
+    canvas: StaticCanvas,
+    x: number,
+    y: number,
+  ): readonly number[] {
     const context = canvas.getContext();
 
     return [...context.getImageData(x, y, 1, 1).data];
   }
 
-  it('paints a filled node, and clips what falls outside the artboard', () => {
+  it("paints a filled node, and clips what falls outside the artboard", () => {
     // Every other test here would pass with the whole scene clipped away, or
     // with nothing painted at all — they assert where objects *are*. This is
     // the one that says ink reached the canvas. Verified by sabotage: dropping
     // the artboard clip fails it. Dropping only `absolutePositioned` does
     // *not*, so that property is asserted directly above rather than claimed
     // to be covered here.
-    const canvas = new StaticCanvas(undefined, { width: 400, height: 300, renderOnAddRemove: false });
+    const canvas = new StaticCanvas(undefined, {
+      width: 400,
+      height: 300,
+      renderOnAddRemove: false,
+    });
     const adapter = createSceneAdapter({ canvas });
 
     canvases.push(canvas);
     adapters.push(adapter);
 
     adapter.apply(
-      plan([rectangle('r', { x: 0, y: 0, width: 400, height: 300 }, { fill: '#ff0000' })], {
-        width: 200,
-        height: 100,
-        background: '',
-      }),
+      plan(
+        [
+          rectangle(
+            "r",
+            { x: 0, y: 0, width: 400, height: 300 },
+            { fill: "#ff0000" },
+          ),
+        ],
+        {
+          width: 200,
+          height: 100,
+          background: "",
+        },
+      ),
     );
     canvas.renderAll();
 
@@ -292,21 +388,25 @@ describe('it actually draws', () => {
     expect(pixelAt(canvas, 300, 200)[3]).toBe(0);
   });
 
-  it('leaves a node with no authored fill transparent', () => {
+  it("leaves a node with no authored fill transparent", () => {
     // Fabric's default fill is opaque black, so this is the assertion that the
     // explicit `fill: ''` in `paint.ts` is doing its job — on a dark dashboard
     // a black slab is very nearly invisible in review and obvious in use.
-    const canvas = new StaticCanvas(undefined, { width: 100, height: 100, renderOnAddRemove: false });
+    const canvas = new StaticCanvas(undefined, {
+      width: 100,
+      height: 100,
+      renderOnAddRemove: false,
+    });
     const adapter = createSceneAdapter({ canvas });
 
     canvases.push(canvas);
     adapters.push(adapter);
 
     adapter.apply(
-      plan([rectangle('r', { x: 0, y: 0, width: 100, height: 100 })], {
+      plan([rectangle("r", { x: 0, y: 0, width: 100, height: 100 })], {
         width: 100,
         height: 100,
-        background: '',
+        background: "",
       }),
     );
     canvas.renderAll();
@@ -315,25 +415,36 @@ describe('it actually draws', () => {
   });
 });
 
-describe('a group’s children', () => {
-  const child = rectangle('child', { x: 10, y: 10, width: 50, height: 50 });
+describe("a group’s children", () => {
+  const child = rectangle("child", { x: 10, y: 10, width: 50, height: 50 });
 
-  function grouped(groupBox: Partial<PlanBox>, children: readonly PlanNode[] = [child]): ScenePlan {
+  function grouped(
+    groupBox: Partial<PlanBox>,
+    children: readonly PlanNode[] = [child],
+  ): ScenePlan {
     return plan([
-      node({ id: 'group', box: box(groupBox), content: { kind: 'group' }, children }),
+      node({
+        id: "group",
+        box: box(groupBox),
+        content: { kind: "group" },
+        children,
+      }),
     ]);
   }
 
-  it('land at the group’s position plus their own', () => {
+  it("land at the group’s position plus their own", () => {
     // The conversion this whole file is for: 100 + 10 + 25.
     const { adapter } = mount();
 
     adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
 
-    expect(absoluteCentre(adapter.objectFor('child')!)).toEqual({ x: 135, y: 135 });
+    expect(absoluteCentre(adapter.objectFor("child")!)).toEqual({
+      x: 135,
+      y: 135,
+    });
   });
 
-  it('keep the group’s own authored size, which Fabric would otherwise recompute', () => {
+  it("keep the group’s own authored size, which Fabric would otherwise recompute", () => {
     // `FitContentLayout` — the default — would shrink the group to its
     // children's bounding box, which is 60x60 here, and §137's reversal says
     // the authored box is the group's.
@@ -341,14 +452,14 @@ describe('a group’s children', () => {
 
     adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
 
-    const group = adapter.objectFor('group')!;
+    const group = adapter.objectFor("group")!;
 
     expect(group).toBeInstanceOf(Group);
     expect(group).toMatchObject({ width: 200, height: 200 });
     expect(absoluteCentre(group)).toEqual({ x: 200, y: 200 });
   });
 
-  it('take the children’s extent when the document gives the group no size', () => {
+  it("take the children’s extent when the document gives the group no size", () => {
     // Not an edge case: `capabilities.ts` gives a group position but no size,
     // so most authored groups arrive at 0x0. In the DOM that was harmless — a
     // zero-sized div does not clip — but `FabricObject.render` starts with
@@ -359,7 +470,7 @@ describe('a group’s children', () => {
 
     adapter.apply(grouped({ x: 100, y: 100, width: 0, height: 0 }));
 
-    const group = adapter.objectFor('group')!;
+    const group = adapter.objectFor("group")!;
 
     expect(group.width).toBeGreaterThan(0);
     expect(group.height).toBeGreaterThan(0);
@@ -367,55 +478,66 @@ describe('a group’s children', () => {
 
     // And the child has not moved: a sized group must not reposition what it
     // contains. Authored at 10,10 within a group at 100,100, so 135,135.
-    expect(absoluteCentre(adapter.objectFor('child')!)).toEqual({ x: 135, y: 135 });
+    expect(absoluteCentre(adapter.objectFor("child")!)).toEqual({
+      x: 135,
+      y: 135,
+    });
   });
 
-  it('keep an authored group size rather than fitting to content', () => {
+  it("keep an authored group size rather than fitting to content", () => {
     // The other half, and §137's reversal: a group that *has* geometry owns it.
     const { adapter } = mount();
 
     adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
 
-    expect(adapter.objectFor('group')).toMatchObject({ width: 200, height: 200 });
+    expect(adapter.objectFor("group")).toMatchObject({
+      width: 200,
+      height: 200,
+    });
   });
 
-  it('rotate with the group, about the group’s centre', () => {
+  it("rotate with the group, about the group’s centre", () => {
     // A rotated group is where "build at the content origin, then transform"
     // earns itself: adding a child to an already-rotated group would invert
     // the rotation into the child's coordinates and place it somewhere the
     // document never asked for.
     const { adapter } = mount();
 
-    adapter.apply(grouped({ x: 0, y: 0, width: 200, height: 200, rotation: 90 }));
+    adapter.apply(
+      grouped({ x: 0, y: 0, width: 200, height: 200, rotation: 90 }),
+    );
 
     // The child's centre is at (35, 35) unrotated, i.e. (-65, -65) from the
     // group's centre at (100, 100). Rotating that by 90° clockwise gives
     // (65, -65), so the child lands at (165, 35).
-    const centre = absoluteCentre(adapter.objectFor('child')!);
+    const centre = absoluteCentre(adapter.objectFor("child")!);
 
     expect(centre.x).toBeCloseTo(165, 6);
     expect(centre.y).toBeCloseTo(35, 6);
   });
 
-  it('are nested inside the group rather than added to the canvas', () => {
+  it("are nested inside the group rather than added to the canvas", () => {
     const { canvas, adapter } = mount();
 
     adapter.apply(grouped({ width: 200, height: 200 }));
 
     expect(canvas.getObjects()).toHaveLength(1);
-    expect(adapter.objectFor('child')?.group).toBe(adapter.objectFor('group'));
+    expect(adapter.objectFor("child")?.group).toBe(adapter.objectFor("group"));
   });
 
-  it('move with the group when a later plan moves it', () => {
+  it("move with the group when a later plan moves it", () => {
     const { adapter } = mount();
 
     adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
     adapter.apply(grouped({ x: 300, y: 100, width: 200, height: 200 }));
 
-    expect(absoluteCentre(adapter.objectFor('child')!)).toEqual({ x: 335, y: 135 });
+    expect(absoluteCentre(adapter.objectFor("child")!)).toEqual({
+      x: 335,
+      y: 135,
+    });
   });
 
-  it('move on their own when a later plan moves only the child', () => {
+  it("move on their own when a later plan moves only the child", () => {
     // The update path, which has no `Group.add()` to convert for it — this is
     // what `withinGroup` is for, and the number says whether it was applied.
     const { adapter } = mount();
@@ -423,64 +545,86 @@ describe('a group’s children', () => {
     adapter.apply(grouped({ x: 100, y: 100, width: 200, height: 200 }));
     adapter.apply(
       grouped({ x: 100, y: 100, width: 200, height: 200 }, [
-        rectangle('child', { x: 50, y: 10, width: 50, height: 50 }),
+        rectangle("child", { x: 50, y: 10, width: 50, height: 50 }),
       ]),
     );
 
-    expect(absoluteCentre(adapter.objectFor('child')!)).toEqual({ x: 175, y: 135 });
+    expect(absoluteCentre(adapter.objectFor("child")!)).toEqual({
+      x: 175,
+      y: 135,
+    });
   });
 });
 
-describe('updating a scene', () => {
-  it('moves an object instead of replacing it', () => {
+describe("updating a scene", () => {
+  it("moves an object instead of replacing it", () => {
     const { canvas, adapter } = mount();
 
-    adapter.apply(plan([rectangle('r', { x: 0, y: 0, width: 10, height: 10 })]));
+    adapter.apply(
+      plan([rectangle("r", { x: 0, y: 0, width: 10, height: 10 })]),
+    );
 
-    const first = adapter.objectFor('r');
+    const first = adapter.objectFor("r");
 
-    adapter.apply(plan([rectangle('r', { x: 40, y: 0, width: 10, height: 10 })]));
+    adapter.apply(
+      plan([rectangle("r", { x: 40, y: 0, width: 10, height: 10 })]),
+    );
 
-    expect(adapter.objectFor('r')).toBe(first);
+    expect(adapter.objectFor("r")).toBe(first);
     expect(canvas.getObjects()).toHaveLength(1);
     expect(absoluteCentre(first!)).toEqual({ x: 45, y: 5 });
   });
 
-  it('re-applies a changed style, including one that clears a shadow', () => {
+  it("re-applies a changed style, including one that clears a shadow", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([rectangle('r', { width: 10, height: 10 }, { fill: '#f00', shadowColor: '#000' })]));
-    expect(adapter.objectFor('r')?.shadow).not.toBeNull();
+    adapter.apply(
+      plan([
+        rectangle(
+          "r",
+          { width: 10, height: 10 },
+          { fill: "#f00", shadowColor: "#000" },
+        ),
+      ]),
+    );
+    expect(adapter.objectFor("r")?.shadow).not.toBeNull();
 
-    adapter.apply(plan([rectangle('r', { width: 10, height: 10 }, { fill: '#0f0' })]));
+    adapter.apply(
+      plan([rectangle("r", { width: 10, height: 10 }, { fill: "#0f0" })]),
+    );
 
-    expect(adapter.objectFor('r')).toMatchObject({ fill: '#0f0' });
-    expect(adapter.objectFor('r')?.shadow).toBeNull();
+    expect(adapter.objectFor("r")).toMatchObject({ fill: "#0f0" });
+    expect(adapter.objectFor("r")?.shadow).toBeNull();
   });
 
-  it('hides a node the document turned off', () => {
+  it("hides a node the document turned off", () => {
     const { adapter } = mount();
-    const shown = rectangle('r', { width: 10, height: 10 });
+    const shown = rectangle("r", { width: 10, height: 10 });
 
     adapter.apply(plan([shown]));
-    expect(adapter.objectFor('r')?.visible).toBe(true);
+    expect(adapter.objectFor("r")?.visible).toBe(true);
 
     adapter.apply(plan([{ ...shown, visible: false }]));
-    expect(adapter.objectFor('r')?.visible).toBe(false);
+    expect(adapter.objectFor("r")?.visible).toBe(false);
   });
 
-  it('removes a node the document dropped, and disposes it', () => {
+  it("removes a node the document dropped, and disposes it", () => {
     const { canvas, adapter } = mount();
 
-    adapter.apply(plan([rectangle('keep', { width: 10, height: 10 }), chartNode('drop', { width: 200, height: 100 })]));
+    adapter.apply(
+      plan([
+        rectangle("keep", { width: 10, height: 10 }),
+        chartNode("drop", { width: 200, height: 100 }),
+      ]),
+    );
 
-    const chart = adapter.objectFor('drop') as VigiliaChart;
+    const chart = adapter.objectFor("drop") as VigiliaChart;
 
     expect(chart.disposed).toBe(false);
 
-    adapter.apply(plan([rectangle('keep', { width: 10, height: 10 })]));
+    adapter.apply(plan([rectangle("keep", { width: 10, height: 10 })]));
 
-    expect(adapter.objectFor('drop')).toBeUndefined();
+    expect(adapter.objectFor("drop")).toBeUndefined();
     expect(canvas.getObjects()).toHaveLength(1);
     // `canvas.remove()` does not dispose — only the `object:removed` wiring
     // does, and without it a chart leaks its ECharts instance and its backing
@@ -488,38 +632,40 @@ describe('updating a scene', () => {
     expect(chart.disposed).toBe(true);
   });
 
-  it('rebuilds when the tree changes shape rather than mismatching objects', () => {
+  it("rebuilds when the tree changes shape rather than mismatching objects", () => {
     // A node that changes content kind is a different Fabric class, and one
     // that changes parent is in a different coordinate space. Reusing an object
     // across either is how a scene ends up subtly, unexplainably wrong.
     const { adapter } = mount();
 
-    adapter.apply(plan([rectangle('r', { width: 10, height: 10 })]));
+    adapter.apply(plan([rectangle("r", { width: 10, height: 10 })]));
 
-    const before = adapter.objectFor('r');
+    const before = adapter.objectFor("r");
 
     adapter.apply(
       plan([
         node({
-          id: 'r',
+          id: "r",
           box: box({ width: 10, height: 10 }),
-          content: { kind: 'shape', shape: 'ellipse', cornerRadius: 0 },
+          content: { kind: "shape", shape: "ellipse", cornerRadius: 0 },
         }),
       ]),
     );
 
-    expect(adapter.objectFor('r')).not.toBe(before);
-    expect(adapter.objectFor('r')).toBeInstanceOf(Ellipse);
+    expect(adapter.objectFor("r")).not.toBe(before);
+    expect(adapter.objectFor("r")).toBeInstanceOf(Ellipse);
   });
 });
 
-describe('charts', () => {
-  it('builds one from the plan’s authored settings, not from the built option', () => {
+describe("charts", () => {
+  it("builds one from the plan’s authored settings, not from the built option", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([chartNode('c', { x: 10, y: 20, width: 300, height: 180 })]));
+    adapter.apply(
+      plan([chartNode("c", { x: 10, y: 20, width: 300, height: 180 })]),
+    );
 
-    const chart = adapter.objectFor('c');
+    const chart = adapter.objectFor("c");
 
     expect(chart).toBeInstanceOf(VigiliaChart);
     // `settings` is what the object persists, and it is only in the plan
@@ -528,58 +674,68 @@ describe('charts', () => {
     expect(absoluteCentre(chart!)).toEqual({ x: 160, y: 110 });
   });
 
-  it('hands over every frame’s option without comparing them', () => {
+  it("hands over every frame’s option without comparing them", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([chartNode('c', { width: 300, height: 180 }, 10)]));
+    adapter.apply(plan([chartNode("c", { width: 300, height: 180 }, 10)]));
 
-    const chart = adapter.objectFor('c') as VigiliaChart;
-    const setOption = vi.spyOn(chart, 'setOption');
+    const chart = adapter.objectFor("c") as VigiliaChart;
+    const setOption = vi.spyOn(chart, "setOption");
 
-    adapter.apply(plan([chartNode('c', { width: 300, height: 180 }, 90)]));
+    adapter.apply(plan([chartNode("c", { width: 300, height: 180 }, 90)]));
 
     expect(setOption).toHaveBeenCalledTimes(1);
   });
 
-  it('re-lays out rather than scaling when the box changes', () => {
+  it("re-lays out rather than scaling when the box changes", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([chartNode('c', { width: 300, height: 180 })]));
+    adapter.apply(plan([chartNode("c", { width: 300, height: 180 })]));
 
-    const chart = adapter.objectFor('c') as VigiliaChart;
+    const chart = adapter.objectFor("c") as VigiliaChart;
 
-    adapter.apply(plan([chartNode('c', { width: 400, height: 200 })]));
+    adapter.apply(plan([chartNode("c", { width: 400, height: 200 })]));
 
     // Re-layout, so ECharts re-ticks its axes and type stays at its authored
     // size — which means the Fabric scale must be back at 1.
-    expect(chart).toMatchObject({ width: 400, height: 200, scaleX: 1, scaleY: 1 });
+    expect(chart).toMatchObject({
+      width: 400,
+      height: 200,
+      scaleX: 1,
+      scaleY: 1,
+    });
   });
 
-  it('refuses a chart with no size instead of taking the frame down', () => {
+  it("refuses a chart with no size instead of taking the frame down", () => {
     // `VigiliaChart` throws on a zero-sized box, correctly. A document that
     // gets here is a validation failure, and killing the frame for it would
     // hide every other node's problem.
     const onUnsupported = vi.fn();
     const { canvas, adapter } = mount({ onUnsupported });
 
-    expect(() => adapter.apply(plan([chartNode('c', { width: 0, height: 0 })]))).not.toThrow();
+    expect(() =>
+      adapter.apply(plan([chartNode("c", { width: 0, height: 0 })])),
+    ).not.toThrow();
 
-    expect(onUnsupported).toHaveBeenCalledWith('c', expect.stringContaining('positive size'));
+    expect(onUnsupported).toHaveBeenCalledWith(
+      "c",
+      expect.stringContaining("positive size"),
+    );
     expect(canvas.getObjects()).toHaveLength(0);
   });
 
-  it('passes the render scale on, and a later change to it', () => {
+  it("passes the render scale on, and a later change to it", () => {
     const { adapter } = mount();
 
-    adapter.apply(plan([chartNode('c', { width: 300, height: 180 })]));
+    adapter.apply(plan([chartNode("c", { width: 300, height: 180 })]));
     adapter.setRenderScale(2);
 
-    expect((adapter.objectFor('c') as VigiliaChart).renderScale).toBe(2);
+    expect((adapter.objectFor("c") as VigiliaChart).renderScale).toBe(2);
   });
 });
 
-describe('what it will not draw', () => {
-  it('reports a video rather than pretending', () => {
+describe("what it will not draw", () => {
+  it("reports a video rather than pretending", () => {
     // Measured and rejected: a full-canvas repaint per frame, 22.9–28.2 ms
     // against a 33.3 ms budget. Stage 7 puts it on a DOM layer behind the
     // canvas instead.
@@ -589,55 +745,66 @@ describe('what it will not draw', () => {
     adapter.apply(
       plan([
         node({
-          id: 'v',
+          id: "v",
           box: box({ width: 100, height: 100 }),
-          content: { kind: 'video', src: '/clip.mp4', loop: true, muted: true },
+          content: { kind: "video", src: "/clip.mp4", loop: true, muted: true },
         }),
       ]),
     );
 
-    expect(onUnsupported).toHaveBeenCalledWith('v', expect.stringContaining('video'));
+    expect(onUnsupported).toHaveBeenCalledWith(
+      "v",
+      expect.stringContaining("video"),
+    );
     expect(canvas.getObjects()).toHaveLength(0);
   });
 
-  it('reports a style property canvas has no equivalent for', () => {
+  it("reports a style property canvas has no equivalent for", () => {
     const onUnsupported = vi.fn();
     const { adapter } = mount({ onUnsupported });
 
-    adapter.apply(
-      plan([textNode('t', '42', { tabularNumerals: true })]),
-    );
+    adapter.apply(plan([textNode("t", "42", { tabularNumerals: true })]));
 
-    expect(onUnsupported).toHaveBeenCalledWith('t', expect.stringContaining('tabularNumerals'));
+    expect(onUnsupported).toHaveBeenCalledWith(
+      "t",
+      expect.stringContaining("tabularNumerals"),
+    );
   });
 });
 
-describe('a scene that already exists', () => {
-  it('is adopted by id rather than duplicated', () => {
+describe("a scene that already exists", () => {
+  it("is adopted by id rather than duplicated", () => {
     // The stage-3 seam: a scene revived with `loadFromJSON` arrives as objects
     // carrying their own geometry and their `id`, and the plan must configure
     // them rather than replace them. Building the identity map by *reading* the
     // canvas is what makes that work — and this is testable now, before the
     // format lands, because it is the same map either way.
     const canvas = new StaticCanvas(undefined, { width: 1920, height: 1080 });
-    const existing = new Rect({ width: 10, height: 10, originX: 'center', originY: 'center' });
+    const existing = new Rect({
+      width: 10,
+      height: 10,
+      originX: "center",
+      originY: "center",
+    });
 
-    existing.set('id', 'r');
+    existing.set("id", "r");
     canvas.add(existing);
     canvases.push(canvas);
 
     const adapter = createSceneAdapter({ canvas });
     adapters.push(adapter);
 
-    adapter.apply(plan([rectangle('r', { x: 40, y: 40, width: 10, height: 10 })]));
+    adapter.apply(
+      plan([rectangle("r", { x: 40, y: 40, width: 10, height: 10 })]),
+    );
 
     expect(canvas.getObjects()).toHaveLength(1);
-    expect(adapter.objectFor('r')).toBe(existing);
+    expect(adapter.objectFor("r")).toBe(existing);
     expect(absoluteCentre(existing)).toEqual({ x: 45, y: 45 });
   });
 });
 
-describe('a font arriving after the first paint', () => {
+describe("a font arriving after the first paint", () => {
   /**
    * A stand-in for `FontFaceSet`.
    *
@@ -651,7 +818,9 @@ describe('a font arriving after the first paint', () => {
     listeners: () => number;
     restore: () => void;
   } {
-    const target = new EventTarget() as EventTarget & { ready: Promise<unknown> };
+    const target = new EventTarget() as EventTarget & {
+      ready: Promise<unknown>;
+    };
     const add = target.addEventListener.bind(target);
     const remove = target.removeEventListener.bind(target);
     let count = 0;
@@ -669,18 +838,21 @@ describe('a font arriving after the first paint', () => {
       remove(...args);
     };
 
-    Object.defineProperty(document, 'fonts', { value: target, configurable: true });
+    Object.defineProperty(document, "fonts", {
+      value: target,
+      configurable: true,
+    });
 
     return {
-      fire: () => target.dispatchEvent(new Event('loadingdone')),
+      fire: () => target.dispatchEvent(new Event("loadingdone")),
       listeners: () => count,
       restore: () => {
-        Reflect.deleteProperty(document, 'fonts');
+        Reflect.deleteProperty(document, "fonts");
       },
     };
   }
 
-  it('re-measures text against the face that arrived', () => {
+  it("re-measures text against the face that arrived", () => {
     // The DOM path reflows for free when a face lands; a canvas measured its
     // text once, at `initDimensions()`, and every alignment, ellipsis cut and
     // line clamp was computed from the fallback's metrics.
@@ -699,22 +871,22 @@ describe('a font arriving after the first paint', () => {
       const adapter = createSceneAdapter({ canvas });
       adapters.push(adapter);
 
-      adapter.apply(plan([textNode('t', 'CPU 42%')]));
+      adapter.apply(plan([textNode("t", "CPU 42%")]));
 
-      const object = adapter.objectFor('t');
+      const object = adapter.objectFor("t");
 
       expect(object).toBeDefined();
-      object?.set('text', 'measured against the fallback');
+      object?.set("text", "measured against the fallback");
 
       fonts.fire();
 
-      expect(object?.get('text')).toBe('CPU 42%');
+      expect(object?.get("text")).toBe("CPU 42%");
     } finally {
       fonts.restore();
     }
   });
 
-  it('unsubscribes on dispose, so a torn-down scene is not kept alive', () => {
+  it("unsubscribes on dispose, so a torn-down scene is not kept alive", () => {
     // Asserted as listener removal rather than as "nothing happens", and the
     // difference matters: dropping `lastPlan` in `dispose` already makes the
     // callback a no-op, so a behavioural assertion here passes with the
@@ -730,7 +902,7 @@ describe('a font arriving after the first paint', () => {
 
       const adapter = createSceneAdapter({ canvas });
 
-      adapter.apply(plan([textNode('t', 'CPU 42%')]));
+      adapter.apply(plan([textNode("t", "CPU 42%")]));
 
       expect(fonts.listeners()).toBe(1);
 

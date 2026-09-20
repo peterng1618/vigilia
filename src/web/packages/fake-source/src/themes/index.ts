@@ -1,13 +1,23 @@
-import demoTheme from '../demo-theme.json' with { type: 'json' };
-import stress from './stress.json' with { type: 'json' };
-import portraitCover from './portrait-cover.json' with { type: 'json' };
-import assets from './assets.json' with { type: 'json' };
-import invalidNewerVersion from './invalid/newer-version.json' with { type: 'json' };
-import invalidBrokenReferences from './invalid/broken-references.json' with { type: 'json' };
-import invalidAssetTraversal from './invalid/asset-traversal.json' with { type: 'json' };
-import invalidChartArity from './invalid/chart-arity.json' with { type: 'json' };
-import invalidImpossibleGeometry from './invalid/impossible-geometry.json' with { type: 'json' };
-import type { IssueCode } from '@vigilia/renderer-core';
+import demoTheme from "../demo-theme.json" with { type: "json" };
+import stress from "./stress.json" with { type: "json" };
+import portraitCover from "./portrait-cover.json" with { type: "json" };
+import assets from "./assets.json" with { type: "json" };
+import invalidNewerVersion from "./invalid/newer-version.json" with {
+  type: "json",
+};
+import invalidBrokenReferences from "./invalid/broken-references.json" with {
+  type: "json",
+};
+import invalidAssetTraversal from "./invalid/asset-traversal.json" with {
+  type: "json",
+};
+import invalidChartArity from "./invalid/chart-arity.json" with {
+  type: "json",
+};
+import invalidImpossibleGeometry from "./invalid/impossible-geometry.json" with {
+  type: "json",
+};
+import type { IssueCode } from "@vigilia/renderer-core";
 
 /** Valid fixtures cover distinct rendering shapes; invalid fixtures target validator failures. */
 
@@ -29,55 +39,63 @@ export interface InvalidThemeFixture {
 
 export const VALID_THEMES: readonly ValidThemeFixture[] = [
   {
-    name: 'demo',
+    name: "demo",
     document: demoTheme,
-    summary: 'Landscape showcase dashboard: all four chart families, styled runs, contain.',
+    summary:
+      "Landscape showcase dashboard: all four chart families, styled runs, contain.",
   },
   {
-    name: 'stress',
+    name: "stress",
     document: stress,
-    summary: 'Valid but hostile: extremes, rotation, deep nesting, multilingual text, cover of every overflow mode.',
+    summary:
+      "Valid but hostile: extremes, rotation, deep nesting, multilingual text, cover of every overflow mode.",
   },
   {
-    name: 'portrait-cover',
+    name: "portrait-cover",
     document: portraitCover,
-    summary: 'Tall 9:19.5 artboard in cover mode, with content at every edge.',
+    summary: "Tall 9:19.5 artboard in cover mode, with content at every edge.",
   },
   {
-    name: 'assets',
+    name: "assets",
     document: assets,
-    summary: 'Image nodes: three fit modes, monochrome recolouring, an SVG, and one unresolvable reference.',
+    summary:
+      "Image nodes: three fit modes, monochrome recolouring, an SVG, and one unresolvable reference.",
     staticOnly: true,
   },
 ];
 
 export const INVALID_THEMES: readonly InvalidThemeFixture[] = [
   {
-    name: 'newer-version',
+    name: "newer-version",
     document: invalidNewerVersion,
     // Version refusal short-circuits all other validation.
-    expect: ['newer-schema-version'],
+    expect: ["newer-schema-version"],
     only: true,
   },
   {
-    name: 'broken-references',
+    name: "broken-references",
     document: invalidBrokenReferences,
-    expect: ['unresolved-global-ref', 'duplicate-id', 'style-value-ambiguous', 'binding-count'],
+    expect: [
+      "unresolved-global-ref",
+      "duplicate-id",
+      "style-value-ambiguous",
+      "binding-count",
+    ],
   },
   {
-    name: 'asset-traversal',
+    name: "asset-traversal",
     document: invalidAssetTraversal,
-    expect: ['invalid-asset-path'],
+    expect: ["invalid-asset-path"],
   },
   {
-    name: 'chart-arity',
+    name: "chart-arity",
     document: invalidChartArity,
-    expect: ['binding-count', 'unresolved-binding-ref'],
+    expect: ["binding-count", "unresolved-binding-ref"],
   },
   {
-    name: 'impossible-geometry',
+    name: "impossible-geometry",
     document: invalidImpossibleGeometry,
-    expect: ['out-of-range'],
+    expect: ["out-of-range"],
   },
 ];
 

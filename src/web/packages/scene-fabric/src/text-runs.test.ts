@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import type { PlanTextSegment, ResolvedStyle } from '@vigilia/renderer-core';
-import { textShapeFor } from './text-runs.js';
+import { describe, expect, it } from "vitest";
+import type { PlanTextSegment, ResolvedStyle } from "@vigilia/renderer-core";
+import { textShapeFor } from "./text-runs.js";
 
 /**
  * §89's runs as per-character styles.
@@ -17,118 +17,128 @@ function segment(text: string, style: ResolvedStyle = {}): PlanTextSegment {
   return { text, style };
 }
 
-describe('one run', () => {
-  it('needs no per-character styles at all', () => {
+describe("one run", () => {
+  it("needs no per-character styles at all", () => {
     // The object's own paint covers it, so writing a style map would be a
     // second copy of the same fact.
-    const shape = textShapeFor([segment('42 °C', { fill: '#fff' })], { fill: '#fff' }, splitGraphemes);
+    const shape = textShapeFor(
+      [segment("42 °C", { fill: "#fff" })],
+      { fill: "#fff" },
+      splitGraphemes,
+    );
 
-    expect(shape.text).toBe('42 °C');
+    expect(shape.text).toBe("42 °C");
     expect(shape.styles).toEqual({});
     expect(shape.unsupported).toEqual([]);
   });
 });
 
-describe('several runs', () => {
-  it('concatenates the text and styles each run’s own characters', () => {
+describe("several runs", () => {
+  it("concatenates the text and styles each run’s own characters", () => {
     const shape = textShapeFor(
-      [segment('CPU ', { fill: '#888' }), segment('42', { fill: '#fff', fontSize: 32 })],
-      { fill: '#888' },
+      [
+        segment("CPU ", { fill: "#888" }),
+        segment("42", { fill: "#fff", fontSize: 32 }),
+      ],
+      { fill: "#888" },
       splitGraphemes,
     );
 
-    expect(shape.text).toBe('CPU 42');
+    expect(shape.text).toBe("CPU 42");
 
     // Four characters of label, then two of value. The boundary is the
     // assertion: index 3 is still the label and index 4 is the value.
-    expect(shape.styles[0]?.[3]).toMatchObject({ fill: '#888' });
-    expect(shape.styles[0]?.[4]).toMatchObject({ fill: '#fff', fontSize: 32 });
-    expect(shape.styles[0]?.[5]).toMatchObject({ fill: '#fff' });
+    expect(shape.styles[0]?.[3]).toMatchObject({ fill: "#888" });
+    expect(shape.styles[0]?.[4]).toMatchObject({ fill: "#fff", fontSize: 32 });
+    expect(shape.styles[0]?.[5]).toMatchObject({ fill: "#fff" });
     expect(shape.styles[0]?.[6]).toBeUndefined();
   });
 
-  it('carries only what the run authored, so inherited colour survives', () => {
+  it("carries only what the run authored, so inherited colour survives", () => {
     // The defect this exists for, and it was invisible to every other test
     // here because they all gave each run an explicit fill. A per-character
     // entry *overrides* the object, so a default in one replaces the node's
     // colour with nothing — and the run renders invisible under a green suite.
     // Found by putting a screenshot of this path next to the DOM path's.
     const shape = textShapeFor(
-      [segment('Vigilia', { fontWeight: 700 }), segment(' dashboard', { fill: '#888' })],
-      { fill: '#ffffff' },
+      [
+        segment("Vigilia", { fontWeight: 700 }),
+        segment(" dashboard", { fill: "#888" }),
+      ],
+      { fill: "#ffffff" },
       splitGraphemes,
     );
 
     expect(shape.styles[0]?.[0]).toEqual({ fontWeight: 700 });
-    expect(shape.styles[0]?.[0]).not.toHaveProperty('fill');
+    expect(shape.styles[0]?.[0]).not.toHaveProperty("fill");
     // The run that *did* author a colour still gets it.
-    expect(shape.styles[0]?.[7]).toMatchObject({ fill: '#888' });
+    expect(shape.styles[0]?.[7]).toMatchObject({ fill: "#888" });
   });
 
-  it('restarts the index on a newline, because Fabric’s lines do', () => {
+  it("restarts the index on a newline, because Fabric’s lines do", () => {
     // Fabric keys styles by line and then by index *within that line*. Carrying
     // a running total across a newline would style the wrong characters from
     // the second line onwards, in a way that only shows on multi-line text.
     const shape = textShapeFor(
-      [segment('a\nbc', { fill: '#111' }), segment('d', { fill: '#222' })],
+      [segment("a\nbc", { fill: "#111" }), segment("d", { fill: "#222" })],
       {},
       splitGraphemes,
     );
 
-    expect(shape.styles[0]?.[0]).toMatchObject({ fill: '#111' });
-    expect(shape.styles[1]?.[0]).toMatchObject({ fill: '#111' });
-    expect(shape.styles[1]?.[1]).toMatchObject({ fill: '#111' });
+    expect(shape.styles[0]?.[0]).toMatchObject({ fill: "#111" });
+    expect(shape.styles[1]?.[0]).toMatchObject({ fill: "#111" });
+    expect(shape.styles[1]?.[1]).toMatchObject({ fill: "#111" });
     // 'd' continues line 1 at index 2 — it follows 'bc' rather than starting
     // a line of its own.
-    expect(shape.styles[1]?.[2]).toMatchObject({ fill: '#222' });
+    expect(shape.styles[1]?.[2]).toMatchObject({ fill: "#222" });
   });
 
-  it('counts graphemes through the injected splitter, not string length', () => {
+  it("counts graphemes through the injected splitter, not string length", () => {
     // '👍' is two UTF-16 code units and one grapheme. Using `.length` would
     // leave every style after it one index too far along. The splitter is
     // injected precisely so this file can prove it is used.
     const shape = textShapeFor(
-      [segment('👍', { fill: '#111' }), segment('x', { fill: '#222' })],
+      [segment("👍", { fill: "#111" }), segment("x", { fill: "#222" })],
       {},
       splitGraphemes,
     );
 
-    expect(shape.styles[0]?.[0]).toMatchObject({ fill: '#111' });
-    expect(shape.styles[0]?.[1]).toMatchObject({ fill: '#222' });
+    expect(shape.styles[0]?.[0]).toMatchObject({ fill: "#111" });
+    expect(shape.styles[0]?.[1]).toMatchObject({ fill: "#222" });
   });
 
-  it('maps colour to Fabric’s fill, with `color` winning', () => {
+  it("maps colour to Fabric’s fill, with `color` winning", () => {
     const shape = textShapeFor(
-      [segment('a', { color: '#abc', fill: '#def' }), segment('b')],
+      [segment("a", { color: "#abc", fill: "#def" }), segment("b")],
       {},
       splitGraphemes,
     );
 
-    expect(shape.styles[0]?.[0]).toMatchObject({ fill: '#abc' });
+    expect(shape.styles[0]?.[0]).toMatchObject({ fill: "#abc" });
   });
 });
 
-describe('what a run cannot carry', () => {
-  it('reports an object-level property that differs per run', () => {
+describe("what a run cannot carry", () => {
+  it("reports an object-level property that differs per run", () => {
     // Fabric's per-character keys are fill, stroke, strokeWidth, the font
     // properties, the decorations and `deltaY`. Opacity and shadow are
     // object-level, so a run asking for its own is a §85 gap — reported, not
     // silently dropped.
     const shape = textShapeFor(
-      [segment('a', { opacity: 0.5 }), segment('b', { shadowColor: '#000' })],
+      [segment("a", { opacity: 0.5 }), segment("b", { shadowColor: "#000" })],
       { opacity: 1 },
       splitGraphemes,
     );
 
-    expect(shape.unsupported).toContain('opacity');
-    expect(shape.unsupported).toContain('shadowColor');
+    expect(shape.unsupported).toContain("opacity");
+    expect(shape.unsupported).toContain("shadowColor");
   });
 
-  it('says nothing when the run agrees with the object', () => {
+  it("says nothing when the run agrees with the object", () => {
     // A run repeating the node's own opacity is expressible — the object
     // carries it. Reporting that would train the reader to ignore the warnings.
     const shape = textShapeFor(
-      [segment('a', { opacity: 0.5 }), segment('b', { opacity: 0.5 })],
+      [segment("a", { opacity: 0.5 }), segment("b", { opacity: 0.5 })],
       { opacity: 0.5 },
       splitGraphemes,
     );
@@ -136,17 +146,17 @@ describe('what a run cannot carry', () => {
     expect(shape.unsupported).toEqual([]);
   });
 
-  it('reports each property once however many runs ask for it', () => {
+  it("reports each property once however many runs ask for it", () => {
     const shape = textShapeFor(
       [
-        segment('a', { letterSpacing: 2 }),
-        segment('b', { letterSpacing: 3 }),
-        segment('c', { letterSpacing: 4 }),
+        segment("a", { letterSpacing: 2 }),
+        segment("b", { letterSpacing: 3 }),
+        segment("c", { letterSpacing: 4 }),
       ],
       {},
       splitGraphemes,
     );
 
-    expect(shape.unsupported).toEqual(['letterSpacing']);
+    expect(shape.unsupported).toEqual(["letterSpacing"]);
   });
 });

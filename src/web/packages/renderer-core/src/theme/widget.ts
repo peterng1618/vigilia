@@ -7,12 +7,12 @@ import {
   type TextRun,
   type ThemeNode,
   type WidgetProvenance,
-} from './document.js';
+} from "./document.js";
 
 /** Inserts a reusable subtree as a copy with fresh IDs and explicit global mapping. */
 
 export interface WidgetIssue {
-  readonly code: 'unmapped-global' | 'id-collision' | 'invalid-id';
+  readonly code: "unmapped-global" | "id-collision" | "invalid-id";
   readonly detail: string;
 }
 
@@ -48,7 +48,9 @@ export function instantiateWidget(
   // Allocate all IDs first so references can point forward or backward safely.
   collectIds(nodes, options.idPrefix, taken, idMap, issues);
 
-  const copied = nodes.map((node) => copyNode(node, options, idMap, issues, true));
+  const copied = nodes.map((node) =>
+    copyNode(node, options, idMap, issues, true),
+  );
 
   return { nodes: copied, idMap, issues };
 }
@@ -67,7 +69,7 @@ function collectIds(
       allocate(binding.id, prefix, taken, idMap, issues);
     }
 
-    if (node.type === 'group') {
+    if (node.type === "group") {
       collectIds(node.children, prefix, taken, idMap, issues);
     }
   }
@@ -83,7 +85,7 @@ function allocate(
 ): void {
   if (idMap.has(original)) {
     issues.push({
-      code: 'id-collision',
+      code: "id-collision",
       detail: `The widget declares "${original}" more than once. Its copies will share one id.`,
     });
     return;
@@ -91,9 +93,9 @@ function allocate(
 
   const sanitized = sanitizeId(`${prefix}-${original}`);
 
-  if (sanitized === '') {
+  if (sanitized === "") {
     issues.push({
-      code: 'invalid-id',
+      code: "invalid-id",
       detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
     });
     idMap.set(original, original);
@@ -114,8 +116,8 @@ function allocate(
 }
 
 function sanitizeId(value: string): string {
-  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, MAX_ID_LENGTH);
-  return STABLE_ID_PATTERN.test(cleaned) ? cleaned : '';
+  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, MAX_ID_LENGTH);
+  return STABLE_ID_PATTERN.test(cleaned) ? cleaned : "";
 }
 
 function copyNode(
@@ -128,44 +130,60 @@ function copyNode(
   const base = {
     ...node,
     id: idMap.get(node.id) ?? node.id,
-    ...(node.transform === undefined && !isRoot ? {} : { transform: offsetTransform(node, options, isRoot) }),
+    ...(node.transform === undefined && !isRoot
+      ? {}
+      : { transform: offsetTransform(node, options, isRoot) }),
     ...(node.style === undefined
       ? {}
       : { style: remapStyleMap(node.style, options, issues) }),
     ...(node.bindings === undefined
       ? {}
-      : { bindings: node.bindings.map((binding) => copyBinding(binding, idMap)) }),
+      : {
+          bindings: node.bindings.map((binding) => copyBinding(binding, idMap)),
+        }),
     // Provenance belongs on inserted roots, not every descendant.
-    ...(isRoot && options.provenance !== undefined ? { provenance: options.provenance } : {}),
+    ...(isRoot && options.provenance !== undefined
+      ? { provenance: options.provenance }
+      : {}),
   };
 
   switch (node.type) {
-    case 'group':
+    case "group":
       return {
         ...base,
-        type: 'group',
-        children: node.children.map((child) => copyNode(child, options, idMap, issues, false)),
+        type: "group",
+        children: node.children.map((child) =>
+          copyNode(child, options, idMap, issues, false),
+        ),
       };
 
-    case 'text':
+    case "text":
       return {
         ...base,
-        type: 'text',
+        type: "text",
         content: {
           ...node.content,
-          runs: node.content.runs.map((run) => copyRun(run, options, idMap, issues)),
+          runs: node.content.runs.map((run) =>
+            copyRun(run, options, idMap, issues),
+          ),
         },
       };
 
-    case 'image':
+    case "image":
       return {
         ...base,
-        type: 'image',
+        type: "image",
         content: {
           ...node.content,
           ...(node.content.monochrome === undefined
             ? {}
-            : { monochrome: remapStyleValue(node.content.monochrome, options, issues) }),
+            : {
+                monochrome: remapStyleValue(
+                  node.content.monochrome,
+                  options,
+                  issues,
+                ),
+              }),
         },
       };
 
@@ -178,7 +196,7 @@ function offsetTransform(
   node: ThemeNode,
   options: InstantiateWidgetOptions,
   isRoot: boolean,
-): NonNullable<ThemeNode['transform']> {
+): NonNullable<ThemeNode["transform"]> {
   const transform = node.transform ?? {};
 
   // Child coordinates are group-local, so only inserted roots receive the placement offset.
@@ -194,7 +212,10 @@ function offsetTransform(
 }
 
 /** Freshens binding identity while preserving its semantic key. */
-function copyBinding(binding: Binding, idMap: ReadonlyMap<string, string>): Binding {
+function copyBinding(
+  binding: Binding,
+  idMap: ReadonlyMap<string, string>,
+): Binding {
   return { ...binding, id: idMap.get(binding.id) ?? binding.id };
 }
 
@@ -205,9 +226,11 @@ function copyRun(
   issues: WidgetIssue[],
 ): TextRun {
   const style =
-    run.style === undefined ? undefined : remapStyleMap(run.style, options, issues);
+    run.style === undefined
+      ? undefined
+      : remapStyleMap(run.style, options, issues);
 
-  if (run.kind === 'literal') {
+  if (run.kind === "literal") {
     return { ...run, ...(style === undefined ? {} : { style }) };
   }
 
@@ -238,7 +261,7 @@ function remapStyleValue(
   options: InstantiateWidgetOptions,
   issues: WidgetIssue[],
 ): StyleValue {
-  if (!('ref' in value) || value.ref === undefined) {
+  if (!("ref" in value) || value.ref === undefined) {
     return value;
   }
 
@@ -255,11 +278,11 @@ function remapStyleValue(
   }
 
   issues.push({
-    code: 'unmapped-global',
+    code: "unmapped-global",
     detail:
       `The widget references "${value.ref}", which is not mapped to a global in this document. ` +
-      'Map it explicitly or supply the widget\'s globals so it can be made a local literal — ' +
-      'a same-named global here may mean something else entirely.',
+      "Map it explicitly or supply the widget's globals so it can be made a local literal — " +
+      "a same-named global here may mean something else entirely.",
   });
 
   return value;
@@ -270,10 +293,10 @@ function lookupGlobal(globals: Globals | undefined, ref: string): unknown {
     return undefined;
   }
 
-  const [group, ...rest] = ref.split('.');
-  const entryId = rest.join('.');
+  const [group, ...rest] = ref.split(".");
+  const entryId = rest.join(".");
 
-  if (group === undefined || entryId === '') {
+  if (group === undefined || entryId === "") {
     return undefined;
   }
 

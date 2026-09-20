@@ -72,7 +72,10 @@
           "id": "strip-cpu-label",
           "type": "text",
           "transform": { "x": 0, "y": 0, "width": 200, "height": 20 },
-          "style": { "fontSize": { "value": 13 }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "value": 13 },
+            "color": { "ref": "palette.dim" }
+          },
           "content": { "runs": [{ "kind": "literal", "text": "CPU" }] }
         },
         {
@@ -84,7 +87,9 @@
             "color": { "ref": "palette.ink" },
             "tabularNumerals": { "value": true }
           },
-          "bindings": [{ "id": "pc-cpu-load", "semanticKey": "cpu.load", "precision": 0 }],
+          "bindings": [
+            { "id": "pc-cpu-load", "semanticKey": "cpu.load", "precision": 0 }
+          ],
           "content": {
             "align": "right",
             "runs": [{ "kind": "value", "bindingId": "pc-cpu-load" }]
@@ -144,7 +149,10 @@
           "id": "strip-gpu-label",
           "type": "text",
           "transform": { "x": 0, "y": 0, "width": 200, "height": 20 },
-          "style": { "fontSize": { "value": 13 }, "color": { "ref": "palette.dim" } },
+          "style": {
+            "fontSize": { "value": 13 },
+            "color": { "ref": "palette.dim" }
+          },
           "content": { "runs": [{ "kind": "literal", "text": "GPU" }] }
         },
         {
@@ -156,7 +164,9 @@
             "color": { "ref": "palette.ink" },
             "tabularNumerals": { "value": true }
           },
-          "bindings": [{ "id": "pc-gpu-load", "semanticKey": "gpu.load", "precision": 0 }],
+          "bindings": [
+            { "id": "pc-gpu-load", "semanticKey": "gpu.load", "precision": 0 }
+          ],
           "content": {
             "align": "right",
             "runs": [{ "kind": "value", "bindingId": "pc-gpu-load" }]
@@ -244,7 +254,9 @@
         "color": { "ref": "palette.ink" },
         "tabularNumerals": { "value": true }
       },
-      "bindings": [{ "id": "pc-temp-text", "semanticKey": "cpu.temp", "precision": 0 }],
+      "bindings": [
+        { "id": "pc-temp-text", "semanticKey": "cpu.temp", "precision": 0 }
+      ],
       "content": {
         "align": "center",
         "verticalAlign": "middle",
@@ -256,11 +268,17 @@
       "id": "footer",
       "type": "text",
       "transform": { "x": 24, "y": 900, "width": 392, "height": 20 },
-      "style": { "fontSize": { "value": 11 }, "color": { "ref": "palette.dim" } },
+      "style": {
+        "fontSize": { "value": 11 },
+        "color": { "ref": "palette.dim" }
+      },
       "content": {
         "overflow": "ellipsis",
         "runs": [
-          { "kind": "literal", "text": "cover mode · content at every edge · magenta bars must never show" }
+          {
+            "kind": "literal",
+            "text": "cover mode · content at every edge · magenta bars must never show"
+          }
         ]
       }
     }

@@ -6,9 +6,9 @@ export type {
   GradientStop,
   Sample,
   SensorStatus,
-} from './types.js';
+} from "./types.js";
 
-export { defaultGaugeSettings, hasPlottableValue } from './types.js';
+export { defaultGaugeSettings, hasPlottableValue } from "./types.js";
 
 export type {
   ArtboardBars,
@@ -19,7 +19,7 @@ export type {
   FitMode,
   Point,
   ViewportSize,
-} from './artboard.js';
+} from "./artboard.js";
 
 export {
   computeArtboardTransform,
@@ -27,15 +27,18 @@ export {
   isFullyVisible,
   toCssTransform,
   viewportToDocument,
-} from './artboard.js';
+} from "./artboard.js";
 
 export type {
   EngineColor,
   GradientDirection,
   LinearGradientColor,
-} from './charts/fill.js';
+} from "./charts/fill.js";
 
-export { reassignChartPaintReferences, resolveChartPaint } from './charts/chart-paint.js';
+export {
+  reassignChartPaintReferences,
+  resolveChartPaint,
+} from "./charts/chart-paint.js";
 
 export {
   colorAt,
@@ -43,20 +46,23 @@ export {
   resolveFlatColor,
   resolveThresholdColor,
   toLinearGradient,
-} from './charts/fill.js';
+} from "./charts/fill.js";
 
-export type { ChartOption, ChartOptionByFamily } from './charts/engine-option.js';
+export type {
+  ChartOption,
+  ChartOptionByFamily,
+} from "./charts/engine-option.js";
 
-export { toEngineOption } from './charts/engine-option.js';
+export { toEngineOption } from "./charts/engine-option.js";
 
-export type { GaugeOption } from './charts/gauge.js';
+export type { GaugeOption } from "./charts/gauge.js";
 
 export {
   approximateGradient,
   buildGaugeOption,
   mixHex,
   toColorSegments,
-} from './charts/gauge.js';
+} from "./charts/gauge.js";
 
 export type {
   Interpolation,
@@ -64,14 +70,14 @@ export type {
   LineSettings,
   SeriesInput,
   SeriesPoint,
-} from './charts/line.js';
+} from "./charts/line.js";
 
 export {
   buildLineOption,
   defaultLineSettings,
   toEngineColor,
   toSeriesPoints,
-} from './charts/line.js';
+} from "./charts/line.js";
 
 export type {
   BarDataItem,
@@ -79,9 +85,14 @@ export type {
   BarOption,
   BarOrientation,
   BarSettings,
-} from './charts/bar.js';
+} from "./charts/bar.js";
 
-export { buildBarOption, defaultBarSettings, toBarColor, toBarDataItem } from './charts/bar.js';
+export {
+  buildBarOption,
+  defaultBarSettings,
+  toBarColor,
+  toBarDataItem,
+} from "./charts/bar.js";
 
 export type {
   PieComposition,
@@ -91,11 +102,19 @@ export type {
   PieSlice,
   PieSliceInput,
   PieTotal,
-} from './charts/pie.js';
+} from "./charts/pie.js";
 
-export { buildPieOption, computeComposition, defaultPieSettings } from './charts/pie.js';
+export {
+  buildPieOption,
+  computeComposition,
+  defaultPieSettings,
+} from "./charts/pie.js";
 
-export type { ChartPaintFieldDescriptor, SettingsFieldDescriptor, SettingsFieldKind } from './charts/settings-fields.js';
+export type {
+  ChartPaintFieldDescriptor,
+  SettingsFieldDescriptor,
+  SettingsFieldKind,
+} from "./charts/settings-fields.js";
 
 export {
   CHART_SETTINGS_FIELDS,
@@ -104,7 +123,7 @@ export {
   NON_SCALAR_SETTINGS,
   settingsFieldsFor,
   settingsKeyFor,
-} from './charts/settings-fields.js';
+} from "./charts/settings-fields.js";
 
 export type {
   Artboard,
@@ -135,7 +154,7 @@ export type {
   Transform,
   VideoContent,
   WidgetProvenance,
-} from './theme/document.js';
+} from "./theme/document.js";
 
 export {
   CHART_FAMILIES,
@@ -151,13 +170,17 @@ export {
   requiredSemanticKeys,
   walkBindings,
   walkNodes,
-} from './theme/document.js';
+} from "./theme/document.js";
 
-export type { IssueCode, ValidationIssue, ValidationResult } from './theme/validate.js';
+export type {
+  IssueCode,
+  ValidationIssue,
+  ValidationResult,
+} from "./theme/validate.js";
 
-export { validateThemeDocument } from './theme/validate.js';
+export { validateThemeDocument } from "./theme/validate.js";
 
-export { serializeThemeDocument } from './theme/serialize.js';
+export { serializeThemeDocument } from "./theme/serialize.js";
 
 export type {
   FabricGlobals,
@@ -165,35 +188,43 @@ export type {
   FabricPaletteEntry,
   FabricThemeEnvelope,
   FabricThemeEnvelopeInput,
-} from './theme/fabric-envelope.js';
+} from "./theme/fabric-envelope.js";
 
-export { fabricEnvelopeInputFor } from './theme/fabric-envelope.js';
+export { fabricEnvelopeInputFor } from "./theme/fabric-envelope.js";
 
-export type { FabricEnvelopeValidationResult } from './theme/fabric-envelope-validate.js';
+export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 
-export { validateFabricThemeEnvelope } from './theme/fabric-envelope-validate.js';
+export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 
-export type { AssetResolver, AssetResolverOptions } from './theme/assets.js';
+export type { AssetResolver, AssetResolverOptions } from "./theme/assets.js";
 
-export { createAssetResolver, isSafeAssetPath, noAssets } from './theme/assets.js';
+export {
+  createAssetResolver,
+  isSafeAssetPath,
+  noAssets,
+} from "./theme/assets.js";
 
 export type {
   InstantiateWidgetOptions,
   InstantiateWidgetResult,
   WidgetIssue,
-} from './theme/widget.js';
+} from "./theme/widget.js";
 
-export { instantiateWidget } from './theme/widget.js';
+export { instantiateWidget } from "./theme/widget.js";
 
-export type { SampleSource } from './data/source.js';
+export type { SampleSource } from "./data/source.js";
 
-export { emptySampleSource } from './data/source.js';
+export { emptySampleSource } from "./data/source.js";
 
-export type { SampleStoreOptions } from './data/store.js';
+export type { SampleStoreOptions } from "./data/store.js";
 
-export { SampleStore, defaultSampleStoreOptions } from './data/store.js';
+export { SampleStore, defaultSampleStoreOptions } from "./data/store.js";
 
-export type { DecodeResult, SampleBatch, SampleEntry } from './data/protocol.js';
+export type {
+  DecodeResult,
+  SampleBatch,
+  SampleEntry,
+} from "./data/protocol.js";
 
 export {
   PROTOCOL_VERSION,
@@ -202,18 +233,18 @@ export {
   createBatch,
   decodeBatch,
   formatSseEvent,
-} from './data/protocol.js';
+} from "./data/protocol.js";
 
 export type {
   EventSourceLike,
   LiveSourceHandle,
   LiveSourceOptions,
   LiveSourceStatus,
-} from './data/live-source.js';
+} from "./data/live-source.js";
 
-export { createLiveSource } from './data/live-source.js';
+export { createLiveSource } from "./data/live-source.js";
 
-export type { CapabilityGroup } from './theme/capabilities.js';
+export type { CapabilityGroup } from "./theme/capabilities.js";
 
 export {
   DERIVED_CAPABILITIES,
@@ -228,13 +259,13 @@ export {
   isKnownStyleProperty,
   stylePropertiesFor,
   transformPropertiesFor,
-} from './theme/capabilities.js';
+} from "./theme/capabilities.js";
 
 export type {
   SemanticFamily,
   SemanticKeyDescriptor,
   SensorTier,
-} from './data/semantic-keys.js';
+} from "./data/semantic-keys.js";
 
 export {
   SEMANTIC_KEYS,
@@ -242,7 +273,7 @@ export {
   isKnownSemanticKey,
   labelForSemanticKey,
   semanticKeysByFamily,
-} from './data/semantic-keys.js';
+} from "./data/semantic-keys.js";
 
 export type {
   PlanBox,
@@ -256,7 +287,7 @@ export type {
   PlanTextSegment,
   ResolvedStyle,
   ScenePlan,
-} from './scene/plan.js';
+} from "./scene/plan.js";
 
 export {
   MISSING_VALUE_TEXT,
@@ -267,7 +298,7 @@ export {
   formatUnit,
   resolveTextSegments,
   resolveStyleValue,
-} from './scene/plan.js';
+} from "./scene/plan.js";
 
 export {
   GENERIC_FAMILIES,
@@ -276,8 +307,8 @@ export {
   parseFontStack,
   requestedFontFamilies,
   unavailableFontFamilies,
-} from './scene/fonts.js';
+} from "./scene/fonts.js";
 
-export type { MountOptions, SceneHandle } from './scene/mount.js';
+export type { MountOptions, SceneHandle } from "./scene/mount.js";
 
-export { mountScene } from './scene/mount.js';
+export { mountScene } from "./scene/mount.js";

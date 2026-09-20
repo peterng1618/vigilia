@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { Group, StaticCanvas } from 'fabric/es';
-import { describe, expect, it } from 'vitest';
+import { Group, StaticCanvas } from "fabric/es";
+import { describe, expect, it } from "vitest";
 import {
   buildBarOption,
   buildGaugeOption,
@@ -11,8 +11,8 @@ import {
   defaultLineSettings,
   defaultPieSettings,
   type Sample,
-} from '@vigilia/renderer-core';
-import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
+} from "@vigilia/renderer-core";
+import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 
 /**
  * The chart object, actually mounted.
@@ -42,9 +42,9 @@ const NOW_MS = Date.UTC(2026, 8, 15, 12, 0, 0);
 
 function sample(value: number, offsetMs = 0): Sample {
   return {
-    sensorId: 'cpu.load',
+    sensorId: "cpu.load",
     timestamp: new Date(NOW_MS - offsetMs).toISOString(),
-    status: 'ok',
+    status: "ok",
     value,
   };
 }
@@ -53,14 +53,16 @@ function sample(value: number, offsetMs = 0): Sample {
 // Fabric, and these assert wiring rather than motion.
 const LINE_OPTION = buildLineOption(
   defaultLineSettings,
-  [{ sensorId: 'cpu.load', samples: [sample(1, 1000), sample(2)] }],
+  [{ sensorId: "cpu.load", samples: [sample(1, 1000), sample(2)] }],
   NOW_MS,
   false,
 );
 
-function chartOptions(overrides: Partial<VigiliaChartOptions> = {}): VigiliaChartOptions {
+function chartOptions(
+  overrides: Partial<VigiliaChartOptions> = {},
+): VigiliaChartOptions {
   return {
-    family: 'line',
+    family: "line",
     settings: defaultLineSettings,
     width: 300,
     height: 180,
@@ -69,8 +71,8 @@ function chartOptions(overrides: Partial<VigiliaChartOptions> = {}): VigiliaChar
   } as VigiliaChartOptions;
 }
 
-describe('constructing a chart', () => {
-  it('accepts a built option, which is the regression that mattered', () => {
+describe("constructing a chart", () => {
+  it("accepts a built option, which is the regression that mattered", () => {
     // Fabric's `_setOptions` assigns every key of the options bag onto the
     // instance. When `option` was a getter with no setter this threw
     // `TypeError: Cannot set property option … which has only a getter` —
@@ -82,25 +84,27 @@ describe('constructing a chart', () => {
     chart.dispose();
   });
 
-  it('applies its own defaults rather than Fabric’s', () => {
+  it("applies its own defaults rather than Fabric’s", () => {
     // `FabricObject`'s constructor assigns `FabricObject.ownDefaults` by name,
     // not `this.constructor.getDefaults()`, so a subclass must assign its own.
     // Measured here rather than read off the static, because the whole point is
     // that the constructor path applies them.
     const chart = new VigiliaChart(chartOptions());
 
-    expect(chart.originX).toBe('center');
-    expect(chart.originY).toBe('center');
+    expect(chart.originX).toBe("center");
+    expect(chart.originY).toBe("center");
     expect(chart.objectCaching).toBe(false);
     expect(chart.strokeWidth).toBe(0);
     chart.dispose();
   });
 
-  it('lets the caller override a Fabric property the defaults also set', () => {
+  it("lets the caller override a Fabric property the defaults also set", () => {
     // The previous constructor re-set origin and caching *after* applying the
     // caller's options, so it silently overrode them. Nothing needs a different
     // origin today; this asserts the mechanism, not a use case.
-    const chart = new VigiliaChart(chartOptions({ angle: 37, left: 10, top: 20 }));
+    const chart = new VigiliaChart(
+      chartOptions({ angle: 37, left: 10, top: 20 }),
+    );
 
     expect(chart.angle).toBe(37);
     expect(chart.left).toBe(10);
@@ -108,46 +112,50 @@ describe('constructing a chart', () => {
     chart.dispose();
   });
 
-  it('refuses a box it cannot draw in', () => {
+  it("refuses a box it cannot draw in", () => {
     // `echarts.init` on a 0-sized element does not fail loudly, it just never
     // draws. Refuse rather than coerce.
-    expect(() => new VigiliaChart(chartOptions({ width: 0 }))).toThrow(/positive width and height/);
-    expect(() => new VigiliaChart(chartOptions({ height: 0 }))).toThrow(/positive width and height/);
+    expect(() => new VigiliaChart(chartOptions({ width: 0 }))).toThrow(
+      /positive width and height/,
+    );
+    expect(() => new VigiliaChart(chartOptions({ height: 0 }))).toThrow(
+      /positive width and height/,
+    );
   });
 
-  it('clamps the render scale against its own box', () => {
+  it("clamps the render scale against its own box", () => {
     const chart = new VigiliaChart(chartOptions({ renderScale: 99 }));
 
     expect(chart.renderScale).toBeLessThanOrEqual(3);
     chart.dispose();
   });
 
-  it('mounts every family the engine registration covers', () => {
+  it("mounts every family the engine registration covers", () => {
     // `chart-engine.ts` registers four families and `GridComponent`. A missing
     // registration does not throw on `init` — the chart just never draws — so
     // the only honest check is to build each family's real option and mount it.
     const built: readonly VigiliaChartOptions[] = [
       chartOptions(),
       chartOptions({
-        family: 'gauge',
+        family: "gauge",
         settings: defaultGaugeSettings,
         option: buildGaugeOption(defaultGaugeSettings, sample(42), false),
       }),
       chartOptions({
-        family: 'bar',
+        family: "bar",
         settings: defaultBarSettings,
         option: buildBarOption(
           defaultBarSettings,
-          [{ sensorId: 'cpu.load', sample: sample(1) }],
+          [{ sensorId: "cpu.load", sample: sample(1) }],
           false,
         ),
       }),
       chartOptions({
-        family: 'pie',
+        family: "pie",
         settings: defaultPieSettings,
         option: buildPieOption(
           defaultPieSettings,
-          [{ sensorId: 'cpu.load', sample: sample(1) }],
+          [{ sensorId: "cpu.load", sample: sample(1) }],
           false,
         ),
       }),
@@ -156,29 +164,31 @@ describe('constructing a chart', () => {
     for (const options of built) {
       const chart = new VigiliaChart(options);
 
-      expect(chart.disposed, `${String(options.family)} failed to mount`).toBe(false);
+      expect(chart.disposed, `${String(options.family)} failed to mount`).toBe(
+        false,
+      );
       chart.dispose();
     }
   });
 });
 
-describe('the serialised object', () => {
-  it('emits the custom properties and nothing derived', () => {
+describe("the serialised object", () => {
+  it("emits the custom properties and nothing derived", () => {
     const chart = new VigiliaChart(chartOptions());
     const json = chart.toObject();
 
-    expect(json).toMatchObject({ type: 'VigiliaChart', family: 'line' });
+    expect(json).toMatchObject({ type: "VigiliaChart", family: "line" });
     expect(json.settings).toEqual(defaultLineSettings);
 
     // The §67 rule, measured on the real output rather than on the key list:
     // the built option holds live samples in `series[].data`, and `renderScale`
     // is the display's, not the document's.
-    expect(json).not.toHaveProperty('option');
-    expect(json).not.toHaveProperty('renderScale');
+    expect(json).not.toHaveProperty("option");
+    expect(json).not.toHaveProperty("renderScale");
     chart.dispose();
   });
 
-  it('omits the origin when defaults are stripped, like every other class', () => {
+  it("omits the origin when defaults are stripped, like every other class", () => {
     // **This assertion inverted on 2026-09-15**, and it is not a regression.
     // It used to require the origin to survive stripping, which needed a
     // `toObject` override — §134's explicit-origin condition. That condition
@@ -196,14 +206,14 @@ describe('the serialised object', () => {
 
     const json = chart.toObject();
 
-    expect(json).not.toHaveProperty('originX');
-    expect(json).not.toHaveProperty('originY');
+    expect(json).not.toHaveProperty("originX");
+    expect(json).not.toHaveProperty("originY");
     // Still centred in memory: only the *persisted* surface changed.
-    expect(chart.originX).toBe('center');
+    expect(chart.originX).toBe("center");
     chart.dispose();
   });
 
-  it('revives through Fabric’s own path, into a real chart', async () => {
+  it("revives through Fabric’s own path, into a real chart", async () => {
     // `fromObject` is not overridden, so this exercises
     // `FabricObject._fromObject` — including `enlivenObjectEnlivables`, which
     // an override would have skipped. A revived chart carries configuration,
@@ -217,17 +227,17 @@ describe('the serialised object', () => {
     const revived = (await VigiliaChart.fromObject(json)) as VigiliaChart;
 
     expect(revived).toBeInstanceOf(VigiliaChart);
-    expect(revived.family).toBe('line');
+    expect(revived.family).toBe("line");
     expect(revived.settings).toEqual(defaultLineSettings);
     expect(revived.angle).toBe(37);
-    expect(revived.originX).toBe('center');
+    expect(revived.originX).toBe("center");
     expect(revived.option).toBeUndefined();
     revived.dispose();
   });
 });
 
-describe('the canvas round trip', () => {
-  it('revives a chart through StaticCanvas.loadFromJSON', async () => {
+describe("the canvas round trip", () => {
+  it("revives a chart through StaticCanvas.loadFromJSON", async () => {
     // The path stage 3 actually depends on, which had no test: only
     // `VigiliaChart.fromObject` did, and calling that directly proves the class
     // can revive itself while saying nothing about whether the *canvas* can
@@ -235,7 +245,9 @@ describe('the canvas round trip', () => {
     // on import of `chart-object.ts`, and is exactly what `package.json`'s
     // `sideEffects` entry stops a bundler from dropping.
     const source = new StaticCanvas(undefined, { width: 400, height: 300 });
-    const chart = new VigiliaChart(chartOptions({ left: 150, top: 90, angle: 37 }));
+    const chart = new VigiliaChart(
+      chartOptions({ left: 150, top: 90, angle: 37 }),
+    );
 
     source.add(chart);
 
@@ -254,7 +266,7 @@ describe('the canvas round trip', () => {
     // The assertion that matters: a real `VigiliaChart`, not the plain
     // `FabricObject` the registry falls back to when a class is unknown.
     expect(first).toBeInstanceOf(VigiliaChart);
-    expect((first as VigiliaChart).family).toBe('line');
+    expect((first as VigiliaChart).family).toBe("line");
     expect((first as VigiliaChart).settings).toEqual(defaultLineSettings);
     expect(first?.angle).toBe(37);
     // Derived, so it does not survive — `plan.ts` re-supplies it, which is the
@@ -265,8 +277,8 @@ describe('the canvas round trip', () => {
   });
 });
 
-describe('an engine repaint reaches the canvas', () => {
-  it('invalidates an enclosing group’s cache', () => {
+describe("an engine repaint reaches the canvas", () => {
+  it("invalidates an enclosing group’s cache", () => {
     // The defect this exists for: `dirty` was set by field assignment, which
     // skips `FabricObject._set` — and `_set` is the only thing that propagates
     // dirtiness to `this.parent`. A Fabric `Group` caches by default, so the
@@ -276,8 +288,8 @@ describe('an engine repaint reaches the canvas', () => {
     const chart = new VigiliaChart(chartOptions());
     const group = new Group([chart]);
 
-    group.set('dirty', false);
-    chart.set('dirty', false);
+    group.set("dirty", false);
+    chart.set("dirty", false);
     expect(group.dirty).toBe(false);
 
     // A real engine repaint, not a synthetic event: `setOption` runs with
@@ -291,8 +303,8 @@ describe('an engine repaint reaches the canvas', () => {
   });
 });
 
-describe('disposal', () => {
-  it('is idempotent and refuses further work', () => {
+describe("disposal", () => {
+  it("is idempotent and refuses further work", () => {
     // Whatever owns the canvas must call this: `canvas.remove()` does not.
     const chart = new VigiliaChart(chartOptions());
 

@@ -1,4 +1,4 @@
-import type { CuratedFontFace } from './font-catalog.js';
+import type { CuratedFontFace } from "./font-catalog.js";
 
 interface PreviewFontFace {
   readonly load: () => Promise<unknown>;
@@ -15,27 +15,43 @@ export interface PreviewHandle {
 
 export interface FontPreviewOptions {
   readonly fetch?: typeof fetch;
-  readonly createFontFace?: (family: string, source: ArrayBuffer, descriptors: FontFaceDescriptors) => PreviewFontFace;
+  readonly createFontFace?: (
+    family: string,
+    source: ArrayBuffer,
+    descriptors: FontFaceDescriptors,
+  ) => PreviewFontFace;
   readonly fonts?: PreviewFontSet;
 }
 
-let active: { readonly controller: AbortController; readonly release: () => void } | undefined;
+let active:
+  | { readonly controller: AbortController; readonly release: () => void }
+  | undefined;
 
 /** Downloads a candidate only for browser preview; callers release it before another preview or unmount. */
-export async function previewFontFace(face: CuratedFontFace, options: FontPreviewOptions = {}): Promise<PreviewHandle> {
+export async function previewFontFace(
+  face: CuratedFontFace,
+  options: FontPreviewOptions = {},
+): Promise<PreviewHandle> {
   releaseFontPreview();
   const controller = new AbortController();
   active = { controller, release: () => controller.abort() };
   try {
-    const response = await (options.fetch ?? fetch)(face.sourceUrl, { signal: controller.signal });
-    if (!response.ok) throw new Error(`Font preview download failed (${response.status}).`);
+    const response = await (options.fetch ?? fetch)(face.sourceUrl, {
+      signal: controller.signal,
+    });
+    if (!response.ok)
+      throw new Error(`Font preview download failed (${response.status}).`);
     const fonts = options.fonts ?? document.fonts;
-    if (fonts === undefined) throw new Error('Font previews require the browser FontFace API.');
-    const font = (options.createFontFace ?? ((family, source, descriptors) => new FontFace(family, source, descriptors)))(
-      face.family,
-      await response.arrayBuffer(),
-      { weight: String(face.weight), style: face.style },
-    );
+    if (fonts === undefined)
+      throw new Error("Font previews require the browser FontFace API.");
+    const font = (
+      options.createFontFace ??
+      ((family, source, descriptors) =>
+        new FontFace(family, source, descriptors))
+    )(face.family, await response.arrayBuffer(), {
+      weight: String(face.weight),
+      style: face.style,
+    });
     await font.load();
     fonts.add(font);
     let released = false;
@@ -47,7 +63,7 @@ export async function previewFontFace(face: CuratedFontFace, options: FontPrevie
     };
     if (active?.controller !== controller) {
       release();
-      throw new DOMException('Aborted', 'AbortError');
+      throw new DOMException("Aborted", "AbortError");
     }
     active = { controller, release };
     return { release };

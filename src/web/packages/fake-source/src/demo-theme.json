@@ -91,7 +91,9 @@
           "id": "cpu-gauge",
           "type": "chart",
           "transform": { "x": 34, "y": 30, "width": 220, "height": 220 },
-          "bindings": [{ "id": "cpu-load", "semanticKey": "cpu.load", "precision": 0 }],
+          "bindings": [
+            { "id": "cpu-load", "semanticKey": "cpu.load", "precision": 0 }
+          ],
           "content": {
             "family": "gauge",
             "settings": {
@@ -125,7 +127,12 @@
             "tabularNumerals": { "value": true }
           },
           "bindings": [
-            { "id": "cpu-load-text", "semanticKey": "cpu.load", "precision": 0, "unitDisplay": "none" }
+            {
+              "id": "cpu-load-text",
+              "semanticKey": "cpu.load",
+              "precision": 0,
+              "unitDisplay": "none"
+            }
           ],
           "content": {
             "align": "center",
@@ -153,8 +160,16 @@
             "color": { "ref": "palette.textDim" }
           },
           "bindings": [
-            { "id": "cpu-temp-inline", "semanticKey": "cpu.temp", "precision": 0 },
-            { "id": "cpu-power-inline", "semanticKey": "cpu.power", "precision": 0 }
+            {
+              "id": "cpu-temp-inline",
+              "semanticKey": "cpu.temp",
+              "precision": 0
+            },
+            {
+              "id": "cpu-power-inline",
+              "semanticKey": "cpu.power",
+              "precision": 0
+            }
           ],
           "content": {
             "align": "center",
@@ -191,7 +206,9 @@
           "id": "gpu-gauge",
           "type": "chart",
           "transform": { "x": 34, "y": 30, "width": 220, "height": 220 },
-          "bindings": [{ "id": "gpu-load", "semanticKey": "gpu.load", "precision": 0 }],
+          "bindings": [
+            { "id": "gpu-load", "semanticKey": "gpu.load", "precision": 0 }
+          ],
           "content": {
             "family": "gauge",
             "settings": {
@@ -225,7 +242,12 @@
             "tabularNumerals": { "value": true }
           },
           "bindings": [
-            { "id": "gpu-load-text", "semanticKey": "gpu.load", "precision": 0, "unitDisplay": "none" }
+            {
+              "id": "gpu-load-text",
+              "semanticKey": "gpu.load",
+              "precision": 0,
+              "unitDisplay": "none"
+            }
           ],
           "content": {
             "align": "center",
@@ -253,8 +275,16 @@
             "color": { "ref": "palette.textDim" }
           },
           "bindings": [
-            { "id": "gpu-temp-inline", "semanticKey": "gpu.temp", "precision": 0 },
-            { "id": "gpu-clock-inline", "semanticKey": "gpu.clock", "precision": 0 }
+            {
+              "id": "gpu-temp-inline",
+              "semanticKey": "gpu.temp",
+              "precision": 0
+            },
+            {
+              "id": "gpu-clock-inline",
+              "semanticKey": "gpu.clock",
+              "precision": 0
+            }
           ],
           "content": {
             "align": "center",
@@ -296,7 +326,9 @@
             "fontSize": { "ref": "fontSizes.label" },
             "color": { "ref": "palette.textDim" }
           },
-          "content": { "runs": [{ "kind": "literal", "text": "Load  ·  last 60 s" }] }
+          "content": {
+            "runs": [{ "kind": "literal", "text": "Load  ·  last 60 s" }]
+          }
         },
         {
           "id": "history-chart",
@@ -365,7 +397,12 @@
             "color": { "ref": "palette.textDim" }
           },
           "content": {
-            "runs": [{ "kind": "literal", "text": "Temperatures  ·  thresholds per bar" }]
+            "runs": [
+              {
+                "kind": "literal",
+                "text": "Temperatures  ·  thresholds per bar"
+              }
+            ]
           }
         },
         {
@@ -408,7 +445,9 @@
             "fontSize": { "ref": "fontSizes.caption" },
             "color": { "ref": "palette.textDim" }
           },
-          "bindings": [{ "id": "cap-cpu-temp", "semanticKey": "cpu.temp", "precision": 1 }],
+          "bindings": [
+            { "id": "cap-cpu-temp", "semanticKey": "cpu.temp", "precision": 1 }
+          ],
           "content": {
             "runs": [
               { "kind": "literal", "text": "CPU package  " },
@@ -429,7 +468,9 @@
             "fontSize": { "ref": "fontSizes.caption" },
             "color": { "ref": "palette.textDim" }
           },
-          "bindings": [{ "id": "cap-gpu-temp", "semanticKey": "gpu.temp", "precision": 1 }],
+          "bindings": [
+            { "id": "cap-gpu-temp", "semanticKey": "gpu.temp", "precision": 1 }
+          ],
           "content": {
             "runs": [
               { "kind": "literal", "text": "GPU core  " },
@@ -477,7 +518,9 @@
             "color": { "ref": "palette.textDim" }
           },
           "content": {
-            "runs": [{ "kind": "literal", "text": "Memory  ·  32 GB installed" }]
+            "runs": [
+              { "kind": "literal", "text": "Memory  ·  32 GB installed" }
+            ]
           }
         },
         {
@@ -511,7 +554,9 @@
             "color": { "ref": "palette.text" },
             "tabularNumerals": { "value": true }
           },
-          "bindings": [{ "id": "ram-used-text", "semanticKey": "ram.used", "precision": 1 }],
+          "bindings": [
+            { "id": "ram-used-text", "semanticKey": "ram.used", "precision": 1 }
+          ],
           "content": {
             "verticalAlign": "middle",
             "runs": [
@@ -570,7 +615,9 @@
             "fontSize": { "ref": "fontSizes.caption" },
             "color": { "ref": "palette.textDim" }
           },
-          "bindings": [{ "id": "unmapped-demo", "semanticKey": "disk.nvme.queue-depth" }],
+          "bindings": [
+            { "id": "unmapped-demo", "semanticKey": "disk.nvme.queue-depth" }
+          ],
           "content": {
             "runs": [
               { "kind": "literal", "text": "Unmapped key renders as  " },

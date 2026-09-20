@@ -1,4 +1,4 @@
-import type { Sample } from '../types.js';
+import type { Sample } from "../types.js";
 
 /** Shared host/display wire contract. Pure shapes + codecs; transport lives elsewhere. */
 
@@ -21,10 +21,13 @@ export type DecodeResult =
   | { readonly ok: true; readonly batch: SampleBatch }
   | { readonly ok: false; readonly reason: string };
 
-export const SAMPLE_EVENT = 'samples';
-export const SAMPLE_STREAM_PATH = '/ws';
+export const SAMPLE_EVENT = "samples";
+export const SAMPLE_STREAM_PATH = "/ws";
 
-export function createBatch(samples: readonly SampleEntry[], sentAtMs: number): SampleBatch {
+export function createBatch(
+  samples: readonly SampleEntry[],
+  sentAtMs: number,
+): SampleBatch {
   return {
     version: PROTOCOL_VERSION,
     sentAt: new Date(sentAtMs).toISOString(),
@@ -41,12 +44,12 @@ export function decodeBatch(payload: string): DecodeResult {
   } catch (error) {
     return {
       ok: false,
-      reason: `not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`,
+      reason: `not valid JSON: ${error instanceof Error ? error.message : "unknown error"}`,
     };
   }
 
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { ok: false, reason: 'not an object' };
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, reason: "not an object" };
   }
 
   const candidate = parsed as Partial<SampleBatch>;
@@ -60,8 +63,11 @@ export function decodeBatch(payload: string): DecodeResult {
     };
   }
 
-  if (!Array.isArray(candidate.samples) || typeof candidate.sentAt !== 'string') {
-    return { ok: false, reason: 'missing sentAt or samples' };
+  if (
+    !Array.isArray(candidate.samples) ||
+    typeof candidate.sentAt !== "string"
+  ) {
+    return { ok: false, reason: "missing sentAt or samples" };
   }
 
   return { ok: true, batch: candidate as SampleBatch };
@@ -70,9 +76,9 @@ export function decodeBatch(payload: string): DecodeResult {
 /** Prefix every payload line per SSE framing rules and terminate with a blank line. */
 export function formatSseEvent(event: string, payload: string): string {
   const data = payload
-    .split('\n')
+    .split("\n")
     .map((line) => `data: ${line}`)
-    .join('\n');
+    .join("\n");
 
   return `event: ${event}\n${data}\n\n`;
 }

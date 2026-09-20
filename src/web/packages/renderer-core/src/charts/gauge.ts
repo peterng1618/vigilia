@@ -1,6 +1,12 @@
-import type { ChartPaint, Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type EngineAnimation } from './animation.js';
+import type {
+  ChartPaint,
+  Fill,
+  GaugeSettings,
+  GradientStop,
+  Sample,
+} from "../types.js";
+import { hasPlottableValue } from "../types.js";
+import { toEngineAnimation, type EngineAnimation } from "./animation.js";
 import {
   colorAt,
   mixHex,
@@ -8,9 +14,9 @@ import {
   resolveFlatColor,
   toLinearGradient,
   type EngineColor,
-} from './fill.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+} from "./fill.js";
+import { resolveChartPaint } from "./chart-paint.js";
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 
 // Preserved public export; implementation moved to fill.ts.
 export { mixHex };
@@ -26,7 +32,7 @@ type ColorSegment = [number, string];
 export interface GaugeOption {
   series: [
     {
-      type: 'gauge';
+      type: "gauge";
       startAngle: number;
       endAngle: number;
       min: number;
@@ -63,23 +69,28 @@ export function buildGaugeOption(
   const plottable = hasPlottableValue(sample);
 
   // Clamp only the drawn arc; preserve the raw reading elsewhere (§83).
-  const displayValue = plottable ? clamp(sample.value, settings.min, settings.max) : settings.min;
+  const displayValue = plottable
+    ? clamp(sample.value, settings.min, settings.max)
+    : settings.min;
 
   return {
     series: [
       {
-        type: 'gauge',
+        type: "gauge",
         startAngle: settings.startAngle,
         endAngle: settings.endAngle,
         min: settings.min,
         max: settings.max,
-        radius: '100%',
+        radius: "100%",
         splitNumber: 1,
         axisLine: {
           roundCap: settings.roundCap,
           lineStyle: {
             width: settings.thickness,
-            color: toColorSegments(resolveChartPaint(settings.track, palette), settings),
+            color: toColorSegments(
+              resolveChartPaint(settings.track, palette),
+              settings,
+            ),
           },
         },
         progress: {
@@ -87,7 +98,11 @@ export function buildGaugeOption(
           show: plottable,
           width: settings.thickness,
           roundCap: settings.roundCap,
-        ...progressItemStyle(resolveChartPaint(settings.progress, palette), settings, displayValue),
+          ...progressItemStyle(
+            resolveChartPaint(settings.progress, palette),
+            settings,
+            displayValue,
+          ),
         },
         // Chart typography is rendered by shared text elements (§91).
         pointer: { show: false },
@@ -104,15 +119,18 @@ export function buildGaugeOption(
 }
 
 /** Convert a fill to ECharts `[proportion, color]` ring segments. */
-export function toColorSegments(fill: Fill, settings: GaugeSettings): ColorSegment[] {
+export function toColorSegments(
+  fill: Fill,
+  settings: GaugeSettings,
+): ColorSegment[] {
   switch (fill.kind) {
-    case 'solid':
+    case "solid":
       return [[1, fill.color]];
 
-    case 'thresholds':
+    case "thresholds":
       return normalizeBands(fill.bands);
 
-    case 'gradient':
+    case "gradient":
       return approximateGradient(fill.stops, settings.gradientSegments ?? 64);
   }
 }
@@ -120,7 +138,7 @@ export function toColorSegments(fill: Fill, settings: GaugeSettings): ColorSegme
 /** ECharts needs ascending, unique segment ends covering the full ring. */
 function normalizeBands(bands: readonly GradientStop[]): ColorSegment[] {
   if (bands.length === 0) {
-    return [[1, 'transparent']];
+    return [[1, "transparent"]];
   }
 
   const sorted = [...bands]
@@ -152,7 +170,7 @@ export function approximateGradient(
   segmentCount: number,
 ): ColorSegment[] {
   if (stops.length === 0) {
-    return [[1, 'transparent']];
+    return [[1, "transparent"]];
   }
 
   if (stops.length === 1) {
@@ -184,13 +202,16 @@ function progressItemStyle(
   settings: GaugeSettings,
   value: number,
 ): { itemStyle: { color: EngineColor } } {
-  if (fill.kind === 'gradient') {
-    return { itemStyle: { color: toLinearGradient(fill.stops, 'to-right') } };
+  if (fill.kind === "gradient") {
+    return { itemStyle: { color: toLinearGradient(fill.stops, "to-right") } };
   }
 
   return {
     itemStyle: {
-      color: resolveFlatColor(fill, normalizePosition(value, settings.min, settings.max)),
+      color: resolveFlatColor(
+        fill,
+        normalizePosition(value, settings.min, settings.max),
+      ),
     },
   };
 }

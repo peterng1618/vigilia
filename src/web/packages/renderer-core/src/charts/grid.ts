@@ -13,13 +13,19 @@ export interface GridInset {
 
 export type CartesianGrid = GridInset &
   (
-    | { readonly outerBoundsMode: 'same'; readonly outerBoundsContain: 'axisLabel' }
-    | { readonly outerBoundsMode: 'none' }
+    | {
+        readonly outerBoundsMode: "same";
+        readonly outerBoundsContain: "axisLabel";
+      }
+    | { readonly outerBoundsMode: "none" }
   );
 
 /** Allow axis labels to shrink the plot only when labels are actually drawn. */
-export function cartesianGrid(inset: GridInset, containLabels: boolean): CartesianGrid {
+export function cartesianGrid(
+  inset: GridInset,
+  containLabels: boolean,
+): CartesianGrid {
   return containLabels
-    ? { ...inset, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' }
-    : { ...inset, outerBoundsMode: 'none' };
+    ? { ...inset, outerBoundsMode: "same", outerBoundsContain: "axisLabel" }
+    : { ...inset, outerBoundsMode: "none" };
 }

@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { Rect, Textbox } from 'fabric/es';
-import { describe, expect, it } from 'vitest';
+import { Rect, Textbox } from "fabric/es";
+import { describe, expect, it } from "vitest";
 import type {
   PlanBox,
   PlanNode,
   PlanTextLayout,
   PlanTextSegment,
-} from '@vigilia/renderer-core';
-import { buildText, textGaps } from './fabric-text.js';
+} from "@vigilia/renderer-core";
+import { buildText, textGaps } from "./fabric-text.js";
 
 /**
  * Text overflow, measured rather than asserted structurally.
@@ -26,49 +26,65 @@ import { buildText, textGaps } from './fabric-text.js';
  * correct implementation on any font.
  */
 
-const LONG = 'A very long readout label that will not fit inside a narrow box at all';
+const LONG =
+  "A very long readout label that will not fit inside a narrow box at all";
 
 function box(overrides: Partial<PlanBox> = {}): PlanBox {
-  return { x: 0, y: 0, width: 200, height: 40, rotation: 0, scaleX: 1, scaleY: 1, ...overrides };
+  return {
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 40,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+    ...overrides,
+  };
 }
 
 function textNode(
   segments: readonly PlanTextSegment[],
   layout: Partial<PlanTextLayout> = {},
-  style: PlanNode['style'] = {},
+  style: PlanNode["style"] = {},
 ): PlanNode {
   return {
-    id: 'label',
+    id: "label",
     box: box(),
     visible: true,
     style,
     children: [],
     content: {
-      kind: 'text',
+      kind: "text",
       segments,
       layout: {
         wrap: false,
-        overflow: 'visible',
-        align: 'left',
-        verticalAlign: 'top',
+        overflow: "visible",
+        align: "left",
+        verticalAlign: "top",
         ...layout,
       },
     },
   } as unknown as PlanNode;
 }
 
-function segment(text: string, style: PlanTextSegment['style'] = {}): PlanTextSegment {
+function segment(
+  text: string,
+  style: PlanTextSegment["style"] = {},
+): PlanTextSegment {
   return { text, style };
 }
 
-describe('clipping', () => {
-  it('clips to the authored box for every mode but visible', () => {
+describe("clipping", () => {
+  it("clips to the authored box for every mode but visible", () => {
     // Both non-visible modes clip, which is what the DOM path does on the outer
     // box — `overflow !== 'visible'` → hidden. Ellipsis is not an alternative
     // to clipping there and is not here either.
-    for (const overflow of ['clip', 'ellipsis'] as const) {
-      const node = textNode([segment('short')], { overflow });
-      const object = buildText(node, box({ x: 10, y: 20, width: 200, height: 40 }));
+    for (const overflow of ["clip", "ellipsis"] as const) {
+      const node = textNode([segment("short")], { overflow });
+      const object = buildText(
+        node,
+        box({ x: 10, y: 20, width: 200, height: 40 }),
+      );
       const clip = object.clipPath;
 
       expect(clip, overflow).toBeInstanceOf(Rect);
@@ -77,130 +93,169 @@ describe('clipping', () => {
     }
   });
 
-  it('places the clip on the box, not on the text, when alignment moves the object', () => {
+  it("places the clip on the box, not on the text, when alignment moves the object", () => {
     // The offset exists because left-aligned text is centred on its own glyphs
     // rather than on the box. Asserted through Fabric's own matrix rather than
     // by recomputing the arithmetic the code under test just did.
-    const node = textNode([segment('short')], { overflow: 'clip', align: 'left' });
+    const node = textNode([segment("short")], {
+      overflow: "clip",
+      align: "left",
+    });
     const authored = box({ x: 10, y: 20, width: 200, height: 40 });
     const object = buildText(node, authored);
     const clip = object.clipPath;
 
     expect(clip).toBeDefined();
     // Clip centre, expressed back in the parent's space.
-    expect(object.left + (clip?.left ?? 0)).toBeCloseTo(authored.x + authored.width / 2, 6);
-    expect(object.top + (clip?.top ?? 0)).toBeCloseTo(authored.y + authored.height / 2, 6);
+    expect(object.left + (clip?.left ?? 0)).toBeCloseTo(
+      authored.x + authored.width / 2,
+      6,
+    );
+    expect(object.top + (clip?.top ?? 0)).toBeCloseTo(
+      authored.y + authored.height / 2,
+      6,
+    );
   });
 
-  it('leaves visible text unclipped', () => {
-    const object = buildText(textNode([segment('short')], { overflow: 'visible' }), box());
+  it("leaves visible text unclipped", () => {
+    const object = buildText(
+      textNode([segment("short")], { overflow: "visible" }),
+      box(),
+    );
 
     expect(object.clipPath).toBeUndefined();
   });
 });
 
-describe('ellipsis on a single line', () => {
-  it('truncates text too wide for its box and marks it', () => {
+describe("ellipsis on a single line", () => {
+  it("truncates text too wide for its box and marks it", () => {
     const narrow = box({ width: 120 });
-    const object = buildText(textNode([segment(LONG)], { overflow: 'ellipsis' }), narrow);
+    const object = buildText(
+      textNode([segment(LONG)], { overflow: "ellipsis" }),
+      narrow,
+    );
 
     expect(object.text.length).toBeLessThan(LONG.length);
-    expect(object.text.endsWith('…')).toBe(true);
+    expect(object.text.endsWith("…")).toBe(true);
     expect(object.width).toBeLessThanOrEqual(narrow.width);
   });
 
-  it('leaves text that already fits completely alone', () => {
+  it("leaves text that already fits completely alone", () => {
     // The counter-case, and the one that makes the test above mean something:
     // an implementation that always ellipsised would pass that and fail this.
-    const object = buildText(textNode([segment('ok')], { overflow: 'ellipsis' }), box());
+    const object = buildText(
+      textNode([segment("ok")], { overflow: "ellipsis" }),
+      box(),
+    );
 
-    expect(object.text).toBe('ok');
-    expect(object.text).not.toContain('…');
+    expect(object.text).toBe("ok");
+    expect(object.text).not.toContain("…");
   });
 
-  it('overflows rather than truncating when overflow is visible', () => {
+  it("overflows rather than truncating when overflow is visible", () => {
     const narrow = box({ width: 120 });
-    const object = buildText(textNode([segment(LONG)], { overflow: 'visible' }), narrow);
+    const object = buildText(
+      textNode([segment(LONG)], { overflow: "visible" }),
+      narrow,
+    );
 
     expect(object.text).toBe(LONG);
     expect(object.width).toBeGreaterThan(narrow.width);
   });
 
-  it('shows a clipped ellipsis rather than the whole string in an unusably narrow box', () => {
+  it("shows a clipped ellipsis rather than the whole string in an unusably narrow box", () => {
     // Bisection bottoms out at zero graphemes, which is the ellipsis alone. The
     // clip then keeps even that inside the box. Showing the full string would
     // paint it across whatever is next to it.
     const object = buildText(
-      textNode([segment(LONG)], { overflow: 'ellipsis' }),
+      textNode([segment(LONG)], { overflow: "ellipsis" }),
       box({ width: 4 }),
     );
 
-    expect(object.text).toBe('…');
+    expect(object.text).toBe("…");
   });
 });
 
-describe('the line clamp on wrapped text', () => {
-  it('keeps wrapped text within the lines the plan computed', () => {
-    const node = textNode([segment(LONG)], { wrap: true, overflow: 'ellipsis', maxLines: 2 });
+describe("the line clamp on wrapped text", () => {
+  it("keeps wrapped text within the lines the plan computed", () => {
+    const node = textNode([segment(LONG)], {
+      wrap: true,
+      overflow: "ellipsis",
+      maxLines: 2,
+    });
     const object = buildText(node, box({ width: 120, height: 40 }));
 
     expect(object).toBeInstanceOf(Textbox);
     expect(object.textLines.length).toBeLessThanOrEqual(2);
-    expect(object.text.endsWith('…')).toBe(true);
+    expect(object.text.endsWith("…")).toBe(true);
   });
 
-  it('does not clamp when the text already fits in the allowed lines', () => {
-    const node = textNode([segment('ok')], { wrap: true, overflow: 'ellipsis', maxLines: 4 });
+  it("does not clamp when the text already fits in the allowed lines", () => {
+    const node = textNode([segment("ok")], {
+      wrap: true,
+      overflow: "ellipsis",
+      maxLines: 4,
+    });
     const object = buildText(node, box({ width: 200, height: 80 }));
 
-    expect(object.text).toBe('ok');
+    expect(object.text).toBe("ok");
   });
 
-  it('reports a gap instead of guessing when the plan could not compute a clamp', () => {
+  it("reports a gap instead of guessing when the plan could not compute a clamp", () => {
     // `maxLines` is absent only when the type size did not resolve. Clamping on
     // a guessed line height hides text that would have fitted, so this is the
     // one overflow case still declared unsupported (§85).
-    const node = textNode([segment(LONG)], { wrap: true, overflow: 'ellipsis' });
+    const node = textNode([segment(LONG)], {
+      wrap: true,
+      overflow: "ellipsis",
+    });
     const object = buildText(node, box({ width: 120, height: 40 }));
 
     expect(textGaps(node)).toHaveLength(1);
-    expect(textGaps(node)[0]).toContain('font size');
+    expect(textGaps(node)[0]).toContain("font size");
     // Still clipped, so it cannot paint over its neighbours while unsupported.
     expect(object.clipPath).toBeInstanceOf(Rect);
   });
 
-  it('reports nothing once the clamp is computable', () => {
-    const node = textNode([segment(LONG)], { wrap: true, overflow: 'ellipsis', maxLines: 2 });
+  it("reports nothing once the clamp is computable", () => {
+    const node = textNode([segment(LONG)], {
+      wrap: true,
+      overflow: "ellipsis",
+      maxLines: 2,
+    });
 
     expect(textGaps(node)).toEqual([]);
   });
 });
 
-describe('truncation and per-run styles', () => {
-  it('keeps each surviving run styled as authored', () => {
+describe("truncation and per-run styles", () => {
+  it("keeps each surviving run styled as authored", () => {
     // The reason truncation cuts *segments* and rebuilds the shape rather than
     // slicing the concatenated string: `text-runs.ts` owns the grapheme-index
     // mapping, and a second implementation of it would disagree the first time
     // a cut landed inside a run. Here the cut lands inside the second run.
     const node = textNode(
-      [segment('AAAA', { color: '#f00' }), segment(LONG, { color: '#0f0' })],
-      { overflow: 'ellipsis' },
-      { color: '#fff' },
+      [segment("AAAA", { color: "#f00" }), segment(LONG, { color: "#0f0" })],
+      { overflow: "ellipsis" },
+      { color: "#fff" },
     );
     const object = buildText(node, box({ width: 400 }));
-    const styles = object.styles as Record<number, Record<number, Record<string, unknown>>>;
+    const styles = object.styles as Record<
+      number,
+      Record<number, Record<string, unknown>>
+    >;
 
-    expect(object.text.startsWith('AAAA')).toBe(true);
-    expect(object.text.endsWith('…')).toBe(true);
+    expect(object.text.startsWith("AAAA")).toBe(true);
+    expect(object.text.endsWith("…")).toBe(true);
     expect(object.text.length).toBeLessThan(4 + LONG.length);
 
     // First run's graphemes keep the first run's colour...
-    expect(styles[0]?.[0]?.['fill']).toBe('#f00');
-    expect(styles[0]?.[3]?.['fill']).toBe('#f00');
+    expect(styles[0]?.[0]?.["fill"]).toBe("#f00");
+    expect(styles[0]?.[3]?.["fill"]).toBe("#f00");
     // ...and every surviving grapheme after them keeps the second run's, the
     // ellipsis included, with no entry left pointing past the end.
     for (let index = 4; index < object.text.length; index += 1) {
-      expect(styles[0]?.[index]?.['fill'], `grapheme ${index}`).toBe('#0f0');
+      expect(styles[0]?.[index]?.["fill"], `grapheme ${index}`).toBe("#0f0");
     }
 
     expect(Object.keys(styles[0] ?? {})).toHaveLength(object.text.length);

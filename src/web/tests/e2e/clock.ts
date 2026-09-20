@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
 /**
  * The one way a browser test gets a deterministic clock.
@@ -47,7 +47,7 @@ import type { Page } from '@playwright/test';
  */
 
 /** Pinned so the fake source is frozen and every frame is identical. */
-export const FIXED_TIME = new Date('2026-01-01T12:00:00Z');
+export const FIXED_TIME = new Date("2026-01-01T12:00:00Z");
 
 /**
  * Pins the clock to {@link FIXED_TIME} and **stops** it, before navigation.

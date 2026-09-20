@@ -1,22 +1,26 @@
-import type { ChartPaint, Fill, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
+import type { ChartPaint, Fill, Sample } from "../types.js";
+import { hasPlottableValue } from "../types.js";
+import {
+  toEngineAnimation,
+  type AnimationSettings,
+  type EngineAnimation,
+} from "./animation.js";
 import {
   normalizePosition,
   resolveFlatColor,
   toLinearGradient,
   type EngineColor,
-} from './fill.js';
-import { cartesianGrid, type CartesianGrid } from './grid.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+} from "./fill.js";
+import { cartesianGrid, type CartesianGrid } from "./grid.js";
+import { resolveChartPaint } from "./chart-paint.js";
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 
 /**
  * Bar/progress adapter. Thresholds are native per bar; one-category bars with a
  * track are progress bars. Missing samples emit `null`, never zero (§83).
  */
 
-export type BarOrientation = 'horizontal' | 'vertical';
+export type BarOrientation = "horizontal" | "vertical";
 
 export interface BarSettings {
   readonly orientation: BarOrientation;
@@ -35,14 +39,14 @@ export interface BarSettings {
 }
 
 export const defaultBarSettings: BarSettings = {
-  orientation: 'horizontal',
+  orientation: "horizontal",
   min: 0,
   max: 100,
   barWidth: 14,
   categoryGapPercent: 40,
   cornerRadius: 7,
-  fill: { kind: 'solid', color: '#00b8d9' },
-  track: { kind: 'solid', color: '#2a2f3a' },
+  fill: { kind: "solid", color: "#00b8d9" },
+  track: { kind: "solid", color: "#2a2f3a" },
   showAxes: false,
   showCategoryLabels: false,
 };
@@ -55,11 +59,14 @@ export interface BarInput {
 
 export interface BarDataItem {
   readonly value: number | null;
-  readonly itemStyle: { readonly color: EngineColor; readonly borderRadius: number };
+  readonly itemStyle: {
+    readonly color: EngineColor;
+    readonly borderRadius: number;
+  };
 }
 
 interface CategoryAxis {
-  readonly type: 'category';
+  readonly type: "category";
   readonly show: boolean;
   readonly data: readonly string[];
   readonly axisTick: { readonly show: false };
@@ -71,7 +78,7 @@ interface CategoryAxis {
 }
 
 interface ValueAxis {
-  readonly type: 'value';
+  readonly type: "value";
   readonly show: boolean;
   readonly min: number;
   readonly max: number;
@@ -85,7 +92,7 @@ export interface BarOption extends EngineAnimation {
   readonly yAxis: CategoryAxis | ValueAxis;
   readonly series: readonly [
     {
-      readonly type: 'bar';
+      readonly type: "bar";
       readonly data: readonly BarDataItem[];
       readonly barWidth?: number;
       readonly barCategoryGap: string;
@@ -102,10 +109,10 @@ export function buildBarOption(
   animate = true,
   palette?: FabricPalette,
 ): BarOption {
-  const horizontal = settings.orientation === 'horizontal';
+  const horizontal = settings.orientation === "horizontal";
 
   const categoryAxis: CategoryAxis = {
-    type: 'category',
+    type: "category",
     show: settings.showAxes || settings.showCategoryLabels,
     data: inputs.map((input) => input.label ?? input.sensorId),
     axisTick: { show: false },
@@ -116,7 +123,7 @@ export function buildBarOption(
   };
 
   const valueAxis: ValueAxis = {
-    type: 'value',
+    type: "value",
     show: settings.showAxes,
     // Keep bar fractions stable instead of auto-rescaling with current data.
     min: settings.min,
@@ -140,9 +147,11 @@ export function buildBarOption(
     yAxis: horizontal ? categoryAxis : valueAxis,
     series: [
       {
-        type: 'bar',
+        type: "bar",
         data: inputs.map((input) => toBarDataItem(settings, input, palette)),
-        ...(settings.barWidth === undefined ? {} : { barWidth: settings.barWidth }),
+        ...(settings.barWidth === undefined
+          ? {}
+          : { barWidth: settings.barWidth }),
         barCategoryGap: `${clampPercent(settings.categoryGapPercent)}%`,
         showBackground: settings.track !== undefined,
         ...(settings.track === undefined
@@ -155,13 +164,17 @@ export function buildBarOption(
 }
 
 /** Missing samples return `null`; a zero-length bar would be indistinguishable from real zero. */
-export function toBarDataItem(settings: BarSettings, input: BarInput, palette?: FabricPalette): BarDataItem {
+export function toBarDataItem(
+  settings: BarSettings,
+  input: BarInput,
+  palette?: FabricPalette,
+): BarDataItem {
   const borderRadius = Math.max(0, settings.cornerRadius);
 
   if (!hasPlottableValue(input.sample)) {
     return {
       value: null,
-      itemStyle: { color: 'transparent', borderRadius },
+      itemStyle: { color: "transparent", borderRadius },
     };
   }
 
@@ -177,12 +190,16 @@ export function toBarDataItem(settings: BarSettings, input: BarInput, palette?: 
 }
 
 /** Resolve per-bar solid/threshold colour or a cartesian growth-direction gradient. */
-export function toBarColor(settings: BarSettings, position: number, palette?: FabricPalette): EngineColor {
+export function toBarColor(
+  settings: BarSettings,
+  position: number,
+  palette?: FabricPalette,
+): EngineColor {
   const fill = resolveChartPaint(settings.fill, palette);
-  if (fill.kind === 'gradient') {
+  if (fill.kind === "gradient") {
     return toLinearGradient(
       fill.stops,
-      settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
+      settings.orientation === "horizontal" ? "to-right" : "to-top",
     );
   }
 
@@ -190,18 +207,21 @@ export function toBarColor(settings: BarSettings, position: number, palette?: Fa
 }
 
 /** Track gradients span the whole slot; threshold tracks resolve to their top band. */
-function toTrackColor(settings: BarSettings, palette: FabricPalette | undefined): EngineColor {
+function toTrackColor(
+  settings: BarSettings,
+  palette: FabricPalette | undefined,
+): EngineColor {
   const track = settings.track;
 
   if (track === undefined) {
-    return 'transparent';
+    return "transparent";
   }
 
   const resolved = resolveChartPaint(track, palette);
-  if (resolved.kind === 'gradient') {
+  if (resolved.kind === "gradient") {
     return toLinearGradient(
       resolved.stops,
-      settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
+      settings.orientation === "horizontal" ? "to-right" : "to-top",
     );
   }
 

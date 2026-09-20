@@ -6,13 +6,18 @@ import {
   Rect,
   type FabricImage,
   type FabricObject,
-} from 'fabric/es';
-import type { PlanBox, PlanNode, ResolvedStyle } from '@vigilia/renderer-core';
-import { VigiliaChart } from './chart-object.js';
-import { buildImage, placeImage } from './fabric-image.js';
-import { buildText, isTextObject, textGaps, updateText } from './fabric-text.js';
-import { paintFor, unsupportedPaint } from './paint.js';
-import { drawnBox, placementFor } from './placement.js';
+} from "fabric/es";
+import type { PlanBox, PlanNode, ResolvedStyle } from "@vigilia/renderer-core";
+import { VigiliaChart } from "./chart-object.js";
+import { buildImage, placeImage } from "./fabric-image.js";
+import {
+  buildText,
+  isTextObject,
+  textGaps,
+  updateText,
+} from "./fabric-text.js";
+import { paintFor, unsupportedPaint } from "./paint.js";
+import { drawnBox, placementFor } from "./placement.js";
 
 /** Maps each `PlanNode` to one Fabric object. Adapter owns identity/tree/z-order. */
 
@@ -39,8 +44,8 @@ export function createNodeObject(
     return undefined;
   }
 
-  object.set('id', node.id);
-  object.set('visible', node.visible);
+  object.set("id", node.id);
+  object.set("visible", node.visible);
   object.setCoords();
 
   register(node.id, object);
@@ -55,31 +60,32 @@ export function updateNodeObject(
   box: PlanBox,
   context: NodeContext,
 ): void {
-  const geometryChanged = previous === undefined || !sameBox(previous.box, node.box);
+  const geometryChanged =
+    previous === undefined || !sameBox(previous.box, node.box);
   const styleChanged = previous === undefined || previous.style !== node.style;
 
   switch (node.content.kind) {
-    case 'chart':
+    case "chart":
       if (object instanceof VigiliaChart) {
         updateChart(object, node, previous, box, geometryChanged);
       }
       break;
 
-    case 'text':
+    case "text":
       // Text content commonly changes every frame; comparing rebuilt segments costs no less.
       if (isTextObject(object)) {
         updateText(object, node, box);
       }
       break;
 
-    case 'image':
+    case "image":
       if (geometryChanged || styleChanged) {
         placeImage(object as FabricImage, node, box, node.content.fit);
       }
       break;
 
-    case 'group':
-    case 'shape':
+    case "group":
+    case "shape":
       if (geometryChanged) {
         const placement = placementFor(box);
 
@@ -91,7 +97,7 @@ export function updateNodeObject(
           scaleY: placement.scaleY,
         });
 
-        if (node.content.kind === 'shape') {
+        if (node.content.kind === "shape") {
           resizeShape(object, box, node.style);
         } else {
           object.set({ width: placement.width, height: placement.height });
@@ -100,15 +106,21 @@ export function updateNodeObject(
       break;
   }
 
-  if (styleChanged && node.content.kind !== 'group' && node.content.kind !== 'image') {
-    object.set(paintFor(node.style, node.content.kind === 'text' ? 'text' : 'box'));
+  if (
+    styleChanged &&
+    node.content.kind !== "group" &&
+    node.content.kind !== "image"
+  ) {
+    object.set(
+      paintFor(node.style, node.content.kind === "text" ? "text" : "box"),
+    );
 
-    if (node.content.kind === 'shape') {
+    if (node.content.kind === "shape") {
       resizeShape(object, box, node.style);
     }
   }
 
-  object.set('visible', node.visible);
+  object.set("visible", node.visible);
   object.setCoords();
 }
 
@@ -119,29 +131,40 @@ function build(
   register: (nodeId: string, object: FabricObject) => void,
 ): FabricObject | undefined {
   switch (node.content.kind) {
-    case 'group':
+    case "group":
       return buildGroup(node, box, context, register);
 
-    case 'shape':
+    case "shape":
       return buildShape(node, box);
 
-    case 'text':
+    case "text":
       return buildText(node, box);
 
-    case 'chart':
+    case "chart":
       return buildChart(node, box, context);
 
-    case 'image':
-      return buildImage(node, box, { renderScale: context.renderScale }, {
-        ...(context.onAssetError === undefined ? {} : { onAssetError: context.onAssetError }),
-        ...(context.onUnsupported === undefined ? {} : { onUnsupported: context.onUnsupported }),
-        ...(context.onDecoded === undefined ? {} : { onDecoded: context.onDecoded }),
-      });
+    case "image":
+      return buildImage(
+        node,
+        box,
+        { renderScale: context.renderScale },
+        {
+          ...(context.onAssetError === undefined
+            ? {}
+            : { onAssetError: context.onAssetError }),
+          ...(context.onUnsupported === undefined
+            ? {}
+            : { onUnsupported: context.onUnsupported }),
+          ...(context.onDecoded === undefined
+            ? {}
+            : { onDecoded: context.onDecoded }),
+        },
+      );
 
-    case 'video':
+    case "video":
       context.onUnsupported?.(
         node.id,
-        'video cannot be a canvas object — a DOM layer behind the scene is stage 7',
+        "video cannot be a canvas object — a DOM layer behind the scene is stage 7",
       );
 
       return undefined;
@@ -165,8 +188,8 @@ function buildGroup(
     top: placement.height / 2,
     width: placement.width,
     height: placement.height,
-    originX: 'center',
-    originY: 'center',
+    originX: "center",
+    originY: "center",
     layoutManager: new LayoutManager(new FixedLayout()),
     subTargetCheck: false,
     interactive: false,
@@ -192,8 +215,8 @@ function buildGroup(
 }
 
 function buildShape(node: PlanNode, box: PlanBox): FabricObject {
-  if (node.content.kind !== 'shape') {
-    throw new Error('buildShape received a non-shape node.');
+  if (node.content.kind !== "shape") {
+    throw new Error("buildShape received a non-shape node.");
   }
 
   const placement = placementFor(box);
@@ -201,9 +224,9 @@ function buildShape(node: PlanNode, box: PlanBox): FabricObject {
   const width = Math.max(0, placement.width - inset * 2);
   const height = Math.max(0, placement.height - inset * 2);
   const common = {
-    ...paintFor(node.style, 'box'),
-    originX: 'center' as const,
-    originY: 'center' as const,
+    ...paintFor(node.style, "box"),
+    originX: "center" as const,
+    originY: "center" as const,
     left: placement.left,
     top: placement.top,
     angle: placement.angle,
@@ -214,12 +237,12 @@ function buildShape(node: PlanNode, box: PlanBox): FabricObject {
   };
 
   // Ellipse derives width/height from radii, so assign radii last.
-  if (node.content.shape === 'ellipse') {
+  if (node.content.shape === "ellipse") {
     return new Ellipse({ ...common, rx: width / 2, ry: height / 2 });
   }
 
   // Document `line` is a filled rectangle, matching the old renderer semantics.
-  if (node.content.shape === 'rectangle' && node.content.cornerRadius > 0) {
+  if (node.content.shape === "rectangle" && node.content.cornerRadius > 0) {
     const radius = cornerRadiusFor(node.content.cornerRadius, width, height);
 
     return new Rect({ ...common, rx: radius, ry: radius });
@@ -229,7 +252,11 @@ function buildShape(node: PlanNode, box: PlanBox): FabricObject {
 }
 
 /** Clamp one radius uniformly so large radii stay capsule-like rather than elliptical. */
-function cornerRadiusFor(cornerRadius: number, width: number, height: number): number {
+function cornerRadiusFor(
+  cornerRadius: number,
+  width: number,
+  height: number,
+): number {
   return Math.min(cornerRadius, width / 2, height / 2);
 }
 
@@ -238,8 +265,8 @@ function buildChart(
   box: PlanBox,
   context: NodeContext,
 ): FabricObject | undefined {
-  if (node.content.kind !== 'chart') {
-    throw new Error('buildChart received a non-chart node.');
+  if (node.content.kind !== "chart") {
+    throw new Error("buildChart received a non-chart node.");
   }
 
   const placement = placementFor(box);
@@ -258,7 +285,7 @@ function buildChart(
     width: placement.width,
     height: placement.height,
     renderScale: context.renderScale,
-    ...paintFor(node.style, 'box'),
+    ...paintFor(node.style, "box"),
     left: placement.left,
     top: placement.top,
     angle: placement.angle,
@@ -274,7 +301,7 @@ function updateChart(
   box: PlanBox,
   geometryChanged: boolean,
 ): void {
-  if (node.content.kind !== 'chart') {
+  if (node.content.kind !== "chart") {
     return;
   }
 
@@ -299,14 +326,18 @@ function updateChart(
 
   if (
     previous !== undefined &&
-    previous.content.kind === 'chart' &&
+    previous.content.kind === "chart" &&
     previous.content.settings !== node.content.settings
   ) {
-    chart.set('settings', node.content.settings);
+    chart.set("settings", node.content.settings);
   }
 }
 
-function resizeShape(object: FabricObject, box: PlanBox, style: ResolvedStyle): void {
+function resizeShape(
+  object: FabricObject,
+  box: PlanBox,
+  style: ResolvedStyle,
+): void {
   const inset = insetFor(style);
   const width = Math.max(0, box.width - inset * 2);
   const height = Math.max(0, box.height - inset * 2);
@@ -322,14 +353,14 @@ function resizeShape(object: FabricObject, box: PlanBox, style: ResolvedStyle): 
 
 /** Inset by half the visible stroke so authored box remains the outer bounds. */
 function insetFor(style: ResolvedStyle): number {
-  const width = style['strokeWidth'];
-  const color = style['strokeColor'];
+  const width = style["strokeWidth"];
+  const color = style["strokeColor"];
 
-  if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
+  if (typeof width !== "number" || !Number.isFinite(width) || width <= 0) {
     return 0;
   }
 
-  return typeof color === 'string' && color.length > 0 ? width / 2 : 0;
+  return typeof color === "string" && color.length > 0 ? width / 2 : 0;
 }
 
 /** Compare fields because plan boxes are recreated each frame. */
@@ -348,15 +379,18 @@ function sameBox(a: PlanBox, b: PlanBox): boolean {
 function reportGaps(node: PlanNode, context: NodeContext): void {
   const report = context.onUnsupported;
 
-  if (report === undefined || node.content.kind === 'group') {
+  if (report === undefined || node.content.kind === "group") {
     return;
   }
 
   for (const property of unsupportedPaint(
     node.style,
-    node.content.kind === 'text' ? 'text' : 'box',
+    node.content.kind === "text" ? "text" : "box",
   )) {
-    report(node.id, `the style property "${property}" is not expressible on canvas`);
+    report(
+      node.id,
+      `the style property "${property}" is not expressible on canvas`,
+    );
   }
 
   for (const gap of textGaps(node)) {

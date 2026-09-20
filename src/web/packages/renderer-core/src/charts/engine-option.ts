@@ -1,9 +1,9 @@
-import type { EChartsCoreOption } from 'echarts/core';
-import type { ChartFamily } from '../theme/document.js';
-import type { BarOption } from './bar.js';
-import type { GaugeOption } from './gauge.js';
-import type { LineOption } from './line.js';
-import type { PieOption } from './pie.js';
+import type { EChartsCoreOption } from "echarts/core";
+import type { ChartFamily } from "../theme/document.js";
+import type { BarOption } from "./bar.js";
+import type { GaugeOption } from "./gauge.js";
+import type { LineOption } from "./line.js";
+import type { PieOption } from "./pie.js";
 
 /**
  * The one place a Vigilia chart option becomes an engine option.

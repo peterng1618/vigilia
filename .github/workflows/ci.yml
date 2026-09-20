@@ -33,6 +33,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         # The npm script, not a hand-written list. The list was enumerated here
         # and drifted twice: it said "five projects, not four" because the host

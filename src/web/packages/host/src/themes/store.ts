@@ -1,7 +1,7 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import type { FabricThemeEnvelope } from '@vigilia/renderer-core';
-import { readThemePackage } from '@vigilia/theme-package';
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { readThemePackage } from "@vigilia/theme-package";
 
 export interface ThemeStoreEntry {
   readonly id: string;
@@ -23,7 +23,7 @@ export interface ThemeStore {
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
-const THEME_EXTENSION = '.vigilia-theme';
+const THEME_EXTENSION = ".vigilia-theme";
 
 export function isValidThemeId(id: string): boolean {
   return THEME_ID_REGEX.test(id);
@@ -97,14 +97,16 @@ export function createThemeStore(directory: string): ThemeStore {
 
     async write(id: string, bytes: Uint8Array): Promise<ThemeStoreEntry> {
       if (!isValidThemeId(id)) {
-        throw new Error('Invalid theme id.');
+        throw new Error("Invalid theme id.");
       }
       const parsed = readThemePackage(bytes);
       if (!parsed.ok) {
         throw new Error(parsed.message);
       }
       if (parsed.envelope.id !== id) {
-        throw new Error(`Theme package id "${parsed.envelope.id}" does not match target id "${id}".`);
+        throw new Error(
+          `Theme package id "${parsed.envelope.id}" does not match target id "${id}".`,
+        );
       }
 
       await fs.mkdir(directory, { recursive: true });

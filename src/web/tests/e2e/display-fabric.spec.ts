@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { openPaused } from './clock.js';
+import { expect, test, type Page } from "@playwright/test";
+import { openPaused } from "./clock.js";
 import {
   canvasChildOf,
   canvasHas,
@@ -12,13 +12,13 @@ import {
   openCanvasPlayer,
   probe,
   sourceColorFraction,
-} from './canvas-probe.js';
+} from "./canvas-probe.js";
 
 const FIXTURES = [
-  { name: 'demo', charts: true },
-  { name: 'stress', charts: true },
-  { name: 'portrait-cover', charts: true },
-  { name: 'assets', charts: false },
+  { name: "demo", charts: true },
+  { name: "stress", charts: true },
+  { name: "portrait-cover", charts: true },
+  { name: "assets", charts: false },
 ] as const;
 
 /**
@@ -79,7 +79,11 @@ window.gridProfile = (data, width, height) => {
 
 /** The injected measure, as the page exposes it. */
 type ProfileWindow = typeof window & {
-  gridProfile: (data: Uint8ClampedArray, width: number, height: number) => number[];
+  gridProfile: (
+    data: Uint8ClampedArray,
+    width: number,
+    height: number,
+  ) => number[];
 };
 
 /**
@@ -98,8 +102,10 @@ async function profileIn(
   region: { x: number; y: number; width: number; height: number },
 ): Promise<readonly number[]> {
   return page.evaluate((box) => {
-    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
-    const context = element?.getContext('2d');
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
 
     if (element === null || context === null || context === undefined) {
       return [];
@@ -135,15 +141,15 @@ async function profileOfAsset(
   return page.evaluate(
     ({ url, box }) =>
       new Promise<readonly number[]>((resolve) => {
-        const image = document.createElement('img');
+        const image = document.createElement("img");
 
-        image.addEventListener('load', () => {
-          const canvas = document.createElement('canvas');
+        image.addEventListener("load", () => {
+          const canvas = document.createElement("canvas");
 
           canvas.width = Math.max(4, Math.round(box.width));
           canvas.height = Math.max(4, Math.round(box.height));
 
-          const context = canvas.getContext('2d');
+          const context = canvas.getContext("2d");
 
           if (context === null) {
             resolve([]);
@@ -163,15 +169,15 @@ async function profileOfAsset(
           );
         });
 
-        image.addEventListener('error', () => resolve([]));
+        image.addEventListener("error", () => resolve([]));
         image.src = url;
       }),
     { url: src, box: size },
   );
 }
 
-test.describe('the scene reaches the canvas', () => {
-  test('builds one object per top-level node', async ({ page }) => {
+test.describe("the scene reaches the canvas", () => {
+  test("builds one object per top-level node", async ({ page }) => {
     await openCanvasPlayer(page);
 
     const scene = await probe(page);
@@ -180,45 +186,54 @@ test.describe('the scene reaches the canvas', () => {
     // id, because that is what a plan node is matched by — and from stage 3,
     // what a binding resolves against.
     expect(scene.objectCount).toBeGreaterThan(0);
-    expect(scene.ids).not.toContain('undefined');
+    expect(scene.ids).not.toContain("undefined");
     expect(new Set(scene.ids).size).toBe(scene.ids.length);
 
     for (const id of [
-      'title',
-      'cpu-panel',
-      'cpu-panel-bg',
-      'cpu-gauge',
-      'cpu-readout',
-      'gpu-gauge',
-      'history-chart',
-      'thermals-bars',
-      'memory-donut',
-      'memory-unmapped',
+      "title",
+      "cpu-panel",
+      "cpu-panel-bg",
+      "cpu-gauge",
+      "cpu-readout",
+      "gpu-gauge",
+      "history-chart",
+      "thermals-bars",
+      "memory-donut",
+      "memory-unmapped",
     ]) {
       expect(scene.allIds, `node ${id} is missing`).toContain(id);
     }
   });
 
-  test('keeps group children inside their authored group (§57)', async ({ page }) => {
+  test("keeps group children inside their authored group (§57)", async ({
+    page,
+  }) => {
     await openCanvasPlayer(page);
 
-    expect(await canvasChildOf(page, 'cpu-gauge', 'cpu-panel')).toBe(true);
+    expect(await canvasChildOf(page, "cpu-gauge", "cpu-panel")).toBe(true);
   });
 
-  test('shows measured text, styled runs and missing-data placeholders', async ({ page }) => {
+  test("shows measured text, styled runs and missing-data placeholders", async ({
+    page,
+  }) => {
     await openCanvasPlayer(page);
 
-    expect(await canvasText(page, 'cpu-readout')).toMatch(/^\d+%$/);
-    expect(await hasRunStyles(page, 'cpu-readout')).toBe(true);
-    expect(await canvasText(page, 'memory-unmapped')).toContain('—');
+    expect(await canvasText(page, "cpu-readout")).toMatch(/^\d+%$/);
+    expect(await hasRunStyles(page, "cpu-readout")).toBe(true);
+    expect(await canvasText(page, "memory-unmapped")).toContain("—");
     await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
   });
 
-  test('paints something, which is the whole point', async ({ page }) => {
+  test("paints something, which is the whole point", async ({ page }) => {
     await openCanvasPlayer(page);
 
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
-    const drawn = await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height });
+    const drawn = await drawnFractionIn(page, {
+      x: 0,
+      y: 0,
+      width: size.width,
+      height: size.height,
+    });
 
     // A canvas that mounted, sized and transformed correctly and drew nothing
     // would pass every other assertion in this file. The fraction is of the
@@ -226,7 +241,9 @@ test.describe('the scene reaches the canvas', () => {
     expect(drawn).toBeGreaterThan(0.1);
   });
 
-  test('carries the artboard transform in the canvas, not in CSS', async ({ page }) => {
+  test("carries the artboard transform in the canvas, not in CSS", async ({
+    page,
+  }) => {
     await openCanvasPlayer(page);
 
     const scene = await probe(page);
@@ -247,8 +264,13 @@ test.describe('the scene reaches the canvas', () => {
     expect(scene.canvasSize.height).toBe(size.height);
   });
 
-  test('letterboxes a 16:9 design on a taller phone (§53)', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'phone-chromium', 'The bars only exist on a phone.');
+  test("letterboxes a 16:9 design on a taller phone (§53)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "phone-chromium",
+      "The bars only exist on a phone.",
+    );
 
     await openCanvasPlayer(page);
 
@@ -274,8 +296,11 @@ test.describe('the scene reaches the canvas', () => {
     }
   });
 
-  test('refits after the viewport changes', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop-chromium', 'resizes the desktop viewport');
+  test("refits after the viewport changes", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "resizes the desktop viewport",
+    );
 
     await openCanvasPlayer(page);
     await page.setViewportSize({ width: 900, height: 900 });
@@ -288,8 +313,8 @@ test.describe('the scene reaches the canvas', () => {
     expect(scene.canvasSize).toEqual({ width: 900, height: 900 });
   });
 
-  test('cover mode fills and crops the viewport (§53)', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=portrait-cover');
+  test("cover mode fills and crops the viewport (§53)", async ({ page }) => {
+    await openCanvasPlayer(page, "/?theme=portrait-cover");
 
     const scene = await probe(page);
     const viewport = page.viewportSize()!;
@@ -301,14 +326,16 @@ test.describe('the scene reaches the canvas', () => {
   });
 });
 
-test.describe('charts draw through a Fabric object', () => {
-  test('every family in the stress fixture puts ink on the canvas', async ({ page }) => {
+test.describe("charts draw through a Fabric object", () => {
+  test("every family in the stress fixture puts ink on the canvas", async ({
+    page,
+  }) => {
     // The claim this whole migration rests on, asserted on the shipped path
     // rather than on the prototype: ECharts draws into a detached canvas and
     // `VigiliaChart._render` blits it. If the invalidation hook were missing,
     // the first frame might still appear and later ones would not — which is
     // what the next test is for.
-    await openCanvasPlayer(page, '/?theme=stress');
+    await openCanvasPlayer(page, "/?theme=stress");
 
     const scene = await probe(page);
 
@@ -317,15 +344,23 @@ test.describe('charts draw through a Fabric object', () => {
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
 
     expect(
-      await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height }),
+      await drawnFractionIn(page, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+      }),
     ).toBeGreaterThan(0.1);
 
-    for (const id of ['half-gauge', 'step-line', 'many-bars', 'sum-pie']) {
-      expect(await drawnFractionOf(page, id), `${id} drew nothing`).toBeGreaterThan(0.01);
+    for (const id of ["half-gauge", "step-line", "many-bars", "sum-pie"]) {
+      expect(
+        await drawnFractionOf(page, id),
+        `${id} drew nothing`,
+      ).toBeGreaterThan(0.01);
     }
   });
 
-  test('keeps repainting as samples arrive', async ({ page }) => {
+  test("keeps repainting as samples arrive", async ({ page }) => {
     // What this catches, verified by sabotage: the update loop not reaching the
     // canvas. Cutting `handle.update(plan())` fails it.
     //
@@ -340,34 +375,38 @@ test.describe('charts draw through a Fabric object', () => {
     await openCanvasPlayer(page);
 
     const before = await page.evaluate(() => {
-      const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+      const element = document.querySelector<HTMLCanvasElement>(
+        'canvas[data-vigilia="artboard"]',
+      );
 
-      return element?.toDataURL() ?? '';
+      return element?.toDataURL() ?? "";
     });
 
     // Several data ticks — the player rebuilds the plan once a second.
     await page.clock.runFor(4000);
 
     const after = await page.evaluate(() => {
-      const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+      const element = document.querySelector<HTMLCanvasElement>(
+        'canvas[data-vigilia="artboard"]',
+      );
 
-      return element?.toDataURL() ?? '';
+      return element?.toDataURL() ?? "";
     });
 
-    expect(before).not.toBe('');
+    expect(before).not.toBe("");
     expect(after).not.toBe(before);
   });
 
-  test('updates live objects without recreating them', async ({ page }) => {
+  test("updates live objects without recreating them", async ({ page }) => {
     await openCanvasPlayer(page);
 
-    expect(await keepsObjectIdentity(page, 'cpu-gauge', 3000)).toBe(true);
-    expect(await keepsObjectIdentity(page, 'cpu-readout', 1000)).toBe(true);
+    expect(await keepsObjectIdentity(page, "cpu-gauge", 3000)).toBe(true);
+    expect(await keepsObjectIdentity(page, "cpu-readout", 1000)).toBe(true);
   });
 });
 
-test.describe('device pixels reach the charts', () => {
-  test('sizes each chart’s detached canvas from the device and the artboard scale', async ({
+test.describe("device pixels reach the charts", () => {
+  test("sizes each chart’s detached canvas from the device and the artboard scale", async ({
     page,
   }) => {
     // Fabric's `enableRetinaScaling` sizes its *own* backing store. A chart
@@ -406,7 +445,10 @@ test.describe('device pixels reach the charts', () => {
  *
  * Roughly ten times apart, so the threshold is not finely balanced.
  */
-function profileDistance(drawn: readonly number[], reference: readonly number[]): number {
+function profileDistance(
+  drawn: readonly number[],
+  reference: readonly number[],
+): number {
   if (drawn.length !== reference.length || drawn.length === 0) {
     return Number.POSITIVE_INFINITY;
   }
@@ -422,59 +464,72 @@ function profileDistance(drawn: readonly number[], reference: readonly number[])
 /** Twice the worst correct render measured, and a quarter of the mangled one. */
 const PROFILE_TOLERANCE = 0.06;
 
-test.describe('image assets', () => {
-  test('draws each fit mode, and every icon, in its own box', async ({ page }) => {
+test.describe("image assets", () => {
+  test("draws each fit mode, and every icon, in its own box", async ({
+    page,
+  }) => {
     // The test the whole-frame count could not be: every SVG icon in this
     // fixture was **absent** while that one passed. Chrome draws nothing for an
     // SVG with no intrinsic size through `drawImage`'s source-rect form, which
     // is the only form Fabric uses — and the symptom was device-dependent,
     // mangled fragments at 1x and nothing at 4x. `fabric-image.ts` rasterises a
     // vector asset first; this is what says so.
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
     // Three rings, one PNG, at the three fit modes; then the icon row.
     for (const nodeId of [
-      'fit-contain',
-      'fit-cover',
-      'fit-stretch',
-      'svg-original',
-      'svg-mono',
-      'png-mono',
+      "fit-contain",
+      "fit-cover",
+      "fit-stretch",
+      "svg-original",
+      "svg-mono",
+      "png-mono",
     ]) {
       const drawn = await drawnFractionOf(page, nodeId);
 
       // A lower bound per node rather than a baseline: a ring covers about a
       // third of its box and a thermometer glyph rather less, and both are
       // nowhere near zero. Absent scores exactly 0.
-      expect(drawn, `"${nodeId}" drew nothing inside its own box`).toBeGreaterThan(0.05);
+      expect(
+        drawn,
+        `"${nodeId}" drew nothing inside its own box`,
+      ).toBeGreaterThan(0.05);
     }
   });
 
-  test('applies contain, cover and stretch geometry', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=assets');
+  test("applies contain, cover and stretch geometry", async ({ page }) => {
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    const containX = await canvasProp(page, 'fit-contain', 'scaleX');
-    const containY = await canvasProp(page, 'fit-contain', 'scaleY');
-    const coverX = await canvasProp(page, 'fit-cover', 'scaleX');
-    const coverY = await canvasProp(page, 'fit-cover', 'scaleY');
-    const stretchX = await canvasProp(page, 'fit-stretch', 'scaleX');
-    const stretchY = await canvasProp(page, 'fit-stretch', 'scaleY');
+    const containX = await canvasProp(page, "fit-contain", "scaleX");
+    const containY = await canvasProp(page, "fit-contain", "scaleY");
+    const coverX = await canvasProp(page, "fit-cover", "scaleX");
+    const coverY = await canvasProp(page, "fit-cover", "scaleY");
+    const stretchX = await canvasProp(page, "fit-stretch", "scaleX");
+    const stretchY = await canvasProp(page, "fit-stretch", "scaleY");
 
     expect(containX).toBeCloseTo(containY as number, 5);
     expect(coverX).toBeCloseTo(coverY as number, 5);
     expect(coverX as number).toBeGreaterThan(containX as number);
     expect(stretchX).not.toBeCloseTo(stretchY as number, 5);
-    expect(await canvasHas(page, 'fit-cover', 'clipPath')).toBe(true);
+    expect(await canvasHas(page, "fit-cover", "clipPath")).toBe(true);
   });
 
-  test('recolours bitmap and SVG artwork from source alpha (§132)', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=assets');
+  test("recolours bitmap and SVG artwork from source alpha (§132)", async ({
+    page,
+  }) => {
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    expect(await sourceColorFraction(page, 'svg-mono', [255, 171, 0])).toBeGreaterThan(0.8);
-    expect(await sourceColorFraction(page, 'png-mono', [54, 179, 126])).toBeGreaterThan(0.8);
+    expect(
+      await sourceColorFraction(page, "svg-mono", [255, 171, 0]),
+    ).toBeGreaterThan(0.8);
+    expect(
+      await sourceColorFraction(page, "png-mono", [54, 179, 126]),
+    ).toBeGreaterThan(0.8);
   });
 
-  test('draws a vector icon the shape the asset actually is', async ({ page }) => {
+  test("draws a vector icon the shape the asset actually is", async ({
+    page,
+  }) => {
     // Coverage is not enough here, and that is measured: with the vector
     // raster removed, the same icon drew a *mangled* fragment scoring 0.2344
     // against the correct 0.2126. What separates them is where the ink sits, so
@@ -486,25 +541,34 @@ test.describe('image assets', () => {
     // symptom was device-dependent — fragments at 1x, nothing at 4x — so this
     // is the assertion that holds at every ratio.
     await page.addInitScript(GRID_PROFILE);
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
     const region = await page.evaluate(() => {
-      const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
-        .vigilia;
-      const adapter = handle['adapter'] as {
+      const { handle } = (
+        window as unknown as { vigilia: { handle: Record<string, unknown> } }
+      ).vigilia;
+      const adapter = handle["adapter"] as {
         objectFor(nodeId: string):
-          | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+          | {
+              getBoundingRect(): {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+            }
           | undefined;
       };
-      const object = adapter.objectFor('svg-original');
+      const object = adapter.objectFor("svg-original");
 
       if (object === undefined) {
         return undefined;
       }
 
-      const canvas = handle['canvas'] as { viewportTransform: number[] };
+      const canvas = handle["canvas"] as { viewportTransform: number[] };
       const rect = object.getBoundingRect();
-      const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+      const [scale = 1, , , , offsetX = 0, offsetY = 0] =
+        canvas.viewportTransform;
 
       return {
         x: rect.left * scale + offsetX,
@@ -514,7 +578,7 @@ test.describe('image assets', () => {
       };
     });
 
-    expect(region, 'the icon has no object at all').toBeDefined();
+    expect(region, "the icon has no object at all").toBeDefined();
 
     const drawn = await profileIn(page, region!);
     const ratio = await page.evaluate(() => window.devicePixelRatio);
@@ -522,7 +586,7 @@ test.describe('image assets', () => {
     // so the two antialias comparably. Drawn at a different size it differs by
     // up to 0.089 in a single edge-heavy cell even when perfectly correct,
     // which is most of the budget a mangled draw needs to be caught in.
-    const reference = await profileOfAsset(page, '/assets/thermometer.svg', {
+    const reference = await profileOfAsset(page, "/assets/thermometer.svg", {
       width: region!.width * ratio,
       height: region!.height * ratio,
     });
@@ -536,42 +600,51 @@ test.describe('image assets', () => {
     expect(profileDistance(drawn, reference)).toBeLessThan(PROFILE_TOLERANCE);
   });
 
-  test('draws nothing at all for an asset the server does not have', async ({ page }) => {
+  test("draws nothing at all for an asset the server does not have", async ({
+    page,
+  }) => {
     // §111: a declared-but-absent file must not become a broken-image glyph,
     // which reads as a rendering failure rather than a missing file. The node
     // has no object at all, so the helper reports -1.
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    expect(await drawnFractionOf(page, 'absent-image')).toBeLessThanOrEqual(0);
+    expect(await drawnFractionOf(page, "absent-image")).toBeLessThanOrEqual(0);
   });
 });
 
-test.describe('what it cannot draw, it says', () => {
-  test('warns about tabular numerals rather than silently approximating them (§85)', async ({
+test.describe("what it cannot draw, it says", () => {
+  test("warns about tabular numerals rather than silently approximating them (§85)", async ({
     page,
   }) => {
     const warnings: string[] = [];
 
-    page.on('console', (message) => {
-      if (message.type() === 'warning') {
+    page.on("console", (message) => {
+      if (message.type() === "warning") {
         warnings.push(message.text());
       }
     });
 
     await openCanvasPlayer(page);
 
-    expect(warnings.some((text) => text.includes('tabularNumerals'))).toBe(true);
+    expect(warnings.some((text) => text.includes("tabularNumerals"))).toBe(
+      true,
+    );
   });
 });
 
-test.describe('every fixture renders', () => {
+test.describe("every fixture renders", () => {
   for (const fixture of FIXTURES) {
-    test(`${fixture.name}: mounts, paints and reports no page error`, async ({ page }) => {
+    test(`${fixture.name}: mounts, paints and reports no page error`, async ({
+      page,
+    }) => {
       const errors: string[] = [];
 
-      page.on('pageerror', (error) => errors.push(error.message));
-      page.on('console', (message) => {
-        if (message.type() === 'error' && !message.text().includes('not-shipped.png')) {
+      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("console", (message) => {
+        if (
+          message.type() === "error" &&
+          !message.text().includes("not-shipped.png")
+        ) {
           errors.push(message.text());
         }
       });
@@ -582,51 +655,78 @@ test.describe('every fixture renders', () => {
       const size = page.viewportSize()!;
 
       expect(scene.objectCount).toBeGreaterThan(0);
-      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size }), fixture.name).toBeGreaterThan(0.01);
+      expect(
+        await drawnFractionIn(page, { x: 0, y: 0, ...size }),
+        fixture.name,
+      ).toBeGreaterThan(0.01);
       expect(scene.chartRenderScales.length > 0).toBe(fixture.charts);
       expect(errors).toEqual([]);
     });
   }
 
-  test('unknown hosted themes show a clear load failure', async ({ page }) => {
-    await page.goto('/?theme=does-not-exist');
+  test("unknown hosted themes show a clear load failure", async ({ page }) => {
+    await page.goto("/?theme=does-not-exist");
 
-    await expect(page.locator('#artboard')).toHaveText(/Vigilia could not load this theme/);
+    await expect(page.locator("#artboard")).toHaveText(
+      /Vigilia could not load this theme/,
+    );
   });
 
-  test('keeps invisible nodes in the scene without painting them', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=stress');
+  test("keeps invisible nodes in the scene without painting them", async ({
+    page,
+  }) => {
+    await openCanvasPlayer(page, "/?theme=stress");
 
-    expect(await canvasProp(page, 'hidden-node', 'visible')).toBe(false);
+    expect(await canvasProp(page, "hidden-node", "visible")).toBe(false);
   });
 
   for (const fixture of FIXTURES) {
-    test(`captures ${fixture.name} for visual review`, async ({ page }, testInfo) => {
-      const directory = process.env['VIGILIA_CAPTURE_DIR']
-        ?? (process.env['VIGILIA_CAPTURE'] === undefined ? 'test-results/screenshots' : '../../.agents/screenshots');
+    test(`captures ${fixture.name} for visual review`, async ({
+      page,
+    }, testInfo) => {
+      const directory =
+        process.env["VIGILIA_CAPTURE_DIR"] ??
+        (process.env["VIGILIA_CAPTURE"] === undefined
+          ? "test-results/screenshots"
+          : "../../.agents/screenshots");
 
       await openCanvasPlayer(page, `/?theme=${fixture.name}`);
       const size = page.viewportSize()!;
-      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
-      if (process.env['VIGILIA_CAPTURE'] === undefined) return;
+      expect(
+        await drawnFractionIn(page, { x: 0, y: 0, ...size }),
+      ).toBeGreaterThan(0.01);
+      if (process.env["VIGILIA_CAPTURE"] === undefined) return;
       const name = `${fixture.name}-${testInfo.project.name}.png`;
       const screenshot = await page.screenshot({
         fullPage: false,
         path: `${directory}/${name}`,
       });
 
-      await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
+      await testInfo.attach(name, {
+        body: screenshot,
+        contentType: "image/png",
+      });
       expect(screenshot.byteLength).toBeGreaterThan(1000);
     });
   }
 
-  test('is byte-stable at a fixed clock on one platform', async ({ browser }) => {
+  test("is byte-stable at a fixed clock on one platform", async ({
+    browser,
+  }) => {
     const capture = async (): Promise<Buffer> => {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-      await openPaused(page, '/?theme=demo&static=1', 'canvas[data-vigilia="artboard"]');
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 720 },
+      });
+      await openPaused(
+        page,
+        "/?theme=demo&static=1",
+        'canvas[data-vigilia="artboard"]',
+      );
       await page.clock.runFor(1500);
       await page.evaluate(() => document.fonts.ready);
-      const shot = await page.locator('canvas[data-vigilia="artboard"]').screenshot();
+      const shot = await page
+        .locator('canvas[data-vigilia="artboard"]')
+        .screenshot();
       await page.close();
       return shot;
     };

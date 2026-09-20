@@ -1,4 +1,4 @@
-import { ASSET_PATH_PATTERN, type AssetReference } from './document.js';
+import { ASSET_PATH_PATTERN, type AssetReference } from "./document.js";
 
 /** Resolves package-relative theme assets to loadable URLs. */
 
@@ -14,7 +14,9 @@ export function createAssetResolver(
   assets: readonly AssetReference[] | undefined,
   options: AssetResolverOptions,
 ): AssetResolver {
-  const base = options.baseUrl.endsWith('/') ? options.baseUrl : `${options.baseUrl}/`;
+  const base = options.baseUrl.endsWith("/")
+    ? options.baseUrl
+    : `${options.baseUrl}/`;
   const byId = new Map<string, AssetReference>();
 
   for (const asset of assets ?? []) {
@@ -30,7 +32,7 @@ export function createAssetResolver(
     }
 
     // Encode filename segments without encoding separators.
-    const encoded = asset.path.split('/').map(encodeURIComponent).join('/');
+    const encoded = asset.path.split("/").map(encodeURIComponent).join("/");
 
     return `${base}${encoded}`;
   };
@@ -42,9 +44,9 @@ export function isSafeAssetPath(path: string): boolean {
     return false;
   }
 
-  const segments = path.split('/');
+  const segments = path.split("/");
 
-  return !segments.includes('..') && !segments.includes('.');
+  return !segments.includes("..") && !segments.includes(".");
 }
 
 export const noAssets: AssetResolver = () => undefined;

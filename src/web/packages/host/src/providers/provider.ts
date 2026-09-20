@@ -1,4 +1,4 @@
-import type { SampleEntry, SensorTier } from '@vigilia/renderer-core';
+import type { SampleEntry, SensorTier } from "@vigilia/renderer-core";
 
 /** Provider boundary: providers acquire; the host schedules and owns history. */
 
@@ -29,7 +29,10 @@ export interface SensorProvider {
   describe(): Promise<readonly SensorDescriptor[]>;
 
   /** Reads requested keys only. Unsupported/unavailable values are omitted or non-ok, never zero. */
-  sample(semanticKeys: readonly string[], nowMs: number): Promise<readonly SampleEntry[]>;
+  sample(
+    semanticKeys: readonly string[],
+    nowMs: number,
+  ): Promise<readonly SampleEntry[]>;
 
   health(): ProviderHealth;
 }

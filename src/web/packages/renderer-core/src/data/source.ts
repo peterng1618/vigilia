@@ -1,4 +1,4 @@
-import type { Sample } from '../types.js';
+import type { Sample } from "../types.js";
 
 /**
  * Live data as the renderer sees it: a pull interface (§93, §116).

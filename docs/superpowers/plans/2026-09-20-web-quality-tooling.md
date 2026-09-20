@@ -4,7 +4,7 @@
 
 **Goal:** Add deterministic TypeScript/JSON/CSS formatting and static linting to the web workspace and CI.
 
-**Architecture:** A root `biome.json` owns the supported file selection and the existing two-space formatting convention. `src/web/package.json` exposes all local actions; CI calls only read-only scripts so it enforces the exact local gate.
+**Architecture:** A root `biome.json` owns the supported file selection, existing two-space formatting convention and strict-equality lint rule. `src/web/package.json` exposes all local actions; CI calls only read-only scripts so it enforces the exact local gate.
 
 **Tech Stack:** Biome 2.5.14, npm workspaces, GitHub Actions.
 
@@ -19,7 +19,7 @@
 
 ## Review Focus
 
-None. `format:check` and `lint` directly exercise the tool configuration, source selection and non-mutating CI contract in Task 1.
+Unused imports/variables and floating promises have existing violations, so this slice deliberately enforces strict equality only. `format:check` and `lint` directly exercise the tool configuration, source selection and non-mutating CI contract in Task 1.
 
 ---
 

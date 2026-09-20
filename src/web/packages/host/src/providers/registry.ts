@@ -1,5 +1,5 @@
-import type { SampleEntry } from '@vigilia/renderer-core';
-import type { SensorDescriptor, SensorProvider } from './provider.js';
+import type { SampleEntry } from "@vigilia/renderer-core";
+import type { SensorDescriptor, SensorProvider } from "./provider.js";
 
 /** Scheduler: polls the requested-key union once and isolates provider failures. */
 
@@ -21,7 +21,9 @@ export interface DescribedSensor extends SensorDescriptor {
 }
 
 /** Stable sorted union of keys requested by active clients. */
-export function unionOfKeys(perClientKeys: Iterable<readonly string[]>): readonly string[] {
+export function unionOfKeys(
+  perClientKeys: Iterable<readonly string[]>,
+): readonly string[] {
   const union = new Set<string>();
 
   for (const keys of perClientKeys) {
@@ -53,11 +55,16 @@ export class ProviderRegistry {
       }),
     );
 
-    return settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
+    return settled.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    );
   }
 
   /** Polls providers concurrently and preserves successful results when another fails. */
-  async sample(semanticKeys: readonly string[], nowMs: number): Promise<SampleCycle> {
+  async sample(
+    semanticKeys: readonly string[],
+    nowMs: number,
+  ): Promise<SampleCycle> {
     if (semanticKeys.length === 0) {
       return { entries: [], failures: [], unmapped: [] };
     }
@@ -77,8 +84,11 @@ export class ProviderRegistry {
         return;
       }
 
-      if (result.status === 'rejected') {
-        failures.push({ providerId: provider.id, message: describeError(result.reason) });
+      if (result.status === "rejected") {
+        failures.push({
+          providerId: provider.id,
+          message: describeError(result.reason),
+        });
         return;
       }
 

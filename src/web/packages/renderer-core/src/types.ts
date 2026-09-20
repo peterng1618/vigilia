@@ -1,7 +1,7 @@
 /** Shared sample and gauge types. */
 
 /** Check status before reading a value; non-ok samples render as gaps, never zero. */
-export type SensorStatus = 'ok' | 'missing' | 'stale' | 'error' | 'unavailable';
+export type SensorStatus = "ok" | "missing" | "stale" | "error" | "unavailable";
 
 export interface Sample {
   readonly sensorId: string;
@@ -15,13 +15,19 @@ export interface Sample {
   readonly message?: string;
 }
 
-export function hasPlottableValue(sample: Sample | undefined): sample is Sample & { value: number } {
-  return sample?.status === 'ok' && typeof sample.value === 'number' && Number.isFinite(sample.value);
+export function hasPlottableValue(
+  sample: Sample | undefined,
+): sample is Sample & { value: number } {
+  return (
+    sample?.status === "ok" &&
+    typeof sample.value === "number" &&
+    Number.isFinite(sample.value)
+  );
 }
 
 // GaugeSettings remains here historically; animation imports do not form a runtime cycle.
-import type { AnimationSettings } from './charts/animation.js';
-import type { ChartPaint } from './charts/chart-paint.js';
+import type { AnimationSettings } from "./charts/animation.js";
+import type { ChartPaint } from "./charts/chart-paint.js";
 
 export interface GradientStop {
   readonly offset: number;
@@ -30,11 +36,11 @@ export interface GradientStop {
 
 /** Thresholds are semantic bands; gradients are decorative continuous fills. */
 export type Fill =
-  | { readonly kind: 'solid'; readonly color: string }
-  | { readonly kind: 'thresholds'; readonly bands: readonly GradientStop[] }
-  | { readonly kind: 'gradient'; readonly stops: readonly GradientStop[] };
+  | { readonly kind: "solid"; readonly color: string }
+  | { readonly kind: "thresholds"; readonly bands: readonly GradientStop[] }
+  | { readonly kind: "gradient"; readonly stops: readonly GradientStop[] };
 
-export type { ChartPaint } from './charts/chart-paint.js';
+export type { ChartPaint } from "./charts/chart-paint.js";
 
 /** Typed gauge settings translated internally to ECharts options. */
 export interface GaugeSettings {
@@ -57,8 +63,8 @@ export const defaultGaugeSettings: GaugeSettings = {
   min: 0,
   max: 100,
   thickness: 18,
-  track: { kind: 'solid', color: '#2a2f3a' },
-  progress: { kind: 'solid', color: '#00b8d9' },
+  track: { kind: "solid", color: "#2a2f3a" },
+  progress: { kind: "solid", color: "#00b8d9" },
   roundCap: true,
   gradientSegments: 64,
 };

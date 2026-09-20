@@ -1,80 +1,83 @@
-import type { ThemeDocument } from './document.js';
+import type { ThemeDocument } from "./document.js";
 
 /** Canonical JSON: known keys in schema order, unknown keys alphabetically, arrays untouched. */
 
 /** Shared key names get one position that must read sensibly in every shape. */
 const KEY_ORDER: readonly string[] = [
   // Document
-  'schemaVersion',
-  'id',
-  'metadata',
-  'artboard',
-  'globals',
-  'nodes',
-  'assets',
-  'editorMetadata',
+  "schemaVersion",
+  "id",
+  "metadata",
+  "artboard",
+  "globals",
+  "nodes",
+  "assets",
+  "editorMetadata",
   // Metadata
-  'author',
-  'description',
-  'createdAt',
-  'updatedAt',
+  "author",
+  "description",
+  "createdAt",
+  "updatedAt",
   // Node
-  'type',
-  'name',
-  'transform',
-  'visible',
-  'locked',
-  'provenance',
-  'style',
-  'bindings',
-  'content',
-  'children',
+  "type",
+  "name",
+  "transform",
+  "visible",
+  "locked",
+  "provenance",
+  "style",
+  "bindings",
+  "content",
+  "children",
   // Transform
-  'x',
-  'y',
-  'width',
-  'height',
-  'rotation',
-  'scaleX',
-  'scaleY',
+  "x",
+  "y",
+  "width",
+  "height",
+  "rotation",
+  "scaleX",
+  "scaleY",
   // Binding
-  'semanticKey',
-  'precision',
-  'unitDisplay',
-  'scale',
-  'offset',
+  "semanticKey",
+  "precision",
+  "unitDisplay",
+  "scale",
+  "offset",
   // Content
-  'family',
-  'settings',
-  'runs',
-  'kind',
-  'text',
-  'bindingId',
-  'wrap',
-  'overflow',
-  'align',
-  'verticalAlign',
-  'assetId',
-  'fit',
-  'cornerRadius',
+  "family",
+  "settings",
+  "runs",
+  "kind",
+  "text",
+  "bindingId",
+  "wrap",
+  "overflow",
+  "align",
+  "verticalAlign",
+  "assetId",
+  "fit",
+  "cornerRadius",
   // Style value
-  'ref',
-  'value',
+  "ref",
+  "value",
   // Fill
-  'color',
-  'bands',
-  'stops',
+  "color",
+  "bands",
+  "stops",
   // Asset
-  'path',
-  'sha256',
-  'sourceUrl',
-  'license',
+  "path",
+  "sha256",
+  "sourceUrl",
+  "license",
 ];
 
 const ORDER_INDEX = new Map(KEY_ORDER.map((key, index) => [key, index]));
 
 /** Serialize canonical JSON with a trailing newline. */
-export function serializeThemeDocument(document: ThemeDocument, indent = 2): string {
+export function serializeThemeDocument(
+  document: ThemeDocument,
+  indent = 2,
+): string {
   return `${JSON.stringify(canonicalize(document), undefined, indent)}\n`;
 }
 
@@ -83,7 +86,7 @@ function canonicalize(value: unknown): unknown {
     return value.map(canonicalize);
   }
 
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return value;
   }
 

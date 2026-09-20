@@ -19,9 +19,10 @@ installed.
 
 ## Rules
 
-Formatting is delegated to Biome. Linting starts with Biome's recommended rules
-and correctness-focused checks only. The initial adoption does not mass-reformat
-the repository; formatting existing files is an explicit later change.
+Formatting is delegated to Biome. Linting initially enforces strict equality
+only. Unused imports/variables and floating promises have existing violations;
+add them only with their focused cleanup. The initial adoption formats the
+repository once; later formatting is enforced by the check.
 
 ## Verification
 

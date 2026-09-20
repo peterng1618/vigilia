@@ -7,7 +7,7 @@ import {
   type PalettePaint,
   type ThemeDocument,
   type ThemeMetadata,
-} from './document.js';
+} from "./document.js";
 
 export interface FabricPaletteEntry {
   readonly name: string;
@@ -16,7 +16,9 @@ export interface FabricPaletteEntry {
 
 export type FabricPalette = Readonly<Record<string, FabricPaletteEntry>>;
 /** Development v2 has one global owner for paint and one for typography. */
-export type FabricGlobals = Pick<Globals, 'typePresets'> & { readonly palette?: FabricPalette };
+export type FabricGlobals = Pick<Globals, "typePresets"> & {
+  readonly palette?: FabricPalette;
+};
 
 /** Versioned Vigilia metadata around the opaque Fabric-authored scene. */
 export interface FabricThemeEnvelope {
@@ -33,10 +35,15 @@ export interface FabricThemeEnvelope {
   readonly editorMetadata?: Readonly<Record<string, unknown>>;
 }
 
-export type FabricThemeEnvelopeInput = Omit<FabricThemeEnvelope, 'schemaVersion' | 'fabricVersion' | 'scene'>;
+export type FabricThemeEnvelopeInput = Omit<
+  FabricThemeEnvelope,
+  "schemaVersion" | "fabricVersion" | "scene"
+>;
 
 /** Keeps v1 semantic data while Fabric becomes the sole geometry owner. */
-export function fabricEnvelopeInputFor(document: ThemeDocument): FabricThemeEnvelopeInput {
+export function fabricEnvelopeInputFor(
+  document: ThemeDocument,
+): FabricThemeEnvelopeInput {
   const bindings: Record<string, Binding[]> = {};
 
   for (const { node, binding } of walkBindings(document.nodes)) {
@@ -47,10 +54,14 @@ export function fabricEnvelopeInputFor(document: ThemeDocument): FabricThemeEnve
     id: document.id,
     artboard: document.artboard,
     ...(document.metadata === undefined ? {} : { metadata: document.metadata }),
-    ...(document.globals === undefined ? {} : { globals: fabricGlobalsFor(document.globals) }),
+    ...(document.globals === undefined
+      ? {}
+      : { globals: fabricGlobalsFor(document.globals) }),
     ...(document.assets === undefined ? {} : { assets: document.assets }),
     ...(Object.keys(bindings).length === 0 ? {} : { bindings }),
-    ...(document.editorMetadata === undefined ? {} : { editorMetadata: document.editorMetadata }),
+    ...(document.editorMetadata === undefined
+      ? {}
+      : { editorMetadata: document.editorMetadata }),
   };
 }
 
@@ -58,12 +69,24 @@ export function fabricEnvelopeInputFor(document: ThemeDocument): FabricThemeEnve
 function fabricGlobalsFor(globals: Globals): FabricGlobals {
   const palette = globals.palette;
   return {
-    ...(globals.typePresets === undefined ? {} : { typePresets: globals.typePresets }),
-    ...(palette === undefined ? {} : {
-      palette: Object.fromEntries(Object.entries(palette).map(([id, entry]) => [id, {
-        ...entry,
-        value: typeof entry.value === 'string' ? { kind: 'solid' as const, color: entry.value } : entry.value,
-      }])) as FabricPalette,
-    }),
+    ...(globals.typePresets === undefined
+      ? {}
+      : { typePresets: globals.typePresets }),
+    ...(palette === undefined
+      ? {}
+      : {
+          palette: Object.fromEntries(
+            Object.entries(palette).map(([id, entry]) => [
+              id,
+              {
+                ...entry,
+                value:
+                  typeof entry.value === "string"
+                    ? { kind: "solid" as const, color: entry.value }
+                    : entry.value,
+              },
+            ]),
+          ) as FabricPalette,
+        }),
   };
 }

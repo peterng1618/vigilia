@@ -1,5 +1,5 @@
-import os from 'node:os';
-import path from 'node:path';
+import os from "node:os";
+import path from "node:path";
 
 /** Pure command-line parsing. */
 
@@ -13,18 +13,18 @@ export interface HostOptions {
 export const DEFAULT_PORT = 5227;
 
 /** Loopback by default; LAN exposure must be explicit. */
-export const DEFAULT_HOST = '127.0.0.1';
+export const DEFAULT_HOST = "127.0.0.1";
 
 /** Stable Vigilia data location for theme packages across platforms. */
-export const DEFAULT_THEMES_DIR = path.join(os.homedir(), '.vigilia', 'themes');
+export const DEFAULT_THEMES_DIR = path.join(os.homedir(), ".vigilia", "themes");
 
 /** Bounded upward port fallback. */
 export const MAX_PORT_ATTEMPTS = 10;
 
 export type ArgsResult =
-  | { readonly kind: 'run'; readonly options: HostOptions }
-  | { readonly kind: 'message'; readonly text: string }
-  | { readonly kind: 'error'; readonly message: string };
+  | { readonly kind: "run"; readonly options: HostOptions }
+  | { readonly kind: "message"; readonly text: string }
+  | { readonly kind: "error"; readonly message: string };
 
 export const HELP_TEXT = `Usage: vigilia-dashboard [options]
 
@@ -42,9 +42,16 @@ confidentiality, so use it on trusted networks only, never the internet.`;
 
 /** True only for addresses restricted to this machine. */
 export function isLoopbackHost(host: string): boolean {
-  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const normalized = host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
 
-  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+  return (
+    normalized === "127.0.0.1" ||
+    normalized === "localhost" ||
+    normalized === "::1"
+  );
 }
 
 /** Strictly parses usable TCP ports; rejects partial numeric strings. */
@@ -59,7 +66,10 @@ function parsePort(raw: string | undefined): number | undefined {
 }
 
 /** Parses argv without `node` and the script path. */
-export function parseArgs(argv: readonly string[], version: string): ArgsResult {
+export function parseArgs(
+  argv: readonly string[],
+  version: string,
+): ArgsResult {
   let port = DEFAULT_PORT;
   let host = DEFAULT_HOST;
   let openBrowser = true;
@@ -69,27 +79,27 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
     const arg = argv[index];
 
     switch (arg) {
-      case '--help':
-      case '-h':
-        return { kind: 'message', text: HELP_TEXT };
+      case "--help":
+      case "-h":
+        return { kind: "message", text: HELP_TEXT };
 
-      case '--version':
-      case '-v':
-        return { kind: 'message', text: version };
+      case "--version":
+      case "-v":
+        return { kind: "message", text: version };
 
-      case '--no-browser':
-      case '-n':
+      case "--no-browser":
+      case "-n":
         openBrowser = false;
         break;
 
-      case '--port':
-      case '-p': {
+      case "--port":
+      case "-p": {
         const parsed = parsePort(argv[index + 1]);
 
         if (parsed === undefined) {
           return {
-            kind: 'error',
-            message: `${arg} needs a port between 1 and 65535, not ${argv[index + 1] ?? '(nothing)'}.`,
+            kind: "error",
+            message: `${arg} needs a port between 1 and 65535, not ${argv[index + 1] ?? "(nothing)"}.`,
           };
         }
 
@@ -98,12 +108,15 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
         break;
       }
 
-      case '--host':
-      case '-H': {
+      case "--host":
+      case "-H": {
         const value = argv[index + 1];
 
-        if (value === undefined || value.startsWith('-')) {
-          return { kind: 'error', message: `${arg} needs an address, such as 0.0.0.0.` };
+        if (value === undefined || value.startsWith("-")) {
+          return {
+            kind: "error",
+            message: `${arg} needs an address, such as 0.0.0.0.`,
+          };
         }
 
         host = value;
@@ -111,11 +124,11 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
         break;
       }
 
-      case '--themes-dir': {
+      case "--themes-dir": {
         const value = argv[index + 1];
 
-        if (value === undefined || value.startsWith('-')) {
-          return { kind: 'error', message: `${arg} needs a directory path.` };
+        if (value === undefined || value.startsWith("-")) {
+          return { kind: "error", message: `${arg} needs a directory path.` };
         }
 
         themesDir = path.resolve(value);
@@ -124,9 +137,12 @@ export function parseArgs(argv: readonly string[], version: string): ArgsResult 
       }
 
       default:
-        return { kind: 'error', message: `Unknown option ${arg ?? ''}. Try --help.` };
+        return {
+          kind: "error",
+          message: `Unknown option ${arg ?? ""}. Try --help.`,
+        };
     }
   }
 
-  return { kind: 'run', options: { port, host, openBrowser, themesDir } };
+  return { kind: "run", options: { port, host, openBrowser, themesDir } };
 }

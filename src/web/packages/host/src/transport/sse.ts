@@ -1,6 +1,6 @@
-import type { ServerResponse } from 'node:http';
-import { SAMPLE_EVENT, formatSseEvent } from '@vigilia/renderer-core';
-import { KeepLatestSlot } from './keep-latest.js';
+import type { ServerResponse } from "node:http";
+import { SAMPLE_EVENT, formatSseEvent } from "@vigilia/renderer-core";
+import { KeepLatestSlot } from "./keep-latest.js";
 
 /** One display connection. Backpressure keeps only the newest pending snapshot. */
 export class SseConnection {
@@ -14,14 +14,14 @@ export class SseConnection {
     readonly semanticKeys: readonly string[],
   ) {
     response.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache, no-transform',
-      connection: 'keep-alive',
-      'x-accel-buffering': 'no',
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
     });
 
     // Flush headers so EventSource can report open before the first sample batch.
-    response.write(': connected\n\n');
+    response.write(": connected\n\n");
   }
 
   /** Sends a framed batch now or leaves it as the newest pending frame. */
@@ -52,7 +52,7 @@ export class SseConnection {
     }
 
     this.waitingForDrain = true;
-    this.response.once('drain', () => {
+    this.response.once("drain", () => {
       this.waitingForDrain = false;
       this.flush();
     });

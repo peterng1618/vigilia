@@ -1,8 +1,8 @@
-import { spawn } from 'node:child_process';
-import net from 'node:net';
-import os from 'node:os';
-import type { Server } from 'node:http';
-import { MAX_PORT_ATTEMPTS } from './args.js';
+import { spawn } from "node:child_process";
+import net from "node:net";
+import os from "node:os";
+import type { Server } from "node:http";
+import { MAX_PORT_ATTEMPTS } from "./args.js";
 
 /** Launch I/O: bind, probe, discover LAN address, and open the browser. */
 
@@ -18,9 +18,9 @@ export function listenWithFallback(
 
     const tryListen = (candidate: number): void => {
       const onError = (error: NodeJS.ErrnoException): void => {
-        server.removeListener('listening', onListening);
+        server.removeListener("listening", onListening);
 
-        if (error.code !== 'EADDRINUSE') {
+        if (error.code !== "EADDRINUSE") {
           reject(error);
           return;
         }
@@ -31,7 +31,7 @@ export function listenWithFallback(
           reject(
             new Error(
               `Ports ${port}–${port + maxAttempts - 1} are all in use. ` +
-                'Free one, or pass --port.',
+                "Free one, or pass --port.",
             ),
           );
           return;
@@ -41,12 +41,12 @@ export function listenWithFallback(
       };
 
       const onListening = (): void => {
-        server.removeListener('error', onError);
+        server.removeListener("error", onError);
         resolve(candidate);
       };
 
-      server.once('error', onError);
-      server.once('listening', onListening);
+      server.once("error", onError);
+      server.once("listening", onListening);
       server.listen(candidate, host);
     };
 
@@ -61,7 +61,7 @@ export function waitUntilReachable(
   { timeoutMs = 15_000, intervalMs = 100 } = {},
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
-  const target = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+  const target = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
 
   return new Promise((resolve) => {
     const attempt = (): void => {
@@ -70,7 +70,7 @@ export function waitUntilReachable(
         resolve(true);
       });
 
-      socket.on('error', () => {
+      socket.on("error", () => {
         socket.destroy();
 
         if (Date.now() >= deadline) {
@@ -90,7 +90,7 @@ export function waitUntilReachable(
 export function lanAddress(): string | undefined {
   for (const interfaces of Object.values(os.networkInterfaces())) {
     for (const candidate of interfaces ?? []) {
-      if (candidate.family === 'IPv4' && !candidate.internal) {
+      if (candidate.family === "IPv4" && !candidate.internal) {
         return candidate.address;
       }
     }
@@ -102,16 +102,19 @@ export function lanAddress(): string | undefined {
 /** Opens the platform browser without turning failure into a host startup failure. */
 export function openBrowser(url: string): void {
   const command =
-    process.platform === 'win32'
-      ? { file: 'cmd', args: ['/c', 'start', '', url] }
-      : process.platform === 'darwin'
-        ? { file: 'open', args: [url] }
-        : { file: 'xdg-open', args: [url] };
+    process.platform === "win32"
+      ? { file: "cmd", args: ["/c", "start", "", url] }
+      : process.platform === "darwin"
+        ? { file: "open", args: [url] }
+        : { file: "xdg-open", args: [url] };
 
   try {
-    const child = spawn(command.file, command.args, { detached: true, stdio: 'ignore' });
+    const child = spawn(command.file, command.args, {
+      detached: true,
+      stdio: "ignore",
+    });
 
-    child.on('error', () => {
+    child.on("error", () => {
       /* The printed URL remains usable. */
     });
     child.unref();

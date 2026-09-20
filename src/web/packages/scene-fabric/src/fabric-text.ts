@@ -1,4 +1,11 @@
-import { FabricText, Group, Rect, Textbox, type StaticCanvas, type TextProps } from 'fabric/es';
+import {
+  FabricText,
+  Group,
+  Rect,
+  Textbox,
+  type StaticCanvas,
+  type TextProps,
+} from "fabric/es";
 import type {
   Binding,
   FabricGlobals,
@@ -8,11 +15,11 @@ import type {
   PlanTextSegment,
   SampleSource,
   TextContent,
-} from '@vigilia/renderer-core';
-import { resolveTextSegments } from '@vigilia/renderer-core';
-import { paintFor } from './paint.js';
-import { placementFor } from './placement.js';
-import { textShapeFor } from './text-runs.js';
+} from "@vigilia/renderer-core";
+import { resolveTextSegments } from "@vigilia/renderer-core";
+import { paintFor } from "./paint.js";
+import { placementFor } from "./placement.js";
+import { textShapeFor } from "./text-runs.js";
 
 /**
  * Text uses `Textbox` for wrapping and `FabricText` otherwise. Fabric has no
@@ -24,24 +31,24 @@ import { textShapeFor } from './text-runs.js';
 export type PlanTextObject = FabricText | Textbox;
 
 /** Fabric property that preserves authored text semantics without a parallel scene tree. */
-export const VIGILIA_TEXT_PROPERTY = 'vigiliaText';
+export const VIGILIA_TEXT_PROPERTY = "vigiliaText";
 
-const ELLIPSIS = '…';
+const ELLIPSIS = "…";
 
 export function isTextObject(object: object): object is PlanTextObject {
   return object instanceof FabricText;
 }
 
 export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
-  if (node.content.kind !== 'text') {
-    throw new Error('buildText received a non-text node.');
+  if (node.content.kind !== "text") {
+    throw new Error("buildText received a non-text node.");
   }
 
   const placement = placementFor(box);
   const common: Partial<TextProps> = {
-    ...paintFor(node.style, 'text'),
-    originX: 'center' as const,
-    originY: 'center' as const,
+    ...paintFor(node.style, "text"),
+    originX: "center" as const,
+    originY: "center" as const,
     textAlign: node.content.layout.align,
     angle: placement.angle,
     scaleX: placement.scaleX,
@@ -50,8 +57,8 @@ export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
 
   // `applyText` owns text, run styles and measurement-dependent placement.
   const object = node.content.layout.wrap
-    ? new Textbox('', { ...common, width: box.width })
-    : new FabricText('', common);
+    ? new Textbox("", { ...common, width: box.width })
+    : new FabricText("", common);
 
   applyText(object, node, box);
   object.set(VIGILIA_TEXT_PROPERTY, node.content.authored);
@@ -59,15 +66,19 @@ export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
   return object;
 }
 
-export function updateText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
-  if (node.content.kind !== 'text') {
+export function updateText(
+  object: PlanTextObject,
+  node: PlanNode,
+  box: PlanBox,
+): void {
+  if (node.content.kind !== "text") {
     return;
   }
 
   const placement = placementFor(box);
 
   if (object instanceof Textbox) {
-    object.set('width', box.width);
+    object.set("width", box.width);
   }
 
   object.set({
@@ -90,11 +101,24 @@ export function refreshBoundText(
   const refresh = (objects: readonly object[]): void => {
     for (const object of objects) {
       if (isTextObject(object)) {
-        const id = object.get('id');
+        const id = object.get("id");
         const authored = object.get(VIGILIA_TEXT_PROPERTY);
-        if (typeof id === 'string' && isTextContent(authored) && bindings[id] !== undefined) {
-          const segments = resolveTextSegments(id, authored.runs, bindings[id], { source }, globals ?? {}, []);
-          const shape = textShapeFor(segments, {}, (value) => object.graphemeSplit(value));
+        if (
+          typeof id === "string" &&
+          isTextContent(authored) &&
+          bindings[id] !== undefined
+        ) {
+          const segments = resolveTextSegments(
+            id,
+            authored.runs,
+            bindings[id],
+            { source },
+            globals ?? {},
+            [],
+          );
+          const shape = textShapeFor(segments, {}, (value) =>
+            object.graphemeSplit(value),
+          );
           object.set({ text: shape.text, styles: shape.styles });
           object.initDimensions();
         }
@@ -109,7 +133,7 @@ export function refreshBoundText(
 
 /** Write, measure, overflow-adjust and position text inside its authored box. */
 function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
-  if (node.content.kind !== 'text') {
+  if (node.content.kind !== "text") {
     return;
   }
 
@@ -117,8 +141,12 @@ function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
 
   write(object, segments, node.style);
 
-  if (layout.overflow === 'ellipsis' && !fits(object, box, layout)) {
-    write(object, ellipsised(object, segments, node.style, box, layout), node.style);
+  if (layout.overflow === "ellipsis" && !fits(object, box, layout)) {
+    write(
+      object,
+      ellipsised(object, segments, node.style, box, layout),
+      node.style,
+    );
   }
 
   const width = object.width * object.scaleX;
@@ -127,15 +155,15 @@ function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
 
   object.set({
     left:
-      layout.align === 'left'
+      layout.align === "left"
         ? box.x + width / 2
-        : layout.align === 'right'
+        : layout.align === "right"
           ? box.x + box.width - width / 2
           : placement.left,
     top:
-      layout.verticalAlign === 'top'
+      layout.verticalAlign === "top"
         ? box.y + height / 2
-        : layout.verticalAlign === 'bottom'
+        : layout.verticalAlign === "bottom"
           ? box.y + box.height - height / 2
           : placement.top,
   });
@@ -144,25 +172,38 @@ function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
 }
 
 function isTextContent(value: unknown): value is TextContent {
-  return typeof value === 'object' && value !== null && Array.isArray((value as Record<string, unknown>)['runs']);
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as Record<string, unknown>)["runs"])
+  );
 }
 
 /** `initDimensions` must follow text/style changes before alignment uses measurements. */
 function write(
   object: PlanTextObject,
   segments: readonly PlanTextSegment[],
-  nodeStyle: PlanNode['style'],
+  nodeStyle: PlanNode["style"],
 ): void {
-  const shape = textShapeFor(segments, nodeStyle, (value) => object.graphemeSplit(value));
+  const shape = textShapeFor(segments, nodeStyle, (value) =>
+    object.graphemeSplit(value),
+  );
 
   object.set({ text: shape.text, styles: shape.styles });
   object.initDimensions();
 }
 
 /** Wrapped overflow is line-count based; unwrapped ellipsis is width based. */
-function fits(object: PlanTextObject, box: PlanBox, layout: PlanTextLayout): boolean {
+function fits(
+  object: PlanTextObject,
+  box: PlanBox,
+  layout: PlanTextLayout,
+): boolean {
   if (layout.wrap) {
-    return layout.maxLines === undefined || object.textLines.length <= layout.maxLines;
+    return (
+      layout.maxLines === undefined ||
+      object.textLines.length <= layout.maxLines
+    );
   }
 
   return object.width <= box.width;
@@ -172,7 +213,7 @@ function fits(object: PlanTextObject, box: PlanBox, layout: PlanTextLayout): boo
 function ellipsised(
   object: PlanTextObject,
   segments: readonly PlanTextSegment[],
-  nodeStyle: PlanNode['style'],
+  nodeStyle: PlanNode["style"],
   box: PlanBox,
   layout: PlanTextLayout,
 ): readonly PlanTextSegment[] {
@@ -217,7 +258,7 @@ function truncate(
     kept.push(
       parts.length <= remaining
         ? segment
-        : { ...segment, text: parts.slice(0, remaining).join('') },
+        : { ...segment, text: parts.slice(0, remaining).join("") },
     );
 
     remaining -= parts.length;
@@ -226,7 +267,7 @@ function truncate(
   const last = kept[kept.length - 1];
 
   if (last === undefined) {
-    return [{ ...(segments[0] ?? { text: '', style: {} }), text: ELLIPSIS }];
+    return [{ ...(segments[0] ?? { text: "", style: {} }), text: ELLIPSIS }];
   }
 
   kept[kept.length - 1] = { ...last, text: `${last.text}${ELLIPSIS}` };
@@ -235,8 +276,12 @@ function truncate(
 }
 
 /** Relative clip path follows object rotation/scale and is offset for edge alignment. */
-function applyClip(object: PlanTextObject, layout: PlanTextLayout, box: PlanBox): void {
-  if (layout.overflow === 'visible') {
+function applyClip(
+  object: PlanTextObject,
+  layout: PlanTextLayout,
+  box: PlanBox,
+): void {
+  if (layout.overflow === "visible") {
     delete object.clipPath;
     return;
   }
@@ -249,30 +294,38 @@ function applyClip(object: PlanTextObject, layout: PlanTextLayout, box: PlanBox)
     height: box.height / scaleY,
     left: (box.x + box.width / 2 - object.left) / scaleX,
     top: (box.y + box.height / 2 - object.top) / scaleY,
-    originX: 'center',
-    originY: 'center',
+    originX: "center",
+    originY: "center",
   });
 }
 
 /** Report text treatments the canvas path still cannot express honestly. */
 export function textGaps(node: PlanNode): readonly string[] {
-  if (node.content.kind !== 'text') {
+  if (node.content.kind !== "text") {
     return [];
   }
 
   const gaps: string[] = [];
   const { layout } = node.content;
 
-  if (layout.overflow === 'ellipsis' && layout.wrap && layout.maxLines === undefined) {
+  if (
+    layout.overflow === "ellipsis" &&
+    layout.wrap &&
+    layout.maxLines === undefined
+  ) {
     gaps.push(
-      'wrapped text cannot be ellipsised without a resolved font size — clipped instead',
+      "wrapped text cannot be ellipsised without a resolved font size — clipped instead",
     );
   }
 
-  const shape = textShapeFor(node.content.segments, node.style, (value) => [...value]);
+  const shape = textShapeFor(node.content.segments, node.style, (value) => [
+    ...value,
+  ]);
 
   for (const property of shape.unsupported) {
-    gaps.push(`"${property}" differs per run, which only a whole object can carry`);
+    gaps.push(
+      `"${property}" differs per run, which only a whole object can carry`,
+    );
   }
 
   return gaps;

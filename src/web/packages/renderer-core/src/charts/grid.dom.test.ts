@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import * as echarts from 'echarts/core';
-import { LineChart } from 'echarts/charts';
-import { GridComponent } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildLineOption, defaultLineSettings, type LineOption } from './line.js';
-import { toEngineOption } from './engine-option.js';
-import type { Sample } from '../types.js';
+import * as echarts from "echarts/core";
+import { LineChart } from "echarts/charts";
+import { GridComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  buildLineOption,
+  defaultLineSettings,
+  type LineOption,
+} from "./line.js";
+import { toEngineOption } from "./engine-option.js";
+import type { Sample } from "../types.js";
 
 /**
  * What the grid option does once it reaches the engine.
@@ -65,9 +69,9 @@ afterEach(() => {
 
 function sample(value: number, offsetMs = 0): Sample {
   return {
-    sensorId: 'cpu.load',
+    sensorId: "cpu.load",
     timestamp: new Date(NOW_MS - offsetMs).toISOString(),
-    status: 'ok',
+    status: "ok",
     value,
   };
 }
@@ -77,22 +81,25 @@ function lineOption(showAxes: boolean): LineOption {
   // space for them is unmistakable next to an 8 px inset.
   return buildLineOption(
     { ...defaultLineSettings, showAxes },
-    [{ sensorId: 'cpu.load', samples: [sample(1, 1000), sample(88_888.5)] }],
+    [{ sensorId: "cpu.load", samples: [sample(1, 1000), sample(88_888.5)] }],
     NOW_MS,
     false,
   );
 }
 
 function mount(option: LineOption): echarts.ECharts {
-  const chart = echarts.init(document.createElement('canvas'), null, {
-    renderer: 'canvas',
+  const chart = echarts.init(document.createElement("canvas"), null, {
+    renderer: "canvas",
     devicePixelRatio: 1,
     width: WIDTH,
     height: HEIGHT,
   });
   instances.push(chart);
 
-  chart.setOption(toEngineOption(option), { notMerge: true, lazyUpdate: false });
+  chart.setOption(toEngineOption(option), {
+    notMerge: true,
+    lazyUpdate: false,
+  });
 
   return chart;
 }
@@ -106,31 +113,31 @@ function mount(option: LineOption): echarts.ECharts {
 function plotLeftEdge(option: LineOption): number {
   const x = mount(option).convertToPixel({ xAxisIndex: 0 }, option.xAxis.min);
 
-  expect(typeof x, 'convertToPixel did not resolve the x axis').toBe('number');
+  expect(typeof x, "convertToPixel did not resolve the x axis").toBe("number");
 
   return x as number;
 }
 
-describe('the grid option the engine receives', () => {
-  it('draws a chart with axes without ECharts complaining about it', () => {
+describe("the grid option the engine receives", () => {
+  it("draws a chart with axes without ECharts complaining about it", () => {
     // The actual regression guard for `cartesianGrid`: reintroduce
     // `containLabel` and this fails, because ECharts logs the deprecation on
     // every mount. Asserted on `console.log` because that is where ECharts'
     // own `log()` writes — not `console.warn`.
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
     mount(lineOption(true));
 
     const said = [log, warn, error]
       .flatMap((spy) => spy.mock.calls)
-      .map((call) => call.map(String).join(' '));
+      .map((call) => call.map(String).join(" "));
 
-    expect(said, 'the engine complained about the grid option').toEqual([]);
+    expect(said, "the engine complained about the grid option").toEqual([]);
   });
 
-  it('reserves space for wide axis labels, and none for a sparkline', () => {
+  it("reserves space for wide axis labels, and none for a sparkline", () => {
     // Behaviour rather than keys, which is the instruction the inert key
     // earned. Not a regression guard — the deprecated key laid out identically,
     // measured — but the guard on the layout both are there to produce, and it

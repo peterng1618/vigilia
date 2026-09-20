@@ -1,13 +1,13 @@
-declare module '@anu3ev/fabric-image-editor' {
-  import type { Canvas, FabricObject } from 'fabric/es';
-  import type { SerialisedScene } from '@vigilia/scene-fabric';
+declare module "@anu3ev/fabric-image-editor" {
+  import type { Canvas, FabricObject } from "fabric/es";
+  import type { SerialisedScene } from "@vigilia/scene-fabric";
 
   export interface ImageEditor {
     readonly canvas: Canvas;
     readonly imageManager: {
       importImage(options: {
         readonly source: File;
-        readonly scale?: 'image-contain' | 'image-cover' | 'scale-montage';
+        readonly scale?: "image-contain" | "image-cover" | "scale-montage";
         readonly withoutAdding?: boolean;
         readonly withoutSave?: boolean;
       }): Promise<{ readonly image: FabricObject } | null>;
@@ -41,7 +41,10 @@ declare module '@anu3ev/fabric-image-editor' {
     readonly resetObjectFitByDoubleClick?: boolean;
     readonly beforeHistoryStateLoad?: (canvas: Canvas) => void | Promise<void>;
     readonly serializeHistoryState?: (canvas: Canvas) => SerialisedScene;
-    readonly reviveHistoryState?: (canvas: Canvas, state: SerialisedScene) => void | Promise<void>;
+    readonly reviveHistoryState?: (
+      canvas: Canvas,
+      state: SerialisedScene,
+    ) => void | Promise<void>;
   }
 
   export default function initEditor(

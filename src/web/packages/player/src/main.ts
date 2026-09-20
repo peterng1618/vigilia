@@ -15,41 +15,65 @@ import {
   type ChartContent,
   type FabricThemeEnvelope,
   type ThemeDocument,
-} from '@vigilia/renderer-core';
-import { loadFontAssets, mountFabricScene, reviveThemeEnvelope, startChartRefresh, VigiliaChart } from '@vigilia/scene-fabric';
-import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
-import { loadHostedFontAssets, loadHostedTheme } from './theme-loader.js';
+} from "@vigilia/renderer-core";
+import {
+  loadFontAssets,
+  mountFabricScene,
+  reviveThemeEnvelope,
+  startChartRefresh,
+  VigiliaChart,
+} from "@vigilia/scene-fabric";
+import { createDemoSource, loadDemoTheme } from "@vigilia/fake-source";
+import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
 
-const artboardHost = document.querySelector<HTMLElement>('#artboard');
+const artboardHost = document.querySelector<HTMLElement>("#artboard");
 
 if (!artboardHost) {
-  throw new Error('Artboard host element is missing.');
+  throw new Error("Artboard host element is missing.");
 }
 
-const FIXTURE_THEME_IDS = new Set(['demo', 'stress', 'portrait-cover', 'assets']);
+const FIXTURE_THEME_IDS = new Set([
+  "demo",
+  "stress",
+  "portrait-cover",
+  "assets",
+]);
 const PREVIEW_STARTUP_DURATION_MS = 2_000;
 
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
-  const requested = parameters.get('theme');
+  const requested = parameters.get("theme");
 
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-  const animate = parameters.get('static') !== '1' && !reducedMotion;
+  const reducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+  const animate = parameters.get("static") !== "1" && !reducedMotion;
 
-  if (requested === null || (requested !== null && FIXTURE_THEME_IDS.has(requested))) {
-    startFixtureTheme(host, loadDemoTheme(requested ?? 'demo'), parameters, requested, animate);
+  if (
+    requested === null ||
+    (requested !== null && FIXTURE_THEME_IDS.has(requested))
+  ) {
+    startFixtureTheme(
+      host,
+      loadDemoTheme(requested ?? "demo"),
+      parameters,
+      requested,
+      animate,
+    );
     return;
   }
 
   try {
-    await startHostedTheme(host, await loadHostedTheme(requested, window.fetch.bind(window)), parameters);
+    await startHostedTheme(
+      host,
+      await loadHostedTheme(requested, window.fetch.bind(window)),
+      parameters,
+    );
   } catch (error) {
     showFailure(host, error instanceof Error ? error.message : String(error));
     return;
   }
-
 }
 
 function startFixtureTheme(
@@ -61,7 +85,7 @@ function startFixtureTheme(
 ): void {
   const chartStartedAtMs = Date.now();
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
-  const live = parameters.get('data') === 'live';
+  const live = parameters.get("data") === "live";
   const fake = live ? undefined : createDemoSource(Date.now());
   let source: SampleSource;
   let liveHandle: LiveSourceHandle | undefined;
@@ -70,15 +94,16 @@ function startFixtureTheme(
     const keys = requiredSemanticKeys(theme);
 
     liveHandle = createLiveSource({
-      url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
-      onStatus: (status, detail) => showConnectionState(status, keys.length, detail),
+      url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(","))}`,
+      onStatus: (status, detail) =>
+        showConnectionState(status, keys.length, detail),
     });
     source = liveHandle.source;
   } else {
     source = fake;
   }
 
-  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: '/' });
+  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: "/" });
 
   const plan = () =>
     buildScenePlan({
@@ -86,7 +111,9 @@ function startFixtureTheme(
       source,
       nowMs: Date.now(),
       chartStartedAtMs,
-      ...(fake === undefined ? {} : { chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS }),
+      ...(fake === undefined
+        ? {}
+        : { chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS }),
       resolveAsset,
       animate,
     });
@@ -108,7 +135,9 @@ function startFixtureTheme(
     },
     onAssetError,
     onUnsupported: (nodeId, reason) => {
-      console.warn(`Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`);
+      console.warn(
+        `Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`,
+      );
     },
   });
 
@@ -116,9 +145,12 @@ function startFixtureTheme(
   reportMissingFonts(first);
 
   if (fake === undefined) {
-    showConnectionState('connecting', requiredSemanticKeys(theme).length);
+    showConnectionState("connecting", requiredSemanticKeys(theme).length);
   } else {
-    showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested ?? 'demo');
+    showScaffoldBanner(
+      requiredSemanticKeys(theme).length,
+      theme.metadata?.name ?? requested ?? "demo",
+    );
   }
 
   let chartRefresh: ReturnType<typeof startChartRefresh> | undefined;
@@ -145,8 +177,8 @@ function startFixtureTheme(
   };
 
   // Avoid rendering while the page is hidden.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
       run();
     } else {
       pause();
@@ -158,12 +190,12 @@ function startFixtureTheme(
   observer.observe(host);
 
   // Some mobile WebViews settle orientation in stages; refit once after rotation completes.
-  window.addEventListener('orientationchange', () => {
+  window.addEventListener("orientationchange", () => {
     window.setTimeout(() => handle.resize(), 200);
   });
 
   // Closing removes this display's keys from the host polling union.
-  window.addEventListener('pagehide', () => liveHandle?.close());
+  window.addEventListener("pagehide", () => liveHandle?.close());
 
   run();
   exposeForDiagnostics(handle, liveHandle);
@@ -176,17 +208,32 @@ async function startHostedTheme(
 ): Promise<void> {
   const chartStartedAtMs = Date.now();
   // Fetch before allocating live resources so a failed font request has nothing to release.
-  const fontBytes = await loadHostedFontAssets(theme.id, theme, window.fetch.bind(window));
-  const keys = Object.values(theme.bindings ?? {}).flat().map((binding) => binding.semanticKey);
+  const fontBytes = await loadHostedFontAssets(
+    theme.id,
+    theme,
+    window.fetch.bind(window),
+  );
+  const keys = Object.values(theme.bindings ?? {})
+    .flat()
+    .map((binding) => binding.semanticKey);
   const liveHandle = createLiveSource({
-    url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
-    onStatus: (status, detail) => showConnectionState(status, keys.length, detail),
+    url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(","))}`,
+    onStatus: (status, detail) =>
+      showConnectionState(status, keys.length, detail),
   });
-  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: `/api/themes/${encodeURIComponent(parameters.get('theme') ?? '')}/` });
-  const handle = mountFabricScene({ host, plan: envelopePlan(theme), artboard: theme.artboard, assets: theme.assets ?? [], resolveAsset: (assetId) => {
-    const url = resolveAsset(assetId);
-    return url === undefined ? undefined : { url };
-  } });
+  const resolveAsset = createAssetResolver(theme.assets, {
+    baseUrl: `/api/themes/${encodeURIComponent(parameters.get("theme") ?? "")}/`,
+  });
+  const handle = mountFabricScene({
+    host,
+    plan: envelopePlan(theme),
+    artboard: theme.artboard,
+    assets: theme.assets ?? [],
+    resolveAsset: (assetId) => {
+      const url = resolveAsset(assetId);
+      return url === undefined ? undefined : { url };
+    },
+  });
   const releaseFonts = await loadFontAssets({
     assets: theme.assets ?? [],
     bytes: fontBytes,
@@ -194,21 +241,30 @@ async function startHostedTheme(
   });
   await reviveThemeEnvelope(handle.canvas, theme);
   const refresh = (): void => {
-    hydrateCharts(handle.canvas.getObjects(), theme.bindings ?? {}, liveHandle.source, chartStartedAtMs);
+    hydrateCharts(
+      handle.canvas.getObjects(),
+      theme.bindings ?? {},
+      liveHandle.source,
+      chartStartedAtMs,
+    );
     handle.canvas.requestRenderAll();
   };
 
   refresh();
-  showConnectionState('connecting', keys.length);
+  showConnectionState("connecting", keys.length);
   const chartRefresh = startChartRefresh(refresh, 30);
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);
-  window.addEventListener('pagehide', () => {
-    releaseFonts();
-    chartRefresh.dispose();
-    observer.disconnect();
-    liveHandle.close();
-  }, { once: true });
+  window.addEventListener(
+    "pagehide",
+    () => {
+      releaseFonts();
+      chartRefresh.dispose();
+      observer.disconnect();
+      liveHandle.close();
+    },
+    { once: true },
+  );
   exposeForDiagnostics(handle, liveHandle);
 }
 
@@ -217,9 +273,9 @@ function envelopePlan(theme: FabricThemeEnvelope): ScenePlan {
     artboard: {
       width: theme.artboard.width,
       height: theme.artboard.height,
-      fitMode: theme.artboard.fitMode ?? 'contain',
-      background: theme.artboard.background ?? '#000',
-      barColor: theme.artboard.barColor ?? '#000',
+      fitMode: theme.artboard.fitMode ?? "contain",
+      background: theme.artboard.background ?? "#000",
+      barColor: theme.artboard.barColor ?? "#000",
     },
     nodes: [],
     issues: [],
@@ -234,15 +290,25 @@ function hydrateCharts(
 ): void {
   for (const object of objects) {
     if (object instanceof VigiliaChart) {
-      const id = object.get('id');
-      if (typeof id === 'string') {
-        const content = { family: object.family, settings: object.settings } as ChartContent;
-        const plan = buildChartPlan(id, content, bindings[id] ?? [], {
-          source,
-          nowMs: Date.now(),
-          chartStartedAtMs,
-          animate: false,
-        }, [], undefined);
+      const id = object.get("id");
+      if (typeof id === "string") {
+        const content = {
+          family: object.family,
+          settings: object.settings,
+        } as ChartContent;
+        const plan = buildChartPlan(
+          id,
+          content,
+          bindings[id] ?? [],
+          {
+            source,
+            nowMs: Date.now(),
+            chartStartedAtMs,
+            animate: false,
+          },
+          [],
+          undefined,
+        );
         object.setOption(plan.option);
       }
     }
@@ -257,7 +323,9 @@ function reportIssues(plan: ScenePlan): void {
 
   console.warn(
     `Vigilia: ${plan.issues.length} binding or asset issue(s) in this theme:\n` +
-      plan.issues.map((issue) => `  [${issue.code}] ${issue.nodeId}: ${issue.detail}`).join('\n'),
+      plan.issues
+        .map((issue) => `  [${issue.code}] ${issue.nodeId}: ${issue.detail}`)
+        .join("\n"),
   );
 }
 
@@ -269,7 +337,7 @@ function reportMissingFonts(plan: ScenePlan): void {
     if (missing.length > 0) {
       console.warn(
         `Vigilia: ${missing.length} font family/families are unavailable on this device and ` +
-          `a fallback is being used: ${missing.join(', ')}. Metrics will differ from the design.`,
+          `a fallback is being used: ${missing.join(", ")}. Metrics will differ from the design.`,
       );
     }
   });
@@ -277,23 +345,23 @@ function reportMissingFonts(plan: ScenePlan): void {
 
 /** Shows a document-load failure on screen rather than leaving a blank display. */
 function showFailure(host: HTMLElement, message: string): void {
-  const panel = document.createElement('pre');
+  const panel = document.createElement("pre");
   panel.textContent = `Vigilia could not load this theme.\n\n${message}`;
   panel.style.cssText =
-    'position:absolute;inset:0;margin:0;padding:24px;color:#ff8f73;background:#14161c;' +
+    "position:absolute;inset:0;margin:0;padding:24px;color:#ff8f73;background:#14161c;" +
     "font:14px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow:auto";
   host.append(panel);
 }
 
 /** Persistent disclosure that displayed values are synthetic. */
 function showScaffoldBanner(keyCount: number, themeName: string): void {
-  const banner = document.createElement('div');
+  const banner = document.createElement("div");
   banner.textContent =
     `SYNTHETIC DATA — "${themeName}", ${keyCount} semantic keys served by ` +
-    '@vigilia/fake-source, not by hardware';
+    "@vigilia/fake-source, not by hardware";
   banner.style.cssText =
-    'position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;' +
-    'background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em';
+    "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
+    "background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em";
   document.body.append(banner);
 }
 
@@ -303,30 +371,31 @@ function showConnectionState(
   keyCount: number,
   detail?: string,
 ): void {
-  const id = 'vigilia-connection';
+  const id = "vigilia-connection";
   const existing = document.getElementById(id);
 
-  if (status === 'live') {
+  if (status === "live") {
     existing?.remove();
     return;
   }
 
-  const message: Record<Exclude<LiveSourceStatus, 'live'>, string> = {
+  const message: Record<Exclude<LiveSourceStatus, "live">, string> = {
     connecting: `Connecting to the host — ${keyCount} sensors requested`,
-    reconnecting: 'Lost the host. Values shown are the last received, not current.',
-    refused: `The host is not compatible with this display${detail === undefined ? '' : `: ${detail}`}`,
+    reconnecting:
+      "Lost the host. Values shown are the last received, not current.",
+    refused: `The host is not compatible with this display${detail === undefined ? "" : `: ${detail}`}`,
   };
 
-  const banner = existing ?? document.createElement('div');
+  const banner = existing ?? document.createElement("div");
 
   banner.id = id;
   banner.textContent = message[status];
   banner.style.cssText =
-    'position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;' +
-    'font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em;' +
-    (status === 'refused'
-      ? 'background:#4a0000;color:#ff9a9a'
-      : 'background:#003a4a;color:#7fdce9');
+    "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
+    "font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em;" +
+    (status === "refused"
+      ? "background:#4a0000;color:#ff9a9a"
+      : "background:#003a4a;color:#7fdce9");
 
   if (existing === null) {
     document.body.append(banner);
@@ -334,8 +403,11 @@ function showConnectionState(
 }
 
 /** Development-only access to scene/live handles; the app never reads this. */
-function exposeForDiagnostics(handle: SceneHandle, live?: LiveSourceHandle): void {
-  Reflect.set(window, 'vigilia', { handle, live });
+function exposeForDiagnostics(
+  handle: SceneHandle,
+  live?: LiveSourceHandle,
+): void {
+  Reflect.set(window, "vigilia", { handle, live });
 }
 
 void start(artboardHost);

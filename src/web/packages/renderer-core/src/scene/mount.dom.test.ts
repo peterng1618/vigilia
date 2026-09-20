@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { buildScenePlan } from './plan.js';
-import { mountScene } from './mount.js';
-import { SampleStore } from '../data/store.js';
-import type { Sample } from '../types.js';
-import type { ThemeDocument, ThemeNode } from '../theme/document.js';
+import { describe, expect, it } from "vitest";
+import { buildScenePlan } from "./plan.js";
+import { mountScene } from "./mount.js";
+import { SampleStore } from "../data/store.js";
+import type { Sample } from "../types.js";
+import type { ThemeDocument, ThemeNode } from "../theme/document.js";
 
 /**
  * The DOM applier's update path, which had no unit test at all.
@@ -27,13 +27,13 @@ import type { ThemeDocument, ThemeNode } from '../theme/document.js';
  * catching it in the act; identity comparison here can.
  */
 
-const NOW = Date.parse('2026-01-01T00:00:10Z');
+const NOW = Date.parse("2026-01-01T00:00:10Z");
 
 function documentWith(nodes: readonly ThemeNode[]): ThemeDocument {
   return {
     schemaVersion: 1,
-    id: 'churn',
-    artboard: { width: 800, height: 480, fitMode: 'contain' },
+    id: "churn",
+    artboard: { width: 800, height: 480, fitMode: "contain" },
     nodes,
   };
 }
@@ -41,14 +41,14 @@ function documentWith(nodes: readonly ThemeNode[]): ThemeDocument {
 /** One literal run and one bound run, so both halves of §89 are exercised. */
 function textNode(label: string): ThemeNode {
   return {
-    id: 'readout',
-    type: 'text',
+    id: "readout",
+    type: "text",
     transform: { x: 0, y: 0, width: 200, height: 40 },
-    bindings: [{ id: 'load', semanticKey: 'cpu.load.total' }],
+    bindings: [{ id: "load", semanticKey: "cpu.load.total" }],
     content: {
       runs: [
-        { kind: 'literal', text: label, style: { color: { value: '#fff' } } },
-        { kind: 'value', bindingId: 'load' },
+        { kind: "literal", text: label, style: { color: { value: "#fff" } } },
+        { kind: "value", bindingId: "load" },
       ],
     },
   } as unknown as ThemeNode;
@@ -57,14 +57,14 @@ function textNode(label: string): ThemeNode {
 function sourceWith(value: number) {
   const store = new SampleStore();
   const sample: Sample = {
-    sensorId: 'cpu.load.total',
+    sensorId: "cpu.load.total",
     timestamp: new Date(NOW).toISOString(),
-    status: 'ok',
+    status: "ok",
     value,
-    unit: '%',
+    unit: "%",
   };
 
-  store.ingest([['cpu.load.total', sample]], NOW);
+  store.ingest([["cpu.load.total", sample]], NOW);
 
   return store;
 }
@@ -82,19 +82,19 @@ function spansOf(host: HTMLElement): Element[] {
   return [...host.querySelectorAll('[data-node-id="readout"] span')];
 }
 
-describe('updating a text node', () => {
-  it('leaves the existing spans in place when nothing about the text changed', () => {
-    const host = document.createElement('div');
+describe("updating a text node", () => {
+  it("leaves the existing spans in place when nothing about the text changed", () => {
+    const host = document.createElement("div");
     document.body.append(host);
 
-    const node = textNode('CPU ');
+    const node = textNode("CPU ");
     const handle = mountScene({ host, plan: planFor(node, 42) });
     const before = spansOf(host);
 
     // Two spans, one of them styled — so the comparison has a style map to get
     // wrong, which is how the identity bug in the node-level guard was found.
     expect(before).toHaveLength(2);
-    expect(host.textContent).toContain('CPU ');
+    expect(host.textContent).toContain("CPU ");
 
     // A second plan built from the same inputs: different objects throughout,
     // identical content. This is exactly what the player's 1 Hz tick produces
@@ -113,13 +113,13 @@ describe('updating a text node', () => {
     host.remove();
   });
 
-  it('rebuilds them when the reading actually changes', () => {
+  it("rebuilds them when the reading actually changes", () => {
     // The other half, and the one that makes the test above mean something: a
     // guard that never lets an update through would also pass it.
-    const host = document.createElement('div');
+    const host = document.createElement("div");
     document.body.append(host);
 
-    const node = textNode('CPU ');
+    const node = textNode("CPU ");
     const handle = mountScene({ host, plan: planFor(node, 42) });
     const before = spansOf(host);
 
@@ -128,7 +128,7 @@ describe('updating a text node', () => {
     const after = spansOf(host);
 
     expect(after[0]).not.toBe(before[0]);
-    expect(host.textContent).toContain('91');
+    expect(host.textContent).toContain("91");
 
     handle.dispose();
     host.remove();

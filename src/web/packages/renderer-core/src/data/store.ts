@@ -1,5 +1,5 @@
-import type { Sample } from '../types.js';
-import type { SampleSource } from './source.js';
+import type { Sample } from "../types.js";
+import type { SampleSource } from "./source.js";
 
 /** Both age and count bounds apply; the tighter one wins. */
 export interface SampleStoreOptions {
@@ -22,10 +22,15 @@ export class SampleStore implements SampleSource {
 
   constructor(options: SampleStoreOptions = {}) {
     this.maxAgeMs =
-      Math.max(0, (options.maxAgeSeconds ?? defaultSampleStoreOptions.maxAgeSeconds)) * 1000;
+      Math.max(
+        0,
+        options.maxAgeSeconds ?? defaultSampleStoreOptions.maxAgeSeconds,
+      ) * 1000;
     this.maxSamples = Math.max(
       1,
-      Math.floor(options.maxSamplesPerKey ?? defaultSampleStoreOptions.maxSamplesPerKey),
+      Math.floor(
+        options.maxSamplesPerKey ?? defaultSampleStoreOptions.maxSamplesPerKey,
+      ),
     );
   }
 
@@ -95,7 +100,9 @@ export class SampleStore implements SampleSource {
 
     this.series.set(
       semanticKey,
-      kept.length > this.maxSamples ? kept.slice(kept.length - this.maxSamples) : kept,
+      kept.length > this.maxSamples
+        ? kept.slice(kept.length - this.maxSamples)
+        : kept,
     );
   }
 }

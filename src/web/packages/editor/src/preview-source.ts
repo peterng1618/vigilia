@@ -1,5 +1,5 @@
-import { FakeSampleSource } from '@vigilia/fake-source';
-import type { SampleSource } from '@vigilia/renderer-core';
+import { FakeSampleSource } from "@vigilia/fake-source";
+import type { SampleSource } from "@vigilia/renderer-core";
 
 export const PREVIEW_STARTUP_DURATION_MS = 2_000;
 const PREVIEW_HISTORY_SECONDS = 300;
@@ -27,7 +27,10 @@ export function createPreviewSource(options: {
         const now = options.now();
         if (!Number.isFinite(now)) return [];
         waveform.setNow(now);
-        return waveform.history(key, Math.min(windowSeconds, PREVIEW_HISTORY_SECONDS));
+        return waveform.history(
+          key,
+          Math.min(windowSeconds, PREVIEW_HISTORY_SECONDS),
+        );
       },
       chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS,
     } as PreviewSampleSource,

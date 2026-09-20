@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RENDER_SCALE,
   MAX_BACKING_PIXELS,
   MAX_RENDER_SCALE,
   clampRenderScale,
-} from './render-scale.js';
+} from "./render-scale.js";
 
 /**
  * How large a chart's backing canvas may get.
@@ -14,13 +14,13 @@ import {
  * meant to bound is `width x height x factor^2`.
  */
 
-describe('clampRenderScale', () => {
-  it('caps the oversample factor', () => {
+describe("clampRenderScale", () => {
+  it("caps the oversample factor", () => {
     expect(clampRenderScale(4, 300, 180)).toBe(MAX_RENDER_SCALE);
     expect(clampRenderScale(100, 300, 180)).toBe(MAX_RENDER_SCALE);
   });
 
-  it('caps the backing store by area, not just by factor', () => {
+  it("caps the backing store by area, not just by factor", () => {
     // The reason the factor alone is the wrong instrument: cost is
     // width x height x scale^2, so the same factor that is harmless on a badge
     // is not on a full-width chart. At the factor ceiling alone a 600x400 chart
@@ -32,14 +32,14 @@ describe('clampRenderScale', () => {
     expect(600 * scale * (400 * scale)).toBeCloseTo(MAX_BACKING_PIXELS, 6);
   });
 
-  it('agrees with the factor ceiling on the chart that was measured', () => {
+  it("agrees with the factor ceiling on the chart that was measured", () => {
     // The area ceiling is the factor ceiling restated in the unit that bounds
     // memory, derived from the 300x180 chart spec 0013 measured. On that chart
     // the two must give the same answer, or the restatement changed the policy.
     expect(clampRenderScale(MAX_RENDER_SCALE, 300, 180)).toBe(MAX_RENDER_SCALE);
   });
 
-  it('never undersamples, however large the chart', () => {
+  it("never undersamples, however large the chart", () => {
     // Below 1 the backing store is smaller than the box it fills and the chart
     // is visibly soft, which buys memory with resolution the author asked for.
     // A chart too big to afford at 1x is a layout problem.
@@ -49,21 +49,23 @@ describe('clampRenderScale', () => {
     expect(clampRenderScale(2, 4000, 4000)).toBe(1);
   });
 
-  it('passes through anything within both ceilings', () => {
+  it("passes through anything within both ceilings", () => {
     expect(clampRenderScale(1, 300, 180)).toBe(1);
     expect(clampRenderScale(2.75, 300, 180)).toBe(2.75);
   });
 
-  it('refuses a scale that would produce a zero-sized canvas', () => {
+  it("refuses a scale that would produce a zero-sized canvas", () => {
     // `echarts.init` on a 0x0 element does not fail loudly, it just never
     // draws. Refuse rather than coerce: fall back to the default, never to 0.
     expect(clampRenderScale(0, 300, 180)).toBe(DEFAULT_RENDER_SCALE);
     expect(clampRenderScale(-2, 300, 180)).toBe(DEFAULT_RENDER_SCALE);
     expect(clampRenderScale(Number.NaN, 300, 180)).toBe(DEFAULT_RENDER_SCALE);
-    expect(clampRenderScale(Number.POSITIVE_INFINITY, 300, 180)).toBe(DEFAULT_RENDER_SCALE);
+    expect(clampRenderScale(Number.POSITIVE_INFINITY, 300, 180)).toBe(
+      DEFAULT_RENDER_SCALE,
+    );
   });
 
-  it('falls back to the factor ceiling when the box is unusable', () => {
+  it("falls back to the factor ceiling when the box is unusable", () => {
     // The constructor refuses a zero-sized chart outright, so this only guards
     // the helper being called before a box is known.
     expect(clampRenderScale(4, 0, 0)).toBe(MAX_RENDER_SCALE);

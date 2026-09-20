@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
-import { installFixedClock } from './clock.js';
+import type { Page } from "@playwright/test";
+import { installFixedClock } from "./clock.js";
 
 /**
  * Canvas-aware probes for the Fabric player path.
@@ -27,7 +27,10 @@ type HandleWindow = typeof window & {
 };
 
 /** Opens the player on the default path and advances past entrance animation. */
-export async function openCanvasPlayer(page: Page, query = '/?theme=demo'): Promise<void> {
+export async function openCanvasPlayer(
+  page: Page,
+  query = "/?theme=demo",
+): Promise<void> {
   await installFixedClock(page);
   await page.goto(query);
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
@@ -39,7 +42,7 @@ export async function openCanvasPlayer(page: Page, query = '/?theme=demo'): Prom
 export async function probe(page: Page): Promise<CanvasProbe> {
   return page.evaluate(() => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const canvas = handle['canvas'] as {
+    const canvas = handle["canvas"] as {
       getObjects(): { get(key: string): unknown }[];
       viewportTransform: number[];
       getWidth(): number;
@@ -52,16 +55,16 @@ export async function probe(page: Page): Promise<CanvasProbe> {
 
     const collect = (list: { get(key: string): unknown }[]): void => {
       for (const object of list) {
-        all.push(String(object.get('id')));
+        all.push(String(object.get("id")));
 
         // By a property only a chart has, not by `type`: Fabric's instance
         // getter lower-cases the class name and its own source says not to
         // build on it ("DO NOT build new code around this type value").
-        if (typeof object.get('family') === 'string') {
-          scales.push(Number(object.get('renderScale')));
+        if (typeof object.get("family") === "string") {
+          scales.push(Number(object.get("renderScale")));
         }
 
-        const children = object.get('_objects');
+        const children = object.get("_objects");
 
         if (Array.isArray(children)) {
           collect(children as { get(key: string): unknown }[]);
@@ -73,7 +76,7 @@ export async function probe(page: Page): Promise<CanvasProbe> {
 
     return {
       objectCount: objects.length,
-      ids: objects.map((object) => String(object.get('id'))),
+      ids: objects.map((object) => String(object.get("id"))),
       allIds: all,
       viewportTransform: [...canvas.viewportTransform],
       canvasSize: { width: canvas.getWidth(), height: canvas.getHeight() },
@@ -84,8 +87,11 @@ export async function probe(page: Page): Promise<CanvasProbe> {
 }
 
 /** A text object's joined runs, e.g. a readout's value plus its unit. */
-export async function canvasText(page: Page, nodeId: string): Promise<string | undefined> {
-  return readObject<string>(page, nodeId, 'text', isString);
+export async function canvasText(
+  page: Page,
+  nodeId: string,
+): Promise<string | undefined> {
+  return readObject<string>(page, nodeId, "text", isString);
 }
 
 /** One scalar Fabric property; anything else means the probe asked wrong. */
@@ -98,12 +104,16 @@ export async function canvasProp(
 }
 
 /** Presence, for object-valued properties like shadows that cannot cross. */
-export async function canvasHas(page: Page, nodeId: string, key: string): Promise<boolean> {
+export async function canvasHas(
+  page: Page,
+  nodeId: string,
+  key: string,
+): Promise<boolean> {
   // Checked in-page: values like clipPath hold circular refs that do not survive serialization.
   return page.evaluate(
     ([id, prop]) => {
       const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
+      const adapter = handle["adapter"] as {
         objectFor(nodeId: string): { get(key: string): unknown } | undefined;
       };
       const value = adapter.objectFor(id)?.get(prop);
@@ -123,37 +133,54 @@ export async function canvasChildOf(
   return page.evaluate(
     ([child, parent]) => {
       const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
+      const adapter = handle["adapter"] as {
         objectFor(nodeId: string): { group?: unknown } | undefined;
       };
       const childObject = adapter.objectFor(child);
 
-      return childObject !== undefined && childObject.group === adapter.objectFor(parent);
+      return (
+        childObject !== undefined &&
+        childObject.group === adapter.objectFor(parent)
+      );
     },
     [childId, parentId] as const,
   );
 }
 
 /** Styled runs reach the canvas as per-grapheme styles on one object. */
-export async function hasRunStyles(page: Page, nodeId: string): Promise<boolean> {
-  const styles = await readObject<Record<string, unknown>>(page, nodeId, 'styles', isRecord);
+export async function hasRunStyles(
+  page: Page,
+  nodeId: string,
+): Promise<boolean> {
+  const styles = await readObject<Record<string, unknown>>(
+    page,
+    nodeId,
+    "styles",
+    isRecord,
+  );
 
   return (
     styles !== undefined &&
-    Object.values(styles).some((line) => isRecord(line) && Object.keys(line).length > 0)
+    Object.values(styles).some(
+      (line) => isRecord(line) && Object.keys(line).length > 0,
+    )
   );
 }
 
 function isString(value: unknown): value is string {
-  return typeof value === 'string';
+  return typeof value === "string";
 }
 
 function isScalar(value: unknown): value is string | number | boolean {
-  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 /** Read one Fabric property through the adapter; missing means no such object. */
@@ -166,7 +193,7 @@ async function readObject<T>(
   const value = await page.evaluate(
     ([id, prop]) => {
       const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
+      const adapter = handle["adapter"] as {
         objectFor(nodeId: string): { get(key: string): unknown } | undefined;
       };
 
@@ -190,18 +217,18 @@ export async function keepsObjectIdentity(
 ): Promise<boolean> {
   await page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string): unknown;
     };
 
-    Reflect.set(window, '__vigiliaMarked', adapter.objectFor(id));
+    Reflect.set(window, "__vigiliaMarked", adapter.objectFor(id));
   }, nodeId);
 
   await page.clock.runFor(runMs);
 
   return page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string): unknown;
     };
 
@@ -230,8 +257,10 @@ export async function drawnFractionIn(
   region: { x: number; y: number; width: number; height: number },
 ): Promise<number> {
   return page.evaluate((box) => {
-    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
-    const context = element?.getContext('2d');
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
 
     if (element === null || context === null || context === undefined) {
       return -1;
@@ -298,12 +327,22 @@ export async function drawnFractionIn(
  * through the viewport transform — rather than from a rectangle copied out of a
  * fixture, so it cannot drift from what is actually drawn.
  */
-export async function drawnFractionOf(page: Page, nodeId: string): Promise<number> {
+export async function drawnFractionOf(
+  page: Page,
+  nodeId: string,
+): Promise<number> {
   const region = await page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string):
-        | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+        | {
+            getBoundingRect(): {
+              left: number;
+              top: number;
+              width: number;
+              height: number;
+            };
+          }
         | undefined;
     };
     const object = adapter.objectFor(id);
@@ -312,9 +351,10 @@ export async function drawnFractionOf(page: Page, nodeId: string): Promise<numbe
       return undefined;
     }
 
-    const canvas = handle['canvas'] as { viewportTransform: number[] };
+    const canvas = handle["canvas"] as { viewportTransform: number[] };
     const rect = object.getBoundingRect();
-    const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+    const [scale = 1, , , , offsetX = 0, offsetY = 0] =
+      canvas.viewportTransform;
 
     return {
       x: rect.left * scale + offsetX,
@@ -336,11 +376,13 @@ export async function sourceColorFraction(
   return page.evaluate(
     ([id, expected]) => {
       const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
-        objectFor(nodeId: string): { getElement?(): HTMLCanvasElement } | undefined;
+      const adapter = handle["adapter"] as {
+        objectFor(
+          nodeId: string,
+        ): { getElement?(): HTMLCanvasElement } | undefined;
       };
       const source = adapter.objectFor(id)?.getElement?.();
-      const context = source?.getContext('2d');
+      const context = source?.getContext("2d");
 
       if (source === undefined || context === null || context === undefined) {
         return -1;

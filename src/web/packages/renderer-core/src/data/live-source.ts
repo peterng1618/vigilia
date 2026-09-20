@@ -1,19 +1,22 @@
-import { SAMPLE_EVENT, decodeBatch } from './protocol.js';
-import type { SampleSource } from './source.js';
-import { SampleStore } from './store.js';
-import type { Sample } from '../types.js';
+import { SAMPLE_EVENT, decodeBatch } from "./protocol.js";
+import type { SampleSource } from "./source.js";
+import { SampleStore } from "./store.js";
+import type { Sample } from "../types.js";
 
 /** Push transport → bounded pull `SampleSource`; downstream rendering stays transport-agnostic. */
 
 export type LiveSourceStatus =
-  | 'connecting'
-  | 'live'
-  | 'reconnecting'
-  | 'refused';
+  | "connecting"
+  | "live"
+  | "reconnecting"
+  | "refused";
 
 /** Minimal injectable `EventSource` surface for the state machine. */
 export interface EventSourceLike {
-  addEventListener(type: string, listener: (event: { readonly data: string }) => void): void;
+  addEventListener(
+    type: string,
+    listener: (event: { readonly data: string }) => void,
+  ): void;
   close(): void;
 }
 
@@ -43,10 +46,13 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     options.open ??
     ((url: string) => new EventSource(url) as unknown as EventSourceLike);
 
-  let status: LiveSourceStatus = 'connecting';
+  let status: LiveSourceStatus = "connecting";
   let batchCount = 0;
   let closed = false;
-  const pending: { readonly releaseAtMs: number; readonly entries: readonly (readonly [string, Sample])[] }[] = [];
+  const pending: {
+    readonly releaseAtMs: number;
+    readonly entries: readonly (readonly [string, Sample])[];
+  }[] = [];
 
   const releasePending = (): void => {
     const timestamp = now();
@@ -94,16 +100,16 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     stream.close();
   };
 
-  stream.addEventListener('open', () => {
+  stream.addEventListener("open", () => {
     // An open socket is not yet evidence of live samples.
-    if (status === 'reconnecting') {
-      setStatus('connecting');
+    if (status === "reconnecting") {
+      setStatus("connecting");
     }
   });
 
-  stream.addEventListener('error', () => {
-    if (status !== 'refused') {
-      setStatus('reconnecting');
+  stream.addEventListener("error", () => {
+    if (status !== "refused") {
+      setStatus("reconnecting");
     }
   });
 
@@ -111,18 +117,20 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     const result = decodeBatch(event.data);
 
     if (!result.ok) {
-      setStatus('refused', result.reason);
+      setStatus("refused", result.reason);
       close();
       return;
     }
 
     pending.push({
       releaseAtMs: now() + LIVE_SOURCE_DISPLAY_DELAY_MS,
-      entries: result.batch.samples.map((entry) => [entry.semanticKey, entry.sample] as const),
+      entries: result.batch.samples.map(
+        (entry) => [entry.semanticKey, entry.sample] as const,
+      ),
     });
 
     batchCount += 1;
-    setStatus('live');
+    setStatus("live");
   });
 
   return {

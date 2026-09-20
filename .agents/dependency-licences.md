@@ -10,6 +10,7 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `fabric` | 7.4.0 | MIT | scene graph |
 | `fflate` | 0.8.3 | MIT | theme ZIP codec |
 | `@anu3ev/fabric-image-editor` | fork `918a454` / 0.10.32 | MIT | editor foundation |
+| `@biomejs/biome` | 2.5.14 | MIT OR Apache-2.0 | format/lint |
 | `vite` | 8.3.0 | MIT | build/dev |
 | `typescript` | 7.0.2 | Apache-2.0 | build |
 | `vitest` | 5.0.0 | MIT | tests |

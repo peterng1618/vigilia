@@ -1,6 +1,21 @@
-import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
-import { ActiveSelection, classRegistry, type ActiveSelectionOptions, type FabricObject } from 'fabric/es';
-import { resolveStyleValue, validateFabricThemeEnvelope, type Artboard, type AssetReference, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type Globals, type ScenePlan } from '@vigilia/renderer-core';
+import initEditor, { type ImageEditor } from "@anu3ev/fabric-image-editor";
+import {
+  ActiveSelection,
+  classRegistry,
+  type ActiveSelectionOptions,
+  type FabricObject,
+} from "fabric/es";
+import {
+  resolveStyleValue,
+  validateFabricThemeEnvelope,
+  type Artboard,
+  type AssetReference,
+  type FabricThemeEnvelope,
+  type FabricThemeEnvelopeInput,
+  type FitMode,
+  type Globals,
+  type ScenePlan,
+} from "@vigilia/renderer-core";
 import {
   createSceneAdapter,
   disposeScene,
@@ -15,7 +30,7 @@ import {
   mountBackgroundMedia,
   type BackgroundMediaSource,
   type SceneAdapter,
-} from '@vigilia/scene-fabric';
+} from "@vigilia/scene-fabric";
 
 export interface ForkShellOptions {
   readonly host: HTMLElement;
@@ -24,7 +39,9 @@ export interface ForkShellOptions {
   /** A validated v2 document revives directly into the interactive fork canvas. */
   readonly envelope?: FabricThemeEnvelope;
   readonly assets?: readonly AssetReference[];
-  readonly resolveAsset?: (assetId: string) => BackgroundMediaSource | undefined;
+  readonly resolveAsset?: (
+    assetId: string,
+  ) => BackgroundMediaSource | undefined;
 }
 
 export interface ForkShell {
@@ -32,27 +49,45 @@ export interface ForkShell {
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
-  setBackgroundMedia(assets: readonly AssetReference[], resolveAsset: (assetId: string) => BackgroundMediaSource | undefined): void;
+  setBackgroundMedia(
+    assets: readonly AssetReference[],
+    resolveAsset: (assetId: string) => BackgroundMediaSource | undefined,
+  ): void;
   setGlobals(globals: Globals | undefined): void;
   setFitMode(fitMode: FitMode): void;
   destroy(): void;
 }
 
-const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
+const FORK_CONTAINER_ID = "vigilia-fabric-editor";
 let nextForkContainer = 1;
 
 class SelectionOrderedActiveSelection extends ActiveSelection {
-  constructor(objects: FabricObject[] = [], options: Partial<ActiveSelectionOptions> = {}) {
-    super(objects, { ...options, multiSelectionStacking: 'selection-order' });
+  constructor(
+    objects: FabricObject[] = [],
+    options: Partial<ActiveSelectionOptions> = {},
+  ) {
+    super(objects, { ...options, multiSelectionStacking: "selection-order" });
   }
 }
 
-classRegistry.setClass(SelectionOrderedActiveSelection, 'ActiveSelection');
+classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
 
-function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard'], fitMode: FitMode): number | undefined {
-  const scale = fitMode === 'contain'
-    ? Math.min(host.clientWidth / artboard.width, host.clientHeight / artboard.height)
-    : Math.max(host.clientWidth / artboard.width, host.clientHeight / artboard.height);
+function fitArtboardViewport(
+  container: HTMLElement,
+  host: HTMLElement,
+  artboard: ForkShellOptions["artboard"],
+  fitMode: FitMode,
+): number | undefined {
+  const scale =
+    fitMode === "contain"
+      ? Math.min(
+          host.clientWidth / artboard.width,
+          host.clientHeight / artboard.height,
+        )
+      : Math.max(
+          host.clientWidth / artboard.width,
+          host.clientHeight / artboard.height,
+        );
 
   if (!Number.isFinite(scale) || scale <= 0) return undefined;
 
@@ -61,7 +96,13 @@ function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard
   return scale;
 }
 
-function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard'], fitMode: FitMode): void {
+function fitCanvasViewport(
+  editor: ImageEditor,
+  container: HTMLElement,
+  host: HTMLElement,
+  artboard: ForkShellOptions["artboard"],
+  fitMode: FitMode,
+): void {
   const scale = fitArtboardViewport(container, host, artboard, fitMode);
 
   if (scale === undefined) return;
@@ -70,62 +111,100 @@ function fitCanvasViewport(editor: ImageEditor, container: HTMLElement, host: HT
   const height = artboard.height * scale;
   editor.canvas.setDimensions({ width, height });
   editor.canvas.setViewportTransform([
-    scale, 0, 0, scale,
+    scale,
+    0,
+    0,
+    scale,
     (width - artboard.width * scale) / 2,
     (height - artboard.height * scale) / 2,
   ]);
   editor.canvas.requestRenderAll();
 }
 
-function applyArtboardPaint(editor: ImageEditor, host: HTMLElement, artboard: Artboard, globals: Globals | undefined): void {
+function applyArtboardPaint(
+  editor: ImageEditor,
+  host: HTMLElement,
+  artboard: Artboard,
+  globals: Globals | undefined,
+): void {
   const issues: Parameters<typeof resolveStyleValue>[3] = [];
-  const resolve = (value: Artboard['background']): unknown => {
-    return resolveStyleValue(value, globals ?? {}, 'artboard', issues);
+  const resolve = (value: Artboard["background"]): unknown => {
+    return resolveStyleValue(value, globals ?? {}, "artboard", issues);
   };
-  editor.canvas.backgroundColor = fabricArtboardPaint(resolve(artboard.background), artboard.width, artboard.height) ?? '';
-  host.style.background = cssArtboardPaint(resolve(artboard.barColor)) ?? '#000';
+  editor.canvas.backgroundColor =
+    fabricArtboardPaint(
+      resolve(artboard.background),
+      artboard.width,
+      artboard.height,
+    ) ?? "";
+  host.style.background =
+    cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
   applyObjectPalettePaints(editor.canvas, globals);
   applyObjectTypePresets(editor.canvas, globals);
   editor.canvas.requestRenderAll();
 }
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({ host, artboard, plan, envelope, assets, resolveAsset }: ForkShellOptions): Promise<ForkShell> {
+export async function mountForkShell({
+  host,
+  artboard,
+  plan,
+  envelope,
+  assets,
+  resolveAsset,
+}: ForkShellOptions): Promise<ForkShell> {
   if (plan !== undefined && envelope !== undefined) {
-    throw new Error('A fork shell accepts either a scene plan or a Fabric envelope, not both.');
+    throw new Error(
+      "A fork shell accepts either a scene plan or a Fabric envelope, not both.",
+    );
   }
   if (envelope !== undefined) {
     const validation = validateFabricThemeEnvelope(envelope);
     if (!validation.ok) {
-      throw new Error(`Invalid Fabric theme: ${validation.issues[0]?.message ?? 'unknown validation error'}`);
+      throw new Error(
+        `Invalid Fabric theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
+      );
     }
   }
-  const container = document.createElement('div');
+  const container = document.createElement("div");
   container.id = `${FORK_CONTAINER_ID}-${nextForkContainer}`;
   nextForkContainer += 1;
-  container.style.position = 'absolute';
-  container.style.inset = '0';
-  container.style.margin = 'auto';
-  container.style.visibility = 'hidden';
+  container.style.position = "absolute";
+  container.style.inset = "0";
+  container.style.margin = "auto";
+  container.style.visibility = "hidden";
   let currentArtboard = artboard;
   let globals: Globals | undefined = envelope?.globals;
-  let fitMode: FitMode = currentArtboard.fitMode ?? 'contain';
-  const initialScale = fitArtboardViewport(container, host, currentArtboard, fitMode);
+  let fitMode: FitMode = currentArtboard.fitMode ?? "contain";
+  const initialScale = fitArtboardViewport(
+    container,
+    host,
+    currentArtboard,
+    fitMode,
+  );
   host.append(container);
   let mounted: ImageEditor | undefined;
-  const resize = typeof ResizeObserver === 'undefined'
-    ? undefined
-    : new ResizeObserver(() => {
-      if (mounted !== undefined) fitCanvasViewport(mounted, container, host, currentArtboard, fitMode);
-    });
+  const resize =
+    typeof ResizeObserver === "undefined"
+      ? undefined
+      : new ResizeObserver(() => {
+          if (mounted !== undefined)
+            fitCanvasViewport(
+              mounted,
+              container,
+              host,
+              currentArtboard,
+              fitMode,
+            );
+        });
   resize?.observe(host);
 
   try {
     const editor = await initEditor(container.id, {
       montageAreaWidth: artboard.width,
       montageAreaHeight: artboard.height,
-      editorContainerWidth: '100%',
-      editorContainerHeight: '100%',
+      editorContainerWidth: "100%",
+      editorContainerHeight: "100%",
       defaultScale: initialScale ?? 1,
       resetObjectFitByDoubleClick: false,
       beforeHistoryStateLoad: disposeScene,
@@ -141,7 +220,10 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
     }
     applyArtboardPaint(editor, host, currentArtboard, globals);
 
-    const scene = plan === undefined && envelope === undefined ? undefined : createSceneAdapter({ canvas: editor.canvas });
+    const scene =
+      plan === undefined && envelope === undefined
+        ? undefined
+        : createSceneAdapter({ canvas: editor.canvas });
 
     if (plan !== undefined) {
       scene?.apply(plan);
@@ -149,15 +231,18 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
 
     host.replaceChildren(container);
     container.id = FORK_CONTAINER_ID;
-    container.style.visibility = '';
+    container.style.visibility = "";
     let mediaAssets = assets ?? envelope?.assets;
     let mediaResolve = resolveAsset;
-    let media = mediaResolve === undefined ? undefined : mountBackgroundMedia({
-      host: container,
-      artboard: currentArtboard,
-      assets: mediaAssets,
-      resolveAsset: mediaResolve,
-    });
+    let media =
+      mediaResolve === undefined
+        ? undefined
+        : mountBackgroundMedia({
+            host: container,
+            artboard: currentArtboard,
+            assets: mediaAssets,
+            resolveAsset: mediaResolve,
+          });
 
     return {
       editor,
@@ -166,24 +251,35 @@ export async function mountForkShell({ host, artboard, plan, envelope, assets, r
         const next = serialiseThemeEnvelope(editor.canvas, input);
         const validation = validateFabricThemeEnvelope(next);
         if (!validation.ok) {
-          throw new Error(`Invalid Fabric theme: ${validation.issues[0]?.message ?? 'unknown validation error'}`);
+          throw new Error(
+            `Invalid Fabric theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
+          );
         }
         return validation.envelope;
       },
       setArtboard(nextArtboard) {
         currentArtboard = nextArtboard;
-        fitMode = currentArtboard.fitMode ?? 'contain';
+        fitMode = currentArtboard.fitMode ?? "contain";
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
         applyArtboardPaint(editor, host, currentArtboard, globals);
         if (media !== undefined && mediaResolve !== undefined) {
-          media.update({ artboard: currentArtboard, assets: mediaAssets, resolveAsset: mediaResolve });
+          media.update({
+            artboard: currentArtboard,
+            assets: mediaAssets,
+            resolveAsset: mediaResolve,
+          });
         }
       },
       setBackgroundMedia(nextAssets, nextResolveAsset) {
         media?.destroy();
         mediaAssets = nextAssets;
         mediaResolve = nextResolveAsset;
-        media = mountBackgroundMedia({ host: container, artboard: currentArtboard, assets: mediaAssets, resolveAsset: mediaResolve });
+        media = mountBackgroundMedia({
+          host: container,
+          artboard: currentArtboard,
+          assets: mediaAssets,
+          resolveAsset: mediaResolve,
+        });
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;

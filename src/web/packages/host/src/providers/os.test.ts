@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { describeSemanticKey, isKnownSemanticKey } from '@vigilia/renderer-core';
+import { describe, expect, it } from "vitest";
+import {
+  describeSemanticKey,
+  isKnownSemanticKey,
+} from "@vigilia/renderer-core";
 import {
   cpuLoadBetween,
   OS_DESCRIPTORS,
@@ -8,9 +11,9 @@ import {
   samplesFromReadings,
   type CpuTimes,
   type OsReadings,
-} from './os.js';
+} from "./os.js";
 
-const NOW = Date.parse('2026-01-01T00:00:10Z');
+const NOW = Date.parse("2026-01-01T00:00:10Z");
 const GB = 1024 ** 3;
 
 function times(user: number, idle: number): { readonly times: CpuTimes } {
@@ -28,14 +31,22 @@ function readings(overrides: Partial<OsReadings> = {}): OsReadings {
   };
 }
 
-describe('readingsFromCpus', () => {
-  it('sums every core into one snapshot', () => {
-    const result = readingsFromCpus([times(10, 90), times(30, 70)], 16 * GB, 8 * GB);
+describe("readingsFromCpus", () => {
+  it("sums every core into one snapshot", () => {
+    const result = readingsFromCpus(
+      [times(10, 90), times(30, 70)],
+      16 * GB,
+      8 * GB,
+    );
 
-    expect(result).toMatchObject({ idleTicks: 160, totalTicks: 200, cpuCount: 2 });
+    expect(result).toMatchObject({
+      idleTicks: 160,
+      totalTicks: 200,
+      cpuCount: 2,
+    });
   });
 
-  it('counts every busy category, not just user', () => {
+  it("counts every busy category, not just user", () => {
     const result = readingsFromCpus(
       [{ times: { user: 1, nice: 2, sys: 4, idle: 8, irq: 16 } }],
       GB,
@@ -47,13 +58,16 @@ describe('readingsFromCpus', () => {
     expect(result.idleTicks).toBe(8);
   });
 
-  it('handles no cores without dividing by anything', () => {
-    expect(readingsFromCpus([], GB, 0)).toMatchObject({ cpuCount: 0, totalTicks: 0 });
+  it("handles no cores without dividing by anything", () => {
+    expect(readingsFromCpus([], GB, 0)).toMatchObject({
+      cpuCount: 0,
+      totalTicks: 0,
+    });
   });
 });
 
-describe('cpuLoadBetween', () => {
-  it('derives load from the CHANGE in ticks, not their absolute value', () => {
+describe("cpuLoadBetween", () => {
+  it("derives load from the CHANGE in ticks, not their absolute value", () => {
     // Absolute counters are cumulative since boot. 75% idle in the interval is
     // 25% load, regardless of how large the counters already were.
     const previous = readings({ idleTicks: 1_000_000, totalTicks: 2_000_000 });
@@ -62,13 +76,16 @@ describe('cpuLoadBetween', () => {
     expect(cpuLoadBetween(previous, next)).toBeCloseTo(25);
   });
 
-  it('reports a fully busy interval as 100', () => {
+  it("reports a fully busy interval as 100", () => {
     expect(
-      cpuLoadBetween(readings({ idleTicks: 0, totalTicks: 0 }), readings({ idleTicks: 0, totalTicks: 100 })),
+      cpuLoadBetween(
+        readings({ idleTicks: 0, totalTicks: 0 }),
+        readings({ idleTicks: 0, totalTicks: 100 }),
+      ),
     ).toBe(100);
   });
 
-  it('reports a fully idle interval as 0', () => {
+  it("reports a fully idle interval as 0", () => {
     expect(
       cpuLoadBetween(
         readings({ idleTicks: 0, totalTicks: 0 }),
@@ -77,94 +94,112 @@ describe('cpuLoadBetween', () => {
     ).toBe(0);
   });
 
-  it('cannot measure without a previous snapshot, and says so rather than guessing', () => {
+  it("cannot measure without a previous snapshot, and says so rather than guessing", () => {
     // undefined, never 0 — "not measured" and "idle" are different claims (§83).
-    expect(cpuLoadBetween(undefined, readings({ totalTicks: 100 }))).toBeUndefined();
+    expect(
+      cpuLoadBetween(undefined, readings({ totalTicks: 100 })),
+    ).toBeUndefined();
   });
 
-  it('cannot measure across a zero-length interval', () => {
+  it("cannot measure across a zero-length interval", () => {
     const same = readings({ idleTicks: 50, totalTicks: 100 });
 
     expect(cpuLoadBetween(same, same)).toBeUndefined();
   });
 
   it.each([
-    ['total ticks going backwards (suspend/resume)', { idleTicks: 40, totalTicks: 80 }],
-    ['idle ticks going backwards (a core offlining)', { idleTicks: 40, totalTicks: 200 }],
-  ])('refuses to compute when %s', (_label, nextOverrides) => {
+    [
+      "total ticks going backwards (suspend/resume)",
+      { idleTicks: 40, totalTicks: 80 },
+    ],
+    [
+      "idle ticks going backwards (a core offlining)",
+      { idleTicks: 40, totalTicks: 200 },
+    ],
+  ])("refuses to compute when %s", (_label, nextOverrides) => {
     const previous = readings({ idleTicks: 50, totalTicks: 100 });
 
     expect(cpuLoadBetween(previous, readings(nextOverrides))).toBeUndefined();
   });
 });
 
-describe('samplesFromReadings', () => {
+describe("samplesFromReadings", () => {
   const previous = readings({ idleTicks: 0, totalTicks: 0 });
   const next = readings({ idleTicks: 50, totalTicks: 100 });
 
-  it('produces only the keys asked for (§111)', () => {
-    const entries = samplesFromReadings(previous, next, NOW, ['cpu.load']);
+  it("produces only the keys asked for (§111)", () => {
+    const entries = samplesFromReadings(previous, next, NOW, ["cpu.load"]);
 
-    expect(entries.map((entry) => entry.semanticKey)).toEqual(['cpu.load']);
+    expect(entries.map((entry) => entry.semanticKey)).toEqual(["cpu.load"]);
   });
 
-  it('omits keys it does not own rather than inventing a status for them', () => {
+  it("omits keys it does not own rather than inventing a status for them", () => {
     // Claiming `gpu.temp` is missing would misattribute another provider's gap
     // to this one. Absence is the registry's business to report.
-    const entries = samplesFromReadings(previous, next, NOW, ['gpu.temp', 'cpu.load']);
+    const entries = samplesFromReadings(previous, next, NOW, [
+      "gpu.temp",
+      "cpu.load",
+    ]);
 
     expect(entries).toHaveLength(1);
-    expect(entries[0]?.semanticKey).toBe('cpu.load');
+    expect(entries[0]?.semanticKey).toBe("cpu.load");
   });
 
-  it('reports an unmeasurable first cycle as missing WITHOUT a value (§83, §97)', () => {
-    const entries = samplesFromReadings(undefined, next, NOW, ['cpu.load']);
+  it("reports an unmeasurable first cycle as missing WITHOUT a value (§83, §97)", () => {
+    const entries = samplesFromReadings(undefined, next, NOW, ["cpu.load"]);
     const sample = entries[0]?.sample;
 
-    expect(sample?.status).toBe('missing');
+    expect(sample?.status).toBe("missing");
     // The absence of the key is the assertion. A zero here would render as a
     // real reading of an idle CPU on every host start.
-    expect(sample).not.toHaveProperty('value');
+    expect(sample).not.toHaveProperty("value");
     expect(sample?.message).toBeTruthy();
   });
 
-  it('converts memory to GB and percent from the same byte readings', () => {
+  it("converts memory to GB and percent from the same byte readings", () => {
     const entries = samplesFromReadings(previous, next, NOW, [
-      'ram.used',
-      'ram.used.percent',
-      'ram.total',
+      "ram.used",
+      "ram.used.percent",
+      "ram.total",
     ]);
-    const byKey = new Map(entries.map((entry) => [entry.semanticKey, entry.sample]));
-
-    expect(byKey.get('ram.used')?.value).toBeCloseTo(8);
-    expect(byKey.get('ram.used.percent')?.value).toBeCloseTo(50);
-    expect(byKey.get('ram.total')?.value).toBeCloseTo(16);
-  });
-
-  it('refuses a percentage when total memory reads as zero', () => {
-    const entries = samplesFromReadings(
-      previous,
-      readings({ idleTicks: 50, totalTicks: 100, totalMemBytes: 0, freeMemBytes: 0 }),
-      NOW,
-      ['ram.used.percent'],
+    const byKey = new Map(
+      entries.map((entry) => [entry.semanticKey, entry.sample]),
     );
 
-    expect(entries[0]?.sample.status).toBe('missing');
-    expect(entries[0]?.sample).not.toHaveProperty('value');
+    expect(byKey.get("ram.used")?.value).toBeCloseTo(8);
+    expect(byKey.get("ram.used.percent")?.value).toBeCloseTo(50);
+    expect(byKey.get("ram.total")?.value).toBeCloseTo(16);
   });
 
-  it('stamps every sample with the passed clock, not the wall clock', () => {
-    const entries = samplesFromReadings(previous, next, NOW, ['ram.total']);
+  it("refuses a percentage when total memory reads as zero", () => {
+    const entries = samplesFromReadings(
+      previous,
+      readings({
+        idleTicks: 50,
+        totalTicks: 100,
+        totalMemBytes: 0,
+        freeMemBytes: 0,
+      }),
+      NOW,
+      ["ram.used.percent"],
+    );
 
-    expect(entries[0]?.sample.timestamp).toBe('2026-01-01T00:00:10.000Z');
+    expect(entries[0]?.sample.status).toBe("missing");
+    expect(entries[0]?.sample).not.toHaveProperty("value");
   });
 
-  it('carries a unit on every ok sample, so the display need not guess', () => {
+  it("stamps every sample with the passed clock, not the wall clock", () => {
+    const entries = samplesFromReadings(previous, next, NOW, ["ram.total"]);
+
+    expect(entries[0]?.sample.timestamp).toBe("2026-01-01T00:00:10.000Z");
+  });
+
+  it("carries a unit on every ok sample, so the display need not guess", () => {
     const entries = samplesFromReadings(previous, next, NOW, [
-      'cpu.load',
-      'ram.used',
-      'ram.used.percent',
-      'ram.total',
+      "cpu.load",
+      "ram.used",
+      "ram.used.percent",
+      "ram.total",
     ]);
 
     for (const entry of entries) {
@@ -173,41 +208,61 @@ describe('samplesFromReadings', () => {
   });
 });
 
-describe('OsSensorProvider', () => {
-  it('describes only baseline sensors — it needs no driver (ADR-0004)', async () => {
+describe("OsSensorProvider", () => {
+  it("describes only baseline sensors — it needs no driver (ADR-0004)", async () => {
     const provider = new OsSensorProvider();
 
     expect(await provider.describe()).toBe(OS_DESCRIPTORS);
-    expect(OS_DESCRIPTORS.every((descriptor) => descriptor.tier === 'baseline')).toBe(true);
+    expect(
+      OS_DESCRIPTORS.every((descriptor) => descriptor.tier === "baseline"),
+    ).toBe(true);
   });
 
-  it('prefixes every sensor id with the provider id', () => {
+  it("prefixes every sensor id with the provider id", () => {
     for (const descriptor of OS_DESCRIPTORS) {
-      expect(descriptor.sensorId.startsWith('os:')).toBe(true);
+      expect(descriptor.sensorId.startsWith("os:")).toBe(true);
     }
   });
 
-  it('describes only keys the shared vocabulary declares', () => {
+  it("describes only keys the shared vocabulary declares", () => {
     // The binding that makes `semantic-keys.ts` an owner rather than a second
     // copy. This provider previously hand-wrote every label, unit and tier, and
     // had drifted to 'CPU load (all cores)' against the vocabulary's
     // 'CPU load'.
     for (const descriptor of OS_DESCRIPTORS) {
       expect(isKnownSemanticKey(descriptor.semanticKey)).toBe(true);
-      expect(descriptor.label).toBe(describeSemanticKey(descriptor.semanticKey)?.label);
-      expect(descriptor.unit).toBe(describeSemanticKey(descriptor.semanticKey)?.unit);
+      expect(descriptor.label).toBe(
+        describeSemanticKey(descriptor.semanticKey)?.label,
+      );
+      expect(descriptor.unit).toBe(
+        describeSemanticKey(descriptor.semanticKey)?.unit,
+      );
     }
   });
 
-  it('declares nothing it cannot sample, and samples nothing it does not declare', () => {
+  it("declares nothing it cannot sample, and samples nothing it does not declare", () => {
     // Two homes for "which keys this provider supplies" — the descriptor list
     // and the `wanted.has(...)` chain. Adding a key to one only meant either a
     // sensor advertised by /api/sensors that the stream never carries, or a
     // reading invisible to discovery.
-    const declared = OS_DESCRIPTORS.map((descriptor) => descriptor.semanticKey).sort();
+    const declared = OS_DESCRIPTORS.map(
+      (descriptor) => descriptor.semanticKey,
+    ).sort();
     const sampled = samplesFromReadings(
-      { idleTicks: 0, totalTicks: 0, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
-      { idleTicks: 100, totalTicks: 400, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+      {
+        idleTicks: 0,
+        totalTicks: 0,
+        cpuCount: 4,
+        totalMemBytes: 16e9,
+        freeMemBytes: 8e9,
+      },
+      {
+        idleTicks: 100,
+        totalTicks: 400,
+        cpuCount: 4,
+        totalMemBytes: 16e9,
+        freeMemBytes: 8e9,
+      },
       NOW,
       declared,
     )
@@ -217,36 +272,48 @@ describe('OsSensorProvider', () => {
     expect(sampled).toEqual(declared);
   });
 
-  it('carries the unit its own descriptor declares', () => {
+  it("carries the unit its own descriptor declares", () => {
     const byKey = new Map(
       samplesFromReadings(
-        { idleTicks: 0, totalTicks: 0, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
-        { idleTicks: 100, totalTicks: 400, cpuCount: 4, totalMemBytes: 16e9, freeMemBytes: 8e9 },
+        {
+          idleTicks: 0,
+          totalTicks: 0,
+          cpuCount: 4,
+          totalMemBytes: 16e9,
+          freeMemBytes: 8e9,
+        },
+        {
+          idleTicks: 100,
+          totalTicks: 400,
+          cpuCount: 4,
+          totalMemBytes: 16e9,
+          freeMemBytes: 8e9,
+        },
         NOW,
-        ['ram.used', 'ram.used.percent', 'ram.total'],
+        ["ram.used", "ram.used.percent", "ram.total"],
       ).map((entry) => [entry.semanticKey, entry.sample]),
     );
 
     for (const descriptor of OS_DESCRIPTORS) {
       const sample = byKey.get(descriptor.semanticKey);
 
-      if (sample?.status === 'ok') {
+      if (sample?.status === "ok") {
         expect(sample.unit).toBe(descriptor.unit);
       }
     }
   });
 
-  it('is always available, which is what makes it the baseline', () => {
+  it("is always available, which is what makes it the baseline", () => {
     expect(new OsSensorProvider().health().available).toBe(true);
   });
 
-  it('reads real CPU load once it has two snapshots to diff', async () => {
+  it("reads real CPU load once it has two snapshots to diff", async () => {
     const provider = new OsSensorProvider();
 
     // First call has nothing to diff against and must not fabricate.
-    const first = await provider.sample(['cpu.load'], NOW);
+    const first = await provider.sample(["cpu.load"], NOW);
 
-    expect(first[0]?.sample.status).toBe('missing');
+    expect(first[0]?.sample.status).toBe("missing");
 
     // Burn real CPU so the second interval has ticks in it.
     const spinUntil = Date.now() + 120;
@@ -258,22 +325,27 @@ describe('OsSensorProvider', () => {
 
     expect(sink).toBeGreaterThan(0);
 
-    const second = await provider.sample(['cpu.load'], NOW + 120);
+    const second = await provider.sample(["cpu.load"], NOW + 120);
     const sample = second[0]?.sample;
 
-    expect(sample?.status).toBe('ok');
+    expect(sample?.status).toBe("ok");
     expect(sample?.value).toBeGreaterThanOrEqual(0);
     expect(sample?.value).toBeLessThanOrEqual(100);
   });
 
-  it('reads real memory from the machine it runs on', async () => {
+  it("reads real memory from the machine it runs on", async () => {
     const provider = new OsSensorProvider();
-    const entries = await provider.sample(['ram.total', 'ram.used.percent'], NOW);
-    const byKey = new Map(entries.map((entry) => [entry.semanticKey, entry.sample]));
+    const entries = await provider.sample(
+      ["ram.total", "ram.used.percent"],
+      NOW,
+    );
+    const byKey = new Map(
+      entries.map((entry) => [entry.semanticKey, entry.sample]),
+    );
 
     // A real machine has more than zero and less than 100% of its memory used.
-    expect(byKey.get('ram.total')?.value).toBeGreaterThan(0);
-    expect(byKey.get('ram.used.percent')?.value).toBeGreaterThan(0);
-    expect(byKey.get('ram.used.percent')?.value).toBeLessThan(100);
+    expect(byKey.get("ram.total")?.value).toBeGreaterThan(0);
+    expect(byKey.get("ram.used.percent")?.value).toBeGreaterThan(0);
+    expect(byKey.get("ram.used.percent")?.value).toBeLessThan(100);
   });
 });

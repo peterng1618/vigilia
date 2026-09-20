@@ -1,11 +1,15 @@
-import type { ChartPaint, Fill, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
-import { resolveThresholdColor, toLinearGradient } from './fill.js';
-import type { EngineColor, LinearGradientColor } from './fill.js';
-import { cartesianGrid, type CartesianGrid } from './grid.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+import type { ChartPaint, Fill, Sample } from "../types.js";
+import { hasPlottableValue } from "../types.js";
+import {
+  toEngineAnimation,
+  type AnimationSettings,
+  type EngineAnimation,
+} from "./animation.js";
+import { resolveThresholdColor, toLinearGradient } from "./fill.js";
+import type { EngineColor, LinearGradientColor } from "./fill.js";
+import { cartesianGrid, type CartesianGrid } from "./grid.js";
+import { resolveChartPaint } from "./chart-paint.js";
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 
 // Preserved public exports; implementation moved to fill.ts.
 export type { EngineColor, LinearGradientColor };
@@ -15,8 +19,8 @@ export type { EngineColor, LinearGradientColor };
  * `connectNulls` stays false so outages remain visible (§83).
  */
 
-export type Interpolation = 'linear' | 'smooth' | 'step';
-export type DashPattern = 'solid' | 'dashed' | 'dotted';
+export type Interpolation = "linear" | "smooth" | "step";
+export type DashPattern = "solid" | "dashed" | "dotted";
 export type SeriesPoint = readonly [number, number | null];
 
 export interface LineSettings {
@@ -38,19 +42,19 @@ export interface LineSettings {
   readonly max?: number;
   readonly showAxes: boolean;
   /** Render-time downsampling; retained samples are unchanged. */
-  readonly sampling?: 'lttb' | 'average' | 'none';
+  readonly sampling?: "lttb" | "average" | "none";
   readonly animation?: AnimationSettings;
 }
 
 export const defaultLineSettings: LineSettings = {
   lineWidth: 2,
-  interpolation: 'smooth',
-  stroke: { kind: 'solid', color: '#00b8d9' },
+  interpolation: "smooth",
+  stroke: { kind: "solid", color: "#00b8d9" },
   area: {
-    kind: 'gradient',
+    kind: "gradient",
     stops: [
-      { offset: 0, color: '#00b8d9' },
-      { offset: 1, color: '#00b8d900' },
+      { offset: 0, color: "#00b8d9" },
+      { offset: 1, color: "#00b8d900" },
     ],
   },
   showMarkers: false,
@@ -58,7 +62,7 @@ export const defaultLineSettings: LineSettings = {
   windowSeconds: 60,
   maxPoints: 600,
   showAxes: true,
-  sampling: 'none',
+  sampling: "none",
 };
 
 export interface SeriesInput {
@@ -71,25 +75,25 @@ export interface SeriesInput {
 export interface LineOption extends EngineAnimation {
   readonly grid: CartesianGrid;
   readonly xAxis: {
-    readonly type: 'time';
+    readonly type: "time";
     readonly show: boolean;
     readonly min: number;
     readonly max: number;
   };
   readonly yAxis: {
-    readonly type: 'value';
+    readonly type: "value";
     readonly show: boolean;
     readonly min?: number;
     readonly max?: number;
   };
   readonly series: readonly {
-    readonly type: 'line';
+    readonly type: "line";
     readonly name: string;
     readonly data: readonly SeriesPoint[];
     readonly showSymbol: boolean;
     readonly symbolSize: number;
     readonly smooth: boolean;
-    readonly step: 'end' | false;
+    readonly step: "end" | false;
     readonly connectNulls: false;
     readonly lineStyle: {
       readonly width: number;
@@ -97,7 +101,7 @@ export interface LineOption extends EngineAnimation {
       readonly type: DashPattern;
     };
     readonly areaStyle?: { readonly color: EngineColor };
-    readonly sampling?: 'lttb' | 'average';
+    readonly sampling?: "lttb" | "average";
     readonly silent: true;
   }[];
 }
@@ -105,7 +109,7 @@ export interface LineOption extends EngineAnimation {
 /** Window, sort and cap samples while preserving missing-data gaps. */
 export function toSeriesPoints(
   samples: readonly Sample[],
-  settings: Pick<LineSettings, 'windowSeconds' | 'maxPoints'>,
+  settings: Pick<LineSettings, "windowSeconds" | "maxPoints">,
   nowMs: number,
   windowStart = nowMs - settings.windowSeconds * 1000,
 ): SeriesPoint[] {
@@ -141,21 +145,41 @@ export function buildLineOption(
   startupDurationMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
-  const start = startedAtMs !== undefined && Number.isFinite(startedAtMs)
-    ? Math.min(startedAtMs, nowMs)
-    : undefined;
-  const duration = startupDurationMs !== undefined && Number.isFinite(startupDurationMs) && startupDurationMs > 0
-    ? startupDurationMs
-    : undefined;
-  const revealProgress = start !== undefined && duration !== undefined
-    ? Math.min(1, (nowMs - start) / duration)
-    : undefined;
+  const start =
+    startedAtMs !== undefined && Number.isFinite(startedAtMs)
+      ? Math.min(startedAtMs, nowMs)
+      : undefined;
+  const duration =
+    startupDurationMs !== undefined &&
+    Number.isFinite(startupDurationMs) &&
+    startupDurationMs > 0
+      ? startupDurationMs
+      : undefined;
+  const revealProgress =
+    start !== undefined && duration !== undefined
+      ? Math.min(1, (nowMs - start) / duration)
+      : undefined;
   const revealing = revealProgress !== undefined && revealProgress < 1;
   const firstSample = revealing ? earliestSampleMs(series, nowMs) : undefined;
-  const filling = !revealing && duration === undefined && start !== undefined && nowMs < start + windowMs;
-  const windowStart = revealing ? (firstSample ?? nowMs) : (filling ? start! : nowMs - windowMs);
-  const windowEnd = revealing ? windowStart + windowMs : (filling ? start! + windowMs : nowMs);
-  const sampling = settings.sampling && settings.sampling !== 'none' ? settings.sampling : undefined;
+  const filling =
+    !revealing &&
+    duration === undefined &&
+    start !== undefined &&
+    nowMs < start + windowMs;
+  const windowStart = revealing
+    ? (firstSample ?? nowMs)
+    : filling
+      ? start!
+      : nowMs - windowMs;
+  const windowEnd = revealing
+    ? windowStart + windowMs
+    : filling
+      ? start! + windowMs
+      : nowMs;
+  const sampling =
+    settings.sampling && settings.sampling !== "none"
+      ? settings.sampling
+      : undefined;
 
   return {
     ...toEngineAnimation(settings.animation, animate),
@@ -169,50 +193,68 @@ export function buildLineOption(
       settings.showAxes,
     ),
     xAxis: {
-      type: 'time',
+      type: "time",
       show: settings.showAxes,
       // Preview history reveals left-to-right; live data fills from render start.
       min: windowStart,
       max: windowEnd,
     },
     yAxis: {
-      type: 'value',
+      type: "value",
       show: settings.showAxes,
       ...(settings.min === undefined ? {} : { min: settings.min }),
       ...(settings.max === undefined ? {} : { max: settings.max }),
     },
     series: series.map((input, index) => ({
-      type: 'line' as const,
+      type: "line" as const,
       name: input.label ?? input.sensorId,
       data: toSeriesPoints(
         revealProgress === undefined
           ? input.samples
-          : input.samples.filter((sample) => Date.parse(sample.timestamp) <= windowStart + windowMs * revealProgress),
+          : input.samples.filter(
+              (sample) =>
+                Date.parse(sample.timestamp) <=
+                windowStart + windowMs * revealProgress,
+            ),
         settings,
         nowMs,
         windowStart,
       ),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
-      smooth: settings.interpolation === 'smooth',
-      step: settings.interpolation === 'step' ? ('end' as const) : (false as const),
+      smooth: settings.interpolation === "smooth",
+      step:
+        settings.interpolation === "step" ? ("end" as const) : (false as const),
       connectNulls: false as const,
       lineStyle: {
         width: settings.lineWidth,
-        color: toEngineColor(resolveChartPaint(strokeFor(settings, index), palette), 'stroke'),
-        type: settings.dash ?? 'solid',
+        color: toEngineColor(
+          resolveChartPaint(strokeFor(settings, index), palette),
+          "stroke",
+        ),
+        type: settings.dash ?? "solid",
       },
       // Area fill is intentionally limited to the first series for readability.
       ...(settings.area === undefined || index > 0
         ? {}
-        : { areaStyle: { color: toEngineColor(resolveChartPaint(settings.area, palette), 'area') } }),
+        : {
+            areaStyle: {
+              color: toEngineColor(
+                resolveChartPaint(settings.area, palette),
+                "area",
+              ),
+            },
+          }),
       ...(sampling === undefined ? {} : { sampling }),
       silent: true as const,
     })),
   };
 }
 
-function earliestSampleMs(series: readonly SeriesInput[], nowMs: number): number | undefined {
+function earliestSampleMs(
+  series: readonly SeriesInput[],
+  nowMs: number,
+): number | undefined {
   let earliest: number | undefined;
 
   for (const input of series) {
@@ -241,15 +283,21 @@ export function strokeFor(settings: LineSettings, index: number): ChartPaint {
  * Convert a fill to one line/area engine colour. Per-value threshold colouring
  * is unavailable for one line series, so thresholds resolve to the top band (§85).
  */
-export function toEngineColor(fill: Fill, usage: 'stroke' | 'area'): EngineColor {
+export function toEngineColor(
+  fill: Fill,
+  usage: "stroke" | "area",
+): EngineColor {
   switch (fill.kind) {
-    case 'solid':
+    case "solid":
       return fill.color;
 
-    case 'gradient':
-      return toLinearGradient(fill.stops, usage === 'area' ? 'to-bottom' : 'to-right');
+    case "gradient":
+      return toLinearGradient(
+        fill.stops,
+        usage === "area" ? "to-bottom" : "to-right",
+      );
 
-    case 'thresholds':
+    case "thresholds":
       return resolveThresholdColor(fill.bands, 1);
   }
 }

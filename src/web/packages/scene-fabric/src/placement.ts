@@ -1,4 +1,4 @@
-import type { PlanBox, PlanNode } from '@vigilia/renderer-core';
+import type { PlanBox, PlanNode } from "@vigilia/renderer-core";
 
 /**
  * The single top-left → centre conversion. Plan boxes are parent-local and
@@ -42,7 +42,10 @@ export function withinGroup(box: PlanBox, group: GroupExtent): PlanBox {
  * culls 0×0 objects before drawing descendants; DOM groups did not.
  */
 export function drawnBox(node: PlanNode): PlanBox {
-  if (node.content.kind !== 'group' || (node.box.width > 0 && node.box.height > 0)) {
+  if (
+    node.content.kind !== "group" ||
+    (node.box.width > 0 && node.box.height > 0)
+  ) {
     return node.box;
   }
 

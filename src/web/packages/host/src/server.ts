@@ -1,12 +1,20 @@
-import fs from 'node:fs/promises';
-import http from 'node:http';
-import path from 'node:path';
-import { SAMPLE_STREAM_PATH, createBatch } from '@vigilia/renderer-core';
-import { DEFAULT_THEMES_DIR } from './cli/args.js';
-import { ProviderRegistry, unionOfKeys } from './providers/registry.js';
-import { contentTypeFor, needsTrailingSlash, resolveStaticPath } from './serve/static-path.js';
-import { createThemeStore, isValidThemeId, type ThemeStore } from './themes/store.js';
-import { SseConnection } from './transport/sse.js';
+import fs from "node:fs/promises";
+import http from "node:http";
+import path from "node:path";
+import { SAMPLE_STREAM_PATH, createBatch } from "@vigilia/renderer-core";
+import { DEFAULT_THEMES_DIR } from "./cli/args.js";
+import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
+import {
+  contentTypeFor,
+  needsTrailingSlash,
+  resolveStaticPath,
+} from "./serve/static-path.js";
+import {
+  createThemeStore,
+  isValidThemeId,
+  type ThemeStore,
+} from "./themes/store.js";
+import { SseConnection } from "./transport/sse.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
 
@@ -39,23 +47,31 @@ function isLoopbackRemote(address: string | undefined): boolean {
     return false;
   }
 
-  const normalized = address.replace(/^::ffff:/, '');
+  const normalized = address.replace(/^::ffff:/, "");
 
-  return normalized === '127.0.0.1' || normalized === '::1';
+  return normalized === "127.0.0.1" || normalized === "::1";
 }
 
-function sendJson(response: http.ServerResponse, status: number, body: unknown): void {
+function sendJson(
+  response: http.ServerResponse,
+  status: number,
+  body: unknown,
+): void {
   const payload = JSON.stringify(body);
 
   response.writeHead(status, {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
   });
   response.end(payload);
 }
 
-function sendText(response: http.ServerResponse, status: number, body: string): void {
-  response.writeHead(status, { 'content-type': 'text/plain; charset=utf-8' });
+function sendText(
+  response: http.ServerResponse,
+  status: number,
+  body: string,
+): void {
+  response.writeHead(status, { "content-type": "text/plain; charset=utf-8" });
   response.end(body);
 }
 
@@ -69,14 +85,17 @@ async function serveStatic(
   const resolved = resolveStaticPath(root, urlPath);
 
   if (resolved === undefined) {
-    sendText(response, 403, 'Forbidden');
+    sendText(response, 403, "Forbidden");
     return;
   }
 
   const candidates = [resolved];
 
-  if (path.extname(resolved) === '') {
-    candidates.push(path.join(resolved, 'index.html'), path.join(root, 'index.html'));
+  if (path.extname(resolved) === "") {
+    candidates.push(
+      path.join(resolved, "index.html"),
+      path.join(root, "index.html"),
+    );
   }
 
   for (const candidate of candidates) {
@@ -84,9 +103,10 @@ async function serveStatic(
       const body = await fs.readFile(candidate);
 
       response.writeHead(200, {
-        'content-type': contentTypeFor(candidate),
+        "content-type": contentTypeFor(candidate),
         // Entry HTML must not retain references to an old build.
-        'cache-control': path.extname(candidate) === '.html' ? 'no-store' : 'no-cache',
+        "cache-control":
+          path.extname(candidate) === ".html" ? "no-store" : "no-cache",
       });
       response.end(body);
       return;
@@ -113,58 +133,66 @@ export function createHostServer(options: HostServerOptions): HostServer {
     request: http.IncomingMessage,
     response: http.ServerResponse,
   ): Promise<void> {
-    const url = new URL(request.url ?? '/', 'http://host.invalid');
+    const url = new URL(request.url ?? "/", "http://host.invalid");
 
-    if (url.pathname === '/api/themes') {
-      if (request.method !== 'GET') {
-        sendText(response, 405, 'Only GET is supported.');
+    if (url.pathname === "/api/themes") {
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET is supported.");
         return;
       }
       sendJson(response, 200, { themes: await themeStore.list() });
       return;
     }
 
-    const assetMatch = url.pathname.match(/^\/api\/themes\/([^/]+)\/assets\/(.+)$/);
+    const assetMatch = url.pathname.match(
+      /^\/api\/themes\/([^/]+)\/assets\/(.+)$/,
+    );
     if (assetMatch) {
-      if (request.method !== 'GET') {
-        sendText(response, 405, 'Only GET is supported.');
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET is supported.");
         return;
       }
       let id: string;
       let assetPath: string;
       try {
-        id = decodeURIComponent(assetMatch[1] ?? '');
-        assetPath = decodeURIComponent(assetMatch[2] ?? '');
+        id = decodeURIComponent(assetMatch[1] ?? "");
+        assetPath = decodeURIComponent(assetMatch[2] ?? "");
       } catch {
-        sendText(response, 400, 'Invalid theme asset path.');
+        sendText(response, 400, "Invalid theme asset path.");
         return;
       }
       const record = isValidThemeId(id) ? await themeStore.read(id) : undefined;
-      const declared = record?.envelope.assets?.find((asset) => asset.path === assetPath);
-      const bytes = declared === undefined ? undefined : record?.assets[declared.path];
+      const declared = record?.envelope.assets?.find(
+        (asset) => asset.path === assetPath,
+      );
+      const bytes =
+        declared === undefined ? undefined : record?.assets[declared.path];
       if (bytes === undefined) {
-        sendText(response, 404, 'Theme asset not found.');
+        sendText(response, 404, "Theme asset not found.");
         return;
       }
-      response.writeHead(200, { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' });
+      response.writeHead(200, {
+        "content-type": "application/octet-stream",
+        "cache-control": "no-store",
+      });
       response.end(Buffer.from(bytes));
       return;
     }
 
     const docMatch = url.pathname.match(/^\/api\/themes\/([^/]+)\/document$/);
     if (docMatch) {
-      if (request.method !== 'GET') {
-        sendText(response, 405, 'Only GET is supported.');
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET is supported.");
         return;
       }
-      const rawId = decodeURIComponent(docMatch[1] ?? '');
+      const rawId = decodeURIComponent(docMatch[1] ?? "");
       if (!isValidThemeId(rawId)) {
-        sendText(response, 400, 'Invalid theme id.');
+        sendText(response, 400, "Invalid theme id.");
         return;
       }
       const record = await themeStore.read(rawId);
       if (record === undefined) {
-        sendText(response, 404, 'Theme not found.');
+        sendText(response, 404, "Theme not found.");
         return;
       }
       sendJson(response, 200, record.envelope);
@@ -173,32 +201,32 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
     const themeMatch = url.pathname.match(/^\/api\/themes\/([^/]+)$/);
     if (themeMatch) {
-      const rawId = decodeURIComponent(themeMatch[1] ?? '');
-      if (request.method === 'GET') {
+      const rawId = decodeURIComponent(themeMatch[1] ?? "");
+      if (request.method === "GET") {
         if (!isValidThemeId(rawId)) {
-          sendText(response, 400, 'Invalid theme id.');
+          sendText(response, 400, "Invalid theme id.");
           return;
         }
         const record = await themeStore.read(rawId);
         if (record === undefined) {
-          sendText(response, 404, 'Theme not found.');
+          sendText(response, 404, "Theme not found.");
           return;
         }
         response.writeHead(200, {
-          'content-type': 'application/octet-stream',
-          'cache-control': 'no-store',
+          "content-type": "application/octet-stream",
+          "cache-control": "no-store",
         });
         response.end(Buffer.from(record.bytes));
         return;
       }
 
-      if (request.method === 'PUT') {
+      if (request.method === "PUT") {
         if (!isLoopbackRemote(request.socket.remoteAddress)) {
-          sendText(response, 403, 'Theme modification is loopback only.');
+          sendText(response, 403, "Theme modification is loopback only.");
           return;
         }
         if (!isValidThemeId(rawId)) {
-          sendText(response, 400, 'Invalid theme id.');
+          sendText(response, 400, "Invalid theme id.");
           return;
         }
 
@@ -217,7 +245,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
         }
 
         if (aborted) {
-          sendText(response, 413, 'Theme package exceeds maximum size of 64 MiB.');
+          sendText(
+            response,
+            413,
+            "Theme package exceeds maximum size of 64 MiB.",
+          );
           return;
         }
 
@@ -226,17 +258,21 @@ export function createHostServer(options: HostServerOptions): HostServer {
           const entry = await themeStore.write(rawId, body);
           sendJson(response, 200, { ok: true, ...entry });
         } catch (error) {
-          sendText(response, 400, error instanceof Error ? error.message : String(error));
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
         }
         return;
       }
 
-      sendText(response, 405, 'Only GET and PUT are supported.');
+      sendText(response, 405, "Only GET and PUT are supported.");
       return;
     }
 
-    if (request.method !== 'GET') {
-      sendText(response, 405, 'Only GET is supported.');
+    if (request.method !== "GET") {
+      sendText(response, 405, "Only GET is supported.");
       return;
     }
 
@@ -245,32 +281,34 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    if (url.pathname === '/api/sensors') {
+    if (url.pathname === "/api/sensors") {
       sendJson(response, 200, { sensors: await registry.describe() });
       return;
     }
 
-    if (url.pathname === '/api/health') {
+    if (url.pathname === "/api/health") {
       sendJson(response, 200, {
         displays: connections.size,
-        polling: unionOfKeys([...connections].map((connection) => connection.semanticKeys)),
+        polling: unionOfKeys(
+          [...connections].map((connection) => connection.semanticKeys),
+        ),
       });
       return;
     }
 
-    if (url.pathname === '/editor' || url.pathname.startsWith('/editor/')) {
+    if (url.pathname === "/editor" || url.pathname.startsWith("/editor/")) {
       // Editing remains localhost-only even when the display server binds to the LAN.
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
-        sendText(response, 403, 'The editor is available on this PC only.');
+        sendText(response, 403, "The editor is available on this PC only.");
         return;
       }
 
       // Preserve the editor mount as the base for relative assets.
-      if (needsTrailingSlash(url.pathname, '/editor')) {
+      if (needsTrailingSlash(url.pathname, "/editor")) {
         const query = url.search;
         response.writeHead(302, {
           location: `/editor/${query}`,
-          'cache-control': 'no-store',
+          "cache-control": "no-store",
         });
         response.end();
         return;
@@ -279,24 +317,29 @@ export function createHostServer(options: HostServerOptions): HostServer {
       await serveStatic(
         response,
         bundles.editor,
-        url.pathname.slice('/editor'.length) || '/',
-        'The editor bundle is not built. Run: npx vite build packages/editor',
+        url.pathname.slice("/editor".length) || "/",
+        "The editor bundle is not built. Run: npx vite build packages/editor",
       );
       return;
     }
 
     // Host-served player uses a stored theme and live data; standalone preview stays deterministic.
-    if (url.pathname === '/' && !url.searchParams.has('data')) {
-      const theme = url.searchParams.get('theme') ?? (await themeStore.list()).at(0)?.id;
+    if (url.pathname === "/" && !url.searchParams.has("data")) {
+      const theme =
+        url.searchParams.get("theme") ?? (await themeStore.list()).at(0)?.id;
       if (theme === undefined) {
-        sendText(response, 404, 'No hosted theme is available. Save a theme from the editor first.');
+        sendText(
+          response,
+          404,
+          "No hosted theme is available. Save a theme from the editor first.",
+        );
         return;
       }
-      url.searchParams.set('theme', theme);
-      url.searchParams.set('data', 'live');
+      url.searchParams.set("theme", theme);
+      url.searchParams.set("data", "live");
       response.writeHead(302, {
         location: `${url.pathname}?${url.searchParams.toString()}`,
-        'cache-control': 'no-store',
+        "cache-control": "no-store",
       });
       response.end();
       return;
@@ -306,7 +349,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       response,
       bundles.player,
       url.pathname,
-      'The player bundle is not built. Run: npx vite build packages/player',
+      "The player bundle is not built. Run: npx vite build packages/player",
     );
   }
 
@@ -315,8 +358,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
     response: http.ServerResponse,
     url: URL,
   ): void {
-    const keys = (url.searchParams.get('keys') ?? '')
-      .split(',')
+    const keys = (url.searchParams.get("keys") ?? "")
+      .split(",")
       .map((key) => key.trim())
       .filter((key) => key.length > 0);
 
@@ -329,8 +372,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
       connection.close();
     };
 
-    request.on('close', drop);
-    request.on('error', drop);
+    request.on("close", drop);
+    request.on("error", drop);
   }
 
   /** Polls the union once, then offers one batch to every display. */
@@ -339,7 +382,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    const keys = unionOfKeys([...connections].map((connection) => connection.semanticKeys));
+    const keys = unionOfKeys(
+      [...connections].map((connection) => connection.semanticKeys),
+    );
     const cycle = await registry.sample(keys, now());
     const payload = JSON.stringify(createBatch(cycle.entries, now()));
 

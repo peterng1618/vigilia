@@ -1,34 +1,36 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /** Browser-only structural/visual checks; cross-platform font rasterisation makes pixel baselines unsuitable here. */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
   retries: 0,
   fullyParallel: true,
   // Failure traces share test-results on Windows; parallel cleanup races them.
   workers: 1,
   // JSON summary feeds dev-status without rerunning the browser suite.
   reporter: [
-    [process.env['CI'] === undefined ? 'list' : 'github'],
-    ['json', { outputFile: 'test-results/summary.json' }],
+    [process.env["CI"] === undefined ? "list" : "github"],
+    ["json", { outputFile: "test-results/summary.json" }],
   ],
 
   use: {
-    baseURL: 'http://127.0.0.1:4173',
-    trace: 'retain-on-failure',
+    baseURL: "http://127.0.0.1:4173",
+    trace: "retain-on-failure",
   },
 
   // Test built player/editor bundles on explicit IPv4 loopback ports.
   webServer: [
     {
-      command: 'npx vite preview packages/player --port 4173 --strictPort --host 127.0.0.1',
-      url: 'http://127.0.0.1:4173',
+      command:
+        "npx vite preview packages/player --port 4173 --strictPort --host 127.0.0.1",
+      url: "http://127.0.0.1:4173",
       reuseExistingServer: true,
       timeout: 60_000,
     },
     {
-      command: 'npx vite preview packages/editor --port 4174 --strictPort --host 127.0.0.1',
-      url: 'http://127.0.0.1:4174',
+      command:
+        "npx vite preview packages/editor --port 4174 --strictPort --host 127.0.0.1",
+      url: "http://127.0.0.1:4174",
       reuseExistingServer: true,
       timeout: 60_000,
     },
@@ -36,13 +38,16 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'desktop-chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } },
+      name: "desktop-chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 720 },
+      },
     },
     {
       // Tall phone viewport exercises contain-mode letterboxing.
-      name: 'phone-chromium',
-      use: { ...devices['Pixel 7'] },
+      name: "phone-chromium",
+      use: { ...devices["Pixel 7"] },
     },
   ],
 });

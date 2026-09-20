@@ -1,4 +1,4 @@
-import type { ChartFamily } from '../theme/document.js';
+import type { ChartFamily } from "../theme/document.js";
 
 /**
  * Which settings each chart family accepts, as editable field descriptors.
@@ -39,7 +39,7 @@ import type { ChartFamily } from '../theme/document.js';
  */
 
 /** How a settings field is edited. */
-export type SettingsFieldKind = 'number' | 'boolean' | 'select';
+export type SettingsFieldKind = "number" | "boolean" | "select";
 
 export interface SettingsFieldDescriptor {
   /** The key inside the family's settings object. */
@@ -50,7 +50,10 @@ export interface SettingsFieldDescriptor {
   readonly max?: number;
   readonly step?: number;
   /** For `select`, the allowed values in the order a picker should list them. */
-  readonly options?: readonly { readonly value: string; readonly label: string }[];
+  readonly options?: readonly {
+    readonly value: string;
+    readonly label: string;
+  }[];
   /** Shown when the field needs explaining more than its label allows. */
   readonly hint?: string;
 }
@@ -64,26 +67,26 @@ export interface ChartPaintFieldDescriptor {
 }
 
 const INTERPOLATION = [
-  { value: 'linear', label: 'Linear' },
-  { value: 'smooth', label: 'Smooth' },
-  { value: 'step', label: 'Step' },
+  { value: "linear", label: "Linear" },
+  { value: "smooth", label: "Smooth" },
+  { value: "step", label: "Step" },
 ] as const;
 
 const DASH = [
-  { value: 'solid', label: 'Solid' },
-  { value: 'dashed', label: 'Dashed' },
-  { value: 'dotted', label: 'Dotted' },
+  { value: "solid", label: "Solid" },
+  { value: "dashed", label: "Dashed" },
+  { value: "dotted", label: "Dotted" },
 ] as const;
 
 const SAMPLING = [
-  { value: 'none', label: 'None' },
-  { value: 'lttb', label: 'LTTB' },
-  { value: 'average', label: 'Average' },
+  { value: "none", label: "None" },
+  { value: "lttb", label: "LTTB" },
+  { value: "average", label: "Average" },
 ] as const;
 
 const ORIENTATION = [
-  { value: 'horizontal', label: 'Horizontal' },
-  { value: 'vertical', label: 'Vertical' },
+  { value: "horizontal", label: "Horizontal" },
+  { value: "vertical", label: "Vertical" },
 ] as const;
 
 /**
@@ -98,93 +101,162 @@ export const CHART_SETTINGS_FIELDS: Readonly<
   gauge: [
     // §85's gauge-arc approximation: angles are degrees, 0 at the right of
     // centre, 90 straight up.
-    { property: 'startAngle', label: 'Start angle', kind: 'number', min: -360, max: 360 },
-    { property: 'endAngle', label: 'End angle', kind: 'number', min: -360, max: 360 },
-    { property: 'min', label: 'Minimum', kind: 'number' },
-    { property: 'max', label: 'Maximum', kind: 'number' },
-    { property: 'thickness', label: 'Arc thickness', kind: 'number', min: 0 },
-    { property: 'roundCap', label: 'Rounded ends', kind: 'boolean' },
     {
-      property: 'gradientSegments',
-      label: 'Gradient segments',
-      kind: 'number',
+      property: "startAngle",
+      label: "Start angle",
+      kind: "number",
+      min: -360,
+      max: 360,
+    },
+    {
+      property: "endAngle",
+      label: "End angle",
+      kind: "number",
+      min: -360,
+      max: 360,
+    },
+    { property: "min", label: "Minimum", kind: "number" },
+    { property: "max", label: "Maximum", kind: "number" },
+    { property: "thickness", label: "Arc thickness", kind: "number", min: 0 },
+    { property: "roundCap", label: "Rounded ends", kind: "boolean" },
+    {
+      property: "gradientSegments",
+      label: "Gradient segments",
+      kind: "number",
       min: 2,
       max: 256,
-      hint: 'How finely a gradient arc is approximated. The engine cannot draw a true angular gradient (§85).',
+      hint: "How finely a gradient arc is approximated. The engine cannot draw a true angular gradient (§85).",
     },
   ],
   line: [
-    { property: 'lineWidth', label: 'Line width', kind: 'number', min: 0 },
-    { property: 'interpolation', label: 'Interpolation', kind: 'select', options: INTERPOLATION },
-    { property: 'dash', label: 'Dash', kind: 'select', options: DASH },
-    { property: 'showMarkers', label: 'Show markers', kind: 'boolean' },
-    { property: 'markerSize', label: 'Marker size', kind: 'number', min: 0 },
+    { property: "lineWidth", label: "Line width", kind: "number", min: 0 },
     {
-      property: 'windowSeconds',
-      label: 'Window (s)',
-      kind: 'number',
-      min: 1,
-      hint: 'How much history the plot spans. Bounded by the sample store, which keeps 300 s.',
+      property: "interpolation",
+      label: "Interpolation",
+      kind: "select",
+      options: INTERPOLATION,
     },
-    { property: 'maxPoints', label: 'Max points', kind: 'number', min: 2 },
-    { property: 'min', label: 'Y minimum', kind: 'number' },
-    { property: 'max', label: 'Y maximum', kind: 'number' },
-    { property: 'showAxes', label: 'Show axes', kind: 'boolean' },
+    { property: "dash", label: "Dash", kind: "select", options: DASH },
+    { property: "showMarkers", label: "Show markers", kind: "boolean" },
+    { property: "markerSize", label: "Marker size", kind: "number", min: 0 },
     {
-      property: 'sampling',
-      label: 'Downsampling',
-      kind: 'select',
+      property: "windowSeconds",
+      label: "Window (s)",
+      kind: "number",
+      min: 1,
+      hint: "How much history the plot spans. Bounded by the sample store, which keeps 300 s.",
+    },
+    { property: "maxPoints", label: "Max points", kind: "number", min: 2 },
+    { property: "min", label: "Y minimum", kind: "number" },
+    { property: "max", label: "Y maximum", kind: "number" },
+    { property: "showAxes", label: "Show axes", kind: "boolean" },
+    {
+      property: "sampling",
+      label: "Downsampling",
+      kind: "select",
       options: SAMPLING,
-      hint: 'Render-time only. LTTB keeps the visible shape of a dense series at a fraction of the draw cost; it changes what is drawn, never what was measured.',
+      hint: "Render-time only. LTTB keeps the visible shape of a dense series at a fraction of the draw cost; it changes what is drawn, never what was measured.",
     },
   ],
   bar: [
-    { property: 'orientation', label: 'Orientation', kind: 'select', options: ORIENTATION },
-    { property: 'min', label: 'Minimum', kind: 'number' },
-    { property: 'max', label: 'Maximum', kind: 'number' },
-    { property: 'barWidth', label: 'Bar width', kind: 'number', min: 0 },
     {
-      property: 'categoryGapPercent',
-      label: 'Category gap %',
-      kind: 'number',
+      property: "orientation",
+      label: "Orientation",
+      kind: "select",
+      options: ORIENTATION,
+    },
+    { property: "min", label: "Minimum", kind: "number" },
+    { property: "max", label: "Maximum", kind: "number" },
+    { property: "barWidth", label: "Bar width", kind: "number", min: 0 },
+    {
+      property: "categoryGapPercent",
+      label: "Category gap %",
+      kind: "number",
       min: 0,
       max: 100,
     },
-    { property: 'cornerRadius', label: 'Corner radius', kind: 'number', min: 0 },
-    { property: 'showAxes', label: 'Show axes', kind: 'boolean' },
-    { property: 'showCategoryLabels', label: 'Show labels', kind: 'boolean' },
+    {
+      property: "cornerRadius",
+      label: "Corner radius",
+      kind: "number",
+      min: 0,
+    },
+    { property: "showAxes", label: "Show axes", kind: "boolean" },
+    { property: "showCategoryLabels", label: "Show labels", kind: "boolean" },
   ],
   pie: [
     {
-      property: 'innerRadiusPercent',
-      label: 'Inner radius %',
-      kind: 'number',
+      property: "innerRadiusPercent",
+      label: "Inner radius %",
+      kind: "number",
       min: 0,
       max: 100,
-      hint: 'Zero is a full pie; anything above makes a donut.',
+      hint: "Zero is a full pie; anything above makes a donut.",
     },
-    { property: 'outerRadiusPercent', label: 'Outer radius %', kind: 'number', min: 0, max: 100 },
-    { property: 'startAngle', label: 'Start angle', kind: 'number', min: -360, max: 360 },
-    { property: 'endAngle', label: 'End angle', kind: 'number', min: -360, max: 360 },
-    { property: 'padAngle', label: 'Slice gap', kind: 'number', min: 0 },
-    { property: 'cornerRadius', label: 'Corner radius', kind: 'number', min: 0 },
-    { property: 'showLabels', label: 'Show labels', kind: 'boolean' },
+    {
+      property: "outerRadiusPercent",
+      label: "Outer radius %",
+      kind: "number",
+      min: 0,
+      max: 100,
+    },
+    {
+      property: "startAngle",
+      label: "Start angle",
+      kind: "number",
+      min: -360,
+      max: 360,
+    },
+    {
+      property: "endAngle",
+      label: "End angle",
+      kind: "number",
+      min: -360,
+      max: 360,
+    },
+    { property: "padAngle", label: "Slice gap", kind: "number", min: 0 },
+    {
+      property: "cornerRadius",
+      label: "Corner radius",
+      kind: "number",
+      min: 0,
+    },
+    { property: "showLabels", label: "Show labels", kind: "boolean" },
   ],
 };
 
 /** The editable scalar settings for one family. */
-export function settingsFieldsFor(family: ChartFamily): readonly SettingsFieldDescriptor[] {
+export function settingsFieldsFor(
+  family: ChartFamily,
+): readonly SettingsFieldDescriptor[] {
   return CHART_SETTINGS_FIELDS[family];
 }
 
-export const CHART_PAINT_FIELDS: Readonly<Record<ChartFamily, readonly ChartPaintFieldDescriptor[]>> = {
-  gauge: [{ property: 'track', label: 'Track paint' }, { property: 'progress', label: 'Progress paint' }],
-  line: [{ property: 'stroke', label: 'Stroke paint' }, { property: 'palette', label: 'Series paint', multiple: true }, { property: 'area', label: 'Area paint' }],
-  bar: [{ property: 'fill', label: 'Fill paint' }, { property: 'track', label: 'Track paint' }],
-  pie: [{ property: 'remainderFill', label: 'Remainder paint' }, { property: 'palette', label: 'Slice paint', multiple: true }],
+export const CHART_PAINT_FIELDS: Readonly<
+  Record<ChartFamily, readonly ChartPaintFieldDescriptor[]>
+> = {
+  gauge: [
+    { property: "track", label: "Track paint" },
+    { property: "progress", label: "Progress paint" },
+  ],
+  line: [
+    { property: "stroke", label: "Stroke paint" },
+    { property: "palette", label: "Series paint", multiple: true },
+    { property: "area", label: "Area paint" },
+  ],
+  bar: [
+    { property: "fill", label: "Fill paint" },
+    { property: "track", label: "Track paint" },
+  ],
+  pie: [
+    { property: "remainderFill", label: "Remainder paint" },
+    { property: "palette", label: "Slice paint", multiple: true },
+  ],
 };
 
-export function chartPaintFieldsFor(family: ChartFamily): readonly ChartPaintFieldDescriptor[] {
+export function chartPaintFieldsFor(
+  family: ChartFamily,
+): readonly ChartPaintFieldDescriptor[] {
   return CHART_PAINT_FIELDS[family];
 }
 
@@ -207,10 +279,12 @@ export function settingsKeyFor(family: ChartFamily): string {
  * setting is simply invisible, which is the state every chart setting was in
  * before this file existed.
  */
-export const NON_SCALAR_SETTINGS: Readonly<Record<ChartFamily, readonly string[]>> = {
+export const NON_SCALAR_SETTINGS: Readonly<
+  Record<ChartFamily, readonly string[]>
+> = {
   // `Fill` values and animation: theme-level colour (D3) and a separate shape.
-  gauge: ['track', 'progress', 'animation'],
-  line: ['stroke', 'palette', 'area', 'animation'],
-  bar: ['fill', 'track', 'animation'],
-  pie: ['remainderFill', 'palette', 'total', 'animation'],
+  gauge: ["track", "progress", "animation"],
+  line: ["stroke", "palette", "area", "animation"],
+  bar: ["fill", "track", "animation"],
+  pie: ["remainderFill", "palette", "total", "animation"],
 };

@@ -1,35 +1,103 @@
-import { NODE_TYPES, type NodeType } from './document.js';
+import { NODE_TYPES, type NodeType } from "./document.js";
 
 /** Single owner of node capabilities and the style-property vocabulary. */
 
 export type CapabilityGroup =
-  | 'identity'
-  | 'flags'
-  | 'position'
-  | 'size'
-  | 'rotation'
-  | 'opacity'
-  | 'fill'
-  | 'stroke'
-  | 'shadow'
-  | 'cornerRadius'
-  | 'typography'
-  | 'textContent'
-  | 'image'
-  | 'video'
-  | 'bindings'
-  | 'chartSettings';
+  | "identity"
+  | "flags"
+  | "position"
+  | "size"
+  | "rotation"
+  | "opacity"
+  | "fill"
+  | "stroke"
+  | "shadow"
+  | "cornerRadius"
+  | "typography"
+  | "textContent"
+  | "image"
+  | "video"
+  | "bindings"
+  | "chartSettings";
 
 /** One row per node type. Groups are structural and own no drawable geometry or paint. */
-export const NODE_CAPABILITIES: Readonly<Record<NodeType, readonly CapabilityGroup[]>> = {
-  group: ['identity', 'flags'],
-  rectangle: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow', 'cornerRadius'],
-  ellipse: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'fill', 'stroke', 'shadow'],
-  text: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'shadow', 'typography', 'textContent', 'bindings'],
-  line: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'stroke', 'shadow'],
-  image: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'image'],
-  video: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'video'],
-  chart: ['identity', 'flags', 'position', 'size', 'rotation', 'opacity', 'bindings', 'chartSettings'],
+export const NODE_CAPABILITIES: Readonly<
+  Record<NodeType, readonly CapabilityGroup[]>
+> = {
+  group: ["identity", "flags"],
+  rectangle: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "fill",
+    "stroke",
+    "shadow",
+    "cornerRadius",
+  ],
+  ellipse: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "fill",
+    "stroke",
+    "shadow",
+  ],
+  text: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "shadow",
+    "typography",
+    "textContent",
+    "bindings",
+  ],
+  line: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "stroke",
+    "shadow",
+  ],
+  image: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "image",
+  ],
+  video: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "video",
+  ],
+  chart: [
+    "identity",
+    "flags",
+    "position",
+    "size",
+    "rotation",
+    "opacity",
+    "bindings",
+    "chartSettings",
+  ],
 };
 
 /** Capabilities presented by an entity but stored elsewhere. Empty today. */
@@ -37,7 +105,10 @@ export const DERIVED_CAPABILITIES: Readonly<
   Partial<Record<NodeType, readonly CapabilityGroup[]>>
 > = {};
 
-export function isDerivedCapability(type: NodeType, group: CapabilityGroup): boolean {
+export function isDerivedCapability(
+  type: NodeType,
+  group: CapabilityGroup,
+): boolean {
   return (DERIVED_CAPABILITIES[type] ?? []).includes(group);
 }
 
@@ -57,32 +128,32 @@ export function anyHasCapability(
 export const STYLE_PROPERTIES_BY_GROUP: Readonly<
   Partial<Record<CapabilityGroup, readonly string[]>>
 > = {
-  opacity: ['opacity'],
-  fill: ['fill'],
-  stroke: ['strokeColor', 'strokeWidth', 'strokeDash'],
-  shadow: ['shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY'],
+  opacity: ["opacity"],
+  fill: ["fill"],
+  stroke: ["strokeColor", "strokeWidth", "strokeDash"],
+  shadow: ["shadowColor", "shadowBlur", "shadowOffsetX", "shadowOffsetY"],
   // Transitional fields until typography moves fully to type presets.
   typography: [
-    'color',
-    'fontFamily',
-    'fontSize',
-    'fontWeight',
-    'letterSpacing',
-    'lineHeight',
-    'tabularNumerals',
+    "color",
+    "fontFamily",
+    "fontSize",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "tabularNumerals",
   ],
 };
 
 export const TRANSFORM_PROPERTIES_BY_GROUP: Readonly<
   Partial<Record<CapabilityGroup, readonly string[]>>
 > = {
-  position: ['x', 'y'],
-  size: ['width', 'height'],
-  rotation: ['rotation'],
+  position: ["x", "y"],
+  size: ["width", "height"],
+  rotation: ["rotation"],
 };
 
 export function transformPropertiesFor(type: NodeType): readonly string[] {
-  const order: readonly CapabilityGroup[] = ['position', 'size', 'rotation'];
+  const order: readonly CapabilityGroup[] = ["position", "size", "rotation"];
 
   return order
     .filter((group) => hasCapability(type, group))

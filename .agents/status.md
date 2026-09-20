@@ -9,6 +9,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 | Check | Result |
 |---|---|
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
+| Web quality tooling | Biome 2.5.14 `format:check` and strict-equality `lint`, seven-project typecheck, 946-unit suite, workspace build and player-size gate passed on 2026-09-20; Markdown/YAML, unused symbols and floating promises are not yet linted |
 | Editor interaction regressions | Fork history-baseline unit, editor typecheck, 5 focused arrange/chart units, editor/player builds, and desktop Chromium drag-undo/chart-runtime-after-undo proof passed on 2026-09-20 |
 | Selection-order arrange | Editor typecheck, 10 focused fork-shell/arrange units, and editor build passed on 2026-09-20; the arrange regression fails when rebuilt selections use Fabric canvas stacking |
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
@@ -61,10 +62,9 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Review `docs/superpowers/plans/2026-09-20-web-quality-tooling.md` before implementing Biome tooling.
-2. Complete spec 0011 lossless type-preset edits and Release-only version mutation.
-3. Revisit remaining spec-0014 candidates only when needed.
-4. Modernize the shell per product requirements §35 only after the authoring core is stable.
+1. Complete spec 0011 lossless type-preset edits and Release-only version mutation.
+2. Revisit remaining spec-0014 candidates only when needed.
+3. Modernize the shell per product requirements §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 

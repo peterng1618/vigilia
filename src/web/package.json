@@ -17,12 +17,17 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:player": "npm run build -w @vigilia/player",
+    "format": "biome format --write ..",
+    "format:check": "biome format ..",
+    "lint": "biome lint ..",
+    "lint:fix": "biome lint --write ..",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "size": "npm run size -w @vigilia/player"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.14",
     "@playwright/test": "1.63.0",
     "canvas": "3.2.3",
     "jsdom": "26.1.0",

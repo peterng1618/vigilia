@@ -1,10 +1,10 @@
-import type { SampleSource } from '../data/source.js';
-import type { Sample, SensorStatus } from '../types.js';
-import { buildBarOption, type BarInput } from '../charts/bar.js';
-import { buildGaugeOption } from '../charts/gauge.js';
-import { buildLineOption, type SeriesInput } from '../charts/line.js';
-import { buildPieOption, type PieSliceInput } from '../charts/pie.js';
-import type { ChartOptionByFamily } from '../charts/engine-option.js';
+import type { SampleSource } from "../data/source.js";
+import type { Sample, SensorStatus } from "../types.js";
+import { buildBarOption, type BarInput } from "../charts/bar.js";
+import { buildGaugeOption } from "../charts/gauge.js";
+import { buildLineOption, type SeriesInput } from "../charts/line.js";
+import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
+import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import type {
   AssetKind,
   Binding,
@@ -18,7 +18,7 @@ import type {
   TypePreset,
   ThemeDocument,
   ThemeNode,
-} from '../theme/document.js';
+} from "../theme/document.js";
 
 /**
  * Pure document + telemetry → render plan. All renderer-independent decisions
@@ -26,7 +26,7 @@ import type {
  * never fabricated zeroes (§83).
  */
 
-export const MISSING_VALUE_TEXT = '—';
+export const MISSING_VALUE_TEXT = "—";
 
 export type ResolvedStyle = Readonly<Record<string, unknown>>;
 
@@ -52,9 +52,9 @@ export interface PlanTextSegment {
 
 export interface PlanTextLayout {
   readonly wrap: boolean;
-  readonly overflow: 'clip' | 'ellipsis' | 'visible';
-  readonly align: 'left' | 'center' | 'right';
-  readonly verticalAlign: 'top' | 'middle' | 'bottom';
+  readonly overflow: "clip" | "ellipsis" | "visible";
+  readonly align: "left" | "center" | "right";
+  readonly verticalAlign: "top" | "middle" | "bottom";
   /** Computed wrapped-line capacity when font metrics are knowable. */
   readonly maxLines?: number;
 }
@@ -62,20 +62,20 @@ export interface PlanTextLayout {
 /** Authored chart state paired with this frame's derived engine option. */
 export type PlanChart = {
   [F in ChartFamily]: Extract<ChartContent, { readonly family: F }> & {
-    readonly kind: 'chart';
+    readonly kind: "chart";
     readonly option: ChartOptionByFamily[F];
   };
 }[ChartFamily];
 
 export type PlanContent =
-  | { readonly kind: 'group' }
+  | { readonly kind: "group" }
   | {
-      readonly kind: 'shape';
-      readonly shape: 'rectangle' | 'ellipse' | 'line';
+      readonly kind: "shape";
+      readonly shape: "rectangle" | "ellipse" | "line";
       readonly cornerRadius: number;
     }
   | {
-      readonly kind: 'text';
+      readonly kind: "text";
       /** Authored runs survive Fabric serialization for v2 live text updates. */
       readonly authored: TextContent;
       readonly segments: readonly PlanTextSegment[];
@@ -83,15 +83,15 @@ export type PlanContent =
     }
   | PlanChart
   | {
-      readonly kind: 'image';
+      readonly kind: "image";
       readonly src: string | undefined;
       /** Asset declaration, needed where vector/raster handling differs. */
       readonly assetKind: AssetKind | undefined;
-      readonly fit: 'contain' | 'cover' | 'stretch';
+      readonly fit: "contain" | "cover" | "stretch";
       readonly monochrome?: string;
     }
   | {
-      readonly kind: 'video';
+      readonly kind: "video";
       readonly src: string | undefined;
       readonly loop: boolean;
       readonly muted: boolean;
@@ -108,7 +108,7 @@ export interface PlanNode {
 
 /** Runtime frame diagnostics, not document-validation errors. */
 export interface PlanIssue {
-  readonly code: 'unmapped-key' | 'unresolved-global' | 'unresolved-asset';
+  readonly code: "unmapped-key" | "unresolved-global" | "unresolved-asset";
   readonly nodeId: string;
   readonly detail: string;
 }
@@ -117,7 +117,7 @@ export interface ScenePlan {
   readonly artboard: {
     readonly width: number;
     readonly height: number;
-    readonly fitMode: 'contain' | 'cover';
+    readonly fitMode: "contain" | "cover";
     readonly background: unknown;
     readonly barColor: unknown;
   };
@@ -141,13 +141,18 @@ export interface PlanContext {
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
-export type ChartPlanContext = Pick<PlanContext, 'source' | 'nowMs' | 'animate' | 'chartStartedAtMs' | 'chartStartupDurationMs'>;
+export type ChartPlanContext = Pick<
+  PlanContext,
+  "source" | "nowMs" | "animate" | "chartStartedAtMs" | "chartStartupDurationMs"
+>;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
   const issues: PlanIssue[] = [];
   const globals = context.document.globals ?? {};
 
-  const nodes = context.document.nodes.map((node) => planNode(node, context, globals, issues));
+  const nodes = context.document.nodes.map((node) =>
+    planNode(node, context, globals, issues),
+  );
 
   const artboard = context.document.artboard;
 
@@ -155,9 +160,19 @@ export function buildScenePlan(context: PlanContext): ScenePlan {
     artboard: {
       width: artboard.width,
       height: artboard.height,
-      fitMode: artboard.fitMode ?? 'contain',
-      background: resolveStyleValue(artboard.background, globals, 'artboard', issues),
-      barColor: resolveStyleValue(artboard.barColor, globals, 'artboard', issues),
+      fitMode: artboard.fitMode ?? "contain",
+      background: resolveStyleValue(
+        artboard.background,
+        globals,
+        "artboard",
+        issues,
+      ),
+      barColor: resolveStyleValue(
+        artboard.barColor,
+        globals,
+        "artboard",
+        issues,
+      ),
     },
     nodes,
     issues,
@@ -181,8 +196,10 @@ function planNode(
     style,
     content: planContent(node, context, globals, issues, box, style),
     children:
-      node.type === 'group'
-        ? node.children.map((child) => planNode(child, context, globals, issues))
+      node.type === "group"
+        ? node.children.map((child) =>
+            planNode(child, context, globals, issues),
+          )
         : [],
   };
 }
@@ -210,48 +227,76 @@ function planContent(
   style: ResolvedStyle,
 ): PlanContent {
   switch (node.type) {
-    case 'group':
-      return { kind: 'group' };
+    case "group":
+      return { kind: "group" };
 
-    case 'rectangle':
-      return { kind: 'shape', shape: 'rectangle', cornerRadius: node.content?.cornerRadius ?? 0 };
-
-    case 'ellipse':
-      return { kind: 'shape', shape: 'ellipse', cornerRadius: 0 };
-
-    case 'line':
-      return { kind: 'shape', shape: 'line', cornerRadius: 0 };
-
-    case 'text':
-      const segments = resolveTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues);
+    case "rectangle":
       return {
-        kind: 'text',
-        authored: node.content,
-        segments,
-        layout: planTextLayout(node.content, box.height, segments[0]?.style ?? {}),
+        kind: "shape",
+        shape: "rectangle",
+        cornerRadius: node.content?.cornerRadius ?? 0,
       };
 
-    case 'chart':
-      return buildChartPlan(node.id, node.content, node.bindings ?? [], context, issues);
+    case "ellipse":
+      return { kind: "shape", shape: "ellipse", cornerRadius: 0 };
 
-    case 'image': {
+    case "line":
+      return { kind: "shape", shape: "line", cornerRadius: 0 };
+
+    case "text":
+      const segments = resolveTextSegments(
+        node.id,
+        node.content.runs,
+        node.bindings ?? [],
+        context,
+        globals,
+        issues,
+      );
+      return {
+        kind: "text",
+        authored: node.content,
+        segments,
+        layout: planTextLayout(
+          node.content,
+          box.height,
+          segments[0]?.style ?? {},
+        ),
+      };
+
+    case "chart":
+      return buildChartPlan(
+        node.id,
+        node.content,
+        node.bindings ?? [],
+        context,
+        issues,
+      );
+
+    case "image": {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
-      const monochrome = resolveStyleValue(node.content.monochrome, globals, node.id, issues);
+      const monochrome = resolveStyleValue(
+        node.content.monochrome,
+        globals,
+        node.id,
+        issues,
+      );
       const assetKind = assetKindOf(node.content.assetId, context);
 
       return {
-        kind: 'image',
+        kind: "image",
         src,
         assetKind,
-        fit: node.content.fit ?? 'contain',
-        ...(typeof monochrome === 'string' && monochrome.length > 0 ? { monochrome } : {}),
+        fit: node.content.fit ?? "contain",
+        ...(typeof monochrome === "string" && monochrome.length > 0
+          ? { monochrome }
+          : {}),
       };
     }
 
-    case 'video': {
+    case "video": {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
       return {
-        kind: 'video',
+        kind: "video",
         src,
         loop: node.content.loop ?? true,
         muted: node.content.muted ?? true,
@@ -260,7 +305,10 @@ function planContent(
   }
 }
 
-function assetKindOf(assetId: string, context: PlanContext): AssetKind | undefined {
+function assetKindOf(
+  assetId: string,
+  context: PlanContext,
+): AssetKind | undefined {
   return context.document.assets?.find((asset) => asset.id === assetId)?.kind;
 }
 
@@ -274,7 +322,7 @@ function resolveAsset(
 
   if (src === undefined) {
     issues.push({
-      code: 'unresolved-asset',
+      code: "unresolved-asset",
       nodeId,
       detail: `Asset "${assetId}" could not be resolved to a URL.`,
     });
@@ -291,18 +339,18 @@ function planTextLayout(
   style: ResolvedStyle,
 ): PlanTextLayout {
   const wrap = content.wrap ?? false;
-  const overflow = content.overflow ?? 'clip';
+  const overflow = content.overflow ?? "clip";
 
   const maxLines =
-    wrap && overflow === 'ellipsis'
-      ? computeMaxLines(boxHeight, style['fontSize'], style['lineHeight'])
+    wrap && overflow === "ellipsis"
+      ? computeMaxLines(boxHeight, style["fontSize"], style["lineHeight"])
       : undefined;
 
   return {
     wrap,
     overflow,
-    align: content.align ?? 'left',
-    verticalAlign: content.verticalAlign ?? 'top',
+    align: content.align ?? "left",
+    verticalAlign: content.verticalAlign ?? "top",
     ...(maxLines === undefined ? {} : { maxLines }),
   };
 }
@@ -317,12 +365,18 @@ export function computeMaxLines(
     return undefined;
   }
 
-  if (typeof fontSize !== 'number' || !Number.isFinite(fontSize) || fontSize <= 0) {
+  if (
+    typeof fontSize !== "number" ||
+    !Number.isFinite(fontSize) ||
+    fontSize <= 0
+  ) {
     return undefined;
   }
 
   const factor =
-    typeof lineHeight === 'number' && Number.isFinite(lineHeight) && lineHeight > 0
+    typeof lineHeight === "number" &&
+    Number.isFinite(lineHeight) &&
+    lineHeight > 0
       ? lineHeight
       : DEFAULT_LINE_HEIGHT;
 
@@ -333,22 +387,27 @@ export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: Pick<PlanContext, 'source' | 'longUnits'>,
+  context: Pick<PlanContext, "source" | "longUnits">,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
   return runs.map((run) => {
-    const style = { ...resolveTypePreset(run.typePreset, globals, nodeId, issues), ...resolveStyleMap(run.style, globals, nodeId, issues) };
+    const style = {
+      ...resolveTypePreset(run.typePreset, globals, nodeId, issues),
+      ...resolveStyleMap(run.style, globals, nodeId, issues),
+    };
 
-    if (run.kind === 'literal') {
+    if (run.kind === "literal") {
       return { text: run.text, style };
     }
 
-    const binding = bindings.find((candidate) => candidate.id === run.bindingId);
+    const binding = bindings.find(
+      (candidate) => candidate.id === run.bindingId,
+    );
 
     if (binding === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `Text run references binding "${run.bindingId}", which this node does not declare.`,
       });
@@ -359,7 +418,7 @@ export function resolveTextSegments(
 
     if (sample === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `No sensor is mapped to "${binding.semanticKey}".`,
       });
@@ -373,11 +432,11 @@ export function resolveTextSegments(
 function formatValueSegment(
   sample: Sample,
   binding: Binding,
-  run: Extract<TextRun, { kind: 'value' }>,
+  run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, 'longUnits'>,
+  context: Pick<PlanContext, "longUnits">,
 ): PlanTextSegment {
-  if (sample.status !== 'ok') {
+  if (sample.status !== "ok") {
     return {
       text: MISSING_VALUE_TEXT,
       style,
@@ -387,28 +446,31 @@ function formatValueSegment(
   }
 
   const precision = run.precision ?? binding.precision;
-  const unitDisplay = run.unitDisplay ?? binding.unitDisplay ?? 'short';
+  const unitDisplay = run.unitDisplay ?? binding.unitDisplay ?? "short";
 
   let text: string;
 
-  if (typeof sample.value === 'number' && Number.isFinite(sample.value)) {
+  if (typeof sample.value === "number" && Number.isFinite(sample.value)) {
     const scaled = sample.value * (binding.scale ?? 1) + (binding.offset ?? 0);
     text = formatNumber(scaled, precision);
   } else if (sample.textValue !== undefined) {
     text = sample.textValue;
   } else if (sample.booleanValue !== undefined) {
-    text = sample.booleanValue ? 'on' : 'off';
+    text = sample.booleanValue ? "on" : "off";
   } else {
-    return { text: MISSING_VALUE_TEXT, style, status: 'error' };
+    return { text: MISSING_VALUE_TEXT, style, status: "error" };
   }
 
   const unit = formatUnit(sample.unit, unitDisplay, context.longUnits);
 
-  return { text: unit === '' ? text : `${text}${unit}`, style };
+  return { text: unit === "" ? text : `${text}${unit}`, style };
 }
 
 /** Explicit precision preserves trailing zeroes; default uses at most one decimal. */
-export function formatNumber(value: number, precision: number | undefined): string {
+export function formatNumber(
+  value: number,
+  precision: number | undefined,
+): string {
   if (precision !== undefined) {
     return value.toFixed(Math.min(Math.max(Math.trunc(precision), 0), 6));
   }
@@ -419,14 +481,14 @@ export function formatNumber(value: number, precision: number | undefined): stri
 
 export function formatUnit(
   unit: string | undefined,
-  display: 'none' | 'short' | 'long',
+  display: "none" | "short" | "long",
   longUnits: Readonly<Record<string, string>> | undefined,
 ): string {
-  if (display === 'none' || unit === undefined || unit === '') {
-    return '';
+  if (display === "none" || unit === undefined || unit === "") {
+    return "";
   }
 
-  if (display === 'long') {
+  if (display === "long") {
     const long = longUnits?.[unit];
     return long === undefined ? spaced(unit) : ` ${long}`;
   }
@@ -445,7 +507,7 @@ export function buildChartPlan(
   bindings: readonly Binding[],
   context: ChartPlanContext,
   issues: PlanIssue[],
-  palette?: import('../theme/fabric-envelope.js').FabricPalette,
+  palette?: import("../theme/fabric-envelope.js").FabricPalette,
 ): PlanChart {
   const animate = context.animate ?? true;
 
@@ -453,7 +515,7 @@ export function buildChartPlan(
   for (const binding of bindings) {
     if (context.source.latest(binding.semanticKey) === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `No sensor is mapped to "${binding.semanticKey}".`,
       });
@@ -461,19 +523,27 @@ export function buildChartPlan(
   }
 
   switch (content.family) {
-    case 'gauge': {
+    case "gauge": {
       const binding = bindings[0];
-      const sample = binding === undefined ? undefined : context.source.latest(binding.semanticKey);
+      const sample =
+        binding === undefined
+          ? undefined
+          : context.source.latest(binding.semanticKey);
 
       return {
-        kind: 'chart',
-        family: 'gauge',
+        kind: "chart",
+        family: "gauge",
         settings: content.settings,
-        option: buildGaugeOption(content.settings, applyTransform(sample, binding), animate, palette),
+        option: buildGaugeOption(
+          content.settings,
+          applyTransform(sample, binding),
+          animate,
+          palette,
+        ),
       };
     }
 
-    case 'line': {
+    case "line": {
       const series: SeriesInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
         samples: context.source
@@ -482,36 +552,50 @@ export function buildChartPlan(
       }));
 
       return {
-        kind: 'chart',
-        family: 'line',
+        kind: "chart",
+        family: "line",
         settings: content.settings,
-        option: buildLineOption(content.settings, series, context.nowMs, animate, palette, context.chartStartedAtMs, context.chartStartupDurationMs),
+        option: buildLineOption(
+          content.settings,
+          series,
+          context.nowMs,
+          animate,
+          palette,
+          context.chartStartedAtMs,
+          context.chartStartupDurationMs,
+        ),
       };
     }
 
-    case 'bar': {
+    case "bar": {
       const inputs: BarInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
-        sample: applyTransform(context.source.latest(binding.semanticKey), binding),
+        sample: applyTransform(
+          context.source.latest(binding.semanticKey),
+          binding,
+        ),
       }));
 
       return {
-        kind: 'chart',
-        family: 'bar',
+        kind: "chart",
+        family: "bar",
         settings: content.settings,
         option: buildBarOption(content.settings, inputs, animate, palette),
       };
     }
 
-    case 'pie': {
+    case "pie": {
       const slices: PieSliceInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
-        sample: applyTransform(context.source.latest(binding.semanticKey), binding),
+        sample: applyTransform(
+          context.source.latest(binding.semanticKey),
+          binding,
+        ),
       }));
 
       return {
-        kind: 'chart',
-        family: 'pie',
+        kind: "chart",
+        family: "pie",
         settings: content.settings,
         option: buildPieOption(content.settings, slices, animate, palette),
       };
@@ -520,7 +604,10 @@ export function buildChartPlan(
 }
 
 /** Apply authored scale/offset only to ok numeric samples. */
-function applyTransform(sample: Sample | undefined, binding: Binding | undefined): Sample | undefined {
+function applyTransform(
+  sample: Sample | undefined,
+  binding: Binding | undefined,
+): Sample | undefined {
   if (sample === undefined || binding === undefined) {
     return sample;
   }
@@ -536,7 +623,7 @@ function transformSample(sample: Sample, binding: Binding): Sample {
     return sample;
   }
 
-  if (sample.status !== 'ok' || typeof sample.value !== 'number') {
+  if (sample.status !== "ok" || typeof sample.value !== "number") {
     return sample;
   }
 
@@ -576,18 +663,20 @@ export function resolveStyleValue(
     return undefined;
   }
 
-  if (!('ref' in value) || value.ref === undefined) {
+  if (!("ref" in value) || value.ref === undefined) {
     return value.value;
   }
 
-  const [group, ...rest] = value.ref.split('.');
-  const entryId = rest.join('.');
+  const [group, ...rest] = value.ref.split(".");
+  const entryId = rest.join(".");
   const entry =
-    group === undefined ? undefined : globals[group as keyof Globals]?.[entryId];
+    group === undefined
+      ? undefined
+      : globals[group as keyof Globals]?.[entryId];
 
   if (entry === undefined) {
     issues.push({
-      code: 'unresolved-global',
+      code: "unresolved-global",
       nodeId,
       detail: `Global "${value.ref}" is not defined in this document.`,
     });
@@ -600,39 +689,62 @@ export function resolveStyleValue(
 
 /** Presets are resolved per run so label, value and unit never inherit one text-object preset. */
 function resolveTypePreset(
-  ref: TextRun['typePreset'],
+  ref: TextRun["typePreset"],
   globals: Globals,
   nodeId: string,
   issues: PlanIssue[],
 ): ResolvedStyle {
   if (ref === undefined) return {};
-  const id = ref.slice('typePresets.'.length);
+  const id = ref.slice("typePresets.".length);
   const value = globals.typePresets?.[id]?.value;
   if (!isTypePreset(value)) {
-    issues.push({ code: 'unresolved-global', nodeId, detail: `Type preset "${ref}" is not defined or invalid.` });
+    issues.push({
+      code: "unresolved-global",
+      nodeId,
+      detail: `Type preset "${ref}" is not defined or invalid.`,
+    });
     return {};
   }
   return {
     fontFamily: value.family,
     fontSize: value.size,
     ...(value.weight === undefined ? {} : { fontWeight: value.weight }),
-    ...(value.letterSpacing === undefined ? {} : { letterSpacing: value.letterSpacing }),
+    ...(value.letterSpacing === undefined
+      ? {}
+      : { letterSpacing: value.letterSpacing }),
     ...(value.lineHeight === undefined ? {} : { lineHeight: value.lineHeight }),
   };
 }
 
 function isTypePreset(value: unknown): value is TypePreset {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== "object" || value === null) return false;
   const preset = value as Record<string, unknown>;
-  return typeof preset['family'] === 'string' && preset['family'].length > 0 &&
-    typeof preset['size'] === 'number' && Number.isFinite(preset['size']) && preset['size'] > 0 &&
-    (preset['weight'] === undefined || typeof preset['weight'] === 'string' || typeof preset['weight'] === 'number') &&
-    (preset['letterSpacing'] === undefined || typeof preset['letterSpacing'] === 'number' && Number.isFinite(preset['letterSpacing'])) &&
-    (preset['lineHeight'] === undefined || typeof preset['lineHeight'] === 'number' && Number.isFinite(preset['lineHeight']) && preset['lineHeight'] > 0);
+  return (
+    typeof preset["family"] === "string" &&
+    preset["family"].length > 0 &&
+    typeof preset["size"] === "number" &&
+    Number.isFinite(preset["size"]) &&
+    preset["size"] > 0 &&
+    (preset["weight"] === undefined ||
+      typeof preset["weight"] === "string" ||
+      typeof preset["weight"] === "number") &&
+    (preset["letterSpacing"] === undefined ||
+      (typeof preset["letterSpacing"] === "number" &&
+        Number.isFinite(preset["letterSpacing"]))) &&
+    (preset["lineHeight"] === undefined ||
+      (typeof preset["lineHeight"] === "number" &&
+        Number.isFinite(preset["lineHeight"]) &&
+        preset["lineHeight"] > 0))
+  );
 }
 
-function isSolidPalettePaint(value: unknown): value is { readonly kind: 'solid'; readonly color: string } {
-  return typeof value === 'object' && value !== null &&
-    (value as Record<string, unknown>)['kind'] === 'solid' &&
-    typeof (value as Record<string, unknown>)['color'] === 'string';
+function isSolidPalettePaint(
+  value: unknown,
+): value is { readonly kind: "solid"; readonly color: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<string, unknown>)["kind"] === "solid" &&
+    typeof (value as Record<string, unknown>)["color"] === "string"
+  );
 }
