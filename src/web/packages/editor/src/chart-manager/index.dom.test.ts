@@ -7,6 +7,74 @@ import { defaultGaugeSettings } from "@vigilia/renderer-core";
 import { ChartManager } from "./index.js";
 
 describe("ChartManager", () => {
+  it.each(["gauge", "line", "bar", "pie"] as const)(
+    "adds, selects and records a palette-backed %s",
+    (family) => {
+      const objects: VigiliaChart[] = [];
+      const canvas = {
+        on: vi.fn(),
+        off: vi.fn(),
+        add: vi.fn((chart: VigiliaChart) => objects.push(chart)),
+        getActiveObject: vi.fn(),
+        getObjects: vi.fn(() => objects),
+        requestRenderAll: vi.fn(),
+        setActiveObject: vi.fn(),
+      };
+      const historyManager = { saveState: vi.fn() };
+      const manager = new ChartManager({
+        editor: { canvas, historyManager } as unknown as ImageEditor,
+        scene: {} as SceneAdapter,
+        source: createDemoSource(0),
+        globals: {
+          palette: {
+            none: {
+              name: "None",
+              value: { kind: "solid", color: "transparent" },
+            },
+            ink: {
+              name: "Ink",
+              value: { kind: "solid", color: "#102030" },
+            },
+          },
+        },
+        panelHost: document.body,
+      });
+
+      manager.addChart(family);
+
+      const chart = objects[0]!;
+      expect(chart).toMatchObject({ family, width: 240, height: 160 });
+      expect(JSON.stringify(chart.settings)).toContain("palette.ink");
+      expect(canvas.setActiveObject).toHaveBeenCalledWith(chart);
+      expect(historyManager.saveState).toHaveBeenCalledTimes(1);
+      manager.destroy();
+    },
+  );
+
+  it("does not add a chart when no palette reference can be derived", () => {
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => []),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const historyManager = { saveState: vi.fn() };
+    const manager = new ChartManager({
+      editor: { canvas, historyManager } as unknown as ImageEditor,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: document.body,
+    });
+
+    expect(() => manager.addChart("gauge")).toThrow("palette token");
+    expect(canvas.add).not.toHaveBeenCalled();
+    expect(historyManager.saveState).not.toHaveBeenCalled();
+    manager.destroy();
+  });
+
   it("updates the selected Fabric chart from envelope bindings", () => {
     const listeners = new Map<string, (event?: unknown) => void>();
     const chart = Object.assign(Object.create(VigiliaChart.prototype), {

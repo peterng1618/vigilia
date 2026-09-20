@@ -2,6 +2,7 @@ import {
   buildChartPlan,
   reassignChartPaintReferences,
   type Binding,
+  type ChartFamily,
   type ChartContent,
   type FabricGlobals,
   type SampleSource,
@@ -9,7 +10,43 @@ import {
 import type { ImageEditor } from "@anu3ev/fabric-image-editor";
 import { Group } from "fabric/es";
 import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
+import { createNewChartDefaults } from "../new-object-defaults.js";
 import { createForkChartPanel } from "./panel.js";
+
+function newChart(
+  family: ChartFamily,
+  globals: FabricGlobals | undefined,
+  id: string,
+): VigiliaChart {
+  const common = { id, left: 120, top: 80, width: 240, height: 160 };
+
+  switch (family) {
+    case "gauge":
+      return new VigiliaChart({
+        ...common,
+        family,
+        settings: createNewChartDefaults(globals, family),
+      });
+    case "line":
+      return new VigiliaChart({
+        ...common,
+        family,
+        settings: createNewChartDefaults(globals, family),
+      });
+    case "bar":
+      return new VigiliaChart({
+        ...common,
+        family,
+        settings: createNewChartDefaults(globals, family),
+      });
+    case "pie":
+      return new VigiliaChart({
+        ...common,
+        family,
+        settings: createNewChartDefaults(globals, family),
+      });
+  }
+}
 
 /** Vigilia-owned chart semantics layered on the fork's generic canvas mechanics. */
 export class ChartManager {
@@ -84,6 +121,18 @@ export class ChartManager {
 
   setRefreshRate(rate: 1 | 30): void {
     this.refresh();
+  }
+
+  /** Add a typed chart while preserving the fork's canvas and history ownership. */
+  addChart(family: ChartFamily): void {
+    const id = `chart-${crypto.randomUUID()}`;
+    const chart = newChart(family, this.#globals, id);
+    this.#editor.canvas.add(chart);
+    this.#editor.canvas.setActiveObject(chart);
+    this.#applyChart(id, chart);
+    this.#editor.historyManager.saveState();
+    this.#editor.canvas.requestRenderAll();
+    this.#drawPanel();
   }
 
   reassignPaletteReferences(from: string, to: string): void {

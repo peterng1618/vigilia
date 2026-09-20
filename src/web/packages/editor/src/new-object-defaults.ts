@@ -86,6 +86,26 @@ export function createNewTextDefaults(
 /** Supplies token-backed chart settings without making defaults document state. */
 export function createNewChartDefaults(
   globals: FabricGlobals | undefined,
+  family: "gauge",
+): Extract<ChartContent, { readonly family: "gauge" }>["settings"];
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
+  family: "line",
+): Extract<ChartContent, { readonly family: "line" }>["settings"];
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
+  family: "bar",
+): Extract<ChartContent, { readonly family: "bar" }>["settings"];
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
+  family: "pie",
+): Extract<ChartContent, { readonly family: "pie" }>["settings"];
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
+  family: ChartFamily,
+): ChartContent["settings"];
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
   family: ChartFamily,
 ): ChartContent["settings"] {
   const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
