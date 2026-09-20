@@ -1,13 +1,14 @@
 # Status — 2026-09-21
 
 Current handoff only. Durable rules: `AGENTS.md`; product:
-`product-requirements.md`; architecture: `architecture.md`; active work: specs
-0010 and 0011. Spec 0014 is review-only.
+`product-requirements.md`; architecture: `architecture.md`; active work: spec
+0010. Spec 0014 is review-only.
 
 ## Latest recorded verification
 
 | Check | Result |
 |---|---|
+| Spec 0011 chart creation | 950-unit suite, editor typecheck/build, focused desktop Chromium package round-trip and inspected `editor-fork-chart-creation-desktop-chromium.png` passed on 2026-09-21; Add exposes Text plus Gauge/Line/Bar/Pie, each chart starts from palette references, and a created gauge saves/reopens without runtime options; unbound revived charts hydrate from the Fabric scene |
 | Verification policy | Browser changes run full local `npm run test:e2e`; CI runs only on `main` pushes and pull requests targeting `main`. `develop` pushes do not wait for GitHub CI. |
 | Spec 0011 property corrections | Full 935-unit suite, focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
 | CI | `35527200912` passed licence, format, lint, typecheck, unit, build and size jobs; its only failure was the viewport E2E test expecting the retired 1280px stress artboard width. The corrected focused Chromium test and format check passed locally on 2026-09-21. |
@@ -51,6 +52,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
   history integration are active.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
+- Add offers semantic Text plus Gauge, Line, Bar and Pie commands; generic
+  shapes stay fork-owned and images/SVGs stay asset-owned.
 - `Chart refresh` selects 30 FPS or 1 FPS for the editor session; it is not persisted.
 - Palette/type references are validated and reassigned safely on deletion.
 - Curated font previews, trio/single-face adoption and editor/player `FontFace` loading are implemented.
@@ -67,16 +70,15 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Define the remaining spec-0011 Vigilia creation command set before implementing it.
-2. Revisit remaining spec-0014 candidates only when needed.
-3. Modernize the shell per product requirements §35 only after the authoring core is stable.
+1. Revisit remaining spec-0014 candidates only when needed.
+2. Modernize the shell per product requirements §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 
 - Browser E2E previews bundles; it does not exercise the host.
-- Full E2E on 2026-09-20: 64 passed, 30 skipped and 20 failed after the
-  Playwright preview server returned `ERR_CONNECTION_REFUSED`; rerun on a
-  stable preview port before treating the suite as green.
+- Full E2E on 2026-09-21: 8 passed, 33 skipped and 71 failed after the
+  Playwright preview server returned `ERR_CONNECTION_REFUSED`; the focused
+  chart-creation browser proof passed, but the full suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
