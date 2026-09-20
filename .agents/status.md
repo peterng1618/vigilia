@@ -20,7 +20,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 | Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence; line-tail extrapolation is removed. |
-| Testing policy | Local proof is focused by owning workspace and affected visual action; full CI runs on PRs and pushes to `main`/`develop`. The manual Visual evidence workflow returns only the requested artifact. Local artboard capture passed and was inspected; remote CI awaits push. |
+| Testing policy | Local proof is focused by owning workspace and affected visual action; full CI runs on PRs and pushes to `main`/`develop`. The manual Visual evidence workflow returns only the requested artifact. `gate-evidence` is retired; `verify` owns evidence and GitHub CLI retrieval. Local artboard capture passed and was inspected; remote CI awaits push. |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.

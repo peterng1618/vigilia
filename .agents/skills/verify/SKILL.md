@@ -45,16 +45,25 @@ only the generated image(s). Stop at the first failure.
 
 ## CI evidence
 
-After push, find the CI run for that commit in GitHub Actions and inspect its
-job outcome/logs. This machine has no GitHub CLI, so use the Actions UI or an
-authenticated GitHub integration; do not install tooling solely to read a run.
+After push, inspect the CI run for that commit:
+
+```powershell
+gh run list --workflow ci.yml --commit (git rev-parse HEAD) --limit 1
+gh run watch <run-id> --exit-status
+```
 
 For visible work, dispatch **Visual evidence** on the pushed branch with the
 specific Playwright title regex and desktop/phone project from the screenshot
 registry. Download its `visual-evidence` artifact, inspect only the selected
-PNGs, then record the run URL/commit and observation in `status.md`. It builds
-the two browser bundles and runs only the requested capture; it is not a
-replacement for CI's full gate.
+PNGs, then record the run URL/commit and observation in `status.md`:
+
+```powershell
+gh workflow run visual-evidence.yml --ref (git branch --show-current) -f grep='captures changed artboard controls' -f project=desktop-chromium
+gh run download <run-id> -n visual-evidence
+```
+
+It builds the two browser bundles and runs only the requested capture; it is not
+a replacement for CI's full gate.
 
 ## Extra checks
 
@@ -70,3 +79,6 @@ replacement for CI's full gate.
 
 State local commands, selected screenshots and observations, CI run result, and
 any checks not run. Never call the full gate green from local partial evidence.
+Record a measurement only when it changes a decision: result, date, reproducible
+method, and material limitation. Put current evidence in `status.md`; lasting
+choices belong in `decisions.md`.

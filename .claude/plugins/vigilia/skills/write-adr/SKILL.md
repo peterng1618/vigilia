@@ -1,6 +1,6 @@
 ---
 name: vigilia:write-adr
-description: Writes a Vigilia architecture decision record in .agents/decisions, and decides whether a change is an ADR at all rather than a spec or a gate entry. Use when recording a decision, choosing between options with lasting consequences, revisiting or superseding an earlier decision, or when asked why something was chosen.
+description: Record or revise a current architecture decision in .agents/decisions.md.
 ---
 
 The canonical content for this skill is [`.agents/skills/write-adr/SKILL.md`](../../../../../.agents/skills/write-adr/SKILL.md).

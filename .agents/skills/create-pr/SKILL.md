@@ -12,8 +12,8 @@ git remote -v
 ```
 
 Do not create a GitHub repository or push/open a PR without the user's explicit
-authorisation. This machine has no GitHub CLI; use the GitHub web UI or an
-authenticated integration when publishing is authorised.
+authorisation. When publishing is authorised, confirm `gh auth status` before
+using GitHub CLI commands.
 
 ## Commit convention
 
@@ -32,7 +32,7 @@ Scopes that match the architecture: `contracts`, `core`, `host`, `providers`,
 ```
 feat(providers): add PawnIO tier detection to the Windows provider
 fix(renderer): draw a gap instead of a zero arc for missing samples
-docs(gates): record G0-P1 per-sensor elevation results
+docs(verification): record reproducible sensor evidence
 ```
 
 Subject in the imperative, no trailing period, under ~72 characters.

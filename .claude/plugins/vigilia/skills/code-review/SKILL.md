@@ -1,6 +1,6 @@
 ---
 name: vigilia:code-review
-description: Reviews a Vigilia diff for the defects static analysis cannot catch — contract mirror drift, fabricated sensor readings, boundary leaks, non-deterministic test data, and schema compatibility breaks. Use when reviewing a PR or diff, checking a change before requesting review, or asked to look for bugs in Vigilia code.
+description: Review Vigilia diffs for contract drift, fabricated data, Fabric/editor boundary leaks, persistence mistakes, ineffective tests, and unnecessary complexity.
 ---
 
 The canonical content for this skill is [`.agents/skills/code-review/SKILL.md`](../../../../../.agents/skills/code-review/SKILL.md).

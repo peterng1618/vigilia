@@ -1,6 +1,6 @@
 ---
 name: vigilia:spec-driven-development
-description: Keeps Vigilia implementation and specs in sync. Use when implementing a feature that has a spec in .agents/specs/, writing a new spec, verifying code against a spec, or updating a spec after a behaviour change.
+description: Keep Vigilia specs and implementation aligned. Use when writing, implementing, reviewing, or updating a spec in .agents/specs/.
 ---
 
 The canonical content for this skill is [`.agents/skills/spec-driven-development/SKILL.md`](../../../../../.agents/skills/spec-driven-development/SKILL.md).

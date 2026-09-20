@@ -1,6 +1,6 @@
 ---
 name: vigilia:verify
-description: Runs Vigilia's pre-commit gauntlet — typechecks, unit tests, bundle build, the size gate and the browser suite — in the order that avoids the traps, and reports what was not verified. Use before committing, before claiming something works, after changing renderer-core, or when asked to check, verify, validate or test the project.
+description: Run the smallest local proof for a Vigilia change; CI owns the full gate.
 ---
 
 The canonical content for this skill is [`.agents/skills/verify/SKILL.md`](../../../../../.agents/skills/verify/SKILL.md).
