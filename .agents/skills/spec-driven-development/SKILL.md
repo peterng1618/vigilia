@@ -5,8 +5,8 @@ description: Keep Vigilia specs and implementation aligned. Use when writing, im
 
 # Spec-driven development
 
-Read `.agents/plan.md` first, then the relevant active spec. The plan sets
-product requirements; a spec refines incomplete/current work.
+Read `.agents/product-requirements.md` first, then the relevant active spec.
+Product requirements set product intent; a spec refines incomplete/current work.
 
 ## Write a spec only when needed
 

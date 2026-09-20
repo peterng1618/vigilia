@@ -1,4 +1,4 @@
-# Vigilia — product plan
+# Vigilia — product requirements
 
 Agent-owned current requirements. User goals and explicit product choices take
 precedence. `§N` markers are stable labels used by code/docs; never renumber.
@@ -296,24 +296,9 @@ assignments, fit mode and hosting.
 
 ## §157 — Sequencing
 
-Current migration order/status:
-
-1. Fabric chart/shared renderer/player migration — **done**.
-2. Source-fork editor feasibility spike — **done**.
-3. Fork editor + v2 Fabric envelope migration — **done** (spec 0013).
-4. Review missing legacy-editor behaviours before recreating them — **active**
-   (spec 0014). Semantic layers and align/distribute are retained in spec 0011;
-   the remaining candidates are review-only.
-5. Build the bounded theme-package reader/writer — **done** (spec 0015).
-6. Finish v2 palette/type/reference/property semantics — lossless type-preset
-   edits, Release-only version mutation and remaining creation commands are
-   **pending** (spec 0011).
-7. Live editor bindings/charts — **done**.
-8. Production image/video background over packaged media — **done**.
-9. Delete superseded DOM/custom editor code — **done**.
-10. shadcn/Base UI shell modernization — **later**, after core authoring
-   stabilizes.
-11. Starter theme/storage/LAN/provider/product work continues around those gates.
+Finish authoring-core contracts before shell modernization. Recreate a legacy
+editor behaviour only after spec 0014 retains or replaces it. Current completion
+state and next work belong in `status.md`.
 
 Human review is for scope expansion, product taste and external effects, not
 routine architecture/sequencing.

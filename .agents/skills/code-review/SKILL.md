@@ -25,7 +25,7 @@ or semantic-key definitions across packages.
 - Player may use `scene-fabric`, not editor UI/managers or interactive `Canvas`.
 - Raw ECharts options must not enter persisted theme data.
 - Providers acquire; the host schedules/history-buffers.
-- During spec 0013, flag new home-grown generic editor mechanics that should come
+- During Fabric editor work, flag new home-grown generic editor mechanics that should come
   from the `fabricjs-image-editor` source fork.
 
 ## 4. Persistence

@@ -1,7 +1,7 @@
 # Architecture
 
 Where current Vigilia concepts live. Behaviour belongs in active specs; product
-requirements in `plan.md`; transient progress in `status.md`.
+requirements in `product-requirements.md`; transient progress in `status.md`.
 
 ## System
 
@@ -47,18 +47,13 @@ Current Vigilia-owned extensions are:
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 | Generic layer ordering, grouping and locks | adopted fork `layerManager` and `objectLockManager` |
 
-Media does **not** yet have an active fork-extension owner. Create one only when
-its authoring feature is implemented; do not document planned classes as current
-architecture.
+## Packaged-font ownership
 
-## Approved packaged-font ownership
-
-Not implemented. The approved slice assigns font-face declarations and preset
-validation to `renderer-core/src/theme/`; curated trio metadata and transient
-preview to `editor/src/font-catalog.ts` and `editor/src/font-preview.ts`; picker
-adoption/trio application to the existing editor type-preset and asset boundaries;
-and packaged `FontFace` loading/release to `scene-fabric/src/font-assets.ts`.
-The UI adapter must not own catalog, preview or adoption semantics.
+`renderer-core/src/theme/` owns font-face declarations and preset validation;
+`editor/src/font-catalog.ts` and `editor/src/font-preview.ts` own curated
+metadata and transient previews; the existing type-preset/asset boundaries own
+adoption; `scene-fabric/src/font-assets.ts` owns loaded-face lifecycle. The UI
+adapter does not own catalog, preview or adoption semantics.
 
 The retired custom-editor implementation is deleted. The fork retains generic
 z-order, grouping and locks; the Vigilia layer panel projects that state without

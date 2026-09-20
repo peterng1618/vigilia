@@ -1,8 +1,8 @@
 # Status — 2026-09-20
 
-Current handoff only. Durable rules: `AGENTS.md`; product: `plan.md`;
-architecture: `architecture.md`; active work: specs 0010, 0011 and 0013.
-Spec 0014 is review-only; 0015 is implemented.
+Current handoff only. Durable rules: `AGENTS.md`; product:
+`product-requirements.md`; architecture: `architecture.md`; active work: specs
+0010 and 0011. Spec 0014 is review-only.
 
 ## Latest recorded verification
 
@@ -23,7 +23,6 @@ Spec 0014 is review-only; 0015 is implemented.
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 | Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence; line-tail extrapolation is removed. |
 | Editor live bindings | 946 units, seven typechecks, builds, and focused desktop Chromium proof passed; inspected `editor-fork-live-text-desktop-chromium.png` shows a preview-bound text value while Save persists only its authored run and fallback. |
-| Testing policy | Local proof is focused by owning workspace and affected visual action; full CI runs on PRs and pushes to `main`/`develop`. The manual Visual evidence workflow returns only the requested artifact. `gate-evidence` is retired; `verify` owns evidence and GitHub CLI retrieval. Local artboard capture passed and was inspected; remote CI awaits push. |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -64,7 +63,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 1. Complete spec 0011 lossless type-preset edits and Release-only version mutation.
 2. Revisit remaining spec-0014 candidates only when needed.
-3. Modernize the shell per plan §35 only after the authoring core is stable.
+3. Modernize the shell per product requirements §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 

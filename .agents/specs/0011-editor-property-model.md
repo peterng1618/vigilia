@@ -177,7 +177,7 @@ release-version mutation restricted to Release, and broader Vigilia creation
 commands.
 
 The development v2 semantic shape may still break before release; the Fabric
-scene envelope boundary is settled by spec 0013.
+scene envelope boundary is settled.
 
 ## Ownership
 
@@ -194,8 +194,8 @@ scene envelope boundary is settled by spec 0013.
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Packaged font runtime lifecycle | `scene-fabric/src/font-assets.ts` |
 
-The font rows are approved pending owners. Do not create additional speculative
-managers/owners for property domains that are not yet implemented.
+Do not create additional speculative managers/owners for property domains that
+are not yet implemented.
 
 ## Acceptance
 

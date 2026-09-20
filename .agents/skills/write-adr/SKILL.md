@@ -15,7 +15,7 @@ reversed, rewrite it in place. Git history preserves the old reasoning.
 | Lasting architecture choice | `.agents/decisions.md` |
 | Feature behaviour / edge cases | `.agents/specs/` |
 | Current progress / test counts | `.agents/status.md` |
-| Product requirement | `.agents/plan.md` |
+| Product requirement | `.agents/product-requirements.md` |
 
 ## Format
 
@@ -36,7 +36,7 @@ replacing an earlier named position.
 
 ## Rules
 
-- The product plan outranks architecture decisions.
+- Product requirements outrank architecture decisions.
 - Product taste, scope expansion and external effects require human review.
 - Architecture, schema design and sequencing are agent-owned unless the user has
   already directed them.

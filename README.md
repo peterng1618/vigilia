@@ -26,6 +26,9 @@ CLI package name: `vigilia-dashboard` (`vigilia` on npm is unrelated).
 
 ## Docs
 
-Start with [`AGENTS.md`](AGENTS.md) and [`.agents/status.md`](.agents/status.md).
-Product, architecture, decisions and active specs live under [`.agents/`](.agents).
+Start with [`AGENTS.md`](AGENTS.md) and [current status](.agents/status.md).
+Read [product requirements](.agents/product-requirements.md),
+[architecture](.agents/architecture.md), [decisions](.agents/decisions.md) and
+[active specs](.agents/specs/) as needed. Active implementation plans live in
+[`docs/superpowers/plans/`](docs/superpowers/plans/).
 Licences: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

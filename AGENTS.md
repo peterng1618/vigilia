@@ -12,7 +12,7 @@ keep this file about how to work.
 - Fabric 7.4.0 is the shared scene renderer; the editor uses the adopted
   `fabricjs-image-editor` source fork.
 - The current Vigilia shell is TypeScript/Vite, not React. React + shadcn/Base UI
-  is a later shell-modernization stage in plan §35, not a current dependency.
+  is a later shell-modernization stage in product requirements §35, not a current dependency.
 
 ## Non-negotiables
 
@@ -138,10 +138,12 @@ licence from primary/package metadata. The editor consumes the compiled
 | Legacy behaviours pending re-evaluation | `.agents/specs/0014-editor-behaviour-review.md` |
 | Current architectural decisions | `.agents/decisions.md` |
 | Durable lessons | `.agents/lessons.md` |
-| Product requirements | `.agents/plan.md` |
-| Implementation plans | `docs/superpowers/plans/` |
+| Product requirements | `.agents/product-requirements.md` |
+| Dependency-audit provenance | `.agents/dependency-licences.md` |
+| Active implementation plans | `docs/superpowers/plans/` |
+| Completed implementation plans | `docs/superpowers/plans/archive/` |
 
-`§N` markers in `plan.md` are stable labels. Never renumber them.
+`§N` markers in `product-requirements.md` are stable labels. Never renumber them.
 
 ## Sub-agents
 

@@ -104,6 +104,6 @@ reproducible browser profiles suffice without a physical-device release gate.
 ## Open
 
 - **Chart engine:** authored treatment for gauge angular gradients and discrete
-  line-threshold bands (plan §85).
+  line-threshold bands (product requirements §85).
 - **Extended sensors:** PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains
   unverified and belongs to provider validation.

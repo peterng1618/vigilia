@@ -12,6 +12,7 @@ For project-specific context:
 | Need | Read |
 |---|---|
 | Architecture / ownership | [`../../architecture.md`](../../architecture.md) |
+| Product requirements | [`../../product-requirements.md`](../../product-requirements.md) |
 | Current decisions | [`../../decisions.md`](../../decisions.md) |
 | Current state / next work | [`../../status.md`](../../status.md) |
 | Durable lessons | [`../../lessons.md`](../../lessons.md) |
