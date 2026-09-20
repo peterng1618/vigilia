@@ -115,21 +115,24 @@ export function toSeriesPoints(
 ): SeriesPoint[] {
   const points: SeriesPoint[] = [];
 
-  for (const sample of samples) {
-    const t = Date.parse(sample.timestamp);
+  const parsed = samples
+    .map((sample) => ({ sample, t: sampleTimeMs(sample) }))
+    .filter(({ t }) => Number.isFinite(t) && t <= nowMs)
+    .sort((a, b) => a.t - b.t);
+  const firstVisible = parsed.findIndex(({ t }) => t >= windowStart);
+  if (firstVisible < 0) return [];
+  const hasPredecessor = firstVisible > 0;
 
-    // Invalid timestamps cannot be placed honestly on a time axis.
-    if (!Number.isFinite(t) || t < windowStart || t > nowMs) {
-      continue;
-    }
-
+  const first = Math.max(0, firstVisible - 1);
+  for (const { sample, t } of parsed.slice(first)) {
     points.push([t, hasPlottableValue(sample) ? sample.value : null]);
   }
 
-  points.sort((a, b) => a[0] - b[0]);
-
   if (points.length > settings.maxPoints) {
-    return points.slice(points.length - settings.maxPoints);
+    if (!hasPredecessor || settings.maxPoints === 1) {
+      return points.slice(-settings.maxPoints);
+    }
+    return [points[0]!, ...points.slice(-(settings.maxPoints - 1))];
   }
 
   return points;
@@ -143,7 +146,6 @@ export function buildLineOption(
   palette?: FabricPalette,
   startedAtMs?: number,
   startupDurationMs?: number,
-  presentationDelayMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
   const start =
@@ -181,13 +183,6 @@ export function buildLineOption(
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
       : undefined;
-  const tailNowMs =
-    typeof presentationDelayMs === "number" &&
-    Number.isFinite(presentationDelayMs) &&
-    presentationDelayMs > 0
-      ? nowMs - presentationDelayMs
-      : nowMs;
-
   return {
     ...toEngineAnimation(settings.animation, animate),
     grid: cartesianGrid(
@@ -228,7 +223,6 @@ export function buildLineOption(
           nowMs,
           windowStart,
         ),
-        tailNowMs,
         nowMs,
         !revealing,
       ),
@@ -266,8 +260,7 @@ export function buildLineOption(
 /** Move only the displayed endpoint; retained samples remain measured history. */
 function interpolateTailPoints(
   points: SeriesPoint[],
-  tailNowMs: number,
-  renderedNowMs: number,
+  nowMs: number,
   enabled: boolean,
 ): SeriesPoint[] {
   if (!enabled || points.length < 2) return points;
@@ -282,15 +275,19 @@ function interpolateTailPoints(
     previousValue === null ||
     latestValue === null ||
     !(interval > 0) ||
-    tailNowMs < latestTime
+    nowMs < latestTime
   ) {
     return points;
   }
 
-  const progress = Math.min(1, (tailNowMs - latestTime) / interval);
+  const progress = Math.min(1, (nowMs - latestTime) / interval);
   const value = previousValue + (latestValue - previousValue) * progress;
 
-  return [...points.slice(0, -1), [renderedNowMs, value]];
+  return [...points.slice(0, -1), [nowMs, value]];
+}
+
+function sampleTimeMs(sample: Sample): number {
+  return Date.parse(sample.presentationTimestamp ?? sample.timestamp);
 }
 
 function earliestSampleMs(
@@ -301,7 +298,7 @@ function earliestSampleMs(
 
   for (const input of series) {
     for (const sample of input.samples) {
-      const timestamp = Date.parse(sample.timestamp);
+      const timestamp = sampleTimeMs(sample);
       if (!Number.isFinite(timestamp) || timestamp > nowMs) continue;
       if (earliest === undefined || timestamp < earliest) earliest = timestamp;
     }

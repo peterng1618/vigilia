@@ -61,12 +61,18 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
       const batch = pending[0];
       if (batch === undefined || batch.releaseAtMs > timestamp) return;
       pending.shift();
-      store.ingest(batch.entries, timestamp);
+      const presentationTimestamp = new Date(batch.releaseAtMs).toISOString();
+      store.ingest(
+        batch.entries.map(([key, sample]) => [
+          key,
+          { ...sample, presentationTimestamp },
+        ] as const),
+        timestamp,
+      );
     }
   };
 
   const source: SampleSource = {
-    presentationDelayMs: LIVE_SOURCE_DISPLAY_DELAY_MS,
     latest(semanticKey) {
       releasePending();
       return store.latest(semanticKey);

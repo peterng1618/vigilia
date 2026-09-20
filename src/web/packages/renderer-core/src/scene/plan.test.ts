@@ -606,34 +606,44 @@ describe("charts", () => {
     }
   });
 
-  it("uses a delayed source clock for the live line endpoint", () => {
+  it("uses the live source presentation clock for the line endpoint", () => {
     const store = new SampleStore();
     store.ingest(
       [
         [
           "cpu.load.total",
-          { ...ok(10), timestamp: new Date(NOW - 3000).toISOString() },
+          {
+            ...ok(10),
+            timestamp: new Date(NOW - 3000).toISOString(),
+            presentationTimestamp: new Date(NOW - 2000).toISOString(),
+          },
         ],
         [
           "cpu.load.total",
-          { ...ok(20), timestamp: new Date(NOW - 2000).toISOString() },
+          {
+            ...ok(20),
+            timestamp: new Date(NOW - 2000).toISOString(),
+            presentationTimestamp: new Date(NOW - 1000).toISOString(),
+          },
         ],
         [
           "cpu.load.total",
-          { ...ok(30), timestamp: new Date(NOW - 1000).toISOString() },
+          {
+            ...ok(30),
+            timestamp: new Date(NOW - 1000).toISOString(),
+            presentationTimestamp: new Date(NOW).toISOString(),
+          },
         ],
       ],
       NOW,
     );
-    const source = Object.assign(store, { presentationDelayMs: 1000 });
-
     const result = plan(
       documentWith([
         chartNode("line", defaultLineSettings, [
           { id: "b", semanticKey: "cpu.load.total" },
         ]),
       ]),
-      { source },
+      { source: store },
     );
 
     const content = result.nodes[0]!.content;

@@ -6,6 +6,8 @@ export type SensorStatus = "ok" | "missing" | "stale" | "error" | "unavailable";
 export interface Sample {
   readonly sensorId: string;
   readonly timestamp: string;
+  /** Browser-local release time for delayed live rendering; never serialized. */
+  readonly presentationTimestamp?: string;
   readonly status: SensorStatus;
   /** Raw, unclamped numeric value; absent for non-ok samples. */
   readonly value?: number;

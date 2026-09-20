@@ -124,6 +124,18 @@ describe("createLiveSource", () => {
     expect(handle.source.latest("cpu.load")?.value).toBe(42);
   });
 
+  it("timestamps released telemetry on the browser presentation clock", () => {
+    const { handle, sendBatch, advance } = setup();
+
+    sendBatch(["cpu.load", ok(42)]);
+    advance(1_000);
+
+    expect(handle.source.latest("cpu.load")).toMatchObject({
+      timestamp: new Date(NOW).toISOString(),
+      presentationTimestamp: new Date(NOW + 1_000).toISOString(),
+    });
+  });
+
   it("accumulates history across batches", () => {
     const { handle, sendBatch, advance } = setup();
 

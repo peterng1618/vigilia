@@ -50,6 +50,24 @@ describe("SampleStore", () => {
     expect(store.history("a", 60).map((sample) => sample.value)).toEqual([2]);
   });
 
+  it("windows delayed live samples by presentation time", () => {
+    const store = new SampleStore();
+    store.ingest(
+      [
+        [
+          "a",
+          {
+            ...ok(1, NOW - 3_600_000),
+            presentationTimestamp: new Date(NOW - 1_000).toISOString(),
+          },
+        ],
+      ],
+      NOW,
+    );
+
+    expect(store.history("a", 60).map((sample) => sample.value)).toEqual([1]);
+  });
+
   it("caps retained samples per key", () => {
     const store = new SampleStore({ maxSamplesPerKey: 2 });
     store.ingest(

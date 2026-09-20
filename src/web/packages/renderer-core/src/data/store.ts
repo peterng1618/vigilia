@@ -74,7 +74,7 @@ export class SampleStore implements SampleSource {
     const start = this.lastNowMs - Math.max(0, windowSeconds) * 1000;
 
     return list.filter((sample) => {
-      const time = Date.parse(sample.timestamp);
+      const time = sampleTimeMs(sample);
       return Number.isFinite(time) && time >= start && time <= this.lastNowMs;
     });
   }
@@ -94,7 +94,7 @@ export class SampleStore implements SampleSource {
 
     const cutoff = nowMs - this.maxAgeMs;
     const kept = list.filter((sample) => {
-      const time = Date.parse(sample.timestamp);
+      const time = sampleTimeMs(sample);
       return !Number.isFinite(time) || time >= cutoff;
     });
 
@@ -105,4 +105,8 @@ export class SampleStore implements SampleSource {
         : kept,
     );
   }
+}
+
+function sampleTimeMs(sample: Sample): number {
+  return Date.parse(sample.presentationTimestamp ?? sample.timestamp);
 }

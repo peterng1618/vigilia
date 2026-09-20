@@ -563,7 +563,6 @@ export function buildChartPlan(
           palette,
           context.chartStartedAtMs,
           context.chartStartupDurationMs,
-          context.source.presentationDelayMs,
         ),
       };
     }

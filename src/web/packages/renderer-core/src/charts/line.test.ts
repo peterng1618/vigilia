@@ -79,7 +79,7 @@ describe("toSeriesPoints — the gap rule (§83)", () => {
 });
 
 describe("toSeriesPoints — windowing and bounds", () => {
-  it("drops samples older than the window", () => {
+  it("keeps one sample before the window for the left edge", () => {
     const settings: LineSettings = {
       ...defaultLineSettings,
       windowSeconds: 30,
@@ -92,7 +92,7 @@ describe("toSeriesPoints — windowing and bounds", () => {
       NOW,
     );
 
-    expect(points.map((p) => p[1])).toEqual([2, 3]);
+    expect(points.map((p) => p[1])).toEqual([1, 2, 3]);
   });
 
   it("drops samples from the future", () => {
@@ -118,6 +118,25 @@ describe("toSeriesPoints — windowing and bounds", () => {
     expect(
       toSeriesPoints([broken, at(30, 1)], defaultLineSettings, NOW),
     ).toHaveLength(1);
+  });
+
+  it("keeps the latest predecessor left of the scrolling window", () => {
+    const settings: LineSettings = {
+      ...defaultLineSettings,
+      windowSeconds: 30,
+    };
+
+    const points = toSeriesPoints(
+      [at(29, 1), at(40, 2), at(50, 3)],
+      settings,
+      NOW,
+    );
+
+    expect(points).toEqual([
+      [T0 + 29_000, 1],
+      [T0 + 40_000, 2],
+      [T0 + 50_000, 3],
+    ]);
   });
 
   it("caps retained points by dropping the OLDEST", () => {
