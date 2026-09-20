@@ -26,6 +26,13 @@ describe('the new Fabric document', () => {
     const objects = document_.scene.objects as readonly Readonly<Record<string, unknown>>[];
     expect(objects.find((object) => object['id'] === 'background')).toMatchObject({ selectable: false, evented: false });
     expect(objects.find((object) => object['id'] === 'load-gauge')).not.toMatchObject({ selectable: false });
+    expect(document_.globals?.typePresets).toMatchObject({
+      '32-500': { value: { trioRole: 'heading' } },
+      '36-600': { value: { trioRole: 'heading' } },
+      '70-300': { value: { trioRole: 'heading' } },
+      '14-400': { value: { trioRole: 'body' } },
+      mono: { value: { trioRole: 'mono' } },
+    });
   });
 
   it('revives the gradient, SVG-derived paths, and all four chart families', async () => {

@@ -1,14 +1,21 @@
 import type { TypePreset } from '@vigilia/renderer-core';
+import { fontTrios, type CuratedFontFace } from './font-catalog.js';
 
 export type TypePresets = Readonly<Record<string, { readonly name: string; readonly value: TypePreset }>>;
 
 export interface TypePresetPanel { readonly root: HTMLElement; render(presets: TypePresets | undefined): void; }
+export interface TypePresetFontActions {
+  readonly preview: (face: CuratedFontFace) => Promise<void>;
+  readonly applyFace: (presetId: string, face: CuratedFontFace) => Promise<void>;
+  readonly applyTrio: (trioId: string) => Promise<void>;
+}
 
 /** Product-owned global type authoring. Text objects retain stable preset references. */
 export function createTypePresetPanel(
   host: HTMLElement,
   onChange: (presets: TypePresets) => void,
   onDelete?: (id: string, replacement: string) => void,
+  fontActions?: TypePresetFontActions,
 ): TypePresetPanel {
   const root = document.createElement('section');
   const heading = document.createElement('h2'); heading.textContent = 'Type presets';
@@ -36,8 +43,25 @@ export function createTypePresetPanel(
       label('Size', size),
       label('Weight', weight),
       label('Line height', lineHeight),
+      ...fontControls(),
       ...deletionControls(),
     ];
+  };
+  const fontControls = (): HTMLElement[] => {
+    if (fontActions === undefined) return [];
+    const faces = fontTrios().flatMap((trio) => trio.faces);
+    const face = document.createElement('select'); face.dataset['vigiliaFontFace'] = '';
+    face.append(...faces.map((candidate) => Object.assign(document.createElement('option'), { value: candidate.id, textContent: `${candidate.family} ${candidate.weight}` })));
+    const selectedFace = (): CuratedFontFace | undefined => faces.find((candidate) => candidate.id === face.value);
+    const preview = document.createElement('button'); preview.type = 'button'; preview.textContent = 'Preview font';
+    preview.addEventListener('click', () => { const candidate = selectedFace(); if (candidate !== undefined) void fontActions.preview(candidate); });
+    const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply font'; apply.dataset['vigiliaFontApply'] = '';
+    apply.addEventListener('click', () => { const candidate = selectedFace(); if (candidate !== undefined) void fontActions.applyFace(selected, candidate); });
+    const trio = document.createElement('select'); trio.dataset['vigiliaFontTrio'] = '';
+    trio.append(...fontTrios().map((candidate) => Object.assign(document.createElement('option'), { value: candidate.id, textContent: candidate.name })));
+    const applyTrio = document.createElement('button'); applyTrio.type = 'button'; applyTrio.textContent = 'Apply trio';
+    applyTrio.addEventListener('click', () => { void fontActions.applyTrio(trio.value); });
+    return [label('Font', face), preview, apply, label('Trio', trio), applyTrio];
   };
   const deletionControls = (): HTMLElement[] => {
     if (onDelete === undefined) return [];
@@ -68,5 +92,5 @@ export function createTypePresetPanel(
 }
 
 function input(label: string, key: string, value: string, type = 'text'): HTMLInputElement { const control = document.createElement('input'); control.type = type; control.dataset[key] = ''; control.value = value; control.setAttribute('aria-label', label); return control; }
-function label(text: string, control: HTMLInputElement): HTMLLabelElement { const result = document.createElement('label'); result.textContent = text; result.append(control); return result; }
+function label(text: string, control: HTMLInputElement | HTMLSelectElement): HTMLLabelElement { const result = document.createElement('label'); result.textContent = text; result.append(control); return result; }
 function nextId(presets: TypePresets): string { for (let index = 1; ; index += 1) { const id = index === 1 ? 'type' : `type-${index}`; if (presets[id] === undefined) return id; } }

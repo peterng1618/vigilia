@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { createTypePresetPanel } from './type-preset-panel.js';
+import { fontTrio } from './font-catalog.js';
 
 describe('type preset panel', () => {
   it('edits a global type token', () => {
@@ -28,5 +29,18 @@ describe('type preset panel', () => {
     document.querySelector<HTMLButtonElement>('[data-vigilia-type-delete]')!.click();
 
     expect(remove).toHaveBeenCalledWith('body', 'caption');
+  });
+
+  it('offers a shared curated face picker for the selected preset', async () => {
+    const applyFace = vi.fn(async () => {});
+    const panel = createTypePresetPanel(document.body, vi.fn(), undefined, { applyFace, applyTrio: vi.fn(async () => {}), preview: vi.fn(async () => {}) });
+    panel.render({ body: { name: 'Body', value: { family: 'Inter', size: 16, trioRole: 'body' } } });
+
+    const face = document.querySelector<HTMLSelectElement>('[data-vigilia-font-face]')!;
+    face.value = fontTrio('minimal')!.faces[0]!.id;
+    document.querySelector<HTMLButtonElement>('[data-vigilia-font-apply]')!.click();
+    await Promise.resolve();
+
+    expect(applyFace).toHaveBeenCalledWith('body', fontTrio('minimal')!.faces[0]);
   });
 });

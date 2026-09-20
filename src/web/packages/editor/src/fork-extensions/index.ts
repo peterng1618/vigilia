@@ -23,6 +23,8 @@ import { ShortcutManager } from '../shortcut-manager/index.js';
 import { serializeThemePackage, parseThemePackage } from '../persist.js';
 import { createThemeLibraryClient, type ThemeLibraryClient, type ThemeLibraryEntry } from '../theme-library-client.js';
 import { AssetManager, createAssetPanel } from '../asset-manager/index.js';
+import { applyFontTrio, fontTrio, type CuratedFontFace } from '../font-catalog.js';
+import { previewFontFace, releaseFontPreview } from '../font-preview.js';
 
 export interface ForkExtensionsOptions {
   readonly shell: ForkShell;
@@ -53,6 +55,7 @@ export class ForkExtensions {
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #fileSection: HTMLElement;
+  readonly #shell: ForkShell;
   #envelope: FabricThemeEnvelopeInput;
   readonly #onBindingsChange: (() => void) | undefined;
 
@@ -61,6 +64,7 @@ export class ForkExtensions {
       throw new Error('The fork shell needs a scene adapter for Vigilia extensions.');
     }
     this.#envelope = options.envelope;
+    this.#shell = options.shell;
     this.#assets.load(options.envelope.assets === undefined ? {} : { assets: options.envelope.assets }, options.assets ?? {});
     this.#onBindingsChange = options.onBindingsChange;
 
@@ -122,6 +126,11 @@ export class ForkExtensions {
       options.panelHost,
       (presets) => this.#setTypes(options.shell, presets),
       (id, replacement) => this.#deleteType(options.shell, id, replacement),
+      {
+        preview: async (face) => { await this.#runFontAction(options, () => previewFontFace(face)); },
+        applyFace: async (id, face) => { await this.#runFontAction(options, () => this.applyPresetFace(id, face)); },
+        applyTrio: async (id) => { await this.#runFontAction(options, () => this.applyFontTrio(id)); },
+      },
     );
     this.#types.render(this.#envelope.globals?.typePresets as TypePresets | undefined);
     this.charts = new ChartManager({
@@ -164,10 +173,38 @@ export class ForkExtensions {
     await this.#assets.hydrate(shell.editor.canvas);
   }
 
+  async applyFontTrio(id: string): Promise<FabricThemeEnvelope> {
+    const trio = fontTrio(id);
+    if (trio === undefined) throw new Error(`Unknown font trio "${id}".`);
+    const bytes = await Promise.all(trio.faces.map((face) => this.#downloadFace(face)));
+    for (const [index, face] of trio.faces.entries()) {
+      await this.#assets.adoptFont(face, bytes[index]!);
+    }
+    const presets = this.#envelope.globals?.typePresets as TypePresets | undefined;
+    if (presets !== undefined) this.#setTypes(this.#shell, applyFontTrio(presets, trio));
+    this.#shell.editor.historyManager.saveState();
+    return this.#snapshot(this.#shell);
+  }
+
+  async applyPresetFace(id: string, face: CuratedFontFace): Promise<FabricThemeEnvelope> {
+    const presets = this.#envelope.globals?.typePresets as TypePresets | undefined;
+    const preset = presets?.[id];
+    if (preset === undefined) throw new Error(`Unknown type preset "${id}".`);
+    const bytes = await this.#downloadFace(face);
+    await this.#assets.adoptFont(face, bytes);
+    this.#setTypes(this.#shell, {
+      ...presets,
+      [id]: { ...preset, value: { ...preset.value, family: face.family, weight: face.weight, face: { assetId: face.id } } },
+    });
+    this.#shell.editor.historyManager.saveState();
+    return this.#snapshot(this.#shell);
+  }
+
   destroy(): void {
     this.#shortcuts.destroy();
     this.#persistence.destroy();
     this.#assets.destroy();
+    releaseFontPreview();
     this.#assetPanel.remove();
     this.charts.destroy();
     this.#fileSection.remove();
@@ -341,6 +378,20 @@ export class ForkExtensions {
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
+  }
+
+  async #downloadFace(face: CuratedFontFace): Promise<Uint8Array> {
+    const response = await fetch(face.sourceUrl);
+    if (!response.ok) throw new Error(`Could not download ${face.family} (${response.status}).`);
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  async #runFontAction(options: ForkExtensionsOptions, action: () => Promise<unknown>): Promise<void> {
+    try {
+      await action();
+    } catch (error) {
+      options.onError?.(error instanceof Error ? error.message : String(error));
+    }
   }
 
   #deleteType(shell: ForkShell, id: string, replacement: string): void {

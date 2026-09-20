@@ -38,6 +38,7 @@ vi.mock('../shortcut-manager/index.js', () => ({
 }));
 
 import { ForkExtensions } from './index.js';
+import { fontTrio } from '../font-catalog.js';
 
 const envelope: FabricThemeEnvelope = {
   schemaVersion: 2,
@@ -128,6 +129,86 @@ describe('ForkExtensions', () => {
     await Promise.resolve();
     expect(mockClient.save).toHaveBeenCalled();
 
+    extensions.destroy();
+  });
+
+  it('adopts a trio and replaces every assigned preset face', async () => {
+    const fetch = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+    vi.stubGlobal('fetch', fetch);
+    const shell = {
+      editor: { canvas: { on: vi.fn(), off: vi.fn() }, historyManager: { saveState: vi.fn() } },
+      scene: {}, snapshot: vi.fn((input) => ({ ...envelope, ...input })), setBackgroundMedia: vi.fn(), setGlobals: vi.fn(),
+    };
+    const extensions = new ForkExtensions({
+      shell: shell as never, source: {} as never,
+      envelope: {
+        ...envelope,
+        globals: { typePresets: {
+          heading: { name: 'Heading', value: { family: 'Segoe UI', size: 32, weight: '500', trioRole: 'heading' } },
+          metric: { name: 'Metric', value: { family: 'Segoe UI', size: 70, weight: '300', trioRole: 'heading' } },
+          custom: { name: 'Custom', value: { family: 'Georgia', size: 19 } },
+        } },
+      },
+      panelHost: document.body, onNew: vi.fn(), onSaved: vi.fn(),
+    });
+
+    const result = await extensions.applyFontTrio('minimal');
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(result.globals?.typePresets).toMatchObject({
+      heading: { value: { family: 'Inter', size: 32, weight: 700, face: { assetId: 'inter-700' } } },
+      metric: { value: { family: 'Inter', size: 70, weight: 700, face: { assetId: 'inter-700' } } },
+      custom: { name: 'Custom', value: { family: 'Georgia', size: 19 } },
+    });
+    expect(result.assets).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'inter-700' })]));
+    expect(shell.editor.historyManager.saveState).toHaveBeenCalledTimes(1);
+    extensions.destroy();
+  });
+
+  it('adopts one face without changing the preset role or scale', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array([1, 2, 3]))));
+    const shell = {
+      editor: { canvas: { on: vi.fn(), off: vi.fn() }, historyManager: { saveState: vi.fn() } },
+      scene: {}, snapshot: vi.fn((input) => ({ ...envelope, ...input })), setBackgroundMedia: vi.fn(), setGlobals: vi.fn(),
+    };
+    const extensions = new ForkExtensions({
+      shell: shell as never, source: {} as never,
+      envelope: { ...envelope, globals: { typePresets: {
+        heading: { name: 'Heading', value: { family: 'Inter', size: 32, weight: '700', trioRole: 'heading', face: { assetId: 'inter-700' } } },
+      } } },
+      panelHost: document.body, onNew: vi.fn(), onSaved: vi.fn(),
+    });
+
+    const result = await extensions.applyPresetFace('heading', fontTrio('minimal')!.faces[1]!);
+
+    expect(result.globals?.typePresets).toMatchObject({
+      heading: { value: { family: 'Inter', size: 32, weight: 400, trioRole: 'heading', face: { assetId: 'inter-400' } } },
+    });
+    expect(result.assets).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'inter-400' })]));
+    extensions.destroy();
+  });
+
+  it('leaves the document unchanged when a trio download fails', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(new Uint8Array([1])))
+      .mockResolvedValueOnce(new Response('', { status: 404 })));
+    const shell = {
+      editor: { canvas: { on: vi.fn(), off: vi.fn() }, historyManager: { saveState: vi.fn() } },
+      scene: {}, snapshot: vi.fn((input) => ({ ...envelope, ...input })), setBackgroundMedia: vi.fn(), setGlobals: vi.fn(),
+    };
+    const extensions = new ForkExtensions({
+      shell: shell as never, source: {} as never,
+      envelope: { ...envelope, globals: { typePresets: {
+        heading: { name: 'Heading', value: { family: 'Segoe UI', size: 32, trioRole: 'heading' } },
+      } } },
+      panelHost: document.body, onNew: vi.fn(), onSaved: vi.fn(),
+    });
+
+    await expect(extensions.applyFontTrio('minimal')).rejects.toThrow('404');
+    expect(extensions.envelope.globals?.typePresets).toEqual({
+      heading: { name: 'Heading', value: { family: 'Segoe UI', size: 32, trioRole: 'heading' } },
+    });
+    expect(shell.editor.historyManager.saveState).not.toHaveBeenCalled();
     extensions.destroy();
   });
 });

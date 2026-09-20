@@ -198,6 +198,18 @@ test.describe('Fabric editor route', () => {
     await captureVisualReview(page, testInfo, 'editor-fork-type-preset');
   });
 
+  test('captures curated font trio controls for visual review', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-type-preset]').selectOption('32-500');
+    const face = page.locator('[data-vigilia-font-face]');
+    await face.scrollIntoViewIfNeeded();
+    await expect(face).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Apply trio' })).toBeVisible();
+    await captureVisualReview(page, testInfo, 'editor-fork-font-trio');
+  });
+
   test('reassigns text type presets before deleting one', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

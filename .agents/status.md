@@ -9,7 +9,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Check | Result |
 |---|---|
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
-| Unit tests | 895 passed across 65 files |
+| Font editor slice | 23 focused tests, seven typechecks, editor build and inspected `editor-fork-font-trio-desktop-chromium.png` passed |
 | Typechecks | seven projects clean |
 | Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
 | Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
@@ -39,7 +39,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
-- Packaged font faces, curated trios and the font picker are not implemented.
+- Curated font previews, trio/single-face adoption and editor `FontFace` loading are implemented; hosted-player font asset delivery remains pending.
 - Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.
 - Theme-package-only Open/Save and host-library Open/Save are active.
 - Live editor telemetry and production video integration remain incomplete.
@@ -53,8 +53,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement the approved packaged-font trio slice from
-   `.agents/plans/2026-09-20-packaged-fonts.md`.
+1. Implement hosted player font-asset delivery from
+   `.agents/plans/2026-09-20-hosted-font-assets.md`.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per plan §35 only after the authoring core is stable.
 
@@ -66,6 +66,6 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- Font previews/adoption and packaged `FontFace` lifecycle are unverified because
-  the approved font-trio slice has not started.
+- Hosted player font loading remains unverified because browser E2E previews Vite
+  bundles rather than the Node host.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.
