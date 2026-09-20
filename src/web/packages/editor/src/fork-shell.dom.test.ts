@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ActiveSelection, Canvas, Rect, classRegistry } from 'fabric/es';
 import { describe, expect, it, vi } from 'vitest';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 import { disposeScene, reviveScene, reviveThemeEnvelope, serialiseScene } from '@vigilia/scene-fabric';
@@ -132,5 +133,22 @@ describe('the adopted editor shell', () => {
 
     expect(host.children).toHaveLength(1);
     expect(host.firstElementChild).toBe(current);
+  });
+
+  it('keeps active selections in click order', async () => {
+    const editor = { canvas: { setDimensions: vi.fn(), setViewportTransform: vi.fn(), requestRenderAll: vi.fn() }, destroy: vi.fn() };
+    initEditor.mockResolvedValue(editor);
+
+    await mountForkShell({ host: document.createElement('main'), artboard: { width: 1, height: 1 } });
+
+    const canvas = new Canvas(document.createElement('canvas'));
+    const firstSelected = new Rect({ left: 100, top: 0, width: 10, height: 10 });
+    const secondSelected = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+    canvas.add(secondSelected, firstSelected);
+    const Selection = classRegistry.getClass<typeof ActiveSelection>('ActiveSelection');
+    const selection = new Selection([], { canvas });
+    selection.multiSelectAdd(firstSelected, secondSelected);
+
+    expect(selection.getObjects()).toEqual([firstSelected, secondSelected]);
   });
 });

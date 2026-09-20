@@ -20,7 +20,7 @@ export function applyArrange(editor: ImageEditor, action: ArrangeAction): boolea
   if (action === 'distribute-x' || action === 'distribute-y') distribute(objects, action === 'distribute-x' ? 'x' : 'y');
   else align(objects, action);
 
-  editor.canvas.setActiveObject(new ActiveSelection(objects, { canvas: editor.canvas }));
+  editor.canvas.setActiveObject(new ActiveSelection(objects, { canvas: editor.canvas, multiSelectionStacking: 'selection-order' }));
   editor.canvas.requestRenderAll();
   editor.historyManager.saveState();
   return true;

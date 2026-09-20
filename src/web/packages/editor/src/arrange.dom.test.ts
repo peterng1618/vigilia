@@ -18,6 +18,7 @@ describe('selection-relative arrange actions', () => {
       anchorLeft, anchorLeft, anchorLeft,
     ]);
     expect((editor.canvas.getActiveObject() as ActiveSelection).getObjects()).toEqual(selected);
+    expect((editor.canvas.getActiveObject() as ActiveSelection).multiSelectionStacking).toBe('selection-order');
     expect(historyManager.saveState).toHaveBeenCalledTimes(1);
   });
 

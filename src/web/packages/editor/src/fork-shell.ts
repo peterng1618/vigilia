@@ -1,4 +1,5 @@
 import initEditor, { type ImageEditor } from '@anu3ev/fabric-image-editor';
+import { ActiveSelection, classRegistry, type ActiveSelectionOptions, type FabricObject } from 'fabric/es';
 import { resolveStyleValue, validateFabricThemeEnvelope, type Artboard, type AssetReference, type FabricThemeEnvelope, type FabricThemeEnvelopeInput, type FitMode, type Globals, type ScenePlan } from '@vigilia/renderer-core';
 import {
   createSceneAdapter,
@@ -39,6 +40,14 @@ export interface ForkShell {
 
 const FORK_CONTAINER_ID = 'vigilia-fabric-editor';
 let nextForkContainer = 1;
+
+class SelectionOrderedActiveSelection extends ActiveSelection {
+  constructor(objects: FabricObject[] = [], options: Partial<ActiveSelectionOptions> = {}) {
+    super(objects, { ...options, multiSelectionStacking: 'selection-order' });
+  }
+}
+
+classRegistry.setClass(SelectionOrderedActiveSelection, 'ActiveSelection');
 
 function fitArtboardViewport(container: HTMLElement, host: HTMLElement, artboard: ForkShellOptions['artboard'], fitMode: FitMode): number | undefined {
   const scale = fitMode === 'contain'
