@@ -19,7 +19,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 | Typechecks | seven projects clean |
 | Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
 | Player size gate | 270.6 KB gzip JS; 0.0 KB gzip CSS |
-| Visual review | Fresh demo player desktop and phone captures inspected; text and canvas rendering are intact |
+| Live line visual review | Three v2 editor frames at one-second intervals show the line remains truncated at the right edge before the next sample changes its endpoint; player requires a hosted v2 theme or an explicit test fixture |
 | Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
@@ -37,7 +37,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - `scene-fabric` renders text, shapes, groups, images/SVG and four chart families.
 - Player uses `StaticCanvas` and does not depend on editor UI.
 - `VigiliaChart` supports persistence, disposal, live redraw and transforms.
-- Charts repaint at 30 FPS; live line viewports trail one cadence so complete measured segments scroll in from the right. There is no custom startup animation.
+- Charts repaint at 30 FPS; live line viewports trail one cadence. The right-edge segment still needs overscan/cropping before it can enter without a visible correction. There is no custom startup animation.
 - Text layout and bitmap/SVG fit/recolour paths are implemented.
 
 ### Editor

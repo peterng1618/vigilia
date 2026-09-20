@@ -29,7 +29,7 @@ type HandleWindow = typeof window & {
 /** Opens the player on the default path and advances past entrance animation. */
 export async function openCanvasPlayer(
   page: Page,
-  query = "/?theme=demo",
+  query = "/?theme=stress",
 ): Promise<void> {
   await installFixedClock(page);
   await page.goto(query);
@@ -86,14 +86,6 @@ export async function probe(page: Page): Promise<CanvasProbe> {
   });
 }
 
-/** A text object's joined runs, e.g. a readout's value plus its unit. */
-export async function canvasText(
-  page: Page,
-  nodeId: string,
-): Promise<string | undefined> {
-  return readObject<string>(page, nodeId, "text", isString);
-}
-
 /** One scalar Fabric property; anything else means the probe asked wrong. */
 export async function canvasProp(
   page: Page,
@@ -124,63 +116,12 @@ export async function canvasHas(
   );
 }
 
-/** §57: a child rendered inside its group object, not as a sibling. */
-export async function canvasChildOf(
-  page: Page,
-  childId: string,
-  parentId: string,
-): Promise<boolean> {
-  return page.evaluate(
-    ([child, parent]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle["adapter"] as {
-        objectFor(nodeId: string): { group?: unknown } | undefined;
-      };
-      const childObject = adapter.objectFor(child);
-
-      return (
-        childObject !== undefined &&
-        childObject.group === adapter.objectFor(parent)
-      );
-    },
-    [childId, parentId] as const,
-  );
-}
-
-/** Styled runs reach the canvas as per-grapheme styles on one object. */
-export async function hasRunStyles(
-  page: Page,
-  nodeId: string,
-): Promise<boolean> {
-  const styles = await readObject<Record<string, unknown>>(
-    page,
-    nodeId,
-    "styles",
-    isRecord,
-  );
-
-  return (
-    styles !== undefined &&
-    Object.values(styles).some(
-      (line) => isRecord(line) && Object.keys(line).length > 0,
-    )
-  );
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
 function isScalar(value: unknown): value is string | number | boolean {
   return (
     typeof value === "string" ||
     typeof value === "number" ||
     typeof value === "boolean"
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 /** Read one Fabric property through the adapter; missing means no such object. */

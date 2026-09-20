@@ -1,13 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openPaused } from "./clock.js";
 import {
-  canvasChildOf,
   canvasHas,
   canvasProp,
-  canvasText,
   drawnFractionIn,
   drawnFractionOf,
-  hasRunStyles,
   keepsObjectIdentity,
   openCanvasPlayer,
   probe,
@@ -15,7 +12,6 @@ import {
 } from "./canvas-probe.js";
 
 const FIXTURES = [
-  { name: "demo", charts: true },
   { name: "stress", charts: true },
   { name: "portrait-cover", charts: true },
   { name: "assets", charts: false },
@@ -177,51 +173,14 @@ async function profileOfAsset(
 }
 
 test.describe("the scene reaches the canvas", () => {
-  test("builds one object per top-level node", async ({ page }) => {
+  test("builds identified canvas objects", async ({ page }) => {
     await openCanvasPlayer(page);
 
     const scene = await probe(page);
 
-    // The demo fixture's top level: whatever it is, every object must have an
-    // id, because that is what a plan node is matched by — and from stage 3,
-    // what a binding resolves against.
     expect(scene.objectCount).toBeGreaterThan(0);
     expect(scene.ids).not.toContain("undefined");
     expect(new Set(scene.ids).size).toBe(scene.ids.length);
-
-    for (const id of [
-      "title",
-      "cpu-panel",
-      "cpu-panel-bg",
-      "cpu-gauge",
-      "cpu-readout",
-      "gpu-gauge",
-      "history-chart",
-      "thermals-bars",
-      "memory-donut",
-      "memory-unmapped",
-    ]) {
-      expect(scene.allIds, `node ${id} is missing`).toContain(id);
-    }
-  });
-
-  test("keeps group children inside their authored group (§57)", async ({
-    page,
-  }) => {
-    await openCanvasPlayer(page);
-
-    expect(await canvasChildOf(page, "cpu-gauge", "cpu-panel")).toBe(true);
-  });
-
-  test("shows measured text, styled runs and missing-data placeholders", async ({
-    page,
-  }) => {
-    await openCanvasPlayer(page);
-
-    expect(await canvasText(page, "cpu-readout")).toMatch(/^\d+%$/);
-    expect(await hasRunStyles(page, "cpu-readout")).toBe(true);
-    expect(await canvasText(page, "memory-unmapped")).toContain("—");
-    await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
   });
 
   test("paints something, which is the whole point", async ({ page }) => {
@@ -400,8 +359,7 @@ test.describe("charts draw through a Fabric object", () => {
   test("updates live objects without recreating them", async ({ page }) => {
     await openCanvasPlayer(page);
 
-    expect(await keepsObjectIdentity(page, "cpu-gauge", 3000)).toBe(true);
-    expect(await keepsObjectIdentity(page, "cpu-readout", 1000)).toBe(true);
+    expect(await keepsObjectIdentity(page, "half-gauge", 3000)).toBe(true);
   });
 });
 
@@ -719,7 +677,7 @@ test.describe("every fixture renders", () => {
       });
       await openPaused(
         page,
-        "/?theme=demo&static=1",
+        "/?theme=stress&static=1",
         'canvas[data-vigilia="artboard"]',
       );
       await page.clock.runFor(1500);

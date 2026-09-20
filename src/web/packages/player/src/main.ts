@@ -6,6 +6,7 @@ import {
   createLiveSource,
   missingFontFamilies,
   requiredSemanticKeys,
+  validateThemeDocument,
   type LiveSourceHandle,
   type LiveSourceStatus,
   type SampleSource,
@@ -23,7 +24,7 @@ import {
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
-import { createDemoSource, loadDemoTheme } from "@vigilia/fake-source";
+import { createDemoSource, validThemeByName } from "@vigilia/fake-source";
 import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
@@ -35,7 +36,6 @@ if (!artboardHost) {
 }
 
 const FIXTURE_THEME_IDS = new Set([
-  "demo",
   "stress",
   "portrait-cover",
   "assets",
@@ -48,17 +48,27 @@ async function start(host: HTMLElement): Promise<void> {
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
   const animate = parameters.get("static") !== "1" && !reducedMotion;
 
-  if (
-    requested === null ||
-    (requested !== null && FIXTURE_THEME_IDS.has(requested))
-  ) {
+  if (requested !== null && FIXTURE_THEME_IDS.has(requested)) {
+    const theme = validThemeByName(requested);
+    if (theme === undefined) {
+      throw new Error(`Fixture theme "${requested}" is missing.`);
+    }
+    const result = validateThemeDocument(theme);
+    if (!result.ok) {
+      throw new Error(`Fixture theme "${requested}" is invalid.`);
+    }
     startFixtureTheme(
       host,
-      loadDemoTheme(requested ?? "demo"),
+      result.document,
       parameters,
       requested,
       animate,
     );
+    return;
+  }
+
+  if (requested === null) {
+    showFailure(host, "A theme id is required.");
     return;
   }
 
@@ -142,7 +152,7 @@ function startFixtureTheme(
   } else {
     showScaffoldBanner(
       requiredSemanticKeys(theme).length,
-      theme.metadata?.name ?? requested ?? "demo",
+      theme.metadata?.name ?? requested ?? "fixture",
     );
   }
 

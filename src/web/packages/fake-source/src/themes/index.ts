@@ -1,4 +1,3 @@
-import demoTheme from "../demo-theme.json" with { type: "json" };
 import stress from "./stress.json" with { type: "json" };
 import portraitCover from "./portrait-cover.json" with { type: "json" };
 import assets from "./assets.json" with { type: "json" };
@@ -38,12 +37,6 @@ export interface InvalidThemeFixture {
 }
 
 export const VALID_THEMES: readonly ValidThemeFixture[] = [
-  {
-    name: "demo",
-    document: demoTheme,
-    summary:
-      "Landscape showcase dashboard: all four chart families, styled runs, contain.",
-  },
   {
     name: "stress",
     document: stress,

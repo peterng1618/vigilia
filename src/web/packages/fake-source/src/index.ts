@@ -9,8 +9,6 @@ import type {
 export {
   createDemoSource,
   demoSourceOptions,
-  demoThemeSource,
-  loadDemoTheme,
 } from "./demo.js";
 
 export type { InvalidThemeFixture, ValidThemeFixture } from "./themes/index.js";
