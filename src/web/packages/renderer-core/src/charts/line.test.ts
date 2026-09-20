@@ -195,6 +195,21 @@ describe('buildLineOption', () => {
     expect(option.series[0]!.data).toHaveLength(4);
   });
 
+  it('renders a display-only tail between the previous two measured samples', () => {
+    const option = buildLineOption(
+      defaultLineSettings,
+      [{ sensorId: 'a', samples: [at(59, 10), at(60, 20)] }],
+      NOW + 500,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(option.series[0]!.data).toEqual([[T0 + 59_000, 10], [NOW + 500, 15]]);
+  });
+
   it.each<[Interpolation, boolean, 'end' | false]>([
     ['linear', false, false],
     ['smooth', true, false],

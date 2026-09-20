@@ -134,6 +134,8 @@ export interface PlanContext {
   readonly chartStartedAtMs?: number;
   /** Preview-only duration for revealing retained line history. */
   readonly chartStartupDurationMs?: number;
+  /** Display-only interpolation between the latest two line samples. */
+  readonly interpolateLineTail?: boolean;
   readonly animate?: boolean;
   readonly resolveAsset?: (assetId: string) => string | undefined;
   /** Long unit names keyed by short symbol; absent entries fall back to short. */
@@ -141,7 +143,7 @@ export interface PlanContext {
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
-export type ChartPlanContext = Pick<PlanContext, 'source' | 'nowMs' | 'animate' | 'chartStartedAtMs' | 'chartStartupDurationMs'>;
+export type ChartPlanContext = Pick<PlanContext, 'source' | 'nowMs' | 'animate' | 'chartStartedAtMs' | 'chartStartupDurationMs' | 'interpolateLineTail'>;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
   const issues: PlanIssue[] = [];
@@ -485,7 +487,7 @@ export function buildChartPlan(
         kind: 'chart',
         family: 'line',
         settings: content.settings,
-        option: buildLineOption(content.settings, series, context.nowMs, animate, palette, context.chartStartedAtMs, context.chartStartupDurationMs),
+        option: buildLineOption(content.settings, series, context.nowMs, animate, palette, context.chartStartedAtMs, context.chartStartupDurationMs, context.interpolateLineTail),
       };
     }
 

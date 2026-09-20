@@ -148,6 +148,7 @@ async function start(): Promise<void> {
   refreshRate.addEventListener('change', () => {
     chartRefreshRate = refreshRate.value === '1' ? 1 : 30;
     chartRefresh.setRate(chartRefreshRate);
+    active?.extensions.charts.setRefreshRate(chartRefreshRate);
   });
   window.addEventListener('pagehide', () => chartRefresh.dispose(), { once: true });
 

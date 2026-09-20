@@ -139,6 +139,7 @@ export function buildLineOption(
   palette?: FabricPalette,
   startedAtMs?: number,
   startupDurationMs?: number,
+  interpolateTail = false,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
   const start = startedAtMs !== undefined && Number.isFinite(startedAtMs)
@@ -184,14 +185,14 @@ export function buildLineOption(
     series: series.map((input, index) => ({
       type: 'line' as const,
       name: input.label ?? input.sensorId,
-      data: toSeriesPoints(
+      data: interpolateTailPoints(toSeriesPoints(
         revealProgress === undefined
           ? input.samples
           : input.samples.filter((sample) => Date.parse(sample.timestamp) <= windowStart + windowMs * revealProgress),
         settings,
         nowMs,
         windowStart,
-      ),
+      ), nowMs, interpolateTail && !revealing),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
       smooth: settings.interpolation === 'smooth',
@@ -210,6 +211,29 @@ export function buildLineOption(
       silent: true as const,
     })),
   };
+}
+
+/** Smooth the newest known segment without predicting a future measurement. */
+function interpolateTailPoints(points: SeriesPoint[], nowMs: number, enabled: boolean): SeriesPoint[] {
+  if (!enabled || points.length < 2) return points;
+
+  const previous = points.at(-2)!;
+  const latest = points.at(-1)!;
+  const [previousTime, previousValue] = previous;
+  const [latestTime, latestValue] = latest;
+  const interval = latestTime - previousTime;
+
+  if (
+    previousValue === null || latestValue === null ||
+    !(interval > 0) || nowMs < latestTime
+  ) {
+    return points;
+  }
+
+  const progress = Math.min(1, (nowMs - latestTime) / interval);
+  const value = previousValue + (latestValue - previousValue) * progress;
+
+  return [...points.slice(0, -1), [nowMs, value]];
 }
 
 function earliestSampleMs(series: readonly SeriesInput[], nowMs: number): number | undefined {

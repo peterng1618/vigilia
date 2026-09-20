@@ -22,6 +22,7 @@ export class ChartManager {
   #globals: FabricGlobals | undefined;
   #chartStartedAtMs = Date.now();
   #chartStartupDurationMs: number | undefined;
+  #interpolateLineTail = true;
 
   constructor(options: {
     readonly editor: ImageEditor;
@@ -71,6 +72,11 @@ export class ChartManager {
 
   refresh(): void {
     this.#hydrateRevivedCharts();
+  }
+
+  setRefreshRate(rate: 1 | 30): void {
+    this.#interpolateLineTail = rate === 30;
+    this.refresh();
   }
 
   reassignPaletteReferences(from: string, to: string): void {
@@ -144,6 +150,7 @@ export class ChartManager {
     const plan = buildChartPlan(id, { family: chart.family, settings: chart.settings } as ChartContent, this.#bindings[id] ?? [], {
       source: this.#source, nowMs: Date.now(), chartStartedAtMs: this.#chartStartedAtMs,
       ...(this.#chartStartupDurationMs === undefined ? {} : { chartStartupDurationMs: this.#chartStartupDurationMs }),
+      interpolateLineTail: this.#interpolateLineTail,
       animate: false,
     }, [], this.#globals?.palette);
     chart.setOption(plan.option);

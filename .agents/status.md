@@ -19,7 +19,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
-| Chart repaint | 940 units, seven typechecks, builds, 271.0 KB player gzip, and focused editor refresh-toggle browser test passed; preview line reveal and its scroll handoff are unit-covered; full browser suite and visual capture inspection remain unverified |
+| Chart repaint | 941 units, seven typechecks, builds, 271.1 KB player gzip, and focused editor refresh-toggle browser test passed; preview reveal, scroll handoff and 30 FPS line-tail interpolation are unit-covered; full browser suite and visual capture inspection remain unverified |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -31,7 +31,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - `scene-fabric` renders text, shapes, groups, images/SVG and four chart families.
 - Player uses `StaticCanvas` and does not depend on editor UI.
 - `VigiliaChart` supports persistence, disposal, live redraw and transforms.
-- Charts repaint at 30 FPS on the display; synthetic previews reveal retained line history left-to-right over two seconds, then scroll; host telemetry remains at its configured cadence.
+- Charts repaint at 30 FPS on the display; synthetic previews reveal retained line history left-to-right over two seconds, then scroll; the 30 FPS tail interpolates between the last two samples while host telemetry remains at its configured cadence.
 - Text layout and bitmap/SVG fit/recolour paths are implemented.
 
 ### Editor
