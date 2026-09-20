@@ -62,8 +62,9 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Revisit remaining spec-0014 candidates only when needed.
-2. Modernize the shell per plan §35 only after the authoring core is stable.
+1. Complete spec 0011 lossless type-preset edits and Release-only version mutation.
+2. Revisit remaining spec-0014 candidates only when needed.
+3. Modernize the shell per plan §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 

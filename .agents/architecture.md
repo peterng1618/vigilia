@@ -36,7 +36,7 @@ Current Vigilia-owned extensions are:
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
-| Artboard size/preview fit/paint | `editor/src/artboard-panel.ts` |
+| Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
 | Semantic layer projection and arrange actions | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
@@ -185,7 +185,6 @@ framework UI state across that boundary.
 
 Establish one owner when these become active work:
 
-- artboard/media property editing;
 - new-object defaults, when insertion is implemented: an editor-side pure
   factory, not persisted document state;
 - shared colour parsing;

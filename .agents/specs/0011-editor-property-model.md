@@ -1,6 +1,6 @@
 # 0011 — Editor property and theme-token model
 
-- **Status:** active; chart descriptors/control path partly implemented, remaining domains pending
+- **Status:** active; property and asset foundations implemented; lossless type-preset edits, release-version policy and remaining creation commands pending
 - **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
 ## Goal
@@ -39,7 +39,8 @@ Deleting another referenced token requires reassignment.
 A named type preset is a complete global treatment: declared font face, size,
 weight, letter spacing and line height. Each styled run independently references
 its preset and palette colour; local typography is invalid and there is no
-text-object-level preset.
+text-object-level preset. Editing one field patches that preset: it preserves
+its declared face, trio role and every untouched treatment field.
 
 Each preset selects one declared packaged font face. The renderer never
 synthesizes missing bold or italic variants. Font assets are exact local WOFF2
@@ -55,7 +56,7 @@ role-assigned preset, preserving size, letter spacing and line height;
 unassigned custom presets remain unchanged. Applying one face to a preset has
 the same face-only rule and lasts until a later trio Apply replaces it.
 
-Theme settings owns font authoring. The picker previews curated candidates
+The type-preset surface owns font authoring. The picker previews curated candidates
 transiently: preview bytes, URLs and `FontFace` instances do
 not enter assets, history, dirty state or persisted data. Apply packages the
 selected pinned WOFF2 bytes and metadata. Type-preset controls offer the curated
@@ -76,10 +77,10 @@ Raw ECharts options are not persisted or directly edited.
 
 ### Theme settings and artboard properties
 
-One Theme settings surface owns editable theme metadata (name, description,
-author and optional SemVer release version), artboard width/height, viewport fit
-mode, palette background/bar-colour tokens, and background media. Resizing the
-artboard does not rescale scene objects.
+One Theme settings surface owns editable theme metadata (name, description and
+author), artboard width/height, viewport fit mode, palette background/bar-colour
+tokens, and background media. It displays the optional SemVer release version;
+only Release may change it. Resizing the artboard does not rescale scene objects.
 
 Ordinary Save never changes the release version. A Release action validates the
 theme package, prompts for a major/minor/patch bump, updates the optional SemVer
@@ -164,14 +165,16 @@ Multi-selection/mixed-value property UX is not a requirement.
 
 ## Current implementation state
 
-Implemented: Fabric scene/group persistence; typed chart descriptors and scalar
-controls; artboard size/fit/paint; chart bindings and palette-referenced paint;
-palette and type-preset authoring/reassignment; semantic text creation; semantic
-layers with inherited visibility/lock/order; and selection-relative
-align/distribute.
+Implemented: Fabric scene/group persistence; typed chart descriptors, scalar
+and paint/threshold controls; artboard size/fit/paint/background media; chart
+bindings and palette-referenced paint; palette and type-preset
+authoring/reassignment including curated font trio/single-face adoption;
+semantic text creation; semantic layers with inherited visibility/lock/order;
+and selection-relative align/distribute.
 
-Still incomplete: packaged-font trio authoring, release-version controls, chart
-paint/threshold controls, and broader Vigilia creation commands.
+Still incomplete: lossless type-preset field editing including letter spacing,
+release-version mutation restricted to Release, and broader Vigilia creation
+commands.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled by spec 0013.
@@ -199,6 +202,7 @@ managers/owners for property domains that are not yet implemented.
 Before stabilising the theme format:
 
 - palette/type presets persist as stable references rather than copied values;
+- editing a type preset preserves its face/trio metadata and untouched fields;
 - `palette.none` and reference deletion/reassignment rules are enforced;
 - supported chart settings have typed controls and repaint correctly;
 - layer navigation reflects Fabric hierarchy, effective parent state, grouping
@@ -206,8 +210,9 @@ Before stabilising the theme format:
 - alignment requires two objects, distribution requires three, and both preserve
   the active selection;
 - artboard/token/type/binding/asset properties have a product editing surface;
-- Theme settings preserve metadata and release versions; background paint/media
-  has the specified crop, playback and package lifecycle behaviour;
+- Theme settings preserve metadata and display release versions; only Release
+  changes the version; background paint/media has the specified crop, playback
+  and package lifecycle behaviour;
 - unknown/invalid authored property values are explicitly rejected;
 - runtime telemetry never becomes persisted authored state.
 
