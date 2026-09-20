@@ -29,6 +29,7 @@ if (!artboardHost) {
 }
 
 const FIXTURE_THEME_IDS = new Set(['demo', 'stress', 'portrait-cover', 'assets']);
+const PREVIEW_STARTUP_DURATION_MS = 2_000;
 
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
@@ -85,6 +86,7 @@ function startFixtureTheme(
       source,
       nowMs: Date.now(),
       chartStartedAtMs,
+      ...(fake === undefined ? {} : { chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS }),
       resolveAsset,
       animate,
     });

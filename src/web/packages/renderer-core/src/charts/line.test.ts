@@ -163,6 +163,38 @@ describe('buildLineOption', () => {
     expect(option.series[0]!.data).toEqual([]);
   });
 
+  it('reveals retained preview history from left to right before scrolling', () => {
+    const settings: LineSettings = { ...defaultLineSettings, windowSeconds: 30 };
+    const option = buildLineOption(
+      settings,
+      [{ sensorId: 'a', samples: [at(30, 1), at(40, 2), at(50, 3), at(60, 4)] }],
+      NOW,
+      true,
+      undefined,
+      NOW - 1_000,
+      2_000,
+    );
+
+    expect(option.xAxis).toMatchObject({ min: T0 + 30_000, max: NOW });
+    expect(option.series[0]!.data).toEqual([[T0 + 30_000, 1], [T0 + 40_000, 2]]);
+  });
+
+  it('scrolls immediately after the preview reveal completes', () => {
+    const settings: LineSettings = { ...defaultLineSettings, windowSeconds: 30 };
+    const option = buildLineOption(
+      settings,
+      [{ sensorId: 'a', samples: [at(30, 1), at(40, 2), at(50, 3), at(60, 4)] }],
+      NOW,
+      true,
+      undefined,
+      NOW - 2_000,
+      2_000,
+    );
+
+    expect(option.xAxis).toMatchObject({ min: T0 + 30_000, max: NOW });
+    expect(option.series[0]!.data).toHaveLength(4);
+  });
+
   it.each<[Interpolation, boolean, 'end' | false]>([
     ['linear', false, false],
     ['smooth', true, false],

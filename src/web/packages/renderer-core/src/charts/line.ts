@@ -138,14 +138,23 @@ export function buildLineOption(
   animate = true,
   palette?: FabricPalette,
   startedAtMs?: number,
+  startupDurationMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
   const start = startedAtMs !== undefined && Number.isFinite(startedAtMs)
     ? Math.min(startedAtMs, nowMs)
     : undefined;
-  const filling = start !== undefined && nowMs < start + windowMs;
-  const windowStart = filling ? start : nowMs - windowMs;
-  const windowEnd = filling ? start + windowMs : nowMs;
+  const duration = startupDurationMs !== undefined && Number.isFinite(startupDurationMs) && startupDurationMs > 0
+    ? startupDurationMs
+    : undefined;
+  const revealProgress = start !== undefined && duration !== undefined
+    ? Math.min(1, (nowMs - start) / duration)
+    : undefined;
+  const revealing = revealProgress !== undefined && revealProgress < 1;
+  const firstSample = revealing ? earliestSampleMs(series, nowMs) : undefined;
+  const filling = !revealing && duration === undefined && start !== undefined && nowMs < start + windowMs;
+  const windowStart = revealing ? (firstSample ?? nowMs) : (filling ? start! : nowMs - windowMs);
+  const windowEnd = revealing ? windowStart + windowMs : (filling ? start! + windowMs : nowMs);
   const sampling = settings.sampling && settings.sampling !== 'none' ? settings.sampling : undefined;
 
   return {
@@ -162,7 +171,7 @@ export function buildLineOption(
     xAxis: {
       type: 'time',
       show: settings.showAxes,
-      // Fill from the render start, then retain a fixed-width scrolling window.
+      // Preview history reveals left-to-right; live data fills from render start.
       min: windowStart,
       max: windowEnd,
     },
@@ -175,7 +184,14 @@ export function buildLineOption(
     series: series.map((input, index) => ({
       type: 'line' as const,
       name: input.label ?? input.sensorId,
-      data: toSeriesPoints(input.samples, settings, nowMs, windowStart),
+      data: toSeriesPoints(
+        revealProgress === undefined
+          ? input.samples
+          : input.samples.filter((sample) => Date.parse(sample.timestamp) <= windowStart + windowMs * revealProgress),
+        settings,
+        nowMs,
+        windowStart,
+      ),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
       smooth: settings.interpolation === 'smooth',
@@ -194,6 +210,20 @@ export function buildLineOption(
       silent: true as const,
     })),
   };
+}
+
+function earliestSampleMs(series: readonly SeriesInput[], nowMs: number): number | undefined {
+  let earliest: number | undefined;
+
+  for (const input of series) {
+    for (const sample of input.samples) {
+      const timestamp = Date.parse(sample.timestamp);
+      if (!Number.isFinite(timestamp) || timestamp > nowMs) continue;
+      if (earliest === undefined || timestamp < earliest) earliest = timestamp;
+    }
+  }
+
+  return earliest;
 }
 
 /** Palette entry for one series, falling back to `stroke`. */
