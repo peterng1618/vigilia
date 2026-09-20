@@ -3,10 +3,44 @@ import { describe, expect, it, vi } from "vitest";
 import { createForkChartPanel } from "./chart-manager/panel.js";
 
 describe("fork chart property panel", () => {
+  it("offers line aspect presets and visible history", () => {
+    const resize = vi.fn();
+    const panel = createForkChartPanel(document.body, vi.fn(), vi.fn(), resize);
+    panel.render({
+      id: "trend",
+      content: {
+        family: "line",
+        settings: {
+          lineWidth: 2,
+          interpolation: "smooth",
+          stroke: { kind: "solid", color: "#00b8d9" },
+          showMarkers: false,
+          markerSize: 4,
+          windowSeconds: 60,
+          maxPoints: 600,
+          showAxes: false,
+        },
+      },
+      bindings: [],
+    });
+
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-setting="windowSeconds"]')
+        ?.previousSibling?.textContent,
+    ).toBe("Visible history (s)");
+    expect(panel.root.querySelector('[data-vigilia-chart-aspect="2"]')).not.toBeNull();
+    expect(panel.root.querySelector('[data-vigilia-chart-aspect="3"]')).not.toBeNull();
+    expect(panel.root.querySelector('[data-vigilia-chart-aspect="4"]')).not.toBeNull();
+    panel.root
+      .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="2"]')!
+      .click();
+    expect(resize).toHaveBeenCalledWith("trend", 2);
+  });
+
   it("derives controls from the shared field descriptors and returns authored settings", () => {
     const change = vi.fn();
     const bindingChange = vi.fn();
-    const panel = createForkChartPanel(document.body, change, bindingChange);
+    const panel = createForkChartPanel(document.body, change, bindingChange, vi.fn());
     const content = {
       family: "gauge" as const,
       settings: {

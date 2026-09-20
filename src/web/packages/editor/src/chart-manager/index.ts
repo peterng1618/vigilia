@@ -42,10 +42,12 @@ export class ChartManager {
       (id, settings) => this.#updateSettings(id, settings),
       (id, binding) =>
         this.#updateBinding(id, binding, options.onBindingsChange),
+      (id, ratio) => this.#resizeToAspect(id, ratio),
     );
     this.#editor.canvas.on("selection:created", this.#drawPanel);
     this.#editor.canvas.on("selection:updated", this.#drawPanel);
     this.#editor.canvas.on("selection:cleared", this.#drawPanel);
+    this.#editor.canvas.on("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.on(
       "editor:history-state-loaded" as never,
       this.#hydrateRevivedCharts,
@@ -58,6 +60,7 @@ export class ChartManager {
     this.#editor.canvas.off("selection:created", this.#drawPanel);
     this.#editor.canvas.off("selection:updated", this.#drawPanel);
     this.#editor.canvas.off("selection:cleared", this.#drawPanel);
+    this.#editor.canvas.off("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.off(
       "editor:history-state-loaded" as never,
       this.#hydrateRevivedCharts,
@@ -161,6 +164,28 @@ export class ChartManager {
     onBindingsChange?.(id, bindings);
     this.#drawPanel();
   }
+
+  #resizeToAspect(id: string, ratio: number): void {
+    const chart = this.#chartFor(id);
+    const width = chart === undefined ? 0 : chart.width * chart.scaleX;
+    if (!(chart instanceof VigiliaChart) || !Number.isFinite(width) || width <= 0) {
+      return;
+    }
+    chart.resizeTo(width, width / ratio);
+    this.#editor.canvas.requestRenderAll();
+    this.#drawPanel();
+  }
+
+  readonly #rerasterizeScaledChart = (event: { target?: unknown }): void => {
+    const chart = event.target;
+    if (!(chart instanceof VigiliaChart)) return;
+    const width = chart.width * chart.scaleX;
+    const height = chart.height * chart.scaleY;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return;
+    }
+    chart.resizeTo(width, height);
+  };
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
   readonly #hydrateRevivedCharts = (): void => {

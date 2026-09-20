@@ -25,6 +25,7 @@ export function createForkChartPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent["settings"]) => void,
   onBindingChange: (id: string, binding: Binding) => void,
+  onAspectChange: (id: string, ratio: number) => void,
 ): ForkChartPanel {
   const root = document.createElement("section");
   host.prepend(root);
@@ -40,6 +41,19 @@ export function createForkChartPanel(
       const heading = document.createElement("h2");
       heading.textContent = `${chart.content.family} chart`;
       root.append(heading);
+      if (chart.content.family === "line") {
+        const aspect = document.createElement("section");
+        aspect.append("Aspect ratio ");
+        for (const ratio of [2, 3, 4]) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset["vigiliaChartAspect"] = String(ratio);
+          button.textContent = `${ratio}:1`;
+          button.addEventListener("click", () => onAspectChange(chart.id, ratio));
+          aspect.append(button);
+        }
+        root.append(aspect);
+      }
       for (const binding of chart.bindings) {
         const label = document.createElement("label");
         label.textContent = `Binding: ${binding.id}`;

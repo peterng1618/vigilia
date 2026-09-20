@@ -141,7 +141,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
     { property: "markerSize", label: "Marker size", kind: "number", min: 0 },
     {
       property: "windowSeconds",
-      label: "Window (s)",
+      label: "Visible history (s)",
       kind: "number",
       min: 1,
       hint: "How much history the plot spans. Bounded by the sample store, which keeps 300 s.",

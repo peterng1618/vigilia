@@ -25,7 +25,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 | Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence. |
 | Editor live bindings | 946 units, seven typechecks, builds, and focused desktop Chromium proof passed; inspected `editor-fork-live-text-desktop-chromium.png` shows a preview-bound text value while Save persists only its authored run and fallback. |
-| Shared line-chart motion | 948 units and seven typechecks passed on 2026-09-20; player/editor share `renderer-core` line geometry, live batches receive browser-local timestamps immediately, line windows retain one left-edge predecessor, and only the viewport trails complete segments by one cadence. |
+| Shared line-chart motion | 931 units, editor/renderer typechecks and editor/player builds passed on 2026-09-20; player/editor share `renderer-core` line geometry, live batches receive browser-local timestamps immediately, line windows retain one left-edge predecessor, and only the viewport trails complete segments by one cadence. The editor exposes 2:1/3:1/4:1 line aspect presets and visible history; committed chart transforms rerasterize every chart family. |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.

@@ -8,7 +8,7 @@ import { ChartManager } from "./index.js";
 
 describe("ChartManager", () => {
   it("updates the selected Fabric chart from envelope bindings", () => {
-    const listeners = new Map<string, () => void>();
+    const listeners = new Map<string, (event?: unknown) => void>();
     const chart = Object.assign(Object.create(VigiliaChart.prototype), {
       id: "cpu-gauge",
       family: "gauge",
@@ -17,10 +17,15 @@ describe("ChartManager", () => {
         track: { ref: "palette.track" },
         progress: { ref: "palette.accent" },
       },
+      width: 100,
+      height: 100,
+      scaleX: 2,
+      scaleY: 1.5,
+      resizeTo: vi.fn(),
     }) as VigiliaChart;
     let revivedChart = chart;
     const canvas = {
-      on: vi.fn((event: string, listener: () => void) =>
+      on: vi.fn((event: string, listener: (event?: unknown) => void) =>
         listeners.set(event, listener),
       ),
       off: vi.fn(),
@@ -51,6 +56,9 @@ describe("ChartManager", () => {
     });
 
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
+
+    listeners.get("object:modified")!({ target: chart });
+    expect(chart.resizeTo).toHaveBeenCalledWith(200, 150);
 
     listeners.get("selection:created")!();
     const binding = document.querySelector<HTMLSelectElement>(
@@ -91,6 +99,6 @@ describe("ChartManager", () => {
     expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
 
     manager.destroy();
-    expect(canvas.off).toHaveBeenCalledTimes(4);
+    expect(canvas.off).toHaveBeenCalledTimes(5);
   });
 });
