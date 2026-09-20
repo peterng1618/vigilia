@@ -140,6 +140,7 @@ licence from primary/package metadata. The editor consumes the compiled
 | Current architectural decisions | `.agents/decisions.md` |
 | Durable lessons | `.agents/lessons.md` |
 | Product requirements | `.agents/design/plan.md` |
+| Implementation plans | `docs/superpowers/plans/` |
 
 `§N` markers in `plan.md` are stable labels. Never renumber them.
 
