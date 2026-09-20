@@ -470,6 +470,35 @@ test.describe('Fabric editor route', () => {
     expect(leftFor(savedAfterUndo, 'panel')).toBeCloseTo(40, 3);
   });
 
+  test('rehydrates a chart runtime after undo', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await selectStarterChart(page);
+    const canvas = page.locator('#vigilia-fabric-editor canvas.upper-canvas');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) return;
+    const start = { x: box.x + (432 / 1280) * box.width, y: box.y + (418 / 720) * box.height };
+    const left = leftFor(await saveEnvelope(page), 'load-gauge');
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 80, start.y);
+    await page.mouse.up();
+    expect(leftFor(await saveEnvelope(page), 'load-gauge')).toBeGreaterThan(left);
+
+    await page.keyboard.press('Control+z');
+    expect(leftFor(await saveEnvelope(page), 'load-gauge')).toBeCloseTo(left, 3);
+    await expect.poll(() => page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+          && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as { canvas: { getObjects(): Array<{ get(name: string): unknown }> } } | undefined;
+      const chart = editor?.canvas.getObjects().find((object) => object.get('id') === 'load-gauge') as { option?: { series?: unknown[] } } | undefined;
+      const option = chart?.option;
+      return option?.series?.length ?? 0;
+    })).toBeGreaterThan(0);
+  });
+
   test('keeps the active document when Fabric cannot revive a schema-valid scene', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

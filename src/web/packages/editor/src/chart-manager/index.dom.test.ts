@@ -12,10 +12,12 @@ describe('ChartManager', () => {
     const chart = Object.assign(Object.create(VigiliaChart.prototype), {
       id: 'cpu-gauge', family: 'gauge', settings: { ...defaultGaugeSettings, track: { ref: 'palette.track' }, progress: { ref: 'palette.accent' } },
     }) as VigiliaChart;
+    let revivedChart = chart;
     const canvas = {
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),
       off: vi.fn(),
       getActiveObject: vi.fn(() => chart),
+      getObjects: vi.fn(() => [revivedChart]),
       requestRenderAll: vi.fn(),
     };
     const scene = { objectFor: vi.fn(() => chart) } as unknown as SceneAdapter;
@@ -52,7 +54,13 @@ describe('ChartManager', () => {
     progress.dispatchEvent(new Event('change'));
     expect(chart.settings).toMatchObject({ progress: { ref: 'palette.track' } });
 
+    revivedChart = Object.assign(Object.create(VigiliaChart.prototype), {
+      id: 'cpu-gauge', family: 'gauge', settings: chart.settings,
+    }) as VigiliaChart;
+    listeners.get('editor:history-state-loaded')!();
+    expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
+
     manager.destroy();
-    expect(canvas.off).toHaveBeenCalledTimes(3);
+    expect(canvas.off).toHaveBeenCalledTimes(4);
   });
 });

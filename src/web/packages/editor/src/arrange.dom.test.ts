@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ActiveSelection, Rect } from 'fabric/es';
+import { ActiveSelection, Canvas, Rect } from 'fabric/es';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
 import { describe, expect, it, vi } from 'vitest';
 import { applyArrange, canArrange } from './arrange.js';
@@ -10,13 +10,14 @@ describe('selection-relative arrange actions', () => {
     const rotated = rectangle(10, 30, 20, 10, 45);
     const last = rectangle(140, 40, 10, 20);
     const { editor, selection, historyManager } = editorFor(first, rotated, last);
-    const anchorLeft = first.getBoundingRect().left;
+    const selected = selection.getObjects();
 
     expect(applyArrange(editor, 'align-left')).toBe(true);
+    const anchorLeft = first.getBoundingRect().left;
     expect([first, rotated, last].map((object) => object.getBoundingRect().left)).toEqual([
       anchorLeft, anchorLeft, anchorLeft,
     ]);
-    expect(editor.canvas.getActiveObject()).toBe(selection);
+    expect((editor.canvas.getActiveObject() as ActiveSelection).getObjects()).toEqual(selected);
     expect(historyManager.saveState).toHaveBeenCalledTimes(1);
   });
 
@@ -53,6 +54,21 @@ describe('selection-relative arrange actions', () => {
     expect(middleLeft - firstRight).toBe(middleRight <= last.getBoundingRect().left ? last.getBoundingRect().left - middleRight : NaN);
     expect(historyManager.saveState).toHaveBeenCalledTimes(1);
   });
+
+  it('moves selected objects in canvas coordinates instead of the active-selection frame', () => {
+    const canvas = new Canvas(document.createElement('canvas'), { width: 320, height: 180 });
+    const anchor = rectangle(220, 20, 30, 20);
+    const other = rectangle(20, 40, 30, 20);
+    canvas.add(anchor, other);
+    const selection = new ActiveSelection([anchor, other], { canvas });
+    canvas.setActiveObject(selection);
+    const editor = { canvas, historyManager: { saveState: vi.fn() } } as unknown as ImageEditor;
+
+    expect(applyArrange(editor, 'align-left')).toBe(true);
+    expect(anchor.getBoundingRect().left).toBeCloseTo(220, 3);
+    expect(other.getBoundingRect().left).toBeCloseTo(220, 3);
+    expect(other.getBoundingRect().left + other.getBoundingRect().width).toBeLessThanOrEqual(320);
+  });
 });
 
 function rectangle(left: number, top: number, width: number, height: number, angle = 0): Rect {
@@ -64,6 +80,8 @@ function editorFor(...objects: readonly Rect[]) {
   const historyManager = { saveState: vi.fn() };
   const canvas = {
     getActiveObject: vi.fn(() => selection),
+    discardActiveObject: vi.fn(() => selection.removeAll()),
+    fire: vi.fn(),
     setActiveObject: vi.fn((next) => { canvas.getActiveObject.mockReturnValue(next); }),
     requestRenderAll: vi.fn(),
   };

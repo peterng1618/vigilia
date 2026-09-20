@@ -9,7 +9,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Check | Result |
 |---|---|
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
-| Editor interaction regressions | Fork history-baseline unit, editor typecheck, 12 focused units, editor build, and desktop Chromium transformed-double-click/initial-undo/drag-undo proof passed on 2026-09-20 |
+| Editor interaction regressions | Fork history-baseline unit, editor typecheck, 5 focused arrange/chart units, editor/player builds, and desktop Chromium drag-undo/chart-runtime-after-undo proof passed on 2026-09-20 |
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
 | Font editor slice | 23 focused tests, seven typechecks, editor build and inspected `editor-fork-font-trio-desktop-chromium.png` passed |
 | Hosted font delivery | Host asset route, player fetch/lifecycle tests, full typecheck, 936 units, builds, size and desktop/phone visual capture passed; Node-hosted browser runtime remains unverified because E2E previews Vite bundles |

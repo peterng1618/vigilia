@@ -7,6 +7,7 @@ import {
   type SampleSource,
 } from '@vigilia/renderer-core';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+import { Group } from 'fabric/es';
 import { VigiliaChart, type SceneAdapter } from '@vigilia/scene-fabric';
 import { createForkChartPanel } from './panel.js';
 
@@ -46,6 +47,7 @@ export class ChartManager {
     this.#editor.canvas.on('selection:created', this.#drawPanel);
     this.#editor.canvas.on('selection:updated', this.#drawPanel);
     this.#editor.canvas.on('selection:cleared', this.#drawPanel);
+    this.#editor.canvas.on('editor:history-state-loaded' as never, this.#hydrateRevivedCharts);
     this.#hydrateRevivedCharts();
     this.#drawPanel();
   }
@@ -54,6 +56,7 @@ export class ChartManager {
     this.#editor.canvas.off('selection:created', this.#drawPanel);
     this.#editor.canvas.off('selection:updated', this.#drawPanel);
     this.#editor.canvas.off('selection:cleared', this.#drawPanel);
+    this.#editor.canvas.off('editor:history-state-loaded' as never, this.#hydrateRevivedCharts);
     this.#panel.root.remove();
   }
 
@@ -110,7 +113,7 @@ export class ChartManager {
   };
 
   #updateSettings(id: string, settings: ChartContent['settings']): void {
-    const chart = this.#scene.objectFor(id);
+    const chart = this.#chartFor(id);
 
     if (chart instanceof VigiliaChart) {
       chart.set('settings', settings);
@@ -128,7 +131,7 @@ export class ChartManager {
     const current = this.#bindings[id] ?? [];
     const bindings = current.map((binding) => binding.id === nextBinding.id ? nextBinding : binding);
     this.#bindings = { ...this.#bindings, [id]: bindings };
-    const chart = this.#scene.objectFor(id);
+    const chart = this.#chartFor(id);
     if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
     this.#editor.canvas.requestRenderAll();
     onBindingsChange?.(id, bindings);
@@ -136,12 +139,26 @@ export class ChartManager {
   }
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
-  #hydrateRevivedCharts(): void {
+  readonly #hydrateRevivedCharts = (): void => {
     for (const id of Object.keys(this.#bindings)) {
-      const chart = this.#scene.objectFor(id);
+      const chart = this.#chartFor(id);
       if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
     }
     this.#editor.canvas.requestRenderAll();
+  };
+
+  #chartFor(id: string): VigiliaChart | undefined {
+    const find = (objects: readonly object[]): VigiliaChart | undefined => {
+      for (const object of objects) {
+        if (object instanceof VigiliaChart && object.get('id') === id) return object;
+        if (object instanceof Group) {
+          const chart = find(object.getObjects());
+          if (chart !== undefined) return chart;
+        }
+      }
+      return undefined;
+    };
+    return find(this.#editor.canvas.getObjects());
   }
 
   #applyChart(id: string, chart: VigiliaChart): void {

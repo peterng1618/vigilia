@@ -16,10 +16,11 @@ export function applyArrange(editor: ImageEditor, action: ArrangeAction): boolea
   if (!(active instanceof ActiveSelection) || !canArrange(editor, action)) return false;
   const objects = active.getObjects() as ArrangeObject[];
 
+  editor.canvas.discardActiveObject();
   if (action === 'distribute-x' || action === 'distribute-y') distribute(objects, action === 'distribute-x' ? 'x' : 'y');
   else align(objects, action);
 
-  editor.canvas.setActiveObject(active);
+  editor.canvas.setActiveObject(new ActiveSelection(objects, { canvas: editor.canvas }));
   editor.canvas.requestRenderAll();
   editor.historyManager.saveState();
   return true;
