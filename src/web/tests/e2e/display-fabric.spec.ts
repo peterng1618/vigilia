@@ -266,7 +266,7 @@ test.describe("the scene reaches the canvas", () => {
 
     await expect
       .poll(async () => (await probe(page)).viewportTransform[0])
-      .toBeCloseTo(900 / 1280, 5);
+      .toBeCloseTo(900 / 1024, 5);
 
     const scene = await probe(page);
     expect(scene.canvasSize).toEqual({ width: 900, height: 900 });

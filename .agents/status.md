@@ -9,7 +9,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 | Check | Result |
 |---|---|
 | Spec 0011 property corrections | Full 935-unit suite, focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
-| CI | `35526955858` failed format check on eight unrelated pre-existing chart/player/renderer files; the two touched editor files were formatted in `3bb0480` and no longer appear in the failure |
+| CI | `35527200912` passed licence, format, lint, typecheck, unit, build and size jobs; its only failure was the viewport E2E test expecting the retired 1280px stress artboard width. The corrected focused Chromium test and format check passed locally on 2026-09-21. |
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
 | Web quality tooling | Biome 2.5.14 `format:check` and lint for strict equality, unused symbols and floating promises, seven-project typecheck, 946-unit suite, workspace build and player-size gate passed on 2026-09-20; Markdown/YAML are not yet linted |
 | CI licence notices | The `Licence notices present` job failed before the frontend job because its exact package-name check could not find `@playwright/test`; the notice now uses the declared name and needs CI confirmation |
@@ -22,7 +22,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 | Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
 | Player size gate | 270.6 KB gzip JS; 0.0 KB gzip CSS |
 | Live line visual review | Three v2 editor frames at one-second intervals show a continuous line at both edges: complete segments render in a hidden right gutter and the source retains one extra second for the left-edge predecessor; player requires a hosted v2 theme or an explicit test fixture |
-| Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
+| Browser suite | Focused desktop Chromium viewport-refit proof passed on 2026-09-21 after correcting its fixture-width expectation; full local `display-fabric` run was unstable at an unrelated initial canvas-mount test, with no summary produced. |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 | Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence. |
