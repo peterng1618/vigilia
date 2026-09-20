@@ -44,4 +44,13 @@ describe('loadHostedTheme', () => {
     await expect(loadHostedFontAssets('living-room', theme, fetcher)).resolves.toEqual({ 'assets/inter-400.woff2': new Uint8Array([1, 2]) });
     expect(fetcher).toHaveBeenCalledWith('/api/themes/living-room/assets/assets%2Finter-400.woff2');
   });
+
+  it('rejects a failed declared font fetch', async () => {
+    const theme: FabricThemeEnvelope = { ...envelope, assets: [
+      { id: 'inter-400', kind: 'font', path: 'assets/inter-400.woff2' },
+    ] };
+
+    await expect(loadHostedFontAssets('living-room', theme, async () => new Response('', { status: 404 })))
+      .rejects.toThrow('font asset');
+  });
 });

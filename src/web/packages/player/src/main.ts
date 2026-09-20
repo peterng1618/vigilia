@@ -172,6 +172,8 @@ async function startHostedTheme(
   theme: FabricThemeEnvelope,
   parameters: URLSearchParams,
 ): Promise<void> {
+  // Fetch before allocating live resources so a failed font request has nothing to release.
+  const fontBytes = await loadHostedFontAssets(theme.id, theme, window.fetch.bind(window));
   const keys = Object.values(theme.bindings ?? {}).flat().map((binding) => binding.semanticKey);
   const liveHandle = createLiveSource({
     url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(','))}`,
@@ -182,7 +184,6 @@ async function startHostedTheme(
     const url = resolveAsset(assetId);
     return url === undefined ? undefined : { url };
   } });
-  const fontBytes = await loadHostedFontAssets(theme.id, theme, window.fetch.bind(window));
   const releaseFonts = await loadFontAssets({
     assets: theme.assets ?? [],
     bytes: fontBytes,
