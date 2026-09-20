@@ -1,7 +1,6 @@
 import { SAMPLE_EVENT, decodeBatch } from "./protocol.js";
 import type { SampleSource } from "./source.js";
 import { SampleStore } from "./store.js";
-import type { Sample } from "../types.js";
 
 /** Push transport → bounded pull `SampleSource`; downstream rendering stays transport-agnostic. */
 
