@@ -268,6 +268,9 @@ it rejects unexpected paths, duplicate/missing assets and bounded hostile input
 before a document is revived. Preview/licence files and widget packages follow
 only when they have an authoring workflow.
 
+The host may expose declared package assets as validated read-only bytes for the
+player; the player remains ZIP-format-free.
+
 Local folders may expose the same `theme.json` and `assets/` layout for external
 asset editing. They are authoring workspaces: detect changed asset hashes and
 reload deliberately, then export an immutable ZIP for sharing, libraries and a

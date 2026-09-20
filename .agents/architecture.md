@@ -173,6 +173,7 @@ framework UI state across that boundary.
 |---|---|
 | CLI flags | `host/src/cli/args.ts` |
 | HTTP routing | `host/src/server.ts` |
+| Declared package-asset HTTP reads | `host/src/server.ts` |
 | Static-path safety | `host/src/serve/static-path.ts` |
 | SSE connection/keep-latest | `host/src/transport/` |
 | Provider scheduling/failure isolation | `host/src/providers/registry.ts` |

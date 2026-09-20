@@ -64,6 +64,10 @@ through `FontFace` before measuring or rendering text. A missing or incompatible
 preset face invalidates the package; runtime load failure is visible, never
 silently replaced. No runtime CDN dependency is persisted.
 
+The host serves declared package assets through a validated read-only route. The
+player fetches declared font bytes there before Fabric revival and releases only
+its loaded faces on unmount; it does not read ZIP files or import `theme-package`.
+
 ### Charts are family-specific
 
 Each chart family owns typed setting descriptors in `renderer-core`. The editor
