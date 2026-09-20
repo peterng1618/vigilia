@@ -4,6 +4,7 @@ import {
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
 import {
+  createNewChartDefaults,
   createNewPaintDefaults,
   createNewTextDefaults,
 } from "./new-object-defaults.js";
@@ -59,5 +60,21 @@ describe("new object defaults", () => {
     expect(() =>
       createNewTextDefaults({ palette: globals.palette }, "New text"),
     ).toThrow("type preset");
+  });
+
+  it.each(["gauge", "line", "bar", "pie"] as const)(
+    "derives %s settings using only existing palette references",
+    (family) => {
+      const settings = createNewChartDefaults(globals, family);
+
+      expect(JSON.stringify(settings)).toContain("palette.ink");
+      expect(JSON.stringify(settings)).not.toContain('"color"');
+    },
+  );
+
+  it("refuses chart creation without a non-transparent palette token", () => {
+    expect(() => createNewChartDefaults(undefined, "gauge")).toThrow(
+      "palette token",
+    );
   });
 });

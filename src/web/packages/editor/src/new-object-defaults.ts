@@ -1,4 +1,13 @@
-import type { FabricGlobals, TypePreset } from "@vigilia/renderer-core";
+import {
+  defaultBarSettings,
+  defaultGaugeSettings,
+  defaultLineSettings,
+  defaultPieSettings,
+  type ChartContent,
+  type ChartFamily,
+  type FabricGlobals,
+  type TypePreset,
+} from "@vigilia/renderer-core";
 import {
   fabricArtboardPaint,
   VIGILIA_PAINT_PROPERTY,
@@ -72,6 +81,33 @@ export function createNewTextDefaults(
       ],
     },
   };
+}
+
+/** Supplies token-backed chart settings without making defaults document state. */
+export function createNewChartDefaults(
+  globals: FabricGlobals | undefined,
+  family: ChartFamily,
+): ChartContent["settings"] {
+  const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
+
+  if (paint === undefined) {
+    throw new Error("New charts require a palette reference.");
+  }
+
+  const ref = { ref: paint } as const;
+
+  switch (family) {
+    case "gauge":
+      return { ...defaultGaugeSettings, track: ref, progress: ref };
+    case "line": {
+      const { area: _area, ...settings } = defaultLineSettings;
+      return { ...settings, stroke: ref, palette: [ref] };
+    }
+    case "bar":
+      return { ...defaultBarSettings, fill: ref, track: ref };
+    case "pie":
+      return { ...defaultPieSettings, palette: [ref], remainderFill: ref };
+  }
 }
 
 function firstPalette(
