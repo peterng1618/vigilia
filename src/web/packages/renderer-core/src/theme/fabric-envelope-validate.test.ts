@@ -15,6 +15,35 @@ function envelope(): Record<string, unknown> {
   };
 }
 
+function fontAsset(id: string, weight: number): Record<string, unknown> {
+  return {
+    id,
+    kind: 'font',
+    path: `assets/${id}.woff2`,
+    family: 'Inter',
+    weight,
+    style: 'normal',
+    format: 'woff2',
+    sourceUrl: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@5.1.1/latin-400-normal.woff2',
+    license: { name: 'SIL Open Font License 1.1', url: 'https://openfontlicense.org/' },
+  };
+}
+
+function envelopeWithFontRoles(): Record<string, unknown> {
+  return {
+    ...envelope(),
+    assets: [fontAsset('heading-face', 700), fontAsset('body-face', 400), fontAsset('mono-face', 400)],
+    globals: {
+      typePresets: {
+        heading: { name: 'Heading', value: { family: 'Inter', size: 32, weight: 700, face: { assetId: 'heading-face' }, trioRole: 'heading' } },
+        metric: { name: 'Metric', value: { family: 'Inter', size: 48, weight: 700, face: { assetId: 'heading-face' }, trioRole: 'heading' } },
+        body: { name: 'Body', value: { family: 'Inter', size: 16, face: { assetId: 'body-face' }, trioRole: 'body' } },
+        mono: { name: 'Mono', value: { family: 'Inter', size: 14, face: { assetId: 'mono-face' }, trioRole: 'mono' } },
+      },
+    },
+  };
+}
+
 describe('Fabric theme envelope validation', () => {
   it('accepts a bounded Fabric scene with identities and semantic bindings', () => {
     expect(validateFabricThemeEnvelope(envelope())).toMatchObject({ ok: true });
@@ -178,6 +207,33 @@ describe('Fabric theme envelope validation', () => {
       ...envelope(),
       globals: { typePresets: { metric: { name: 'Metric', value: { family: 'Inter', size: 32, weight: 700, lineHeight: 1.1 } } } },
     })).toMatchObject({ ok: true });
+  });
+
+  it('validates exact declared font faces and shared trio roles', () => {
+    expect(validateFabricThemeEnvelope(envelopeWithFontRoles(), { requireTrioRoles: true })).toMatchObject({ ok: true });
+  });
+
+  it('rejects a face with metadata that disagrees with its WOFF2 declaration', () => {
+    const result = validateFabricThemeEnvelope({
+      ...envelopeWithFontRoles(),
+      assets: [fontAsset('heading-face', 600), fontAsset('body-face', 400), fontAsset('mono-face', 400)],
+    });
+
+    expect(result).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ path: '/globals/typePresets/heading/value/face/assetId' }),
+    ]) });
+  });
+
+  it('requires all starter roles only when requested', () => {
+    const theme = envelopeWithFontRoles();
+    const globals = theme['globals'] as Record<string, unknown>;
+    const presets = globals['typePresets'] as Record<string, unknown>;
+    delete presets['mono'];
+
+    expect(validateFabricThemeEnvelope(theme)).toMatchObject({ ok: true });
+    expect(validateFabricThemeEnvelope(theme, { requireTrioRoles: true })).toMatchObject({ ok: false, issues: expect.arrayContaining([
+      expect.objectContaining({ path: '/globals/typePresets' }),
+    ]) });
   });
 
   it('rejects transitional globals and literal artboard paint', () => {

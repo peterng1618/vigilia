@@ -29,10 +29,10 @@ describe('published Fabric theme schema', () => {
 
   it('keeps envelope bindings and assets explicit while dropping GIF assets', () => {
     const document = schema();
-    const asset = document.$defs['assetReference']!['properties'] as Record<string, Record<string, unknown>>;
+    const asset = document.$defs['nonFontAssetReference']!['properties'] as Record<string, Record<string, unknown>>;
     const binding = document.$defs['binding']!;
 
-    expect(asset['kind']!['enum']).toEqual(['image', 'svg', 'video', 'font']);
+    expect(asset['kind']!['enum']).toEqual(['image', 'svg', 'video']);
     expect(binding['required']).toContain('id');
     expect(document.properties['bindings']).toBeDefined();
   });
@@ -57,12 +57,26 @@ describe('published Fabric theme schema', () => {
 
     expect(Object.keys(globals)).toEqual(['palette', 'typePresets']);
     expect(globals['typePresets']).toEqual({ $ref: '#/$defs/typePresetGroup' });
-    expect(preset['required']).toEqual(['family', 'size']);
+    expect(preset['required']).toEqual(['family', 'size', 'face']);
+    expect(preset['properties']).toMatchObject({
+      face: { $ref: '#/$defs/fontFaceReference' },
+      trioRole: { enum: ['heading', 'body', 'mono'] },
+    });
     expect(artboard['background']).toEqual({ $ref: '#/$defs/paletteReference' });
     expect(artboard['barColor']).toEqual({ $ref: '#/$defs/paletteReference' });
     expect(artboard['backgroundMedia']).toEqual({ $ref: '#/$defs/backgroundMedia' });
     expect(document.$defs['metadata']?.['properties']).toMatchObject({ version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' } });
     expect(document.$defs['styleValue']).toBeUndefined();
     expect(document.$defs['globalGroup']).toBeUndefined();
+  });
+
+  it('discriminates fully declared WOFF2 font assets from other assets', () => {
+    const document = schema();
+    const asset = document.$defs['assetReference']!;
+    const font = document.$defs['fontAssetReference']!;
+
+    expect(asset['oneOf']).toHaveLength(2);
+    expect(font['required']).toEqual(['id', 'kind', 'path', 'family', 'weight', 'style', 'format', 'sourceUrl', 'license']);
+    expect(font['properties']).toMatchObject({ kind: { const: 'font' }, format: { const: 'woff2' } });
   });
 });

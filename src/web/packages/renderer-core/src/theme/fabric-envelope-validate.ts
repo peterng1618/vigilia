@@ -14,7 +14,10 @@ export type FabricEnvelopeValidationResult =
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
 
 /** Validates the versioned product envelope; Fabric compatibility remains scene-fabric's boundary. */
-export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValidationResult {
+export function validateFabricThemeEnvelope(
+  input: unknown,
+  options: { readonly requireTrioRoles?: boolean } = {},
+): FabricEnvelopeValidationResult {
   if (!isRecord(input)) {
     return fail('not-an-object', '', 'The Fabric theme must be a JSON object.');
   }
@@ -43,6 +46,7 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   palettePaints(input['globals'], issues);
   editorMetadata(input['editorMetadata'], issues);
   rejectGifAssets(input['assets'], issues);
+  fontPresetFaces(input['globals'], input['assets'], options.requireTrioRoles === true, issues);
   const sceneIds = scene(input['scene'], issues);
   scenePaintReferences(input['scene'], input['globals'], issues);
   sceneTypeReferences(input['scene'], input['globals'], issues);
@@ -52,6 +56,36 @@ export function validateFabricThemeEnvelope(input: unknown): FabricEnvelopeValid
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+function fontPresetFaces(globals: unknown, assets: unknown, requireTrioRoles: boolean, issues: ValidationIssue[]): void {
+  if (!isRecord(globals) || !isRecord(globals['typePresets'])) return;
+  const presets = globals['typePresets'];
+  const fontAssets = new Map<string, Record<string, unknown>>();
+  if (Array.isArray(assets)) {
+    for (const asset of assets) {
+      if (isRecord(asset) && asset['kind'] === 'font' && typeof asset['id'] === 'string') fontAssets.set(asset['id'], asset);
+    }
+  }
+  const roles = new Set<string>();
+  for (const [id, entry] of Object.entries(presets)) {
+    const value = isRecord(entry) && isRecord(entry['value']) ? entry['value'] : undefined;
+    if (value === undefined) continue;
+    if (typeof value['trioRole'] === 'string') roles.add(value['trioRole']);
+    const face = isRecord(value['face']) ? value['face'] : undefined;
+    if (face === undefined) {
+      if (requireTrioRoles) issues.push(issue('missing-field', `/globals/typePresets/${id}/value/face`, 'New theme type presets need a declared packaged font face.'));
+      continue;
+    }
+    const assetId = face['assetId'];
+    const asset = typeof assetId === 'string' ? fontAssets.get(assetId) : undefined;
+    if (asset === undefined || asset['family'] !== value['family'] || (value['weight'] !== undefined && asset['weight'] !== value['weight'])) {
+      issues.push(issue('unresolved-asset-ref', `/globals/typePresets/${id}/value/face/assetId`, 'A type preset face must reference a declared matching font asset.'));
+    }
+  }
+  if (requireTrioRoles && !['heading', 'body', 'mono'].every((role) => roles.has(role))) {
+    issues.push(issue('missing-field', '/globals/typePresets', 'New themes need heading, body and mono type-preset roles.'));
+  }
 }
 
 /** Fabric text font properties are resolved cache; runs own their type-preset references. */

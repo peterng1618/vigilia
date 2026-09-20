@@ -79,15 +79,18 @@
       }
     },
     "typePreset": {
-      "type": "object", "additionalProperties": false, "required": ["family", "size"],
+      "type": "object", "additionalProperties": false, "required": ["family", "size", "face"],
       "properties": {
         "family": { "type": "string", "minLength": 1 },
         "size": { "type": "number", "exclusiveMinimum": 0 },
         "weight": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
         "letterSpacing": { "type": "number" },
-        "lineHeight": { "type": "number", "exclusiveMinimum": 0 }
+        "lineHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "face": { "$ref": "#/$defs/fontFaceReference" },
+        "trioRole": { "enum": ["heading", "body", "mono"] }
       }
     },
+    "fontFaceReference": { "type": "object", "additionalProperties": false, "required": ["assetId"], "properties": { "assetId": { "$ref": "#/$defs/stableId" } } },
     "transparentPaint": {
       "type": "object", "additionalProperties": false, "required": ["kind", "color"],
       "properties": { "kind": { "const": "solid" }, "color": { "const": "transparent" } }
@@ -99,14 +102,29 @@
       ]
     },
     "assetReference": {
+      "oneOf": [{ "$ref": "#/$defs/fontAssetReference" }, { "$ref": "#/$defs/nonFontAssetReference" }]
+    },
+    "nonFontAssetReference": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "path"],
       "properties": {
         "id": { "$ref": "#/$defs/stableId" },
-        "kind": { "enum": ["image", "svg", "video", "font"] },
+        "kind": { "enum": ["image", "svg", "video"] },
         "path": { "type": "string", "pattern": "^assets/[A-Za-z0-9._/-]{1,200}$" },
         "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "sourceUrl": { "type": "string", "format": "uri" },
         "license": { "type": "object", "additionalProperties": false, "properties": { "name": { "type": "string", "maxLength": 200 }, "url": { "type": "string", "format": "uri" }, "attribution": { "type": "string", "maxLength": 500 } } }
+      }
+    },
+    "fontAssetReference": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "path", "family", "weight", "style", "format", "sourceUrl", "license"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" }, "kind": { "const": "font" },
+        "path": { "type": "string", "pattern": "^assets/[A-Za-z0-9._/-]{1,200}\\.woff2$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "family": { "type": "string", "minLength": 1 }, "weight": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "style": { "enum": ["normal", "italic"] }, "format": { "const": "woff2" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "license": { "type": "object", "additionalProperties": false, "required": ["name", "url"], "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 200 }, "url": { "type": "string", "format": "uri" }, "attribution": { "type": "string", "maxLength": 500 } } }
       }
     },
     "binding": {

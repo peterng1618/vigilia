@@ -83,6 +83,8 @@ export interface TypePreset {
   readonly weight?: string | number;
   readonly letterSpacing?: number;
   readonly lineHeight?: number;
+  readonly face?: { readonly assetId: string };
+  readonly trioRole?: 'heading' | 'body' | 'mono';
 }
 
 export type GlobalGroup = Readonly<Record<string, GlobalEntry>>;
@@ -216,6 +218,16 @@ export interface AssetReference {
   readonly sha256?: string;
   readonly sourceUrl?: string;
   readonly license?: AssetLicense;
+}
+
+export interface FontAssetReference extends AssetReference {
+  readonly kind: 'font';
+  readonly family: string;
+  readonly weight: string | number;
+  readonly style: 'normal' | 'italic';
+  readonly format: 'woff2';
+  readonly sourceUrl: string;
+  readonly license: AssetLicense;
 }
 
 export interface ThemeMetadata {

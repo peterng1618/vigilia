@@ -98,10 +98,11 @@ const KNOWN_KEYS = {
   rectangleContent: ['cornerRadius'],
   imageContent: ['assetId', 'fit', 'monochrome'],
   videoContent: ['assetId', 'loop', 'muted'],
-  assetReference: ['id', 'kind', 'path', 'sha256', 'sourceUrl', 'license'],
+  assetReference: ['id', 'kind', 'path', 'sha256', 'sourceUrl', 'license', 'family', 'weight', 'style', 'format'],
   widgetProvenance: ['widgetId', 'widgetName', 'widgetVersion', 'insertedAt'],
   globalEntry: ['name', 'value'],
-  typePreset: ['family', 'size', 'weight', 'letterSpacing', 'lineHeight'],
+  typePreset: ['family', 'size', 'weight', 'letterSpacing', 'lineHeight', 'face', 'trioRole'],
+  fontFaceReference: ['assetId'],
   gaugeSettings: [
     'startAngle',
     'endAngle',
@@ -433,6 +434,15 @@ function validateTypePreset(issues: Issues, value: unknown, path: string): void 
       issues.add('out-of-range', `${path}/${key}`, 'A type preset lineHeight must be above 0.');
     }
   }
+  const face = value['face'];
+  if (face !== undefined) {
+    if (!issues.object(face, `${path}/face`, 'A font face reference')) return;
+    issues.unknownKeys(face, `${path}/face`, 'fontFaceReference', 'A font face reference');
+    issues.stableId(face['assetId'], `${path}/face/assetId`, 'A font face asset id');
+  }
+  if (value['trioRole'] !== undefined) {
+    issues.enumValue(value['trioRole'], ['heading', 'body', 'mono'] as const, `${path}/trioRole`, 'A trio role');
+  }
 }
 
 /** Returns declared asset IDs. */
@@ -473,6 +483,8 @@ function validateAssets(issues: Issues, value: unknown): Set<string> {
     );
 
     validateAssetPath(issues, asset['path'], `${path}/path`);
+
+    if (asset['kind'] === 'font') validateFontAsset(issues, asset, path);
 
     if (asset['sha256'] !== undefined && !/^[a-f0-9]{64}$/.test(String(asset['sha256']))) {
       issues.add('wrong-type', `${path}/sha256`, 'sha256 must be 64 lowercase hex characters.');
@@ -670,6 +682,35 @@ function validateStyleMap(
       continue;
     }
     validateStyleValue(issues, styleValue, `${path}/${property}`, globalKeys);
+  }
+}
+
+function validateFontAsset(issues: Issues, asset: Record<string, unknown>, path: string): void {
+  if (typeof asset['family'] !== 'string' || asset['family'].trim().length === 0) {
+    issues.add('missing-field', `${path}/family`, 'A font asset needs a font family.');
+  }
+  if (typeof asset['weight'] !== 'string' && (typeof asset['weight'] !== 'number' || !Number.isFinite(asset['weight']))) {
+    issues.add('wrong-type', `${path}/weight`, 'A font asset weight must be a string or finite number.');
+  }
+  issues.enumValue(asset['style'], ['normal', 'italic'] as const, `${path}/style`, 'A font asset style');
+  if (asset['format'] !== 'woff2') issues.add('invalid-enum', `${path}/format`, 'A font asset format must be woff2.');
+  if (typeof asset['path'] !== 'string' || !asset['path'].endsWith('.woff2')) {
+    issues.add('invalid-asset-path', `${path}/path`, 'A WOFF2 font asset path must end in .woff2.');
+  }
+  if (typeof asset['sourceUrl'] !== 'string' || !isHttpUrl(asset['sourceUrl'])) {
+    issues.add('wrong-type', `${path}/sourceUrl`, 'A font asset needs an HTTPS Fontsource source URL.');
+  }
+  const license = asset['license'];
+  if (!isRecord(license) || typeof license['name'] !== 'string' || license['name'].trim().length === 0 || typeof license['url'] !== 'string' || !isHttpUrl(license['url'])) {
+    issues.add('missing-field', `${path}/license`, 'A font asset needs licence name and URL metadata.');
+  }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
   }
 }
 
