@@ -111,6 +111,7 @@ export type {
   BackgroundMedia,
   AssetLicense,
   AssetReference,
+  FontAssetReference,
   Binding,
   ChartContent,
   ChartFamily,
