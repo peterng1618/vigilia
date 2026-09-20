@@ -11,10 +11,6 @@ import { Group } from "fabric/es";
 import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
 import { createForkChartPanel } from "./panel.js";
 
-type PreviewSource = SampleSource & {
-  readonly chartStartupDurationMs?: number;
-};
-
 /** Vigilia-owned chart semantics layered on the fork's generic canvas mechanics. */
 export class ChartManager {
   readonly #editor: ImageEditor;
@@ -23,8 +19,6 @@ export class ChartManager {
   readonly #panel;
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #globals: FabricGlobals | undefined;
-  #chartStartedAtMs = Date.now();
-  #chartStartupDurationMs: number | undefined;
 
   constructor(options: {
     readonly editor: ImageEditor;
@@ -41,7 +35,6 @@ export class ChartManager {
     this.#editor = options.editor;
     this.#scene = options.scene;
     this.#source = options.source;
-    this.#chartStartupDurationMs = startupDurationFor(options.source);
     this.#bindings = options.bindings ?? {};
     this.#globals = options.globals;
     this.#panel = createForkChartPanel(
@@ -79,8 +72,6 @@ export class ChartManager {
 
   setSource(source: SampleSource): void {
     this.#source = source;
-    this.#chartStartedAtMs = Date.now();
-    this.#chartStartupDurationMs = startupDurationFor(source);
     this.refresh();
   }
 
@@ -203,10 +194,6 @@ export class ChartManager {
       {
         source: this.#source,
         nowMs: Date.now(),
-        chartStartedAtMs: this.#chartStartedAtMs,
-        ...(this.#chartStartupDurationMs === undefined
-          ? {}
-          : { chartStartupDurationMs: this.#chartStartupDurationMs }),
         animate: false,
       },
       [],
@@ -219,13 +206,4 @@ export class ChartManager {
     const object = this.#editor.canvas.getActiveObject();
     return object instanceof VigiliaChart ? object : undefined;
   }
-}
-
-function startupDurationFor(source: SampleSource): number | undefined {
-  const duration = (source as PreviewSource).chartStartupDurationMs;
-  return typeof duration === "number" &&
-    Number.isFinite(duration) &&
-    duration > 0
-    ? duration
-    : undefined;
 }

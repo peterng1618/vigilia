@@ -207,12 +207,16 @@ describe("buildLineOption", () => {
     expect(option.xAxis.min).toBe(NOW - 30_000);
   });
 
-  it("fills from the render start instead of inherited history", () => {
+  it("does not alter the timeline for legacy player-start inputs", () => {
     const settings: LineSettings = {
       ...defaultLineSettings,
       windowSeconds: 30,
     };
-    const option = buildLineOption(
+    const option = (
+      buildLineOption as (
+        ...args: readonly unknown[]
+      ) => ReturnType<typeof buildLineOption>
+    )(
       settings,
       [{ sensorId: "a", samples: [at(40, 1), at(50, 2)] }],
       NOW,
@@ -221,60 +225,11 @@ describe("buildLineOption", () => {
       NOW,
     );
 
-    expect(option.xAxis.min).toBe(NOW);
-    expect(option.xAxis.max).toBe(NOW + 30_000);
-    expect(option.series[0]!.data).toEqual([]);
-  });
-
-  it("reveals retained preview history from left to right before scrolling", () => {
-    const settings: LineSettings = {
-      ...defaultLineSettings,
-      windowSeconds: 30,
-    };
-    const option = buildLineOption(
-      settings,
-      [
-        {
-          sensorId: "a",
-          samples: [at(30, 1), at(40, 2), at(50, 3), at(60, 4)],
-        },
-      ],
-      NOW,
-      true,
-      undefined,
-      NOW - 1_000,
-      2_000,
-    );
-
-    expect(option.xAxis).toMatchObject({ min: T0 + 30_000, max: NOW });
+    expect(option.xAxis).toMatchObject({ min: NOW - 30_000, max: NOW });
     expect(option.series[0]!.data).toEqual([
-      [T0 + 30_000, 1],
-      [T0 + 40_000, 2],
+      [T0 + 40_000, 1],
+      [T0 + 50_000, 2],
     ]);
-  });
-
-  it("scrolls immediately after the preview reveal completes", () => {
-    const settings: LineSettings = {
-      ...defaultLineSettings,
-      windowSeconds: 30,
-    };
-    const option = buildLineOption(
-      settings,
-      [
-        {
-          sensorId: "a",
-          samples: [at(30, 1), at(40, 2), at(50, 3), at(60, 4)],
-        },
-      ],
-      NOW,
-      true,
-      undefined,
-      NOW - 2_000,
-      2_000,
-    );
-
-    expect(option.xAxis).toMatchObject({ min: T0 + 30_000, max: NOW });
-    expect(option.series[0]!.data).toHaveLength(4);
   });
 
   it("renders the newest measurement without a synthetic tail", () => {
@@ -283,8 +238,6 @@ describe("buildLineOption", () => {
       [{ sensorId: "a", samples: [at(59, 10), at(60, 20)] }],
       NOW + 500,
       true,
-      undefined,
-      undefined,
       undefined,
     );
 
@@ -300,8 +253,6 @@ describe("buildLineOption", () => {
       [{ sensorId: "a", samples: [at(59, 10), at(60, 20)] }],
       NOW,
       true,
-      undefined,
-      undefined,
       undefined,
       1_000,
     );

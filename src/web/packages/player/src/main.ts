@@ -40,8 +40,6 @@ const FIXTURE_THEME_IDS = new Set([
   "portrait-cover",
   "assets",
 ]);
-const PREVIEW_STARTUP_DURATION_MS = 2_000;
-
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
   const requested = parameters.get("theme");
@@ -83,7 +81,6 @@ function startFixtureTheme(
   requested: string | null,
   animate: boolean,
 ): void {
-  const chartStartedAtMs = Date.now();
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get("data") === "live";
   const fake = live ? undefined : createDemoSource(Date.now());
@@ -110,10 +107,6 @@ function startFixtureTheme(
       document: theme,
       source,
       nowMs: Date.now(),
-      chartStartedAtMs,
-      ...(fake === undefined
-        ? {}
-        : { chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS }),
       resolveAsset,
       animate,
     });
@@ -206,7 +199,6 @@ async function startHostedTheme(
   theme: FabricThemeEnvelope,
   parameters: URLSearchParams,
 ): Promise<void> {
-  const chartStartedAtMs = Date.now();
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(
     theme.id,
@@ -245,7 +237,6 @@ async function startHostedTheme(
       handle.canvas.getObjects(),
       theme.bindings ?? {},
       liveHandle.source,
-      chartStartedAtMs,
     );
     handle.canvas.requestRenderAll();
   };
@@ -286,7 +277,6 @@ function hydrateCharts(
   objects: readonly { get(key: string): unknown }[],
   bindings: Readonly<Record<string, readonly Binding[]>>,
   source: SampleSource,
-  chartStartedAtMs: number,
 ): void {
   for (const object of objects) {
     if (object instanceof VigiliaChart) {
@@ -303,7 +293,6 @@ function hydrateCharts(
           {
             source,
             nowMs: Date.now(),
-            chartStartedAtMs,
             animate: false,
           },
           [],

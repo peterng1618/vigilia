@@ -130,10 +130,6 @@ export interface PlanContext {
   readonly source: SampleSource;
   /** Epoch milliseconds supplied by the caller; this module never reads the clock. */
   readonly nowMs: number;
-  /** Runtime chart fill origin; absent callers use the normal scrolling window. */
-  readonly chartStartedAtMs?: number;
-  /** Preview-only duration for revealing retained line history. */
-  readonly chartStartupDurationMs?: number;
   readonly animate?: boolean;
   readonly resolveAsset?: (assetId: string) => string | undefined;
   /** Long unit names keyed by short symbol; absent entries fall back to short. */
@@ -143,7 +139,7 @@ export interface PlanContext {
 /** Runtime inputs required to derive one authored chart's display option. */
 export type ChartPlanContext = Pick<
   PlanContext,
-  "source" | "nowMs" | "animate" | "chartStartedAtMs" | "chartStartupDurationMs"
+  "source" | "nowMs" | "animate"
 >;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
@@ -561,8 +557,6 @@ export function buildChartPlan(
           context.nowMs,
           animate,
           palette,
-          context.chartStartedAtMs,
-          context.chartStartupDurationMs,
           context.source.chartPlaybackDelayMs,
         ),
       };

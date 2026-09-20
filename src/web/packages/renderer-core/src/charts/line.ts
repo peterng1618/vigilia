@@ -144,48 +144,18 @@ export function buildLineOption(
   nowMs: number,
   animate = true,
   palette?: FabricPalette,
-  startedAtMs?: number,
-  startupDurationMs?: number,
   chartPlaybackDelayMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
   const viewportNowMs =
     typeof chartPlaybackDelayMs === "number" &&
     Number.isFinite(chartPlaybackDelayMs) &&
-    chartPlaybackDelayMs > 0
+    chartPlaybackDelayMs > 0 &&
+    chartPlaybackDelayMs <= 5_000
       ? nowMs - chartPlaybackDelayMs
       : nowMs;
-  const start =
-    startedAtMs !== undefined && Number.isFinite(startedAtMs)
-      ? Math.min(startedAtMs, nowMs)
-      : undefined;
-  const duration =
-    startupDurationMs !== undefined &&
-    Number.isFinite(startupDurationMs) &&
-    startupDurationMs > 0
-      ? startupDurationMs
-      : undefined;
-  const revealProgress =
-    start !== undefined && duration !== undefined
-      ? Math.min(1, (nowMs - start) / duration)
-      : undefined;
-  const revealing = revealProgress !== undefined && revealProgress < 1;
-  const firstSample = revealing ? earliestSampleMs(series, nowMs) : undefined;
-  const filling =
-    !revealing &&
-    duration === undefined &&
-    start !== undefined &&
-    viewportNowMs < start + windowMs;
-  const windowStart = revealing
-    ? (firstSample ?? nowMs)
-    : filling
-      ? start!
-      : viewportNowMs - windowMs;
-  const windowEnd = revealing
-    ? windowStart + windowMs
-    : filling
-      ? start! + windowMs
-      : viewportNowMs;
+  const windowStart = viewportNowMs - windowMs;
+  const windowEnd = viewportNowMs;
   const sampling =
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
@@ -218,13 +188,7 @@ export function buildLineOption(
       type: "line" as const,
       name: input.label ?? input.sensorId,
       data: toSeriesPoints(
-        revealProgress === undefined
-          ? input.samples
-          : input.samples.filter(
-              (sample) =>
-                Date.parse(sample.timestamp) <=
-                windowStart + windowMs * revealProgress,
-            ),
+        input.samples,
         settings,
         nowMs,
         windowStart,
@@ -262,23 +226,6 @@ export function buildLineOption(
 
 function sampleTimeMs(sample: Sample): number {
   return Date.parse(sample.presentationTimestamp ?? sample.timestamp);
-}
-
-function earliestSampleMs(
-  series: readonly SeriesInput[],
-  nowMs: number,
-): number | undefined {
-  let earliest: number | undefined;
-
-  for (const input of series) {
-    for (const sample of input.samples) {
-      const timestamp = sampleTimeMs(sample);
-      if (!Number.isFinite(timestamp) || timestamp > nowMs) continue;
-      if (earliest === undefined || timestamp < earliest) earliest = timestamp;
-    }
-  }
-
-  return earliest;
 }
 
 /** Palette entry for one series, falling back to `stroke`. */

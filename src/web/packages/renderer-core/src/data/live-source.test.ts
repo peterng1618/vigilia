@@ -104,35 +104,23 @@ describe("createLiveSource", () => {
   });
 
   it("goes live and exposes samples through the pull interface", () => {
-    const { handle, sendBatch, advance } = setup();
+    const { handle, sendBatch } = setup();
 
     sendBatch(["cpu.load", ok(42)]);
 
     expect(handle.status).toBe("live");
     expect(handle.batchCount).toBe(1);
-    advance(1_000);
     expect(handle.source.latest("cpu.load")?.value).toBe(42);
   });
 
-  it("holds received telemetry for one cadence before rendering it", () => {
-    const { handle, sendBatch, advance } = setup();
+  it("timestamps received telemetry on the browser presentation clock", () => {
+    const { handle, sendBatch } = setup();
 
     sendBatch(["cpu.load", ok(42)]);
-
-    expect(handle.source.latest("cpu.load")).toBeUndefined();
-    advance(1_000);
-    expect(handle.source.latest("cpu.load")?.value).toBe(42);
-  });
-
-  it("timestamps released telemetry on the browser presentation clock", () => {
-    const { handle, sendBatch, advance } = setup();
-
-    sendBatch(["cpu.load", ok(42)]);
-    advance(1_000);
 
     expect(handle.source.latest("cpu.load")).toMatchObject({
       timestamp: new Date(NOW).toISOString(),
-      presentationTimestamp: new Date(NOW + 1_000).toISOString(),
+      presentationTimestamp: new Date(NOW).toISOString(),
     });
   });
 

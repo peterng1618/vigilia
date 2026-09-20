@@ -1,17 +1,12 @@
 import { FakeSampleSource } from "@vigilia/fake-source";
 import type { SampleSource } from "@vigilia/renderer-core";
 
-export const PREVIEW_STARTUP_DURATION_MS = 2_000;
 const PREVIEW_HISTORY_SECONDS = 300;
-
-export type PreviewSampleSource = SampleSource & {
-  readonly chartStartupDurationMs: number;
-};
 
 export function createPreviewSource(options: {
   readonly keys: readonly string[];
   readonly now: () => number;
-}): { readonly source: PreviewSampleSource } {
+}): { readonly source: SampleSource } {
   const keys = new Set(options.keys);
   const waveform = new FakeSampleSource(0);
 
@@ -32,7 +27,6 @@ export function createPreviewSource(options: {
           Math.min(windowSeconds, PREVIEW_HISTORY_SECONDS),
         );
       },
-      chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS,
-    } as PreviewSampleSource,
+    },
   };
 }

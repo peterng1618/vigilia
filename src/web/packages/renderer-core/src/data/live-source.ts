@@ -35,8 +35,8 @@ export interface LiveSourceHandle {
   close(): void;
 }
 
-/** Keep presentation behind the host's one-second sampling cadence. */
-export const LIVE_SOURCE_DISPLAY_DELAY_MS = 1_000;
+/** Keep complete live segments one cadence ahead of the visible chart edge. */
+export const LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS = 1_000;
 
 /** Protocol refusal closes permanently; ordinary EventSource errors keep retrying. */
 export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
@@ -49,37 +49,12 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
   let status: LiveSourceStatus = "connecting";
   let batchCount = 0;
   let closed = false;
-  const pending: {
-    readonly releaseAtMs: number;
-    readonly entries: readonly (readonly [string, Sample])[];
-  }[] = [];
-
-  const releasePending = (): void => {
-    const timestamp = now();
-
-    while (true) {
-      const batch = pending[0];
-      if (batch === undefined || batch.releaseAtMs > timestamp) return;
-      pending.shift();
-      const presentationTimestamp = new Date(batch.releaseAtMs).toISOString();
-      store.ingest(
-        batch.entries.map(([key, sample]) => [
-          key,
-          { ...sample, presentationTimestamp },
-        ] as const),
-        timestamp,
-      );
-    }
-  };
-
   const source: SampleSource = {
-    chartPlaybackDelayMs: LIVE_SOURCE_DISPLAY_DELAY_MS,
+    chartPlaybackDelayMs: LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
     latest(semanticKey) {
-      releasePending();
       return store.latest(semanticKey);
     },
     history(semanticKey, windowSeconds) {
-      releasePending();
       return store.history(semanticKey, windowSeconds);
     },
   };
@@ -130,12 +105,15 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
       return;
     }
 
-    pending.push({
-      releaseAtMs: now() + LIVE_SOURCE_DISPLAY_DELAY_MS,
-      entries: result.batch.samples.map(
-        (entry) => [entry.semanticKey, entry.sample] as const,
-      ),
-    });
+    const timestamp = now();
+    const presentationTimestamp = new Date(timestamp).toISOString();
+    store.ingest(
+      result.batch.samples.map((entry) => [
+        entry.semanticKey,
+        { ...entry.sample, presentationTimestamp },
+      ] as const),
+      timestamp,
+    );
 
     batchCount += 1;
     setStatus("live");

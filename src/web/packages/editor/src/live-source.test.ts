@@ -58,8 +58,6 @@ describe("createEditorSource", () => {
     );
     listeners.get(SAMPLE_EVENT)!({ data: event });
 
-    expect(live.source.latest("cpu.load")).toBeUndefined();
-    vi.advanceTimersByTime(1_000);
     expect(live.source.latest("cpu.load")?.value).toBe(42);
     live.close();
     expect(close).toHaveBeenCalledOnce();
