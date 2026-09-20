@@ -7,6 +7,27 @@ import {
 import { createNewObjectPanel } from "./new-object-panel.js";
 
 describe("new object panel", () => {
+  it.each([
+    ["Gauge", "gauge"],
+    ["Line", "line"],
+    ["Bar", "bar"],
+    ["Pie", "pie"],
+  ] as const)("delegates %s to ChartManager", (label, family) => {
+    const addChart = vi.fn();
+    const panel = createNewObjectPanel(
+      document.body,
+      { textManager: { addText: vi.fn() } } as never,
+      undefined,
+      { addChart },
+    );
+
+    [...panel.root.querySelectorAll("button")]
+      .find((button) => button.textContent === label)!
+      .click();
+
+    expect(addChart).toHaveBeenCalledWith(family);
+  });
+
   it("delegates text construction to the fork with derived v2 defaults", () => {
     const addText = vi.fn();
     const root = createNewObjectPanel(

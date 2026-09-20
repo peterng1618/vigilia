@@ -1,4 +1,4 @@
-import type { FabricGlobals } from "@vigilia/renderer-core";
+import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
 import type { ImageEditor } from "@anu3ev/fabric-image-editor";
 import { createNewTextDefaults } from "./new-object-defaults.js";
 
@@ -7,11 +7,16 @@ export interface NewObjectPanel {
   setGlobals(globals: FabricGlobals | undefined): void;
 }
 
+export interface NewObjectActions {
+  readonly addChart: (family: ChartFamily) => void;
+}
+
 /** Vigilia creates semantic text while the fork retains generic construction and history. */
 export function createNewObjectPanel(
   host: HTMLElement,
   editor: ImageEditor,
   globals: FabricGlobals | undefined,
+  actions?: NewObjectActions,
 ): NewObjectPanel {
   let currentGlobals = globals;
   const root = document.createElement("section");
@@ -28,7 +33,19 @@ export function createNewObjectPanel(
       ...createNewTextDefaults(currentGlobals, content),
     });
   });
-  root.append(heading, text);
+  const charts = ([
+    ["Gauge", "gauge"],
+    ["Line", "line"],
+    ["Bar", "bar"],
+    ["Pie", "pie"],
+  ] as const).map(([label, family]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", () => actions?.addChart(family));
+    return button;
+  });
+  root.append(heading, text, ...charts);
   host.append(root);
   return {
     root,

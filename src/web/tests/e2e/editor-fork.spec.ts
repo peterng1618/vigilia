@@ -80,6 +80,49 @@ test.describe("Fabric editor route", () => {
     });
   });
 
+  test("creates a chart with palette-backed settings that save and reopen", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Gauge" })
+      .click();
+    await expect(
+      page.locator('[data-vigilia-chart-setting="thickness"]'),
+    ).toBeVisible();
+    await captureVisualReview(page, testInfo, "editor-fork-chart-creation");
+
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) return;
+    const chart = saved.parsed.envelope.scene.objects
+      .filter((object) => object["type"] === "VigiliaChart")
+      .at(-1);
+    expect(chart).toMatchObject({
+      family: "gauge",
+      settings: {
+        track: { ref: "palette.background" },
+        progress: { ref: "palette.background" },
+      },
+    });
+    expect(chart).not.toHaveProperty("option");
+
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "created-chart.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened created-chart.vigilia-theme",
+    );
+  });
+
   test("captures the mounted editor for visual review", async ({
     page,
   }, testInfo) => {

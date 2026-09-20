@@ -150,11 +150,6 @@ export class ForkExtensions {
     options.panelHost.prepend(fileSection);
     this.#fileSection = fileSection;
 
-    this.#newObjects = createNewObjectPanel(
-      options.panelHost,
-      options.shell.editor,
-      this.#envelope.globals,
-    );
     this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
     this.#artboard = createArtboardPanel(
       options.panelHost,
@@ -206,6 +201,12 @@ export class ForkExtensions {
       panelHost: options.panelHost,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
+    this.#newObjects = createNewObjectPanel(
+      options.panelHost,
+      options.shell.editor,
+      this.#envelope.globals,
+      { addChart: (family) => this.charts.addChart(family) },
+    );
     this.#runtime = new LiveRuntime({
       canvas: options.shell.editor.canvas,
       source: options.source,
