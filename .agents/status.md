@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| Verification policy | Browser changes run full local `npm run test:e2e`; CI runs only on `main` pushes and pull requests targeting `main`. `develop` pushes do not wait for GitHub CI. |
 | Spec 0011 property corrections | Full 935-unit suite, focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
 | CI | `35527200912` passed licence, format, lint, typecheck, unit, build and size jobs; its only failure was the viewport E2E test expecting the retired 1280px stress artboard width. The corrected focused Chromium test and format check passed locally on 2026-09-21. |
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |

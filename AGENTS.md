@@ -99,6 +99,8 @@ Prefer workspace scripts over hand-written project lists.
 - Unit-test pure decisions; browser-test wiring and visuals.
 - **Disable a fix and re-run before trusting a new regression test.**
 - Visible behaviour requires rendered inspection, not only geometry/object counts.
+- When browser E2E is required, run the full `npm run test:e2e` suite locally;
+  focused Playwright tests supplement it.
 - Browser E2E previews bundles directly and does **not** exercise the host.
 - Screenshots are evidence, not cross-platform golden files.
 
