@@ -38,6 +38,12 @@ export function fontTrios(): readonly FontTrio[] {
   return TRIOS;
 }
 
+export function faceForRole(trio: FontTrio, role: FontTrioRole, weight: number): CuratedFontFace | undefined {
+  return trio.faces
+    .filter((face) => face.role === role)
+    .sort((left, right) => Math.abs(left.weight - weight) - Math.abs(right.weight - weight))[0];
+}
+
 function face(id: string, role: FontTrioRole, family: string, weight: number, artifact: string): CuratedFontFace {
   return {
     id, role, family, weight, style: 'normal', format: 'woff2', subset: 'latin',

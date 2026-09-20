@@ -42,6 +42,12 @@ and package state. **Decided by:** user, 2026-09-19.
 Each run has its own optional preset reference; text objects have no base preset.
 **Decided by:** user, 2026-09-18.
 
+### Trio application aligns face and weight
+
+Applying a curated trio updates each role preset's face and weight to the
+nearest available face weight. It preserves size, spacing, line height and
+unassigned custom presets. **Decided by:** user, 2026-09-20.
+
 ### New-element defaults are derived editor input
 
 A pure editor-side factory derives valid palette/type references from the open

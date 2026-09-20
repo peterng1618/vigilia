@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FabricImage, type StaticCanvas } from 'fabric/es';
 import { AssetManager } from './index.js';
+import { fontTrio } from '../font-catalog.js';
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
 
@@ -59,6 +60,16 @@ describe('AssetManager', () => {
 
     expect(asset).toMatchObject({ id: 'metric', kind: 'font', path: 'assets/metric.woff2' });
     expect(manager.assets['assets/metric.woff2']).toEqual(new Uint8Array([0, 1, 2]));
+  });
+
+  it('adopts a curated face with its declared package metadata', async () => {
+    const manager = new AssetManager();
+    const face = fontTrio('minimal')!.faces[0]!;
+
+    const asset = await manager.adoptFont(face, new Uint8Array([0, 1, 2]));
+
+    expect(asset).toMatchObject({ id: 'inter-700', kind: 'font', path: 'assets/inter-700.woff2', family: 'Inter', weight: 700, format: 'woff2' });
+    expect(manager.assets['assets/inter-700.woff2']).toEqual(new Uint8Array([0, 1, 2]));
   });
 
   it('rejects a MIME type that does not match a WebM extension', async () => {

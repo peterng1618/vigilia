@@ -1,8 +1,9 @@
 import { FabricImage, Group, type StaticCanvas } from 'fabric/es';
-import type { AssetReference, FabricThemeEnvelope } from '@vigilia/renderer-core';
+import type { AssetReference, FabricThemeEnvelope, FontAssetReference } from '@vigilia/renderer-core';
 import { objectAssetReference } from '@vigilia/scene-fabric';
 import { setObjectAssetReference } from '@vigilia/scene-fabric';
 import type { ImageEditor } from '@anu3ev/fabric-image-editor';
+import type { CuratedFontFace } from '../font-catalog.js';
 
 const TYPES = {
   png: { mime: 'image/png', kind: 'image' },
@@ -20,7 +21,7 @@ const TYPES = {
 
 type AssetExtension = keyof typeof TYPES;
 type AssetKind = (typeof TYPES)[AssetExtension]['kind'];
-type LocalAssetReference = AssetReference & { readonly kind: AssetKind };
+type LocalAssetReference = (AssetReference & { readonly kind: AssetKind }) | FontAssetReference;
 
 /** Owns declared package bytes and the disposable browser previews derived from them. */
 export class AssetManager {
@@ -52,6 +53,27 @@ export class AssetManager {
     if (type.kind === 'image' || type.kind === 'svg') {
       this.#previewUrls.set(id, URL.createObjectURL(new Blob([previewBytes as unknown as BlobPart], { type: type.mime })));
     }
+    return reference;
+  }
+
+  async adoptFont(face: CuratedFontFace, bytes: Uint8Array): Promise<LocalAssetReference> {
+    const path = `assets/${face.id}.woff2`;
+    const reference: LocalAssetReference = {
+      id: face.id,
+      kind: 'font',
+      path,
+      sha256: await sha256(bytes),
+      family: face.family,
+      weight: face.weight,
+      style: face.style,
+      format: face.format,
+      sourceUrl: face.sourceUrl,
+      license: face.license,
+    };
+    const existing = this.#declarations.findIndex((asset) => asset.id === face.id);
+    if (existing >= 0) this.#declarations.splice(existing, 1, reference);
+    else this.#declarations.push(reference);
+    this.#assets[path] = new Uint8Array(bytes);
     return reference;
   }
 

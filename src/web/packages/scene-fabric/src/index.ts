@@ -24,6 +24,7 @@ export {
 } from './object-asset.js';
 export { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
 export { reassignObjectPaletteReferences } from './palette-references.js';
+export { loadFontAssets, type FontAssetLoadOptions } from './font-assets.js';
 
 export type { SerialisedScene } from './persist.js';
 

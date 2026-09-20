@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fontTrio } from './font-catalog.js';
+import { faceForRole, fontTrio } from './font-catalog.js';
 
 describe('curated font trios', () => {
   it('provides three distinct pinned Fontsource WOFF2 faces', () => {
@@ -12,5 +12,12 @@ describe('curated font trios', () => {
       expect(face.sourceUrl).not.toContain('latest');
       expect(face.format).toBe('woff2');
     }
+  });
+
+  it('selects the nearest available role face weight', () => {
+    const trio = fontTrio('minimal')!;
+
+    expect(faceForRole(trio, 'heading', 300)?.weight).toBe(700);
+    expect(faceForRole(trio, 'body', 600)?.weight).toBe(400);
   });
 });

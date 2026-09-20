@@ -1,5 +1,5 @@
 import { type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
-import { assertFabricThemeEnvelopeCompatible } from '@vigilia/scene-fabric';
+import { assertFabricThemeEnvelopeCompatible, loadFontAssets } from '@vigilia/scene-fabric';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
 import { createEditorSource } from './live-source.js';
@@ -11,6 +11,7 @@ type EditorSource = ReturnType<typeof createEditorSource>;
 type ActiveEditor = {
   readonly shell: Awaited<ReturnType<typeof mountForkShell>>;
   readonly extensions: ForkExtensions;
+  readonly releaseFonts: () => void;
   source: EditorSource;
 };
 
@@ -68,12 +69,18 @@ async function start(): Promise<void> {
 
   const mount = async (next: { readonly input: FabricThemeEnvelopeInput; readonly envelope: FabricThemeEnvelope; readonly assets?: Readonly<Record<string, Uint8Array>> }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
-    const source = createSource(next.input);
-    const shell = await mountForkShell({
-      host,
-      artboard: next.input.artboard,
-      envelope: next.envelope,
+    const releaseFonts = await loadFontAssets({
+      assets: next.envelope.assets ?? [], bytes: next.assets ?? {},
+      onError: (message) => { status.textContent = message; },
     });
+    const source = createSource(next.input);
+    let shell: Awaited<ReturnType<typeof mountForkShell>>;
+    try {
+      shell = await mountForkShell({ host, artboard: next.input.artboard, envelope: next.envelope });
+    } catch (error) {
+      releaseFonts();
+      throw error;
+    }
     const extensions = new ForkExtensions({
       shell,
       source: source.source,
@@ -99,7 +106,8 @@ async function start(): Promise<void> {
     active?.extensions.destroy();
     active?.shell.destroy();
     active?.source.close();
-    active = { shell, extensions, source };
+    active?.releaseFonts();
+    active = { shell, extensions, source, releaseFonts };
   };
 
   picker.addEventListener('change', () => {

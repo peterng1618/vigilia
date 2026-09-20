@@ -50,8 +50,8 @@ are out of scope.
 New themes contain presets assigned to `heading`, `body` and `mono` trio roles;
 additional scale presets may share a role. Mono is for technical/code treatments,
 never the default for large metrics, which use heading-role faces. Curated trios
-provide one face per role. Applying a trio changes only faces on every
-role-assigned preset, preserving size, weight, letter spacing and line height;
+provide one face per role. Applying a trio changes the face and weight on every
+role-assigned preset, preserving size, letter spacing and line height;
 unassigned custom presets remain unchanged. Applying one face to a preset has
 the same face-only rule and lasts until a later trio Apply replaces it.
 

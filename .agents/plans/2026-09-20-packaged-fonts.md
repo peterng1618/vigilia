@@ -14,7 +14,7 @@
 
 - Type presets remain complete global treatments; styled runs keep preset references and never own local typography.
 - New themes contain at least `heading`, `body`, and `mono` role presets. Additional starter presets may share one of those three roles to retain a usable hierarchy. Mono is a technical/code option, never the default for large metrics.
-- Apply updates faces on every role-assigned preset. It never changes their scale, palette references, or unassigned custom presets.
+- Apply updates faces and weights on every role-assigned preset, choosing the nearest available role weight. It never changes scale, palette references, or unassigned custom presets.
 - Preview fetches/loads transiently. It must not create assets, history, dirty state, or persisted URLs.
 - Every type preset exposes the same curated face picker. Applying one face adopts only that face and persists until the next trio Apply, which replaces every role-assigned preset face again.
 - Adopted assets use exact Fontsource versions, WOFF2, source/license metadata, and no `latest` URL.
