@@ -258,7 +258,7 @@ describe("buildLineOption", () => {
     expect(option.series[0]!.data).toHaveLength(4);
   });
 
-  it("renders the newest measured sample without a chart-local delay", () => {
+  it("renders a display-only tail between the newest two measured samples", () => {
     const option = buildLineOption(
       defaultLineSettings,
       [{ sensorId: "a", samples: [at(59, 10), at(60, 20)] }],
@@ -269,10 +269,9 @@ describe("buildLineOption", () => {
       undefined,
     );
 
-    expect(option.xAxis.max).toBe(NOW + 500);
     expect(option.series[0]!.data).toEqual([
       [T0 + 59_000, 10],
-      [NOW, 20],
+      [NOW + 500, 15],
     ]);
   });
 
