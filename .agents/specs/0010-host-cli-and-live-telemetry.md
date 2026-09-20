@@ -39,6 +39,8 @@ once per cadence.
 
 Slow clients use keep-latest: at most the newest pending snapshot matters.
 Unknown protocol versions are refused rather than guessed.
+The display source holds received samples for one cadence before exposing them,
+so every telemetry surface shares a measured, continuously scrolling timeline.
 
 ### Provider model
 

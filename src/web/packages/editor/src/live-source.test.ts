@@ -3,9 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEditorSource } from './live-source.js';
 
 describe('createEditorSource', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
 
   it('reports a live disconnect without inventing samples', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:10Z'));
     const listeners = new Map<string, (event: { readonly data: string }) => void>();
     const close = vi.fn();
     class EventSourceStub {
@@ -29,6 +34,8 @@ describe('createEditorSource', () => {
     } }], now));
     listeners.get(SAMPLE_EVENT)!({ data: event });
 
+    expect(live.source.latest('cpu.load')).toBeUndefined();
+    vi.advanceTimersByTime(1_000);
     expect(live.source.latest('cpu.load')?.value).toBe(42);
     live.close();
     expect(close).toHaveBeenCalledOnce();

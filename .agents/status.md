@@ -19,7 +19,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
-| Chart repaint | 941 units, seven typechecks, builds, 271.1 KB player gzip, and focused editor refresh-toggle browser test passed; preview reveal, scroll handoff and 30 FPS line-tail interpolation are unit-covered; full browser suite and visual capture inspection remain unverified |
+| Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence; line-tail extrapolation is removed. |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -31,7 +31,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - `scene-fabric` renders text, shapes, groups, images/SVG and four chart families.
 - Player uses `StaticCanvas` and does not depend on editor UI.
 - `VigiliaChart` supports persistence, disposal, live redraw and transforms.
-- Charts repaint at 30 FPS on the display; synthetic previews reveal retained line history left-to-right over two seconds, then scroll; the 30 FPS tail interpolates between the last two samples while host telemetry remains at its configured cadence.
+- Charts repaint at 30 FPS; live sources delay all telemetry one cadence so every surface uses measured data on a continuous timeline. Synthetic previews reveal retained line history left-to-right over two seconds, then scroll.
 - Text layout and bitmap/SVG fit/recolour paths are implemented.
 
 ### Editor
@@ -64,8 +64,9 @@ unit, build, size and visual evidence. The full browser suite is not green.
 ## Unverified / limitations
 
 - Browser E2E previews bundles; it does not exercise the host.
-- The full 102-test browser command exited after its tenth desktop check twice
-  without a result summary; its overall result is unverified.
+- Full E2E on 2026-09-20: 64 passed, 30 skipped and 20 failed after the
+  Playwright preview server returned `ERR_CONNECTION_REFUSED`; rerun on a
+  stable preview port before treating the suite as green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.

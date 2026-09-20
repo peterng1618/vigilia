@@ -44,10 +44,11 @@ function fakeStream() {
 
 function setup() {
   const stream = fakeStream();
+  let nowMs = NOW;
   const statuses: { status: LiveSourceStatus; detail?: string }[] = [];
   const handle = createLiveSource({
     url: '/ws?keys=cpu.load',
-    now: () => NOW,
+    now: () => nowMs,
     open: () => stream,
     onStatus: (status, detail) => statuses.push(detail === undefined ? { status } : { status, detail }),
   });
@@ -59,7 +60,7 @@ function setup() {
     );
   };
 
-  return { stream, statuses, handle, sendBatch };
+  return { stream, statuses, handle, sendBatch, advance: (ms: number) => { nowMs += ms; } };
 }
 
 describe('createLiveSource', () => {
@@ -77,27 +78,39 @@ describe('createLiveSource', () => {
   });
 
   it('goes live and exposes samples through the pull interface', () => {
-    const { handle, sendBatch } = setup();
+    const { handle, sendBatch, advance } = setup();
 
     sendBatch(['cpu.load', ok(42)]);
 
     expect(handle.status).toBe('live');
     expect(handle.batchCount).toBe(1);
+    advance(1_000);
+    expect(handle.source.latest('cpu.load')?.value).toBe(42);
+  });
+
+  it('holds received telemetry for one cadence before rendering it', () => {
+    const { handle, sendBatch, advance } = setup();
+
+    sendBatch(['cpu.load', ok(42)]);
+
+    expect(handle.source.latest('cpu.load')).toBeUndefined();
+    advance(1_000);
     expect(handle.source.latest('cpu.load')?.value).toBe(42);
   });
 
   it('accumulates history across batches', () => {
-    const { handle, sendBatch } = setup();
+    const { handle, sendBatch, advance } = setup();
 
     sendBatch(['cpu.load', ok(10)]);
     sendBatch(['cpu.load', ok(20)]);
 
+    advance(1_000);
     expect(handle.source.history('cpu.load', 60).map((sample) => sample.value)).toEqual([10, 20]);
     expect(handle.batchCount).toBe(2);
   });
 
   it('keeps the source identity stable, so the plan builder can hold it', () => {
-    const { handle, sendBatch } = setup();
+    const { handle, sendBatch, advance } = setup();
     const before = handle.source;
 
     sendBatch(['cpu.load', ok(1)]);
@@ -106,7 +119,7 @@ describe('createLiveSource', () => {
   });
 
   it('carries a non-ok sample through without inventing a value (§83)', () => {
-    const { handle, sendBatch } = setup();
+    const { handle, sendBatch, advance } = setup();
     const unavailable: Sample = {
       sensorId: 'os:cpu.fan',
       timestamp: new Date(NOW).toISOString(),
@@ -115,6 +128,7 @@ describe('createLiveSource', () => {
     };
 
     sendBatch(['cpu.fan', unavailable]);
+    advance(1_000);
 
     const latest = handle.source.latest('cpu.fan');
 
@@ -147,7 +161,7 @@ describe('createLiveSource', () => {
     });
 
     it('returns to live when batches resume', () => {
-      const { stream, handle, sendBatch } = setup();
+      const { stream, handle, sendBatch, advance } = setup();
 
       sendBatch(['cpu.load', ok(1)]);
       stream.emit('error');
@@ -155,13 +169,15 @@ describe('createLiveSource', () => {
       sendBatch(['cpu.load', ok(2)]);
 
       expect(handle.status).toBe('live');
+      advance(1_000);
       expect(handle.source.latest('cpu.load')?.value).toBe(2);
     });
 
     it('keeps the last known values across a drop', () => {
-      const { stream, handle, sendBatch } = setup();
+      const { stream, handle, sendBatch, advance } = setup();
 
       sendBatch(['cpu.load', ok(42)]);
+      advance(1_000);
       stream.emit('error');
 
       // Staleness is the store's and the renderer's call, not the transport's.
@@ -207,9 +223,10 @@ describe('createLiveSource', () => {
     });
 
     it('leaves a previously good reading in place', () => {
-      const { stream, handle, sendBatch } = setup();
+      const { stream, handle, sendBatch, advance } = setup();
 
       sendBatch(['cpu.load', ok(42)]);
+      advance(1_000);
       stream.emit(SAMPLE_EVENT, '{not json');
 
       expect(handle.source.latest('cpu.load')?.value).toBe(42);
@@ -239,7 +256,7 @@ describe('createLiveSource', () => {
   it('parses what the host actually writes on the wire', () => {
     // Guards the seam the two modules share: if formatSseEvent and the
     // EventSource data contract ever disagree, this is where it shows.
-    const { stream, handle } = setup();
+    const { stream, handle, advance } = setup();
     const framed = formatSseEvent(
       SAMPLE_EVENT,
       JSON.stringify(createBatch([{ semanticKey: 'cpu.load', sample: ok(7) }], NOW)),
@@ -252,6 +269,7 @@ describe('createLiveSource', () => {
 
     stream.emit(SAMPLE_EVENT, data);
 
+    advance(1_000);
     expect(handle.source.latest('cpu.load')?.value).toBe(7);
   });
 });

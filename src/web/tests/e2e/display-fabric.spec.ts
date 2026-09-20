@@ -582,7 +582,7 @@ test.describe('every fixture renders', () => {
       const size = page.viewportSize()!;
 
       expect(scene.objectCount).toBeGreaterThan(0);
-      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
+      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size }), fixture.name).toBeGreaterThan(0.01);
       expect(scene.chartRenderScales.length > 0).toBe(fixture.charts);
       expect(errors).toEqual([]);
     });
@@ -600,16 +600,16 @@ test.describe('every fixture renders', () => {
     expect(await canvasProp(page, 'hidden-node', 'visible')).toBe(false);
   });
 
-  test('captures every fixture for visual review', async ({ page }, testInfo) => {
-    const directory =
-      process.env['VIGILIA_CAPTURE'] === undefined
-        ? 'test-results/screenshots'
-        : '../../.agents/screenshots';
+  for (const fixture of FIXTURES) {
+    test(`captures ${fixture.name} for visual review`, async ({ page }, testInfo) => {
+      const directory =
+        process.env['VIGILIA_CAPTURE'] === undefined
+          ? 'test-results/screenshots'
+          : '../../.agents/screenshots';
 
-    for (const fixture of FIXTURES) {
-      await page.goto(`/?theme=${fixture.name}&static=1`);
-      await page.waitForSelector('canvas[data-vigilia="artboard"]');
-      await page.waitForTimeout(100);
+      await openCanvasPlayer(page, `/?theme=${fixture.name}`);
+      const size = page.viewportSize()!;
+      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
       const name = `${fixture.name}-${testInfo.project.name}.png`;
       const screenshot = await page.screenshot({
         fullPage: false,
@@ -618,8 +618,8 @@ test.describe('every fixture renders', () => {
 
       await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
       expect(screenshot.byteLength).toBeGreaterThan(1000);
-    }
-  });
+    });
+  }
 
   test('is byte-stable at a fixed clock on one platform', async ({ browser }) => {
     const capture = async (): Promise<Buffer> => {

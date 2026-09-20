@@ -143,6 +143,7 @@ framework UI state across that boundary.
 | Concept | Owner |
 |---|---|
 | Samples/status | `renderer-core/src/types.ts` |
+| Live presentation buffer | `renderer-core/src/data/live-source.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
 | Theme ZIP layout and bounds | `theme-package/src/` |
 | Published development schema | `schema/theme-document.schema.json` |

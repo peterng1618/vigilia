@@ -152,6 +152,7 @@ one agent. The primary agent integrates results and owns architecture.
 
 - Check status before staging. Stage explicit paths; never `git add -A` or
   `git commit -a`.
+- Inspect every regenerated screenshot before staging it for a commit.
 - Never discard user changes or use destructive git commands without explicit
   instruction.
 - Update `.agents/status.md` before commit/push.

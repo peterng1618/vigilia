@@ -1,6 +1,7 @@
 import { SAMPLE_EVENT, decodeBatch } from './protocol.js';
 import type { SampleSource } from './source.js';
 import { SampleStore } from './store.js';
+import type { Sample } from '../types.js';
 
 /** Push transport → bounded pull `SampleSource`; downstream rendering stays transport-agnostic. */
 
@@ -31,6 +32,9 @@ export interface LiveSourceHandle {
   close(): void;
 }
 
+/** Keep presentation behind the host's one-second sampling cadence. */
+export const LIVE_SOURCE_DISPLAY_DELAY_MS = 1_000;
+
 /** Protocol refusal closes permanently; ordinary EventSource errors keep retrying. */
 export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
   const store = options.store ?? new SampleStore();
@@ -42,6 +46,29 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
   let status: LiveSourceStatus = 'connecting';
   let batchCount = 0;
   let closed = false;
+  const pending: { readonly releaseAtMs: number; readonly entries: readonly (readonly [string, Sample])[] }[] = [];
+
+  const releasePending = (): void => {
+    const timestamp = now();
+
+    while (true) {
+      const batch = pending[0];
+      if (batch === undefined || batch.releaseAtMs > timestamp) return;
+      pending.shift();
+      store.ingest(batch.entries, timestamp);
+    }
+  };
+
+  const source: SampleSource = {
+    latest(semanticKey) {
+      releasePending();
+      return store.latest(semanticKey);
+    },
+    history(semanticKey, windowSeconds) {
+      releasePending();
+      return store.history(semanticKey, windowSeconds);
+    },
+  };
 
   const stream = openStream(options.url);
 
@@ -89,17 +116,17 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
       return;
     }
 
-    store.ingest(
-      result.batch.samples.map((entry) => [entry.semanticKey, entry.sample] as const),
-      now(),
-    );
+    pending.push({
+      releaseAtMs: now() + LIVE_SOURCE_DISPLAY_DELAY_MS,
+      entries: result.batch.samples.map((entry) => [entry.semanticKey, entry.sample] as const),
+    });
 
     batchCount += 1;
     setStatus('live');
   });
 
   return {
-    source: store,
+    source,
     get status() {
       return status;
     },

@@ -87,7 +87,6 @@ function startFixtureTheme(
       nowMs: Date.now(),
       chartStartedAtMs,
       ...(fake === undefined ? {} : { chartStartupDurationMs: PREVIEW_STARTUP_DURATION_MS }),
-      interpolateLineTail: true,
       resolveAsset,
       animate,
     });
@@ -242,7 +241,6 @@ function hydrateCharts(
           source,
           nowMs: Date.now(),
           chartStartedAtMs,
-          interpolateLineTail: true,
           animate: false,
         }, [], undefined);
         object.setOption(plan.option);
