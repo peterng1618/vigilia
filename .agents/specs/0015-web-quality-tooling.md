@@ -7,9 +7,10 @@ without commit hooks or a broad style-rule catalog.
 
 ## Scope
 
-Biome is the sole formatter and linter. It checks TypeScript, JSON, YAML,
-Markdown, CSS and GitHub workflow files. It ignores generated output and
-dependencies. `.editorconfig` remains the editor baseline.
+Biome is the sole formatter and linter for TypeScript, JSON and CSS. Markdown
+and GitHub workflow YAML remain under `.editorconfig`; adding a second tool for
+them is out of scope. Biome ignores generated output and dependencies.
+`.editorconfig` remains the editor baseline.
 
 The workspace exposes `format`, `format:check`, `lint` and `lint:fix` scripts.
 CI runs the read-only checks after dependency installation and before typecheck.
