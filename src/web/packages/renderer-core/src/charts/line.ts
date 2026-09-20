@@ -146,8 +146,15 @@ export function buildLineOption(
   palette?: FabricPalette,
   startedAtMs?: number,
   startupDurationMs?: number,
+  chartPlaybackDelayMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
+  const viewportNowMs =
+    typeof chartPlaybackDelayMs === "number" &&
+    Number.isFinite(chartPlaybackDelayMs) &&
+    chartPlaybackDelayMs > 0
+      ? nowMs - chartPlaybackDelayMs
+      : nowMs;
   const start =
     startedAtMs !== undefined && Number.isFinite(startedAtMs)
       ? Math.min(startedAtMs, nowMs)
@@ -168,17 +175,17 @@ export function buildLineOption(
     !revealing &&
     duration === undefined &&
     start !== undefined &&
-    nowMs < start + windowMs;
+    viewportNowMs < start + windowMs;
   const windowStart = revealing
     ? (firstSample ?? nowMs)
     : filling
       ? start!
-      : nowMs - windowMs;
+      : viewportNowMs - windowMs;
   const windowEnd = revealing
     ? windowStart + windowMs
     : filling
       ? start! + windowMs
-      : nowMs;
+      : viewportNowMs;
   const sampling =
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
@@ -210,21 +217,17 @@ export function buildLineOption(
     series: series.map((input, index) => ({
       type: "line" as const,
       name: input.label ?? input.sensorId,
-      data: interpolateTailPoints(
-        toSeriesPoints(
-          revealProgress === undefined
-            ? input.samples
-            : input.samples.filter(
-                (sample) =>
-                  Date.parse(sample.timestamp) <=
-                  windowStart + windowMs * revealProgress,
-              ),
-          settings,
-          nowMs,
-          windowStart,
-        ),
+      data: toSeriesPoints(
+        revealProgress === undefined
+          ? input.samples
+          : input.samples.filter(
+              (sample) =>
+                Date.parse(sample.timestamp) <=
+                windowStart + windowMs * revealProgress,
+            ),
+        settings,
         nowMs,
-        !revealing,
+        windowStart,
       ),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
@@ -255,35 +258,6 @@ export function buildLineOption(
       silent: true as const,
     })),
   };
-}
-
-/** Move only the displayed endpoint; retained samples remain measured history. */
-function interpolateTailPoints(
-  points: SeriesPoint[],
-  nowMs: number,
-  enabled: boolean,
-): SeriesPoint[] {
-  if (!enabled || points.length < 2) return points;
-
-  const previous = points.at(-2)!;
-  const latest = points.at(-1)!;
-  const [previousTime, previousValue] = previous;
-  const [latestTime, latestValue] = latest;
-  const interval = latestTime - previousTime;
-
-  if (
-    previousValue === null ||
-    latestValue === null ||
-    !(interval > 0) ||
-    nowMs < latestTime
-  ) {
-    return points;
-  }
-
-  const progress = Math.min(1, (nowMs - latestTime) / interval);
-  const value = previousValue + (latestValue - previousValue) * progress;
-
-  return [...points.slice(0, -1), [nowMs, value]];
 }
 
 function sampleTimeMs(sample: Sample): number {

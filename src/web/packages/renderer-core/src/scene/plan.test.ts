@@ -606,7 +606,7 @@ describe("charts", () => {
     }
   });
 
-  it("uses the live source presentation clock for the line endpoint", () => {
+  it("keeps the next live segment outside the line viewport", () => {
     const store = new SampleStore();
     store.ingest(
       [
@@ -637,18 +637,20 @@ describe("charts", () => {
       ],
       NOW,
     );
+    const source = Object.assign(store, { chartPlaybackDelayMs: 1_000 });
     const result = plan(
       documentWith([
         chartNode("line", defaultLineSettings, [
           { id: "b", semanticKey: "cpu.load.total" },
         ]),
       ]),
-      { source: store },
+      { source },
     );
 
     const content = result.nodes[0]!.content;
     if (content.kind === "chart" && content.family === "line") {
-      expect(content.option.series[0]!.data.at(-1)).toEqual([NOW, 20]);
+      expect(content.option.xAxis.max).toBe(NOW - 1_000);
+      expect(content.option.series[0]!.data.at(-1)).toEqual([NOW, 30]);
     }
   });
 

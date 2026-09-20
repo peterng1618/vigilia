@@ -277,7 +277,7 @@ describe("buildLineOption", () => {
     expect(option.series[0]!.data).toHaveLength(4);
   });
 
-  it("renders a display-only tail between the newest two measured samples", () => {
+  it("renders the newest measurement without a synthetic tail", () => {
     const option = buildLineOption(
       defaultLineSettings,
       [{ sensorId: "a", samples: [at(59, 10), at(60, 20)] }],
@@ -290,7 +290,26 @@ describe("buildLineOption", () => {
 
     expect(option.series[0]!.data).toEqual([
       [T0 + 59_000, 10],
-      [NOW + 500, 15],
+      [NOW, 20],
+    ]);
+  });
+
+  it("keeps the next complete segment outside a delayed live viewport", () => {
+    const option = buildLineOption(
+      defaultLineSettings,
+      [{ sensorId: "a", samples: [at(59, 10), at(60, 20)] }],
+      NOW,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      1_000,
+    );
+
+    expect(option.xAxis.max).toBe(T0 + 59_000);
+    expect(option.series[0]!.data).toEqual([
+      [T0 + 59_000, 10],
+      [NOW, 20],
     ]);
   });
 

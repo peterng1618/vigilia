@@ -9,6 +9,8 @@ import type { Sample } from "../types.js";
  * builder only ever sees this.
  */
 export interface SampleSource {
+  /** Intentional chart viewport lag; retained samples remain unmodified. */
+  readonly chartPlaybackDelayMs?: number;
   /** The newest sample for a semantic key, or undefined when nothing is mapped. */
   latest(semanticKey: string): Sample | undefined;
   /** Samples within the trailing window, oldest first. Empty when unmapped. */
