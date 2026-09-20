@@ -107,9 +107,8 @@ export function toSeriesPoints(
   samples: readonly Sample[],
   settings: Pick<LineSettings, 'windowSeconds' | 'maxPoints'>,
   nowMs: number,
+  windowStart = nowMs - settings.windowSeconds * 1000,
 ): SeriesPoint[] {
-  const windowStart = nowMs - settings.windowSeconds * 1000;
-
   const points: SeriesPoint[] = [];
 
   for (const sample of samples) {
@@ -138,8 +137,15 @@ export function buildLineOption(
   nowMs: number,
   animate = true,
   palette?: FabricPalette,
+  startedAtMs?: number,
 ): LineOption {
-  const windowStart = nowMs - settings.windowSeconds * 1000;
+  const windowMs = settings.windowSeconds * 1000;
+  const start = startedAtMs !== undefined && Number.isFinite(startedAtMs)
+    ? Math.min(startedAtMs, nowMs)
+    : undefined;
+  const filling = start !== undefined && nowMs < start + windowMs;
+  const windowStart = filling ? start : nowMs - windowMs;
+  const windowEnd = filling ? start + windowMs : nowMs;
   const sampling = settings.sampling && settings.sampling !== 'none' ? settings.sampling : undefined;
 
   return {
@@ -156,9 +162,9 @@ export function buildLineOption(
     xAxis: {
       type: 'time',
       show: settings.showAxes,
-      // Pin the time window instead of rescaling to currently present data.
+      // Fill from the render start, then retain a fixed-width scrolling window.
       min: windowStart,
-      max: nowMs,
+      max: windowEnd,
     },
     yAxis: {
       type: 'value',
@@ -169,7 +175,7 @@ export function buildLineOption(
     series: series.map((input, index) => ({
       type: 'line' as const,
       name: input.label ?? input.sensorId,
-      data: toSeriesPoints(input.samples, settings, nowMs),
+      data: toSeriesPoints(input.samples, settings, nowMs, windowStart),
       showSymbol: settings.showMarkers,
       symbolSize: settings.markerSize,
       smooth: settings.interpolation === 'smooth',

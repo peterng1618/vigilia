@@ -19,7 +19,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
-| Chart repaint | 937 units, seven typechecks, builds, 270.7 KB player gzip, focused editor toggle test, and desktop/phone fixture captures passed; full browser suite remains unverified |
+| Chart repaint | 938 units, seven typechecks, builds, 270.8 KB player gzip, and focused player desktop/phone capture command passed; line startup is covered by a unit regression; full browser suite and visual capture inspection remain unverified |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -31,7 +31,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - `scene-fabric` renders text, shapes, groups, images/SVG and four chart families.
 - Player uses `StaticCanvas` and does not depend on editor UI.
 - `VigiliaChart` supports persistence, disposal, live redraw and transforms.
-- Charts repaint at 30 FPS on the display; host telemetry remains at its configured cadence.
+- Charts repaint at 30 FPS on the display; line charts use the runtime render start and fill left-to-right before scrolling; host telemetry remains at its configured cadence.
 - Text layout and bitmap/SVG fit/recolour paths are implemented.
 
 ### Editor

@@ -18,6 +18,7 @@ export class ChartManager {
   readonly #panel;
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #globals: FabricGlobals | undefined;
+  #chartStartedAtMs = Date.now();
 
   constructor(options: {
     readonly editor: ImageEditor;
@@ -59,6 +60,7 @@ export class ChartManager {
 
   setSource(source: SampleSource): void {
     this.#source = source;
+    this.#chartStartedAtMs = Date.now();
     this.refresh();
   }
 
@@ -135,7 +137,7 @@ export class ChartManager {
 
   #applyChart(id: string, chart: VigiliaChart): void {
     const plan = buildChartPlan(id, { family: chart.family, settings: chart.settings } as ChartContent, this.#bindings[id] ?? [], {
-      source: this.#source, nowMs: Date.now(), animate: false,
+      source: this.#source, nowMs: Date.now(), chartStartedAtMs: this.#chartStartedAtMs, animate: false,
     }, [], this.#globals?.palette);
     chart.setOption(plan.option);
   }

@@ -138,13 +138,29 @@ describe('buildLineOption', () => {
     expect(option.series[0]!.connectNulls).toBe(false);
   });
 
-  it('pins the x axis to the configured window rather than to the data', () => {
+  it('scrolls the x axis after the configured window fills', () => {
     const settings: LineSettings = { ...defaultLineSettings, windowSeconds: 30 };
-    const option = buildLineOption(settings, [{ sensorId: 'a', samples: [at(40, 1)] }], NOW);
+    const option = buildLineOption(settings, [{ sensorId: 'a', samples: [at(10, 1)] }], NOW);
 
     // Without pinning, a chart with one point would collapse its axis onto it.
     expect(option.xAxis.max).toBe(NOW);
     expect(option.xAxis.min).toBe(NOW - 30_000);
+  });
+
+  it('fills from the render start instead of inherited history', () => {
+    const settings: LineSettings = { ...defaultLineSettings, windowSeconds: 30 };
+    const option = buildLineOption(
+      settings,
+      [{ sensorId: 'a', samples: [at(40, 1), at(50, 2)] }],
+      NOW,
+      true,
+      undefined,
+      NOW,
+    );
+
+    expect(option.xAxis.min).toBe(NOW);
+    expect(option.xAxis.max).toBe(NOW + 30_000);
+    expect(option.series[0]!.data).toEqual([]);
   });
 
   it.each<[Interpolation, boolean, 'end' | false]>([
