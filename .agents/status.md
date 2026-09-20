@@ -19,6 +19,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
+| Chart repaint | 937 units, seven typechecks, builds, 270.7 KB player gzip, focused editor toggle test, and desktop/phone fixture captures passed; full browser suite remains unverified |
 
 Preview/live source controls and hosted player loading have current typecheck,
 unit, build, size and visual evidence. The full browser suite is not green.
@@ -30,6 +31,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - `scene-fabric` renders text, shapes, groups, images/SVG and four chart families.
 - Player uses `StaticCanvas` and does not depend on editor UI.
 - `VigiliaChart` supports persistence, disposal, live redraw and transforms.
+- Charts repaint at 30 FPS on the display; host telemetry remains at its configured cadence.
 - Text layout and bitmap/SVG fit/recolour paths are implemented.
 
 ### Editor
@@ -40,6 +42,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
   history integration are active.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
+- `Chart refresh` selects 30 FPS or 1 FPS for the editor session; it is not persisted.
 - Palette/type references are validated and reassigned safely on deletion.
 - Curated font previews, trio/single-face adoption and editor/player `FontFace` loading are implemented.
 - Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.

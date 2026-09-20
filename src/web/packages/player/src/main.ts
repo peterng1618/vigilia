@@ -16,7 +16,7 @@ import {
   type FabricThemeEnvelope,
   type ThemeDocument,
 } from '@vigilia/renderer-core';
-import { loadFontAssets, mountFabricScene, reviveThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
+import { loadFontAssets, mountFabricScene, reviveThemeEnvelope, startChartRefresh, VigiliaChart } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
 import { loadHostedFontAssets, loadHostedTheme } from './theme-loader.js';
 
@@ -28,8 +28,6 @@ if (!artboardHost) {
   throw new Error('Artboard host element is missing.');
 }
 
-/** Data refresh cadence; chart interpolation is independent. */
-const DATA_TICK_MS = 1000;
 const FIXTURE_THEME_IDS = new Set(['demo', 'stress', 'portrait-cover', 'assets']);
 
 async function start(host: HTMLElement): Promise<void> {
@@ -119,7 +117,7 @@ function startFixtureTheme(
     showScaffoldBanner(requiredSemanticKeys(theme).length, theme.metadata?.name ?? requested ?? 'demo');
   }
 
-  let timer: number | undefined;
+  let chartRefresh: ReturnType<typeof startChartRefresh> | undefined;
 
   const tick = (): void => {
     // Live sources advance on transport arrival; only the deterministic fake needs its clock moved.
@@ -128,17 +126,17 @@ function startFixtureTheme(
   };
 
   const run = (): void => {
-    if (timer !== undefined) {
+    if (chartRefresh !== undefined) {
       return;
     }
     tick();
-    timer = window.setInterval(tick, DATA_TICK_MS);
+    chartRefresh = startChartRefresh(tick, 30);
   };
 
   const pause = (): void => {
-    if (timer !== undefined) {
-      window.clearInterval(timer);
-      timer = undefined;
+    if (chartRefresh !== undefined) {
+      chartRefresh.dispose();
+      chartRefresh = undefined;
     }
   };
 
@@ -197,12 +195,12 @@ async function startHostedTheme(
 
   refresh();
   showConnectionState('connecting', keys.length);
-  const timer = window.setInterval(refresh, DATA_TICK_MS);
+  const chartRefresh = startChartRefresh(refresh, 30);
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);
   window.addEventListener('pagehide', () => {
     releaseFonts();
-    window.clearInterval(timer);
+    chartRefresh.dispose();
     observer.disconnect();
     liveHandle.close();
   }, { once: true });

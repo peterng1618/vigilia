@@ -1,5 +1,5 @@
 import { type FabricThemeEnvelope, type FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
-import { assertFabricThemeEnvelopeCompatible, loadFontAssets } from '@vigilia/scene-fabric';
+import { assertFabricThemeEnvelopeCompatible, loadFontAssets, startChartRefresh, type ChartRefreshRate } from '@vigilia/scene-fabric';
 import { ForkExtensions } from './fork-extensions/index.js';
 import { mountForkShell } from './fork-shell.js';
 import { createEditorSource } from './live-source.js';
@@ -27,6 +27,7 @@ async function start(): Promise<void> {
   const libraryClient = createThemeLibraryClient();
   let mode: 'preview' | 'live' = 'preview';
   let active: ActiveEditor | undefined;
+  let chartRefreshRate: ChartRefreshRate = 30;
 
   const sourceControl = document.createElement('label');
   sourceControl.textContent = 'Data source';
@@ -39,6 +40,19 @@ async function start(): Promise<void> {
   }
   sourceControl.append(sourceMode);
   panelHost.append(sourceControl);
+
+  const refreshControl = document.createElement('label');
+  refreshControl.textContent = 'Chart refresh';
+  const refreshRate = document.createElement('select');
+  refreshRate.dataset['vigiliaChartRefresh'] = '';
+  for (const rate of [30, 1] as const) {
+    const option = document.createElement('option');
+    option.value = String(rate);
+    option.textContent = `${rate} FPS`;
+    refreshRate.append(option);
+  }
+  refreshControl.append(refreshRate);
+  panelHost.append(refreshControl);
 
   const createSource = (envelope: FabricThemeEnvelopeInput): EditorSource => createEditorSource({
     mode,
@@ -130,7 +144,12 @@ async function start(): Promise<void> {
     });
   });
 
-  window.setInterval(() => active?.extensions.charts.refresh(), 1_000);
+  const chartRefresh = startChartRefresh(() => active?.extensions.charts.refresh(), chartRefreshRate);
+  refreshRate.addEventListener('change', () => {
+    chartRefreshRate = refreshRate.value === '1' ? 1 : 30;
+    chartRefresh.setRate(chartRefreshRate);
+  });
+  window.addEventListener('pagehide', () => chartRefresh.dispose(), { once: true });
 
   const theme = createNewFabricTheme();
   await mount({

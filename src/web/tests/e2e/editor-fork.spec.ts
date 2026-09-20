@@ -14,6 +14,16 @@ test.describe('Fabric editor route', () => {
     await expect(page.locator('#status')).toHaveText('Fabric editor ready');
   });
 
+  test('switches chart refresh between 30 and 1 FPS', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    const refresh = page.locator('[data-vigilia-chart-refresh]');
+    await expect(refresh).toHaveValue('30');
+    await refresh.selectOption('1');
+    await expect(refresh).toHaveValue('1');
+  });
+
   test('creates and saves text with derived v2 references', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

@@ -607,7 +607,9 @@ test.describe('every fixture renders', () => {
         : '../../.agents/screenshots';
 
     for (const fixture of FIXTURES) {
-      await openCanvasPlayer(page, `/?theme=${fixture.name}&static=1`);
+      await page.goto(`/?theme=${fixture.name}&static=1`);
+      await page.waitForSelector('canvas[data-vigilia="artboard"]');
+      await page.waitForTimeout(100);
       const name = `${fixture.name}-${testInfo.project.name}.png`;
       const screenshot = await page.screenshot({
         fullPage: false,

@@ -160,6 +160,7 @@ framework UI state across that boundary.
 | Canvas/artboard mount | `scene-fabric/src/scene.ts` |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
 | `VigiliaChart` lifecycle | `scene-fabric/src/chart-object.ts` |
+| Chart repaint cadence | `scene-fabric/src/chart-refresh.ts` |
 | Chart backing limits | `scene-fabric/src/render-scale.ts` |
 | ECharts registration | `scene-fabric/src/chart-engine.ts` |
 | Fabric node updates | `scene-fabric/src/fabric-nodes.ts` |

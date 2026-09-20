@@ -3,6 +3,7 @@
 export type { ChartSerialisedKey, VigiliaChartOptions } from './chart-object.js';
 
 export { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
+export { startChartRefresh, type ChartRefreshRate } from './chart-refresh.js';
 
 export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
 
