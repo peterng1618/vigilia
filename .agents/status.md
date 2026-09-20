@@ -11,12 +11,12 @@ Spec 0014 is review-only; 0015 is implemented.
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
 | Hosted authoring source | package/library, preview/live source and player-host loading are committed in `8a657b4` |
 | Font editor slice | 23 focused tests, seven typechecks, editor build and inspected `editor-fork-font-trio-desktop-chromium.png` passed |
-| Hosted font delivery | 17 host/player/font lifecycle tests, seven typechecks and player build passed; hosted browser runtime remains unverified because E2E previews Vite bundles |
+| Hosted font delivery | Host asset route, player fetch/lifecycle tests, seven typechecks and player build passed; Node-hosted browser runtime remains unverified because E2E previews Vite bundles |
 | Typechecks | seven projects clean |
 | Builds | player and host clean; editor rebuilt clean on 2026-09-19 |
-| Player size gate | 268.8 KB gzip JS; 0.0 KB gzip CSS |
-| Visual review | 12 completed desktop/phone player and desktop editor captures inspected |
-| Browser suite | 74 passed; 26 desktop-only editor checks skipped on phone |
+| Player size gate | 270.6 KB gzip JS; 0.0 KB gzip CSS |
+| Visual review | Fresh demo player desktop and phone captures inspected; text and canvas rendering are intact |
+| Browser suite | Full 106-test command exited after ten desktop checks without a summary; separate two-capture visual gate passed |
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 
@@ -41,7 +41,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Palette/type references are validated and reassigned safely on deletion.
-- Curated font previews, trio/single-face adoption and editor `FontFace` loading are implemented; hosted-player font asset delivery remains pending.
+- Curated font previews, trio/single-face adoption and editor/player `FontFace` loading are implemented.
 - Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.
 - Theme-package-only Open/Save and host-library Open/Save are active.
 - Live editor telemetry and production video integration remain incomplete.
@@ -55,10 +55,8 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement hosted player font-asset delivery from
-   `.agents/plans/2026-09-20-hosted-font-assets.md`.
-2. Revisit remaining spec-0014 candidates only when needed.
-3. Modernize the shell per plan §35 only after the authoring core is stable.
+1. Revisit remaining spec-0014 candidates only when needed.
+2. Modernize the shell per plan §35 only after the authoring core is stable.
 
 ## Unverified / limitations
 
@@ -68,6 +66,6 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - No physical-phone gate exists; LAN pairing is not validated end to end.
 - LHM extended telemetry is still a contract.
 - Canvas text cannot guarantee tabular numerals.
-- Hosted player font loading remains unverified because browser E2E previews Vite
-  bundles rather than the Node host.
+- Hosted player font loading is implemented but unverified in a browser because
+  E2E previews Vite bundles rather than the Node host.
 - Chart engine gaps remain for gauge angular gradients and discrete line thresholds.
