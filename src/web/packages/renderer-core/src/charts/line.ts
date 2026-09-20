@@ -143,6 +143,7 @@ export function buildLineOption(
   palette?: FabricPalette,
   startedAtMs?: number,
   startupDurationMs?: number,
+  presentationDelayMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
   const start =
@@ -180,6 +181,12 @@ export function buildLineOption(
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
       : undefined;
+  const tailNowMs =
+    typeof presentationDelayMs === "number" &&
+    Number.isFinite(presentationDelayMs) &&
+    presentationDelayMs > 0
+      ? nowMs - presentationDelayMs
+      : nowMs;
 
   return {
     ...toEngineAnimation(settings.animation, animate),
@@ -221,6 +228,7 @@ export function buildLineOption(
           nowMs,
           windowStart,
         ),
+        tailNowMs,
         nowMs,
         !revealing,
       ),
@@ -258,7 +266,8 @@ export function buildLineOption(
 /** Move only the displayed endpoint; retained samples remain measured history. */
 function interpolateTailPoints(
   points: SeriesPoint[],
-  nowMs: number,
+  tailNowMs: number,
+  renderedNowMs: number,
   enabled: boolean,
 ): SeriesPoint[] {
   if (!enabled || points.length < 2) return points;
@@ -273,15 +282,15 @@ function interpolateTailPoints(
     previousValue === null ||
     latestValue === null ||
     !(interval > 0) ||
-    nowMs < latestTime
+    tailNowMs < latestTime
   ) {
     return points;
   }
 
-  const progress = Math.min(1, (nowMs - latestTime) / interval);
+  const progress = Math.min(1, (tailNowMs - latestTime) / interval);
   const value = previousValue + (latestValue - previousValue) * progress;
 
-  return [...points.slice(0, -1), [nowMs, value]];
+  return [...points.slice(0, -1), [renderedNowMs, value]];
 }
 
 function earliestSampleMs(

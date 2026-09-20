@@ -66,6 +66,7 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
   };
 
   const source: SampleSource = {
+    presentationDelayMs: LIVE_SOURCE_DISPLAY_DELAY_MS,
     latest(semanticKey) {
       releasePending();
       return store.latest(semanticKey);

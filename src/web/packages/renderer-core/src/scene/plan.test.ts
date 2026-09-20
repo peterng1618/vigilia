@@ -606,6 +606,42 @@ describe("charts", () => {
     }
   });
 
+  it("uses a delayed source clock for the live line endpoint", () => {
+    const store = new SampleStore();
+    store.ingest(
+      [
+        [
+          "cpu.load.total",
+          { ...ok(10), timestamp: new Date(NOW - 3000).toISOString() },
+        ],
+        [
+          "cpu.load.total",
+          { ...ok(20), timestamp: new Date(NOW - 2000).toISOString() },
+        ],
+        [
+          "cpu.load.total",
+          { ...ok(30), timestamp: new Date(NOW - 1000).toISOString() },
+        ],
+      ],
+      NOW,
+    );
+    const source = Object.assign(store, { presentationDelayMs: 1000 });
+
+    const result = plan(
+      documentWith([
+        chartNode("line", defaultLineSettings, [
+          { id: "b", semanticKey: "cpu.load.total" },
+        ]),
+      ]),
+      { source },
+    );
+
+    const content = result.nodes[0]!.content;
+    if (content.kind === "chart" && content.family === "line") {
+      expect(content.option.series[0]!.data.at(-1)).toEqual([NOW, 20]);
+    }
+  });
+
   it("gives a bar chart one category per binding, in order", () => {
     const result = plan(
       documentWith([
