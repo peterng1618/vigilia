@@ -83,40 +83,75 @@ export function createTypePresetPanel(
       "Line height",
       "vigiliaTypeLineHeight",
       String(entry.value.lineHeight ?? ""),
+      "number",
     );
-    const update = (): void => {
+    const letterSpacing = input(
+      "Letter spacing",
+      "vigiliaTypeLetterSpacing",
+      String(entry.value.letterSpacing ?? ""),
+      "number",
+    );
+    const update = (
+      changed: "weight" | "lineHeight" | "letterSpacing" | undefined,
+    ): void => {
       const nextSize = Number(size.value);
       const nextLine =
         lineHeight.value === "" ? undefined : Number(lineHeight.value);
+      const nextLetter =
+        letterSpacing.value === "" ? undefined : Number(letterSpacing.value);
       if (
         !Number.isFinite(nextSize) ||
         nextSize <= 0 ||
         (nextLine !== undefined &&
           (!Number.isFinite(nextLine) || nextLine <= 0)) ||
+        (nextLetter !== undefined && !Number.isFinite(nextLetter)) ||
         name.value.trim() === "" ||
         family.value.trim() === ""
       )
         return;
+      let value: TypePreset = {
+        ...entry.value,
+        family: family.value.trim(),
+        size: nextSize,
+      };
+      if (changed === "weight") {
+        const { weight: _weight, ...withoutWeight } = value;
+        value =
+          weight.value.trim() === ""
+            ? withoutWeight
+            : { ...withoutWeight, weight: weight.value.trim() };
+      }
+      if (changed === "lineHeight") {
+        const { lineHeight: _lineHeight, ...withoutLineHeight } = value;
+        value =
+          nextLine === undefined
+            ? withoutLineHeight
+            : { ...withoutLineHeight, lineHeight: nextLine };
+      }
+      if (changed === "letterSpacing") {
+        const { letterSpacing: _letterSpacing, ...withoutLetterSpacing } = value;
+        value =
+          nextLetter === undefined
+            ? withoutLetterSpacing
+            : { ...withoutLetterSpacing, letterSpacing: nextLetter };
+      }
       commit({
         name: name.value.trim(),
-        value: {
-          family: family.value.trim(),
-          size: nextSize,
-          ...(weight.value.trim() === ""
-            ? {}
-            : { weight: weight.value.trim() }),
-          ...(nextLine === undefined ? {} : { lineHeight: nextLine }),
-        },
+        value,
       });
     };
-    for (const control of [name, family, size, weight, lineHeight])
-      control.addEventListener("change", update);
+    for (const control of [name, family, size])
+      control.addEventListener("change", () => update(undefined));
+    weight.addEventListener("change", () => update("weight"));
+    lineHeight.addEventListener("change", () => update("lineHeight"));
+    letterSpacing.addEventListener("change", () => update("letterSpacing"));
     return [
       label("Name", name),
       label("Family", family),
       label("Size", size),
       label("Weight", weight),
       label("Line height", lineHeight),
+      label("Letter spacing", letterSpacing),
       ...fontControls(),
       ...deletionControls(),
     ];

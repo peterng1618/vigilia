@@ -10,13 +10,74 @@ describe("type preset panel", () => {
     panel.render({
       body: { name: "Body", value: { family: "Inter", size: 16 } },
     });
-    const size = document.querySelector<HTMLInputElement>(
+    const size = panel.root.querySelector<HTMLInputElement>(
       "[data-vigilia-type-size]",
     )!;
     size.value = "18";
     size.dispatchEvent(new Event("change"));
     expect(onChange).toHaveBeenLastCalledWith({
       body: { name: "Body", value: { family: "Inter", size: 18 } },
+    });
+  });
+
+  it("preserves packaged face metadata when editing size", () => {
+    const onChange = vi.fn();
+    const panel = createTypePresetPanel(document.body, onChange);
+    panel.render({
+      body: {
+        name: "Body",
+        value: {
+          family: "Inter",
+          size: 16,
+          weight: 600,
+          letterSpacing: 0.2,
+          lineHeight: 1.4,
+          face: { assetId: "inter-600" },
+          trioRole: "body",
+        },
+      },
+    });
+
+    const size = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-type-size]",
+    )!;
+    size.value = "18";
+    size.dispatchEvent(new Event("change"));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      body: {
+        name: "Body",
+        value: {
+          family: "Inter",
+          size: 18,
+          weight: 600,
+          letterSpacing: 0.2,
+          lineHeight: 1.4,
+          face: { assetId: "inter-600" },
+          trioRole: "body",
+        },
+      },
+    });
+  });
+
+  it("emits numeric letter spacing", () => {
+    const onChange = vi.fn();
+    const panel = createTypePresetPanel(document.body, onChange);
+    panel.render({
+      body: { name: "Body", value: { family: "Inter", size: 16 } },
+    });
+
+    const letterSpacing = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-type-letter-spacing]",
+    )!;
+    letterSpacing.value = "0.25";
+    letterSpacing.dispatchEvent(new Event("change"));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      body: {
+        name: "Body",
+        value: { family: "Inter", size: 16, letterSpacing: 0.25 },
+      },
     });
   });
 
