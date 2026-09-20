@@ -306,6 +306,88 @@ test.describe('Fabric editor route', () => {
     expect(envelope.scene.objects.find((object) => object.id === 'load-gauge')?.settings?.progress).toEqual({ ref: 'palette.chartTrack' });
   });
 
+  test('refreshes bound text without saving its sampled value', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
+
+    await page.goto(EDITOR);
+    await setThemePackage(page, 'live-text.vigilia-theme', {
+      schemaVersion: 2,
+      fabricVersion: '7.4.0',
+      id: 'live-text',
+      artboard: { width: 320, height: 180, background: { ref: 'palette.background' }, barColor: { ref: 'palette.none' } },
+      globals: {
+        palette: {
+          none: { name: 'None', value: { kind: 'solid', color: 'transparent' } },
+          background: { name: 'Background', value: { kind: 'solid', color: '#102030' } },
+          ink: { name: 'Ink', value: { kind: 'solid', color: '#00b8d9' } },
+        },
+        typePresets: { body: { name: 'Body', value: { family: 'sans-serif', size: 16 } } },
+      },
+      bindings: { 'cpu-label': [{ id: 'load', semanticKey: 'cpu.load', precision: 0 }] },
+      scene: {
+        version: '7.4.0',
+        objects: [{
+          type: 'Textbox', id: 'cpu-label', left: 20, top: 20, width: 200, text: 'CPU --', originX: 'left', originY: 'top',
+          fill: '#00b8d9', vigiliaPaint: { fill: 'palette.ink' },
+          vigiliaText: {
+            runs: [
+              { kind: 'literal', text: 'CPU ', typePreset: 'typePresets.body', style: { color: { ref: 'palette.ink' } } },
+              { kind: 'value', bindingId: 'load', typePreset: 'typePresets.body', style: { color: { ref: 'palette.ink' } } },
+            ],
+          },
+        }],
+      },
+    });
+    await expect.poll(() => page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+          && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as {
+            canvas: { getObjects(): Array<{ get(name: string): unknown }> };
+          } | undefined;
+      return editor?.canvas.getObjects().find((object) => object.get('id') === 'cpu-label')?.get('text');
+    })).toMatch(/^CPU \d/);
+    await expect(page.evaluate(() => {
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+          && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as {
+            canvas: { getObjects(): Array<{ get(name: string): unknown }> };
+          } | undefined;
+      const text = editor?.canvas.getObjects().find((object) => object.get('id') === 'cpu-label');
+      return {
+        fill: text?.get('fill'), height: text?.get('height'), opacity: text?.get('opacity'),
+        styles: text?.get('styles'), visible: text?.get('visible'), width: text?.get('width'),
+      };
+    })).resolves.toMatchObject({ fill: '#00b8d9', height: expect.any(Number), opacity: 1, styles: { 0: { 0: { fill: '#00b8d9' } } }, visible: true, width: 200 });
+    await expect(page.evaluate(() => {
+      const coverage = [...document.querySelectorAll<HTMLCanvasElement>('#vigilia-fabric-editor canvas')].map((canvas) => {
+        const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+        let ink = 0;
+        for (let index = 0; pixels !== undefined && index < pixels.length; index += 4) {
+          if (pixels[index] < 32 && pixels[index + 1] > 100 && pixels[index + 2] > 100) ink += 1;
+        }
+        return `${canvas.className}:${canvas.width}x${canvas.height}; ink=${ink}`;
+      });
+      const editor = Object.entries(window as unknown as Record<string, unknown>)
+        .find(([key, value]) => key.startsWith('vigilia-fabric-editor-')
+          && (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas.upperCanvasEl?.isConnected)?.[1] as {
+            canvas: { getObjects(): Array<{ get(name: string): unknown }> };
+          } | undefined;
+      const text = editor?.canvas.getObjects().find((object) => object.get('id') === 'cpu-label') as {
+        getBoundingRect(): { left: number; top: number; width: number; height: number };
+      } | undefined;
+      return { coverage, bounds: text?.getBoundingRect() };
+    })).resolves.toMatchObject({
+      coverage: expect.arrayContaining([expect.stringMatching(/ink=[1-9]\d*/)]),
+      bounds: expect.objectContaining({ left: expect.any(Number), top: expect.any(Number) }),
+    });
+    await captureVisualReview(page, testInfo, 'editor-fork-live-text');
+
+    const envelope = await saveEnvelope(page) as { scene: { objects: Array<{ id?: string; text?: string; vigiliaText?: unknown }> } };
+    const text = envelope.scene.objects.find((object) => object.id === 'cpu-label');
+    expect(text?.text).toBe('CPU —');
+    expect(text?.vigiliaText).toEqual(expect.objectContaining({ runs: expect.arrayContaining([expect.objectContaining({ bindingId: 'load' })]) }));
+  });
+
   test('opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'the editor is a desktop surface');
 

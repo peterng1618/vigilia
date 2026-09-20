@@ -25,6 +25,7 @@ import { createThemeLibraryClient, type ThemeLibraryClient, type ThemeLibraryEnt
 import { AssetManager, createAssetPanel } from '../asset-manager/index.js';
 import { applyFontTrio, fontTrio, type CuratedFontFace } from '../font-catalog.js';
 import { previewFontFace, releaseFontPreview } from '../font-preview.js';
+import { LiveRuntime } from '../live-runtime.js';
 
 export interface ForkExtensionsOptions {
   readonly shell: ForkShell;
@@ -45,6 +46,7 @@ export interface ForkExtensionsOptions {
 /** Composition root for Vigilia-specific behaviour layered above the fork. */
 export class ForkExtensions {
   readonly charts: ChartManager;
+  readonly #runtime: LiveRuntime;
   readonly #artboard: ArtboardPanel;
   readonly #palette: PalettePanel;
   readonly #types: TypePresetPanel;
@@ -142,6 +144,12 @@ export class ForkExtensions {
       panelHost: options.panelHost,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
+    this.#runtime = new LiveRuntime({
+      canvas: options.shell.editor.canvas,
+      source: options.source,
+      ...(options.envelope.bindings === undefined ? {} : { bindings: options.envelope.bindings }),
+      ...(options.envelope.globals === undefined ? {} : { globals: options.envelope.globals }),
+    });
     this.#assetPanel = createAssetPanel(
       options.panelHost,
       this.#assets,
@@ -166,7 +174,13 @@ export class ForkExtensions {
   }
 
   setSource(source: SampleSource): void {
+    this.#runtime.setSource(source);
     this.charts.setSource(source);
+  }
+
+  refresh(): void {
+    this.#runtime.refresh();
+    this.charts.refresh();
   }
 
   async hydrateAssets(shell: ForkShell): Promise<void> {
@@ -338,12 +352,14 @@ export class ForkExtensions {
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
     this.#envelope = { ...this.#envelope, bindings: { ...this.#envelope.bindings, [id]: bindings } };
+    this.#runtime.setBindings(this.#envelope.bindings ?? {});
     this.#onBindingsChange?.();
   }
 
   #setPalette(shell: ForkShell, palette: FabricPalette): void {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, palette } };
     shell.setGlobals(this.#envelope.globals);
+    this.#runtime.setGlobals(this.#envelope.globals);
     this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
@@ -366,6 +382,7 @@ export class ForkExtensions {
     this.#envelope = { ...this.#envelope, artboard, globals: { ...this.#envelope.globals, palette } };
     shell.setArtboard(artboard);
     shell.setGlobals(this.#envelope.globals);
+    this.#runtime.setGlobals(this.#envelope.globals);
     this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
@@ -376,6 +393,7 @@ export class ForkExtensions {
   #setTypes(shell: ForkShell, typePresets: TypePresets): void {
     this.#envelope = { ...this.#envelope, globals: { ...this.#envelope.globals, typePresets } };
     shell.setGlobals(this.#envelope.globals);
+    this.#runtime.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
   }

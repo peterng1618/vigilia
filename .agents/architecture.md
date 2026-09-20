@@ -41,6 +41,7 @@ Current Vigilia-owned extensions are:
 | Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
+| Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | Extension composition | `editor/src/fork-extensions/` |
 | Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
@@ -184,7 +185,6 @@ framework UI state across that boundary.
 
 Establish one owner when these become active work:
 
-- editor live binding/runtime updates;
 - artboard/media property editing;
 - new-object defaults, when insertion is implemented: an editor-side pure
   factory, not persisted document state;

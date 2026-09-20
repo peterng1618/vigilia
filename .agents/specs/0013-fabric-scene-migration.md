@@ -37,9 +37,7 @@ demo path is not its source.
 ## Remaining integration
 
 1. Finish spec 0011 property/asset authoring.
-2. Add live editor telemetry without authored-history pollution.
-3. Add Theme settings with production background image/video integration.
-4. Modernize the outer shell later per plan §35.
+2. Modernize the outer shell later per plan §35.
 
 Do not restore legacy QoL for parity. Spec 0014 is review-only.
 

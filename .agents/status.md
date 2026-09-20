@@ -22,6 +22,7 @@ Spec 0014 is review-only; 0015 is implemented.
 | Image/SVG asset authoring | typechecks, 903 units, builds, player size and visual capture passed; focused asset browser test passed |
 | Background media | seven typechecks, 914 units, builds, size gate, player suite and focused editor package/browser capture passed; `editor-fork-background-media-desktop-chromium.png` inspected |
 | Live telemetry buffer | 942 units, seven typechecks, builds, 271.0 KB player gzip, and desktop/phone fixture captures passed and were inspected. Live sources hold all telemetry one cadence; line-tail extrapolation is removed. |
+| Editor live bindings | 946 units, seven typechecks, builds, and focused desktop Chromium proof passed; inspected `editor-fork-live-text-desktop-chromium.png` shows a preview-bound text value while Save persists only its authored run and fallback. |
 | Testing policy | Local proof is focused by owning workspace and affected visual action; full CI runs on PRs and pushes to `main`/`develop`. The manual Visual evidence workflow returns only the requested artifact. `gate-evidence` is retired; `verify` owns evidence and GitHub CLI retrieval. Local artboard capture passed and was inspected; remote CI awaits push. |
 
 Preview/live source controls and hosted player loading have current typecheck,
@@ -50,7 +51,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 - Curated font previews, trio/single-face adoption and editor/player `FontFace` loading are implemented.
 - Fabric image/SVG authoring imports/replaces selected images, protects referenced assets from removal, retains package bytes through Open/Save, and refreshes replacement selection controls.
 - Theme-package-only Open/Save and host-library Open/Save are active.
-- Live editor telemetry and production video integration remain incomplete.
+- Preview/live editor sources refresh bound text and charts without entering authored history or persistence.
 
 ### Host
 

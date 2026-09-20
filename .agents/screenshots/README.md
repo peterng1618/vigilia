@@ -22,6 +22,7 @@ result, not merely a mounted editor.
 |---|---|---|
 | Workspace | Load starter document | `editor-fork` / `captures the mounted editor` |
 | Selection/bindings | Select chart; change semantic key/transform | `editor-fork-chart-binding` / `captures selected chart binding controls` |
+| Live bindings | Open a bound text document and observe its preview value | `editor-fork-live-text` / `refreshes bound text without saving its sampled value` |
 | Layers/arrange | Select a semantic layer and expose its layer/arrange controls | `editor-layer-arrange` / `captures semantic layer controls` |
 | Chart settings | Change family-specific scalar setting | `editor-fork-chart-binding` / `captures selected chart binding controls` |
 | Artboard | Change dimensions or preview fit | `editor-fork-artboard` / `captures changed artboard controls` |

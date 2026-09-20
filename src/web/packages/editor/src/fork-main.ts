@@ -144,7 +144,7 @@ async function start(): Promise<void> {
     });
   });
 
-  const chartRefresh = startChartRefresh(() => active?.extensions.charts.refresh(), chartRefreshRate);
+  const chartRefresh = startChartRefresh(() => active?.extensions.refresh(), chartRefreshRate);
   refreshRate.addEventListener('change', () => {
     chartRefreshRate = refreshRate.value === '1' ? 1 : 30;
     chartRefresh.setRate(chartRefreshRate);

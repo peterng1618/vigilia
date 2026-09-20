@@ -32,7 +32,9 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   canvas.includeDefaultValues = false;
   // Fabric gradients retain undefined transform entries in memory; JSON export
   // is canonical persisted state, so normalize through JSON before validation.
-  return JSON.parse(JSON.stringify(canvas.toObject([...SCENE_PERSISTED_PROPERTIES]))) as SerialisedScene;
+  const scene = JSON.parse(JSON.stringify(canvas.toObject([...SCENE_PERSISTED_PROPERTIES]))) as SerialisedScene;
+  removeRuntimeText(scene.objects);
+  return scene;
 }
 
 /** Save the product envelope and Fabric object tree through their single owners. */
@@ -75,4 +77,29 @@ function disposeObjects(objects: readonly object[]): void {
       disposeObjects(object.getObjects());
     }
   }
+}
+
+/** Fabric serializes its display cache; replace sampled text with a data-free fallback. */
+function removeRuntimeText(objects: readonly Readonly<Record<string, unknown>>[]): void {
+  for (const object of objects) {
+    const runs = valueRuns(object[VIGILIA_TEXT_PROPERTY]);
+    if (runs !== undefined) {
+      (object as Record<string, unknown>)['text'] = runs.map((run) => run.kind === 'literal' ? run.text : '—').join('');
+    }
+    const children = object['objects'];
+    if (Array.isArray(children)) removeRuntimeText(children.filter(isRecord));
+  }
+}
+
+function valueRuns(value: unknown): readonly ({ readonly kind: 'literal'; readonly text: string } | { readonly kind: 'value' })[] | undefined {
+  if (!isRecord(value) || !Array.isArray(value['runs'])) return undefined;
+  const runs = value['runs'];
+  if (!runs.some((run) => isRecord(run) && run['kind'] === 'value')) return undefined;
+  if (!runs.every((run) => isRecord(run) &&
+    (run['kind'] === 'literal' && typeof run['text'] === 'string' || run['kind'] === 'value'))) return undefined;
+  return runs as readonly ({ readonly kind: 'literal'; readonly text: string } | { readonly kind: 'value' })[];
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null;
 }

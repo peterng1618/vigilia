@@ -11,7 +11,7 @@ import {
   type Sample,
 } from '@vigilia/renderer-core';
 import { VigiliaChart, type VigiliaChartOptions } from './chart-object.js';
-import { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
 import { objectAssetReference, setObjectAssetReference, VIGILIA_ASSET_PROPERTY } from './object-asset.js';
 import { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY } from './object-paint.js';
 import { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
@@ -267,6 +267,22 @@ describe('identity survives a round trip', () => {
 
     expect(scene.objects[0]![VIGILIA_TEXT_PROPERTY]).toEqual(authored);
     expect(revived.getObjects()[0]!.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
+  });
+
+  it('does not save a runtime text value', () => {
+    const text = new FabricText('CPU --');
+    text.set('id', 'readout');
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: 'literal', text: 'CPU ' }, { kind: 'value', bindingId: 'load' }],
+    });
+    const canvas = canvasOf(text);
+
+    refreshBoundText(canvas, { readout: [{ id: 'load', semanticKey: 'cpu.load' }] }, {
+      latest: () => sample(48), history: () => [],
+    }, undefined);
+
+    expect(text.text).toBe('CPU 48');
+    expect(serialiseScene(canvas).objects[0]!.text).toBe('CPU —');
   });
 
   it('carries an id on every object, nested ones included', async () => {

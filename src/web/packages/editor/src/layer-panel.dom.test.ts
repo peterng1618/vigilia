@@ -96,6 +96,8 @@ function editorFixture() {
     canvas: {
       getObjects: vi.fn(() => [background, group, foreground]),
       getActiveObject: activeObject,
+      discardActiveObject: vi.fn(() => { selected = undefined; }),
+      fire: vi.fn(),
       setActiveObject: vi.fn((object: FabricObject) => { selected = object; }),
       requestRenderAll: vi.fn(),
       on: vi.fn((event: string, listener: () => void) => listeners.set(event, listener)),

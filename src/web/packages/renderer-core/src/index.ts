@@ -265,6 +265,7 @@ export {
   computeMaxLines,
   formatNumber,
   formatUnit,
+  resolveTextSegments,
   resolveStyleValue,
 } from './scene/plan.js';
 

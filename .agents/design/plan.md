@@ -307,7 +307,7 @@ Current migration order/status:
 5. Build the bounded theme-package reader/writer — **done** (spec 0015).
 6. Finish v2 palette/type/reference/property semantics, including asset
    authoring over the package boundary — **pending** (spec 0011).
-7. Live editor bindings/charts — **pending**.
+7. Live editor bindings/charts — **done**.
 8. Production video background over packaged media — **pending**.
 9. Delete superseded DOM/custom editor code — **done**.
 10. shadcn/Base UI shell modernization — **later**, after core authoring

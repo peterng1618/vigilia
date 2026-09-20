@@ -1,10 +1,15 @@
-import { FabricText, Rect, Textbox, type TextProps } from 'fabric/es';
+import { FabricText, Group, Rect, Textbox, type StaticCanvas, type TextProps } from 'fabric/es';
 import type {
+  Binding,
+  FabricGlobals,
   PlanBox,
   PlanNode,
   PlanTextLayout,
   PlanTextSegment,
+  SampleSource,
+  TextContent,
 } from '@vigilia/renderer-core';
+import { resolveTextSegments } from '@vigilia/renderer-core';
 import { paintFor } from './paint.js';
 import { placementFor } from './placement.js';
 import { textShapeFor } from './text-runs.js';
@@ -75,6 +80,33 @@ export function updateText(object: PlanTextObject, node: PlanNode, box: PlanBox)
   applyText(object, node, box);
 }
 
+/** Apply sampled values while retaining the authored runs used for persistence. */
+export function refreshBoundText(
+  canvas: StaticCanvas,
+  bindings: Readonly<Record<string, readonly Binding[]>>,
+  source: SampleSource,
+  globals: FabricGlobals | undefined,
+): void {
+  const refresh = (objects: readonly object[]): void => {
+    for (const object of objects) {
+      if (isTextObject(object)) {
+        const id = object.get('id');
+        const authored = object.get(VIGILIA_TEXT_PROPERTY);
+        if (typeof id === 'string' && isTextContent(authored) && bindings[id] !== undefined) {
+          const segments = resolveTextSegments(id, authored.runs, bindings[id], { source }, globals ?? {}, []);
+          const shape = textShapeFor(segments, {}, (value) => object.graphemeSplit(value));
+          object.set({ text: shape.text, styles: shape.styles });
+          object.initDimensions();
+        }
+      }
+      if (object instanceof Group) refresh(object.getObjects());
+    }
+  };
+
+  refresh(canvas.getObjects());
+  canvas.requestRenderAll();
+}
+
 /** Write, measure, overflow-adjust and position text inside its authored box. */
 function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
   if (node.content.kind !== 'text') {
@@ -109,6 +141,10 @@ function applyText(object: PlanTextObject, node: PlanNode, box: PlanBox): void {
   });
 
   applyClip(object, layout, box);
+}
+
+function isTextContent(value: unknown): value is TextContent {
+  return typeof value === 'object' && value !== null && Array.isArray((value as Record<string, unknown>)['runs']);
 }
 
 /** `initDimensions` must follow text/style changes before alignment uses measurements. */

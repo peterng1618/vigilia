@@ -223,7 +223,7 @@ function planContent(
       return { kind: 'shape', shape: 'line', cornerRadius: 0 };
 
     case 'text':
-      const segments = planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues);
+      const segments = resolveTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues);
       return {
         kind: 'text',
         authored: node.content,
@@ -329,11 +329,11 @@ export function computeMaxLines(
   return Math.max(1, Math.floor(boxHeight / (fontSize * factor)));
 }
 
-function planTextSegments(
+export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: PlanContext,
+  context: Pick<PlanContext, 'source' | 'longUnits'>,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
@@ -375,7 +375,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: 'value' }>,
   style: ResolvedStyle,
-  context: PlanContext,
+  context: Pick<PlanContext, 'longUnits'>,
 ): PlanTextSegment {
   if (sample.status !== 'ok') {
     return {
