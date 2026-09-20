@@ -53,6 +53,12 @@ Fabric objects declaratively. Editor-shell theming is separate from authored
 dashboard theme globals. This modernization must not block the current
 migration.
 
+When shell modernization starts, centralize each frontend package's UI copy in a
+typed `ui-copy.ts` module. Include visible labels, dialogs, notices and
+user-facing errors; exclude authored theme text, telemetry values and developer
+errors. This is a future plan; it is not implemented. Multiple locales are not
+in scope.
+
 ## §43 — Feasibility
 
 Fabric rendering is established for text, images/SVG, basic shapes and all four

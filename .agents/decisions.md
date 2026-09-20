@@ -78,6 +78,14 @@ to shadcn/Base UI patterns and Tailwind/CSS variables while retaining the
 TypeScript/Vite shell. Fabric stays imperative behind an editor/controller
 boundary. This must not block the migration. **Decided by:** user, 2026-09-20.
 
+### UI copy is package-local and typed
+
+When shell modernization starts, each frontend package will own a `ui-copy.ts`
+module for visible labels, dialogs, notices and user-facing errors. Authored
+theme text, telemetry values and developer errors remain outside it. This is a
+future plan, not implemented behavior. Do not add i18n infrastructure until
+multiple locales become a product requirement. **Decided by:** user, 2026-09-21.
+
 ### Charts remain typed Vigilia objects over ECharts
 
 `VigiliaChart` uses a detached ECharts canvas. Move, rotation and proportional
