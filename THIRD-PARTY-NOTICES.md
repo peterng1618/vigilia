@@ -26,9 +26,10 @@ distribution.
 ## Build/test
 
 Declared development dependencies: @biomejs/biome 2.5.14 (MIT OR Apache-2.0),
-TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT), Playwright
-1.63.0 (Apache-2.0), jsdom 26.1.0 (MIT), canvas 3.2.3 (MIT), and @types/node
-22.10.2 (MIT). Native `canvas` may carry linked-library obligations.
+TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
+@playwright/test 1.63.0 (Apache-2.0), jsdom 26.1.0 (MIT), canvas 3.2.3 (MIT),
+and @types/node 22.10.2 (MIT). Native `canvas` may carry linked-library
+obligations.
 
 ## Assets and planned integrations
 
