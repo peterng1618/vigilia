@@ -1,6 +1,6 @@
 # Status — 2026-09-20
 
-Current handoff only. Durable rules: `AGENTS.md`; product: `design/plan.md`;
+Current handoff only. Durable rules: `AGENTS.md`; product: `plan.md`;
 architecture: `architecture.md`; active work: specs 0010, 0011 and 0013.
 Spec 0014 is review-only; 0015 is implemented.
 

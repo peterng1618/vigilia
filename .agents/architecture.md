@@ -1,7 +1,7 @@
 # Architecture
 
 Where current Vigilia concepts live. Behaviour belongs in active specs; product
-requirements in `design/plan.md`; transient progress in `status.md`.
+requirements in `plan.md`; transient progress in `status.md`.
 
 ## System
 

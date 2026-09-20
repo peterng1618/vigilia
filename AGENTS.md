@@ -120,7 +120,6 @@ Prefer workspace scripts over hand-written project lists.
 | `src/web/package-lock.json` | Change manifests, then `npm install` |
 | `src/web/packages/*/dist/**` | Build output |
 | `.claude/plugins/vigilia/skills/*/SKILL.md` | Edit `.agents/skills/<name>/SKILL.md` |
-| `.agents/design/environment-setup.md` | User-authored methodology; change only on explicit request |
 
 ## Dependencies
 
@@ -139,7 +138,7 @@ licence from primary/package metadata. The editor consumes the compiled
 | Legacy behaviours pending re-evaluation | `.agents/specs/0014-editor-behaviour-review.md` |
 | Current architectural decisions | `.agents/decisions.md` |
 | Durable lessons | `.agents/lessons.md` |
-| Product requirements | `.agents/design/plan.md` |
+| Product requirements | `.agents/plan.md` |
 | Implementation plans | `docs/superpowers/plans/` |
 
 `§N` markers in `plan.md` are stable labels. Never renumber them.

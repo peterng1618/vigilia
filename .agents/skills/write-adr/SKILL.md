@@ -15,7 +15,7 @@ reversed, rewrite it in place. Git history preserves the old reasoning.
 | Lasting architecture choice | `.agents/decisions.md` |
 | Feature behaviour / edge cases | `.agents/specs/` |
 | Current progress / test counts | `.agents/status.md` |
-| Product requirement | `.agents/design/plan.md` |
+| Product requirement | `.agents/plan.md` |
 
 ## Format
 
