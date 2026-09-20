@@ -16,9 +16,9 @@ import {
   type FabricThemeEnvelope,
   type ThemeDocument,
 } from '@vigilia/renderer-core';
-import { mountFabricScene, reviveThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
+import { loadFontAssets, mountFabricScene, reviveThemeEnvelope, VigiliaChart } from '@vigilia/scene-fabric';
 import { createDemoSource, loadDemoTheme } from '@vigilia/fake-source';
-import { loadHostedTheme } from './theme-loader.js';
+import { loadHostedFontAssets, loadHostedTheme } from './theme-loader.js';
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
 
@@ -182,6 +182,12 @@ async function startHostedTheme(
     const url = resolveAsset(assetId);
     return url === undefined ? undefined : { url };
   } });
+  const fontBytes = await loadHostedFontAssets(theme.id, theme, window.fetch.bind(window));
+  const releaseFonts = await loadFontAssets({
+    assets: theme.assets ?? [],
+    bytes: fontBytes,
+    onError: (message) => showFailure(host, message),
+  });
   await reviveThemeEnvelope(handle.canvas, theme);
   const refresh = (): void => {
     hydrateCharts(handle.canvas.getObjects(), theme.bindings ?? {}, liveHandle.source);
@@ -194,6 +200,7 @@ async function startHostedTheme(
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);
   window.addEventListener('pagehide', () => {
+    releaseFonts();
     window.clearInterval(timer);
     observer.disconnect();
     liveHandle.close();
