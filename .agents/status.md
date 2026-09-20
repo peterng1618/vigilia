@@ -1,4 +1,4 @@
-# Status — 2026-09-20
+# Status — 2026-09-21
 
 Current handoff only. Durable rules: `AGENTS.md`; product:
 `product-requirements.md`; architecture: `architecture.md`; active work: specs
@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| Spec 0011 property corrections | Focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
 | Editor configuration | `.gitattributes` enforces LF checkout; stale C#/.NET rules removed; `git check-attr` verified text files resolve to `eol: lf` |
 | Web quality tooling | Biome 2.5.14 `format:check` and lint for strict equality, unused symbols and floating promises, seven-project typecheck, 946-unit suite, workspace build and player-size gate passed on 2026-09-20; Markdown/YAML are not yet linted |
 | CI licence notices | The `Licence notices present` job failed before the frontend job because its exact package-name check could not find `@playwright/test`; the notice now uses the declared name and needs CI confirmation |
@@ -64,7 +65,7 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Complete spec 0011 lossless type-preset edits and Release-only version mutation.
+1. Define the remaining spec-0011 Vigilia creation command set before implementing it.
 2. Revisit remaining spec-0014 candidates only when needed.
 3. Modernize the shell per product requirements §35 only after the authoring core is stable.
 

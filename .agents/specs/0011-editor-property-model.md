@@ -1,6 +1,6 @@
 # 0011 — Editor property and theme-token model
 
-- **Status:** active; property and asset foundations implemented; lossless type-preset edits, release-version policy and remaining creation commands pending
+- **Status:** active; property and asset foundations implemented; broader Vigilia creation commands pending
 - **Design sections:** §57, §73, §75, §83, §87, §89, §137, §170
 
 ## Goal
@@ -172,9 +172,9 @@ authoring/reassignment including curated font trio/single-face adoption;
 semantic text creation; semantic layers with inherited visibility/lock/order;
 and selection-relative align/distribute.
 
-Still incomplete: lossless type-preset field editing including letter spacing,
-release-version mutation restricted to Release, and broader Vigilia creation
-commands.
+Still incomplete: broader Vigilia creation commands. The current Text command
+uses derived valid references; the spec does not yet define the additional
+command set.
 
 The development v2 semantic shape may still break before release; the Fabric
 scene envelope boundary is settled.

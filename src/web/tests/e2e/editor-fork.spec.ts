@@ -363,16 +363,53 @@ test.describe("Fabric editor route", () => {
     );
 
     await page.goto(EDITOR);
+    await page.route("https://cdn.jsdelivr.net/fontsource/fonts/**", (route) =>
+      route.fulfill({ body: Buffer.from([0, 1, 2]) }),
+    );
     await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    await page.locator("[data-vigilia-font-face]").selectOption("inter-700");
+    await page.locator("[data-vigilia-font-apply]").click();
     const size = page.locator("[data-vigilia-type-size]");
     await size.fill("34");
     await size.press("Tab");
     await expect(size).toHaveValue("34");
+    const letterSpacing = page.locator("[data-vigilia-type-letter-spacing]");
+    await letterSpacing.fill("0.25");
+    await letterSpacing.press("Tab");
 
-    const envelope = (await saveEnvelope(page)) as {
-      globals: { typePresets: { "32-500": { value: { size: number } } } };
+    const saved = await savePackage(page);
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "type-preset.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened type-preset.vigilia-theme",
+    );
+    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    const reopened = (await saveEnvelope(page)) as {
+      globals: {
+        typePresets: {
+          "32-500": {
+            value: {
+              size: number;
+              letterSpacing: number;
+              face: { assetId: string };
+              trioRole: string;
+            };
+          };
+        };
+      };
     };
-    expect(envelope.globals.typePresets["32-500"].value.size).toBe(34);
+    expect(reopened.globals.typePresets["32-500"].value).toMatchObject({
+      size: 34,
+      letterSpacing: 0.25,
+      face: { assetId: "inter-700" },
+      trioRole: "heading",
+    });
+    await page
+      .locator("[data-vigilia-type-letter-spacing]")
+      .scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-fork-type-preset");
   });
 
