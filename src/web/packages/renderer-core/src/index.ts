@@ -75,6 +75,7 @@ export type {
 export {
   buildLineOption,
   defaultLineSettings,
+  linePlaybackDelayMs,
   toEngineColor,
   toSeriesPoints,
 } from "./charts/line.js";
@@ -242,7 +243,10 @@ export type {
   LiveSourceStatus,
 } from "./data/live-source.js";
 
-export { createLiveSource } from "./data/live-source.js";
+export {
+  createLiveSource,
+  LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
+} from "./data/live-source.js";
 
 export type { CapabilityGroup } from "./theme/capabilities.js";
 

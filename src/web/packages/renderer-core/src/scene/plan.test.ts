@@ -649,9 +649,32 @@ describe("charts", () => {
 
     const content = result.nodes[0]!.content;
     if (content.kind === "chart" && content.family === "line") {
-      expect(content.option.xAxis.max).toBe(NOW - 1_000);
+      expect(content.option.xAxis.max).toBe(NOW);
+      expect(content.option.renderOverscanRightMs).toBe(1_000);
       expect(content.option.series[0]!.data.at(-1)).toEqual([NOW, 30]);
     }
+  });
+
+  it("requests the delayed line viewport's left-edge predecessor", () => {
+    const windows: number[] = [];
+    const source = {
+      chartPlaybackDelayMs: 1_000,
+      latest: () => undefined,
+      history: (_key: string, windowSeconds: number) => {
+        windows.push(windowSeconds);
+        return [];
+      },
+    };
+
+    buildChartPlan(
+      "line",
+      { family: "line", settings: defaultLineSettings },
+      [{ id: "b", semanticKey: "cpu.load.total" }],
+      { source, nowMs: NOW },
+      [],
+    );
+
+    expect(windows).toEqual([defaultLineSettings.windowSeconds + 1]);
   });
 
   it("gives a bar chart one category per binding, in order", () => {

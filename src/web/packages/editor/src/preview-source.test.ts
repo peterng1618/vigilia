@@ -6,6 +6,8 @@ describe("createPreviewSource", () => {
     let now = 0;
     const preview = createPreviewSource({ keys: ["cpu.load"], now: () => now });
 
+    expect(preview.source.chartPlaybackDelayMs).toBe(1_000);
+
     const first = preview.source.latest("cpu.load");
     now += 1_000;
     const next = preview.source.latest("cpu.load");

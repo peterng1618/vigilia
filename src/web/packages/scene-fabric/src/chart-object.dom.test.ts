@@ -72,6 +72,24 @@ function chartOptions(
 }
 
 describe("constructing a chart", () => {
+  it("renders live-line overscan outside the authored Fabric crop", () => {
+    const option = buildLineOption(
+      defaultLineSettings,
+      [{ sensorId: "cpu.load", samples: [sample(1, 1000), sample(2)] }],
+      NOW_MS,
+      false,
+      undefined,
+      1_000,
+    );
+    const chart = new VigiliaChart(chartOptions({ option }));
+    const element = (chart as unknown as { _element: HTMLCanvasElement })._element;
+
+    // At the default 2x raster scale, the five authored-pixel gutter is ten
+    // backing pixels; Fabric still draws only the first 600 pixels.
+    expect(element.width).toBe(610);
+    chart.dispose();
+  });
+
   it("accepts a built option, which is the regression that mattered", () => {
     // Fabric's `_setOptions` assigns every key of the options bag onto the
     // instance. When `option` was a getter with no setter this threw

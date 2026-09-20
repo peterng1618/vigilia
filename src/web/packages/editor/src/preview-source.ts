@@ -1,5 +1,8 @@
 import { FakeSampleSource } from "@vigilia/fake-source";
-import type { SampleSource } from "@vigilia/renderer-core";
+import {
+  LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
+  type SampleSource,
+} from "@vigilia/renderer-core";
 
 const PREVIEW_HISTORY_SECONDS = 300;
 
@@ -12,6 +15,7 @@ export function createPreviewSource(options: {
 
   return {
     source: {
+      chartPlaybackDelayMs: LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
       latest(key) {
         if (!keys.has(key)) return undefined;
         const now = options.now();

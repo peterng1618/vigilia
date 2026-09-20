@@ -5,6 +5,7 @@ import {
   type ChartContent,
   type ChartFamily,
   type ChartOption,
+  type LineOption,
 } from "@vigilia/renderer-core";
 import "./chart-engine.js";
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
@@ -143,6 +144,7 @@ export class VigiliaChart extends FabricObject {
       return;
     }
 
+    this._resizeBackingCanvas();
     this._chart?.setOption(toEngineOption(withoutEngineAnimation(option)), {
       notMerge: true,
       lazyUpdate: false,
@@ -212,7 +214,7 @@ export class VigiliaChart extends FabricObject {
       element,
       0,
       0,
-      element.width,
+      this._visibleBackingWidth(),
       element.height,
       -this.width / 2,
       -this.height / 2,
@@ -252,10 +254,40 @@ export class VigiliaChart extends FabricObject {
   }
 
   private _backingSize(): { width: number; height: number } {
+    const width = Math.max(1, Math.round(this.width * this._renderScale));
     return {
-      width: Math.max(1, Math.round(this.width * this._renderScale)),
+      width: width + this._overscanWidth(width),
       height: Math.max(1, Math.round(this.height * this._renderScale)),
     };
+  }
+
+  private _visibleBackingWidth(): number {
+    return Math.max(1, Math.round(this.width * this._renderScale));
+  }
+
+  private _overscanWidth(visibleWidth: number): number {
+    const option = this._option;
+    if (!isOverscannedLineOption(option)) {
+      return 0;
+    }
+
+    const overscanMs = option.renderOverscanRightMs;
+    const windowMs = option.xAxis.max - option.xAxis.min - (overscanMs ?? 0);
+    if (
+      overscanMs === undefined ||
+      overscanMs <= 0 ||
+      !Number.isFinite(windowMs) ||
+      windowMs <= 0
+    ) {
+      return 0;
+    }
+
+    const left = typeof option.grid.left === "number" ? option.grid.left : 0;
+    const right = typeof option.grid.right === "number" ? option.grid.right : 0;
+    return Math.max(
+      1,
+      Math.ceil(((visibleWidth - left - right) * overscanMs) / windowMs),
+    );
   }
 
   private _resizeBackingCanvas(): void {
@@ -265,10 +297,20 @@ export class VigiliaChart extends FabricObject {
       return;
     }
 
-    chart.resize(this._backingSize());
+    const size = this._backingSize();
+    if (this._element?.width === size.width && this._element.height === size.height) {
+      return;
+    }
+    chart.resize(size);
     // `resize()` defers painting; flush before Fabric can blit a half-cleared canvas.
     chart.getZr().flush();
   }
+}
+
+function isOverscannedLineOption(
+  option: ChartOption | undefined,
+): option is LineOption {
+  return option !== undefined && "renderOverscanRightMs" in option;
 }
 
 /** Deep-freeze authored settings so snapshots cannot be mutated through aliases. */

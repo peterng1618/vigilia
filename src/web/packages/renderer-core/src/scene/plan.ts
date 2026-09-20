@@ -2,7 +2,11 @@ import type { SampleSource } from "../data/source.js";
 import type { Sample, SensorStatus } from "../types.js";
 import { buildBarOption, type BarInput } from "../charts/bar.js";
 import { buildGaugeOption } from "../charts/gauge.js";
-import { buildLineOption, type SeriesInput } from "../charts/line.js";
+import {
+  buildLineOption,
+  linePlaybackDelayMs,
+  type SeriesInput,
+} from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
 import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import type {
@@ -540,10 +544,13 @@ export function buildChartPlan(
     }
 
     case "line": {
+      const historySeconds =
+        content.settings.windowSeconds +
+        linePlaybackDelayMs(context.source.chartPlaybackDelayMs) / 1000;
       const series: SeriesInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
         samples: context.source
-          .history(binding.semanticKey, content.settings.windowSeconds)
+          .history(binding.semanticKey, historySeconds)
           .map((sample) => transformSample(sample, binding)),
       }));
 

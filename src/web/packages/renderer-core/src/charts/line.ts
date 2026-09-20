@@ -71,8 +71,20 @@ export interface SeriesInput {
   readonly label?: string;
 }
 
+/** Validated renderer-only delay; samples themselves are never held back. */
+export function linePlaybackDelayMs(delayMs: number | undefined): number {
+  return typeof delayMs === "number" &&
+    Number.isFinite(delayMs) &&
+    delayMs > 0 &&
+    delayMs <= 5_000
+    ? delayMs
+    : 0;
+}
+
 /** Local emitted shape keeps raw engine options out of the theme model (§87). */
 export interface LineOption extends EngineAnimation {
+  /** Runtime-only future interval rendered outside Fabric's authored crop. */
+  readonly renderOverscanRightMs?: number;
   readonly grid: CartesianGrid;
   readonly xAxis: {
     readonly type: "time";
@@ -147,21 +159,17 @@ export function buildLineOption(
   chartPlaybackDelayMs?: number,
 ): LineOption {
   const windowMs = settings.windowSeconds * 1000;
-  const viewportNowMs =
-    typeof chartPlaybackDelayMs === "number" &&
-    Number.isFinite(chartPlaybackDelayMs) &&
-    chartPlaybackDelayMs > 0 &&
-    chartPlaybackDelayMs <= 5_000
-      ? nowMs - chartPlaybackDelayMs
-      : nowMs;
+  const viewportNowMs = nowMs - linePlaybackDelayMs(chartPlaybackDelayMs);
+  const renderOverscanRightMs = nowMs - viewportNowMs;
   const windowStart = viewportNowMs - windowMs;
-  const windowEnd = viewportNowMs;
+  const windowEnd = nowMs;
   const sampling =
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
       : undefined;
   return {
     ...toEngineAnimation(settings.animation, animate),
+    ...(renderOverscanRightMs === 0 ? {} : { renderOverscanRightMs }),
     grid: cartesianGrid(
       {
         left: settings.showAxes ? 8 : 0,
