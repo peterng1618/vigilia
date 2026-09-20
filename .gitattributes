@@ -1,10 +1,6 @@
-# Normalize text on commit, check out platform-native.
-* text=auto
+# Normalize text on commit and use LF in every checkout.
+* text=auto eol=lf
 
-*.cs        text diff=csharp
-*.csproj    text
-*.sln       text eol=crlf
-*.ps1       text eol=crlf
 *.sh        text eol=lf
 *.json      text
 *.md        text

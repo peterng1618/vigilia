@@ -8,26 +8,8 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-[*.{cs,csx}]
-indent_size = 4
-
-# Enforce the §97 architecture boundary at the analyzer level where possible.
-dotnet_diagnostic.CA1416.severity = error          # platform-specific API used without guard
-dotnet_diagnostic.CS8600.severity = warning
-dotnet_diagnostic.CS8602.severity = warning
-dotnet_diagnostic.CS8618.severity = warning
-
-csharp_style_namespace_declarations = file_scoped:warning
-csharp_style_var_for_built_in_types = false:suggestion
-csharp_prefer_braces = true:suggestion
-dotnet_sort_system_directives_first = true
-
-[*.{csproj,props,targets,json,yml,yaml}]
+[*.{json,yml,yaml}]
 indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
-
-[*.{sln,sln.*}]
-end_of_line = crlf
-indent_style = tab
