@@ -1,7 +1,7 @@
 import type { StaticCanvas } from "fabric/es";
 import type { SerialisedScene } from "@vigilia/scene-fabric";
 
-type HistoryCanvas = Pick<StaticCanvas, "fire">;
+type HistoryCanvas = StaticCanvas;
 
 /** Owns authored Fabric-scene undo state; selection and runtime data stay outside it. */
 export class EditorHistory {

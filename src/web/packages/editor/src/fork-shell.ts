@@ -1,10 +1,14 @@
-import initEditor, { type ImageEditor } from "@anu3ev/fabric-image-editor";
 import {
   ActiveSelection,
+  Canvas,
   classRegistry,
+  FabricImage,
+  IText,
   type ActiveSelectionOptions,
   type FabricObject,
 } from "fabric/es";
+import { EditorHistory } from "./editor-history.js";
+import type { EditorInteraction } from "./editor-interaction.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -45,7 +49,7 @@ export interface ForkShellOptions {
 }
 
 export interface ForkShell {
-  readonly editor: ImageEditor;
+  readonly editor: EditorInteraction;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
@@ -97,7 +101,7 @@ function fitArtboardViewport(
 }
 
 function fitCanvasViewport(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   container: HTMLElement,
   host: HTMLElement,
   artboard: ForkShellOptions["artboard"],
@@ -122,7 +126,7 @@ function fitCanvasViewport(
 }
 
 function applyArtboardPaint(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   host: HTMLElement,
   artboard: Artboard,
   globals: Globals | undefined,
@@ -142,6 +146,77 @@ function applyArtboardPaint(
   applyObjectPalettePaints(editor.canvas, globals);
   applyObjectTypePresets(editor.canvas, globals);
   editor.canvas.requestRenderAll();
+}
+
+function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorInteraction {
+  const element = document.createElement("canvas");
+  container.append(element);
+  const canvas = new Canvas(element, { width: artboard.width, height: artboard.height });
+  const history = new EditorHistory({
+    canvas,
+    serialize: serialiseScene,
+    revive: reviveScene,
+  });
+  history.reset();
+  const save = (): void => history.save();
+  return {
+    canvas,
+    historyManager: { saveState: save, resetHistory: () => history.reset() },
+    textManager: {
+      addText(options = {}) {
+        const text = new IText(typeof options["text"] === "string" ? options["text"] : "", options);
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        save();
+        return text;
+      },
+    },
+    imageManager: {
+      async importImage(options) {
+        const url = URL.createObjectURL(options.source);
+        try {
+          const image = await FabricImage.fromURL(url);
+          if (!options.withoutAdding) {
+            canvas.add(image);
+            canvas.setActiveObject(image);
+            if (!options.withoutSave) save();
+          }
+          return { image };
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      },
+    },
+    layerManager: {
+      bringToFront: (object = canvas.getActiveObject()) => {
+        if (object !== undefined) canvas.bringObjectToFront(object);
+        save();
+      },
+      bringForward: (object = canvas.getActiveObject()) => {
+        if (object !== undefined) canvas.bringObjectForward(object);
+        save();
+      },
+      sendToBack: (object = canvas.getActiveObject()) => {
+        if (object !== undefined) canvas.sendObjectToBack(object);
+        save();
+      },
+      sendBackwards: (object = canvas.getActiveObject()) => {
+        if (object !== undefined) canvas.sendObjectBackwards(object);
+        save();
+      },
+    },
+    objectLockManager: {
+      lockObject: ({ object = canvas.getActiveObject() } = {}) => {
+        object?.set({ selectable: false, evented: false, locked: true });
+        save();
+      },
+      unlockObject: ({ object = canvas.getActiveObject() } = {}) => {
+        object?.set({ selectable: true, evented: true, locked: false });
+        save();
+      },
+    },
+    destroy: () => canvas.dispose(),
+  };
 }
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
@@ -183,7 +258,7 @@ export async function mountForkShell({
     fitMode,
   );
   host.append(container);
-  let mounted: ImageEditor | undefined;
+  let mounted: EditorInteraction | undefined;
   const resize =
     typeof ResizeObserver === "undefined"
       ? undefined
@@ -200,17 +275,7 @@ export async function mountForkShell({
   resize?.observe(host);
 
   try {
-    const editor = await initEditor(container.id, {
-      montageAreaWidth: artboard.width,
-      montageAreaHeight: artboard.height,
-      editorContainerWidth: "100%",
-      editorContainerHeight: "100%",
-      defaultScale: initialScale ?? 1,
-      resetObjectFitByDoubleClick: false,
-      beforeHistoryStateLoad: disposeScene,
-      serializeHistoryState: serialiseScene,
-      reviveHistoryState: reviveScene,
-    });
+    const editor = createNativeEditor(container, artboard);
     mounted = editor;
     fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
 
