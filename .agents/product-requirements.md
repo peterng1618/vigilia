@@ -26,9 +26,9 @@ text/typography. Decorative drawing must not delay charts or typography.
 
 ## §31 — One renderer, shared
 
-Editor and player use one Fabric scene implementation. Use the adopted
-`fabricjs-image-editor` fork for generic editor mechanics; Vigilia adds domain
-work only. Do not maintain a second DOM/geometry renderer.
+Editor and player use one Fabric scene implementation. `@vigilia/editor` owns
+interactive editor mechanics directly over the pinned `fabric/es` runtime; do
+not maintain a second DOM/geometry renderer or an external editor foundation.
 
 ## §32 — Prefer Fabric-native substitutions
 
@@ -95,7 +95,8 @@ controls use whole artboard units where practical.
 ## §61 — Editor controls
 
 Generic selection, transforms, grouping, duplication/clipboard and object tools
-come from the adopted editor foundation. Vigilia should not recreate them.
+are native `@vigilia/editor` mechanics over Fabric. Do not recreate a parallel
+DOM/geometry model.
 
 Old custom-editor QoL that is absent from the fork route is **not automatically
 a requirement**. Keep/replacement decisions for layers, align/distribute and

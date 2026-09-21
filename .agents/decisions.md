@@ -54,16 +54,14 @@ A pure editor-side factory derives valid palette/type references from the open
 envelope. Defaults are not mutable theme globals or persisted state; the fork
 owns generic construction/order.
 
-### The image-editor fork is the editor foundation
+### Vigilia owns its Fabric editor directly
 
-The fork owns selection, transforms, grouping, duplication, object tools,
-canvas lifecycle and history. Vigilia adds charts, theme semantics, bindings,
-persistence and product UI. Permanent fork divergence is acceptable; add missing
-hooks there rather than rebuilding a generic editor.
-
-Legacy custom-editor behaviour is not inherited automatically. Missing behaviour
-is review-only in spec 0014 until explicitly kept/replaced/dropped.
-**Decided by:** user, 2026-09-17.
+`@vigilia/editor` owns interactive canvas lifecycle, history, selection,
+transforms, grouping, duplication, object tools and layer operations directly
+over the pinned `fabric/es` runtime. The adopted image-editor fork is removed
+module by module; no copied fork module becomes a new editor middle layer.
+Generic behaviour is retained only when exercised by the current product.
+**Decided by:** user, 2026-09-21. *Supersedes: The image-editor fork is the editor foundation.*
 
 ### Development v2 may break before release
 

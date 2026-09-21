@@ -17,7 +17,6 @@ requirements in `product-requirements.md`; transient progress in `status.md`.
                                  /          \
                             player          editor
                          StaticCanvas   interactive Canvas
-                                      + image-editor fork
 ```
 
 `renderer-core` is the semantic boundary. `scene-fabric` prevents browser/Fabric
@@ -25,9 +24,10 @@ code from leaking into the Node host.
 
 ## Current editor boundary
 
-The active editor route mounts the compiled `fabricjs-image-editor` fork. Generic
-selection, transforms, grouping, duplication, object tools, canvas lifecycle,
-history and stack ordering belong to the fork.
+The active editor route still mounts the compiled `fabricjs-image-editor` fork
+while spec 0016 migrates its exercised mechanics. The target boundary is native
+`@vigilia/editor` mechanics directly over `fabric/es`; the fork is not a durable
+owner.
 
 Current Vigilia-owned extensions are:
 
@@ -42,10 +42,10 @@ Current Vigilia-owned extensions are:
 | Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
-| Extension composition | `editor/src/fork-extensions/` |
-| Fork mount/lifecycle | `editor/src/fork-shell.ts` |
+| Extension composition | `editor/src/fork-extensions/` until spec 0016 removes it |
+| Fork mount/lifecycle | `editor/src/fork-shell.ts` until spec 0016 removes it |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
-| Generic layer ordering, grouping and locks | adopted fork `layerManager` and `objectLockManager` |
+| Generic layer ordering, grouping and locks | adopted fork until spec 0016 replaces them |
 
 ## Packaged-font ownership
 
@@ -55,9 +55,9 @@ metadata and transient previews; the existing type-preset/asset boundaries own
 adoption; `scene-fabric/src/font-assets.ts` owns loaded-face lifecycle. The UI
 adapter does not own catalog, preview or adoption semantics.
 
-The retired custom-editor implementation is deleted. The fork retains generic
-z-order, grouping and locks; the Vigilia layer panel projects that state without
-a parallel scene tree.
+The fork currently owns generic z-order, grouping and locks; the Vigilia layer
+panel projects that state without a parallel scene tree. Spec 0016 moves the
+exercised mechanics to `@vigilia/editor`.
 
 ## Runtime data flow
 
@@ -116,12 +116,12 @@ external compatibility promise exists before the first release.
 `player/src/boundaries.test.ts` guards the player import boundary and `fabric/es`
 usage.
 
-## External-editor boundary
+## Editor migration boundary
 
-External editors are interaction references, not foundations. Retained generic
-mechanics belong in the adopted fork after review; v2 envelope/token/package
-boundaries remain Vigilia-owned. Do not import raw-canvas persistence or
-framework UI state across that boundary.
+Spec 0016 replaces the external editor boundary with `@vigilia/editor` as the
+interactive Fabric boundary. `scene-fabric` retains serialization/revival and
+renderer primitives; v2 envelope/token/package boundaries remain Vigilia-owned.
+Do not introduce raw-canvas persistence or a framework UI-state model.
 
 ## State categories
 
