@@ -11,41 +11,41 @@ import {
   reassignObjectPaletteReferences,
   reassignObjectTypePresetReferences,
 } from "@vigilia/scene-fabric";
-import { type ForkShell } from "../fork-shell.js";
-import { createArtboardPanel, type ArtboardPanel } from "../artboard-panel.js";
-import { createPalettePanel, type PalettePanel } from "../palette-panel.js";
+import { type ForkShell } from "./fork-shell.js";
+import { createArtboardPanel, type ArtboardPanel } from "./artboard-panel.js";
+import { createPalettePanel, type PalettePanel } from "./palette-panel.js";
 import {
   createTypePresetPanel,
   type TypePresetPanel,
   type TypePresets,
-} from "../type-preset-panel.js";
+} from "./type-preset-panel.js";
 import {
   createNewObjectPanel,
   type NewObjectPanel,
-} from "../new-object-panel.js";
-import { createLayerPanel, type LayerPanel } from "../layer-panel.js";
-import { ChartManager } from "../chart-manager/index.js";
+} from "./new-object-panel.js";
+import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
+import { ChartManager } from "./chart-manager/index.js";
 import {
   PersistenceManager,
   confirmDocumentReplacement,
-} from "../persistence-manager/index.js";
-import { ShortcutManager } from "../shortcut-manager/index.js";
-import { serializeThemePackage, parseThemePackage } from "../persist.js";
+} from "./persistence-manager/index.js";
+import { ShortcutManager } from "./shortcut-manager/index.js";
+import { serializeThemePackage, parseThemePackage } from "./persist.js";
 import {
   createThemeLibraryClient,
   type ThemeLibraryClient,
   type ThemeLibraryEntry,
-} from "../theme-library-client.js";
-import { AssetManager, createAssetPanel } from "../asset-manager/index.js";
+} from "./theme-library-client.js";
+import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
 import {
   applyFontTrio,
   fontTrio,
   type CuratedFontFace,
-} from "../font-catalog.js";
-import { previewFontFace, releaseFontPreview } from "../font-preview.js";
-import { LiveRuntime } from "../live-runtime.js";
+} from "./font-catalog.js";
+import { previewFontFace, releaseFontPreview } from "./font-preview.js";
+import { LiveRuntime } from "./live-runtime.js";
 
-export interface ForkExtensionsOptions {
+export interface EditorSessionOptions {
   readonly shell: ForkShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
@@ -64,8 +64,8 @@ export interface ForkExtensionsOptions {
   readonly onBindingsChange?: () => void;
 }
 
-/** Composition root for Vigilia-specific behaviour layered above the fork. */
-export class ForkExtensions {
+/** Owns Vigilia editor composition while the canvas migration is in progress. */
+export class EditorSession {
   readonly charts: ChartManager;
   readonly #runtime: LiveRuntime;
   readonly #artboard: ArtboardPanel;
@@ -82,7 +82,7 @@ export class ForkExtensions {
   #envelope: FabricThemeEnvelopeInput;
   readonly #onBindingsChange: (() => void) | undefined;
 
-  constructor(options: ForkExtensionsOptions) {
+  constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
       throw new Error(
         "The fork shell needs a scene adapter for Vigilia extensions.",
@@ -321,7 +321,7 @@ export class ForkExtensions {
     this.#layers.destroy();
   }
 
-  async #save(options: ForkExtensionsOptions): Promise<void> {
+  async #save(options: EditorSessionOptions): Promise<void> {
     try {
       const current = this.#snapshot(options.shell);
       await this.#persistence.save(current, this.#assets.assets);
@@ -331,7 +331,7 @@ export class ForkExtensions {
     }
   }
 
-  async #saveLibrary(options: ForkExtensionsOptions): Promise<void> {
+  async #saveLibrary(options: EditorSessionOptions): Promise<void> {
     const current = this.#snapshot(options.shell);
     const result = serializeThemePackage(current, this.#assets.assets);
     if (!result.ok) {
@@ -349,7 +349,7 @@ export class ForkExtensions {
     }
   }
 
-  async #openLibrary(options: ForkExtensionsOptions): Promise<void> {
+  async #openLibrary(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
@@ -374,7 +374,7 @@ export class ForkExtensions {
     }
   }
 
-  async #open(options: ForkExtensionsOptions): Promise<void> {
+  async #open(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     if (options.onOpenPackage !== undefined) {
       options.onOpenPackage();
@@ -383,7 +383,7 @@ export class ForkExtensions {
     }
   }
 
-  async #new(options: ForkExtensionsOptions): Promise<void> {
+  async #new(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     await options.onNew();
   }
@@ -413,7 +413,7 @@ export class ForkExtensions {
     this.#artboard.render(artboard, this.#envelope.metadata);
   }
 
-  async #release(options: ForkExtensionsOptions): Promise<void> {
+  async #release(options: EditorSessionOptions): Promise<void> {
     const level = window.prompt("Release bump: major, minor or patch", "patch");
     if (level !== "major" && level !== "minor" && level !== "patch") return;
     try {
@@ -521,7 +521,7 @@ export class ForkExtensions {
   }
 
   async #runFontAction(
-    options: ForkExtensionsOptions,
+    options: EditorSessionOptions,
     action: () => Promise<unknown>,
   ): Promise<void> {
     try {

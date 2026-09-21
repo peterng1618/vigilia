@@ -20,6 +20,7 @@ theme, chart, asset and persistence features.
 - Existing Vigilia feature owners remain independent: package persistence,
   theme semantics, artboard, palette/type presets, assets, charts, bindings,
   runtime refresh and product shortcuts.
+- Migrated source comments and user-visible editor text are English.
 - Authored state enters history; runtime samples, selection and viewport do not.
   New/Open retain dirty-work protection and invalid envelopes fail before canvas
   mutation.

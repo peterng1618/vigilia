@@ -16,6 +16,7 @@
 - Preserve v2 envelope validation before revival and theme-package dirty-work protection.
 - Persist authored scene/envelope state only; runtime samples, selection and viewport remain outside history.
 - Do not add dependencies, alter the Fabric version, add a v1 reader or port spec-0014 review-only behaviour.
+- Translate migrated source comments and user-visible editor text to English; do not bulk-edit unrelated modules.
 - A changed visible interaction requires full local E2E plus inspected selected screenshot evidence.
 - Execute Task 3 first: it moves the customized composition from `fork-extensions` to the editor root while retaining the current shell only as a temporary canvas provider. Then execute Tasks 1, 2, 4 and 5 in order.
 

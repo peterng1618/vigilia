@@ -8,7 +8,7 @@ import {
   startChartRefresh,
   type ChartRefreshRate,
 } from "@vigilia/scene-fabric";
-import { ForkExtensions } from "./fork-extensions/index.js";
+import { EditorSession } from "./editor-session.js";
 import { mountForkShell } from "./fork-shell.js";
 import { createEditorSource } from "./live-source.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
@@ -18,7 +18,7 @@ import { createThemeLibraryClient } from "./theme-library-client.js";
 type EditorSource = ReturnType<typeof createEditorSource>;
 type ActiveEditor = {
   readonly shell: Awaited<ReturnType<typeof mountForkShell>>;
-  readonly extensions: ForkExtensions;
+  readonly extensions: EditorSession;
   readonly releaseFonts: () => void;
   source: EditorSource;
 };
@@ -115,7 +115,7 @@ async function start(): Promise<void> {
       releaseFonts();
       throw error;
     }
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell,
       source: source.source,
       envelope: next.input,
