@@ -8,7 +8,8 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
-| Native Fabric editor migration | Native customized session plus snapshot history/text insertion are committed on `codex/native-fabric-editor`; focused Vitest and editor typecheck passed on 2026-09-21. Native canvas mount and remaining generic mechanics are not implemented. |
+| Native Fabric editor migration (structure) | `@vigilia/editor` mounts `fabric/es` directly with no `@anu3ev/fabric-image-editor` runtime/type/alias/lockfile dependency (`rg` clean); canvas/text/image/layer/lock/history mechanics split into per-concern manager folders mirroring the retired fork's own split; palette/type-preset reassignment consolidated into `palette-manager/`/`type-preset-manager/`. Seven-project typecheck, 956-unit suite, editor/player/host builds and player size gate (269.3 KB gzip) passed on 2026-09-21. |
+| Native Fabric editor migration (behaviour) | **Not closeable yet.** 9 of `editor-fork.spec.ts`'s tests fail on `codex/native-fabric-editor` as of 2026-09-21, reproduced identically at pre-refactor HEAD `dda287f` (not caused by the manager-extraction/palette consolidation work): text creation+save, dirty-document New/Open confirmation dialogs, live-text refresh-without-save, packaged image import round-trip, packaged background image save, undo/redo restoring the wrong position, and chart-runtime rehydration after undo. Spec 0016's acceptance criteria (undo/redo without losing state, image/asset workflows, full local E2E green) are unmet; keep spec 0016 active until these are root-caused and fixed. One further failure (`display-fabric.spec.ts`, phone-chromium, page-closed timeout) looks like an unrelated capture flake, not investigated. |
 | Spec 0011 chart creation | 950-unit suite, editor typecheck/build, focused desktop Chromium package round-trip and inspected `editor-fork-chart-creation-desktop-chromium.png` passed on 2026-09-21; Add exposes Text plus Gauge/Line/Bar/Pie, each chart starts from palette references, and a created gauge saves/reopens without runtime options; unbound revived charts hydrate from the Fabric scene |
 | Verification policy | Browser changes run full local `npm run test:e2e`; CI runs only on `main` pushes and pull requests targeting `main`. `develop` pushes do not wait for GitHub CI. |
 | Spec 0011 property corrections | Full 935-unit suite, focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
@@ -47,14 +48,18 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ### Editor
 
-- `/editor` uses the adopted `fabricjs-image-editor` fork; the custom editor is removed.
-- The fork is pinned to `918a454` and Fabric 7.4.0 via `fabric/es`.
-- v2 New/Open/Save, dirty-work protection, compatibility validation and fork
-  history integration are active.
+- `/editor` mounts `fabric/es` natively; there is no adopted image-editor
+  package (see `.agents/architecture.md`'s editor boundary section for the
+  per-concern manager split). This is structural, not behavioural, closure —
+  see the migration (behaviour) row above.
+- v2 New/Open/Save, dirty-work protection, compatibility validation and native
+  history integration are active (New/Open dialog and undo/redo E2E currently
+  fail; see above).
 - Vigilia extensions cover artboard, palette, type presets, charts, bindings,
   chart paint, semantic layers and align/distribute.
 - Add offers semantic Text plus Gauge, Line, Bar and Pie commands; generic
-  shapes stay fork-owned and images/SVGs stay asset-owned.
+  shapes stay editor-owned (`layer-manager/`, `object-lock-manager/`) and
+  images/SVGs stay asset-owned.
 - `Chart refresh` selects 30 FPS or 1 FPS for the editor session; it is not persisted.
 - Palette/type references are validated and reassigned safely on deletion.
 - Curated font previews, trio/single-face adoption and editor/player `FontFace` loading are implemented.
@@ -71,7 +76,10 @@ unit, build, size and visual evidence. The full browser suite is not green.
 
 ## Next
 
-1. Implement spec 0016 module-by-module, starting with native contracts for the current customized editor path.
+1. Root-cause and fix the 9 failing `editor-fork.spec.ts` tests (see behaviour
+   row above) before closing spec 0016 — they cover its own acceptance
+   criteria (undo/redo, dirty-document dialogs, image/background-image
+   workflows).
 2. Revisit remaining spec-0014 candidates only when needed.
 
 ## Unverified / limitations
