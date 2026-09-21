@@ -7,7 +7,7 @@ import {
   type FabricGlobals,
   type SampleSource,
 } from "@vigilia/renderer-core";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { Group } from "fabric/es";
 import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
 import { createNewChartDefaults } from "../new-object-defaults.js";
@@ -50,7 +50,7 @@ function newChart(
 
 /** Vigilia-owned chart semantics layered on the fork's generic canvas mechanics. */
 export class ChartManager {
-  readonly #editor: ImageEditor;
+  readonly #editor: EditorInteraction;
   readonly #scene: SceneAdapter;
   #source: SampleSource;
   readonly #panel;
@@ -58,7 +58,7 @@ export class ChartManager {
   #globals: FabricGlobals | undefined;
 
   constructor(options: {
-    readonly editor: ImageEditor;
+    readonly editor: EditorInteraction;
     readonly scene: SceneAdapter;
     readonly source: SampleSource;
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;

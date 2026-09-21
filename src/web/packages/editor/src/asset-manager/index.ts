@@ -6,7 +6,7 @@ import type {
 } from "@vigilia/renderer-core";
 import { objectAssetReference } from "@vigilia/scene-fabric";
 import { setObjectAssetReference } from "@vigilia/scene-fabric";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 
 const TYPES = {
@@ -234,7 +234,7 @@ export class AssetManager {
 export function createAssetPanel(
   host: HTMLElement,
   manager: AssetManager,
-  editor: ImageEditor,
+  editor: EditorInteraction,
   changed: () => void,
   isReferenced?: (assetId: string) => boolean,
 ): HTMLElement {

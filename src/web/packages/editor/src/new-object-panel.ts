@@ -1,5 +1,5 @@
 import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { createNewTextDefaults } from "./new-object-defaults.js";
 
 export interface NewObjectPanel {
@@ -14,7 +14,7 @@ export interface NewObjectActions {
 /** Vigilia creates semantic text while the fork retains generic construction and history. */
 export function createNewObjectPanel(
   host: HTMLElement,
-  editor: ImageEditor,
+  editor: EditorInteraction,
   globals: FabricGlobals | undefined,
   actions?: NewObjectActions,
 ): NewObjectPanel {

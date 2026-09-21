@@ -1,5 +1,5 @@
 import { ActiveSelection, Point, type FabricObject } from "fabric/es";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 
 export type ArrangeAction =
   | "align-left"
@@ -17,7 +17,7 @@ interface ArrangeObject extends FabricObject {
 
 /** Moves the current Fabric selection without introducing a separate geometry model. */
 export function applyArrange(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   action: ArrangeAction,
 ): boolean {
   const active = editor.canvas.getActiveObject();
@@ -43,7 +43,7 @@ export function applyArrange(
 
 /** Mirrors command eligibility so controls cannot advertise an invalid action. */
 export function canArrange(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   action: ArrangeAction,
 ): boolean {
   const active = editor.canvas.getActiveObject();
