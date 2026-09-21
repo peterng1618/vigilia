@@ -59,6 +59,11 @@ Never `git checkout`, `git switch` or `git restore` in the fork repository.
 - No new runtime dependency is introduced by this plan. If one becomes
   unavoidable, stop and seek review; adding it also requires updating
   `THIRD-PARTY-NOTICES.md` and `.agents/dependency-licences.md`.
+- Vendoring source from the retired fork **is approved**, and is not a new
+  dependency: nothing is added to `package.json`. It is conditional on the
+  MIT attribution that Task 11 Step 1 writes before the first file is copied.
+  Never add a licence header to a source file; the notice lives in
+  `THIRD-PARTY-NOTICES.md`.
 
 ## Conventions this codebase already uses
 
@@ -3524,11 +3529,77 @@ be verified without a browser.
 - Produces: the fork's exported symbols, unchanged in name and signature, from
   the Vigilia paths above. Tasks 12 and 13 import from here.
 
-- [ ] **Step 1: Copy the fork's clean files**
+- [ ] **Step 1: Record the attribution before copying anything**
+
+This task and Tasks 12 and 14 copy roughly 5,000 lines from
+`@anu3ev/fabric-image-editor` 0.10.32, which is **MIT, Copyright (c) 2025
+Alexander Anufriev**. MIT permits the copy only while the copyright and
+permission notice travel with it. Record the notice **first**, so vendored
+code never sits in the repository unattributed, and commit it together with
+the code in Step 7.
+
+AGENTS.md forbids licence headers in source files, so the notice lives in
+`THIRD-PARTY-NOTICES.md`. That file already has the right precedent in its
+"Assets and planned integrations" section, where Fonttrio metadata is recorded
+as copied data rather than a dependency. Add a new section after
+"Build/test":
+
+```markdown
+## Vendored source
+
+`packages/editor/src/snap-manager/` and `packages/editor/src/indicator-manager/`
+contain adapted copies of `@anu3ev/fabric-image-editor` 0.10.32, taken from
+commit `9efdd78a342a29f169a8dbf1da78c95bbf1ffe77`. It is not a dependency; the
+source was adapted in place. Its licence follows in full, as MIT requires for
+substantial portions.
+
+MIT License
+
+Copyright (c) 2025 Alexander Anufriev
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+Then add the provenance to `.agents/dependency-licences.md`, which today
+records only that the image-editor package was **removed** as a dependency.
+Vendored source is a different situation and must not be left implied by that
+sentence. Below the "Declared dependencies" table, add:
+
+```markdown
+## Vendored source
+
+| Source | Pin | Licence | Role |
+|---|---|---|---|
+| `@anu3ev/fabric-image-editor` | 0.10.32, commit `9efdd78a34` | MIT | adapted movement-snapping and indicator source |
+
+Copied, not installed: no entry appears in `package.json` and nothing enters the
+transitive graph. Licence verified from the `LICENSE` blob at that commit,
+`MIT, Copyright (c) 2025 Alexander Anufriev`. Full text in
+`THIRD-PARTY-NOTICES.md`. The note above about the removed image-editor package
+refers to the runtime dependency, which stays removed.
+```
+
+- [ ] **Step 2: Copy the fork's clean files**
 
 Run each of these from `src/web/`, writing the fork blob straight to its
 Vigilia path. The `guides/` and `movement/` subfolders are flattened; only the
-import specifiers change, in Step 2.
+import specifiers change, in Step 3.
 
 ```bash
 FORK=D:/git-repos/fabricjs-image-editor
@@ -3548,7 +3619,7 @@ git -C "$FORK" show 9efdd78a:src/editor/utils/geometry.ts > "$OUT/bounds.ts"
 
 Do not run `git checkout`, `git switch` or `git restore` against the fork.
 
-- [ ] **Step 2: Rewrite import specifiers and trim `bounds.ts`**
+- [ ] **Step 3: Rewrite import specifiers and trim `bounds.ts`**
 
 Every relative import in the copied files must resolve inside the flat folder
 and carry an explicit `.js` extension, which the fork omits:
@@ -3576,16 +3647,16 @@ interface SnappingBoundsSource {
 ```
 
 Convert the fork's single-quoted strings and semicolon-free style to the
-repository's own formatting by running Biome in Step 5 rather than by hand.
+repository's own formatting by running Biome in Step 6 rather than by hand.
 
-- [ ] **Step 3: Translate the Russian comments**
+- [ ] **Step 4: Translate the Russian comments**
 
 Every copied file carries Russian JSDoc and inline comments. Replace them with
 English that says **why**, in 1–3 lines, per the global constraints. Delete
 comments that only restate the code. Do not leave any Cyrillic in source; the
 check in Task 15 fails the build on it.
 
-- [ ] **Step 4: Port the fork's unit specs**
+- [ ] **Step 5: Port the fork's unit specs**
 
 Copy the two highest-value specs and convert them from Jest to Vitest:
 
@@ -3610,7 +3681,7 @@ Conversion, mechanically:
 - These are pure-geometry specs, so they need no `// @vitest-environment jsdom`
   pragma. Add one only if a converted test touches the DOM.
 
-- [ ] **Step 5: Format, typecheck and run the ported specs**
+- [ ] **Step 6: Format, typecheck and run the ported specs**
 
 Run: `npx biome format --write packages/editor/src/snap-manager`
 Run: `npm run typecheck`
@@ -3624,10 +3695,10 @@ Expected: PASS. The resolver spec carries 24 tests. Any failure here is a
 transcription error, not a design question — diff your file against
 `git -C $FORK show 9efdd78a:<original path>` before changing behaviour.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/editor/src/snap-manager
+git add packages/editor/src/snap-manager THIRD-PARTY-NOTICES.md .agents/dependency-licences.md
 git commit -m "feat(editor): port fork movement-snapping geometry core"
 ```
 
@@ -3665,7 +3736,7 @@ git -C "$FORK" show 9efdd78a:src/editor/snapping-manager/guides/snap-target-reso
 ```
 
 Apply the same import-specifier and comment-translation passes as Task 11
-Steps 2 and 3.
+Steps 3 and 4.
 
 - [ ] **Step 2: Strip the CropFrame coupling**
 
@@ -4359,12 +4430,12 @@ git commit -m "feat(editor): add rotation-angle and size indicators"
 ## Task 15: attribution, ownership records and full verification
 
 Nothing here is optional bookkeeping. Two items are correctness gates: the
-licence attribution, and the spec corrections that stop a future reader
-trusting figures this plan disproved.
+attribution check, and the spec corrections that stop a future reader trusting
+figures this plan disproved.
 
 **Files:**
-- Modify: `THIRD-PARTY-NOTICES.md`
-- Modify: `.agents/dependency-licences.md`
+- Verify only: `THIRD-PARTY-NOTICES.md`, `.agents/dependency-licences.md`
+  (both written in Task 11 Step 1)
 - Modify: `.agents/architecture.md`
 - Modify: `.agents/decisions.md`
 - Modify: `.agents/specs/0014-editor-behaviour-review.md`
@@ -4372,31 +4443,26 @@ trusting figures this plan disproved.
 - Modify: `.agents/status.md`
 - Delete: `.agents/specs/0017-editor-fork-parity.md`
 
-- [ ] **Step 1: Record the vendored-code attribution — do this first**
+- [ ] **Step 1: Verify the vendored-code attribution is complete**
 
-Tasks 11, 12 and 14 copy roughly 5,000 lines from
-`@anu3ev/fabric-image-editor`. That package is **MIT, Copyright (c) 2025
-Alexander Anufriev** (`LICENSE` at the pinned commit). MIT requires the
-copyright and permission notice to travel with any substantial portion, so the
-port is permitted **only** with attribution.
+Task 11 Step 1 recorded the MIT notice for `@anu3ev/fabric-image-editor`
+before any file was copied. Vendoring is already approved; this step only
+confirms the record still matches what actually landed, because Tasks 12 and
+14 copied more files after that notice was written.
 
-AGENTS.md forbids licence headers in source files, so the notice goes in
-`THIRD-PARTY-NOTICES.md` instead. Add an entry naming the package, its version
-(`0.10.32`), the pinned commit `9efdd78a342a29f169a8dbf1da78c95bbf1ffe77`, the
-MIT licence with its full text and copyright line, and the fact that
-`packages/editor/src/snap-manager/` and
-`packages/editor/src/indicator-manager/` contain adapted copies rather than a
-dependency.
+Confirm all four:
 
-Add a matching provenance row to `.agents/dependency-licences.md`, which today
-states only that the image-editor package was removed. Vendored source is a
-different situation from a removed dependency and must not be left implied.
-
-**Stop and get human sign-off on this step before continuing.** AGENTS.md puts
-licensing changes on the human side of the review boundary. The work is
-permitted by MIT and the attribution above discharges it, but the decision to
-vendor a third party's code into this repository is not the agent's to make
-alone.
+1. `THIRD-PARTY-NOTICES.md` has the "Vendored source" section, the full MIT
+   text and the copyright line `Copyright (c) 2025 Alexander Anufriev`.
+2. `.agents/dependency-licences.md` has the provenance row with pin
+   `0.10.32, commit 9efdd78a34`, and its wording still separates vendored
+   source from the removed runtime dependency.
+3. The two directories the notice names are the only ones holding fork
+   copies. Check with
+   `git log --diff-filter=A --name-only --format= -n 40 -- packages/editor/src | sort -u`
+   and widen the notice if a copy landed anywhere else.
+4. No source file carries a licence header, which AGENTS.md forbids:
+   `grep -rn "Copyright (c)" packages/editor/src` returns nothing.
 
 - [ ] **Step 2: Record the new owners**
 
@@ -4515,7 +4581,7 @@ was ported (it was not; only its unit specs were).
 - [ ] **Step 10: Commit**
 
 ```bash
-git add THIRD-PARTY-NOTICES.md .agents/dependency-licences.md .agents/architecture.md .agents/decisions.md .agents/specs .agents/screenshots/README.md .agents/status.md
+git add .agents/architecture.md .agents/decisions.md .agents/specs .agents/screenshots/README.md .agents/status.md
 git commit -m "docs: record editor fork-parity owners, decisions and attribution"
 ```
 
@@ -4540,7 +4606,8 @@ plus the browser captures in 13, 14 and 15.
 3. Crop gets its own owner rather than folding into `image-manager`, which the
    spec left to this plan to decide.
 4. Two extra owners the spec did not name are required by its own scope: the
-   `ShortcutManager` extension (Task 3) and the licence attribution (Task 15).
+   `ShortcutManager` extension (Task 3) and the MIT attribution for vendored
+   fork source (Task 11 Step 1, verified in Task 15).
 
 **Type consistency.** `EditorInteraction` gains `errorManager`, `cropManager`,
 `deletionManager`, `clipboardManager` and `groupingManager`, plus
