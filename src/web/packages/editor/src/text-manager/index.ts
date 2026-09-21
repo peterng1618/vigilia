@@ -9,7 +9,7 @@ export function createTextManager(canvas: Canvas, save: () => void): TextManager
     addText(options = {}) {
       const text = new IText(
         typeof options["text"] === "string" ? options["text"] : "",
-        options,
+        { id: `text-${crypto.randomUUID()}`, ...options },
       );
       canvas.add(text);
       canvas.setActiveObject(text);

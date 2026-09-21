@@ -161,9 +161,17 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
   });
   history.reset();
   const save = (): void => history.save();
+  /** A completed mouse-driven move/scale/rotate needs the same history entry
+   * explicit actions get; Fabric only reports it after the gesture ends. */
+  canvas.on("object:modified", save);
   return {
     canvas,
-    historyManager: { saveState: save, resetHistory: () => history.reset() },
+    historyManager: {
+      saveState: save,
+      resetHistory: () => history.reset(),
+      undo: () => history.undo(),
+      redo: () => history.redo(),
+    },
     textManager: createTextManager(canvas, save),
     imageManager: createImageManager(canvas, save),
     layerManager: createLayerManager(canvas, save),
@@ -197,6 +205,10 @@ export async function mountEditorShell({
   const container = document.createElement("div");
   container.id = `${EDITOR_CONTAINER_ID}-${nextEditorContainer}`;
   nextEditorContainer += 1;
+  /** The retired image-editor package exposed its instance as `window[containerId]`
+   * for devtools/e2e access; keep that contract on the numbered id, which stays
+   * stable even after the container's own `id` attribute is reset below. */
+  const debugKey = container.id;
   container.style.position = "absolute";
   container.style.inset = "0";
   container.style.margin = "auto";
@@ -230,6 +242,7 @@ export async function mountEditorShell({
   try {
     const editor = createNativeEditor(container, artboard);
     mounted = editor;
+    (window as unknown as Record<string, unknown>)[debugKey] = editor;
     fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
 
     if (envelope !== undefined) {
@@ -313,6 +326,7 @@ export async function mountEditorShell({
         scene?.dispose();
         disposeScene(editor.canvas);
         editor.destroy();
+        delete (window as unknown as Record<string, unknown>)[debugKey];
       },
     };
   } catch (error) {

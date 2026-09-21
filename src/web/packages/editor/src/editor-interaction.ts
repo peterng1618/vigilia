@@ -27,6 +27,8 @@ export interface EditorInteraction {
   readonly historyManager: {
     saveState(): void;
     resetHistory(): void;
+    undo(): Promise<void>;
+    redo(): Promise<void>;
   };
   destroy(): void;
 }

@@ -66,4 +66,43 @@ describe("ShortcutManager", () => {
     input.remove();
     manager.destroy();
   });
+
+  it("dispatches Ctrl+Z/Ctrl+Y to undo/redo", () => {
+    const manager = new ShortcutManager();
+    const undo = vi.fn();
+    const redo = vi.fn();
+    manager.register("edit.undo", undo);
+    manager.register("edit.redo", redo);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, cancelable: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "y", ctrlKey: true, cancelable: true }),
+    );
+
+    expect(undo).toHaveBeenCalledOnce();
+    expect(redo).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("does not steal undo from an editable field", () => {
+    const manager = new ShortcutManager();
+    const undo = vi.fn();
+    manager.register("edit.undo", undo);
+    const input = document.createElement("input");
+    document.body.append(input);
+    const event = new KeyboardEvent("keydown", {
+      key: "z",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+
+    expect(undo).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+    input.remove();
+    manager.destroy();
+  });
 });

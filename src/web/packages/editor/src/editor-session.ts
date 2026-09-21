@@ -242,6 +242,12 @@ export class EditorSession {
     this.#shortcuts.register("file.new", () => {
       void this.#new(options);
     });
+    this.#shortcuts.register("edit.undo", () => {
+      void options.shell.editor.historyManager.undo();
+    });
+    this.#shortcuts.register("edit.redo", () => {
+      void options.shell.editor.historyManager.redo();
+    });
   }
 
   get envelope(): FabricThemeEnvelopeInput {

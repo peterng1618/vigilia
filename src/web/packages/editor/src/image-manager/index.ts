@@ -9,12 +9,21 @@ export interface ImageManager {
   }): Promise<{ readonly image: FabricObject } | null>;
 }
 
+/** The MIME subtype (e.g. "png" from "image/png"); empty when unrecognised. */
+function formatOf(mimeType: string): string {
+  return /^[^/]+\/([^+;]+)/.exec(mimeType)?.[1] ?? "";
+}
+
 export function createImageManager(canvas: Canvas, save: () => void): ImageManager {
   return {
     async importImage(options) {
       const url = URL.createObjectURL(options.source);
       try {
         const image = await FabricImage.fromURL(url);
+        image.set({
+          id: `image-${crypto.randomUUID()}`,
+          format: formatOf(options.source.type),
+        });
         if (!options.withoutAdding) {
           canvas.add(image);
           canvas.setActiveObject(image);

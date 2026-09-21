@@ -1,11 +1,25 @@
 export type ShortcutHandler = () => void;
-export type ProductShortcutId = "file.new" | "file.open" | "file.save";
+export type ProductShortcutId =
+  | "file.new"
+  | "file.open"
+  | "file.save"
+  | "edit.undo"
+  | "edit.redo";
 
-const FILE_SHORTCUTS: Readonly<Record<string, ProductShortcutId>> = {
+const PRODUCT_SHORTCUTS: Readonly<Record<string, ProductShortcutId>> = {
   n: "file.new",
   o: "file.open",
   s: "file.save",
+  z: "edit.undo",
+  y: "edit.redo",
 };
+
+/** Actions that defer to a focused text field's own key handling (e.g. Fabric's hidden textarea while editing). */
+const TEXT_ENTRY_DEFERRED_ACTIONS: ReadonlySet<ProductShortcutId> = new Set([
+  "file.new",
+  "edit.undo",
+  "edit.redo",
+]);
 
 /** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
@@ -13,13 +27,16 @@ export class ShortcutManager {
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     const action =
       event.ctrlKey || event.metaKey
-        ? FILE_SHORTCUTS[event.key.toLowerCase()]
+        ? PRODUCT_SHORTCUTS[event.key.toLowerCase()]
         : undefined;
     const handler =
       action === undefined ? undefined : this.#handlers.get(action);
 
     const target = event.target;
-    const deferred = action === "file.new" && isTextEntryTarget(target);
+    const deferred =
+      action !== undefined &&
+      TEXT_ENTRY_DEFERRED_ACTIONS.has(action) &&
+      isTextEntryTarget(target);
 
     if (handler === undefined || deferred) {
       return;
