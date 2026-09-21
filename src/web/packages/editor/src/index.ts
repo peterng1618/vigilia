@@ -1,4 +1,4 @@
-/** Public boundary for the adopted editor fork. */
+/** Public boundary for the Vigilia editor. */
 export {
   mountEditorShell,
   type EditorShell,

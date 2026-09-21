@@ -7,7 +7,7 @@ import {
   type FabricPalette,
 } from "@vigilia/renderer-core";
 
-export interface ForkChartPanel {
+export interface ChartPropertyPanel {
   readonly root: HTMLElement;
   render(
     chart:
@@ -21,12 +21,12 @@ export interface ForkChartPanel {
   ): void;
 }
 
-export function createForkChartPanel(
+export function createChartPropertyPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent["settings"]) => void,
   onBindingChange: (id: string, binding: Binding) => void,
   onAspectChange: (id: string, ratio: number) => void,
-): ForkChartPanel {
+): ChartPropertyPanel {
   const root = document.createElement("section");
   host.prepend(root);
 

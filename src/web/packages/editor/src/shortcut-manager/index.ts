@@ -7,7 +7,7 @@ const FILE_SHORTCUTS: Readonly<Record<string, ProductShortcutId>> = {
   s: "file.save",
 };
 
-/** The sole window-level dispatcher for Vigilia product actions above the fork. */
+/** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
   readonly #onKeyDown = (event: KeyboardEvent): void => {

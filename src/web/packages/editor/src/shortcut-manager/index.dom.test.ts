@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ShortcutManager } from "./index.js";
 
 describe("ShortcutManager", () => {
-  it("claims registered Vigilia actions and leaves all other fork keys alone", () => {
+  it("claims registered Vigilia actions and leaves all other canvas keys alone", () => {
     const manager = new ShortcutManager();
     const save = vi.fn();
     manager.register("file.save", save);
@@ -12,18 +12,18 @@ describe("ShortcutManager", () => {
       ctrlKey: true,
       cancelable: true,
     });
-    const forkKey = new KeyboardEvent("keydown", {
+    const canvasKey = new KeyboardEvent("keydown", {
       key: "g",
       ctrlKey: true,
       cancelable: true,
     });
 
     window.dispatchEvent(handled);
-    window.dispatchEvent(forkKey);
+    window.dispatchEvent(canvasKey);
 
     expect(save).toHaveBeenCalledOnce();
     expect(handled.defaultPrevented).toBe(true);
-    expect(forkKey.defaultPrevented).toBe(false);
+    expect(canvasKey.defaultPrevented).toBe(false);
     manager.destroy();
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EditorHistory } from "./editor-history.js";
+import { EditorHistory } from "./index.js";
 
 describe("EditorHistory", () => {
   it("revives an earlier authored scene without saving the revive", async () => {

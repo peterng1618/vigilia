@@ -11,17 +11,8 @@ inventory, not a release-grade transitive audit. Provenance:
 | Apache ECharts 6.1.0 | Apache-2.0 | charts |
 | Fabric.js 7.4.0 | MIT | scene graph |
 | fflate 0.8.3 | MIT | theme ZIP packages |
-| @anu3ev/fabric-image-editor 0.10.32, Vigilia fork | MIT | editor foundation |
-| jsPDF | MIT | editor-fork dependency |
-| jsondiffpatch | MIT | editor-fork dependency |
-| nanoid | MIT | editor-fork dependency |
 
-Editor fork source:
-<https://github.com/peterng1618/fabricjs-image-editor/tree/918a454038551d188d765960f64c0c3e12bf40c1>.
-
-Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations. The editor
-fork dependencies have transitive graphs; audit the actual lockfile/build before
-distribution.
+Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
 
 ## Build/test
 

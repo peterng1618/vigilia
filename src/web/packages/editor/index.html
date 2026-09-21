@@ -20,8 +20,6 @@
         --vigilia-accent: #00b8d9;
         --vigilia-accent-dim: #00b8d922;
         --vigilia-guide: #ff5630;
-        --vigilia-scaffold-bg: #4a2c00;
-        --vigilia-scaffold-text: #ffc14d;
         --vigilia-scrollbar-thumb: #2a3242;
         --vigilia-scrollbar-thumb-hover: #3a4458;
         --vigilia-scrollbar-track: transparent;
@@ -66,7 +64,7 @@
         flex-direction: column;
         height: 100%;
       }
-      /* The fork owns the canvas and its interaction surface. */
+      /* The editor owns the canvas and its interaction surface. */
       #work {
         display: flex;
         flex: 1;
@@ -102,22 +100,10 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      #scaffold {
-        flex: none;
-        padding: 6px 12px;
-        background: var(--vigilia-scaffold-bg);
-        color: var(--vigilia-scaffold-text);
-        font-family: ui-monospace, monospace;
-        font-size: 12px;
-        text-align: center;
-      }
     </style>
   </head>
   <body>
     <div id="app">
-      <div id="scaffold">
-        Fabric editor foundation — generic selection, transforms and object tools come from the adopted shell.
-      </div>
       <div id="work">
         <div id="stage"></div>
         <aside id="properties"></aside>

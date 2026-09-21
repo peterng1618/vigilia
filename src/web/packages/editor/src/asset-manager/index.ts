@@ -230,7 +230,7 @@ export class AssetManager {
   }
 }
 
-/** Local-file controls; the fork continues to own canvas selection and history. */
+/** Local-file controls; the editor continues to own canvas selection and history. */
 export function createAssetPanel(
   host: HTMLElement,
   manager: AssetManager,

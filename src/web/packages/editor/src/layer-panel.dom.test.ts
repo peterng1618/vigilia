@@ -45,7 +45,7 @@ describe("semantic layer panel", () => {
     );
   });
 
-  it("reveals a hidden parent path and delegates layer controls to the fork", () => {
+  it("reveals a hidden parent path and delegates layer controls to the editor", () => {
     const { canvas, group, child, foreground } = editorFixture();
     group.set("visible", false);
     const panel = createLayerPanel(document.body, canvas);

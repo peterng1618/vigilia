@@ -11,7 +11,7 @@ export interface NewObjectActions {
   readonly addChart: (family: ChartFamily) => void;
 }
 
-/** Vigilia creates semantic text while the fork retains generic construction and history. */
+/** Vigilia creates semantic text while the editor retains generic construction and history. */
 export function createNewObjectPanel(
   host: HTMLElement,
   editor: EditorInteraction,

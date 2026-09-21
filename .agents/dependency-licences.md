@@ -9,7 +9,6 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `echarts` | 6.1.0 | Apache-2.0 | charts |
 | `fabric` | 7.4.0 | MIT | scene graph |
 | `fflate` | 0.8.3 | MIT | theme ZIP codec |
-| `@anu3ev/fabric-image-editor` | fork `918a454` / 0.10.32 | MIT | editor foundation |
 | `@biomejs/biome` | 2.5.14 | MIT OR Apache-2.0 | format/lint |
 | `vite` | 8.3.0 | MIT | build/dev |
 | `typescript` | 7.0.2 | Apache-2.0 | build |
@@ -20,13 +19,8 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `@types/node` | 22.10.2 | MIT | types |
 
 Fabric 7.4.0 metadata/LICENSE confirms MIT and no runtime dependencies. Use
-`fabric/es`; player uses `StaticCanvas`.
-
-The editor manifest pins
-`peterng1618/fabricjs-image-editor#918a454038551d188d765960f64c0c3e12bf40c1`.
-The fork uses Fabric 7.4.0 plus jsPDF, jsondiffpatch and nanoid; primary metadata
-checked during this cleanup identifies all three as MIT. Audit their transitive
-graphs before distribution.
+`fabric/es`; player and editor both use it directly, with no adopted
+image-editor package or its transitive graph.
 
 LibreHardwareMonitor/PawnIO are not current dependencies or redistributed.
 Earlier planning research found LHM MPL-2.0 and PawnIO modules under GPL/LGPL;

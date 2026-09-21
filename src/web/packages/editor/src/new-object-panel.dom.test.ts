@@ -28,7 +28,7 @@ describe("new object panel", () => {
     expect(addChart).toHaveBeenCalledWith(family);
   });
 
-  it("delegates text construction to the fork with derived v2 defaults", () => {
+  it("delegates text construction to the editor with derived v2 defaults", () => {
     const addText = vi.fn();
     const root = createNewObjectPanel(
       document.body,

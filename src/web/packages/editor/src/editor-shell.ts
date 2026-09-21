@@ -2,13 +2,15 @@ import {
   ActiveSelection,
   Canvas,
   classRegistry,
-  FabricImage,
-  IText,
   type ActiveSelectionOptions,
   type FabricObject,
 } from "fabric/es";
-import { EditorHistory } from "./editor-history.js";
+import { EditorHistory } from "./history-manager/index.js";
 import type { EditorInteraction } from "./editor-interaction.js";
+import { createTextManager } from "./text-manager/index.js";
+import { createImageManager } from "./image-manager/index.js";
+import { createLayerManager } from "./layer-manager/index.js";
+import { createObjectLockManager } from "./object-lock-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -40,7 +42,7 @@ export interface EditorShellOptions {
   readonly host: HTMLElement;
   readonly artboard: Artboard;
   readonly plan?: ScenePlan;
-  /** A validated v2 document revives directly into the interactive fork canvas. */
+  /** A validated v2 document revives directly into the interactive canvas. */
   readonly envelope?: FabricThemeEnvelope;
   readonly assets?: readonly AssetReference[];
   readonly resolveAsset?: (
@@ -62,8 +64,8 @@ export interface EditorShell {
   destroy(): void;
 }
 
-const FORK_CONTAINER_ID = "vigilia-fabric-editor";
-let nextForkContainer = 1;
+const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
+let nextEditorContainer = 1;
 
 class SelectionOrderedActiveSelection extends ActiveSelection {
   constructor(
@@ -162,64 +164,15 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
   return {
     canvas,
     historyManager: { saveState: save, resetHistory: () => history.reset() },
-    textManager: {
-      addText(options = {}) {
-        const text = new IText(typeof options["text"] === "string" ? options["text"] : "", options);
-        canvas.add(text);
-        canvas.setActiveObject(text);
-        save();
-        return text;
-      },
-    },
-    imageManager: {
-      async importImage(options) {
-        const url = URL.createObjectURL(options.source);
-        try {
-          const image = await FabricImage.fromURL(url);
-          if (!options.withoutAdding) {
-            canvas.add(image);
-            canvas.setActiveObject(image);
-            if (!options.withoutSave) save();
-          }
-          return { image };
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      },
-    },
-    layerManager: {
-      bringToFront: (object = canvas.getActiveObject()) => {
-        if (object !== undefined) canvas.bringObjectToFront(object);
-        save();
-      },
-      bringForward: (object = canvas.getActiveObject()) => {
-        if (object !== undefined) canvas.bringObjectForward(object);
-        save();
-      },
-      sendToBack: (object = canvas.getActiveObject()) => {
-        if (object !== undefined) canvas.sendObjectToBack(object);
-        save();
-      },
-      sendBackwards: (object = canvas.getActiveObject()) => {
-        if (object !== undefined) canvas.sendObjectBackwards(object);
-        save();
-      },
-    },
-    objectLockManager: {
-      lockObject: ({ object = canvas.getActiveObject() } = {}) => {
-        object?.set({ selectable: false, evented: false, locked: true });
-        save();
-      },
-      unlockObject: ({ object = canvas.getActiveObject() } = {}) => {
-        object?.set({ selectable: true, evented: true, locked: false });
-        save();
-      },
-    },
+    textManager: createTextManager(canvas, save),
+    imageManager: createImageManager(canvas, save),
+    layerManager: createLayerManager(canvas, save),
+    objectLockManager: createObjectLockManager(canvas, save),
     destroy: () => canvas.dispose(),
   };
 }
 
-/** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
+/** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
 export async function mountEditorShell({
   host,
   artboard,
@@ -230,7 +183,7 @@ export async function mountEditorShell({
 }: EditorShellOptions): Promise<EditorShell> {
   if (plan !== undefined && envelope !== undefined) {
     throw new Error(
-      "A fork shell accepts either a scene plan or a Fabric envelope, not both.",
+      "An editor shell accepts either a scene plan or a Fabric envelope, not both.",
     );
   }
   if (envelope !== undefined) {
@@ -242,8 +195,8 @@ export async function mountEditorShell({
     }
   }
   const container = document.createElement("div");
-  container.id = `${FORK_CONTAINER_ID}-${nextForkContainer}`;
-  nextForkContainer += 1;
+  container.id = `${EDITOR_CONTAINER_ID}-${nextEditorContainer}`;
+  nextEditorContainer += 1;
   container.style.position = "absolute";
   container.style.inset = "0";
   container.style.margin = "auto";
@@ -295,7 +248,7 @@ export async function mountEditorShell({
     }
 
     host.replaceChildren(container);
-    container.id = FORK_CONTAINER_ID;
+    container.id = EDITOR_CONTAINER_ID;
     container.style.visibility = "";
     let mediaAssets = assets ?? envelope?.assets;
     let mediaResolve = resolveAsset;
