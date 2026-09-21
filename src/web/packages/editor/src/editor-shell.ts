@@ -36,7 +36,7 @@ import {
   type SceneAdapter,
 } from "@vigilia/scene-fabric";
 
-export interface ForkShellOptions {
+export interface EditorShellOptions {
   readonly host: HTMLElement;
   readonly artboard: Artboard;
   readonly plan?: ScenePlan;
@@ -48,7 +48,7 @@ export interface ForkShellOptions {
   ) => BackgroundMediaSource | undefined;
 }
 
-export interface ForkShell {
+export interface EditorShell {
   readonly editor: EditorInteraction;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
@@ -79,7 +79,7 @@ classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
 function fitArtboardViewport(
   container: HTMLElement,
   host: HTMLElement,
-  artboard: ForkShellOptions["artboard"],
+  artboard: EditorShellOptions["artboard"],
   fitMode: FitMode,
 ): number | undefined {
   const scale =
@@ -104,7 +104,7 @@ function fitCanvasViewport(
   editor: EditorInteraction,
   container: HTMLElement,
   host: HTMLElement,
-  artboard: ForkShellOptions["artboard"],
+  artboard: EditorShellOptions["artboard"],
   fitMode: FitMode,
 ): void {
   const scale = fitArtboardViewport(container, host, artboard, fitMode);
@@ -220,14 +220,14 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
 }
 
 /** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({
+export async function mountEditorShell({
   host,
   artboard,
   plan,
   envelope,
   assets,
   resolveAsset,
-}: ForkShellOptions): Promise<ForkShell> {
+}: EditorShellOptions): Promise<EditorShell> {
   if (plan !== undefined && envelope !== undefined) {
     throw new Error(
       "A fork shell accepts either a scene plan or a Fabric envelope, not both.",

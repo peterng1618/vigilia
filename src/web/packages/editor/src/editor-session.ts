@@ -11,7 +11,7 @@ import {
   reassignObjectPaletteReferences,
   reassignObjectTypePresetReferences,
 } from "@vigilia/scene-fabric";
-import { type ForkShell } from "./fork-shell.js";
+import { type EditorShell } from "./editor-shell.js";
 import { createArtboardPanel, type ArtboardPanel } from "./artboard-panel.js";
 import { createPalettePanel, type PalettePanel } from "./palette-panel.js";
 import {
@@ -46,7 +46,7 @@ import { previewFontFace, releaseFontPreview } from "./font-preview.js";
 import { LiveRuntime } from "./live-runtime.js";
 
 export interface EditorSessionOptions {
-  readonly shell: ForkShell;
+  readonly shell: EditorShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
   readonly assets?: Readonly<Record<string, Uint8Array>>;
@@ -78,7 +78,7 @@ export class EditorSession {
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #fileSection: HTMLElement;
-  readonly #shell: ForkShell;
+  readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
   readonly #onBindingsChange: (() => void) | undefined;
 
@@ -257,7 +257,7 @@ export class EditorSession {
     this.charts.refresh();
   }
 
-  async hydrateAssets(shell: ForkShell): Promise<void> {
+  async hydrateAssets(shell: EditorShell): Promise<void> {
     await this.#assets.hydrate(shell.editor.canvas);
   }
 
@@ -389,7 +389,7 @@ export class EditorSession {
   }
 
   async #confirmReplacement(options: {
-    readonly shell: ForkShell;
+    readonly shell: EditorShell;
     readonly onSaved: (message?: string) => void;
   }): Promise<boolean> {
     const current = this.#snapshot(options.shell);
@@ -406,7 +406,7 @@ export class EditorSession {
     return true;
   }
 
-  #setArtboard(shell: ForkShell, artboard: Artboard): void {
+  #setArtboard(shell: EditorShell, artboard: Artboard): void {
     this.#envelope = { ...this.#envelope, artboard };
     shell.setArtboard(artboard);
     this.#refreshBackgroundMedia(shell);
@@ -443,7 +443,7 @@ export class EditorSession {
     }
   }
 
-  #refreshBackgroundMedia(shell: ForkShell): void {
+  #refreshBackgroundMedia(shell: EditorShell): void {
     shell.setBackgroundMedia(this.#assets.declarations, (assetId) =>
       this.#assets.backgroundSource(assetId),
     );
@@ -458,7 +458,7 @@ export class EditorSession {
     this.#onBindingsChange?.();
   }
 
-  #setPalette(shell: ForkShell, palette: FabricPalette): void {
+  #setPalette(shell: EditorShell, palette: FabricPalette): void {
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, palette },
@@ -471,7 +471,7 @@ export class EditorSession {
     this.#palette.render(palette);
   }
 
-  #deletePalette(shell: ForkShell, id: string, replacement: string): void {
+  #deletePalette(shell: EditorShell, id: string, replacement: string): void {
     if (id === "none" || id === replacement) return;
     const from = `palette.${id}` as const;
     const to = `palette.${replacement}` as const;
@@ -500,7 +500,7 @@ export class EditorSession {
     this.#palette.render(palette);
   }
 
-  #setTypes(shell: ForkShell, typePresets: TypePresets): void {
+  #setTypes(shell: EditorShell, typePresets: TypePresets): void {
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
@@ -531,7 +531,7 @@ export class EditorSession {
     }
   }
 
-  #deleteType(shell: ForkShell, id: string, replacement: string): void {
+  #deleteType(shell: EditorShell, id: string, replacement: string): void {
     if (id === replacement) return;
     const from = `typePresets.${id}` as const;
     const to = `typePresets.${replacement}` as const;
@@ -547,7 +547,7 @@ export class EditorSession {
     this.#types.render(typePresets as TypePresets);
   }
 
-  #snapshot(shell: ForkShell): FabricThemeEnvelope {
+  #snapshot(shell: EditorShell): FabricThemeEnvelope {
     return shell.snapshot({
       ...this.#envelope,
       ...(this.#assets.declarations.length === 0
