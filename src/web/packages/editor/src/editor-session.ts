@@ -7,18 +7,19 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
-import {
-  reassignObjectPaletteReferences,
-  reassignObjectTypePresetReferences,
-} from "@vigilia/scene-fabric";
 import { type EditorShell } from "./editor-shell.js";
 import { createArtboardPanel, type ArtboardPanel } from "./artboard-panel.js";
-import { createPalettePanel, type PalettePanel } from "./palette-panel.js";
+import {
+  createPalettePanel,
+  reassignPaletteToken,
+  type PalettePanel,
+} from "./palette-manager/index.js";
 import {
   createTypePresetPanel,
+  reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
-} from "./type-preset-panel.js";
+} from "./type-preset-manager/index.js";
 import {
   createNewObjectPanel,
   type NewObjectPanel,
@@ -64,7 +65,7 @@ export interface EditorSessionOptions {
   readonly onBindingsChange?: () => void;
 }
 
-/** Owns Vigilia editor composition while the canvas migration is in progress. */
+/** Owns Vigilia editor composition on the native Fabric canvas. */
 export class EditorSession {
   readonly charts: ChartManager;
   readonly #runtime: LiveRuntime;
@@ -85,7 +86,7 @@ export class EditorSession {
   constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
       throw new Error(
-        "The fork shell needs a scene adapter for Vigilia extensions.",
+        "The editor shell needs a scene adapter for Vigilia extensions.",
       );
     }
     this.#envelope = options.envelope;
@@ -473,18 +474,14 @@ export class EditorSession {
 
   #deletePalette(shell: EditorShell, id: string, replacement: string): void {
     if (id === "none" || id === replacement) return;
-    const from = `palette.${id}` as const;
-    const to = `palette.${replacement}` as const;
-    reassignObjectPaletteReferences(shell.editor.canvas, from, to);
+    const { from, to, artboard, palette } = reassignPaletteToken(
+      shell.editor.canvas,
+      this.#envelope.artboard,
+      this.#envelope.globals?.palette ?? {},
+      id,
+      replacement,
+    );
     this.charts.reassignPaletteReferences(from, to);
-    const artboard = { ...this.#envelope.artboard };
-    for (const property of ["background", "barColor"] as const) {
-      const value = artboard[property];
-      if (value !== undefined && "ref" in value && value.ref === from)
-        artboard[property] = { ref: to };
-    }
-    const palette = { ...this.#envelope.globals?.palette };
-    delete palette[id];
     this.#envelope = {
       ...this.#envelope,
       artboard,
@@ -533,18 +530,19 @@ export class EditorSession {
 
   #deleteType(shell: EditorShell, id: string, replacement: string): void {
     if (id === replacement) return;
-    const from = `typePresets.${id}` as const;
-    const to = `typePresets.${replacement}` as const;
-    reassignObjectTypePresetReferences(shell.editor.canvas, from, to);
-    const typePresets = { ...this.#envelope.globals?.typePresets };
-    delete typePresets[id];
+    const typePresets = reassignTypePresetToken(
+      shell.editor.canvas,
+      (this.#envelope.globals?.typePresets ?? {}) as TypePresets,
+      id,
+      replacement,
+    );
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
     };
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
-    this.#types.render(typePresets as TypePresets);
+    this.#types.render(typePresets);
   }
 
   #snapshot(shell: EditorShell): FabricThemeEnvelope {

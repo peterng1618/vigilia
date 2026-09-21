@@ -11,8 +11,10 @@ vi.mock("./layer-panel.js", () => ({
   createLayerPanel: (...args: readonly unknown[]) => createLayerPanel(...args),
 }));
 vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
-vi.mock("./palette-panel.js", () => ({ createPalettePanel: () => panel() }));
-vi.mock("./type-preset-panel.js", () => ({
+vi.mock("./palette-manager/index.js", () => ({
+  createPalettePanel: () => panel(),
+}));
+vi.mock("./type-preset-manager/index.js", () => ({
   createTypePresetPanel: () => panel(),
 }));
 vi.mock("./new-object-panel.js", () => ({
