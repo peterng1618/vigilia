@@ -316,12 +316,21 @@ A theme may be dark-only, light-only or dual-mode. Dual-mode themes share scene
 geometry/bindings and override globals/assets/visibility rather than duplicating
 the theme. Do not auto-invert bitmaps.
 
+## §171 — Image import bounds and crop
+
+Imported images are downscaled on import when they exceed a maximum bound,
+preserving aspect ratio, before becoming a Fabric image object. A per-image
+crop tool restricts a `FabricImage` to a rectangular source window, built on
+the existing `clipPath`-based fit mechanism (`fitImage`'s `cover` math in
+`scene-fabric`), not a new geometry primitive or the fork's `CropFrame`.
+Optional aspect lock; apply/cancel stays outside undo history until committed.
+
 ## Later
 
 ### Editor research candidates (non-requirements)
 
-  - After spec 0014 retention review, consider fork-owned rulers, guides, hover
-    preselection, crop controls and measured stress fixtures from yft-design.
+  - After spec 0014 retention review, consider fork-owned rulers, guides and
+    hover preselection, plus measured stress fixtures from yft-design.
   - After §35, consider a creation/assets/templates rail, central artboard,
     contextual property rail and zoom/status footer. Actions stay visibly
     labelled and keyboard-accessible; this is not a separate agent-mode UI.

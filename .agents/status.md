@@ -74,7 +74,22 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 ## Next
 
-1. Revisit remaining spec-0014 candidates only when needed.
+1. Execute `docs/superpowers/plans/2026-09-21-editor-fork-parity.md`, the
+   implementation plan for spec `0017-editor-fork-parity.md` (approved
+   2026-09-21). Fifteen tasks covering the spec's ten pieces plus a
+   `ShortcutManager` extension and a licence-attribution task. Nothing is
+   implemented yet; the plan is the only artefact.
+2. **Blocked on human sign-off before plan Task 11.** Tasks 11, 12 and 14
+   vendor roughly 5,000 lines from `@anu3ev/fabric-image-editor` (MIT,
+   Copyright (c) 2025 Alexander Anufriev). MIT permits this only with the
+   notice retained, and AGENTS.md puts licensing on the human side of the
+   review boundary. Plan Task 15 Step 1 holds the attribution work.
+3. Revisit remaining spec-0014 candidates only when needed.
+
+Two spec-0017 claims were disproved while planning and are corrected in the
+plan, not the spec: movement snapping is 4,400 lines rather than ~2,900, and
+its `CropFrame`/`shapeComposite` coupling is real in the target resolver and
+the controller, though absent from the geometry core.
 
 ## Unverified / limitations
 
