@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createDemoSource } from "@vigilia/fake-source";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
 import { describe, expect, it, vi } from "vitest";
 import { defaultGaugeSettings } from "@vigilia/renderer-core";
@@ -22,7 +22,7 @@ describe("ChartManager", () => {
       };
       const historyManager = { saveState: vi.fn() };
       const manager = new ChartManager({
-        editor: { canvas, historyManager } as unknown as ImageEditor,
+        editor: { canvas, historyManager } as unknown as EditorInteraction,
         scene: {} as SceneAdapter,
         source: createDemoSource(0),
         globals: {
@@ -63,7 +63,7 @@ describe("ChartManager", () => {
     };
     const historyManager = { saveState: vi.fn() };
     const manager = new ChartManager({
-      editor: { canvas, historyManager } as unknown as ImageEditor,
+      editor: { canvas, historyManager } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
       panelHost: document.body,
@@ -93,7 +93,7 @@ describe("ChartManager", () => {
       requestRenderAll: vi.fn(),
     };
     const manager = new ChartManager({
-      editor: { canvas } as unknown as ImageEditor,
+      editor: { canvas } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
       globals: {
@@ -137,7 +137,7 @@ describe("ChartManager", () => {
     };
     const scene = { objectFor: vi.fn(() => chart) } as unknown as SceneAdapter;
     const manager = new ChartManager({
-      editor: { canvas } as unknown as ImageEditor,
+      editor: { canvas } as unknown as EditorInteraction,
       scene,
       source: createDemoSource(0),
       bindings: { "cpu-gauge": [{ id: "cpu", semanticKey: "cpu.load" }] },

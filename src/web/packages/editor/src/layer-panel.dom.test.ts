@@ -6,7 +6,7 @@ import {
   Textbox,
   type FabricObject,
 } from "fabric/es";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLayerPanel } from "./layer-panel.js";
 
@@ -141,7 +141,7 @@ function editorFixture() {
     },
     objectLockManager: { lockObject: vi.fn(), unlockObject: vi.fn() },
     historyManager,
-  } as unknown as ImageEditor;
+  } as unknown as EditorInteraction;
   return {
     canvas,
     background,

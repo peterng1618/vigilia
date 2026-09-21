@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ActiveSelection, Canvas, Rect } from "fabric/es";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { describe, expect, it, vi } from "vitest";
 import { applyArrange, canArrange } from "./arrange.js";
 
@@ -86,7 +86,7 @@ describe("selection-relative arrange actions", () => {
     const editor = {
       canvas,
       historyManager: { saveState: vi.fn() },
-    } as unknown as ImageEditor;
+    } as unknown as EditorInteraction;
 
     expect(applyArrange(editor, "align-left")).toBe(true);
     expect(anchor.getBoundingRect().left).toBeCloseTo(220, 3);
@@ -127,6 +127,6 @@ function editorFor(...objects: readonly Rect[]) {
     }),
     requestRenderAll: vi.fn(),
   };
-  const editor = { canvas, historyManager } as unknown as ImageEditor;
+  const editor = { canvas, historyManager } as unknown as EditorInteraction;
   return { editor, selection, historyManager };
 }
