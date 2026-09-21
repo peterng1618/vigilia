@@ -8,7 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
-| Native Fabric editor migration | Spec committed; implementation plan awaits review on `codex/native-fabric-editor`, based on `origin/develop` `07b575f` on 2026-09-21. No implementation or runtime proof yet. |
+| Native Fabric editor migration | Native customized session plus snapshot history/text insertion are committed on `codex/native-fabric-editor`; focused Vitest and editor typecheck passed on 2026-09-21. Native canvas mount and remaining generic mechanics are not implemented. |
 | Spec 0011 chart creation | 950-unit suite, editor typecheck/build, focused desktop Chromium package round-trip and inspected `editor-fork-chart-creation-desktop-chromium.png` passed on 2026-09-21; Add exposes Text plus Gauge/Line/Bar/Pie, each chart starts from palette references, and a created gauge saves/reopens without runtime options; unbound revived charts hydrate from the Fabric scene |
 | Verification policy | Browser changes run full local `npm run test:e2e`; CI runs only on `main` pushes and pull requests targeting `main`. `develop` pushes do not wait for GitHub CI. |
 | Spec 0011 property corrections | Full 935-unit suite, focused preset/artboard/Release DOM tests, editor typecheck and editor build passed on 2026-09-21; desktop Chromium package round-trip applied `Inter 700`, edited letter spacing to `0.25`, and retained face/trio metadata after reopen; inspected `editor-fork-type-preset-desktop-chromium.png` shows those controls and the packaged font asset |
