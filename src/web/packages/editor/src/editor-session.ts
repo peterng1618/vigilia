@@ -38,6 +38,9 @@ import {
   PersistenceManager,
 } from "./persistence-manager/index.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
+import { applyArrange, canArrange } from "./arrange.js";
+import type { EditorActionFacade } from "./editor-shell/session-facade.js";
+import { createNewTextDefaults } from "./new-object-defaults.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
   createThemeLibraryClient,
@@ -301,6 +304,38 @@ export class EditorSession {
 
   get envelope(): FabricThemeEnvelopeInput {
     return this.#envelope;
+  }
+
+  /** Reachability only: the shell menus dispatch through the existing owners,
+   * including the private document actions the panel section used to call. */
+  actionFacade(options: EditorSessionOptions): EditorActionFacade {
+    const editor = options.shell.editor;
+    return {
+      newDocument: () => this.#new(options),
+      openPackage: () => this.#open(options),
+      savePackage: () => this.#save(options),
+      releasePackage: () => this.#release(options),
+      openLibrary: () => this.#openLibrary(options),
+      saveLibrary: () => this.#saveLibrary(options),
+      addText: () => {
+        const content = "New text";
+        editor.textManager.addText({
+          text: content,
+          ...createNewTextDefaults(this.#envelope.globals, content),
+        });
+      },
+      addChart: (family) => this.charts.addChart(family),
+      arrange: (action) => applyArrange(editor, action),
+      canArrange: (action) => canArrange(editor, action),
+      undo: () => void editor.historyManager.undo(),
+      redo: () => void editor.historyManager.redo(),
+      copy: () => void editor.clipboardManager.copy(),
+      cut: () => void editor.clipboardManager.cut(),
+      deleteActive: () => void editor.deletionManager.deleteActive(),
+      duplicate: () => void editor.clipboardManager.duplicate(),
+      group: () => editor.groupingManager.group(),
+      ungroup: () => editor.groupingManager.ungroup(),
+    };
   }
 
   setSource(source: SampleSource): void {
