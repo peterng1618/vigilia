@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import {
+  HOST_PORT,
+  HOST_THEMES_DIR,
+  seedHostTheme,
+} from "./tests/e2e/host-theme.js";
+
+// Seed before the host webServer starts; the host reads this directory at boot.
+seedHostTheme();
 
 /** Browser-only structural/visual checks; cross-platform font rasterisation makes pixel baselines unsuitable here. */
 export default defineConfig({
@@ -31,6 +39,14 @@ export default defineConfig({
       command:
         "npx vite preview packages/editor --port 4174 --strictPort --host 127.0.0.1",
       url: "http://127.0.0.1:4174",
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      // The real Node host, not a preview server: hosted theme loading, package
+      // asset serving and the SSE stream are otherwise never browser-tested.
+      command: `node packages/host/bin/vigilia.js --no-browser --port ${HOST_PORT} --themes-dir ${HOST_THEMES_DIR}`,
+      url: `http://127.0.0.1:${HOST_PORT}/api/health`,
       reuseExistingServer: true,
       timeout: 60_000,
     },

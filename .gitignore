@@ -12,6 +12,8 @@ test-results/
 playwright-report/
 playwright/.cache/
 blob-report/
+# Versioned host-theme packages seeded by the browser suite.
+.e2e-host-themes/
 # Vitest JSON reporter output (diagnostics only, never asserted against).
 .vitest/
 
