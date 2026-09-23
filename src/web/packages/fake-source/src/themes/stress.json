@@ -158,7 +158,14 @@
               { "offset": 1, "color": "#374151" }
             ]
           },
-          "progress": { "kind": "solid", "color": "#f472b6" }
+          "progress": {
+            "kind": "gradient",
+            "stops": [
+              { "offset": 0, "color": "#00b8d9" },
+              { "offset": 0.5, "color": "#ffab00" },
+              { "offset": 1, "color": "#ff5630" }
+            ]
+          }
         }
       }
     },

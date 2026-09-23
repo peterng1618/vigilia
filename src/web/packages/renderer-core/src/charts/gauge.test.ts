@@ -261,13 +261,25 @@ describe("the progress arc colour", () => {
     expect(option.series[0].progress.itemStyle.color).toBe("#00b8d9");
   });
 
-  it("emits a real gradient object for a gradient fill", () => {
-    // A true gradient, but resolved across the ring's box rather than along the
-    // arc. The angular approximation stays on the track, because one axisLine
-    // cannot carry two fills — the §85 gap is unchanged.
+  it("follows the arc for a gradient fill instead of a cartesian gradient", () => {
+    // ECharts applies gauge `progress` colour across the swept arc, so arc
+    // segments make the gradient follow the ring. A cartesian `to-right`
+    // gradient did not — that was the §85 gauge gap.
     const color = progressColor({ kind: "gradient", stops: bands }, 50);
 
-    expect(color).toMatchObject({ type: "linear", x: 0, y: 0, x2: 1, y2: 0 });
+    expect(Array.isArray(color)).toBe(true);
+    const segments = color as [number, string][];
+    // Ascending proportions covering the full ring.
+    expect(segments.at(-1)?.[0]).toBe(1);
+    expect(segments[0]?.[0]).toBeLessThan(segments.at(-1)![0]);
+    expect(
+      segments.every(([proportion]) => proportion > 0 && proportion <= 1),
+    ).toBe(true);
+    // Colours step along the sweep rather than repeating one value: the
+    // midpoint sampling interpolates between stops, so several distinct
+    // colours prove a real gradient along the arc.
+    expect(new Set(segments.map(([, c]) => c)).size).toBeGreaterThan(3);
+    expect(segments.every(([, hex]) => /^#[0-9a-f]{6}$/i.test(hex))).toBe(true);
   });
 
   it("keeps the track fill independent of the progress fill", () => {

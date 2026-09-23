@@ -6,18 +6,17 @@ import { resolveChartPaint } from "./chart-paint.js";
 import {
   colorAt,
   type EngineColor,
-  mixHex,
   normalizePosition,
   resolveFlatColor,
-  toLinearGradient,
 } from "./fill.js";
 
 // Preserved public export; implementation moved to fill.ts.
-export { mixHex };
+export { mixHex } from "./fill.js";
 
 /**
- * Gauge adapter. ECharts supports arbitrary sweeps, but not true angular
- * gradients on `axisLine`; track gradients are approximated with segments (§85).
+ * Gauge adapter. ECharts supports arbitrary sweeps, and gauge track/progress
+ * paint accepts arc segments, so a gradient follows the ring rather than a
+ * cartesian axis.
  */
 
 type ColorSegment = [number, string];
@@ -41,7 +40,9 @@ export interface GaugeOption {
         show: boolean;
         width: number;
         roundCap: boolean;
-        itemStyle: { color: EngineColor };
+        /** ECharts applies progress colour across the swept arc, so a gradient
+         * is expressed as arc segments exactly like the track. */
+        itemStyle: { color: EngineColor | ColorSegment[] };
       };
       pointer: { show: false };
       axisTick: { show: false };
@@ -188,16 +189,20 @@ export function approximateGradient(
 }
 
 /**
- * Resolve the progress arc separately from the track. Gradient progress uses a
- * cartesian gradient, so it does not follow the arc; that remains a §85 gap.
+ * Resolve the progress arc separately from the track.
+ *
+ * A gradient fill is expressed as arc segments, because ECharts applies gauge
+ * `progress` colour across the swept arc: a cartesian `to-right` gradient would
+ * not follow it. A threshold fill stays a flat colour per current value, which
+ * is what a threshold means for a progress arc.
  */
 function progressItemStyle(
   fill: Fill,
   settings: GaugeSettings,
   value: number,
-): { itemStyle: { color: EngineColor } } {
+): { itemStyle: { color: EngineColor | ColorSegment[] } } {
   if (fill.kind === "gradient") {
-    return { itemStyle: { color: toLinearGradient(fill.stops, "to-right") } };
+    return { itemStyle: { color: toColorSegments(fill, settings) } };
   }
 
   return {
