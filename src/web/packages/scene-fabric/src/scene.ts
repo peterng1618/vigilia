@@ -38,6 +38,11 @@ export interface FabricSceneOptions
 export interface FabricSceneHandle extends SceneHandle {
   readonly canvas: StaticCanvas;
   readonly adapter: SceneAdapter;
+  /**
+   * `ScenePlan` never carries `backgroundMedia`, so a document-level artboard
+   * change cannot travel through `update()`.
+   */
+  updateArtboard(artboard: Artboard): void;
 }
 
 export function mountFabricScene(
@@ -71,12 +76,13 @@ export function mountFabricScene(
     canvas,
     ...withoutHostAndPlan(options),
   });
+  let currentArtboard = options.artboard;
   const media =
-    options.resolveAsset === undefined || options.artboard === undefined
+    options.resolveAsset === undefined || currentArtboard === undefined
       ? undefined
       : mountBackgroundMedia({
           host,
-          artboard: options.artboard,
+          artboard: currentArtboard,
           assets: options.assets,
           resolveAsset: options.resolveAsset,
         });
@@ -142,6 +148,16 @@ export function mountFabricScene(
       plan = next;
       currentTransform = fit();
       adapter.apply(next);
+    },
+
+    updateArtboard(artboard: Artboard): void {
+      currentArtboard = artboard;
+      if (media === undefined || options.resolveAsset === undefined) return;
+      media.update({
+        artboard,
+        assets: options.assets,
+        resolveAsset: options.resolveAsset,
+      });
     },
 
     resize(): void {
