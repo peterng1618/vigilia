@@ -8,7 +8,10 @@ export interface LayerManager {
   sendBackwards(object?: FabricObject): void;
 }
 
-export function createLayerManager(canvas: Canvas, save: () => void): LayerManager {
+export function createLayerManager(
+  canvas: Canvas,
+  save: () => void,
+): LayerManager {
   return {
     bringToFront: (object = canvas.getActiveObject()) => {
       if (object !== undefined) canvas.bringObjectToFront(object);

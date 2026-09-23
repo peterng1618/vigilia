@@ -1,20 +1,20 @@
 import {
+  type Control,
+  controlsUtils,
   InteractiveFabricObject,
   Textbox,
-  controlsUtils,
-  type Control,
 } from "fabric/es";
 import {
   HORIZONTAL_HEIGHT,
   HORIZONTAL_WIDTH,
   PILL_RADIUS,
   ROTATE_DIAMETER,
+  renderRotationHandle,
+  roundedHandle,
   SQUARE_RADIUS,
   SQUARE_SIZE,
   VERTICAL_HEIGHT,
   VERTICAL_WIDTH,
-  renderRotationHandle,
-  roundedHandle,
 } from "./renderers.js";
 
 const CORNER = {

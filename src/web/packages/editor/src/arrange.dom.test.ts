@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { ActiveSelection, Canvas, Rect } from "fabric/es";
-import type { EditorInteraction } from "./editor-interaction.js";
 import { describe, expect, it, vi } from "vitest";
 import { applyArrange, canArrange } from "./arrange.js";
+import type { EditorInteraction } from "./editor-interaction.js";
 
 describe("selection-relative arrange actions", () => {
   it("aligns rendered left edges and preserves the active selection", () => {

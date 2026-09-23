@@ -1,6 +1,5 @@
 /* eslint-disable no-use-before-define -- the public function sits above its internal math. */
 import { MOVE_SNAP_STEP } from "./constants.js";
-import type { Bounds, SpacingGuide } from "./types.js";
 import type { MovementSceneAxis } from "./movement-snap-candidates.js";
 import type { MovementGestureBaseline } from "./movement-snapping-resolver.js";
 import type {
@@ -9,10 +8,11 @@ import type {
 } from "./spacing.js";
 import {
   ACTIVE_MOVEMENT_SPACING_SOURCE_ID,
+  type MovementSpacingChain,
   movementSpacingChainIncludesPattern,
   movementSpacingChainIncludesSource,
-  type MovementSpacingChain,
 } from "./spacing-chains.js";
+import type { Bounds, SpacingGuide } from "./types.js";
 
 /** Tolerance for comparing two exact corrections. */
 export const MOVEMENT_CORRECTION_COMPARISON_EPSILON = 0.000000001;

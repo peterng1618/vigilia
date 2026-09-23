@@ -33,12 +33,14 @@ export function createNewObjectPanel(
       ...createNewTextDefaults(currentGlobals, content),
     });
   });
-  const charts = ([
-    ["Gauge", "gauge"],
-    ["Line", "line"],
-    ["Bar", "bar"],
-    ["Pie", "pie"],
-  ] as const).map(([label, family]) => {
+  const charts = (
+    [
+      ["Gauge", "gauge"],
+      ["Line", "line"],
+      ["Bar", "bar"],
+      ["Pie", "pie"],
+    ] as const
+  ).map(([label, family]) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;

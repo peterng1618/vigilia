@@ -1,14 +1,14 @@
 /* eslint-disable no-use-before-define -- the public runtime sits above its internal checks. */
 import {
-  FREE_MOVEMENT_HOLD_STATE,
-  resolveMovementSnapPlan,
-  verifyMovementSnapPlan,
   type FinalMovementGeometry,
+  FREE_MOVEMENT_HOLD_STATE,
   type MovementGestureBaseline,
   type MovementHoldState,
   type MovementRawIntent,
   type MovementSnapPlan,
   type MovementSnapVerification,
+  resolveMovementSnapPlan,
+  verifyMovementSnapPlan,
 } from "./movement-snapping-resolver.js";
 
 /** A single-use movement plan id. */

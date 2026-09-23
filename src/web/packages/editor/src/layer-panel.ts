@@ -1,6 +1,6 @@
-import { Group, type FabricObject } from "fabric/es";
+import { type FabricObject, Group } from "fabric/es";
+import { type ArrangeAction, applyArrange, canArrange } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
-import { applyArrange, canArrange, type ArrangeAction } from "./arrange.js";
 
 export interface LayerPanel {
   readonly root: HTMLElement;

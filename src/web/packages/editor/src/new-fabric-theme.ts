@@ -1,3 +1,4 @@
+import type { FabricPalette } from "@vigilia/renderer-core";
 import {
   defaultBarSettings,
   defaultGaugeSettings,
@@ -5,7 +6,6 @@ import {
   defaultPieSettings,
   type FabricThemeEnvelope,
 } from "@vigilia/renderer-core";
-import type { FabricPalette } from "@vigilia/renderer-core";
 
 type ObjectJson = Readonly<Record<string, unknown>>;
 type PathData = readonly (readonly [string, ...number[]])[];

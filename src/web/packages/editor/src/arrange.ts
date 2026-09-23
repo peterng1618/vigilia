@@ -1,4 +1,4 @@
-import { ActiveSelection, Point, type FabricObject } from "fabric/es";
+import { ActiveSelection, type FabricObject, Point } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
 
 export type ArrangeAction =

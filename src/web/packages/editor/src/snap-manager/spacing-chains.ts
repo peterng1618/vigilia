@@ -1,10 +1,10 @@
 import { resolveDisplayDistance } from "./distance.js";
-import type { Bounds, SpacingGuide, SpacingPattern } from "./types.js";
 import {
   buildAxisSpacingPatternEntries,
   type SpacingPatternEntry,
   type SpacingPatternSource,
 } from "./spacing-patterns.js";
+import type { Bounds, SpacingGuide, SpacingPattern } from "./types.js";
 
 /** Tolerance for floating-point and serialisation error in exact intervals. */
 const SPACING_CHAIN_DISTANCE_TOLERANCE = 0.001;

@@ -1,5 +1,4 @@
 import type { Canvas, FabricObject } from "fabric/es";
-import type { CursorIndicator } from "./cursor-indicator.js";
 import { createCursorIndicator } from "./cursor-indicator.js";
 
 const SIZE_FORMAT_EPSILON = 0.000001;

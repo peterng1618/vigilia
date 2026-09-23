@@ -2,8 +2,8 @@ import type { Canvas, FabricObject } from "fabric/es";
 import type { ErrorManager } from "../error-manager/index.js";
 import { getObjectExactBounds, type ObjectBounds } from "./bounds.js";
 import {
-  shouldIgnoreObject,
   collectExcludedObjects,
+  shouldIgnoreObject,
 } from "./excluded-objects.js";
 import { renderSnappingGuides } from "./guide-renderer.js";
 import {

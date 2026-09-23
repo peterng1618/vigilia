@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
+import { describe, expect, it } from "vitest";
 import {
   fileNameFor,
   parseThemePackage,

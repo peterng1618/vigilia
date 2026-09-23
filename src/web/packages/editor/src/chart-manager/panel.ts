@@ -1,10 +1,10 @@
 import {
-  SEMANTIC_KEYS,
-  chartPaintFieldsFor,
-  settingsFieldsFor,
   type Binding,
   type ChartContent,
+  chartPaintFieldsFor,
   type FabricPalette,
+  SEMANTIC_KEYS,
+  settingsFieldsFor,
 } from "@vigilia/renderer-core";
 
 export interface ChartPropertyPanel {

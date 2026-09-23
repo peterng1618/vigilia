@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { StaticCanvas } from "fabric/es";
+
+import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
 import {
   reviveThemeEnvelope,
   serialiseThemeEnvelope,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 
 describe("the new Fabric document", () => {

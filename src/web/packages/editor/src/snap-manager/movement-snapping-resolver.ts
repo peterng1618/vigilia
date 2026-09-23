@@ -5,13 +5,6 @@ import {
   SPACING_SNAP_HOLD_MARGIN,
 } from "./constants.js";
 import {
-  calculateHorizontalSpacing,
-  calculateVerticalSpacing,
-  type ResolvedSpacingSelection,
-  type SpacingSelectionContext,
-  type SpacingSelectionIdentity,
-} from "./spacing.js";
-import {
   type MovementBoundsAnchor,
   type MovementSceneAxis,
   type MovementSnapCandidate,
@@ -19,18 +12,6 @@ import {
   type MovementSnapEnvironment,
   type MovementSnapSpacingSource,
 } from "./movement-snap-candidates.js";
-import type {
-  Bounds,
-  GuideLine,
-  SpacingGuide,
-  SpacingPattern,
-} from "./types.js";
-import { buildSpacingPatterns } from "./spacing-patterns.js";
-import {
-  ACTIVE_MOVEMENT_SPACING_SOURCE_ID,
-  createMovementSpacingChains,
-  type MovementSpacingChains,
-} from "./spacing-chains.js";
 import {
   MOVEMENT_CORRECTION_COMPARISON_EPSILON,
   resolveMovementSpacingCorrection,
@@ -39,6 +20,25 @@ import {
   appendVerifiedMovementSpacingGuides,
   resolveApplicableMovementSpacingSelections,
 } from "./movement-spacing-verification.js";
+import {
+  calculateHorizontalSpacing,
+  calculateVerticalSpacing,
+  type ResolvedSpacingSelection,
+  type SpacingSelectionContext,
+  type SpacingSelectionIdentity,
+} from "./spacing.js";
+import {
+  ACTIVE_MOVEMENT_SPACING_SOURCE_ID,
+  createMovementSpacingChains,
+  type MovementSpacingChains,
+} from "./spacing-chains.js";
+import { buildSpacingPatterns } from "./spacing-patterns.js";
+import type {
+  Bounds,
+  GuideLine,
+  SpacingGuide,
+  SpacingPattern,
+} from "./types.js";
 
 /** The dragged object's Fabric origin position. */
 export type MovementTargetPosition = Readonly<{

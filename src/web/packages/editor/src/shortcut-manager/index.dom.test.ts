@@ -75,10 +75,18 @@ describe("ShortcutManager", () => {
     manager.register("edit.redo", redo);
 
     window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, cancelable: true }),
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        cancelable: true,
+      }),
     );
     window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "y", ctrlKey: true, cancelable: true }),
+      new KeyboardEvent("keydown", {
+        key: "y",
+        ctrlKey: true,
+        cancelable: true,
+      }),
     );
 
     expect(undo).toHaveBeenCalledOnce();

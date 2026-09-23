@@ -1,18 +1,18 @@
 import {
+  type ChartContent,
+  type ChartFamily,
   defaultBarSettings,
   defaultGaugeSettings,
   defaultLineSettings,
   defaultPieSettings,
-  type ChartContent,
-  type ChartFamily,
   type FabricGlobals,
   type TypePreset,
 } from "@vigilia/renderer-core";
 import {
+  type FabricPaintRefs,
   fabricArtboardPaint,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
-  type FabricPaintRefs,
 } from "@vigilia/scene-fabric";
 
 /** Semantic defaults for a new object; generic construction remains editor-owned. */

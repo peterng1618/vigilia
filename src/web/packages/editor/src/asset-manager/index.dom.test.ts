@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
-import { Canvas, FabricImage, type StaticCanvas } from "fabric/es";
-import { AssetManager } from "./index.js";
+
 import { setObjectAssetReference } from "@vigilia/scene-fabric";
+import { Canvas, FabricImage, type StaticCanvas } from "fabric/es";
+import { describe, expect, it, vi } from "vitest";
 import { fontTrio } from "../font-catalog.js";
+import { AssetManager } from "./index.js";
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
 
@@ -180,7 +181,11 @@ describe("AssetManager", () => {
 
     const manager = new AssetManager();
     manager.load(
-      { assets: [{ id: "big", kind: "image", path: "assets/big.png", sha256: "x" }] },
+      {
+        assets: [
+          { id: "big", kind: "image", path: "assets/big.png", sha256: "x" },
+        ],
+      },
       { "assets/big.png": new Uint8Array([1]) },
     );
     vi.spyOn(FabricImage, "fromURL").mockResolvedValue(

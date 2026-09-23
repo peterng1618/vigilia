@@ -64,8 +64,20 @@ describe("GroupingManager", () => {
     // Fabric 7 defaults originX/originY to "center", so a member's `left` IS its
     // world centre; the round trip must restore both exactly.
     const { canvas, grouping } = setup();
-    const first = new Rect({ id: "a", left: 10, top: 20, width: 10, height: 10 });
-    const second = new Rect({ id: "b", left: 60, top: 80, width: 10, height: 10 });
+    const first = new Rect({
+      id: "a",
+      left: 10,
+      top: 20,
+      width: 10,
+      height: 10,
+    });
+    const second = new Rect({
+      id: "b",
+      left: 60,
+      top: 80,
+      width: 10,
+      height: 10,
+    });
     canvas.add(first, second);
     canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
 
@@ -74,10 +86,9 @@ describe("GroupingManager", () => {
       .getObjects()
       .find((object) => object instanceof Group) as Group | undefined;
     const centres = new Map(
-      grouped?.getObjects().map((object) => [
-        object.get("id"),
-        object.getCenterPoint(),
-      ]),
+      grouped
+        ?.getObjects()
+        .map((object) => [object.get("id"), object.getCenterPoint()]),
     );
     grouping.ungroup();
 

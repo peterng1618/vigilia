@@ -1,8 +1,8 @@
 import {
-  MAX_ARTBOARD_DIMENSION,
   type Artboard,
   type AssetReference,
   type Globals,
+  MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
 

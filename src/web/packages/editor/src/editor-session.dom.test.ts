@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createLayerPanel = vi.hoisted(() => vi.fn());
 const destroyLayerPanel = vi.hoisted(() => vi.fn());

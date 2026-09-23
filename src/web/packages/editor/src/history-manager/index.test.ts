@@ -10,7 +10,11 @@ describe("EditorHistory", () => {
     ];
     const serialize = vi.fn(() => scenes.shift()!);
     const revive = vi.fn(async () => {});
-    const history = new EditorHistory({ canvas: canvas as never, serialize, revive });
+    const history = new EditorHistory({
+      canvas: canvas as never,
+      serialize,
+      revive,
+    });
 
     history.reset();
     history.save();

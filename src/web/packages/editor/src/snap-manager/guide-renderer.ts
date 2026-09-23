@@ -2,9 +2,9 @@
 import type { Canvas } from "fabric/es";
 
 import { GUIDE_COLOR, GUIDE_WIDTH } from "./constants.js";
-import type { GuideBounds, GuideLine, SpacingGuide } from "./types.js";
-import { drawGuideLabel } from "./guide-painting.js";
 import { resolveDisplayDistance } from "./distance.js";
+import { drawGuideLabel } from "./guide-painting.js";
+import type { GuideBounds, GuideLine, SpacingGuide } from "./types.js";
 
 /**
  * Paints verified line and spacing guides into the canvas upper context.

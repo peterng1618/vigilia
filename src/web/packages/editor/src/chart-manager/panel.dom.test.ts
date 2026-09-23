@@ -5,7 +5,12 @@ import { createChartPropertyPanel } from "./panel.js";
 describe("chart property panel", () => {
   it("offers line aspect presets and visible history", () => {
     const resize = vi.fn();
-    const panel = createChartPropertyPanel(document.body, vi.fn(), vi.fn(), resize);
+    const panel = createChartPropertyPanel(
+      document.body,
+      vi.fn(),
+      vi.fn(),
+      resize,
+    );
     panel.render({
       id: "trend",
       content: {

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+
 import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
+import { describe, expect, it, vi } from "vitest";
 import { createNewObjectPanel } from "./new-object-panel.js";
 
 describe("new object panel", () => {

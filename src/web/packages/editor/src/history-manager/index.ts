@@ -1,5 +1,5 @@
-import type { StaticCanvas } from "fabric/es";
 import type { SerialisedScene } from "@vigilia/scene-fabric";
+import type { StaticCanvas } from "fabric/es";
 
 type HistoryCanvas = StaticCanvas;
 
@@ -18,7 +18,10 @@ export class EditorHistory {
   constructor(options: {
     readonly canvas: HistoryCanvas;
     readonly serialize: (canvas: HistoryCanvas) => SerialisedScene;
-    readonly revive: (canvas: HistoryCanvas, scene: SerialisedScene) => Promise<void>;
+    readonly revive: (
+      canvas: HistoryCanvas,
+      scene: SerialisedScene,
+    ) => Promise<void>;
   }) {
     this.#canvas = options.canvas;
     this.#serialize = options.serialize;
@@ -76,6 +79,9 @@ export class EditorHistory {
   }
 }
 
-function sameScene(left: SerialisedScene, right: SerialisedScene | undefined): boolean {
+function sameScene(
+  left: SerialisedScene,
+  right: SerialisedScene | undefined,
+): boolean {
   return right !== undefined && JSON.stringify(left) === JSON.stringify(right);
 }

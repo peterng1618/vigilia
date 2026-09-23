@@ -1,4 +1,4 @@
-import { ActiveSelection, Group, type FabricObject } from "fabric/es";
+import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 
 const OFFSET_TOP = 50;

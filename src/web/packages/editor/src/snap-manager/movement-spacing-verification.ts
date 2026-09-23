@@ -1,4 +1,8 @@
-import type { Bounds, SpacingGuide } from "./types.js";
+import type {
+  MovementGestureBaseline,
+  MovementSnapPlan,
+  PlannedMovementSpacingConstraint,
+} from "./movement-snapping-resolver.js";
 import {
   createSpacingGuideGeometryKey,
   isSpacingSelectionApplicable,
@@ -9,11 +13,7 @@ import {
   createMovementSpacingChainGuides,
   findMovementSpacingChainById,
 } from "./spacing-chains.js";
-import type {
-  MovementGestureBaseline,
-  MovementSnapPlan,
-  PlannedMovementSpacingConstraint,
-} from "./movement-snapping-resolver.js";
+import type { Bounds, SpacingGuide } from "./types.js";
 
 /** Cross-axis tolerance for a fresh or held snap. */
 function resolveSpacingSelectionTolerance({

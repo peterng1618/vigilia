@@ -7,53 +7,53 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
+import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
+import { ChartManager } from "./chart-manager/index.js";
 import { type EditorShell } from "./editor-shell.js";
-import { createArtboardPanel, type ArtboardPanel } from "./artboard-panel.js";
+import {
+  applyFontTrio,
+  type CuratedFontFace,
+  fontTrio,
+} from "./font-catalog.js";
+import { previewFontFace, releaseFontPreview } from "./font-preview.js";
+import {
+  createIndicatorManager,
+  type IndicatorManager,
+} from "./indicator-manager/index.js";
+import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
+import { LiveRuntime } from "./live-runtime.js";
+import {
+  createNewObjectPanel,
+  type NewObjectPanel,
+} from "./new-object-panel.js";
 import {
   createPalettePanel,
-  reassignPaletteToken,
   type PalettePanel,
+  reassignPaletteToken,
 } from "./palette-manager/index.js";
+import { parseThemePackage, serializeThemePackage } from "./persist.js";
+import {
+  confirmDocumentReplacement,
+  PersistenceManager,
+} from "./persistence-manager/index.js";
+import { ShortcutManager } from "./shortcut-manager/index.js";
+import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
+import {
+  createThemeLibraryClient,
+  type ThemeLibraryClient,
+  type ThemeLibraryEntry,
+} from "./theme-library-client.js";
+import {
+  createSelectionToolbar,
+  type SelectionToolbar,
+} from "./toolbar-manager/index.js";
 import {
   createTypePresetPanel,
   reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
-import {
-  createNewObjectPanel,
-  type NewObjectPanel,
-} from "./new-object-panel.js";
-import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
-import {
-  createSelectionToolbar,
-  type SelectionToolbar,
-} from "./toolbar-manager/index.js";
-import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
-import {
-  createIndicatorManager,
-  type IndicatorManager,
-} from "./indicator-manager/index.js";
-import { ChartManager } from "./chart-manager/index.js";
-import {
-  PersistenceManager,
-  confirmDocumentReplacement,
-} from "./persistence-manager/index.js";
-import { ShortcutManager } from "./shortcut-manager/index.js";
-import { serializeThemePackage, parseThemePackage } from "./persist.js";
-import {
-  createThemeLibraryClient,
-  type ThemeLibraryClient,
-  type ThemeLibraryEntry,
-} from "./theme-library-client.js";
-import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
-import {
-  applyFontTrio,
-  fontTrio,
-  type CuratedFontFace,
-} from "./font-catalog.js";
-import { previewFontFace, releaseFontPreview } from "./font-preview.js";
-import { LiveRuntime } from "./live-runtime.js";
 
 export interface EditorSessionOptions {
   readonly shell: EditorShell;

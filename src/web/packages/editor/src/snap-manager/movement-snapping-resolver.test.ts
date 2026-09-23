@@ -1,16 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import type { MovementSnapCandidateSource } from "./movement-snap-candidates.js";
-import {
-  FREE_MOVEMENT_HOLD_STATE,
-  resolveMovementSnapPlan,
-  verifyMovementSnapPlan,
-} from "./movement-snapping-resolver.js";
 import {
   createFinalMovementGeometry,
   createMovementBaseline,
   createMovementBounds,
   createMovementRawIntent,
 } from "./movement-snapping-core.test-utils.js";
+import {
+  FREE_MOVEMENT_HOLD_STATE,
+  resolveMovementSnapPlan,
+  verifyMovementSnapPlan,
+} from "./movement-snapping-resolver.js";
 
 /** A narrow target with two close vertical guides. */
 const REFERENCE_SOURCE = {

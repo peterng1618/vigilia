@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Canvas, Rect } from "fabric/es";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createIndicatorManager, formatAngle, formatSize } from "./index.js";
 
 function pointer(): MouseEvent {

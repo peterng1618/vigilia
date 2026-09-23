@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
+import { describe, expect, it } from "vitest";
 import {
   createNewChartDefaults,
   createNewPaintDefaults,

@@ -1,5 +1,5 @@
 import type { TypePreset } from "@vigilia/renderer-core";
-import { fontTrios, type CuratedFontFace } from "../font-catalog.js";
+import { type CuratedFontFace, fontTrios } from "../font-catalog.js";
 
 export type TypePresets = Readonly<
   Record<string, { readonly name: string; readonly value: TypePreset }>

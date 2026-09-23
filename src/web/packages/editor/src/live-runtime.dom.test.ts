@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+
+import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 import { Canvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 import { LiveRuntime } from "./live-runtime.js";
 
 describe("LiveRuntime", () => {

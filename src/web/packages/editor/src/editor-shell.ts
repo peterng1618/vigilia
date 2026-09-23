@@ -1,48 +1,48 @@
 import {
-  ActiveSelection,
-  Canvas,
-  classRegistry,
-  type ActiveSelectionOptions,
-  type FabricObject,
-} from "fabric/es";
-import { EditorHistory } from "./history-manager/index.js";
-import type { EditorInteraction } from "./editor-interaction.js";
-import { createTextManager } from "./text-manager/index.js";
-import { createImageManager } from "./image-manager/index.js";
-import { createLayerManager } from "./layer-manager/index.js";
-import { createObjectLockManager } from "./object-lock-manager/index.js";
-import { createErrorManager } from "./error-manager/index.js";
-import { createCropManager } from "./crop-manager/index.js";
-import { createDeletionManager } from "./deletion-manager/index.js";
-import { createClipboardManager } from "./clipboard-manager/index.js";
-import { createGroupingManager } from "./grouping-manager/index.js";
-import { applyEditorControls } from "./controls-manager/index.js";
-import {
-  resolveStyleValue,
-  validateFabricThemeEnvelope,
   type Artboard,
   type AssetReference,
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   type FitMode,
   type Globals,
+  resolveStyleValue,
   type ScenePlan,
+  validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
-  createSceneAdapter,
-  disposeScene,
-  reviveScene,
-  reviveThemeEnvelope,
-  serialiseThemeEnvelope,
-  serialiseScene,
-  cssArtboardPaint,
-  fabricArtboardPaint,
   applyObjectPalettePaints,
   applyObjectTypePresets,
-  mountBackgroundMedia,
   type BackgroundMediaSource,
+  createSceneAdapter,
+  cssArtboardPaint,
+  disposeScene,
+  fabricArtboardPaint,
+  mountBackgroundMedia,
+  reviveScene,
+  reviveThemeEnvelope,
   type SceneAdapter,
+  serialiseScene,
+  serialiseThemeEnvelope,
 } from "@vigilia/scene-fabric";
+import {
+  ActiveSelection,
+  type ActiveSelectionOptions,
+  Canvas,
+  classRegistry,
+  type FabricObject,
+} from "fabric/es";
+import { createClipboardManager } from "./clipboard-manager/index.js";
+import { applyEditorControls } from "./controls-manager/index.js";
+import { createCropManager } from "./crop-manager/index.js";
+import { createDeletionManager } from "./deletion-manager/index.js";
+import type { EditorInteraction } from "./editor-interaction.js";
+import { createErrorManager } from "./error-manager/index.js";
+import { createGroupingManager } from "./grouping-manager/index.js";
+import { EditorHistory } from "./history-manager/index.js";
+import { createImageManager } from "./image-manager/index.js";
+import { createLayerManager } from "./layer-manager/index.js";
+import { createObjectLockManager } from "./object-lock-manager/index.js";
+import { createTextManager } from "./text-manager/index.js";
 
 export interface EditorShellOptions {
   readonly host: HTMLElement;
@@ -156,11 +156,17 @@ function applyArtboardPaint(
   editor.canvas.requestRenderAll();
 }
 
-function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorInteraction {
+function createNativeEditor(
+  container: HTMLElement,
+  artboard: Artboard,
+): EditorInteraction {
   applyEditorControls();
   const element = document.createElement("canvas");
   container.append(element);
-  const canvas = new Canvas(element, { width: artboard.width, height: artboard.height });
+  const canvas = new Canvas(element, {
+    width: artboard.width,
+    height: artboard.height,
+  });
   const history = new EditorHistory({
     canvas,
     serialize: serialiseScene,
@@ -247,12 +253,9 @@ export async function mountEditorShell({
   let currentArtboard = artboard;
   let globals: Globals | undefined = envelope?.globals;
   let fitMode: FitMode = currentArtboard.fitMode ?? "contain";
-  const initialScale = fitArtboardViewport(
-    container,
-    host,
-    currentArtboard,
-    fitMode,
-  );
+  // The returned scale is irrelevant here; sizing the container is the point,
+  // and the editor is fitted explicitly once mounted below.
+  fitArtboardViewport(container, host, currentArtboard, fitMode);
   host.append(container);
   let mounted: EditorInteraction | undefined;
   const resize =

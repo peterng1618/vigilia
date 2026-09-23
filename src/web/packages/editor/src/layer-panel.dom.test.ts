@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import {
   ActiveSelection,
+  type FabricObject,
   Group,
   Rect,
   Textbox,
-  type FabricObject,
 } from "fabric/es";
-import type { EditorInteraction } from "./editor-interaction.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { createLayerPanel } from "./layer-panel.js";
 
 describe("semantic layer panel", () => {

@@ -1,4 +1,4 @@
-import { FabricImage, Rect, type Canvas, type FabricObject } from "fabric/es";
+import { type Canvas, FabricImage, type FabricObject, Rect } from "fabric/es";
 import type { ErrorManager } from "../error-manager/index.js";
 
 export interface CropRect {

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { createDemoSource } from "@vigilia/fake-source";
-import type { EditorInteraction } from "../editor-interaction.js";
-import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
-import { describe, expect, it, vi } from "vitest";
 import { defaultGaugeSettings } from "@vigilia/renderer-core";
+import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
+import { describe, expect, it, vi } from "vitest";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { ChartManager } from "./index.js";
 
 describe("ChartManager", () => {
@@ -99,7 +99,10 @@ describe("ChartManager", () => {
       globals: {
         palette: {
           track: { name: "Track", value: { kind: "solid", color: "#223344" } },
-          accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+          accent: {
+            name: "Accent",
+            value: { kind: "solid", color: "#00b8d9" },
+          },
         },
       },
       panelHost: document.body,

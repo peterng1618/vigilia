@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createTypePresetPanel } from "./panel.js";
 import { fontTrio } from "../font-catalog.js";
+import { createTypePresetPanel } from "./panel.js";
 
 describe("type preset panel", () => {
   it("edits a global type token", () => {

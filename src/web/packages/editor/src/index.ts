@@ -1,6 +1,6 @@
 /** Public boundary for the Vigilia editor. */
 export {
-  mountEditorShell,
   type EditorShell,
   type EditorShellOptions,
+  mountEditorShell,
 } from "./editor-shell.js";

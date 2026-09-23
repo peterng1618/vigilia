@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { readThemePackage } from "@vigilia/theme-package";
+import { describe, expect, it } from "vitest";
 import { PersistenceManager } from "./index.js";
 
 const baseline = {

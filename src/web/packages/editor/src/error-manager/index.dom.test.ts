@@ -7,9 +7,12 @@ describe("ErrorManager", () => {
   it("emits a structured editor:error event and logs it", () => {
     const canvas = new Canvas(document.createElement("canvas"));
     const seen: EditorDiagnostic[] = [];
-    canvas.on("editor:error" as never, ((diagnostic: EditorDiagnostic) => {
-      seen.push(diagnostic);
-    }) as never);
+    canvas.on(
+      "editor:error" as never,
+      ((diagnostic: EditorDiagnostic) => {
+        seen.push(diagnostic);
+      }) as never,
+    );
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const manager = createErrorManager(canvas);
 
@@ -17,7 +20,11 @@ describe("ErrorManager", () => {
     manager.error("clipboard", "Could not read the clipboard.", cause);
 
     expect(seen).toEqual([
-      { category: "clipboard", message: "Could not read the clipboard.", cause },
+      {
+        category: "clipboard",
+        message: "Could not read the clipboard.",
+        cause,
+      },
     ]);
     expect(logged).toHaveBeenCalledOnce();
     logged.mockRestore();
@@ -26,9 +33,12 @@ describe("ErrorManager", () => {
   it("emits editor:warning without a cause and omits the key entirely", () => {
     const canvas = new Canvas(document.createElement("canvas"));
     const seen: EditorDiagnostic[] = [];
-    canvas.on("editor:warning" as never, ((diagnostic: EditorDiagnostic) => {
-      seen.push(diagnostic);
-    }) as never);
+    canvas.on(
+      "editor:warning" as never,
+      ((diagnostic: EditorDiagnostic) => {
+        seen.push(diagnostic);
+      }) as never,
+    );
     const logged = vi.spyOn(console, "warn").mockImplementation(() => {});
     const manager = createErrorManager(canvas);
 

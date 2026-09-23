@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { Canvas, FabricImage } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { boundedImportSize, boundedImageElement, createImageManager } from "./index.js";
+import {
+  boundedImageElement,
+  boundedImportSize,
+  createImageManager,
+} from "./index.js";
 
 // Fabric's async RAF render of the added image can land after a test ends and
 // restoreMocks has restored jsdom's real context, which cannot drawImage an
@@ -43,10 +47,7 @@ function interceptDecode(): { readonly urls: string[] } {
   return { urls };
 }
 
-function decodedImage(
-  width: number,
-  height: number,
-): HTMLImageElement {
+function decodedImage(width: number, height: number): HTMLImageElement {
   const element = document.createElement("img");
   Object.defineProperty(element, "naturalWidth", { value: width });
   Object.defineProperty(element, "naturalHeight", { value: height });
@@ -62,7 +63,6 @@ describe("ImageManager", () => {
       .spyOn(URL, "createObjectURL")
       .mockReturnValue("blob:image");
     const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL");
-    const element = decodedImage(200, 100);
     vi.spyOn(HTMLImageElement.prototype, "src", "set").mockImplementation(
       function (this: HTMLImageElement, value: string) {
         Object.defineProperty(this, "naturalWidth", { value: 200 });
@@ -114,12 +114,21 @@ describe("ImageManager", () => {
 
 describe("boundedImportSize", () => {
   it("leaves an image within the bound untouched", () => {
-    expect(boundedImportSize(1920, 1080)).toEqual({ width: 1920, height: 1080 });
+    expect(boundedImportSize(1920, 1080)).toEqual({
+      width: 1920,
+      height: 1080,
+    });
   });
 
   it("scales the longest edge down to the bound and preserves aspect", () => {
-    expect(boundedImportSize(8192, 4096)).toEqual({ width: 4096, height: 2048 });
-    expect(boundedImportSize(4096, 8192)).toEqual({ width: 2048, height: 4096 });
+    expect(boundedImportSize(8192, 4096)).toEqual({
+      width: 4096,
+      height: 2048,
+    });
+    expect(boundedImportSize(4096, 8192)).toEqual({
+      width: 2048,
+      height: 4096,
+    });
   });
 
   it("never rounds a bounded edge below one pixel", () => {
@@ -145,7 +154,9 @@ describe("boundedImageElement", () => {
     const context = {
       drawImage: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      context,
+    );
     const source = decodedImage(8192, 4096);
 
     const bounded = boundedImageElement(source);
@@ -153,13 +164,7 @@ describe("boundedImageElement", () => {
     expect(bounded).not.toBe(source);
     expect((bounded as HTMLCanvasElement).width).toBe(4096);
     expect((bounded as HTMLCanvasElement).height).toBe(2048);
-    expect(context.drawImage).toHaveBeenCalledWith(
-      source,
-      0,
-      0,
-      4096,
-      2048,
-    );
+    expect(context.drawImage).toHaveBeenCalledWith(source, 0, 0, 4096, 2048);
   });
 
   it("returns the source unchanged when it already fits", () => {

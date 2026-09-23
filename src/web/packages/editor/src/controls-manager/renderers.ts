@@ -1,4 +1,4 @@
-import { util, type Control } from "fabric/es";
+import { type Control, util } from "fabric/es";
 
 /** Editor chrome, deliberately not theme palette: handles are not document paint. */
 const STROKE = "#3D8BF4";

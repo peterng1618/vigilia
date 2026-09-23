@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { FabricImage } from "fabric/es";
-import { mountEditorShell } from "./editor-shell.js";
+
 import { serialiseScene } from "@vigilia/scene-fabric";
+import { FabricImage } from "fabric/es";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mountEditorShell } from "./editor-shell.js";
 
 // jsdom cannot drawImage an undecoded img inside Fabric's render pass; a proxy
 // over a real context forwards everything, no-ops only drawImage, and swallows
@@ -57,8 +58,9 @@ describe("native editor shell", () => {
       host,
       artboard: { width: 100, height: 100 },
     });
-    const entry = Object.entries(window as unknown as Record<string, unknown>)
-      .find(([key]) => key.startsWith("vigilia-fabric-editor-"));
+    const entry = Object.entries(
+      window as unknown as Record<string, unknown>,
+    ).find(([key]) => key.startsWith("vigilia-fabric-editor-"));
 
     expect(entry?.[1]).toBe(shell.editor);
 

@@ -64,9 +64,7 @@ describe("mountFabricScene updateArtboard", () => {
         backgroundMedia: { assetId: "b", fit: "cover" },
       }),
     ).not.toThrow();
-    expect(
-      element.querySelector("[data-vigilia-background-media]"),
-    ).toBeNull();
+    expect(element.querySelector("[data-vigilia-background-media]")).toBeNull();
 
     scene.dispose();
     element.remove();

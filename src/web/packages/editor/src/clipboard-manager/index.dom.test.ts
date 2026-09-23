@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { ActiveSelection, Canvas, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createErrorManager } from "../error-manager/index.js";
 import { createDeletionManager } from "../deletion-manager/index.js";
+import { createErrorManager } from "../error-manager/index.js";
 import { createClipboardManager } from "./index.js";
 
 function setup() {
@@ -29,7 +29,13 @@ beforeEach(() => {
 describe("ClipboardManager", () => {
   it("pastes a clone offset by ten on both axes with a fresh id", async () => {
     const { canvas, clipboard } = setup();
-    const object = new Rect({ id: "shape", left: 20, top: 30, width: 10, height: 10 });
+    const object = new Rect({
+      id: "shape",
+      left: 20,
+      top: 30,
+      width: 10,
+      height: 10,
+    });
     canvas.add(object);
     canvas.setActiveObject(object);
 
@@ -47,7 +53,13 @@ describe("ClipboardManager", () => {
 
   it("duplicates in one action without touching the clipboard", async () => {
     const { canvas, clipboard } = setup();
-    const object = new Rect({ id: "shape", left: 0, top: 0, width: 10, height: 10 });
+    const object = new Rect({
+      id: "shape",
+      left: 0,
+      top: 0,
+      width: 10,
+      height: 10,
+    });
     canvas.add(object);
     canvas.setActiveObject(object);
 
@@ -125,7 +137,7 @@ describe("ClipboardManager", () => {
     await vi.waitFor(() => expect(importImage).toHaveBeenCalledOnce());
 
     expect(importImage).toHaveBeenCalledWith({ source: file });
-    canvas.dispose();
+    await canvas.dispose();
   });
 
   it("stops listening for paste after destroy", async () => {

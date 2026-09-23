@@ -4,9 +4,9 @@ import {
 } from "@vigilia/renderer-core";
 import {
   assertFabricThemeEnvelopeCompatible,
+  type ChartRefreshRate,
   loadFontAssets,
   startChartRefresh,
-  type ChartRefreshRate,
 } from "@vigilia/scene-fabric";
 import { EditorSession } from "./editor-session.js";
 import { mountEditorShell } from "./editor-shell.js";

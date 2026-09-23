@@ -1,4 +1,4 @@
-import { FabricImage, type Canvas, type FabricObject } from "fabric/es";
+import { type Canvas, FabricImage, type FabricObject } from "fabric/es";
 
 /**
  * Decoded-pixel ceiling for imported and rehydrated images. Unrelated to

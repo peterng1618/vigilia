@@ -1,14 +1,16 @@
-import { FabricImage, Group, type StaticCanvas } from "fabric/es";
 import type {
   AssetReference,
   FabricThemeEnvelope,
   FontAssetReference,
 } from "@vigilia/renderer-core";
-import { objectAssetReference } from "@vigilia/scene-fabric";
-import { setObjectAssetReference } from "@vigilia/scene-fabric";
-import { boundedImageElement } from "../image-manager/index.js";
+import {
+  objectAssetReference,
+  setObjectAssetReference,
+} from "@vigilia/scene-fabric";
+import { FabricImage, Group, type StaticCanvas } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
+import { boundedImageElement } from "../image-manager/index.js";
 
 const TYPES = {
   png: { mime: "image/png", kind: "image" },

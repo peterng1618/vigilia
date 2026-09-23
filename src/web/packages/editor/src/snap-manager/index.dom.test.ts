@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { Canvas, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
-import { createErrorManager } from "../error-manager/index.js";
 import { createSnapManager } from "./index.js";
 
 function setup() {

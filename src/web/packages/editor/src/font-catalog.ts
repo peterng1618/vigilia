@@ -121,4 +121,5 @@ function face(
     license: FONTSOURCE_LICENSE,
   };
 }
+
 import type { TypePreset } from "@vigilia/renderer-core";

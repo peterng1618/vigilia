@@ -1,8 +1,8 @@
 import {
   ActiveSelection,
-  Group,
   type Canvas,
   type FabricObject,
+  Group,
 } from "fabric/es";
 
 export interface GroupingManager {

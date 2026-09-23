@@ -1,15 +1,15 @@
 import {
-  buildChartPlan,
-  reassignChartPaintReferences,
   type Binding,
-  type ChartFamily,
+  buildChartPlan,
   type ChartContent,
+  type ChartFamily,
   type FabricGlobals,
+  reassignChartPaintReferences,
   type SampleSource,
 } from "@vigilia/renderer-core";
-import type { EditorInteraction } from "../editor-interaction.js";
+import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import { Group } from "fabric/es";
-import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { createNewChartDefaults } from "../new-object-defaults.js";
 import { createChartPropertyPanel } from "./panel.js";
 

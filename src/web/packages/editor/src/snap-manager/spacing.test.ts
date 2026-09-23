@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { calculateHorizontalSpacing } from "./spacing.js";
-import type { Bounds } from "./types.js";
+import { expect, it } from "vitest";
 import { resolveDisplayDistance } from "./distance.js";
 import { createMovementBounds } from "./movement-snapping-core.test-utils.js";
+import { calculateHorizontalSpacing } from "./spacing.js";
+import type { Bounds } from "./types.js";
 
 /** Custom-template geometry while dragging the middle shape. */
 const TEMPLATE_CENTERED_SPACING_CASES = [

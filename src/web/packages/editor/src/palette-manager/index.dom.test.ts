@@ -21,7 +21,13 @@ describe("reassignPaletteToken", () => {
       new: { name: "New", value: { kind: "solid", color: "#fff" } as const },
     };
 
-    const result = reassignPaletteToken(canvas, artboard, palette, "old", "new");
+    const result = reassignPaletteToken(
+      canvas,
+      artboard,
+      palette,
+      "old",
+      "new",
+    );
 
     expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.new" });
     expect(result.artboard.background).toEqual({ ref: "palette.new" });
@@ -42,7 +48,13 @@ describe("reassignPaletteToken", () => {
       new: { name: "New", value: { kind: "solid", color: "#fff" } as const },
     };
 
-    const result = reassignPaletteToken(canvas, artboard, palette, "old", "new");
+    const result = reassignPaletteToken(
+      canvas,
+      artboard,
+      palette,
+      "old",
+      "new",
+    );
 
     expect(result.artboard.barColor).toEqual({ ref: "palette.other" });
   });

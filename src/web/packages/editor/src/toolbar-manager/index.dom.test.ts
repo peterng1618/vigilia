@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
-import { createSelectionToolbar } from "./index.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import { createSelectionToolbar } from "./index.js";
 
 function editorFor(canvas: Canvas): EditorInteraction {
   return {
@@ -67,9 +67,9 @@ describe("SelectionToolbar", () => {
     canvas.fire("selection:created", { selected: [object] });
 
     expect(visible(toolbar.root)).toBe(true);
-    const actions = [...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]")].map(
-      (button) => button.getAttribute("data-vigilia-toolbar-action"),
-    );
+    const actions = [
+      ...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]"),
+    ].map((button) => button.getAttribute("data-vigilia-toolbar-action"));
     expect(actions).toEqual([
       "duplicate",
       "lock",
@@ -86,16 +86,21 @@ describe("SelectionToolbar", () => {
 
   it("shows only unlock for a locked object", () => {
     const canvas = new Canvas(document.createElement("canvas"));
-    const object = new Rect({ id: "shape", width: 10, height: 10, locked: true });
+    const object = new Rect({
+      id: "shape",
+      width: 10,
+      height: 10,
+      locked: true,
+    });
     canvas.add(object);
     const toolbar = createSelectionToolbar(editorFor(canvas));
 
     canvas.setActiveObject(object);
     canvas.fire("selection:created", { selected: [object] });
 
-    const actions = [...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]")].map(
-      (button) => button.getAttribute("data-vigilia-toolbar-action"),
-    );
+    const actions = [
+      ...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]"),
+    ].map((button) => button.getAttribute("data-vigilia-toolbar-action"));
     expect(actions).toEqual(["unlock"]);
     toolbar.destroy();
   });
@@ -141,15 +146,20 @@ describe("SelectionToolbar", () => {
     canvas.setActiveObject(first);
     canvas.fire("selection:created", { selected: [first] });
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="group"]')
-        ?.disabled,
+      toolbar.root.querySelector<HTMLButtonElement>(
+        '[data-vigilia-toolbar-action="group"]',
+      )?.disabled,
     ).toBe(true);
 
     canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
-    canvas.fire("selection:updated" as never, { selected: [first, second] } as never);
+    canvas.fire(
+      "selection:updated" as never,
+      { selected: [first, second] } as never,
+    );
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="group"]')
-        ?.disabled,
+      toolbar.root.querySelector<HTMLButtonElement>(
+        '[data-vigilia-toolbar-action="group"]',
+      )?.disabled,
     ).toBe(false);
     toolbar.destroy();
   });
@@ -165,8 +175,9 @@ describe("SelectionToolbar", () => {
     canvas.fire("selection:created", { selected: [group] });
 
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="ungroup"]')
-        ?.disabled,
+      toolbar.root.querySelector<HTMLButtonElement>(
+        '[data-vigilia-toolbar-action="ungroup"]',
+      )?.disabled,
     ).toBe(false);
     toolbar.destroy();
   });
@@ -182,7 +193,9 @@ describe("SelectionToolbar", () => {
 
     const click = (action: string): void => {
       toolbar.root
-        .querySelector<HTMLButtonElement>(`[data-vigilia-toolbar-action="${action}"]`)
+        .querySelector<HTMLButtonElement>(
+          `[data-vigilia-toolbar-action="${action}"]`,
+        )
         ?.click();
     };
     click("duplicate");
@@ -206,7 +219,9 @@ describe("SelectionToolbar", () => {
     toolbar.destroy();
     canvas.setActiveObject(object);
 
-    expect(() => canvas.fire("selection:created", { selected: [object] })).not.toThrow();
+    expect(() =>
+      canvas.fire("selection:created", { selected: [object] }),
+    ).not.toThrow();
     expect(toolbar.root.isConnected).toBe(false);
   });
 });

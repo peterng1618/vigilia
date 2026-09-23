@@ -1,12 +1,12 @@
+import { SCENE_PERSISTED_PROPERTIES } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
-  Group,
   type Canvas,
   type FabricObject,
+  Group,
 } from "fabric/es";
-import { SCENE_PERSISTED_PROPERTIES } from "@vigilia/scene-fabric";
-import type { ErrorManager } from "../error-manager/index.js";
 import type { DeletionManager } from "../deletion-manager/index.js";
+import type { ErrorManager } from "../error-manager/index.js";
 import type { ImageManager } from "../image-manager/index.js";
 
 const PASTE_OFFSET = 10;
@@ -129,7 +129,9 @@ export function createClipboardManager(
       }
     },
 
-    async duplicate(object = canvas.getActiveObject() ?? undefined): Promise<boolean> {
+    async duplicate(
+      object = canvas.getActiveObject() ?? undefined,
+    ): Promise<boolean> {
       if (object === undefined || object.get("locked") === true) return false;
       try {
         return await place(object);

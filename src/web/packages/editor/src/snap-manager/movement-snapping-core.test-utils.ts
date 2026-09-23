@@ -1,3 +1,4 @@
+import type { ObjectBounds } from "./bounds.js";
 import {
   createMovementSnapEnvironment,
   type MovementSnapCandidateSource,
@@ -8,7 +9,6 @@ import {
   type MovementGestureBaseline,
   type MovementRawIntent,
 } from "./movement-snapping-resolver.js";
-import type { ObjectBounds } from "./bounds.js";
 
 /** Builds exact bounds of a translated object, centres derived from the same edges. */
 export function createMovementBounds({
