@@ -3,113 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <title>Vigilia — editor</title>
     <style>
-      :root {
-        --vigilia-canvas-bg: #0c0e13;
-        --vigilia-text: #e8ecf3;
-        --vigilia-panel-bg: #151922;
-        --vigilia-panel-border: #232a36;
-        --vigilia-control-bg: #1d2530;
-        --vigilia-control-border: #2a3242;
-        --vigilia-input-bg: #0f131a;
-        --vigilia-muted: #8a97ab;
-        --vigilia-subdued: #5c6878;
-        --vigilia-selection-bg: #233750;
-        --vigilia-accent: #00b8d9;
-        --vigilia-accent-dim: #00b8d922;
-        --vigilia-guide: #ff5630;
-        --vigilia-scrollbar-thumb: #2a3242;
-        --vigilia-scrollbar-thumb-hover: #3a4458;
-        --vigilia-scrollbar-track: transparent;
-      }
-      *, *::before, *::after {
-        box-sizing: border-box;
-      }
-      /* One scrollbar treatment: thin overlay-safe bar in panel token colors.
-         Every scroll container below sets overflow-x:hidden + scrollbar-gutter
-         so a vertical bar reserves space instead of covering content, and no
-         panel ever grows a horizontal bar. */
-      ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-      }
-      ::-webkit-scrollbar-track {
-        background: var(--vigilia-scrollbar-track);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--vigilia-scrollbar-thumb);
-        border-radius: 5px;
-        border: 2px solid var(--vigilia-panel-bg);
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--vigilia-scrollbar-thumb-hover);
-      }
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track);
-      }
-      html,
-      body {
+      /* Pre-shell paint only: `editor-shell.css` owns every panel/control
+         token once React mounts. These keep the first frame from flashing. */
+      html, body, #app {
         margin: 0;
         height: 100%;
-        background: var(--vigilia-canvas-bg);
-        color: var(--vigilia-text);
+        background: #f5f1e8;
+        color: #14120e;
         font: 13px/1.5 system-ui, sans-serif;
         overflow: hidden;
-      }
-      #app {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-      }
-      /* The editor owns the canvas and its interaction surface. */
-      #work {
-        display: flex;
-        flex: 1;
-        min-height: 0;
-      }
-      #stage {
-        position: relative;
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        /* No text selection while dragging — otherwise a drag across the canvas
-           selects the page's text and the gesture fights the browser. */
-        user-select: none;
-        touch-action: none;
-      }
-      #vigilia-fabric-editor {
-        width: 100%;
-        height: 100%;
-      }
-      #properties { width:260px; overflow:auto; padding:12px; border-left:1px solid var(--vigilia-panel-border); background:var(--vigilia-panel-bg); color:var(--vigilia-muted); }
-      #properties h2 { margin:0 0 12px; color:var(--vigilia-text); font-size:14px; }
-      #properties label { display:block; margin-top:9px; }
-      #properties input, #properties select { width:100%; margin-top:3px; }
-      #status {
-        flex: none;
-        padding: 6px 12px;
-        border-top: 1px solid var(--vigilia-panel-border);
-        background: var(--vigilia-panel-bg);
-        color: var(--vigilia-muted);
-        font-family: ui-monospace, monospace;
-        font-size: 12px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
     </style>
   </head>
   <body>
-    <div id="app">
-      <div id="work">
-        <div id="stage"></div>
-        <aside id="properties"></aside>
-      </div>
-      <div id="status">starting…</div>
-    </div>
+    <div id="app"></div>
     <script type="module" src="/src/editor-main.ts"></script>
   </body>
 </html>

@@ -30,10 +30,19 @@ test.describe("Fabric editor route", () => {
     );
 
     await page.goto(EDITOR);
-    const refresh = page.locator("[data-vigilia-chart-refresh]");
-    await expect(refresh).toHaveValue("30");
-    await refresh.selectOption("1");
-    await expect(refresh).toHaveValue("1");
+    // The View menu owns chart refresh; the panel select is gone.
+    await page.getByRole("button", { name: "View" }).click();
+    await expect(
+      page.getByRole("menuitem", { name: /Chart refresh: 30 FPS/ }).first(),
+    ).toBeVisible();
+    await page
+      .getByRole("menuitem", { name: /Chart refresh: 30 FPS/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "View" }).click();
+    await expect(
+      page.getByRole("menuitem", { name: /Chart refresh: 1 FPS/ }).first(),
+    ).toBeVisible();
   });
 
   test("creates and saves text with derived v2 references", async ({
@@ -1420,7 +1429,7 @@ test.describe("Fabric editor route", () => {
     await page.mouse.up();
   });
 
-  test("captures the selection toolbar over a selected object", async ({
+  test("captures the canvas dock over a selected object", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -1433,14 +1442,18 @@ test.describe("Fabric editor route", () => {
     await expect(canvas).toBeVisible();
     const box = (await canvas.boundingBox())!;
 
-    // Select the "time" label; the floating toolbar renders below the
-    // selection with the unlocked action set.
+    // Select the "time" label; the dock anchors to the canvas bottom and
+    // shows only the actions this selection can run.
     const centre = {
       x: box.x + (180 / 1280) * box.width,
       y: box.y + (220 / 720) * box.height,
     };
     await page.mouse.click(centre.x, centre.y);
-    await expect(page.locator("[data-vigilia-toolbar]")).toBeVisible();
+    const dock = page.locator('[aria-label="Selected object actions"]');
+    await expect(dock).toHaveAttribute("data-visible", "true");
+    await expect(dock.getByRole("button", { name: "Duplicate" })).toBeVisible();
+    // A single object cannot be ungrouped.
+    await expect(dock.getByRole("button", { name: "Ungroup" })).toHaveCount(0);
 
     await captureVisualReview(page, testInfo, "editor-fork-toolbar");
   });
@@ -1458,7 +1471,8 @@ async function savePackage(page: Page): Promise<{
   readonly bytes: Buffer;
 }> {
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Save package" }).click();
+  // The File menu owns Save; the old panel section is gone.
+  await page.locator("[data-vigilia-save-package]").click();
   await expect(page.locator("#status")).toHaveText("Theme package saved");
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];

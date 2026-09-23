@@ -48,22 +48,31 @@ import {
   type ThemeLibraryEntry,
 } from "./theme-library-client.js";
 import {
-  createSelectionToolbar,
-  type SelectionToolbar,
-} from "./toolbar-manager/index.js";
-import {
   createTypePresetPanel,
   reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
 
+export interface EditorPanelHosts {
+  /** Semantic layer tree and arrange controls. */
+  readonly layers: HTMLElement;
+  /** Text and chart creation. */
+  readonly add: HTMLElement;
+  /** Imported asset list and controls. */
+  readonly assets: HTMLElement;
+  /** Document-level panels shown when nothing is selected. */
+  readonly document: HTMLElement;
+  /** Chart settings and bindings, shown for a chart selection. */
+  readonly chart: HTMLElement;
+}
+
 export interface EditorSessionOptions {
   readonly shell: EditorShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
   readonly assets?: Readonly<Record<string, Uint8Array>>;
-  readonly panelHost: HTMLElement;
+  readonly panelHosts: EditorPanelHosts;
   readonly libraryClient?: ThemeLibraryClient;
   readonly onNew: () => Promise<void>;
   readonly onOpen?: () => void;
@@ -86,14 +95,14 @@ export class EditorSession {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #layers: LayerPanel;
-  readonly #toolbar: SelectionToolbar;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
   readonly #assets = new AssetManager();
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
-  readonly #fileSection: HTMLElement;
+  readonly #panelHosts: EditorPanelHosts;
+  readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
   readonly #onBindingsChange: (() => void) | undefined;
@@ -114,60 +123,14 @@ export class EditorSession {
     );
     this.#onBindingsChange = options.onBindingsChange;
 
-    const fileSection = document.createElement("section");
-    fileSection.dataset["vigiliaFileActions"] = "";
-    const fileHeading = document.createElement("h2");
-    fileHeading.textContent = "Package & Library";
-    fileSection.append(fileHeading);
-
-    const openPackageBtn = document.createElement("button");
-    openPackageBtn.type = "button";
-    openPackageBtn.textContent = "Open package";
-    openPackageBtn.addEventListener("click", () => {
-      void this.#open(options);
-    });
-
-    const savePackageBtn = document.createElement("button");
-    savePackageBtn.type = "button";
-    savePackageBtn.textContent = "Save package";
-    savePackageBtn.addEventListener("click", () => {
-      void this.#save(options);
-    });
-
-    const releaseBtn = document.createElement("button");
-    releaseBtn.type = "button";
-    releaseBtn.dataset["vigiliaThemeRelease"] = "";
-    releaseBtn.textContent = "Release package";
-    releaseBtn.addEventListener("click", () => {
-      void this.#release(options);
-    });
-
-    const openLibraryBtn = document.createElement("button");
-    openLibraryBtn.type = "button";
-    openLibraryBtn.textContent = "Open library";
-    openLibraryBtn.addEventListener("click", () => {
-      void this.#openLibrary(options);
-    });
-
-    const saveLibraryBtn = document.createElement("button");
-    saveLibraryBtn.type = "button";
-    saveLibraryBtn.textContent = "Save to library";
-    saveLibraryBtn.addEventListener("click", () => {
-      void this.#saveLibrary(options);
-    });
-
-    fileSection.append(
-      openPackageBtn,
-      savePackageBtn,
-      releaseBtn,
-      openLibraryBtn,
-      saveLibraryBtn,
+    // The File menu dispatches these through `actionFacade`; the section that
+    // used to hold the buttons is gone.
+    this.#options = options;
+    this.#panelHosts = options.panelHosts;
+    this.#layers = createLayerPanel(
+      options.panelHosts.layers,
+      options.shell.editor,
     );
-    options.panelHost.prepend(fileSection);
-    this.#fileSection = fileSection;
-
-    this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
-    this.#toolbar = createSelectionToolbar(options.shell.editor);
     this.#snapping = createSnapManager({
       canvas: options.shell.editor.canvas,
       bounds: () => {
@@ -187,7 +150,7 @@ export class EditorSession {
       canvas: options.shell.editor.canvas,
     });
     this.#artboard = createArtboardPanel(
-      options.panelHost,
+      options.panelHosts.document,
       this.#envelope.globals,
       (artboard) => this.#setArtboard(options.shell, artboard),
       {
@@ -197,13 +160,13 @@ export class EditorSession {
     );
     this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);
     this.#palette = createPalettePanel(
-      options.panelHost,
+      options.panelHosts.document,
       (palette) => this.#setPalette(options.shell, palette),
       (id, replacement) => this.#deletePalette(options.shell, id, replacement),
     );
     this.#palette.render(this.#envelope.globals?.palette);
     this.#types = createTypePresetPanel(
-      options.panelHost,
+      options.panelHosts.document,
       (presets) => this.#setTypes(options.shell, presets),
       (id, replacement) => this.#deleteType(options.shell, id, replacement),
       {
@@ -233,11 +196,11 @@ export class EditorSession {
       ...(options.envelope.globals === undefined
         ? {}
         : { globals: options.envelope.globals }),
-      panelHost: options.panelHost,
+      panelHost: options.panelHosts.chart,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
     this.#newObjects = createNewObjectPanel(
-      options.panelHost,
+      options.panelHosts.add,
       options.shell.editor,
       this.#envelope.globals,
       { addChart: (family) => this.charts.addChart(family) },
@@ -253,7 +216,7 @@ export class EditorSession {
         : { globals: options.envelope.globals }),
     });
     this.#assetPanel = createAssetPanel(
-      options.panelHost,
+      options.panelHosts.assets,
       this.#assets,
       options.shell.editor,
       () => {
@@ -308,7 +271,8 @@ export class EditorSession {
 
   /** Reachability only: the shell menus dispatch through the existing owners,
    * including the private document actions the panel section used to call. */
-  actionFacade(options: EditorSessionOptions): EditorActionFacade {
+  actionFacade(): EditorActionFacade {
+    const options = this.#options;
     const editor = options.shell.editor;
     return {
       newDocument: () => this.#new(options),
@@ -404,13 +368,11 @@ export class EditorSession {
     releaseFontPreview();
     this.#assetPanel.remove();
     this.charts.destroy();
-    this.#fileSection.remove();
     this.#artboard.root.remove();
     this.#palette.root.remove();
     this.#types.root.remove();
     this.#newObjects.root.remove();
     this.#layers.destroy();
-    this.#toolbar.destroy();
     this.#snapping.destroy();
     this.#indicators.destroy();
   }

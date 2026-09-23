@@ -9,7 +9,14 @@ import {
   startChartRefresh,
 } from "@vigilia/scene-fabric";
 import { EditorSession } from "./editor-session.js";
+import {
+  createEditorShellBridge,
+  type EditorShellBridge,
+} from "./editor-shell/bridge.js";
+import type { EditorViewControls } from "./editor-shell/session-facade.js";
+import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
+import "./editor-shell/editor-shell.css";
 import { createEditorSource } from "./live-source.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
@@ -20,16 +27,14 @@ type ActiveEditor = {
   readonly shell: Awaited<ReturnType<typeof mountEditorShell>>;
   readonly extensions: EditorSession;
   readonly releaseFonts: () => void;
+  readonly bridge: EditorShellBridge;
   source: EditorSource;
 };
 
 async function start(): Promise<void> {
-  const host = document.querySelector<HTMLElement>("#stage");
-  const panelHost = document.querySelector<HTMLElement>("#properties");
-  const status = document.querySelector<HTMLElement>("#status");
-
-  if (host === null || panelHost === null || status === null) {
-    throw new Error("Editor shell is missing #stage, #properties or #status.");
+  const root = document.querySelector<HTMLElement>("#app");
+  if (root === null) {
+    throw new Error("Editor shell is missing #app.");
   }
 
   const libraryClient = createThemeLibraryClient();
@@ -37,30 +42,28 @@ async function start(): Promise<void> {
   let active: ActiveEditor | undefined;
   let chartRefreshRate: ChartRefreshRate = 30;
 
-  const sourceControl = document.createElement("label");
-  sourceControl.textContent = "Data source";
-  const sourceMode = document.createElement("select");
-  for (const value of ["preview", "live"] as const) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value === "preview" ? "Preview" : "Live";
-    sourceMode.append(option);
-  }
-  sourceControl.append(sourceMode);
-  panelHost.append(sourceControl);
-
-  const refreshControl = document.createElement("label");
-  refreshControl.textContent = "Chart refresh";
-  const refreshRate = document.createElement("select");
-  refreshRate.dataset["vigiliaChartRefresh"] = "";
-  for (const rate of [30, 1] as const) {
-    const option = document.createElement("option");
-    option.value = String(rate);
-    option.textContent = `${rate} FPS`;
-    refreshRate.append(option);
-  }
-  refreshControl.append(refreshRate);
-  panelHost.append(refreshControl);
+  const layout = createShellLayout(root);
+  const host = layout.hosts.canvas;
+  const status = layout.hosts.status;
+  const chartRefresh = startChartRefresh(
+    () => active?.extensions.refresh(),
+    chartRefreshRate,
+  );
+  /** Document actions come from the session once it exists; the View menu's
+   * source/refresh controls are owned here and only dispatch through it. */
+  const viewControls: EditorViewControls = {
+    sourceMode: () => mode,
+    setSourceMode: (next) => {
+      mode = next;
+      replaceSource();
+    },
+    chartRefreshRate: () => chartRefreshRate,
+    setChartRefreshRate: (rate) => {
+      chartRefreshRate = rate;
+      chartRefresh.setRate(rate);
+      active?.extensions.charts.setRefreshRate(rate);
+    },
+  };
 
   const createSource = (envelope: FabricThemeEnvelopeInput): EditorSource =>
     createEditorSource({
@@ -78,11 +81,6 @@ async function start(): Promise<void> {
     active.extensions.setSource(source.source);
     active.source = source;
   };
-
-  sourceMode.addEventListener("change", () => {
-    mode = sourceMode.value === "live" ? "live" : "preview";
-    replaceSource();
-  });
 
   const picker = document.createElement("input");
   picker.type = "file";
@@ -115,12 +113,18 @@ async function start(): Promise<void> {
       releaseFonts();
       throw error;
     }
-    const extensions = new EditorSession({
+    const options = {
       shell,
       source: source.source,
       envelope: next.input,
       ...(next.assets === undefined ? {} : { assets: next.assets }),
-      panelHost,
+      panelHosts: {
+        layers: layout.hosts.layers,
+        add: layout.hosts.add,
+        assets: layout.hosts.assets,
+        document: layout.hosts.document,
+        chart: layout.hosts.chart,
+      },
       libraryClient,
       onBindingsChange: replaceSource,
       onNew: async () => {
@@ -129,23 +133,33 @@ async function start(): Promise<void> {
         status.textContent = "New Fabric theme";
       },
       onOpenPackage: () => picker.click(),
-      onOpenTheme: async (envelope, assets) => {
+      onOpenTheme: async (
+        envelope: FabricThemeEnvelope,
+        assets: Readonly<Record<string, Uint8Array>>,
+      ) => {
         await mount({ input: envelopeInputFor(envelope), envelope, assets });
         status.textContent = `Opened ${envelope.metadata?.name ?? envelope.id}`;
       },
-      onSaved: (msg) => {
+      onSaved: (msg: string | undefined) => {
         status.textContent = msg ?? "Fabric theme saved";
       },
-      onError: (msg) => {
+      onError: (msg: string) => {
         status.textContent = msg;
       },
-    });
+    };
+    const extensions = new EditorSession(options);
     await extensions.hydrateAssets(shell);
+    const bridge = createEditorShellBridge({
+      editor: shell.editor,
+      session: extensions.actionFacade(),
+    });
+    active?.bridge.destroy();
     active?.extensions.destroy();
     active?.shell.destroy();
     active?.source.close();
     active?.releaseFonts();
-    active = { shell, extensions, source, releaseFonts };
+    active = { shell, extensions, source, releaseFonts, bridge };
+    layout.setBridge(bridge, viewControls);
   };
 
   picker.addEventListener("change", () => {
@@ -172,19 +186,9 @@ async function start(): Promise<void> {
     });
   });
 
-  const chartRefresh = startChartRefresh(
-    () => active?.extensions.refresh(),
-    chartRefreshRate,
-  );
-  refreshRate.addEventListener("change", () => {
-    chartRefreshRate = refreshRate.value === "1" ? 1 : 30;
-    chartRefresh.setRate(chartRefreshRate);
-    active?.extensions.charts.setRefreshRate(chartRefreshRate);
-  });
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
   });
-
   const theme = createNewFabricTheme();
   await mount({
     input: envelopeInputFor(theme),

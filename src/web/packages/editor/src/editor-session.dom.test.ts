@@ -79,7 +79,13 @@ describe("EditorSession", () => {
       } as never,
       source: {} as never,
       envelope,
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       onNew: vi.fn(),
       onOpen: vi.fn(),
       onSaved: vi.fn(),
@@ -90,7 +96,7 @@ describe("EditorSession", () => {
     expect(destroyLayerPanel).toHaveBeenCalledTimes(1);
   });
 
-  it("renders package and library buttons and dispatches actions", async () => {
+  it("dispatches package and library actions through the shell façade", async () => {
     const editor = { canvas: { on: vi.fn(), off: vi.fn() } };
     const onOpenPackage = vi.fn();
     const onSaved = vi.fn();
@@ -109,46 +115,33 @@ describe("EditorSession", () => {
       } as never,
       source: {} as never,
       envelope,
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       libraryClient: mockClient,
       onNew: vi.fn(),
       onOpenPackage,
       onSaved,
     });
 
-    const openPackageBtn = Array.from(
-      document.body.querySelectorAll("button"),
-    ).find((b) => b.textContent === "Open package");
-    const savePackageBtn = Array.from(
-      document.body.querySelectorAll("button"),
-    ).find((b) => b.textContent === "Save package");
-    const openLibraryBtn = Array.from(
-      document.body.querySelectorAll("button"),
-    ).find((b) => b.textContent === "Open library");
-    const saveLibraryBtn = Array.from(
-      document.body.querySelectorAll("button"),
-    ).find((b) => b.textContent === "Save to library");
-    const releaseBtn = document.body.querySelector<HTMLButtonElement>(
-      "[data-vigilia-theme-release]",
-    );
+    // The File menu owns these now; the panel section is gone.
+    expect(
+      document.body.querySelector("[data-vigilia-file-actions]"),
+    ).toBeNull();
+    const session = extensions.actionFacade();
 
-    expect(openPackageBtn).toBeDefined();
-    expect(savePackageBtn).toBeDefined();
-    expect(openLibraryBtn).toBeDefined();
-    expect(saveLibraryBtn).toBeDefined();
-    expect(releaseBtn).toBeDefined();
-
-    openPackageBtn?.click();
+    session.openPackage();
     await Promise.resolve();
     expect(onOpenPackage).toHaveBeenCalled();
 
-    savePackageBtn?.click();
-    await Promise.resolve();
-    expect(saveMock).toHaveBeenCalled();
+    await session.savePackage();
+    expect(onSaved).toHaveBeenCalled();
 
-    saveLibraryBtn?.click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await session.saveLibrary();
     expect(mockClient.save).toHaveBeenCalled();
 
     extensions.destroy();
@@ -169,26 +162,25 @@ describe("EditorSession", () => {
       shell: shell as never,
       source: {} as never,
       envelope: { ...envelope, metadata: { version: "1.2.3" } },
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       onNew: vi.fn(),
       onSaved: vi.fn(),
     });
 
-    const save = Array.from(document.body.querySelectorAll("button")).find(
-      (button) => button.textContent === "Save package",
-    )!;
-    save.click();
-    await Promise.resolve();
+    const session = extensions.actionFacade();
+    await session.savePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ metadata: { version: "1.2.3" } }),
       expect.anything(),
     );
 
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-theme-release]")!
-      .click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await session.releasePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ metadata: { version: "1.2.4" } }),
       expect.anything(),
@@ -238,7 +230,13 @@ describe("EditorSession", () => {
           },
         },
       },
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       onNew: vi.fn(),
       onSaved: vi.fn(),
     });
@@ -307,7 +305,13 @@ describe("EditorSession", () => {
           },
         },
       },
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       onNew: vi.fn(),
       onSaved: vi.fn(),
     });
@@ -366,7 +370,13 @@ describe("EditorSession", () => {
           },
         },
       },
-      panelHost: document.body,
+      panelHosts: {
+        layers: document.body,
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+      },
       onNew: vi.fn(),
       onSaved: vi.fn(),
     });
