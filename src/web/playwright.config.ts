@@ -6,7 +6,7 @@ import {
 } from "./tests/e2e/host-theme.js";
 
 // Seed before the host webServer starts; the host reads this directory at boot.
-seedHostTheme();
+await seedHostTheme();
 
 /** Browser-only structural/visual checks; cross-platform font rasterisation makes pixel baselines unsuitable here. */
 export default defineConfig({

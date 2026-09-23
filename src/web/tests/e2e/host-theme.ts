@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeThemePackage } from "@vigilia/theme-package";
@@ -7,6 +7,15 @@ import { writeThemePackage } from "@vigilia/theme-package";
  * load it through the real host — the path `vite preview` cannot exercise. */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+/** The same URL shape `font-catalog.ts` uses, so the fixture declares a real
+ * packaged face. Downloaded bytes are cached under a gitignored directory: a
+ * 24 KB binary does not belong in the repository, and the licence is declared
+ * in the envelope rather than vendored. */
+const FONT_SOURCE_URL =
+  "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.1.1/latin-400-normal.woff2";
+
+const FONT_CACHE_DIR = path.join(here, "..", "..", ".e2e-font-cache");
 
 export const HOST_PORT = 4175;
 export const HOST_THEME_ID = "e2e-hosted";
@@ -46,6 +55,23 @@ const envelope = {
       kind: "svg" as const,
       path: "assets/badge.svg",
       license: { name: "MIT", attribution: "Vigilia test fixture." },
+    },
+    {
+      // Same source the curated catalog uses, so the fixture exercises the real
+      // packaged-font path rather than a hand-made blob.
+      id: "inter-400",
+      kind: "font" as const,
+      path: "assets/inter-400.woff2",
+      family: "Inter",
+      weight: 400,
+      style: "normal" as const,
+      format: "woff2" as const,
+      sourceUrl: FONT_SOURCE_URL,
+      license: {
+        name: "SIL Open Font License 1.1",
+        url: "https://openfontlicense.org/",
+        attribution: "Inter, via Fontsource (cdn.jsdelivr.net).",
+      },
     },
   ],
   scene: {
@@ -98,12 +124,36 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
 </svg>
 `;
 
+/** The same URL shape `font-catalog.ts` uses, so the fixture declares a real
+ * packaged face; bytes are cached, not vendored. */
+async function fontBytes(): Promise<Uint8Array> {
+  const cached = path.join(FONT_CACHE_DIR, "inter-400.woff2");
+  try {
+    return new Uint8Array(readFileSync(cached));
+  } catch {
+    const response = await fetch(FONT_SOURCE_URL);
+    if (!response.ok) {
+      throw new Error(
+        `Could not download the e2e font fixture (${response.status}). ` +
+          "The suite needs network access once to seed it.",
+      );
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    mkdirSync(FONT_CACHE_DIR, { recursive: true });
+    writeFileSync(cached, bytes);
+    return bytes;
+  }
+}
+
 /** Writes the package the host serves. `writeThemePackage` owns validation, so
  * the fixture cannot drift into an envelope the player would reject. */
-export function seedHostTheme(): void {
+export async function seedHostTheme(): Promise<void> {
   const result = writeThemePackage({
     envelope,
-    assets: { "assets/badge.svg": new TextEncoder().encode(badge) },
+    assets: {
+      "assets/badge.svg": new TextEncoder().encode(badge),
+      "assets/inter-400.woff2": await fontBytes(),
+    },
   });
 
   if (!result.ok) {

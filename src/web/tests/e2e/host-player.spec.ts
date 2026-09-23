@@ -87,6 +87,43 @@ test.describe("hosted player over the real host", () => {
     });
   });
 
+  test("loads a packaged font from the host and applies it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_THEME_ID}`);
+
+    // `document.fonts.check()` is NOT evidence here: it reports true for a
+    // generic fallback before any face is registered (verified against this
+    // suite's Chromium, where it returns true with an empty face set). The
+    // registered face is.
+    await page.waitForFunction(
+      () =>
+        [...document.fonts].some((face) => face.family.includes("Inter")),
+      undefined,
+      { timeout: 15_000 },
+    );
+
+    // The face came from the host's declared-asset route, and it is loaded
+    // rather than merely registered.
+    const status = await page.evaluate(() => {
+      const face = [...document.fonts].find((entry) =>
+        entry.family.includes("Inter"),
+      );
+      return face === undefined ? "none" : face.status;
+    });
+    expect(status).toBe("loaded");
+
+    // A failed font fetch would surface through the player's failure path.
+    await expect(page.locator("#vigilia-connection")).not.toContainText(
+      "Could not load",
+    );
+  });
+
   test("renders a hosted theme in the player and streams live samples", async ({
     page,
   }, testInfo) => {
