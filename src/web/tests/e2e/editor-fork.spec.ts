@@ -1356,6 +1356,36 @@ test.describe("Fabric editor route", () => {
     await expect(dialog).toHaveCount(0);
     await expect(page.locator("#status")).toHaveText("Fabric editor ready");
   });
+
+  test("snaps a dragged object to a neighbour and shows a guide", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+
+    // Drag the "SYSTEM STATUS" label (starter scene: left 1074, top 538,
+    // originX left) horizontally until its left edge lands on the status
+    // card's left edge (1018) — a vertical alignment inside the 5-px threshold.
+    const toCanvas = (x: number, y: number) => ({
+      x: box.x + (x / 1280) * box.width,
+      y: box.y + (y / 720) * box.height,
+    });
+    const grab = toCanvas(1104, 546);
+    const drop = toCanvas(1048, 546);
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    await page.mouse.move(drop.x, drop.y, { steps: 12 });
+
+    await captureVisualReview(page, testInfo, "editor-fork-snap-guides");
+    await page.mouse.up();
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
