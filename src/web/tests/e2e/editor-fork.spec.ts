@@ -1419,6 +1419,31 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-fork-rotation-indicator");
     await page.mouse.up();
   });
+
+  test("captures the selection toolbar over a selected object", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+
+    // Select the "time" label; the floating toolbar renders below the
+    // selection with the unlocked action set.
+    const centre = {
+      x: box.x + (180 / 1280) * box.width,
+      y: box.y + (220 / 720) * box.height,
+    };
+    await page.mouse.click(centre.x, centre.y);
+    await expect(page.locator("[data-vigilia-toolbar]")).toBeVisible();
+
+    await captureVisualReview(page, testInfo, "editor-fork-toolbar");
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
