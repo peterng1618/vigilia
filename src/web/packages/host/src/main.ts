@@ -7,6 +7,7 @@ import {
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
+import { DiskSensorProvider } from "./providers/disk.js";
 import { OsSensorProvider } from "./providers/os.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
@@ -42,7 +43,10 @@ export async function run(argv: readonly string[]): Promise<number> {
   } = parsed.options;
 
   // Provider order defines ownership priority; baseline OS sensors come first.
-  const registry = new ProviderRegistry([new OsSensorProvider()]);
+  const registry = new ProviderRegistry([
+    new OsSensorProvider(),
+    new DiskSensorProvider(),
+  ]);
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");

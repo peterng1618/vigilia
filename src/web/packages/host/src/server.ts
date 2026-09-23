@@ -124,6 +124,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const intervalMs = options.sampleIntervalMs ?? DEFAULT_SAMPLE_INTERVAL_MS;
   const now = options.now ?? (() => Date.now());
   const connections = new Set<SseConnection>();
+  /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
+  let lastUnmapped: readonly string[] = [];
 
   const server = http.createServer((request, response) => {
     void handle(request, response);
@@ -292,6 +294,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         polling: unionOfKeys(
           [...connections].map((connection) => connection.semanticKeys),
         ),
+        unmapped: lastUnmapped,
       });
       return;
     }
@@ -387,6 +390,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
     );
     const cycle = await registry.sample(keys, now());
     const payload = JSON.stringify(createBatch(cycle.entries, now()));
+
+    // Requested keys no provider answered. Recorded for `/api/health` so an
+    // unsupported sensor explains itself instead of reading as a silent gap.
+    lastUnmapped = cycle.unmapped;
 
     for (const connection of connections) {
       connection.offer(payload);

@@ -270,6 +270,15 @@ describe("Host theme routes", () => {
     expect(res.status).toBe(403);
   });
 
+  it("reports requested keys no provider answered through /api/health", async () => {
+    const health = await request(hosted.server, "GET", "/api/health");
+    const body = health.json() as { unmapped: readonly string[] };
+
+    // Nothing has polled yet, so nothing is unmapped; the field exists so a
+    // display can tell "no data yet" from "this sensor has no provider".
+    expect(body.unmapped).toEqual([]);
+  });
+
   it("allows display GET reads from LAN addresses", async () => {
     await request(
       hosted.server,
