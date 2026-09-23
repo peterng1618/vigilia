@@ -251,6 +251,15 @@ export class EditorSession {
     this.#shortcuts.register("edit.delete", () => {
       options.shell.editor.deletionManager.deleteActive();
     });
+    this.#shortcuts.register("edit.copy", () => {
+      void options.shell.editor.clipboardManager.copy();
+    });
+    this.#shortcuts.register("edit.cut", () => {
+      void options.shell.editor.clipboardManager.cut();
+    });
+    this.#shortcuts.register("edit.duplicate", () => {
+      void options.shell.editor.clipboardManager.duplicate();
+    });
   }
 
   get envelope(): FabricThemeEnvelopeInput {

@@ -200,7 +200,10 @@ describe("ChartManager", () => {
     listeners.get("editor:history-state-loaded")!();
     expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
 
+    listeners.get("editor:object-pasted")!();
+    expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
+
     manager.destroy();
-    expect(canvas.off).toHaveBeenCalledTimes(5);
+    expect(canvas.off).toHaveBeenCalledTimes(6);
   });
 });

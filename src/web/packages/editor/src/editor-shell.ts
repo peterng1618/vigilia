@@ -14,6 +14,7 @@ import { createObjectLockManager } from "./object-lock-manager/index.js";
 import { createErrorManager } from "./error-manager/index.js";
 import { createCropManager } from "./crop-manager/index.js";
 import { createDeletionManager } from "./deletion-manager/index.js";
+import { createClipboardManager } from "./clipboard-manager/index.js";
 import { applyEditorControls } from "./controls-manager/index.js";
 import {
   resolveStyleValue,
@@ -170,6 +171,8 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
    * explicit actions get; Fabric only reports it after the gesture ends. */
   canvas.on("object:modified", save);
   const errors = createErrorManager(canvas);
+  const deletion = createDeletionManager(canvas, save);
+  const images = createImageManager(canvas, save);
   return {
     canvas,
     historyManager: {
@@ -180,7 +183,7 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
       suspend: () => history.suspend(),
     },
     textManager: createTextManager(canvas, save),
-    imageManager: createImageManager(canvas, save),
+    imageManager: images,
     layerManager: createLayerManager(canvas, save),
     objectLockManager: createObjectLockManager(canvas, save),
     errorManager: errors,
@@ -190,7 +193,14 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
       suspend: () => history.suspend(),
       errors,
     }),
-    deletionManager: createDeletionManager(canvas, save),
+    deletionManager: deletion,
+    clipboardManager: createClipboardManager({
+      canvas,
+      save,
+      errors,
+      deletion,
+      importImage: (input) => images.importImage(input),
+    }),
     destroy: () => canvas.dispose(),
   };
 }
@@ -340,6 +350,7 @@ export async function mountEditorShell({
         media?.destroy();
         scene?.dispose();
         disposeScene(editor.canvas);
+        editor.clipboardManager.destroy();
         editor.destroy();
         delete (window as unknown as Record<string, unknown>)[debugKey];
       },

@@ -89,6 +89,10 @@ export class ChartManager {
       "editor:history-state-loaded" as never,
       this.#hydrateRevivedCharts,
     );
+    this.#editor.canvas.on(
+      "editor:object-pasted" as never,
+      this.#hydrateRevivedCharts,
+    );
     this.#hydrateRevivedCharts();
     this.#drawPanel();
   }
@@ -100,6 +104,10 @@ export class ChartManager {
     this.#editor.canvas.off("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.off(
       "editor:history-state-loaded" as never,
+      this.#hydrateRevivedCharts,
+    );
+    this.#editor.canvas.off(
+      "editor:object-pasted" as never,
       this.#hydrateRevivedCharts,
     );
     this.#panel.root.remove();
