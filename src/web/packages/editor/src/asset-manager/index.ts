@@ -6,6 +6,7 @@ import type {
 } from "@vigilia/renderer-core";
 import { objectAssetReference } from "@vigilia/scene-fabric";
 import { setObjectAssetReference } from "@vigilia/scene-fabric";
+import { boundedImageElement } from "../image-manager/index.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 
@@ -142,7 +143,12 @@ export class AssetManager {
       if (asset === undefined || this.#assets[asset.path] === undefined)
         continue;
       const hydrated = await FabricImage.fromURL(this.#preview(asset));
-      object.setElement(hydrated.getElement());
+      const element = hydrated.getElement();
+      object.setElement(
+        element instanceof HTMLImageElement
+          ? boundedImageElement(element)
+          : element,
+      );
     }
     canvas.requestRenderAll();
   }
