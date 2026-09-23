@@ -4,7 +4,7 @@ import {
   STABLE_ID_PATTERN,
 } from "./document.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
-import { validateThemeDocument, type ValidationIssue } from "./validate.js";
+import { type ValidationIssue, validateThemeDocument } from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;

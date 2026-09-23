@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { emptySampleSource } from "../data/source.js";
+import type { ThemeDocument, ThemeNode } from "../theme/document.js";
 import {
   isGenericFamily,
   parseFontStack,
   requestedFontFamilies,
 } from "./fonts.js";
 import { buildScenePlan } from "./plan.js";
-import { emptySampleSource } from "../data/source.js";
-import type { ThemeDocument, ThemeNode } from "../theme/document.js";
 
 /**
  * Only the pure half is tested here. The metric probe needs a canvas and is

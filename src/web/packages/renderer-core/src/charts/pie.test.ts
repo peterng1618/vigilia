@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Sample, SensorStatus } from "../types.js";
 import {
   buildPieOption,
   computeComposition,
@@ -6,7 +7,6 @@ import {
   type PieSettings,
   type PieSliceInput,
 } from "./pie.js";
-import type { Sample, SensorStatus } from "../types.js";
 
 function sample(value: number, sensorId = "ram.used"): Sample {
   return {

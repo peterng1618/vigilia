@@ -6,10 +6,10 @@ import {
   type LiveSourceStatus,
 } from "./live-source.js";
 import {
-  PROTOCOL_VERSION,
-  SAMPLE_EVENT,
   createBatch,
   formatSseEvent,
+  PROTOCOL_VERSION,
+  SAMPLE_EVENT,
 } from "./protocol.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");

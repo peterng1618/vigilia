@@ -1,21 +1,22 @@
 // @vitest-environment jsdom
-import {
-  Ellipse,
-  Group,
-  Rect,
-  StaticCanvas,
-  type FabricObject,
-} from "fabric/es";
-import { afterEach, describe, expect, it, vi } from "vitest";
+
 import {
   buildLineOption,
   defaultLineSettings,
   type PlanBox,
   type PlanNode,
-  type ScenePlan,
   type Sample,
+  type ScenePlan,
   type TextContent,
 } from "@vigilia/renderer-core";
+import {
+  Ellipse,
+  type FabricObject,
+  Group,
+  Rect,
+  StaticCanvas,
+} from "fabric/es";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSceneAdapter, type SceneAdapter } from "./adapter.js";
 import { VigiliaChart } from "./chart-object.js";
 

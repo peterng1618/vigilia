@@ -1,6 +1,6 @@
-import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { VigiliaChart } from "@vigilia/scene-fabric";
-import { applyArrange, canArrange, type ArrangeAction } from "../arrange.js";
+import { ActiveSelection, type FabricObject, Group } from "fabric/es";
+import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { EditorActionFacade } from "./session-facade.js";
 

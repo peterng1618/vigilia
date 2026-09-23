@@ -1,15 +1,15 @@
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { ChartPaint, Fill, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import {
-  toEngineAnimation,
   type AnimationSettings,
   type EngineAnimation,
+  toEngineAnimation,
 } from "./animation.js";
-import { resolveThresholdColor, toLinearGradient } from "./fill.js";
-import type { EngineColor, LinearGradientColor } from "./fill.js";
-import { cartesianGrid, type CartesianGrid } from "./grid.js";
 import { resolveChartPaint } from "./chart-paint.js";
-import type { FabricPalette } from "../theme/fabric-envelope.js";
+import type { EngineColor, LinearGradientColor } from "./fill.js";
+import { resolveThresholdColor, toLinearGradient } from "./fill.js";
+import { type CartesianGrid, cartesianGrid } from "./grid.js";
 
 // Preserved public exports; implementation moved to fill.ts.
 export type { EngineColor, LinearGradientColor };

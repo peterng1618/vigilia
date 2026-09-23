@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+
 import { type Artboard, type ScenePlan } from "@vigilia/renderer-core";
+import { describe, expect, it } from "vitest";
 import { mountFabricScene } from "./scene.js";
 
 function plan(): ScenePlan {

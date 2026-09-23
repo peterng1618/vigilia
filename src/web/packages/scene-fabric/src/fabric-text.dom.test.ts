@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { Rect, Textbox } from "fabric/es";
-import { describe, expect, it } from "vitest";
+
 import type {
   PlanBox,
   PlanNode,
   PlanTextLayout,
   PlanTextSegment,
 } from "@vigilia/renderer-core";
+import { Rect, Textbox } from "fabric/es";
+import { describe, expect, it } from "vitest";
 import { buildText, textGaps } from "./fabric-text.js";
 
 /**

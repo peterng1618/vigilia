@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 

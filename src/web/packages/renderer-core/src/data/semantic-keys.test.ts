@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  SEMANTIC_KEYS,
   describeSemanticKey,
   isKnownSemanticKey,
   labelForSemanticKey,
+  SEMANTIC_KEYS,
   semanticKeysByFamily,
 } from "./semantic-keys.js";
 

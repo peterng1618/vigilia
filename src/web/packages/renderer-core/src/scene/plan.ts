@@ -1,6 +1,5 @@
-import type { SampleSource } from "../data/source.js";
-import type { Sample, SensorStatus } from "../types.js";
-import { buildBarOption, type BarInput } from "../charts/bar.js";
+import { type BarInput, buildBarOption } from "../charts/bar.js";
+import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import { buildGaugeOption } from "../charts/gauge.js";
 import {
   buildLineOption,
@@ -8,7 +7,7 @@ import {
   type SeriesInput,
 } from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
-import type { ChartOptionByFamily } from "../charts/engine-option.js";
+import type { SampleSource } from "../data/source.js";
 import type {
   AssetKind,
   Binding,
@@ -19,10 +18,11 @@ import type {
   StyleValue,
   TextContent,
   TextRun,
-  TypePreset,
   ThemeDocument,
   ThemeNode,
+  TypePreset,
 } from "../theme/document.js";
+import type { Sample, SensorStatus } from "../types.js";
 
 /**
  * Pure document + telemetry → render plan. All renderer-independent decisions

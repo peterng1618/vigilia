@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
+import { describe, expect, it, vi } from "vitest";
 import type {
   ProviderHealth,
   SensorDescriptor,

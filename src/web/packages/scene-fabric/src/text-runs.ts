@@ -1,7 +1,7 @@
 import {
-  STYLE_PROPERTIES,
   type PlanTextSegment,
   type ResolvedStyle,
+  STYLE_PROPERTIES,
 } from "@vigilia/renderer-core";
 import { paintFor } from "./paint.js";
 

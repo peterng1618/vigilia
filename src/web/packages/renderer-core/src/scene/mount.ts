@@ -1,10 +1,10 @@
 import * as echarts from "echarts/core";
-import { toEngineOption } from "../charts/engine-option.js";
 import {
+  type ArtboardTransform,
   computeArtboardTransform,
   toCssTransform,
-  type ArtboardTransform,
 } from "../artboard.js";
+import { toEngineOption } from "../charts/engine-option.js";
 import type {
   PlanBox,
   PlanNode,

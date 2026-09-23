@@ -1,17 +1,16 @@
 import { describe, expect, it } from "vitest";
-
-import { NODE_TYPES } from "./document.js";
 import {
-  NODE_CAPABILITIES,
-  STYLE_PROPERTIES,
   allowsStyleProperty,
   anyHasCapability,
   hasCapability,
   isDerivedCapability,
   isKnownStyleProperty,
+  NODE_CAPABILITIES,
+  STYLE_PROPERTIES,
   stylePropertiesFor,
   transformPropertiesFor,
 } from "./capabilities.js";
+import { NODE_TYPES } from "./document.js";
 
 describe("the capability matrix", () => {
   it("has a row for every declared node type", () => {

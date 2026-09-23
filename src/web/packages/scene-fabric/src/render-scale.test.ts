@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampRenderScale,
   DEFAULT_RENDER_SCALE,
   MAX_BACKING_PIXELS,
   MAX_RENDER_SCALE,
-  clampRenderScale,
 } from "./render-scale.js";
 
 /**

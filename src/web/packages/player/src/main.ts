@@ -1,21 +1,22 @@
+import { createDemoSource, validThemeByName } from "@vigilia/fake-source";
 import {
-  SAMPLE_STREAM_PATH,
-  buildScenePlan,
+  type Binding,
   buildChartPlan,
+  buildScenePlan,
+  type ChartContent,
   createAssetResolver,
   createLiveSource,
-  missingFontFamilies,
-  requiredSemanticKeys,
-  validateThemeDocument,
+  type FabricThemeEnvelope,
   type LiveSourceHandle,
   type LiveSourceStatus,
+  missingFontFamilies,
+  requiredSemanticKeys,
+  SAMPLE_STREAM_PATH,
   type SampleSource,
-  type ScenePlan,
   type SceneHandle,
-  type Binding,
-  type ChartContent,
-  type FabricThemeEnvelope,
+  type ScenePlan,
   type ThemeDocument,
+  validateThemeDocument,
 } from "@vigilia/renderer-core";
 import {
   loadFontAssets,
@@ -24,8 +25,7 @@ import {
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
-import { createDemoSource, validThemeByName } from "@vigilia/fake-source";
-import { displaySession, type DisplaySessionToken } from "./session.js";
+import { type DisplaySessionToken, displaySession } from "./session.js";
 import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */

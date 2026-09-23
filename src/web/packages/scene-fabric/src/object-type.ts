@@ -1,5 +1,5 @@
-import { Group, type StaticCanvas } from "fabric/es";
 import type { Globals } from "@vigilia/renderer-core";
+import { Group, type StaticCanvas } from "fabric/es";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 
 /** Reapply the first authored run's type preset to its Fabric text-object cache. */

@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  buildLineOption,
+  defaultLineSettings,
+  type Sample,
+  validateFabricThemeEnvelope,
+} from "@vigilia/renderer-core";
 import {
   Circle,
   Ellipse,
@@ -14,12 +20,6 @@ import {
   Textbox,
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import {
-  buildLineOption,
-  defaultLineSettings,
-  validateFabricThemeEnvelope,
-  type Sample,
-} from "@vigilia/renderer-core";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
@@ -36,15 +36,15 @@ import {
   reassignObjectTypePresetReferences,
 } from "./object-type.js";
 import { reassignObjectPaletteReferences } from "./palette-references.js";
+import type { SerialisedScene } from "./persist.js";
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
   reviveThemeEnvelope,
+  SCENE_PERSISTED_PROPERTIES,
   serialiseScene,
   serialiseThemeEnvelope,
-  SCENE_PERSISTED_PROPERTIES,
 } from "./persist.js";
-import type { SerialisedScene } from "./persist.js";
 
 /**
  * What a saved scene contains, asserted exactly.

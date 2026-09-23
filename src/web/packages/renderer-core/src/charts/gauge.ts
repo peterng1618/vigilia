@@ -1,16 +1,16 @@
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { Fill, GaugeSettings, GradientStop, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
-import { toEngineAnimation, type EngineAnimation } from "./animation.js";
+import { type EngineAnimation, toEngineAnimation } from "./animation.js";
+import { resolveChartPaint } from "./chart-paint.js";
 import {
   colorAt,
+  type EngineColor,
   mixHex,
   normalizePosition,
   resolveFlatColor,
   toLinearGradient,
-  type EngineColor,
 } from "./fill.js";
-import { resolveChartPaint } from "./chart-paint.js";
-import type { FabricPalette } from "../theme/fabric-envelope.js";
 
 // Preserved public export; implementation moved to fill.ts.
 export { mixHex };

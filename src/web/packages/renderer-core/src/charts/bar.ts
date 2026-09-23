@@ -1,19 +1,19 @@
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { ChartPaint, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import {
-  toEngineAnimation,
   type AnimationSettings,
   type EngineAnimation,
+  toEngineAnimation,
 } from "./animation.js";
+import { resolveChartPaint } from "./chart-paint.js";
 import {
+  type EngineColor,
   normalizePosition,
   resolveFlatColor,
   toLinearGradient,
-  type EngineColor,
 } from "./fill.js";
-import { cartesianGrid, type CartesianGrid } from "./grid.js";
-import { resolveChartPaint } from "./chart-paint.js";
-import type { FabricPalette } from "../theme/fabric-envelope.js";
+import { type CartesianGrid, cartesianGrid } from "./grid.js";
 
 /**
  * Bar/progress adapter. Thresholds are native per bar; one-category bars with a

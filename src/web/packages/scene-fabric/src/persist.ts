@@ -1,17 +1,17 @@
-import {
-  Circle,
-  Group,
-  Path,
-  Rect,
-  Textbox,
-  classRegistry,
-  version as fabricVersion,
-  type StaticCanvas,
-} from "fabric/es";
 import type {
   FabricThemeEnvelope,
   FabricThemeEnvelopeInput,
 } from "@vigilia/renderer-core";
+import {
+  Circle,
+  classRegistry,
+  version as fabricVersion,
+  Group,
+  Path,
+  Rect,
+  type StaticCanvas,
+  Textbox,
+} from "fabric/es";
 // Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
 import { VigiliaChart } from "./chart-object.js";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";

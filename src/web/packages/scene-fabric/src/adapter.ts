@@ -1,25 +1,25 @@
+import type { PlanBox, PlanNode, ScenePlan } from "@vigilia/renderer-core";
 import {
   Ellipse,
   FabricImage,
+  type FabricObject,
   FabricText,
   Group,
   Rect,
-  Textbox,
-  type FabricObject,
   type StaticCanvas,
+  Textbox,
 } from "fabric/es";
-import type { PlanBox, PlanNode, ScenePlan } from "@vigilia/renderer-core";
+import { artboardPaintKey, fabricArtboardPaint } from "./artboard-paint.js";
 import { VigiliaChart } from "./chart-object.js";
 import {
   createNodeObject,
-  updateNodeObject,
   type NodeContext,
   type UnsupportedReporter,
+  updateNodeObject,
 } from "./fabric-nodes.js";
 import { isTextObject, updateText } from "./fabric-text.js";
 import { drawnBox, withinGroup } from "./placement.js";
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
-import { artboardPaintKey, fabricArtboardPaint } from "./artboard-paint.js";
 
 /**
  * Reconcile a pure `ScenePlan` onto existing Fabric objects. Revived scene

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  approximateGradient,
-  buildGaugeOption,
-  mixHex,
-  toColorSegments,
-} from "./gauge.js";
-import {
   defaultGaugeSettings,
   type GaugeSettings,
   type Sample,
   type SensorStatus,
 } from "../types.js";
+import {
+  approximateGradient,
+  buildGaugeOption,
+  mixHex,
+  toColorSegments,
+} from "./gauge.js";
 
 /** An ok sample carrying a plottable value. */
 function sample(value = 50): Sample {

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
+import type { Server } from "node:http";
 import net from "node:net";
 import os from "node:os";
-import type { Server } from "node:http";
 import { MAX_PORT_ATTEMPTS } from "./args.js";
 
 /** Launch I/O: bind, probe, discover LAN address, and open the browser. */

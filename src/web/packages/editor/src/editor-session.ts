@@ -7,9 +7,11 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
+import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
 import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
 import { ChartManager } from "./chart-manager/index.js";
+import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
 import {
   applyFontTrio,
@@ -23,6 +25,7 @@ import {
 } from "./indicator-manager/index.js";
 import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
 import { LiveRuntime } from "./live-runtime.js";
+import { createNewTextDefaults } from "./new-object-defaults.js";
 import {
   createNewObjectPanel,
   type NewObjectPanel,
@@ -38,9 +41,6 @@ import {
   PersistenceManager,
 } from "./persistence-manager/index.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
-import { applyArrange, canArrange } from "./arrange.js";
-import type { EditorActionFacade } from "./editor-shell/session-facade.js";
-import { createNewTextDefaults } from "./new-object-defaults.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
   createThemeLibraryClient,

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { Sample, SensorStatus } from "../types.js";
 import {
+  type BarSettings,
   buildBarOption,
   defaultBarSettings,
   toBarColor,
   toBarDataItem,
-  type BarSettings,
 } from "./bar.js";
 import type { LinearGradientColor } from "./fill.js";
-import type { Sample, SensorStatus } from "../types.js";
 
 function sample(value: number, sensorId = "cpu.load.total"): Sample {
   return {

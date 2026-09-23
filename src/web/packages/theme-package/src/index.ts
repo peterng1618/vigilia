@@ -1,8 +1,8 @@
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import {
-  validateFabricThemeEnvelope,
   type FabricThemeEnvelope,
+  validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 const MANIFEST = "manifest.json";
 const THEME = "theme.json";

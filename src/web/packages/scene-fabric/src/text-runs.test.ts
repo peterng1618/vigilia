@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { PlanTextSegment, ResolvedStyle } from "@vigilia/renderer-core";
+import { describe, expect, it } from "vitest";
 import { textShapeFor } from "./text-runs.js";
 
 /**

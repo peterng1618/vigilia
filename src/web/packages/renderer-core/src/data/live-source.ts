@@ -1,4 +1,4 @@
-import { SAMPLE_EVENT, decodeBatch } from "./protocol.js";
+import { decodeBatch, SAMPLE_EVENT } from "./protocol.js";
 import type { SampleSource } from "./source.js";
 import { SampleStore } from "./store.js";
 

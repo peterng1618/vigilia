@@ -1,16 +1,16 @@
-import { describe, expect, it } from "vitest";
 import {
   describeSemanticKey,
   isKnownSemanticKey,
 } from "@vigilia/renderer-core";
+import { describe, expect, it } from "vitest";
 import {
+  type CpuTimes,
   cpuLoadBetween,
   OS_DESCRIPTORS,
+  type OsReadings,
   OsSensorProvider,
   readingsFromCpus,
   samplesFromReadings,
-  type CpuTimes,
-  type OsReadings,
 } from "./os.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");

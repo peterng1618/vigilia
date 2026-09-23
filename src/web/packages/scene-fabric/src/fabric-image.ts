@@ -1,5 +1,5 @@
-import { FabricImage, Rect } from "fabric/es";
 import type { PlanBox, PlanNode } from "@vigilia/renderer-core";
+import { FabricImage, Rect } from "fabric/es";
 import { paintFor } from "./paint.js";
 import { placementFor } from "./placement.js";
 import { clampRenderScale } from "./render-scale.js";

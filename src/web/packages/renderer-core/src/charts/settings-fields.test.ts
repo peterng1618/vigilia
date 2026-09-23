@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { CHART_FAMILIES } from "../theme/document.js";
 import { defaultGaugeSettings } from "../types.js";
-import { defaultLineSettings } from "./line.js";
 import { defaultBarSettings } from "./bar.js";
+import { defaultLineSettings } from "./line.js";
 import { defaultPieSettings } from "./pie.js";
 import {
-  CHART_SETTINGS_FIELDS,
   CHART_PAINT_FIELDS,
+  CHART_SETTINGS_FIELDS,
   chartPaintFieldsFor,
   NON_SCALAR_SETTINGS,
   settingsFieldsFor,

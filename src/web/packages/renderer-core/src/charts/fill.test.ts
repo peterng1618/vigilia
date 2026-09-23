@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   colorAt,
+  type LinearGradientColor,
   mixHex,
   normalizePosition,
   parseHex,
   resolveFlatColor,
   resolveThresholdColor,
   toLinearGradient,
-  type LinearGradientColor,
 } from "./fill.js";
 
 describe("resolveThresholdColor", () => {

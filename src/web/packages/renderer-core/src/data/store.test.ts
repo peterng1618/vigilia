@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { Sample } from "../types.js";
 import { emptySampleSource } from "./source.js";
 import { SampleStore } from "./store.js";
-import type { Sample } from "../types.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 

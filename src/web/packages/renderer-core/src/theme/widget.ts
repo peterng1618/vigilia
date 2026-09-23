@@ -1,7 +1,7 @@
 import {
-  STABLE_ID_PATTERN,
   type Binding,
   type Globals,
+  STABLE_ID_PATTERN,
   type StyleMap,
   type StyleValue,
   type TextRun,

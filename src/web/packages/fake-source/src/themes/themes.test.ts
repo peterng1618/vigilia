@@ -1,15 +1,15 @@
-import { describe, expect, it } from "vitest";
 import {
   buildScenePlan,
   createAssetResolver,
   requiredSemanticKeys,
   serializeThemeDocument,
+  type ThemeDocument,
   validateThemeDocument,
   walkNodes,
-  type ThemeDocument,
 } from "@vigilia/renderer-core";
-import { INVALID_THEMES, VALID_THEMES } from "./index.js";
+import { describe, expect, it } from "vitest";
 import { FakeSampleSource } from "../index.js";
+import { INVALID_THEMES, VALID_THEMES } from "./index.js";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z");
 

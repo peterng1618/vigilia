@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { defaultGaugeSettings, type Sample } from "../types.js";
 import {
   ANIMATION_EASINGS,
+  type AnimationSettings,
   defaultAnimationSettings,
   toEngineAnimation,
-  type AnimationSettings,
 } from "./animation.js";
-import { buildGaugeOption } from "./gauge.js";
-import { buildLineOption } from "./line.js";
 import { buildBarOption, defaultBarSettings } from "./bar.js";
+import { buildGaugeOption } from "./gauge.js";
+import { buildLineOption, defaultLineSettings } from "./line.js";
 import { buildPieOption, defaultPieSettings } from "./pie.js";
-import { defaultGaugeSettings, type Sample } from "../types.js";
-import { defaultLineSettings } from "./line.js";
 
 function sample(value = 50): Sample {
   return {

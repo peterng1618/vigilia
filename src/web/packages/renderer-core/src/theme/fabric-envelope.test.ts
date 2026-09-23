@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultGaugeSettings } from "../types.js";
-import { fabricEnvelopeInputFor } from "./fabric-envelope.js";
 import type { ThemeDocument } from "./document.js";
+import { fabricEnvelopeInputFor } from "./fabric-envelope.js";
 
 describe("fabricEnvelopeInputFor", () => {
   it("keeps semantic metadata and indexes bindings by Fabric object id", () => {

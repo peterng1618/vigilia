@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { Sample, SensorStatus } from "../types.js";
 import {
   buildLineOption,
   defaultLineSettings,
-  toEngineColor,
-  toSeriesPoints,
   type Interpolation,
   type LinearGradientColor,
   type LineSettings,
   type SeriesInput,
+  toEngineColor,
+  toSeriesPoints,
 } from "./line.js";
-import type { Sample, SensorStatus } from "../types.js";
 
 const NOW = Date.parse("2026-01-01T00:01:00Z"); // 60s after the epoch below
 const T0 = Date.parse("2026-01-01T00:00:00Z");

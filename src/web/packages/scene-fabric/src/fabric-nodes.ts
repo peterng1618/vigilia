@@ -1,13 +1,13 @@
+import type { PlanBox, PlanNode, ResolvedStyle } from "@vigilia/renderer-core";
 import {
   Ellipse,
+  type FabricImage,
+  type FabricObject,
   FixedLayout,
   Group,
   LayoutManager,
   Rect,
-  type FabricImage,
-  type FabricObject,
 } from "fabric/es";
-import type { PlanBox, PlanNode, ResolvedStyle } from "@vigilia/renderer-core";
 import { VigiliaChart } from "./chart-object.js";
 import { buildImage, placeImage } from "./fabric-image.js";
 import {

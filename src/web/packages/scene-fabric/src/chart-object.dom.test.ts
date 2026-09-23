@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { Group, StaticCanvas } from "fabric/es";
-import { describe, expect, it } from "vitest";
+
 import {
   buildBarOption,
   buildGaugeOption,
@@ -12,6 +11,8 @@ import {
   defaultPieSettings,
   type Sample,
 } from "@vigilia/renderer-core";
+import { Group, StaticCanvas } from "fabric/es";
+import { describe, expect, it } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 
 /**

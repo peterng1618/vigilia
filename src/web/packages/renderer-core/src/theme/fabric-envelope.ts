@@ -1,5 +1,4 @@
 import {
-  walkBindings,
   type Artboard,
   type AssetReference,
   type Binding,
@@ -7,6 +6,7 @@ import {
   type PalettePaint,
   type ThemeDocument,
   type ThemeMetadata,
+  walkBindings,
 } from "./document.js";
 
 export interface FabricPaletteEntry {

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
 
 /** Exercises the real Node host: the browser suite's only proof that hosted
@@ -102,8 +102,7 @@ test.describe("hosted player over the real host", () => {
     // suite's Chromium, where it returns true with an empty face set). The
     // registered face is.
     await page.waitForFunction(
-      () =>
-        [...document.fonts].some((face) => face.family.includes("Inter")),
+      () => [...document.fonts].some((face) => face.family.includes("Inter")),
       undefined,
       { timeout: 15_000 },
     );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { ThemeDocument } from "./document.js";
 import { serializeThemeDocument } from "./serialize.js";
 import { validateThemeDocument } from "./validate.js";
-import type { ThemeDocument } from "./document.js";
 
 const minimal: ThemeDocument = {
   schemaVersion: 1,

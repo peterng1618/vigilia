@@ -1,5 +1,5 @@
-import { Shadow } from "fabric/es";
 import type { ResolvedStyle } from "@vigilia/renderer-core";
+import { Shadow } from "fabric/es";
 
 /**
  * Fixed resolved-style → Fabric mapping; never pass arbitrary theme keys through.

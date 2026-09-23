@@ -1,12 +1,12 @@
-import * as echarts from "echarts/core";
-import { classRegistry, FabricObject } from "fabric/es";
 import {
-  toEngineOption,
   type ChartContent,
   type ChartFamily,
   type ChartOption,
   type LineOption,
+  toEngineOption,
 } from "@vigilia/renderer-core";
+import * as echarts from "echarts/core";
+import { classRegistry, FabricObject } from "fabric/es";
 import "./chart-engine.js";
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
 

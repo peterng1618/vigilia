@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
-import * as echarts from "echarts/core";
+
 import { LineChart } from "echarts/charts";
 import { GridComponent } from "echarts/components";
+import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Sample } from "../types.js";
+import { toEngineOption } from "./engine-option.js";
 import {
   buildLineOption,
   defaultLineSettings,
   type LineOption,
 } from "./line.js";
-import { toEngineOption } from "./engine-option.js";
-import type { Sample } from "../types.js";
 
 /**
  * What the grid option does once it reaches the engine.

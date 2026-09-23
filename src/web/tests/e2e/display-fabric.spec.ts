@@ -1,5 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
-import { openPaused } from "./clock.js";
+import { expect, type Page, test } from "@playwright/test";
 import {
   canvasHas,
   canvasProp,
@@ -10,6 +9,7 @@ import {
   probe,
   sourceColorFraction,
 } from "./canvas-probe.js";
+import { openPaused } from "./clock.js";
 
 const FIXTURES = [
   { name: "stress", charts: true },

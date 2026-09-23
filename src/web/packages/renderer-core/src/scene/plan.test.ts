@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { defaultBarSettings } from "../charts/bar.js";
+import { defaultLineSettings } from "../charts/line.js";
+import { emptySampleSource } from "../data/source.js";
+import { SampleStore } from "../data/store.js";
+import type { ThemeDocument, ThemeNode } from "../theme/document.js";
+import { defaultGaugeSettings, type Sample } from "../types.js";
 import {
-  MISSING_VALUE_TEXT,
   buildChartPlan,
   buildScenePlan,
   computeMaxLines,
   formatNumber,
   formatUnit,
+  MISSING_VALUE_TEXT,
   type PlanContext,
   type PlanTextSegment,
 } from "./plan.js";
-import { SampleStore } from "../data/store.js";
-import { emptySampleSource } from "../data/source.js";
-import { defaultGaugeSettings, type Sample } from "../types.js";
-import { defaultLineSettings } from "../charts/line.js";
-import { defaultBarSettings } from "../charts/bar.js";
-import type { ThemeDocument, ThemeNode } from "../theme/document.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 

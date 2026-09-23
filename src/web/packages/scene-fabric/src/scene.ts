@@ -1,23 +1,23 @@
-import { StaticCanvas } from "fabric/es";
 import {
-  computeArtboardTransform,
-  type ArtboardTransform,
   type Artboard,
-  type ScenePlan,
-  type SceneHandle,
+  type ArtboardTransform,
   type AssetReference,
+  computeArtboardTransform,
+  type SceneHandle,
+  type ScenePlan,
 } from "@vigilia/renderer-core";
+import { StaticCanvas } from "fabric/es";
 import {
   createSceneAdapter,
   type SceneAdapter,
   type SceneAdapterOptions,
 } from "./adapter.js";
-import { clampRenderScale } from "./render-scale.js";
 import { cssArtboardPaint } from "./artboard-paint.js";
 import {
-  mountBackgroundMedia,
   type BackgroundMediaSource,
+  mountBackgroundMedia,
 } from "./background-media.js";
+import { clampRenderScale } from "./render-scale.js";
 
 /**
  * Owns the canvas element, viewport/artboard fit and DPR. `adapter.ts` owns plan

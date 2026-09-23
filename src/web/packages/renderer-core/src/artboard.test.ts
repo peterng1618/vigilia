@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   computeArtboardTransform,
   documentToViewport,
+  type FitMode,
   isFullyVisible,
   toCssTransform,
   viewportToDocument,
-  type FitMode,
 } from "./artboard.js";
 
 /** A 16:9 artboard, the common dashboard shape. */

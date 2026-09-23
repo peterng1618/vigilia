@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { buildScenePlan } from "./plan.js";
-import { mountScene } from "./mount.js";
 import { SampleStore } from "../data/store.js";
-import type { Sample } from "../types.js";
 import type { ThemeDocument, ThemeNode } from "../theme/document.js";
+import type { Sample } from "../types.js";
+import { mountScene } from "./mount.js";
+import { buildScenePlan } from "./plan.js";
 
 /**
  * The DOM applier's update path, which had no unit test at all.

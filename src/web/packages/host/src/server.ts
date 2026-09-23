@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
-import { SAMPLE_STREAM_PATH, createBatch } from "@vigilia/renderer-core";
+import { createBatch, SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
 import {
@@ -9,13 +9,13 @@ import {
   needsTrailingSlash,
   resolveStaticPath,
 } from "./serve/static-path.js";
+import type { SessionStore } from "./session/pairing.js";
 import {
   createThemeStore,
   isValidThemeId,
   type ThemeStore,
 } from "./themes/store.js";
 import { SseConnection } from "./transport/sse.js";
-import type { SessionStore } from "./session/pairing.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
 

@@ -1,13 +1,9 @@
-import stress from "./stress.json" with { type: "json" };
-import portraitCover from "./portrait-cover.json" with { type: "json" };
+import type { IssueCode } from "@vigilia/renderer-core";
 import assets from "./assets.json" with { type: "json" };
-import invalidNewerVersion from "./invalid/newer-version.json" with {
+import invalidAssetTraversal from "./invalid/asset-traversal.json" with {
   type: "json",
 };
 import invalidBrokenReferences from "./invalid/broken-references.json" with {
-  type: "json",
-};
-import invalidAssetTraversal from "./invalid/asset-traversal.json" with {
   type: "json",
 };
 import invalidChartArity from "./invalid/chart-arity.json" with {
@@ -16,7 +12,11 @@ import invalidChartArity from "./invalid/chart-arity.json" with {
 import invalidImpossibleGeometry from "./invalid/impossible-geometry.json" with {
   type: "json",
 };
-import type { IssueCode } from "@vigilia/renderer-core";
+import invalidNewerVersion from "./invalid/newer-version.json" with {
+  type: "json",
+};
+import portraitCover from "./portrait-cover.json" with { type: "json" };
+import stress from "./stress.json" with { type: "json" };
 
 /** Valid fixtures cover distinct rendering shapes; invalid fixtures target validator failures. */
 

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { validateThemeDocument, type IssueCode } from "./validate.js";
+import { defaultBarSettings } from "../charts/bar.js";
+import { defaultLineSettings } from "../charts/line.js";
+import { defaultPieSettings } from "../charts/pie.js";
+import { defaultGaugeSettings } from "../types.js";
+import { STYLE_PROPERTIES } from "./capabilities.js";
 import {
   MAX_NODE_DEPTH,
-  SUPPORTED_SCHEMA_VERSION,
   requiredSemanticKeys,
+  SUPPORTED_SCHEMA_VERSION,
   walkNodes,
 } from "./document.js";
-import { defaultGaugeSettings } from "../types.js";
-import { defaultLineSettings } from "../charts/line.js";
-import { defaultBarSettings } from "../charts/bar.js";
-import { defaultPieSettings } from "../charts/pie.js";
-import { STYLE_PROPERTIES } from "./capabilities.js";
+import { type IssueCode, validateThemeDocument } from "./validate.js";
 
 /** A minimal valid document. Tests mutate clones of this. */
 function baseDocument(): Record<string, unknown> {

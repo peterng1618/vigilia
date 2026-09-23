@@ -1,11 +1,3 @@
-import {
-  FabricText,
-  Group,
-  Rect,
-  Textbox,
-  type StaticCanvas,
-  type TextProps,
-} from "fabric/es";
 import type {
   Binding,
   FabricGlobals,
@@ -17,6 +9,14 @@ import type {
   TextContent,
 } from "@vigilia/renderer-core";
 import { resolveTextSegments } from "@vigilia/renderer-core";
+import {
+  FabricText,
+  Group,
+  Rect,
+  type StaticCanvas,
+  Textbox,
+  type TextProps,
+} from "fabric/es";
 import { paintFor } from "./paint.js";
 import { placementFor } from "./placement.js";
 import { textShapeFor } from "./text-runs.js";

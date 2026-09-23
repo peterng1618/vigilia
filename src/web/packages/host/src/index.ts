@@ -13,8 +13,8 @@ export {
   DEFAULT_HOST,
   DEFAULT_PORT,
   HELP_TEXT,
-  MAX_PORT_ATTEMPTS,
   isLoopbackHost,
+  MAX_PORT_ATTEMPTS,
   parseArgs,
 } from "./cli/args.js";
 
@@ -24,41 +24,32 @@ export {
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
+export { run } from "./main.js";
 
+export type { CpuTimes, OsReadings } from "./providers/os.js";
+
+export {
+  cpuLoadBetween,
+  OS_DESCRIPTORS,
+  OS_PROVIDER_ID,
+  OsSensorProvider,
+  readingsFromCpus,
+  samplesFromReadings,
+} from "./providers/os.js";
 export type {
   ProviderHealth,
   SensorDescriptor,
   SensorProvider,
   SensorTier,
 } from "./providers/provider.js";
-
-export type { CpuTimes, OsReadings } from "./providers/os.js";
-
-export {
-  OS_DESCRIPTORS,
-  OS_PROVIDER_ID,
-  OsSensorProvider,
-  cpuLoadBetween,
-  readingsFromCpus,
-  samplesFromReadings,
-} from "./providers/os.js";
-
 export type {
   DescribedSensor,
   ProviderFailure,
   SampleCycle,
 } from "./providers/registry.js";
-
 export { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
-
-export { KeepLatestSlot } from "./transport/keep-latest.js";
-
-export { SseConnection } from "./transport/sse.js";
-
 export { contentTypeFor, resolveStaticPath } from "./serve/static-path.js";
-
 export type { BundleRoots, HostServer, HostServerOptions } from "./server.js";
-
-export { DEFAULT_SAMPLE_INTERVAL_MS, createHostServer } from "./server.js";
-
-export { run } from "./main.js";
+export { createHostServer, DEFAULT_SAMPLE_INTERVAL_MS } from "./server.js";
+export { KeepLatestSlot } from "./transport/keep-latest.js";
+export { SseConnection } from "./transport/sse.js";

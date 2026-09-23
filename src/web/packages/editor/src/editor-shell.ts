@@ -12,11 +12,11 @@ import {
 import {
   applyObjectPalettePaints,
   applyObjectTypePresets,
+  artboardPaintKey,
   type BackgroundMediaSource,
   createSceneAdapter,
   cssArtboardPaint,
   disposeScene,
-  artboardPaintKey,
   fabricArtboardPaint,
   mountBackgroundMedia,
   reviveScene,

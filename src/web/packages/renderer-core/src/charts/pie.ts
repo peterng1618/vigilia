@@ -1,13 +1,13 @@
+import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { ChartPaint, Fill, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import {
-  toEngineAnimation,
   type AnimationSettings,
   type EngineAnimation,
+  toEngineAnimation,
 } from "./animation.js";
-import { resolveFlatColor, type EngineColor } from "./fill.js";
 import { resolveChartPaint } from "./chart-paint.js";
-import type { FabricPalette } from "../theme/fabric-envelope.js";
+import { type EngineColor, resolveFlatColor } from "./fill.js";
 
 /**
  * Pie/donut adapter. Composition differs from gauge progress: missing parts must

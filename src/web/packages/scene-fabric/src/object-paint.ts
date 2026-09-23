@@ -1,5 +1,5 @@
-import { Group, type StaticCanvas } from "fabric/es";
 import type { Globals } from "@vigilia/renderer-core";
+import { Group, type StaticCanvas } from "fabric/es";
 import { fabricArtboardPaint } from "./artboard-paint.js";
 
 /** Persisted semantic palette references for Fabric object paint properties. */

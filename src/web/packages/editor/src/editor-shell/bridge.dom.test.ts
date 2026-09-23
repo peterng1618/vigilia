@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { Group, Rect } from "fabric/es";
+
 import { VigiliaChart } from "@vigilia/scene-fabric";
+import { Group, Rect } from "fabric/es";
 import { expect, it, vi } from "vitest";
 import { createEditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";

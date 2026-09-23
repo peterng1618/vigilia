@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { instantiateWidget } from "./widget.js";
-import { validateThemeDocument } from "./validate.js";
+import { defaultGaugeSettings } from "../types.js";
 import {
-  walkBindings,
-  walkNodes,
   type ThemeDocument,
   type ThemeNode,
+  walkBindings,
+  walkNodes,
 } from "./document.js";
-import { defaultGaugeSettings } from "../types.js";
+import { validateThemeDocument } from "./validate.js";
+import { instantiateWidget } from "./widget.js";
 
 /** A widget with the two reference kinds that must be remapped together. */
 function widgetNodes(): ThemeNode[] {

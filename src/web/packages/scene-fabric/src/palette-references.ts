@@ -1,8 +1,8 @@
 import { Group, type StaticCanvas } from "fabric/es";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
-  VIGILIA_PAINT_PROPERTY,
   type FabricPaintRefs,
+  VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 
 /** Rewrite persisted object/run palette references before a token is removed. */
