@@ -1,6 +1,7 @@
 import type { Canvas, FabricObject } from "fabric/es";
 import type { ErrorManager } from "./error-manager/index.js";
 import type { CropManager } from "./crop-manager/index.js";
+import type { DeletionManager } from "./deletion-manager/index.js";
 
 /** Product panels depend only on the editor mechanics they exercise. */
 export interface EditorInteraction {
@@ -35,5 +36,6 @@ export interface EditorInteraction {
   };
   readonly errorManager: ErrorManager;
   readonly cropManager: CropManager;
+  readonly deletionManager: DeletionManager;
   destroy(): void;
 }

@@ -13,6 +13,7 @@ import { createLayerManager } from "./layer-manager/index.js";
 import { createObjectLockManager } from "./object-lock-manager/index.js";
 import { createErrorManager } from "./error-manager/index.js";
 import { createCropManager } from "./crop-manager/index.js";
+import { createDeletionManager } from "./deletion-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -187,6 +188,7 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
       suspend: () => history.suspend(),
       errors,
     }),
+    deletionManager: createDeletionManager(canvas, save),
     destroy: () => canvas.dispose(),
   };
 }

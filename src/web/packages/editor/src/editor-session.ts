@@ -248,6 +248,9 @@ export class EditorSession {
     this.#shortcuts.register("edit.redo", () => {
       void options.shell.editor.historyManager.redo();
     });
+    this.#shortcuts.register("edit.delete", () => {
+      options.shell.editor.deletionManager.deleteActive();
+    });
   }
 
   get envelope(): FabricThemeEnvelopeInput {
