@@ -15,6 +15,7 @@ import { createErrorManager } from "./error-manager/index.js";
 import { createCropManager } from "./crop-manager/index.js";
 import { createDeletionManager } from "./deletion-manager/index.js";
 import { createClipboardManager } from "./clipboard-manager/index.js";
+import { createGroupingManager } from "./grouping-manager/index.js";
 import { applyEditorControls } from "./controls-manager/index.js";
 import {
   resolveStyleValue,
@@ -200,6 +201,11 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
       errors,
       deletion,
       importImage: (input) => images.importImage(input),
+    }),
+    groupingManager: createGroupingManager({
+      canvas,
+      save,
+      suspend: () => history.suspend(),
     }),
     destroy: () => canvas.dispose(),
   };

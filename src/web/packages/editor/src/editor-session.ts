@@ -260,6 +260,12 @@ export class EditorSession {
     this.#shortcuts.register("edit.duplicate", () => {
       void options.shell.editor.clipboardManager.duplicate();
     });
+    this.#shortcuts.register("edit.group", () => {
+      options.shell.editor.groupingManager.group();
+    });
+    this.#shortcuts.register("edit.ungroup", () => {
+      options.shell.editor.groupingManager.ungroup();
+    });
   }
 
   get envelope(): FabricThemeEnvelopeInput {
