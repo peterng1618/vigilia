@@ -1,4 +1,4 @@
-import { expect, test, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
 
 /** Exercises the real Node host: the browser suite's only proof that hosted
@@ -6,6 +6,11 @@ import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
  * end. `vite preview` cannot cover any of it. */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
+
+/** The editor's rail owns one pane per area; panels sit behind it. */
+async function openRailPane(page: Page, name: string): Promise<void> {
+  await page.getByRole("button", { name, exact: true }).click();
+}
 
 test.describe("hosted player over the real host", () => {
   test("serves the player, the editor and the API only over loopback", async ({
@@ -51,6 +56,35 @@ test.describe("hosted player over the real host", () => {
       headers: { "content-type": "application/octet-stream" },
     });
     expect([400, 403]).toContain(response.status());
+  });
+
+  test("round-trips a theme saved from the host-served editor", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    // The editor reaches the host's theme store, and the bytes it writes come
+    // back through the host's player route: the author-to-display loop.
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    await openRailPane(page, "Add");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Text" })
+      .click();
+
+    // Save to library goes through PUT /api/themes/:id, not a download.
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 15_000,
+    });
   });
 
   test("renders a hosted theme in the player and streams live samples", async ({
