@@ -51,19 +51,29 @@ provider must not stop the others.
 Themes bind semantic keys, never provider ids. Missing/unavailable data remains
 missing/stale/error; zero is never fabricated.
 
-### Baseline provider
+### Baseline providers
 
 Implemented with Node built-ins:
 
 - `cpu.load` from deltas of cumulative `os.cpus()` ticks;
-- `ram.used`, `ram.used.percent`, `ram.total` from `node:os` memory data.
+- `ram.used`, `ram.used.percent`, `ram.total` from `node:os` memory data;
+- `disk.used`, `disk.used.percent`, `disk.total` from `fs.statfs` on one
+  volume (`C:\` on Windows, `/` elsewhere). Usage is a snapshot, so it needs no
+  delta. An unreadable volume reports `missing` with its reason; health reports
+  unavailable.
 
 The first CPU sample after start is `missing` because there is no prior counter
 to diff. It must not render as an idle CPU.
 
+`network.download` and `network.upload` are declared baseline in the vocabulary
+but have **no** provider: `node:os` exposes interface addresses only, never byte
+counters, so implementing them needs an unimplemented external source. A theme
+bound to them gets a gap. `/api/health` returns the requested-but-unanswered
+keys under `unmapped` so this reads as an explained gap, not a silent one.
+
 ## Not implemented yet
 
-- disk/network baseline metrics;
+- network throughput (no stdlib counter; needs a source that is not yet chosen);
 - LibreHardwareMonitor extended provider for temperatures, power, clocks, fans,
   voltages and motherboard sensors;
 - provider/user mapping UI;
