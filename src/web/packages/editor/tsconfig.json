@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "jsx": "react-jsx",
     // renderer-core is consumed as source, so the program spans two workspace
     // packages and rootDir has to cover both or TS6059 fires for every shared
     // file. Same arrangement as the player and fake-source.
@@ -16,5 +17,5 @@
   // renderer-core. The architecture tests in src/core walk the source tree,
   // and `@types/node` is deliberately absent so `fs` cannot type-check inside
   // a browser bundle. See that file's header.
-  "include": ["src/**/*.ts", "../renderer-core/src/node-builtins.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "../renderer-core/src/node-builtins.d.ts"]
 }
