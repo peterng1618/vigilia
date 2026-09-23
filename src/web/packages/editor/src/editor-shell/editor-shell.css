@@ -1,0 +1,423 @@
+@import "tailwindcss";
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Shell chrome tokens. The editorial palette is the default and is defined on
+   bare :root so a fresh profile renders it before any palette attribute is
+   applied. Glass palettes below override only what they change. */
+:root,
+[data-shell-palette="editorial"] {
+  --shell-backdrop: #f5f1e8;
+  --shell-surface: #fffdf7;
+  --shell-surface-strong: #fffdf7;
+  --shell-edge: #14120e;
+  --shell-text: #14120e;
+  --shell-muted: #5a5449;
+  --shell-accent: #14120e;
+  --shell-warm: #8a5a2b;
+  --shell-danger: #a4291f;
+  --shell-primary-bg: #14120e;
+  --shell-primary-text: #f5f1e8;
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
+}
+
+[data-shell-palette="graphite"] {
+  --shell-backdrop:
+    radial-gradient(circle at 15% 8%, #e9a56e35, transparent 36%),
+    radial-gradient(circle at 82% 16%, #77d3d444, transparent 34%),
+    linear-gradient(145deg, #101923, #071116 52%, #101313);
+  --shell-surface: #0b1419a8;
+  --shell-surface-strong: #0a1116c9;
+  --shell-edge: #ddf4ee42;
+  --shell-text: #eef9f4;
+  --shell-muted: #b5c6c0;
+  --shell-accent: #72e0c0;
+  --shell-warm: #f3aa64;
+  --shell-danger: #fa8e8e;
+  --shell-primary-bg: #eef9f4;
+  --shell-primary-text: #0a1116;
+  --shell-display: system-ui, sans-serif;
+  --shell-flat: 0;
+}
+[data-shell-palette="ember"] {
+  --shell-accent: #ffb36b;
+  --shell-warm: #ff7e6e;
+}
+[data-shell-palette="moss"] {
+  --shell-accent: #b7e46b;
+  --shell-warm: #e8c56a;
+}
+[data-shell-palette="plum"] {
+  --shell-accent: #d0a6ff;
+  --shell-warm: #ffb2a1;
+}
+[data-shell-palette="light"] {
+  --shell-surface: #eff9f2bf;
+  --shell-surface-strong: #f8fffbdf;
+  --shell-edge: #26463833;
+  --shell-text: #102119;
+  --shell-muted: #4f6659;
+  --shell-backdrop: linear-gradient(145deg, #d8ebe4, #afd4d1);
+}
+
+/* The editorial palette restyles the editor-wide control tokens so the
+   existing panel controls inherit it with no per-control overrides. The
+   canvas surround stays neutral rather than paper. */
+[data-shell-palette="editorial"] {
+  --vigilia-canvas-bg: #26241f;
+  --vigilia-text: #14120e;
+  --vigilia-panel-bg: #fffdf7;
+  --vigilia-panel-border: #14120e;
+  --vigilia-control-bg: #f5f1e8;
+  --vigilia-control-border: #14120e;
+  --vigilia-input-bg: #ffffff;
+  --vigilia-muted: #5a5449;
+  --vigilia-subdued: #8a8272;
+  --vigilia-selection-bg: #e4ddcb;
+  --vigilia-accent: #8a5a2b;
+  --vigilia-accent-dim: #8a5a2b22;
+  --vigilia-guide: #a4291f;
+  --vigilia-scrollbar-thumb: #c9c2b1;
+  --vigilia-scrollbar-thumb-hover: #a9a191;
+  --vigilia-scrollbar-track: transparent;
+}
+
+/* Glass treatment belongs to the glass palettes only; editorial is flat. */
+.editor-glass {
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-edge);
+  box-shadow: none;
+}
+[data-shell-palette="editorial"] .editor-glass {
+  border-width: 1px;
+}
+:root:not([data-shell-palette="editorial"]) .editor-glass,
+[data-shell-palette="graphite"] .editor-glass,
+[data-shell-palette="ember"] .editor-glass,
+[data-shell-palette="moss"] .editor-glass,
+[data-shell-palette="plum"] .editor-glass,
+[data-shell-palette="light"] .editor-glass {
+  background:
+    linear-gradient(135deg, #ffffff1f, #ffffff05 42%, #020b0e18),
+    var(--shell-surface);
+  border: 1px solid var(--shell-edge);
+  box-shadow:
+    inset 0 1px #ffffff4d,
+    inset 0 -1px #ffffff12,
+    0 18px 40px #0000004a;
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root:not([data-shell-palette="editorial"]) .editor-glass,
+  [data-shell-palette="graphite"] .editor-glass,
+  [data-shell-palette="ember"] .editor-glass,
+  [data-shell-palette="moss"] .editor-glass,
+  [data-shell-palette="plum"] .editor-glass,
+  [data-shell-palette="light"] .editor-glass {
+    background: var(--shell-surface-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  :root:not([data-shell-palette="editorial"]) .editor-glass,
+  [data-shell-palette="graphite"] .editor-glass,
+  [data-shell-palette="ember"] .editor-glass,
+  [data-shell-palette="moss"] .editor-glass,
+  [data-shell-palette="plum"] .editor-glass,
+  [data-shell-palette="light"] .editor-glass {
+    background: var(--shell-surface-strong);
+  }
+}
+
+.editor-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100%;
+  color: var(--shell-text);
+  background: var(--shell-backdrop);
+  font:
+    13px / 1.4 system-ui,
+    sans-serif;
+}
+.editor-shell-header,
+.editor-shell-status {
+  flex: none;
+  margin: 8px 8px 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.editor-shell-header strong {
+  font-family: var(--shell-display);
+  letter-spacing: 0.18em;
+  color: var(--shell-accent);
+}
+.editor-shell-tagline {
+  color: var(--shell-muted);
+}
+.editor-shell-menubar {
+  display: flex;
+  gap: 2px;
+}
+.editor-shell-menubar button {
+  color: var(--shell-text);
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.editor-shell-menubar button:hover,
+.editor-shell-menubar button[data-popup-open] {
+  background: color-mix(in srgb, var(--shell-text) 10%, transparent);
+}
+.editor-shell-menu-popup {
+  z-index: 40;
+  min-width: 190px;
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  box-shadow: 0 12px 28px #0000003d;
+}
+.editor-shell-menu-popup [role="menuitem"],
+.editor-shell-menu-popup [role="menuitemradio"] {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: inherit;
+  cursor: pointer;
+}
+.editor-shell-menu-popup [role="menuitem"]:hover,
+.editor-shell-menu-popup [role="menuitem"]:focus-visible,
+.editor-shell-menu-popup [role="menuitemradio"]:hover,
+.editor-shell-menu-popup [role="menuitemradio"]:focus-visible {
+  background: color-mix(in srgb, var(--shell-text) 12%, transparent);
+  outline: none;
+}
+.editor-shell-menu-label {
+  display: block;
+  padding: 6px 9px 3px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--shell-muted);
+}
+.editor-shell-primary {
+  margin-left: auto;
+  border: 1px solid var(--shell-primary-bg);
+  background: var(--shell-primary-bg);
+  color: var(--shell-primary-text);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.editor-shell-body {
+  display: grid;
+  grid-template-columns: 52px 280px minmax(0, 1fr) 280px;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+  padding: 8px;
+}
+.editor-shell-rail,
+.editor-shell-panel,
+.editor-shell-inspector {
+  min-height: 0;
+  overflow: auto;
+  border-radius: 12px;
+}
+.editor-shell-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+.editor-shell-rail button,
+.editor-shell-inspector button,
+.editor-shell-dock button {
+  color: var(--shell-text);
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.editor-shell-rail button {
+  min-height: 38px;
+}
+.editor-shell-rail button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+}
+.editor-shell-rail button:hover,
+.editor-shell-dock button:hover {
+  background: color-mix(in srgb, var(--shell-text) 10%, transparent);
+}
+.editor-shell-panel {
+  padding: 12px;
+  color: var(--shell-muted);
+}
+.editor-shell-panel h2,
+.editor-shell-inspector h2 {
+  margin: 0 0 12px;
+  color: var(--shell-text);
+  font-family: var(--shell-display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+[data-shell-palette="editorial"] .editor-shell-panel h2,
+[data-shell-palette="editorial"] .editor-shell-inspector h2 {
+  border-bottom: 1px solid var(--shell-edge);
+  padding-bottom: 6px;
+}
+.editor-shell-panel label,
+.editor-shell-panel section,
+.editor-shell-inspector label,
+.editor-shell-inspector section {
+  display: block;
+  margin-top: 12px;
+}
+.editor-shell-panel button,
+.editor-shell-panel input,
+.editor-shell-panel select,
+.editor-shell-inspector button,
+.editor-shell-inspector input,
+.editor-shell-inspector select {
+  max-width: 100%;
+  min-height: 30px;
+  margin: 3px 4px 3px 0;
+  border: 1px solid var(--shell-edge);
+  border-radius: 6px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+}
+.editor-shell-panel input,
+.editor-shell-panel select,
+.editor-shell-inspector input,
+.editor-shell-inspector select {
+  display: block;
+  width: 100%;
+  padding: 4px 6px;
+}
+.editor-shell-panel button,
+.editor-shell-inspector button {
+  padding: 4px 7px;
+}
+.editor-shell-panel button:hover,
+.editor-shell-inspector button:hover {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
+}
+.editor-shell-stage {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--shell-edge);
+  background: var(--vigilia-canvas-bg);
+}
+.editor-shell-stage #canvas-host {
+  position: absolute;
+  inset: 0;
+}
+.editor-shell-stage #vigilia-fabric-editor {
+  width: 100%;
+  height: 100%;
+}
+.editor-shell-dock {
+  position: absolute;
+  z-index: 3;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 3px;
+  padding: 5px;
+  border-radius: 10px;
+}
+.editor-shell-dock[data-visible="true"] {
+  display: flex;
+}
+.editor-shell-dock button {
+  width: 32px;
+  height: 30px;
+}
+.editor-shell-dock button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.editor-shell-inspector {
+  padding: 12px;
+}
+.editor-shell-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.editor-shell-tabs button {
+  flex: 1;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 0;
+}
+.editor-shell-tabs button[data-selected] {
+  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+}
+.editor-shell-hint {
+  color: var(--shell-muted);
+  margin: 0;
+}
+.editor-shell-tooltip {
+  z-index: 50;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 12px;
+}
+.editor-shell-status {
+  margin: 0 8px 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--shell-muted);
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 980px) {
+  .editor-shell-body {
+    grid-template-columns: 52px 240px minmax(0, 1fr);
+  }
+  .editor-shell-inspector {
+    display: none;
+  }
+}
