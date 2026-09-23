@@ -152,8 +152,15 @@ never zero.
 
 A supported setting needs a property control, persisted authored representation
 and visual fixture. If ECharts cannot express a treatment, surface the gap and
-get product agreement before stabilising an approximation. Open gaps: gauge
-angular gradients and discrete line-threshold bands.
+get product agreement before stabilising an approximation.
+
+Gauge angular gradients are **no longer a gap**: ECharts applies gauge progress
+colour across the swept arc, so the adapter expresses the gradient as arc
+segments. Open gap: discrete line-threshold bands. Per-segment line colouring
+would need `visualMap`, whose piecewise boundaries are values, while authored
+threshold offsets are 0–1 fractions of a range a line does not always declare
+(`LineSettings.min`/`max` are optional). Resolving the fraction-to-value
+mapping needs product agreement before any approximation is stabilised.
 
 ## §87 — Typed chart settings
 

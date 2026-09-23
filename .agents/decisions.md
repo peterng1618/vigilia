@@ -134,7 +134,8 @@ feature asks for. Refusing is honest where approximating is not.
 
 ## Open
 
-- **Chart engine:** authored treatment for gauge angular gradients and discrete
-  line-threshold bands (product requirements §85).
+- **Chart engine:** authored treatment for discrete line-threshold bands
+  (product requirements §85). Gauge angular gradients are resolved — the gauge
+  adapter expresses them as arc segments, which ECharts applies along the sweep.
 - **Extended sensors:** PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains
   unverified and belongs to provider validation.
