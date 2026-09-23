@@ -8,8 +8,8 @@ import {
   startChartRefresh,
   type ChartRefreshRate,
 } from "@vigilia/scene-fabric";
-import { ForkExtensions } from "./fork-extensions/index.js";
-import { mountForkShell } from "./fork-shell.js";
+import { EditorSession } from "./editor-session.js";
+import { mountEditorShell } from "./editor-shell.js";
 import { createEditorSource } from "./live-source.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
@@ -17,8 +17,8 @@ import { createThemeLibraryClient } from "./theme-library-client.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
 type ActiveEditor = {
-  readonly shell: Awaited<ReturnType<typeof mountForkShell>>;
-  readonly extensions: ForkExtensions;
+  readonly shell: Awaited<ReturnType<typeof mountEditorShell>>;
+  readonly extensions: EditorSession;
   readonly releaseFonts: () => void;
   source: EditorSource;
 };
@@ -104,9 +104,9 @@ async function start(): Promise<void> {
       },
     });
     const source = createSource(next.input);
-    let shell: Awaited<ReturnType<typeof mountForkShell>>;
+    let shell: Awaited<ReturnType<typeof mountEditorShell>>;
     try {
-      shell = await mountForkShell({
+      shell = await mountEditorShell({
         host,
         artboard: next.input.artboard,
         envelope: next.envelope,
@@ -115,7 +115,7 @@ async function start(): Promise<void> {
       releaseFonts();
       throw error;
     }
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell,
       source: source.source,
       envelope: next.input,

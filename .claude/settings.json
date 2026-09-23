@@ -1,0 +1,11 @@
+{
+  "extraKnownMarketplaces": {
+    "vigilia": {
+      "source": { "source": "directory", "path": ".claude/plugins/vigilia" }
+    }
+  },
+  "enabledPlugins": {
+    "vigilia@vigilia": true,
+    "superpowers@claude-plugins-official": true
+  }
+}

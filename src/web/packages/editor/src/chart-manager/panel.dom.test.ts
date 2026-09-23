@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createForkChartPanel } from "./chart-manager/panel.js";
+import { createChartPropertyPanel } from "./panel.js";
 
-describe("fork chart property panel", () => {
+describe("chart property panel", () => {
   it("offers line aspect presets and visible history", () => {
     const resize = vi.fn();
-    const panel = createForkChartPanel(document.body, vi.fn(), vi.fn(), resize);
+    const panel = createChartPropertyPanel(document.body, vi.fn(), vi.fn(), resize);
     panel.render({
       id: "trend",
       content: {
@@ -46,7 +46,7 @@ describe("fork chart property panel", () => {
   it("derives controls from the shared field descriptors and returns authored settings", () => {
     const change = vi.fn();
     const bindingChange = vi.fn();
-    const panel = createForkChartPanel(
+    const panel = createChartPropertyPanel(
       document.body,
       change,
       bindingChange,

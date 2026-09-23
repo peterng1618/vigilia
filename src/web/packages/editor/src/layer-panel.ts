@@ -1,5 +1,5 @@
 import { Group, type FabricObject } from "fabric/es";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { applyArrange, canArrange, type ArrangeAction } from "./arrange.js";
 
 export interface LayerPanel {
@@ -21,7 +21,7 @@ interface LayerEntry {
 /** Projects Fabric's current hierarchy without maintaining a second scene tree. */
 export function createLayerPanel(
   host: HTMLElement,
-  editor: ImageEditor,
+  editor: EditorInteraction,
 ): LayerPanel {
   const root = document.createElement("section");
   let currentEntries = new Map<string, LayerEntry>();
@@ -78,7 +78,7 @@ export function createLayerPanel(
 
 function render(
   root: HTMLElement,
-  editor: ImageEditor,
+  editor: EditorInteraction,
   entries: readonly LayerEntry[],
   refresh: () => void,
 ): void {
@@ -116,7 +116,7 @@ function entriesFor(
 
 function row(
   entry: LayerEntry,
-  editor: ImageEditor,
+  editor: EditorInteraction,
   refresh: () => void,
 ): HTMLElement {
   const root = document.createElement("div");
@@ -180,7 +180,7 @@ function control(
 }
 
 function arrangeControls(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   refresh: () => void,
 ): HTMLElement {
   const section = document.createElement("section");
@@ -210,7 +210,7 @@ function arrangeControls(
   return section;
 }
 
-function select(entry: LayerEntry, editor: ImageEditor): void {
+function select(entry: LayerEntry, editor: EditorInteraction): void {
   editor.canvas.setActiveObject(entry.select);
   editor.canvas.requestRenderAll();
 }

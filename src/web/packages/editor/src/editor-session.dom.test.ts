@@ -7,25 +7,27 @@ const destroyLayerPanel = vi.hoisted(() => vi.fn());
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
 const markSavedMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../layer-panel.js", () => ({
+vi.mock("./layer-panel.js", () => ({
   createLayerPanel: (...args: readonly unknown[]) => createLayerPanel(...args),
 }));
-vi.mock("../artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
-vi.mock("../palette-panel.js", () => ({ createPalettePanel: () => panel() }));
-vi.mock("../type-preset-panel.js", () => ({
+vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
+vi.mock("./palette-manager/index.js", () => ({
+  createPalettePanel: () => panel(),
+}));
+vi.mock("./type-preset-manager/index.js", () => ({
   createTypePresetPanel: () => panel(),
 }));
-vi.mock("../new-object-panel.js", () => ({
+vi.mock("./new-object-panel.js", () => ({
   createNewObjectPanel: () => panel(),
 }));
-vi.mock("../chart-manager/index.js", () => ({
+vi.mock("./chart-manager/index.js", () => ({
   ChartManager: class {
     destroy = vi.fn();
     setGlobals = vi.fn();
     reassignPaletteReferences = vi.fn();
   },
 }));
-vi.mock("../persistence-manager/index.js", () => ({
+vi.mock("./persistence-manager/index.js", () => ({
   PersistenceManager: class {
     destroy = vi.fn();
     isDirty = vi.fn(() => false);
@@ -34,15 +36,15 @@ vi.mock("../persistence-manager/index.js", () => ({
   },
   confirmDocumentReplacement: vi.fn(async () => "discard"),
 }));
-vi.mock("../shortcut-manager/index.js", () => ({
+vi.mock("./shortcut-manager/index.js", () => ({
   ShortcutManager: class {
     destroy = vi.fn();
     register = vi.fn();
   },
 }));
 
-import { ForkExtensions } from "./index.js";
-import { fontTrio } from "../font-catalog.js";
+import { EditorSession } from "./editor-session.js";
+import { fontTrio } from "./font-catalog.js";
 
 const envelope: FabricThemeEnvelope = {
   schemaVersion: 2,
@@ -52,7 +54,7 @@ const envelope: FabricThemeEnvelope = {
   scene: { version: "7.4.0", objects: [] },
 };
 
-describe("ForkExtensions", () => {
+describe("EditorSession", () => {
   beforeEach(() => {
     createLayerPanel.mockReset();
     destroyLayerPanel.mockReset();
@@ -67,7 +69,7 @@ describe("ForkExtensions", () => {
 
   it("owns the semantic layer panel lifecycle", () => {
     const editor = { canvas: { on: vi.fn(), off: vi.fn() } };
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: {
         editor,
         scene: {},
@@ -97,7 +99,7 @@ describe("ForkExtensions", () => {
       save: vi.fn(async () => {}),
     };
 
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: {
         editor,
         scene: {},
@@ -162,7 +164,7 @@ describe("ForkExtensions", () => {
       snapshot: vi.fn((input) => ({ ...envelope, ...input })),
       setBackgroundMedia: vi.fn(),
     };
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: shell as never,
       source: {} as never,
       envelope: { ...envelope, metadata: { version: "1.2.3" } },
@@ -206,7 +208,7 @@ describe("ForkExtensions", () => {
       setBackgroundMedia: vi.fn(),
       setGlobals: vi.fn(),
     };
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: shell as never,
       source: {} as never,
       envelope: {
@@ -284,7 +286,7 @@ describe("ForkExtensions", () => {
       setBackgroundMedia: vi.fn(),
       setGlobals: vi.fn(),
     };
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: shell as never,
       source: {} as never,
       envelope: {
@@ -349,7 +351,7 @@ describe("ForkExtensions", () => {
       setBackgroundMedia: vi.fn(),
       setGlobals: vi.fn(),
     };
-    const extensions = new ForkExtensions({
+    const extensions = new EditorSession({
       shell: shell as never,
       source: {} as never,
       envelope: {

@@ -15,7 +15,7 @@ import {
   type FabricPaintRefs,
 } from "@vigilia/scene-fabric";
 
-/** Semantic defaults for a fork-created object; generic construction remains fork-owned. */
+/** Semantic defaults for a new object; generic construction remains editor-owned. */
 export interface NewPaintDefaults {
   readonly fill: unknown;
   readonly [VIGILIA_PAINT_PROPERTY]: FabricPaintRefs;
@@ -54,7 +54,7 @@ export function createNewPaintDefaults(
   return { fill, [VIGILIA_PAINT_PROPERTY]: { fill: ref } };
 }
 
-/** Supplies the paint and per-run typography required by a new fork text object. */
+/** Supplies the paint and per-run typography required by a new text object. */
 export function createNewTextDefaults(
   globals: FabricGlobals | undefined,
   text: string,

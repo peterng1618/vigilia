@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { FabricImage, type StaticCanvas } from "fabric/es";
+import { Canvas, FabricImage, type StaticCanvas } from "fabric/es";
 import { AssetManager } from "./index.js";
+import { setObjectAssetReference } from "@vigilia/scene-fabric";
 import { fontTrio } from "../font-catalog.js";
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
@@ -168,4 +169,40 @@ describe("AssetManager", () => {
     expect(FabricImage.fromURL).toHaveBeenCalledWith("blob:logo");
     expect(image.setElement).toHaveBeenCalledWith(element);
   });
+
+  it("bounds a rehydrated oversized image to the import bound", async () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const object = new FabricImage(document.createElement("img"), {
+      id: "image-1",
+    });
+    setObjectAssetReference(object, { assetId: "big", kind: "image" });
+    canvas.add(object);
+
+    const manager = new AssetManager();
+    manager.load(
+      { assets: [{ id: "big", kind: "image", path: "assets/big.png", sha256: "x" }] },
+      { "assets/big.png": new Uint8Array([1]) },
+    );
+    vi.spyOn(FabricImage, "fromURL").mockResolvedValue(
+      new FabricImage(oversizedImage(8192, 4096)),
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+
+    await manager.hydrate(canvas);
+
+    const element = object.getElement();
+    expect(element.width).toBe(4096);
+    expect(element.height).toBe(2048);
+    manager.destroy();
+  });
 });
+
+/** jsdom reports zero natural size, so declare it the way a decode would. */
+function oversizedImage(width: number, height: number): HTMLImageElement {
+  const element = document.createElement("img");
+  Object.defineProperty(element, "naturalWidth", { value: width });
+  Object.defineProperty(element, "naturalHeight", { value: height });
+  return element;
+}

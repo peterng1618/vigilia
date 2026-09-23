@@ -7,11 +7,11 @@ import {
   type FabricGlobals,
   type SampleSource,
 } from "@vigilia/renderer-core";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { Group } from "fabric/es";
 import { VigiliaChart, type SceneAdapter } from "@vigilia/scene-fabric";
 import { createNewChartDefaults } from "../new-object-defaults.js";
-import { createForkChartPanel } from "./panel.js";
+import { createChartPropertyPanel } from "./panel.js";
 
 function newChart(
   family: ChartFamily,
@@ -48,9 +48,9 @@ function newChart(
   }
 }
 
-/** Vigilia-owned chart semantics layered on the fork's generic canvas mechanics. */
+/** Vigilia-owned chart semantics layered on the editor's generic canvas mechanics. */
 export class ChartManager {
-  readonly #editor: ImageEditor;
+  readonly #editor: EditorInteraction;
   readonly #scene: SceneAdapter;
   #source: SampleSource;
   readonly #panel;
@@ -58,7 +58,7 @@ export class ChartManager {
   #globals: FabricGlobals | undefined;
 
   constructor(options: {
-    readonly editor: ImageEditor;
+    readonly editor: EditorInteraction;
     readonly scene: SceneAdapter;
     readonly source: SampleSource;
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
@@ -74,7 +74,7 @@ export class ChartManager {
     this.#source = options.source;
     this.#bindings = options.bindings ?? {};
     this.#globals = options.globals;
-    this.#panel = createForkChartPanel(
+    this.#panel = createChartPropertyPanel(
       options.panelHost,
       (id, settings) => this.#updateSettings(id, settings),
       (id, binding) =>
@@ -89,6 +89,10 @@ export class ChartManager {
       "editor:history-state-loaded" as never,
       this.#hydrateRevivedCharts,
     );
+    this.#editor.canvas.on(
+      "editor:object-pasted" as never,
+      this.#hydrateRevivedCharts,
+    );
     this.#hydrateRevivedCharts();
     this.#drawPanel();
   }
@@ -100,6 +104,10 @@ export class ChartManager {
     this.#editor.canvas.off("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.off(
       "editor:history-state-loaded" as never,
+      this.#hydrateRevivedCharts,
+    );
+    this.#editor.canvas.off(
+      "editor:object-pasted" as never,
       this.#hydrateRevivedCharts,
     );
     this.#panel.root.remove();
@@ -123,7 +131,7 @@ export class ChartManager {
     this.refresh();
   }
 
-  /** Add a typed chart while preserving the fork's canvas and history ownership. */
+  /** Add a typed chart while preserving the editor's canvas and history ownership. */
   addChart(family: ChartFamily): void {
     const id = `chart-${crypto.randomUUID()}`;
     const chart = newChart(family, this.#globals, id);

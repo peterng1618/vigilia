@@ -17,7 +17,6 @@ requirements in `product-requirements.md`; transient progress in `status.md`.
                                  /          \
                             player          editor
                          StaticCanvas   interactive Canvas
-                                      + image-editor fork
 ```
 
 `renderer-core` is the semantic boundary. `scene-fabric` prevents browser/Fabric
@@ -25,27 +24,50 @@ code from leaking into the Node host.
 
 ## Current editor boundary
 
-The active editor route mounts the compiled `fabricjs-image-editor` fork. Generic
-selection, transforms, grouping, duplication, object tools, canvas lifecycle,
-history and stack ordering belong to the fork.
+`@vigilia/editor` mounts `fabric/es` directly; there is no adopted
+image-editor package. Generic canvas mechanics are split by concern, the same
+separation the retired fork used (canvas/text/image/layer/lock/history
+managers), sized to what Vigilia's panels actually exercise rather than the
+fork's full feature surface. `editor-shell.ts` owns canvas mount/disposal,
+viewport fitting and artboard paint, and composes the other managers behind
+the `EditorInteraction` contract consumed by product panels. `editor-session.ts`
+owns product composition over that shell: envelope state, panel wiring,
+dirty-work confirmation and deterministic disposal. `scene-fabric`'s
+`FabricSceneHandle` exposes `updateArtboard` for document-level artboard
+changes that a `ScenePlan` cannot carry (it never carries `backgroundMedia`).
 
-Current Vigilia-owned extensions are:
+Editor concept ownership:
 
 | Concept | Owner |
 |---|---|
+| Canvas mount/disposal, viewport fitting, artboard paint | `editor/src/editor-shell.ts` |
+| `EditorInteraction` contract consumed by product panels | `editor/src/editor-interaction.ts` |
+| Text creation | `editor/src/text-manager/` |
+| Image import | `editor/src/image-manager/` |
+| Generic canvas stack order | `editor/src/layer-manager/` |
+| Object lock/unlock | `editor/src/object-lock-manager/` |
+| Scene undo/redo history | `editor/src/history-manager/` |
+| Editor session composition and disposal | `editor/src/editor-session.ts` |
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
 | Semantic layer projection and arrange actions | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
-| Palette-token authoring/reassignment | `editor/src/palette-panel.ts`, `editor/src/fork-extensions/` |
-| Type-preset authoring/reassignment | `editor/src/type-preset-panel.ts`, `editor/src/fork-extensions/` |
+| Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
+| Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
-| Extension composition | `editor/src/fork-extensions/` |
-| Fork mount/lifecycle | `editor/src/fork-shell.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
-| Generic layer ordering, grouping and locks | adopted fork `layerManager` and `objectLockManager` |
+| Structured editor diagnostics | `editor/src/error-manager/` |
+| Selection and rotation handle styling | `editor/src/controls-manager/` |
+| Active-object and selection deletion | `editor/src/deletion-manager/` |
+| OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
+| Group and ungroup | `editor/src/grouping-manager/` |
+| Floating selection toolbar | `editor/src/toolbar-manager/` |
+| Drag-time snapping and smart guides | `editor/src/snap-manager/` |
+| Rotation-angle and size indicators | `editor/src/indicator-manager/` |
+| Per-image crop session | `editor/src/crop-manager/` |
+| Imported and rehydrated image pixel bound | `editor/src/image-manager/` |
 
 ## Packaged-font ownership
 
@@ -55,9 +77,8 @@ metadata and transient previews; the existing type-preset/asset boundaries own
 adoption; `scene-fabric/src/font-assets.ts` owns loaded-face lifecycle. The UI
 adapter does not own catalog, preview or adoption semantics.
 
-The retired custom-editor implementation is deleted. The fork retains generic
-z-order, grouping and locks; the Vigilia layer panel projects that state without
-a parallel scene tree.
+`editor-shell.ts` owns generic z-order, grouping and locks; the Vigilia layer
+panel projects that state without a parallel scene tree.
 
 ## Runtime data flow
 
@@ -115,13 +136,6 @@ external compatibility promise exists before the first release.
 
 `player/src/boundaries.test.ts` guards the player import boundary and `fabric/es`
 usage.
-
-## External-editor boundary
-
-External editors are interaction references, not foundations. Retained generic
-mechanics belong in the adopted fork after review; v2 envelope/token/package
-boundaries remain Vigilia-owned. Do not import raw-canvas persistence or
-framework UI state across that boundary.
 
 ## State categories
 

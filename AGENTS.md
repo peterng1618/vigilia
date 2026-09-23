@@ -9,8 +9,8 @@ keep this file about how to work.
 - TypeScript/npm workspace at `src/web/`, six packages.
 - Node 22.12+, 24, or 26+. Tests: Vitest + Playwright.
 - No .NET or Python toolchain is required.
-- Fabric 7.4.0 is the shared scene renderer; the editor uses the adopted
-  `fabricjs-image-editor` source fork.
+- Fabric 7.4.0 is the shared scene renderer; the editor mounts it natively via
+  `fabric/es` with no adopted image-editor package.
 - The current Vigilia shell is TypeScript/Vite, not React. React + shadcn/Base UI
   is a later shell-modernization stage in product requirements §35, not a current dependency.
 
@@ -126,9 +126,8 @@ Prefer workspace scripts over hand-written project lists.
 ## Dependencies
 
 Before adding a dependency, update `THIRD-PARTY-NOTICES.md` and verify its
-licence from primary/package metadata. The editor consumes the compiled
-`peterng1618/fabricjs-image-editor` Git fork. Keep it on the same pinned
-`fabric/es` runtime as `scene-fabric`.
+licence from primary/package metadata. The editor runs on the same pinned
+`fabric/es` runtime as `scene-fabric`, with no adopted image-editor package.
 
 ## Documentation ownership
 

@@ -54,16 +54,14 @@ A pure editor-side factory derives valid palette/type references from the open
 envelope. Defaults are not mutable theme globals or persisted state; the fork
 owns generic construction/order.
 
-### The image-editor fork is the editor foundation
+### Vigilia owns its Fabric editor directly
 
-The fork owns selection, transforms, grouping, duplication, object tools,
-canvas lifecycle and history. Vigilia adds charts, theme semantics, bindings,
-persistence and product UI. Permanent fork divergence is acceptable; add missing
-hooks there rather than rebuilding a generic editor.
-
-Legacy custom-editor behaviour is not inherited automatically. Missing behaviour
-is review-only in spec 0014 until explicitly kept/replaced/dropped.
-**Decided by:** user, 2026-09-17.
+`@vigilia/editor` owns interactive canvas lifecycle, history, selection,
+transforms, grouping, duplication, object tools and layer operations directly
+over the pinned `fabric/es` runtime. The adopted image-editor fork is removed
+module by module; no copied fork module becomes a new editor middle layer.
+Generic behaviour is retained only when exercised by the current product.
+**Decided by:** user, 2026-09-21. *Supersedes: The image-editor fork is the editor foundation.*
 
 ### Development v2 may break before release
 
@@ -108,6 +106,31 @@ program; Vigilia does not compile/link its .NET library.
 
 Keep the player bundle-size gate. Add budgets when a real expensive path exists;
 reproducible browser profiles suffice without a physical-device release gate.
+
+### Snapping geometry is vendored above the line budget
+
+`movement-snapping-resolver.ts` and `spacing.ts` are vendored verbatim at over
+1,300 lines each, exceeding the 800-line stop. Re-cutting proven geometry during
+transcription is where silent numerical bugs enter; a byte-comparable diff
+against the original is worth more than the line budget. Splitting is a
+spec-0014 follow-up.
+
+### Pasting is owned by the document paste event
+
+`Ctrl+V` stays unbound so the browser delivers `ClipboardEvent.clipboardData`,
+the only route to an image copied from another application. Copy, cut and
+duplicate go through the shortcut dispatcher.
+
+### The image pixel bound applies on import and on rehydrate
+
+A Fabric image's size follows its element, so bounding only one attachment
+point would change geometry on every reopen.
+
+### A rotated image refuses a crop session
+
+`clipPath` coordinates are image-local and unrotated; mapping a canvas-space
+frame through a rotated image's inverse transform is a larger problem than the
+feature asks for. Refusing is honest where approximating is not.
 
 ## Open
 

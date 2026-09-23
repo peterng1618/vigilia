@@ -6,7 +6,7 @@ import {
   Textbox,
   type FabricObject,
 } from "fabric/es";
-import type { ImageEditor } from "@anu3ev/fabric-image-editor";
+import type { EditorInteraction } from "./editor-interaction.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLayerPanel } from "./layer-panel.js";
 
@@ -45,7 +45,7 @@ describe("semantic layer panel", () => {
     );
   });
 
-  it("reveals a hidden parent path and delegates layer controls to the fork", () => {
+  it("reveals a hidden parent path and delegates layer controls to the editor", () => {
     const { canvas, group, child, foreground } = editorFixture();
     group.set("visible", false);
     const panel = createLayerPanel(document.body, canvas);
@@ -141,7 +141,7 @@ function editorFixture() {
     },
     objectLockManager: { lockObject: vi.fn(), unlockObject: vi.fn() },
     historyManager,
-  } as unknown as ImageEditor;
+  } as unknown as EditorInteraction;
   return {
     canvas,
     background,

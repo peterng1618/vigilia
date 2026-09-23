@@ -26,9 +26,9 @@ text/typography. Decorative drawing must not delay charts or typography.
 
 ## §31 — One renderer, shared
 
-Editor and player use one Fabric scene implementation. Use the adopted
-`fabricjs-image-editor` fork for generic editor mechanics; Vigilia adds domain
-work only. Do not maintain a second DOM/geometry renderer.
+Editor and player use one Fabric scene implementation. `@vigilia/editor` owns
+interactive editor mechanics directly over the pinned `fabric/es` runtime; do
+not maintain a second DOM/geometry renderer or an external editor foundation.
 
 ## §32 — Prefer Fabric-native substitutions
 
@@ -95,7 +95,8 @@ controls use whole artboard units where practical.
 ## §61 — Editor controls
 
 Generic selection, transforms, grouping, duplication/clipboard and object tools
-come from the adopted editor foundation. Vigilia should not recreate them.
+are native `@vigilia/editor` mechanics over Fabric. Do not recreate a parallel
+DOM/geometry model.
 
 Old custom-editor QoL that is absent from the fork route is **not automatically
 a requirement**. Keep/replacement decisions for layers, align/distribute and
@@ -315,12 +316,21 @@ A theme may be dark-only, light-only or dual-mode. Dual-mode themes share scene
 geometry/bindings and override globals/assets/visibility rather than duplicating
 the theme. Do not auto-invert bitmaps.
 
+## §171 — Image import bounds and crop
+
+Imported images are downscaled on import when they exceed a maximum bound,
+preserving aspect ratio, before becoming a Fabric image object. A per-image
+crop tool restricts a `FabricImage` to a rectangular source window, built on
+the existing `clipPath`-based fit mechanism (`fitImage`'s `cover` math in
+`scene-fabric`), not a new geometry primitive or the fork's `CropFrame`.
+Optional aspect lock; apply/cancel stays outside undo history until committed.
+
 ## Later
 
 ### Editor research candidates (non-requirements)
 
-  - After spec 0014 retention review, consider fork-owned rulers, guides, hover
-    preselection, crop controls and measured stress fixtures from yft-design.
+  - After spec 0014 retention review, consider fork-owned rulers, guides and
+    hover preselection, plus measured stress fixtures from yft-design.
   - After §35, consider a creation/assets/templates rail, central artboard,
     contextual property rail and zoom/status footer. Actions stay visibly
     labelled and keyboard-accessible; this is not a separate agent-mode UI.

@@ -12,6 +12,8 @@ test-results/
 playwright-report/
 playwright/.cache/
 blob-report/
+# Vitest JSON reporter output (diagnostics only, never asserted against).
+.vitest/
 
 # ---------- Runtime / local data ----------
 # SQLite metadata + managed asset files are user data, never committed.

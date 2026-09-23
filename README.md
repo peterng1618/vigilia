@@ -4,9 +4,9 @@ Windows-first hardware-monitoring dashboards: the PC collects sensor data and
 serves a local site; desktop authors dashboards and phones display them over
 local Wi-Fi.
 
-> **Early and unstable.** CPU/RAM telemetry, the Fabric player, and the adopted
-> `fabricjs-image-editor` fork work. Theme v2, authoring, live editor telemetry,
-> and media support are still evolving. Nothing is published.
+> **Early and unstable.** CPU/RAM telemetry, the Fabric player, and the native
+> Fabric editor work. Theme v2, authoring, live editor telemetry, and media
+> support are still evolving. Nothing is published.
 
 ## Run
 

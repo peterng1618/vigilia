@@ -7,46 +7,56 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
+import { type EditorShell } from "./editor-shell.js";
+import { createArtboardPanel, type ArtboardPanel } from "./artboard-panel.js";
 import {
-  reassignObjectPaletteReferences,
-  reassignObjectTypePresetReferences,
-} from "@vigilia/scene-fabric";
-import { type ForkShell } from "../fork-shell.js";
-import { createArtboardPanel, type ArtboardPanel } from "../artboard-panel.js";
-import { createPalettePanel, type PalettePanel } from "../palette-panel.js";
+  createPalettePanel,
+  reassignPaletteToken,
+  type PalettePanel,
+} from "./palette-manager/index.js";
 import {
   createTypePresetPanel,
+  reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
-} from "../type-preset-panel.js";
+} from "./type-preset-manager/index.js";
 import {
   createNewObjectPanel,
   type NewObjectPanel,
-} from "../new-object-panel.js";
-import { createLayerPanel, type LayerPanel } from "../layer-panel.js";
-import { ChartManager } from "../chart-manager/index.js";
+} from "./new-object-panel.js";
+import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
+import {
+  createSelectionToolbar,
+  type SelectionToolbar,
+} from "./toolbar-manager/index.js";
+import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
+import {
+  createIndicatorManager,
+  type IndicatorManager,
+} from "./indicator-manager/index.js";
+import { ChartManager } from "./chart-manager/index.js";
 import {
   PersistenceManager,
   confirmDocumentReplacement,
-} from "../persistence-manager/index.js";
-import { ShortcutManager } from "../shortcut-manager/index.js";
-import { serializeThemePackage, parseThemePackage } from "../persist.js";
+} from "./persistence-manager/index.js";
+import { ShortcutManager } from "./shortcut-manager/index.js";
+import { serializeThemePackage, parseThemePackage } from "./persist.js";
 import {
   createThemeLibraryClient,
   type ThemeLibraryClient,
   type ThemeLibraryEntry,
-} from "../theme-library-client.js";
-import { AssetManager, createAssetPanel } from "../asset-manager/index.js";
+} from "./theme-library-client.js";
+import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
 import {
   applyFontTrio,
   fontTrio,
   type CuratedFontFace,
-} from "../font-catalog.js";
-import { previewFontFace, releaseFontPreview } from "../font-preview.js";
-import { LiveRuntime } from "../live-runtime.js";
+} from "./font-catalog.js";
+import { previewFontFace, releaseFontPreview } from "./font-preview.js";
+import { LiveRuntime } from "./live-runtime.js";
 
-export interface ForkExtensionsOptions {
-  readonly shell: ForkShell;
+export interface EditorSessionOptions {
+  readonly shell: EditorShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
   readonly assets?: Readonly<Record<string, Uint8Array>>;
@@ -64,8 +74,8 @@ export interface ForkExtensionsOptions {
   readonly onBindingsChange?: () => void;
 }
 
-/** Composition root for Vigilia-specific behaviour layered above the fork. */
-export class ForkExtensions {
+/** Owns Vigilia editor composition on the native Fabric canvas. */
+export class EditorSession {
   readonly charts: ChartManager;
   readonly #runtime: LiveRuntime;
   readonly #artboard: ArtboardPanel;
@@ -73,19 +83,22 @@ export class ForkExtensions {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #layers: LayerPanel;
+  readonly #toolbar: SelectionToolbar;
+  readonly #snapping: SnapManager;
+  readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
   readonly #assets = new AssetManager();
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #fileSection: HTMLElement;
-  readonly #shell: ForkShell;
+  readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
   readonly #onBindingsChange: (() => void) | undefined;
 
-  constructor(options: ForkExtensionsOptions) {
+  constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
       throw new Error(
-        "The fork shell needs a scene adapter for Vigilia extensions.",
+        "The editor shell needs a scene adapter for Vigilia extensions.",
       );
     }
     this.#envelope = options.envelope;
@@ -151,6 +164,25 @@ export class ForkExtensions {
     this.#fileSection = fileSection;
 
     this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
+    this.#toolbar = createSelectionToolbar(options.shell.editor);
+    this.#snapping = createSnapManager({
+      canvas: options.shell.editor.canvas,
+      bounds: () => {
+        const artboard = this.#envelope.artboard;
+        return {
+          left: 0,
+          top: 0,
+          right: artboard.width,
+          bottom: artboard.height,
+          centerX: artboard.width / 2,
+          centerY: artboard.height / 2,
+        };
+      },
+      errors: options.shell.editor.errorManager,
+    });
+    this.#indicators = createIndicatorManager({
+      canvas: options.shell.editor.canvas,
+    });
     this.#artboard = createArtboardPanel(
       options.panelHost,
       this.#envelope.globals,
@@ -241,6 +273,30 @@ export class ForkExtensions {
     this.#shortcuts.register("file.new", () => {
       void this.#new(options);
     });
+    this.#shortcuts.register("edit.undo", () => {
+      void options.shell.editor.historyManager.undo();
+    });
+    this.#shortcuts.register("edit.redo", () => {
+      void options.shell.editor.historyManager.redo();
+    });
+    this.#shortcuts.register("edit.delete", () => {
+      options.shell.editor.deletionManager.deleteActive();
+    });
+    this.#shortcuts.register("edit.copy", () => {
+      void options.shell.editor.clipboardManager.copy();
+    });
+    this.#shortcuts.register("edit.cut", () => {
+      void options.shell.editor.clipboardManager.cut();
+    });
+    this.#shortcuts.register("edit.duplicate", () => {
+      void options.shell.editor.clipboardManager.duplicate();
+    });
+    this.#shortcuts.register("edit.group", () => {
+      options.shell.editor.groupingManager.group();
+    });
+    this.#shortcuts.register("edit.ungroup", () => {
+      options.shell.editor.groupingManager.ungroup();
+    });
   }
 
   get envelope(): FabricThemeEnvelopeInput {
@@ -257,7 +313,7 @@ export class ForkExtensions {
     this.charts.refresh();
   }
 
-  async hydrateAssets(shell: ForkShell): Promise<void> {
+  async hydrateAssets(shell: EditorShell): Promise<void> {
     await this.#assets.hydrate(shell.editor.canvas);
   }
 
@@ -319,9 +375,12 @@ export class ForkExtensions {
     this.#types.root.remove();
     this.#newObjects.root.remove();
     this.#layers.destroy();
+    this.#toolbar.destroy();
+    this.#snapping.destroy();
+    this.#indicators.destroy();
   }
 
-  async #save(options: ForkExtensionsOptions): Promise<void> {
+  async #save(options: EditorSessionOptions): Promise<void> {
     try {
       const current = this.#snapshot(options.shell);
       await this.#persistence.save(current, this.#assets.assets);
@@ -331,7 +390,7 @@ export class ForkExtensions {
     }
   }
 
-  async #saveLibrary(options: ForkExtensionsOptions): Promise<void> {
+  async #saveLibrary(options: EditorSessionOptions): Promise<void> {
     const current = this.#snapshot(options.shell);
     const result = serializeThemePackage(current, this.#assets.assets);
     if (!result.ok) {
@@ -349,7 +408,7 @@ export class ForkExtensions {
     }
   }
 
-  async #openLibrary(options: ForkExtensionsOptions): Promise<void> {
+  async #openLibrary(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
@@ -374,7 +433,7 @@ export class ForkExtensions {
     }
   }
 
-  async #open(options: ForkExtensionsOptions): Promise<void> {
+  async #open(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     if (options.onOpenPackage !== undefined) {
       options.onOpenPackage();
@@ -383,13 +442,13 @@ export class ForkExtensions {
     }
   }
 
-  async #new(options: ForkExtensionsOptions): Promise<void> {
+  async #new(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     await options.onNew();
   }
 
   async #confirmReplacement(options: {
-    readonly shell: ForkShell;
+    readonly shell: EditorShell;
     readonly onSaved: (message?: string) => void;
   }): Promise<boolean> {
     const current = this.#snapshot(options.shell);
@@ -406,14 +465,14 @@ export class ForkExtensions {
     return true;
   }
 
-  #setArtboard(shell: ForkShell, artboard: Artboard): void {
+  #setArtboard(shell: EditorShell, artboard: Artboard): void {
     this.#envelope = { ...this.#envelope, artboard };
     shell.setArtboard(artboard);
     this.#refreshBackgroundMedia(shell);
     this.#artboard.render(artboard, this.#envelope.metadata);
   }
 
-  async #release(options: ForkExtensionsOptions): Promise<void> {
+  async #release(options: EditorSessionOptions): Promise<void> {
     const level = window.prompt("Release bump: major, minor or patch", "patch");
     if (level !== "major" && level !== "minor" && level !== "patch") return;
     try {
@@ -443,7 +502,7 @@ export class ForkExtensions {
     }
   }
 
-  #refreshBackgroundMedia(shell: ForkShell): void {
+  #refreshBackgroundMedia(shell: EditorShell): void {
     shell.setBackgroundMedia(this.#assets.declarations, (assetId) =>
       this.#assets.backgroundSource(assetId),
     );
@@ -458,7 +517,7 @@ export class ForkExtensions {
     this.#onBindingsChange?.();
   }
 
-  #setPalette(shell: ForkShell, palette: FabricPalette): void {
+  #setPalette(shell: EditorShell, palette: FabricPalette): void {
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, palette },
@@ -471,20 +530,16 @@ export class ForkExtensions {
     this.#palette.render(palette);
   }
 
-  #deletePalette(shell: ForkShell, id: string, replacement: string): void {
+  #deletePalette(shell: EditorShell, id: string, replacement: string): void {
     if (id === "none" || id === replacement) return;
-    const from = `palette.${id}` as const;
-    const to = `palette.${replacement}` as const;
-    reassignObjectPaletteReferences(shell.editor.canvas, from, to);
+    const { from, to, artboard, palette } = reassignPaletteToken(
+      shell.editor.canvas,
+      this.#envelope.artboard,
+      this.#envelope.globals?.palette ?? {},
+      id,
+      replacement,
+    );
     this.charts.reassignPaletteReferences(from, to);
-    const artboard = { ...this.#envelope.artboard };
-    for (const property of ["background", "barColor"] as const) {
-      const value = artboard[property];
-      if (value !== undefined && "ref" in value && value.ref === from)
-        artboard[property] = { ref: to };
-    }
-    const palette = { ...this.#envelope.globals?.palette };
-    delete palette[id];
     this.#envelope = {
       ...this.#envelope,
       artboard,
@@ -500,7 +555,7 @@ export class ForkExtensions {
     this.#palette.render(palette);
   }
 
-  #setTypes(shell: ForkShell, typePresets: TypePresets): void {
+  #setTypes(shell: EditorShell, typePresets: TypePresets): void {
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
@@ -521,7 +576,7 @@ export class ForkExtensions {
   }
 
   async #runFontAction(
-    options: ForkExtensionsOptions,
+    options: EditorSessionOptions,
     action: () => Promise<unknown>,
   ): Promise<void> {
     try {
@@ -531,23 +586,24 @@ export class ForkExtensions {
     }
   }
 
-  #deleteType(shell: ForkShell, id: string, replacement: string): void {
+  #deleteType(shell: EditorShell, id: string, replacement: string): void {
     if (id === replacement) return;
-    const from = `typePresets.${id}` as const;
-    const to = `typePresets.${replacement}` as const;
-    reassignObjectTypePresetReferences(shell.editor.canvas, from, to);
-    const typePresets = { ...this.#envelope.globals?.typePresets };
-    delete typePresets[id];
+    const typePresets = reassignTypePresetToken(
+      shell.editor.canvas,
+      (this.#envelope.globals?.typePresets ?? {}) as TypePresets,
+      id,
+      replacement,
+    );
     this.#envelope = {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
     };
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
-    this.#types.render(typePresets as TypePresets);
+    this.#types.render(typePresets);
   }
 
-  #snapshot(shell: ForkShell): FabricThemeEnvelope {
+  #snapshot(shell: EditorShell): FabricThemeEnvelope {
     return shell.snapshot({
       ...this.#envelope,
       ...(this.#assets.declarations.length === 0

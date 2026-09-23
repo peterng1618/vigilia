@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createPalettePanel } from "./palette-panel.js";
+import { createPalettePanel } from "./panel.js";
 
 describe("palette panel", () => {
   const palette = {

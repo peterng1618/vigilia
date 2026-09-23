@@ -1,25 +1,71 @@
 export type ShortcutHandler = () => void;
-export type ProductShortcutId = "file.new" | "file.open" | "file.save";
+export type ProductShortcutId =
+  | "file.new"
+  | "file.open"
+  | "file.save"
+  | "edit.undo"
+  | "edit.redo"
+  | "edit.delete"
+  | "edit.copy"
+  | "edit.cut"
+  | "edit.duplicate"
+  | "edit.group"
+  | "edit.ungroup";
 
-const FILE_SHORTCUTS: Readonly<Record<string, ProductShortcutId>> = {
-  n: "file.new",
-  o: "file.open",
-  s: "file.save",
-};
+interface ShortcutBinding {
+  readonly key: string;
+  /** A binding with no modifier always defers to a focused text field. */
+  readonly modifier: boolean;
+  readonly shift?: boolean;
+  readonly action: ProductShortcutId;
+}
 
-/** The sole window-level dispatcher for Vigilia product actions above the fork. */
+const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
+  { key: "n", modifier: true, action: "file.new" },
+  { key: "o", modifier: true, action: "file.open" },
+  { key: "s", modifier: true, action: "file.save" },
+  { key: "z", modifier: true, action: "edit.undo" },
+  { key: "y", modifier: true, action: "edit.redo" },
+  { key: "c", modifier: true, action: "edit.copy" },
+  { key: "x", modifier: true, action: "edit.cut" },
+  { key: "d", modifier: true, action: "edit.duplicate" },
+  { key: "g", modifier: true, shift: true, action: "edit.ungroup" },
+  { key: "g", modifier: true, action: "edit.group" },
+  { key: "delete", modifier: false, action: "edit.delete" },
+  { key: "backspace", modifier: false, action: "edit.delete" },
+];
+
+/** Shift-qualified bindings precede their plain form, so first match wins. */
+function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
+  const key = event.key.toLowerCase();
+  const modifier = event.ctrlKey || event.metaKey;
+  return PRODUCT_SHORTCUTS.find(
+    (binding) =>
+      binding.key === key &&
+      binding.modifier === modifier &&
+      (binding.shift === undefined || binding.shift === event.shiftKey),
+  );
+}
+
+/** Actions that defer to a focused text field's own key handling (e.g. Fabric's hidden textarea while editing). */
+const TEXT_ENTRY_DEFERRED_ACTIONS: ReadonlySet<ProductShortcutId> = new Set([
+  "file.new",
+  "edit.undo",
+  "edit.redo",
+]);
+
+/** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
   readonly #onKeyDown = (event: KeyboardEvent): void => {
-    const action =
-      event.ctrlKey || event.metaKey
-        ? FILE_SHORTCUTS[event.key.toLowerCase()]
-        : undefined;
+    const binding = bindingFor(event);
     const handler =
-      action === undefined ? undefined : this.#handlers.get(action);
+      binding === undefined ? undefined : this.#handlers.get(binding.action);
 
-    const target = event.target;
-    const deferred = action === "file.new" && isTextEntryTarget(target);
+    const deferred =
+      binding !== undefined &&
+      (!binding.modifier || TEXT_ENTRY_DEFERRED_ACTIONS.has(binding.action)) &&
+      isTextEntryTarget(event.target);
 
     if (handler === undefined || deferred) {
       return;

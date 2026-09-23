@@ -1,10 +1,22 @@
-import initEditor, { type ImageEditor } from "@anu3ev/fabric-image-editor";
 import {
   ActiveSelection,
+  Canvas,
   classRegistry,
   type ActiveSelectionOptions,
   type FabricObject,
 } from "fabric/es";
+import { EditorHistory } from "./history-manager/index.js";
+import type { EditorInteraction } from "./editor-interaction.js";
+import { createTextManager } from "./text-manager/index.js";
+import { createImageManager } from "./image-manager/index.js";
+import { createLayerManager } from "./layer-manager/index.js";
+import { createObjectLockManager } from "./object-lock-manager/index.js";
+import { createErrorManager } from "./error-manager/index.js";
+import { createCropManager } from "./crop-manager/index.js";
+import { createDeletionManager } from "./deletion-manager/index.js";
+import { createClipboardManager } from "./clipboard-manager/index.js";
+import { createGroupingManager } from "./grouping-manager/index.js";
+import { applyEditorControls } from "./controls-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -32,11 +44,11 @@ import {
   type SceneAdapter,
 } from "@vigilia/scene-fabric";
 
-export interface ForkShellOptions {
+export interface EditorShellOptions {
   readonly host: HTMLElement;
   readonly artboard: Artboard;
   readonly plan?: ScenePlan;
-  /** A validated v2 document revives directly into the interactive fork canvas. */
+  /** A validated v2 document revives directly into the interactive canvas. */
   readonly envelope?: FabricThemeEnvelope;
   readonly assets?: readonly AssetReference[];
   readonly resolveAsset?: (
@@ -44,8 +56,8 @@ export interface ForkShellOptions {
   ) => BackgroundMediaSource | undefined;
 }
 
-export interface ForkShell {
-  readonly editor: ImageEditor;
+export interface EditorShell {
+  readonly editor: EditorInteraction;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
@@ -58,8 +70,8 @@ export interface ForkShell {
   destroy(): void;
 }
 
-const FORK_CONTAINER_ID = "vigilia-fabric-editor";
-let nextForkContainer = 1;
+const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
+let nextEditorContainer = 1;
 
 class SelectionOrderedActiveSelection extends ActiveSelection {
   constructor(
@@ -75,7 +87,7 @@ classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
 function fitArtboardViewport(
   container: HTMLElement,
   host: HTMLElement,
-  artboard: ForkShellOptions["artboard"],
+  artboard: EditorShellOptions["artboard"],
   fitMode: FitMode,
 ): number | undefined {
   const scale =
@@ -97,10 +109,10 @@ function fitArtboardViewport(
 }
 
 function fitCanvasViewport(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   container: HTMLElement,
   host: HTMLElement,
-  artboard: ForkShellOptions["artboard"],
+  artboard: EditorShellOptions["artboard"],
   fitMode: FitMode,
 ): void {
   const scale = fitArtboardViewport(container, host, artboard, fitMode);
@@ -122,7 +134,7 @@ function fitCanvasViewport(
 }
 
 function applyArtboardPaint(
-  editor: ImageEditor,
+  editor: EditorInteraction,
   host: HTMLElement,
   artboard: Artboard,
   globals: Globals | undefined,
@@ -144,18 +156,73 @@ function applyArtboardPaint(
   editor.canvas.requestRenderAll();
 }
 
-/** Mounts the adopted editor with Vigilia's chart-resource lifecycle hook. */
-export async function mountForkShell({
+function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorInteraction {
+  applyEditorControls();
+  const element = document.createElement("canvas");
+  container.append(element);
+  const canvas = new Canvas(element, { width: artboard.width, height: artboard.height });
+  const history = new EditorHistory({
+    canvas,
+    serialize: serialiseScene,
+    revive: reviveScene,
+  });
+  history.reset();
+  const save = (): void => history.save();
+  /** A completed mouse-driven move/scale/rotate needs the same history entry
+   * explicit actions get; Fabric only reports it after the gesture ends. */
+  canvas.on("object:modified", save);
+  const errors = createErrorManager(canvas);
+  const deletion = createDeletionManager(canvas, save);
+  const images = createImageManager(canvas, save);
+  return {
+    canvas,
+    historyManager: {
+      saveState: save,
+      resetHistory: () => history.reset(),
+      undo: () => history.undo(),
+      redo: () => history.redo(),
+      suspend: () => history.suspend(),
+    },
+    textManager: createTextManager(canvas, save),
+    imageManager: images,
+    layerManager: createLayerManager(canvas, save),
+    objectLockManager: createObjectLockManager(canvas, save),
+    errorManager: errors,
+    cropManager: createCropManager({
+      canvas,
+      save,
+      suspend: () => history.suspend(),
+      errors,
+    }),
+    deletionManager: deletion,
+    clipboardManager: createClipboardManager({
+      canvas,
+      save,
+      errors,
+      deletion,
+      importImage: (input) => images.importImage(input),
+    }),
+    groupingManager: createGroupingManager({
+      canvas,
+      save,
+      suspend: () => history.suspend(),
+    }),
+    destroy: () => canvas.dispose(),
+  };
+}
+
+/** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
+export async function mountEditorShell({
   host,
   artboard,
   plan,
   envelope,
   assets,
   resolveAsset,
-}: ForkShellOptions): Promise<ForkShell> {
+}: EditorShellOptions): Promise<EditorShell> {
   if (plan !== undefined && envelope !== undefined) {
     throw new Error(
-      "A fork shell accepts either a scene plan or a Fabric envelope, not both.",
+      "An editor shell accepts either a scene plan or a Fabric envelope, not both.",
     );
   }
   if (envelope !== undefined) {
@@ -167,8 +234,12 @@ export async function mountForkShell({
     }
   }
   const container = document.createElement("div");
-  container.id = `${FORK_CONTAINER_ID}-${nextForkContainer}`;
-  nextForkContainer += 1;
+  container.id = `${EDITOR_CONTAINER_ID}-${nextEditorContainer}`;
+  nextEditorContainer += 1;
+  /** The retired image-editor package exposed its instance as `window[containerId]`
+   * for devtools/e2e access; keep that contract on the numbered id, which stays
+   * stable even after the container's own `id` attribute is reset below. */
+  const debugKey = container.id;
   container.style.position = "absolute";
   container.style.inset = "0";
   container.style.margin = "auto";
@@ -183,7 +254,7 @@ export async function mountForkShell({
     fitMode,
   );
   host.append(container);
-  let mounted: ImageEditor | undefined;
+  let mounted: EditorInteraction | undefined;
   const resize =
     typeof ResizeObserver === "undefined"
       ? undefined
@@ -200,18 +271,9 @@ export async function mountForkShell({
   resize?.observe(host);
 
   try {
-    const editor = await initEditor(container.id, {
-      montageAreaWidth: artboard.width,
-      montageAreaHeight: artboard.height,
-      editorContainerWidth: "100%",
-      editorContainerHeight: "100%",
-      defaultScale: initialScale ?? 1,
-      resetObjectFitByDoubleClick: false,
-      beforeHistoryStateLoad: disposeScene,
-      serializeHistoryState: serialiseScene,
-      reviveHistoryState: reviveScene,
-    });
+    const editor = createNativeEditor(container, artboard);
     mounted = editor;
+    (window as unknown as Record<string, unknown>)[debugKey] = editor;
     fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
 
     if (envelope !== undefined) {
@@ -230,7 +292,7 @@ export async function mountForkShell({
     }
 
     host.replaceChildren(container);
-    container.id = FORK_CONTAINER_ID;
+    container.id = EDITOR_CONTAINER_ID;
     container.style.visibility = "";
     let mediaAssets = assets ?? envelope?.assets;
     let mediaResolve = resolveAsset;
@@ -294,7 +356,9 @@ export async function mountForkShell({
         media?.destroy();
         scene?.dispose();
         disposeScene(editor.canvas);
+        editor.clipboardManager.destroy();
         editor.destroy();
+        delete (window as unknown as Record<string, unknown>)[debugKey];
       },
     };
   } catch (error) {
