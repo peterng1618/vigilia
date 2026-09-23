@@ -6,6 +6,7 @@ import {
   SEMANTIC_KEYS,
   settingsFieldsFor,
 } from "@vigilia/renderer-core";
+import { uiCopy } from "../ui-copy.js";
 
 export interface ChartPropertyPanel {
   readonly root: HTMLElement;
@@ -35,7 +36,7 @@ export function createChartPropertyPanel(
     render(chart, palette) {
       root.replaceChildren();
       if (chart === undefined) {
-        root.textContent = "Select a chart to edit its settings.";
+        root.textContent = uiCopy.panels.selectChart;
         return;
       }
       const heading = document.createElement("h2");
@@ -281,7 +282,7 @@ function unitDisplay(
   onChange: (value: Binding["unitDisplay"]) => void,
 ): readonly [HTMLLabelElement, HTMLSelectElement] {
   const label = document.createElement("label");
-  label.textContent = "Unit display";
+  label.textContent = uiCopy.panels.unitDisplay;
   const select = document.createElement("select");
   select.dataset["vigiliaBindingField"] = `${binding.id}.unitDisplay`;
   for (const [value, text] of [

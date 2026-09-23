@@ -27,6 +27,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
+import { uiCopy } from "./ui-copy.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
 
@@ -345,7 +346,7 @@ function reportMissingFonts(plan: ScenePlan): void {
 /** Shows a document-load failure on screen rather than leaving a blank display. */
 function showFailure(host: HTMLElement, message: string): void {
   const panel = document.createElement("pre");
-  panel.textContent = `Vigilia could not load this theme.\n\n${message}`;
+  panel.textContent = uiCopy.loadFailure(message);
   panel.style.cssText =
     "position:absolute;inset:0;margin:0;padding:24px;color:#ff8f73;background:#14161c;" +
     "font:14px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow:auto";
@@ -355,9 +356,7 @@ function showFailure(host: HTMLElement, message: string): void {
 /** Persistent disclosure that displayed values are synthetic. */
 function showScaffoldBanner(keyCount: number, themeName: string): void {
   const banner = document.createElement("div");
-  banner.textContent =
-    `SYNTHETIC DATA — "${themeName}", ${keyCount} semantic keys served by ` +
-    "@vigilia/fake-source, not by hardware";
+  banner.textContent = uiCopy.syntheticData(themeName, keyCount);
   banner.style.cssText =
     "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
     "background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em";
@@ -378,17 +377,15 @@ function showConnectionState(
     return;
   }
 
-  const message: Record<Exclude<LiveSourceStatus, "live">, string> = {
-    connecting: `Connecting to the host — ${keyCount} sensors requested`,
-    reconnecting:
-      "Lost the host. Values shown are the last received, not current.",
-    refused: `The host is not compatible with this display${detail === undefined ? "" : `: ${detail}`}`,
-  };
-
   const banner = existing ?? document.createElement("div");
 
   banner.id = id;
-  banner.textContent = message[status];
+  banner.textContent =
+    status === "refused"
+      ? uiCopy.connection.refused(detail)
+      : status === "connecting"
+        ? uiCopy.connection.connecting(keyCount)
+        : uiCopy.connection.reconnecting;
   banner.style.cssText =
     "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
     "font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em;" +

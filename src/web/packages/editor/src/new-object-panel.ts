@@ -1,6 +1,7 @@
 import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
 import type { EditorInteraction } from "./editor-interaction.js";
 import { createNewTextDefaults } from "./new-object-defaults.js";
+import { uiCopy } from "./ui-copy.js";
 
 export interface NewObjectPanel {
   readonly root: HTMLElement;
@@ -22,10 +23,10 @@ export function createNewObjectPanel(
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "add";
   const heading = document.createElement("h2");
-  heading.textContent = "Add";
+  heading.textContent = uiCopy.panels.add;
   const text = document.createElement("button");
   text.type = "button";
-  text.textContent = "Text";
+  text.textContent = uiCopy.panels.text;
   text.addEventListener("click", () => {
     const content = "New text";
     editor.textManager.addText({
@@ -35,10 +36,10 @@ export function createNewObjectPanel(
   });
   const charts = (
     [
-      ["Gauge", "gauge"],
-      ["Line", "line"],
-      ["Bar", "bar"],
-      ["Pie", "pie"],
+      [uiCopy.chartFamilies.gauge, "gauge"],
+      [uiCopy.chartFamilies.line, "line"],
+      [uiCopy.chartFamilies.bar, "bar"],
+      [uiCopy.chartFamilies.pie, "pie"],
     ] as const
   ).map(([label, family]) => {
     const button = document.createElement("button");

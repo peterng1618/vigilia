@@ -5,6 +5,7 @@ import {
   MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
+import { uiCopy } from "./ui-copy.js";
 
 export interface ArtboardPanel {
   readonly root: HTMLElement;
@@ -27,18 +28,21 @@ export function createArtboardPanel(
 ): ArtboardPanel {
   const root = document.createElement("section");
   const heading = document.createElement("h2");
-  heading.textContent = "Theme settings";
-  const name = textInput("Name", "vigiliaThemeName");
-  const author = textInput("Author", "vigiliaThemeAuthor");
-  const description = textInput("Description", "vigiliaThemeDescription");
+  heading.textContent = uiCopy.panels.themeSettings;
+  const name = textInput(uiCopy.panels.name, "vigiliaThemeName");
+  const author = textInput(uiCopy.panels.author, "vigiliaThemeAuthor");
+  const description = textInput(
+    uiCopy.panels.description,
+    "vigiliaThemeDescription",
+  );
   const versionLabel = document.createElement("label");
-  versionLabel.textContent = "Release version";
+  versionLabel.textContent = uiCopy.panels.releaseVersion;
   const version = document.createElement("output");
   version.dataset["vigiliaThemeVersion"] = "";
-  const width = dimensionInput("Width");
-  const height = dimensionInput("Height");
+  const width = dimensionInput(uiCopy.panels.width);
+  const height = dimensionInput(uiCopy.panels.height);
   const label = document.createElement("label");
-  label.textContent = "Preview fit";
+  label.textContent = uiCopy.panels.previewFit;
   const select = document.createElement("select");
   select.dataset["vigiliaArtboardFitMode"] = "";
   for (const fitMode of ["contain", "cover"] as const) {
@@ -47,8 +51,8 @@ export function createArtboardPanel(
     option.textContent = fitMode[0]!.toUpperCase() + fitMode.slice(1);
     select.append(option);
   }
-  const background = paletteInput("Background", "background");
-  const bars = paletteInput("Bar colour", "barColor");
+  const background = paletteInput(uiCopy.panels.background, "background");
+  const bars = paletteInput(uiCopy.panels.barColour, "barColor");
   const media = document.createElement("select");
   media.dataset["vigiliaBackgroundAsset"] = "";
   const mediaFit = document.createElement("select");
@@ -133,11 +137,11 @@ export function createArtboardPanel(
     bars.label,
     bars.select,
     Object.assign(document.createElement("label"), {
-      textContent: "Background media",
+      textContent: uiCopy.panels.backgroundMedia,
     }),
     media,
     Object.assign(document.createElement("label"), {
-      textContent: "Media fit",
+      textContent: uiCopy.panels.mediaFit,
     }),
     mediaFit,
   );
@@ -204,7 +208,7 @@ function refreshMediaOptions(
   select: HTMLSelectElement,
   assets: readonly AssetReference[] | undefined,
 ): void {
-  select.append(new Option("None", ""));
+  select.append(new Option(uiCopy.panels.none, ""));
   for (const asset of assets ?? []) {
     if (
       asset.kind === "image" ||
@@ -241,7 +245,7 @@ function refreshPaletteOptions(
   select.replaceChildren();
   const none = document.createElement("option");
   none.value = "";
-  none.textContent = "Not set";
+  none.textContent = uiCopy.panels.notSet;
   select.append(none);
   for (const [id, entry] of Object.entries(globals?.palette ?? {})) {
     const option = document.createElement("option");

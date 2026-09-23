@@ -190,11 +190,11 @@ function ShellMenuBar({
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.insert}>
-        {item("Text", () => session?.addText())}
-        {item("Gauge", () => session?.addChart("gauge"))}
-        {item("Line", () => session?.addChart("line"))}
-        {item("Bar", () => session?.addChart("bar"))}
-        {item("Pie", () => session?.addChart("pie"))}
+        {item(uiCopy.panels.text, () => session?.addText())}
+        {item(uiCopy.chartFamilies.gauge, () => session?.addChart("gauge"))}
+        {item(uiCopy.chartFamilies.line, () => session?.addChart("line"))}
+        {item(uiCopy.chartFamilies.bar, () => session?.addChart("bar"))}
+        {item(uiCopy.chartFamilies.pie, () => session?.addChart("pie"))}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.arrange}>
         {item(

@@ -1,5 +1,6 @@
 import type { TypePreset } from "@vigilia/renderer-core";
 import { type CuratedFontFace, fontTrios } from "../font-catalog.js";
+import { uiCopy } from "../ui-copy.js";
 
 export type TypePresets = Readonly<
   Record<string, { readonly name: string; readonly value: TypePreset }>
@@ -27,12 +28,12 @@ export function createTypePresetPanel(
 ): TypePresetPanel {
   const root = document.createElement("section");
   const heading = document.createElement("h2");
-  heading.textContent = "Type presets";
+  heading.textContent = uiCopy.panels.typePresets;
   const select = document.createElement("select");
   select.dataset["vigiliaTypePreset"] = "";
   const add = document.createElement("button");
   add.type = "button";
-  add.textContent = "Add type";
+  add.textContent = uiCopy.panels.addType;
   const fields = document.createElement("div");
   root.append(heading, select, add, fields);
   host.append(root);
@@ -174,14 +175,14 @@ export function createTypePresetPanel(
       faces.find((candidate) => candidate.id === face.value);
     const preview = document.createElement("button");
     preview.type = "button";
-    preview.textContent = "Preview font";
+    preview.textContent = uiCopy.panels.previewFont;
     preview.addEventListener("click", () => {
       const candidate = selectedFace();
       if (candidate !== undefined) void fontActions.preview(candidate);
     });
     const apply = document.createElement("button");
     apply.type = "button";
-    apply.textContent = "Apply font";
+    apply.textContent = uiCopy.panels.applyFont;
     apply.dataset["vigiliaFontApply"] = "";
     apply.addEventListener("click", () => {
       const candidate = selectedFace();
@@ -200,7 +201,7 @@ export function createTypePresetPanel(
     );
     const applyTrio = document.createElement("button");
     applyTrio.type = "button";
-    applyTrio.textContent = "Apply trio";
+    applyTrio.textContent = uiCopy.panels.applyTrio;
     applyTrio.addEventListener("click", () => {
       void fontActions.applyTrio(trio.value);
     });
@@ -215,7 +216,7 @@ export function createTypePresetPanel(
   const deletionControls = (): HTMLElement[] => {
     if (onDelete === undefined) return [];
     const label = document.createElement("label");
-    label.textContent = "Reassign to";
+    label.textContent = uiCopy.panels.reassign;
     const replacement = document.createElement("select");
     replacement.dataset["vigiliaTypeReplacement"] = "";
     for (const [id, entry] of Object.entries(presets)) {
@@ -227,7 +228,7 @@ export function createTypePresetPanel(
     }
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.textContent = "Delete type";
+    remove.textContent = uiCopy.panels.deleteType;
     remove.dataset["vigiliaTypeDelete"] = "";
     remove.disabled = replacement.options.length === 0;
     remove.addEventListener("click", () => {

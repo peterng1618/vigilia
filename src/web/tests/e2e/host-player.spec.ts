@@ -117,10 +117,9 @@ test.describe("hosted player over the real host", () => {
     });
     expect(status).toBe("loaded");
 
-    // A failed font fetch would surface through the player's failure path.
-    await expect(page.locator("#vigilia-connection")).not.toContainText(
-      "Could not load",
-    );
+    // A failed font fetch would surface through the player's failure path; the
+    // connection banner is absent once live, so assert on the failure panel.
+    await expect(page.locator("pre")).toHaveCount(0);
   });
 
   test("renders a hosted theme in the player and streams live samples", async ({

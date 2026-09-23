@@ -3,6 +3,7 @@ import type {
   FabricPaletteEntry,
   PalettePaint,
 } from "@vigilia/renderer-core";
+import { uiCopy } from "../ui-copy.js";
 
 export interface PalettePanel {
   readonly root: HTMLElement;
@@ -17,12 +18,12 @@ export function createPalettePanel(
 ): PalettePanel {
   const root = document.createElement("section");
   const heading = document.createElement("h2");
-  heading.textContent = "Palette";
+  heading.textContent = uiCopy.panels.palette;
   const select = document.createElement("select");
   select.dataset["vigiliaPaletteToken"] = "";
   const add = document.createElement("button");
   add.type = "button";
-  add.textContent = "Add colour";
+  add.textContent = uiCopy.panels.addColour;
   const fields = document.createElement("div");
   root.append(heading, select, add, fields);
   host.append(root);
@@ -80,7 +81,7 @@ export function createPalettePanel(
       });
     });
     const label = document.createElement("label");
-    label.textContent = "Paint";
+    label.textContent = uiCopy.panels.paint;
     const controls =
       entry.value.kind === "solid"
         ? solidFields(entry, entry.value, commit)
@@ -91,7 +92,7 @@ export function createPalettePanel(
   const deletionControls = (): HTMLElement[] => {
     if (onDelete === undefined) return [];
     const label = document.createElement("label");
-    label.textContent = "Reassign to";
+    label.textContent = uiCopy.panels.reassign;
     const replacement = document.createElement("select");
     replacement.dataset["vigiliaPaletteReplacement"] = "";
     for (const [id, entry] of Object.entries(palette)) {
@@ -103,7 +104,7 @@ export function createPalettePanel(
     }
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.textContent = "Delete colour";
+    remove.textContent = uiCopy.panels.deleteColour;
     remove.dataset["vigiliaPaletteDelete"] = "";
     remove.disabled = replacement.options.length === 0;
     remove.addEventListener("click", () => {
@@ -208,7 +209,7 @@ function gradientFields(
   if (last !== undefined) {
     const add = document.createElement("button");
     add.type = "button";
-    add.textContent = "Add stop";
+    add.textContent = uiCopy.panels.addStop;
     add.dataset["vigiliaPaletteAddStop"] = "";
     add.addEventListener("click", () => {
       commit({

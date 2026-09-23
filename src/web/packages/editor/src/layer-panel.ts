@@ -1,6 +1,7 @@
 import { type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
+import { uiCopy } from "./ui-copy.js";
 
 export interface LayerPanel {
   readonly root: HTMLElement;
@@ -84,7 +85,7 @@ function render(
 ): void {
   root.replaceChildren();
   const heading = document.createElement("h2");
-  heading.textContent = "Layers";
+  heading.textContent = uiCopy.panels.layers;
   root.append(heading);
   for (const entry of entries) {
     root.append(row(entry, editor, refresh));
@@ -185,7 +186,7 @@ function arrangeControls(
 ): HTMLElement {
   const section = document.createElement("section");
   const heading = document.createElement("h2");
-  heading.textContent = "Arrange";
+  heading.textContent = uiCopy.panels.arrange;
   section.append(heading);
   for (const [action, label] of [
     ["align-left", "Align left"],

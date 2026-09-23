@@ -11,6 +11,7 @@ import { FabricImage, Group, type StaticCanvas } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 import { boundedImageElement } from "../image-manager/index.js";
+import { uiCopy } from "../ui-copy.js";
 
 const TYPES = {
   png: { mime: "image/png", kind: "image" },
@@ -253,9 +254,11 @@ export function createAssetPanel(
   const remove = document.createElement("button");
   remove.type = "button";
   remove.dataset["vigiliaAssetRemove"] = "";
-  remove.textContent = "Remove asset";
+  remove.textContent = uiCopy.panels.removeAsset;
   root.append(
-    Object.assign(document.createElement("h2"), { textContent: "Assets" }),
+    Object.assign(document.createElement("h2"), {
+      textContent: uiCopy.panels.assets,
+    }),
     select,
     importInput,
     replaceInput,
