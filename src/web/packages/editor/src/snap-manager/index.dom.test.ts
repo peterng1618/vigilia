@@ -6,6 +6,7 @@ import { createSnapManager } from "./index.js";
 
 function setup() {
   const canvas = new Canvas(document.createElement("canvas"));
+  const logged = vi.fn();
   const snapping = createSnapManager({
     canvas,
     bounds: () => ({
@@ -16,9 +17,9 @@ function setup() {
       centerX: 200,
       centerY: 150,
     }),
-    errors: createErrorManager(canvas),
+    errors: { error: logged, warn: vi.fn() } as never,
   });
-  return { canvas, snapping };
+  return { canvas, snapping, logged };
 }
 
 describe("SnapManager", () => {
@@ -121,5 +122,35 @@ describe("SnapManager", () => {
     canvas.fire("object:moving" as never, { target: dragged } as never);
 
     expect(dragged.left).toBe(98);
+  });
+
+  it("survives a whole-pixel drag step that resolves to a zero delta", () => {
+    const { canvas, snapping, logged } = setup();
+    // Far from every neighbour and the artboard edge: the resolver returns the
+    // dragged position itself, so the first step is a zero-delta plan.
+    const dragged = new Rect({
+      id: "b",
+      left: 98,
+      top: 150,
+      width: 40,
+      height: 40,
+    });
+    canvas.add(
+      new Rect({ id: "a", left: 250, top: 20, width: 40, height: 40 }),
+      dragged,
+    );
+    canvas.setActiveObject(dragged);
+
+    canvas.fire("mouse:down" as never, { target: dragged } as never);
+    // Whole-pixel drag: the resolver's pixel rounding returns a zero-delta
+    // plan. The pending token must still be verified so the next step runs.
+    dragged.set({ left: 99, top: 151 });
+    canvas.fire("object:moving" as never, { target: dragged } as never);
+    dragged.set({ left: 120, top: 160 });
+    canvas.fire("object:moving" as never, { target: dragged } as never);
+
+    expect(dragged.left).toBe(120);
+    expect(logged).not.toHaveBeenCalled();
+    snapping.destroy();
   });
 });

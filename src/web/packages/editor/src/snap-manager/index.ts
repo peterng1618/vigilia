@@ -69,12 +69,19 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   let lastGuides: readonly GuideLine[] = [];
   let lastSpacingGuides: readonly unknown[] = [];
   let gestureActive = false;
+  /**
+   * One marker per gesture: Fabric may deliver several object:moving events
+   * for the same pointer marker, and the runtime's duplicate detection is
+   * keyed on marker identity.
+   */
+  let gestureMarker: object | undefined;
 
   const stopGesture = (): void => {
     if (gestureActive) runtime.finishSession();
     gestureActive = false;
     target = undefined;
     targetStartBounds = undefined;
+    gestureMarker = undefined;
     lastGuides = [];
     lastSpacingGuides = [];
     canvas.requestRenderAll();
@@ -121,16 +128,24 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     });
     target = active;
     targetStartBounds = startBounds;
+    gestureMarker = { gesture: "moving" };
     gestureActive = true;
   };
 
   const runStep = (): void => {
     const moved = target;
     const startBounds = targetStartBounds;
-    if (!gestureActive || moved === undefined || startBounds === undefined)
+    if (
+      !gestureActive ||
+      moved === undefined ||
+      startBounds === undefined ||
+      gestureMarker === undefined
+    )
       return;
 
-    const marker = { step: "moving" };
+    // One marker per gesture: repeated object:moving events with unchanged
+    // geometry hit the runtime's duplicate path instead of re-planning.
+    const marker = gestureMarker;
     const duplicate = runtime.getDuplicateStep({ marker });
     if (duplicate !== null) return;
 
@@ -168,11 +183,19 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     const currentTop = moved.get("top");
     const deltaX = plan.nextPosition.left - currentLeft;
     const deltaY = plan.nextPosition.top - currentTop;
-    if (deltaX === 0 && deltaY === 0) return;
 
-    moved.set({ left: plan.nextPosition.left, top: plan.nextPosition.top });
-    moved.setCoords();
-    const finalBounds = getObjectExactBounds({ object: moved });
+    // A zero-delta plan is still a plan: the object already sits at
+    // nextPosition, so the current bounds are the final geometry and the
+    // pending token must be verified — leaving it pending would wedge every
+    // later step of the gesture.
+    if (deltaX !== 0 || deltaY !== 0) {
+      moved.set({ left: plan.nextPosition.left, top: plan.nextPosition.top });
+      moved.setCoords();
+    }
+    const finalBounds =
+      deltaX === 0 && deltaY === 0
+        ? rawBounds
+        : getObjectExactBounds({ object: moved });
     if (finalBounds !== null) {
       const verification = runtime.verifyMovementPlan({
         token: step.token,
@@ -187,7 +210,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
       lastGuides = createMovementGuideLines({ guides: verification.guides });
       lastSpacingGuides = verification.spacingGuides;
     }
-    canvas.requestRenderAll();
+    if (deltaX !== 0 || deltaY !== 0) canvas.requestRenderAll();
   };
 
   const beforeRender = (): void => {
