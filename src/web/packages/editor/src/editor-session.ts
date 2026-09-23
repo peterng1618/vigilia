@@ -30,6 +30,10 @@ import {
   type SelectionToolbar,
 } from "./toolbar-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
+import {
+  createIndicatorManager,
+  type IndicatorManager,
+} from "./indicator-manager/index.js";
 import { ChartManager } from "./chart-manager/index.js";
 import {
   PersistenceManager,
@@ -81,6 +85,7 @@ export class EditorSession {
   readonly #layers: LayerPanel;
   readonly #toolbar: SelectionToolbar;
   readonly #snapping: SnapManager;
+  readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
   readonly #assets = new AssetManager();
   readonly #assetPanel: HTMLElement;
@@ -174,6 +179,9 @@ export class EditorSession {
         };
       },
       errors: options.shell.editor.errorManager,
+    });
+    this.#indicators = createIndicatorManager({
+      canvas: options.shell.editor.canvas,
     });
     this.#artboard = createArtboardPanel(
       options.panelHost,
@@ -369,6 +377,7 @@ export class EditorSession {
     this.#layers.destroy();
     this.#toolbar.destroy();
     this.#snapping.destroy();
+    this.#indicators.destroy();
   }
 
   async #save(options: EditorSessionOptions): Promise<void> {

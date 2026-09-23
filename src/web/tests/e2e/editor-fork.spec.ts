@@ -1386,6 +1386,39 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-fork-snap-guides");
     await page.mouse.up();
   });
+
+  test("shows the rotation-angle indicator beside the pointer mid-rotation", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+
+    // Select the "time" label (scene 78,189, size ~210x70) via the canvas,
+    // then sweep its rotation handle above the top edge: the degree readout
+    // must appear beside the pointer mid-gesture.
+    const toCanvas = (x: number, y: number) => ({
+      x: box.x + (x / 1280) * box.width,
+      y: box.y + (y / 720) * box.height,
+    });
+    const centre = toCanvas(180, 220);
+    await page.mouse.click(centre.x, centre.y);
+    // Fabric's mtr sits above the top edge at the object's centre X, roughly
+    // 45px above the bounding top plus the handle radius.
+    const handle = toCanvas(180, 132);
+    await page.mouse.move(handle.x, handle.y);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + 30, handle.y + 30, { steps: 12 });
+
+    await captureVisualReview(page, testInfo, "editor-fork-rotation-indicator");
+    await page.mouse.up();
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
