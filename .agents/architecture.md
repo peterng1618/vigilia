@@ -32,7 +32,9 @@ fork's full feature surface. `editor-shell.ts` owns canvas mount/disposal,
 viewport fitting and artboard paint, and composes the other managers behind
 the `EditorInteraction` contract consumed by product panels. `editor-session.ts`
 owns product composition over that shell: envelope state, panel wiring,
-dirty-work confirmation and deterministic disposal.
+dirty-work confirmation and deterministic disposal. `scene-fabric`'s
+`FabricSceneHandle` exposes `updateArtboard` for document-level artboard
+changes that a `ScenePlan` cannot carry (it never carries `backgroundMedia`).
 
 Editor concept ownership:
 
@@ -56,6 +58,16 @@ Editor concept ownership:
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
+| Structured editor diagnostics | `editor/src/error-manager/` |
+| Selection and rotation handle styling | `editor/src/controls-manager/` |
+| Active-object and selection deletion | `editor/src/deletion-manager/` |
+| OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
+| Group and ungroup | `editor/src/grouping-manager/` |
+| Floating selection toolbar | `editor/src/toolbar-manager/` |
+| Drag-time snapping and smart guides | `editor/src/snap-manager/` |
+| Rotation-angle and size indicators | `editor/src/indicator-manager/` |
+| Per-image crop session | `editor/src/crop-manager/` |
+| Imported and rehydrated image pixel bound | `editor/src/image-manager/` |
 
 ## Packaged-font ownership
 

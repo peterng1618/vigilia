@@ -30,7 +30,7 @@ result, not merely a mounted editor.
 | Session | Show dirty New/Open confirmation | `editor-fork-dirty-replacement` / `captures dirty document replacement confirmation` |
 | Open | Valid, invalid or incompatible file | add when changed |
 | History | Save changed document or undo visible drag | add when changed |
-| Fork mechanics | Transform/group/duplicate/delete/reorder | add when integration changes |
+| Fork mechanics | Transform/group/duplicate/delete/reorder | `editor-fork-snap-guides` / `snaps a dragged object`; `editor-fork-rotation-indicator` / `rotation-angle indicator`; `editor-fork-toolbar` / `captures the selection toolbar` |
 | Object tools | Add/edit shape, text, image or SVG | add when integration changes |
 | Assets | Import, replace and reopen a packaged image | `editor-fork-assets-desktop-chromium` / `imports and round-trips packaged images` |
 | Palette | Edit or reassign a palette token | `editor-fork-palette-solid` or `editor-fork-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |

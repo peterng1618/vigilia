@@ -107,6 +107,31 @@ program; Vigilia does not compile/link its .NET library.
 Keep the player bundle-size gate. Add budgets when a real expensive path exists;
 reproducible browser profiles suffice without a physical-device release gate.
 
+### Snapping geometry is vendored above the line budget
+
+`movement-snapping-resolver.ts` and `spacing.ts` are vendored verbatim at over
+1,300 lines each, exceeding the 800-line stop. Re-cutting proven geometry during
+transcription is where silent numerical bugs enter; a byte-comparable diff
+against the original is worth more than the line budget. Splitting is a
+spec-0014 follow-up.
+
+### Pasting is owned by the document paste event
+
+`Ctrl+V` stays unbound so the browser delivers `ClipboardEvent.clipboardData`,
+the only route to an image copied from another application. Copy, cut and
+duplicate go through the shortcut dispatcher.
+
+### The image pixel bound applies on import and on rehydrate
+
+A Fabric image's size follows its element, so bounding only one attachment
+point would change geometry on every reopen.
+
+### A rotated image refuses a crop session
+
+`clipPath` coordinates are image-local and unrotated; mapping a canvas-space
+frame through a rotated image's inverse transform is a larger problem than the
+feature asks for. Refusing is honest where approximating is not.
+
 ## Open
 
 - **Chart engine:** authored treatment for gauge angular gradients and discrete

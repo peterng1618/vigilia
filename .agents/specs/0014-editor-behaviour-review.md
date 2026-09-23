@@ -43,8 +43,24 @@ and equal-spacing snapping. Its "migrated" paths are tangled with
 Vigilia's object model doesn't have, and Vigilia's own `VigiliaChart` object
 never existed in the fork, so scale-eligibility needs new integration work
 regardless. Movement (drag) snapping ships in the
-0017-editor-fork-parity.md sub-project; resize-snapping is a
+0017 fork-parity work (complete); resize-snapping is a
 follow-up decision once that ships and gets used.
+
+Additional 0017 residuals, tracked here on completion:
+
+- **Crop of a rotated image** is refused with a warning; `clipPath`
+  coordinates are image-local and unrotated, and mapping a canvas-space frame
+  through a rotated image's inverse transform is a larger problem than §171
+  asked for.
+- **Splitting the vendored snapping geometry** (`movement-snapping-resolver.ts`
+  and `spacing.ts`, each over 1,300 lines) below the 800-line stop; vendored
+  verbatim on purpose, see decisions.md.
+- **The fork's `pixel-grid.ts` pixel snapping** (487 lines) is excluded from
+  the port; it string-matches the fork's `background-textbox` type.
+- **The size indicator's `mouse:move` refresh pass** is dropped: it reached
+  into Fabric's private `_currentTransform` for the fork's late-materialising
+  text pipeline, which Vigilia does not have. Restore if the size label proves
+  stale at the end of a text resize during use.
 
 ### Canvas zoom, pan, and viewport scrollbars — drop
 
@@ -59,7 +75,7 @@ appears.
 ### Image crop tool and import bounds — promoted, not dropped
 
 Superseded by product-requirements §171 and the
-0017-editor-fork-parity.md sub-project: build a small
+0017 fork-parity work: build a small
 interactive crop on Vigilia's own `clipPath`-based fit primitive, not a port
 of the fork's `CropFrame` (~3,600 lines, source-pixel-bound machinery Vigilia
 doesn't need).
@@ -97,7 +113,7 @@ not have and does not plan.
 ### Structured error/warning bus
 
 Ships as a minimal `error-manager/` in the
-0017-editor-fork-parity.md sub-project, rebuilt against
+0017 fork-parity work, rebuilt against
 Vigilia's actual manager set rather than the fork's dropped-subsystem
 categories.
 
