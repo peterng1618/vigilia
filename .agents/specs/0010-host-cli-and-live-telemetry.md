@@ -42,6 +42,22 @@ Unknown protocol versions are refused rather than guessed.
 The display source exposes received samples immediately. Line-chart viewports
 trail one cadence so complete measured segments scroll in from the right.
 
+### LAN display sessions
+
+Loopback is trusted admin and needs no credential. A non-loopback display needs
+a live session for every read it makes, and a host started without a session
+store refuses LAN reads rather than trusting them.
+
+- Pairing is loopback-only: minting, listing and revoking are admin actions, so
+  a phone can never mint its own credentials.
+- Tokens are 32 bytes of CSPRNG output with a 12-hour expiry, compared in
+  constant time and swept on each verification.
+- The token travels in the page URL because `EventSource` cannot set request
+  headers; fetches send it as `x-vigilia-session` and the stream appends
+  `session=`. Anyone who sees the link can watch until it is revoked or
+  expires, which is why it is short-lived.
+- `/api/health` reports whether pairing is available.
+
 ### Provider model
 
 Providers acquire; the host schedules. Providers expose discovery, stable local
@@ -78,7 +94,8 @@ keys under `unmapped` so this reads as an explained gap, not a silent one.
   voltages and motherboard sensors;
 - provider/user mapping UI;
 - theme storage/editor save-to-host;
-- pairing/revocable sessions and polished LAN onboarding;
+- LAN onboarding polish: the launcher prints a pairing link, but there is no
+  in-editor device list or QR-code flow, and no physical-phone test;
 - cross-platform telemetry beyond keeping provider contracts portable.
 
 When LHM is implemented, treat it as an optional external prebuilt process/local

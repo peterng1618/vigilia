@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| LAN pairing — spec 0010 sessions | Loopback stays trusted admin; a non-loopback display now needs a live session for every read, and a host without a session store refuses LAN reads rather than trusting them. Pairing is loopback-only (a phone cannot mint its own credentials), tokens are 32 CSPRNG bytes with a 12-hour expiry compared in constant time, and revocation takes effect immediately. The player sends `x-vigilia-session` on fetches and `session=` on the stream URL, which it must because `EventSource` cannot set headers. Verified 2026-09-24 against a host bound to `0.0.0.0` and queried on this machine's LAN address (`192.168.2.56`): unpaired read and stream 403, paired read 200, LAN pairing mint 403, loopback read 200, revoked token 403, `/api/health` `pairing: true`. Evidence: 1106-unit suite, seven-project typecheck, format/lint clean, builds, 269.9 KB size gate, full browser suite 89 passed / 37 skipped / 0 failed. |
 | Host browser gate + disk baseline | The browser suite now starts the built Node host as a third webServer against a seeded theme package (`tests/e2e/host-theme.ts`), covering hosted theme revival in the player, the live SSE batch count behind the connection banner, declared package-asset serving with an undeclared-path 404, and the non-loopback mutation refusal. `disk.used`/`disk.used.percent`/`disk.total` now have a stdlib provider over `fs.statfs`; verified against the running host on 2026-09-24 (C: 465.17 GB total / 283.99 GB used / 61.05%) and `network.download` returned under `/api/health`'s `unmapped`. Evidence: 1091-unit suite, seven-project typecheck, format/lint clean, builds, 269.7 KB size gate, full local browser suite 89 passed / 37 skipped / 0 failed. |
 | Editorial editor shell — visual-layout plan executed | The editor's vertical panel stack is replaced on `develop` by the editorial shell: cream/ink palette as the new default (graphite/ember/moss/plum/light stay selectable), top bar with File/Edit/Insert/Arrange/View menus, rail plus pane (Layers/Add/Assets/Settings), inspector Design/Data/Style tabs, and a canvas-bottom dock. Every control dispatches through existing owners — `EditorSession`'s document actions via a typed façade, `EditorInteraction` managers, `applyArrange`/`canArrange`, panel factories; the floating `toolbar-manager/` and the file-actions panel section were deleted with their action sets moved, not reimplemented. Evidence 2026-09-24: typecheck across seven projects, 1078-unit suite, format/lint clean, builds and the 269.4 KB player size gate, the full local browser suite (82 passed / 36 skipped / 0 failed; the 34 editor tests all pass) and inspected `editor-fork-desktop-chromium.png` / `editor-fork-toolbar-desktop-chromium.png` captures showing the editorial palette, menus, rail, inspector tabs, status line and a dock correctly withholding Group/Ungroup on a single selection. |
 | Editor fork parity — spec 0017 executed | All 15 plan tasks implemented and committed: `updateArtboard` on `FabricSceneHandle` (Task 1), `error-manager/`, `controls-manager/`, `deletion-manager/`, `clipboard-manager/` with document-`paste` ownership and chart rehydration, `grouping-manager/`, `toolbar-manager/`, image import/rehydrate pixel bound (4096), `crop-manager/` over `clipPath`, unmodified-key product shortcuts, movement snapping (vendored geometry core + guide rendering + wired controller) and `indicator-manager/` rotation/size tooltips. Seven-project typecheck, 1071-unit suite (216 in the editor package after the review fix pass), builds, player size gate 269.4 KB gzip and the full local `npm run test:e2e` (82 passed, 0 failed, plus a re-run of the drag proof after the fix) passed on 2026-09-24; `editor-fork-snap-guides`, `editor-fork-rotation-indicator` and `editor-fork-toolbar` captures inspected showing dashed guides + spacing badges, a `31°` mid-rotation badge, and the floating toolbar over a selection. |
@@ -70,11 +71,14 @@ unit, build, size and visual evidence. The full local browser suite passed on
   never byte counters. `/api/health` reports requested-but-unanswered keys
   under `unmapped`, so an unsupported sensor reads as an explained gap.
 - LibreHardwareMonitor extended telemetry is not implemented.
-- Package storage and loopback-only mutation work; pairing/revocable sessions
-  and the full LAN flow are not implemented.
-- The browser suite now starts the real host and covers hosted theme loading,
+- Package storage and loopback-only mutation work; LAN displays pair through
+  short-lived revocable sessions (§145). The launcher prints a pairing link;
+  there is no in-editor device list, QR flow or physical-phone test.
+- The browser suite starts the real host and covers hosted theme loading,
   package-asset serving, the live SSE batch count and the loopback admin guard
-  (`tests/e2e/host-player.spec.ts`).
+  (`tests/e2e/host-player.spec.ts`). LAN pairing is verified by unit and
+  server tests plus a manual pass against a `0.0.0.0`-bound host, not by the
+  browser suite.
 
 ## Next
 
@@ -93,7 +97,9 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 - The browser suite now starts the real host for the hosted-player tests
   (`tests/e2e/host-player.spec.ts`); the editor tests still preview bundles.
-- No physical-phone gate exists; LAN pairing is not validated end to end.
+- No physical-phone gate exists. LAN pairing is proven with server/unit tests
+  and a manual pass from this machine's LAN address, but never on real phone
+  hardware or a device that is not the host itself.
 - LHM extended telemetry is still a contract; network throughput has no
   provider (no stdlib counter) and reports as unmapped.
 - Canvas text cannot guarantee tabular numerals.
