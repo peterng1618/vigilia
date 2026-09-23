@@ -106,3 +106,65 @@ describe("ShortcutManager", () => {
     manager.destroy();
   });
 });
+
+describe("ShortcutManager unmodified keys", () => {
+  it("fires edit.delete for Delete and Backspace with no modifier", () => {
+    const manager = new ShortcutManager();
+    const handler = vi.fn();
+    manager.register("edit.delete", handler);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace" }));
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    manager.destroy();
+  });
+
+  it("never fires an unmodified shortcut while a text field has focus", () => {
+    const manager = new ShortcutManager();
+    const handler = vi.fn();
+    manager.register("edit.delete", handler);
+    const field = document.createElement("textarea");
+    document.body.append(field);
+
+    field.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
+    );
+
+    expect(handler).not.toHaveBeenCalled();
+    field.remove();
+    manager.destroy();
+  });
+
+  it("separates group and ungroup by the shift modifier", () => {
+    const manager = new ShortcutManager();
+    const group = vi.fn();
+    const ungroup = vi.fn();
+    manager.register("edit.group", group);
+    manager.register("edit.ungroup", ungroup);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "g", ctrlKey: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "G", ctrlKey: true, shiftKey: true }),
+    );
+
+    expect(group).toHaveBeenCalledOnce();
+    expect(ungroup).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("leaves an unregistered shortcut's default behaviour alone", () => {
+    const manager = new ShortcutManager();
+    const event = new KeyboardEvent("keydown", {
+      key: "Delete",
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    manager.destroy();
+  });
+});
