@@ -25,6 +25,10 @@ import {
   type NewObjectPanel,
 } from "./new-object-panel.js";
 import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
+import {
+  createSelectionToolbar,
+  type SelectionToolbar,
+} from "./toolbar-manager/index.js";
 import { ChartManager } from "./chart-manager/index.js";
 import {
   PersistenceManager,
@@ -74,6 +78,7 @@ export class EditorSession {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #layers: LayerPanel;
+  readonly #toolbar: SelectionToolbar;
   readonly #persistence: PersistenceManager;
   readonly #assets = new AssetManager();
   readonly #assetPanel: HTMLElement;
@@ -152,6 +157,7 @@ export class EditorSession {
     this.#fileSection = fileSection;
 
     this.#layers = createLayerPanel(options.panelHost, options.shell.editor);
+    this.#toolbar = createSelectionToolbar(options.shell.editor);
     this.#artboard = createArtboardPanel(
       options.panelHost,
       this.#envelope.globals,
@@ -344,6 +350,7 @@ export class EditorSession {
     this.#types.root.remove();
     this.#newObjects.root.remove();
     this.#layers.destroy();
+    this.#toolbar.destroy();
   }
 
   async #save(options: EditorSessionOptions): Promise<void> {
