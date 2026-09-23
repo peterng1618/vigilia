@@ -7,6 +7,10 @@ export interface DisplaySessionToken {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
   /** Appends the token to a stream URL, which cannot. */
   streamUrl(path: string, parameters: URLSearchParams): string;
+  /** Appends the token to a URL handed to a loader that sets no headers, such
+   * as Fabric's image fetch. A no-op with no token, so loopback URLs stay
+   * exactly as they were. */
+  withToken(url: string): string;
 }
 
 export function displaySession(
@@ -32,6 +36,15 @@ export function displaySession(
         query.set("session", token);
       }
       return `${path}?${query.toString()}`;
+    },
+    withToken(url) {
+      if (token === undefined) {
+        return url;
+      }
+
+      const query = new URLSearchParams({ session: token });
+      const separator = url.includes("?") ? "&" : "?";
+      return `${url}${separator}${query.toString()}`;
     },
   };
 }

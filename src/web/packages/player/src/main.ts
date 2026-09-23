@@ -220,7 +220,11 @@ async function startHostedTheme(
       showConnectionState(status, keys.length, detail),
   });
   const resolveAsset = createAssetResolver(theme.assets, {
-    baseUrl: `/api/themes/${encodeURIComponent(parameters.get("theme") ?? "")}/`,
+    // Fabric fetches these itself, so the token rides in the URL: a paired
+    // phone could not load a packaged image or SVG without it.
+    baseUrl: session.withToken(
+      `/api/themes/${encodeURIComponent(parameters.get("theme") ?? "")}/`,
+    ),
   });
   const handle = mountFabricScene({
     host,

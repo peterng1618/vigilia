@@ -43,4 +43,23 @@ describe("display session token", () => {
     expect(url).toContain("keys=cpu.load%2Cram.used");
     expect(url).toContain("session=abc123");
   });
+
+  it("appends the token to URLs a header-less loader fetches", () => {
+    const paired = displaySession(
+      "http://192.168.1.10:5227/?session=abc123",
+      fetch,
+    );
+    const loopback = displaySession("http://127.0.0.1:5227/", fetch);
+
+    expect(paired.withToken("/api/themes/living-room/")).toBe(
+      "/api/themes/living-room/?session=abc123",
+    );
+    expect(paired.withToken("/api/themes/x/assets/a.png?v=1")).toBe(
+      "/api/themes/x/assets/a.png?v=1&session=abc123",
+    );
+    // An unpaired display's URLs stay exactly what they were.
+    expect(loopback.withToken("/api/themes/living-room/")).toBe(
+      "/api/themes/living-room/",
+    );
+  });
 });
