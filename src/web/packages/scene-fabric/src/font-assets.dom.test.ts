@@ -68,4 +68,35 @@ describe("packaged font assets", () => {
     expect(fonts.delete).toHaveBeenCalledWith(first);
     expect(fonts.delete).not.toHaveBeenCalledWith(failed);
   });
+
+  it("loads identical bytes once across concurrent mounts", async () => {
+    const face = { load: vi.fn().mockResolvedValue(undefined) };
+    const fonts = { add: vi.fn(), delete: vi.fn() };
+    const createFontFace = vi.fn(() => face);
+    const load = {
+      assets: [asset],
+      bytes: { [asset.path]: new Uint8Array([1, 2]) },
+      fonts,
+      createFontFace,
+      onError: vi.fn(),
+    };
+
+    const [releaseA, releaseB] = await Promise.all([
+      loadFontAssets(load),
+      loadFontAssets(load),
+    ]);
+
+    expect(createFontFace).toHaveBeenCalledTimes(1);
+    expect(fonts.add).toHaveBeenCalledTimes(1);
+
+    // The face outlives the first release because the second mount still holds it.
+    releaseA();
+    await Promise.resolve();
+    expect(fonts.delete).not.toHaveBeenCalled();
+
+    releaseB();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(fonts.delete).toHaveBeenCalledWith(face);
+  });
 });

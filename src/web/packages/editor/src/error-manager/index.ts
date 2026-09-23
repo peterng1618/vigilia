@@ -9,7 +9,8 @@ export type EditorErrorCategory =
   | "toolbar"
   | "snapping"
   | "crop"
-  | "image";
+  | "image"
+  | "background-media";
 
 export interface EditorDiagnostic {
   readonly category: EditorErrorCategory;

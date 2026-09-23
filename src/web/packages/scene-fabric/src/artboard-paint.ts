@@ -35,6 +35,16 @@ export function cssArtboardPaint(value: unknown): string | undefined {
   return `linear-gradient(${90 - value.angle}deg, ${value.stops.map((stop) => `${stop.color} ${stop.offset * 100}%`).join(", ")})`;
 }
 
+/** Cheap identity for a resolved artboard paint, so a repaint can skip rebuilding
+ * a Gradient. Two paints with the same key are interchangeable for `fabricArtboardPaint`. */
+export function artboardPaintKey(value: unknown): string {
+  if (typeof value === "string") return `s:${value}`;
+  if (isSolid(value)) return `o:${value.color}`;
+  if (isGradient(value))
+    return `g:${value.angle}:${value.stops.map((stop) => `${stop.offset}/${stop.color}`).join(",")}`;
+  return "none";
+}
+
 function isSolid(
   value: unknown,
 ): value is { readonly kind: "solid"; readonly color: string } {

@@ -1,6 +1,58 @@
 import { Gradient } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { cssArtboardPaint, fabricArtboardPaint } from "./artboard-paint.js";
+import {
+  artboardPaintKey,
+  cssArtboardPaint,
+  fabricArtboardPaint,
+} from "./artboard-paint.js";
+
+describe("artboard paint key", () => {
+  it("matches only paints that produce the same Fabric paint", () => {
+    expect(artboardPaintKey("#102030")).toBe(artboardPaintKey("#102030"));
+    expect(artboardPaintKey({ kind: "solid", color: "#102030" })).toBe(
+      artboardPaintKey("#102030").replace("s:", "o:"),
+    );
+    expect(
+      artboardPaintKey({
+        kind: "gradient",
+        angle: 0,
+        stops: [
+          { offset: 0, color: "#102030" },
+          { offset: 1, color: "#d0e0f0" },
+        ],
+      }),
+    ).toBe(
+      artboardPaintKey({
+        kind: "gradient",
+        angle: 0,
+        stops: [
+          { offset: 0, color: "#102030" },
+          { offset: 1, color: "#d0e0f0" },
+        ],
+      }),
+    );
+  });
+
+  it("separates paints whose colour or angle differs", () => {
+    const stops = [
+      { offset: 0, color: "#102030" },
+      { offset: 1, color: "#d0e0f0" },
+    ];
+    const base = artboardPaintKey({ kind: "gradient", angle: 0, stops });
+
+    expect(artboardPaintKey({ kind: "gradient", angle: 90, stops })).not.toBe(
+      base,
+    );
+    expect(
+      artboardPaintKey({
+        kind: "gradient",
+        angle: 0,
+        stops: [{ offset: 0, color: "#000000" }, stops[1]!],
+      }),
+    ).not.toBe(base);
+    expect(artboardPaintKey(undefined)).toBe("none");
+  });
+});
 
 describe("artboard paint", () => {
   const gradient = {

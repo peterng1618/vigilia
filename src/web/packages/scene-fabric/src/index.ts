@@ -15,7 +15,11 @@ export { startChartRefresh, type ChartRefreshRate } from "./chart-refresh.js";
 export type { SceneAdapter, SceneAdapterOptions } from "./adapter.js";
 
 export { createSceneAdapter } from "./adapter.js";
-export { cssArtboardPaint, fabricArtboardPaint } from "./artboard-paint.js";
+export {
+  artboardPaintKey,
+  cssArtboardPaint,
+  fabricArtboardPaint,
+} from "./artboard-paint.js";
 export {
   mountBackgroundMedia,
   type BackgroundMediaHandle,

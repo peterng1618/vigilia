@@ -16,6 +16,7 @@ import {
   createSceneAdapter,
   cssArtboardPaint,
   disposeScene,
+  artboardPaintKey,
   fabricArtboardPaint,
   mountBackgroundMedia,
   reviveScene,
@@ -72,6 +73,12 @@ export interface EditorShell {
 
 const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
 let nextEditorContainer = 1;
+
+/** Last resolved artboard paint per mounted shell; a Gradient is only rebuilt
+ * when its key changes. */
+interface PaintMemo {
+  background: string | undefined;
+}
 
 class SelectionOrderedActiveSelection extends ActiveSelection {
   constructor(
@@ -138,17 +145,22 @@ function applyArtboardPaint(
   host: HTMLElement,
   artboard: Artboard,
   globals: Globals | undefined,
+  memo: PaintMemo,
 ): void {
   const issues: Parameters<typeof resolveStyleValue>[3] = [];
   const resolve = (value: Artboard["background"]): unknown => {
     return resolveStyleValue(value, globals ?? {}, "artboard", issues);
   };
-  editor.canvas.backgroundColor =
-    fabricArtboardPaint(
-      resolve(artboard.background),
-      artboard.width,
-      artboard.height,
-    ) ?? "";
+  const background = resolve(artboard.background);
+  const paintKey = artboardPaintKey(background);
+
+  // Same memo as the player: any repaint that does not change the resolved
+  // paint (selection, drag, artboard resize) reuses the existing Gradient.
+  if (paintKey !== memo.background) {
+    memo.background = paintKey;
+    editor.canvas.backgroundColor =
+      fabricArtboardPaint(background, artboard.width, artboard.height) ?? "";
+  }
   host.style.background =
     cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
   applyObjectPalettePaints(editor.canvas, globals);
@@ -272,6 +284,7 @@ export async function mountEditorShell({
             );
         });
   resize?.observe(host);
+  const paintMemo: PaintMemo = { background: undefined };
 
   try {
     const editor = createNativeEditor(container, artboard);
@@ -283,7 +296,7 @@ export async function mountEditorShell({
       await reviveThemeEnvelope(editor.canvas, envelope);
       editor.historyManager.resetHistory();
     }
-    applyArtboardPaint(editor, host, currentArtboard, globals);
+    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
 
     const scene =
       plan === undefined && envelope === undefined
@@ -299,6 +312,9 @@ export async function mountEditorShell({
     container.style.visibility = "";
     let mediaAssets = assets ?? envelope?.assets;
     let mediaResolve = resolveAsset;
+    const reportMediaError = (message: string): void => {
+      editor.errorManager.warn("background-media", message);
+    };
     let media =
       mediaResolve === undefined
         ? undefined
@@ -307,6 +323,7 @@ export async function mountEditorShell({
             artboard: currentArtboard,
             assets: mediaAssets,
             resolveAsset: mediaResolve,
+            onMediaError: reportMediaError,
           });
 
     return {
@@ -326,7 +343,7 @@ export async function mountEditorShell({
         currentArtboard = nextArtboard;
         fitMode = currentArtboard.fitMode ?? "contain";
         fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
-        applyArtboardPaint(editor, host, currentArtboard, globals);
+        applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
         if (media !== undefined && mediaResolve !== undefined) {
           media.update({
             artboard: currentArtboard,
@@ -344,11 +361,12 @@ export async function mountEditorShell({
           artboard: currentArtboard,
           assets: mediaAssets,
           resolveAsset: mediaResolve,
+          onMediaError: reportMediaError,
         });
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;
-        applyArtboardPaint(editor, host, currentArtboard, globals);
+        applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
       },
       setFitMode(nextFitMode) {
         fitMode = nextFitMode;

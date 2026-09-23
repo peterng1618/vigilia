@@ -33,6 +33,9 @@ export interface FabricSceneOptions
   readonly resolveAsset?: (
     assetId: string,
   ) => BackgroundMediaSource | undefined;
+  /** Reports an unresolvable declared background; distinct from the adapter's
+   * per-node `onAssetError`. */
+  readonly onMediaError?: (message: string) => void;
 }
 
 export interface FabricSceneHandle extends SceneHandle {
@@ -85,6 +88,9 @@ export function mountFabricScene(
           artboard: currentArtboard,
           assets: options.assets,
           resolveAsset: options.resolveAsset,
+          ...(options.onMediaError === undefined
+            ? {}
+            : { onMediaError: options.onMediaError }),
         });
 
   let currentTransform = fit();

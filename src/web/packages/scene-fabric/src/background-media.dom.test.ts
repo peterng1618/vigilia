@@ -105,4 +105,44 @@ describe("background media", () => {
     expect(host.querySelector("img")?.src).toBe("blob:two");
     expect(host.querySelector("img")?.style.objectFit).toBe("contain");
   });
+
+  it("reports an unresolvable declared background instead of dropping it", () => {
+    const host = document.createElement("div");
+    const errors: string[] = [];
+    const handle = mountBackgroundMedia({
+      host,
+      artboard: {
+        width: 400,
+        height: 200,
+        backgroundMedia: { assetId: "missing", fit: "cover" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+      onMediaError: (message) => errors.push(message),
+    });
+
+    expect(errors).toEqual([
+      'Background media asset "missing" is not declared by this theme.',
+    ]);
+    expect(
+      host.querySelector("[data-vigilia-background-media] img"),
+    ).toBeNull();
+
+    // A declared-but-unreadable asset reports too, rather than no-opping.
+    handle.update({
+      artboard: {
+        width: 400,
+        height: 200,
+        backgroundMedia: { assetId: "hero", fit: "cover" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => undefined,
+      onMediaError: (message) => errors.push(message),
+    });
+
+    expect(errors[1]).toBe(
+      'Background media asset "hero" has no readable bytes.',
+    );
+    handle.destroy();
+  });
 });

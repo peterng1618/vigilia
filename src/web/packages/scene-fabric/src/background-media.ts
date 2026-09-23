@@ -10,6 +10,10 @@ export interface BackgroundMediaOptions {
   readonly artboard: Artboard;
   readonly assets: readonly AssetReference[] | undefined;
   readonly resolveAsset: (assetId: string) => BackgroundMediaSource | undefined;
+  /** A declared background that cannot be resolved is reported, never silently
+   * dropped. Distinct from `SceneAdapterOptions.onAssetError`, which reports a
+   * node's own asset by id; this one carries a human-readable reason. */
+  readonly onMediaError?: (message: string) => void;
 }
 
 export interface BackgroundMediaHandle {
@@ -42,10 +46,26 @@ export function mountBackgroundMedia(
     const asset = next.assets?.find(
       (candidate) => candidate.id === media?.assetId,
     );
-    if (media === undefined || asset === undefined || !isBackgroundAsset(asset))
+    if (media === undefined) return;
+    if (asset === undefined) {
+      next.onMediaError?.(
+        `Background media asset "${media.assetId}" is not declared by this theme.`,
+      );
       return;
+    }
+    if (!isBackgroundAsset(asset)) {
+      next.onMediaError?.(
+        `Background media asset "${asset.id}" is a ${asset.kind}, which cannot be a background.`,
+      );
+      return;
+    }
     const source = next.resolveAsset(asset.id);
-    if (source === undefined) return;
+    if (source === undefined) {
+      next.onMediaError?.(
+        `Background media asset "${asset.id}" has no readable bytes.`,
+      );
+      return;
+    }
 
     const element =
       asset.kind === "video"

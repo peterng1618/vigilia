@@ -19,7 +19,7 @@ import {
 import { isTextObject, updateText } from "./fabric-text.js";
 import { drawnBox, withinGroup } from "./placement.js";
 import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
-import { fabricArtboardPaint } from "./artboard-paint.js";
+import { artboardPaintKey, fabricArtboardPaint } from "./artboard-paint.js";
 
 /**
  * Reconcile a pure `ScenePlan` onto existing Fabric objects. Revived scene
@@ -64,6 +64,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   });
 
   adoptExisting(canvas, objects);
+  const applyArtboard = createApplyArtboard(canvas);
 
   function context(): NodeContext {
     return {
@@ -121,7 +122,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
         .filter(({ parent }) => parent === undefined)
         .map(({ node }) => node.id);
 
-      applyArtboard(canvas, plan);
+      applyArtboard(plan);
 
       for (const { node, parent } of nodes) {
         const existing = reusable(node);
@@ -248,31 +249,44 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   }
 }
 
-/** Apply artboard paint/clip; viewport transform belongs to `scene.ts`. */
-function applyArtboard(canvas: StaticCanvas, plan: ScenePlan): void {
-  canvas.backgroundColor =
-    fabricArtboardPaint(
-      plan.artboard.background,
-      plan.artboard.width,
-      plan.artboard.height,
-    ) ?? "";
+/** Apply artboard paint/clip; viewport transform belongs to `scene.ts`. The
+ * paint memo lives per adapter because the same paint key is only interchangeable
+ * for one canvas. */
+function createApplyArtboard(canvas: StaticCanvas): (plan: ScenePlan) => void {
+  let lastPaintKey: string | undefined;
 
-  const { width, height } = plan.artboard;
-  const clip = canvas.clipPath;
+  return (plan: ScenePlan): void => {
+    // Every player render tick calls this; only rebuild the Gradient when the
+    // resolved paint actually changed.
+    const paintKey = artboardPaintKey(plan.artboard.background);
 
-  if (clip instanceof Rect) {
-    clip.set({ width, height, left: width / 2, top: height / 2 });
-  } else {
-    canvas.clipPath = new Rect({
-      width,
-      height,
-      left: width / 2,
-      top: height / 2,
-      originX: "center",
-      originY: "center",
-      absolutePositioned: true,
-    });
-  }
+    if (paintKey !== lastPaintKey) {
+      lastPaintKey = paintKey;
+      canvas.backgroundColor =
+        fabricArtboardPaint(
+          plan.artboard.background,
+          plan.artboard.width,
+          plan.artboard.height,
+        ) ?? "";
+    }
+
+    const { width, height } = plan.artboard;
+    const clip = canvas.clipPath;
+
+    if (clip instanceof Rect) {
+      clip.set({ width, height, left: width / 2, top: height / 2 });
+    } else {
+      canvas.clipPath = new Rect({
+        width,
+        height,
+        left: width / 2,
+        top: height / 2,
+        originX: "center",
+        originY: "center",
+        absolutePositioned: true,
+      });
+    }
+  };
 }
 
 /** Index revived Fabric objects by persisted Vigilia id, including group children. */

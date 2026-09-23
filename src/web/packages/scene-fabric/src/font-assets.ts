@@ -21,6 +21,40 @@ export interface FontAssetLoadOptions {
   ) => LoadedFontFace;
 }
 
+interface SharedFace {
+  /** Resolves after the face is registered, so `add` happens exactly once. */
+  readonly face: Promise<LoadedFontFace>;
+  /** Set once the load resolves; lets the final release delete synchronously. */
+  registered: LoadedFontFace | undefined;
+  refs: number;
+}
+
+/** Concurrent mounts load overlapping trio faces; identical bytes must not be
+ * registered twice. Grouped by font set because tests inject their own. */
+const registries = new WeakMap<FontSet, Map<string, SharedFace>>();
+
+function registryFor(fonts: FontSet): Map<string, SharedFace> {
+  let registry = registries.get(fonts);
+
+  if (registry === undefined) {
+    registry = new Map<string, SharedFace>();
+    registries.set(fonts, registry);
+  }
+
+  return registry;
+}
+
+function registrationKey(
+  asset: AssetReference,
+  face: {
+    readonly family?: unknown;
+    readonly weight?: unknown;
+    readonly style?: unknown;
+  },
+): string {
+  return [asset.path, face.family, String(face.weight), face.style].join("|");
+}
+
 /** Registers packaged faces before Fabric measures text and returns their isolated release handle. */
 export async function loadFontAssets(
   options: FontAssetLoadOptions,
@@ -30,7 +64,8 @@ export async function loadFontAssets(
     options.onError("Packaged fonts require the browser FontFace API.");
     return () => undefined;
   }
-  const loaded: LoadedFontFace[] = [];
+  const registry = registryFor(fonts);
+  const held: SharedFace[] = [];
   for (const asset of options.assets) {
     if (asset.kind !== "font") continue;
     const face = asset as AssetReference & {
@@ -50,25 +85,68 @@ export async function loadFontAssets(
       );
       continue;
     }
+    const key = registrationKey(asset, face);
+    const existing = registry.get(key);
+
+    if (existing !== undefined) {
+      existing.refs += 1;
+      held.push(existing);
+      continue;
+    }
+
+    const shared: SharedFace = {
+      face: (async () => {
+        const created = (
+          options.createFontFace ??
+          ((family, source, descriptors) =>
+            new FontFace(family, source, descriptors))
+        )(face.family as string, Uint8Array.from(bytes).buffer as ArrayBuffer, {
+          weight: String(face.weight),
+          style: face.style as "normal" | "italic",
+        });
+        await created.load();
+        fonts.add(created);
+        return created;
+      })(),
+      registered: undefined,
+      refs: 1,
+    };
+    registry.set(key, shared);
+    held.push(shared);
+
     try {
-      const font = (
-        options.createFontFace ??
-        ((family, source, descriptors) =>
-          new FontFace(family, source, descriptors))
-      )(face.family, Uint8Array.from(bytes).buffer as ArrayBuffer, {
-        weight: String(face.weight),
-        style: face.style,
-      });
-      await font.load();
-      fonts.add(font);
-      loaded.push(font);
+      shared.registered = await shared.face;
     } catch (error) {
+      // A failed registration must not be cached, or a later mount would await
+      // a rejected promise it never started.
+      registry.delete(key);
+      held.pop();
       options.onError(
         `Could not load packaged font "${asset.id}": ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
   return () => {
-    for (const font of loaded) fonts.delete(font);
+    for (const shared of held) {
+      shared.refs -= 1;
+      if (shared.refs > 0) continue;
+      // Unregister only when the last holder releases; other mounts may still
+      // be measuring text against this face.
+      if (shared.registered !== undefined) {
+        fonts.delete(shared.registered);
+      } else {
+        void shared.face
+          .then((face) => {
+            shared.registered = face;
+            // A release that raced the load must not leave the face behind.
+            if (shared.refs === 0) fonts.delete(face);
+          })
+          .catch(() => undefined);
+      }
+      for (const [key, entry] of registry) {
+        if (entry === shared) registry.delete(key);
+      }
+    }
+    held.length = 0;
   };
 }
