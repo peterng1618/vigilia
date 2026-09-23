@@ -14,6 +14,7 @@ import { createObjectLockManager } from "./object-lock-manager/index.js";
 import { createErrorManager } from "./error-manager/index.js";
 import { createCropManager } from "./crop-manager/index.js";
 import { createDeletionManager } from "./deletion-manager/index.js";
+import { applyEditorControls } from "./controls-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -154,6 +155,7 @@ function applyArtboardPaint(
 }
 
 function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorInteraction {
+  applyEditorControls();
   const element = document.createElement("canvas");
   container.append(element);
   const canvas = new Canvas(element, { width: artboard.width, height: artboard.height });
