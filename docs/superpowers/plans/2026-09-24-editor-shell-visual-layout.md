@@ -72,6 +72,30 @@ pop it.
 
 ## Tasks
 
+Status: Tasks 1–5 implemented on `develop` (commits `85b7c8c`, `feat: add
+editorial shell palette and copy`, `feat: bridge editor actions into shell`,
+`feat: add editorial shell layout and dock`, `fix: bind shell selection state
+to the editor session`). Task 6 evidence recorded below; remaining gaps listed
+under "Deviations and follow-ups".
+
+### Deviations and follow-ups
+
+- The inspector keeps the **document panels mounted in the Design tab** for
+  every selection kind, rather than swapping them out when something is
+  selected. Swapping made the theme's own settings unreachable while an object
+  was selected, and hid panel DOM from tests. The spec's "fall back to
+  document-level panels on no selection" is satisfied; the selection hint line
+  above the panels is the only selection-dependent part.
+- `Tabs.Panel` uses `keepMounted` so panel DOM survives tab switches; without
+  it, chart settings vanished from the DOM whenever Data was not the active
+  tab.
+- The rail's compact marks come from `uiCopy.railMark` (glyphs), not
+  `label.slice(0, 1)` — "Add" and "Assets" both reduced to "A".
+- The floating toolbar (`toolbar-manager/`) is deleted and its full action set
+  (including front/back and group/ungroup) moved into the dock.
+- Follow-up: resize-time snapping and the remaining spec-0014 items are
+  untouched by this change.
+
 ### Task 1 — Build boundary: React + Tailwind in the editor package
 
 - [ ] Read resolved metadata for `react`, `react-dom`, `@base-ui/react`,

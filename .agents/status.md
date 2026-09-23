@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| Editorial editor shell — visual-layout plan executed | The editor's vertical panel stack is replaced on `develop` by the editorial shell: cream/ink palette as the new default (graphite/ember/moss/plum/light stay selectable), top bar with File/Edit/Insert/Arrange/View menus, rail plus pane (Layers/Add/Assets/Settings), inspector Design/Data/Style tabs, and a canvas-bottom dock. Every control dispatches through existing owners — `EditorSession`'s document actions via a typed façade, `EditorInteraction` managers, `applyArrange`/`canArrange`, panel factories; the floating `toolbar-manager/` and the file-actions panel section were deleted with their action sets moved, not reimplemented. Evidence 2026-09-24: typecheck across seven projects, 1078-unit suite, format/lint clean, builds and the 269.4 KB player size gate, the full local browser suite (82 passed / 36 skipped / 0 failed; the 34 editor tests all pass) and inspected `editor-fork-desktop-chromium.png` / `editor-fork-toolbar-desktop-chromium.png` captures showing the editorial palette, menus, rail, inspector tabs, status line and a dock correctly withholding Group/Ungroup on a single selection. |
 | Editor fork parity — spec 0017 executed | All 15 plan tasks implemented and committed: `updateArtboard` on `FabricSceneHandle` (Task 1), `error-manager/`, `controls-manager/`, `deletion-manager/`, `clipboard-manager/` with document-`paste` ownership and chart rehydration, `grouping-manager/`, `toolbar-manager/`, image import/rehydrate pixel bound (4096), `crop-manager/` over `clipPath`, unmodified-key product shortcuts, movement snapping (vendored geometry core + guide rendering + wired controller) and `indicator-manager/` rotation/size tooltips. Seven-project typecheck, 1071-unit suite (216 in the editor package after the review fix pass), builds, player size gate 269.4 KB gzip and the full local `npm run test:e2e` (82 passed, 0 failed, plus a re-run of the drag proof after the fix) passed on 2026-09-24; `editor-fork-snap-guides`, `editor-fork-rotation-indicator` and `editor-fork-toolbar` captures inspected showing dashed guides + spacing badges, a `31°` mid-rotation badge, and the floating toolbar over a selection. |
 | Native Fabric editor migration — spec 0016 closed | `@vigilia/editor` mounts `fabric/es` directly with no `@anu3ev/fabric-image-editor` runtime/type/alias/lockfile dependency; canvas/text/image/layer/lock/history mechanics split into per-concern manager folders mirroring the retired fork's own split; palette/type-preset reassignment consolidated into `palette-manager/`/`type-preset-manager/`. Root-caused and fixed 3 behaviours the native mount had dropped from the retired fork's own generic construction: new text/image objects got no `id` (failed envelope validation on save), nothing wired Fabric's `object:modified` to history (a completed drag/resize was never undoable), and the fork's own `window[containerId] = editorInstance` debug/e2e handle and its global Ctrl+Z/Ctrl+Y undo-redo binding were never replicated. |
 | Spec 0011 chart creation | 950-unit suite, editor typecheck/build, focused desktop Chromium package round-trip and inspected `editor-fork-chart-creation-desktop-chromium.png` passed on 2026-09-21; Add exposes Text plus Gauge/Line/Bar/Pie, each chart starts from palette references, and a created gauge saves/reopens without runtime options; unbound revived charts hydrate from the Fabric scene |
@@ -69,10 +70,14 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 ## Next
 
-1. Revisit remaining spec-0014 candidates only when needed; the four new
+1. Land the remaining editorial-shell follow-ups from
+   `docs/superpowers/plans/2026-09-24-editor-shell-visual-layout.md`: resize-time
+   snapping (spec 0014) and the reduced-transparency capture pass for the glass
+   palettes.
+2. Revisit remaining spec-0014 candidates only when needed; the four new
    residuals (rotated-image crop, snapping-file split, `pixel-grid.ts`, size
    indicator's `mouse:move` pass) are recorded in spec 0014.
-2. The fork's own Playwright snapping suite was **not** ported — only its two
+3. The fork's own Playwright snapping suite was **not** ported — only its two
    highest-value unit specs (resolver, spacing geometry) were. Vigilia's own
    Playwright drag capture covers rendered guide behaviour instead.
 
