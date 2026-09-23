@@ -22,6 +22,36 @@ TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
 and @types/node 22.10.2 (MIT). Native `canvas` may carry linked-library
 obligations.
 
+## Vendored source
+
+`packages/editor/src/snap-manager/` and `packages/editor/src/indicator-manager/`
+contain adapted copies of `@anu3ev/fabric-image-editor` 0.10.32, taken from
+commit `9efdd78a342a29f169a8dbf1da78c95bbf1ffe77`. It is not a dependency; the
+source was adapted in place. Its licence follows in full, as MIT requires for
+substantial portions.
+
+MIT License
+
+Copyright (c) 2025 Alexander Anufriev
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ## Assets and planned integrations
 
 Imported assets retain their own licence requirements; record source/hash/licence

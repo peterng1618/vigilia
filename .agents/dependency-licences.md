@@ -22,6 +22,18 @@ Fabric 7.4.0 metadata/LICENSE confirms MIT and no runtime dependencies. Use
 `fabric/es`; player and editor both use it directly, with no adopted
 image-editor package or its transitive graph.
 
+## Vendored source
+
+| Source | Pin | Licence | Role |
+|---|---|---|---|
+| `@anu3ev/fabric-image-editor` | 0.10.32, commit `9efdd78a34` | MIT | adapted movement-snapping and indicator source |
+
+Copied, not installed: no entry appears in `package.json` and nothing enters the
+transitive graph. Licence verified from the `LICENSE` blob at that commit,
+`MIT, Copyright (c) 2025 Alexander Anufriev`. Full text in
+`THIRD-PARTY-NOTICES.md`. The note above about the removed image-editor package
+refers to the runtime dependency, which stays removed.
+
 LibreHardwareMonitor/PawnIO are not current dependencies or redistributed.
 Earlier planning research found LHM MPL-2.0 and PawnIO modules under GPL/LGPL;
 re-open the analysis before bundling, downloading or installing them.
