@@ -11,6 +11,7 @@ import { createTextManager } from "./text-manager/index.js";
 import { createImageManager } from "./image-manager/index.js";
 import { createLayerManager } from "./layer-manager/index.js";
 import { createObjectLockManager } from "./object-lock-manager/index.js";
+import { createErrorManager } from "./error-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -176,6 +177,7 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
     imageManager: createImageManager(canvas, save),
     layerManager: createLayerManager(canvas, save),
     objectLockManager: createObjectLockManager(canvas, save),
+    errorManager: createErrorManager(canvas),
     destroy: () => canvas.dispose(),
   };
 }

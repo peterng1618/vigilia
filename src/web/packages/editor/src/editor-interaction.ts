@@ -1,4 +1,5 @@
 import type { Canvas, FabricObject } from "fabric/es";
+import type { ErrorManager } from "./error-manager/index.js";
 
 /** Product panels depend only on the editor mechanics they exercise. */
 export interface EditorInteraction {
@@ -30,5 +31,6 @@ export interface EditorInteraction {
     undo(): Promise<void>;
     redo(): Promise<void>;
   };
+  readonly errorManager: ErrorManager;
   destroy(): void;
 }
