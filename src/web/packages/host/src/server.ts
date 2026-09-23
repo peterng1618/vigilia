@@ -15,8 +15,12 @@ import {
   type ThemeStore,
 } from "./themes/store.js";
 import { SseConnection } from "./transport/sse.js";
+import type { SessionStore } from "./session/pairing.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
+
+/** Non-loopback displays present this header; loopback never needs to. */
+const SESSION_HEADER = "x-vigilia-session";
 
 export interface BundleRoots {
   readonly player: string;
@@ -30,6 +34,10 @@ export interface HostServerOptions {
   /** Chosen baseline cadence; not a measured performance budget. */
   readonly sampleIntervalMs?: number;
   readonly now?: () => number;
+  /** LAN display sessions (§145). Omit to disable pairing entirely — a
+   * loopback-only server needs none, and a non-loopback display is then
+   * refused rather than trusted. */
+  readonly sessions?: SessionStore;
 }
 
 export interface HostServer {
@@ -126,6 +134,27 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const connections = new Set<SseConnection>();
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
+  const sessions = options.sessions;
+
+  /** A request's token, from a header (fetch) or query (EventSource cannot set
+   * request headers, so the stream carries it in the URL). */
+  function tokenFor(
+    request: http.IncomingMessage,
+    url: URL,
+  ): string | undefined {
+    const header = request.headers[SESSION_HEADER];
+    const fromHeader = Array.isArray(header) ? header[0] : header;
+    return fromHeader ?? url.searchParams.get("session") ?? undefined;
+  }
+
+  /** Loopback is trusted admin; anything else must present a live session. */
+  function allowed(request: http.IncomingMessage, url: URL): boolean {
+    if (isLoopbackRemote(request.socket.remoteAddress)) {
+      return true;
+    }
+
+    return sessions?.verify(tokenFor(request, url)) === true;
+  }
 
   const server = http.createServer((request, response) => {
     void handle(request, response);
@@ -136,6 +165,84 @@ export function createHostServer(options: HostServerOptions): HostServer {
     response: http.ServerResponse,
   ): Promise<void> {
     const url = new URL(request.url ?? "/", "http://host.invalid");
+
+    // Pairing is an admin action: it mints display credentials, so it stays
+    // loopback-only even when the server is LAN-reachable.
+    if (url.pathname.startsWith("/api/pairing")) {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Pairing is available on this PC only.");
+        return;
+      }
+
+      if (sessions === undefined) {
+        sendText(response, 404, "Pairing is not enabled on this host.");
+        return;
+      }
+
+      if (
+        url.pathname === "/api/pairing/sessions" &&
+        request.method === "GET"
+      ) {
+        sendJson(response, 200, { sessions: sessions.list() });
+        return;
+      }
+
+      if (
+        url.pathname === "/api/pairing/sessions" &&
+        request.method === "POST"
+      ) {
+        const label = url.searchParams.get("label") ?? "display";
+        sendJson(response, 201, { session: sessions.create(label) });
+        return;
+      }
+
+      const revokeMatch = url.pathname.match(
+        /^\/api\/pairing\/sessions\/([^/]+)$/,
+      );
+      if (revokeMatch && request.method === "DELETE") {
+        const token = decodeURIComponent(revokeMatch[1] ?? "");
+        if (!sessions.revoke(token)) {
+          sendText(response, 404, "No such session.");
+          return;
+        }
+        sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      sendText(response, 405, "Only GET, POST and DELETE are supported.");
+      return;
+    }
+
+    if (url.pathname === SAMPLE_STREAM_PATH) {
+      if (!allowed(request, url)) {
+        sendText(response, 403, "This display is not paired with the host.");
+        return;
+      }
+      openStream(request, response, url);
+      return;
+    }
+
+    if (url.pathname === "/api/health") {
+      sendJson(response, 200, {
+        displays: connections.size,
+        polling: unionOfKeys(
+          [...connections].map((connection) => connection.semanticKeys),
+        ),
+        unmapped: lastUnmapped,
+        pairing: sessions !== undefined,
+      });
+      return;
+    }
+
+    // Display reads stay open on loopback; from the LAN they need a session so
+    // dashboard content is not served to every device on the network.
+    if (
+      !isLoopbackRemote(request.socket.remoteAddress) &&
+      !allowed(request, url)
+    ) {
+      sendText(response, 403, "This display is not paired with the host.");
+      return;
+    }
 
     if (url.pathname === "/api/themes") {
       if (request.method !== "GET") {
@@ -278,24 +385,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    if (url.pathname === SAMPLE_STREAM_PATH) {
-      openStream(request, response, url);
-      return;
-    }
-
     if (url.pathname === "/api/sensors") {
       sendJson(response, 200, { sensors: await registry.describe() });
-      return;
-    }
-
-    if (url.pathname === "/api/health") {
-      sendJson(response, 200, {
-        displays: connections.size,
-        polling: unionOfKeys(
-          [...connections].map((connection) => connection.semanticKeys),
-        ),
-        unmapped: lastUnmapped,
-      });
       return;
     }
 

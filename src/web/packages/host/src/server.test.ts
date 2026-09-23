@@ -8,6 +8,7 @@ import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
+import { createSessionStore } from "./session/pairing.js";
 import { createThemeStore } from "./themes/store.js";
 
 function createValidPackage(
@@ -150,6 +151,38 @@ function request(
   });
 }
 
+/** Resolves as soon as headers are written, for a stream that stays open. */
+function streamStatus(
+  server: http.Server,
+  urlPath: string,
+  remoteAddress = "192.168.1.50",
+): Promise<{ status: number; headers: Record<string, unknown> }> {
+  return new Promise((resolve) => {
+    const req = new Readable({
+      read() {
+        this.push(null);
+      },
+    }) as unknown as http.IncomingMessage;
+    req.method = "GET";
+    req.url = urlPath;
+    req.headers = {};
+    (req as { socket: { remoteAddress: string } }).socket = { remoteAddress };
+
+    const res = new Writable({
+      write(_chunk, _encoding, callback) {
+        callback();
+      },
+    }) as unknown as http.ServerResponse;
+
+    res.writeHead = ((status: number, headers?: http.OutgoingHttpHeaders) => {
+      resolve({ status, headers: (headers ?? {}) as Record<string, unknown> });
+      return res;
+    }) as unknown as typeof res.writeHead;
+
+    server.emit("request", req, res);
+  });
+}
+
 describe("Host theme routes", () => {
   let tmpDir: string;
   let hosted: ReturnType<typeof createHostServer>;
@@ -279,7 +312,137 @@ describe("Host theme routes", () => {
     expect(body.unmapped).toEqual([]);
   });
 
-  it("allows display GET reads from LAN addresses", async () => {
+  describe("LAN display sessions (§145)", () => {
+    let sessions: ReturnType<typeof createSessionStore>;
+    let paired: ReturnType<typeof createHostServer>;
+    let lanDir: string;
+
+    beforeEach(async () => {
+      lanDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), "vigilia-host-lan-test-"),
+      );
+      sessions = createSessionStore();
+      paired = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: lanDir, editor: lanDir },
+        themeStore: createThemeStore(lanDir),
+        sessions,
+      });
+      await request(
+        paired.server,
+        "PUT",
+        "/api/themes/living-room",
+        validEmptyAssetPackage,
+      );
+    });
+
+    afterEach(async () => {
+      await paired.close();
+      await fs.rm(lanDir, { recursive: true, force: true });
+    });
+
+    it("refuses LAN display reads without a session", async () => {
+      const lan = { remoteAddress: "192.168.1.50" };
+
+      expect(
+        (await request(paired.server, "GET", "/api/themes", undefined, lan))
+          .status,
+      ).toBe(403);
+      expect(
+        (
+          await request(
+            paired.server,
+            "GET",
+            "/api/themes/living-room/document",
+            undefined,
+            lan,
+          )
+        ).status,
+      ).toBe(403);
+    });
+
+    it("accepts a LAN display holding a live session, by header or query", async () => {
+      const issued = sessions.create("phone");
+      const lan = { remoteAddress: "192.168.1.50" };
+
+      expect(
+        (
+          await request(paired.server, "GET", "/api/themes", undefined, {
+            ...lan,
+            headers: { "x-vigilia-session": issued.token },
+          })
+        ).status,
+      ).toBe(200);
+
+      // The stream is gated by the same check, so a query token is accepted
+      // (EventSource cannot set headers) and a missing one is refused. The
+      // accepted stream is never awaited: it stays open by design.
+      expect(
+        (
+          await streamStatus(
+            paired.server,
+            `/ws?keys=cpu.load&session=${encodeURIComponent(issued.token)}`,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await streamStatus(paired.server, "/ws?keys=cpu.load")).status,
+      ).toBe(403);
+    });
+
+    it("refuses a revoked session", async () => {
+      const issued = sessions.create("phone");
+      sessions.revoke(issued.token);
+
+      expect(
+        (
+          await request(paired.server, "GET", "/api/themes", undefined, {
+            remoteAddress: "192.168.1.50",
+            headers: { "x-vigilia-session": issued.token },
+          })
+        ).status,
+      ).toBe(403);
+    });
+
+    it("keeps pairing itself loopback-only", async () => {
+      expect(
+        (
+          await request(
+            paired.server,
+            "POST",
+            "/api/pairing/sessions",
+            undefined,
+            {
+              remoteAddress: "192.168.1.50",
+            },
+          )
+        ).status,
+      ).toBe(403);
+
+      const minted = await request(
+        paired.server,
+        "POST",
+        "/api/pairing/sessions",
+      );
+      expect(minted.status).toBe(201);
+      expect(
+        (minted.json() as { session: { token: string } }).session.token,
+      ).toBeTruthy();
+    });
+
+    it("still treats loopback as trusted admin, with no session", async () => {
+      expect((await request(paired.server, "GET", "/api/themes")).status).toBe(
+        200,
+      );
+    });
+
+    it("reports pairing availability through /api/health", async () => {
+      const health = await request(paired.server, "GET", "/api/health");
+      expect((health.json() as { pairing: boolean }).pairing).toBe(true);
+    });
+  });
+
+  it("refuses LAN display reads when the host has no session store", async () => {
     await request(
       hosted.server,
       "PUT",
@@ -287,27 +450,24 @@ describe("Host theme routes", () => {
       validEmptyAssetPackage,
     );
 
-    const docRes = await request(
-      hosted.server,
-      "GET",
-      "/api/themes/living-room/document",
-      undefined,
-      {
-        remoteAddress: "192.168.1.50",
-      },
-    );
-    expect(docRes.status).toBe(200);
+    // Without a session store this host is loopback-only by construction, so a
+    // LAN caller is refused rather than trusted. Loopback still reads freely.
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          "/api/themes/living-room/document",
+          undefined,
+          { remoteAddress: "192.168.1.50" },
+        )
+      ).status,
+    ).toBe(403);
 
-    const listRes = await request(
-      hosted.server,
-      "GET",
-      "/api/themes",
-      undefined,
-      {
-        remoteAddress: "192.168.1.50",
-      },
-    );
-    expect(listRes.status).toBe(200);
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/living-room/document"))
+        .status,
+    ).toBe(200);
   });
 
   it("rejects malformed PUT packages and preserves existing package", async () => {

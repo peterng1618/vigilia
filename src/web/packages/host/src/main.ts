@@ -11,6 +11,7 @@ import { DiskSensorProvider } from "./providers/disk.js";
 import { OsSensorProvider } from "./providers/os.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
+import { createSessionStore } from "./session/pairing.js";
 import { createThemeStore } from "./themes/store.js";
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
@@ -50,6 +51,11 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
+  const servingLan = !isLoopbackHost(host);
+
+  // Sessions exist only when the server is LAN-reachable; a loopback-only host
+  // refuses non-loopback reads outright rather than trusting them.
+  const sessions = servingLan ? createSessionStore() : undefined;
 
   const hosted = createHostServer({
     registry,
@@ -58,6 +64,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       editor: path.join(packagesDir, "editor", "dist"),
     },
     themeStore: createThemeStore(themesDir),
+    ...(sessions === undefined ? {} : { sessions }),
   });
 
   let bound: number;
@@ -109,6 +116,29 @@ export async function run(argv: readonly string[]): Promise<number> {
       style("33", "  Plain HTTP — trusted networks only, never the internet."),
     );
     console.log(style("2", "  The editor stays restricted to this PC."));
+
+    if (sessions !== undefined) {
+      const hostPart = lan === undefined ? displayHost : lan;
+      const paired = sessions.create("phone");
+      // The token is in the URL because EventSource cannot set request
+      // headers; anyone who sees this link can watch, which is why it expires.
+      console.log(
+        style(
+          "2",
+          `\n  Pair a phone with this link (expires ${paired.expiresAt}):`,
+        ),
+      );
+      console.log(
+        `  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/?session=${encodeURIComponent(paired.token)}`,
+      );
+      console.log(
+        style(
+          "2",
+          "  Revoke any time:  curl -X DELETE http://127.0.0.1:" +
+            `${bound}/api/pairing/sessions/${encodeURIComponent(paired.token)}`,
+        ),
+      );
+    }
   } else {
     console.log(
       style("2", "\n  Local only. Pass --host 0.0.0.0 to let phones connect."),

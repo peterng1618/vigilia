@@ -25,6 +25,7 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { createDemoSource, validThemeByName } from "@vigilia/fake-source";
+import { displaySession, type DisplaySessionToken } from "./session.js";
 import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
@@ -63,10 +64,15 @@ async function start(host: HTMLElement): Promise<void> {
   }
 
   try {
+    const session = displaySession(
+      window.location.href,
+      window.fetch.bind(window),
+    );
     await startHostedTheme(
       host,
-      await loadHostedTheme(requested, window.fetch.bind(window)),
+      await loadHostedTheme(requested, session.fetch),
       parameters,
+      session,
     );
   } catch (error) {
     showFailure(host, error instanceof Error ? error.message : String(error));
@@ -198,18 +204,18 @@ async function startHostedTheme(
   host: HTMLElement,
   theme: FabricThemeEnvelope,
   parameters: URLSearchParams,
+  session: DisplaySessionToken,
 ): Promise<void> {
   // Fetch before allocating live resources so a failed font request has nothing to release.
-  const fontBytes = await loadHostedFontAssets(
-    theme.id,
-    theme,
-    window.fetch.bind(window),
-  );
+  const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
   const keys = Object.values(theme.bindings ?? {})
     .flat()
     .map((binding) => binding.semanticKey);
   const liveHandle = createLiveSource({
-    url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(","))}`,
+    url: session.streamUrl(
+      SAMPLE_STREAM_PATH,
+      new URLSearchParams({ keys: keys.join(",") }),
+    ),
     onStatus: (status, detail) =>
       showConnectionState(status, keys.length, detail),
   });
