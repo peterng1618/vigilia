@@ -104,3 +104,41 @@ it("shows one rail pane at a time and routes the dock through the bridge", async
 
   layout.destroy();
 });
+
+it("routes the inspector to tabs on selection and back to document panels", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  let kind: "none" | "object" | "chart" = "none";
+  const listeners = new Set<() => void>();
+  const bridge = bridgeStub({
+    snapshot: () => ({
+      selectedCount: kind === "none" ? 0 : 1,
+      locked: false,
+      activeKind: kind,
+    }),
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  });
+
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+  // The document panels stay reachable whatever the selection is.
+  expect(root.contains(layout.hosts.document)).toBe(true);
+  expect(root.querySelector('[role="tablist"]')).not.toBeNull();
+
+  kind = "chart";
+  for (const listener of listeners) listener();
+  await Promise.resolve();
+
+  const dataTab = Array.from(
+    root.querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((tab) => tab.textContent === "Data");
+  expect(dataTab).not.toBeUndefined();
+  dataTab?.click();
+  await Promise.resolve();
+  expect(layout.hosts.chart.parentElement).not.toBeNull();
+
+  layout.destroy();
+});

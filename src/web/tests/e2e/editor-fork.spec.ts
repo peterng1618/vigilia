@@ -31,7 +31,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     // The View menu owns chart refresh; the panel select is gone.
-    await page.getByRole("button", { name: "View" }).click();
+    await page.getByRole("button", { name: "View", exact: true }).click();
     await expect(
       page.getByRole("menuitem", { name: /Chart refresh: 30 FPS/ }).first(),
     ).toBeVisible();
@@ -39,7 +39,7 @@ test.describe("Fabric editor route", () => {
       .getByRole("menuitem", { name: /Chart refresh: 30 FPS/ })
       .first()
       .click();
-    await page.getByRole("button", { name: "View" }).click();
+    await page.getByRole("button", { name: "View", exact: true }).click();
     await expect(
       page.getByRole("menuitem", { name: /Chart refresh: 1 FPS/ }).first(),
     ).toBeVisible();
@@ -54,6 +54,7 @@ test.describe("Fabric editor route", () => {
     );
 
     await page.goto(EDITOR);
+    await openRailPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Text" })
@@ -98,10 +99,12 @@ test.describe("Fabric editor route", () => {
     );
 
     await page.goto(EDITOR);
+    await openRailPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Gauge" })
       .click();
+    await openInspectorTab(page, "Data");
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
@@ -1049,6 +1052,7 @@ test.describe("Fabric editor route", () => {
       controls: { tl: true, tr: true, bl: true, br: true },
       hasSelectionGeometry: true,
     });
+    await openRailPane(page, "Assets");
     await page
       .getByRole("heading", { name: "Assets" })
       .scrollIntoViewIfNeeded();
@@ -1089,6 +1093,7 @@ test.describe("Fabric editor route", () => {
       "the editor is a desktop surface",
     );
     await page.goto(EDITOR);
+    await openRailPane(page, "Assets");
     await page.locator("[data-vigilia-asset-import]").setInputFiles({
       name: "hero.png",
       mimeType: "image/png",
@@ -1518,6 +1523,15 @@ async function setUncheckedThemePackage(
   });
 }
 
+/** Shell navigation the inspector/rail now mediates; panels moved behind it. */
+async function openRailPane(page: Page, name: string): Promise<void> {
+  await page.getByRole("button", { name, exact: true }).click();
+}
+
+async function openInspectorTab(page: Page, name: string): Promise<void> {
+  await page.getByRole("tab", { name, exact: true }).click();
+}
+
 async function selectStarterChart(page: Page): Promise<void> {
   const box = await page
     .locator("#vigilia-fabric-editor canvas.upper-canvas")
@@ -1528,6 +1542,8 @@ async function selectStarterChart(page: Page): Promise<void> {
     box.x + (432 / 1280) * box.width,
     box.y + (418 / 720) * box.height,
   );
+  // A chart selection routes the inspector to its Data tab.
+  await openInspectorTab(page, "Data");
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();

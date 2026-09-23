@@ -9,6 +9,13 @@ export const uiCopy = {
     assets: "Assets",
     settings: "Settings",
   },
+  /** Compact rail marks; the accessible name is the full label. */
+  railMark: {
+    layers: "▤",
+    add: "+",
+    assets: "▣",
+    settings: "⚙",
+  },
   inspector: { design: "Design", data: "Data", style: "Style" },
   menus: {
     file: "File",

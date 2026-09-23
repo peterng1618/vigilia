@@ -3,8 +3,9 @@ import { Tabs } from "@base-ui/react/tabs";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
-import type { ActiveKind, EditorShellBridge } from "./bridge.js";
+import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasDock } from "./canvas-dock.js";
 import {
   applyShellPalette,
@@ -67,6 +68,50 @@ function Host({
   return <div ref={slot} hidden={hidden} />;
 }
 
+/** Selection is external mutable state (Fabric owns it); both the inspector and
+ * the menus read one subscription so a late-set bridge still propagates. */
+class SelectionStore {
+  #bridge: EditorShellBridge | undefined;
+  readonly #listeners = new Set<() => void>();
+  #snapshot: EditorShellSnapshot = {
+    selectedCount: 0,
+    locked: false,
+    activeKind: "none",
+  };
+  #unsubscribe: (() => void) | undefined;
+
+  set(bridge: EditorShellBridge | undefined): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+    this.#bridge = bridge;
+    if (bridge !== undefined) {
+      this.#snapshot = bridge.snapshot();
+      this.#unsubscribe = bridge.subscribe(() => {
+        this.#snapshot = bridge.snapshot();
+        for (const listener of this.#listeners) listener();
+      });
+    } else {
+      this.#snapshot = { selectedCount: 0, locked: false, activeKind: "none" };
+    }
+    for (const listener of this.#listeners) listener();
+  }
+
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+
+  readonly get = (): EditorShellSnapshot => this.#snapshot;
+
+  get bridge(): EditorShellBridge | undefined {
+    return this.#bridge;
+  }
+}
+
+function useSelection(store: SelectionStore): EditorShellSnapshot {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
 function readStorage(): Storage | undefined {
   try {
     return window.localStorage;
@@ -86,10 +131,8 @@ function MenuGroup({
     <Menu.Root>
       <Menu.Trigger>{label}</Menu.Trigger>
       <Menu.Portal>
-        <Menu.Positioner>
-          <Menu.Popup className="editor-shell-menu-popup" render={<div />}>
-            {children}
-          </Menu.Popup>
+        <Menu.Positioner className="editor-shell-positioner">
+          <Menu.Popup className="editor-shell-menu-popup">{children}</Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
@@ -97,28 +140,23 @@ function MenuGroup({
 }
 
 function ShellMenuBar({
-  getBridge,
+  store,
   getView,
 }: {
-  readonly getBridge: () => EditorShellBridge | undefined;
+  readonly store: SelectionStore;
   readonly getView: () => EditorViewControls | undefined;
 }): React.JSX.Element {
-  const [kind, setKind] = useState<ActiveKind>("none");
+  const selection = useSelection(store);
+  const kind = selection.activeKind;
+  const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
   const [rate, setRate] = useState<1 | 30>(30);
 
   useEffect(() => {
-    const bridge = getBridge();
-    setKind(bridge?.snapshot().activeKind ?? "none");
     setSource(getView()?.sourceMode() ?? "preview");
     setRate(getView()?.chartRefreshRate() ?? 30);
-    return bridge?.subscribe(() =>
-      setKind(bridge.snapshot().activeKind ?? "none"),
-    );
-  }, [getBridge, getView]);
+  }, [getView, selection.selectedCount]);
 
-  const bridge = getBridge();
-  const session = bridge?.session;
   const item = (label: string, run: () => void, disabled = false) => (
     <Menu.Item key={label} disabled={disabled} onClick={run}>
       {label}
@@ -210,21 +248,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   let bridge: EditorShellBridge | undefined;
   let view: EditorViewControls | undefined;
   let reactRoot: Root | undefined;
-  const getBridge = (): EditorShellBridge | undefined => bridge;
+  const store = new SelectionStore();
   const getView = (): EditorViewControls | undefined => view;
 
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     const [pane, setPane] = useState<RailPane>("layers");
-    const [kind, setKind] = useState<ActiveKind>("none");
-
-    useEffect(() => {
-      const current = getBridge();
-      setKind(current?.snapshot().activeKind ?? "none");
-      return current?.subscribe(() =>
-        setKind(current.snapshot().activeKind ?? "none"),
-      );
-    }, []);
+    const kind = useSelection(store).activeKind;
 
     const rail: readonly [RailPane, string][] = [
       ["layers", uiCopy.rail.layers],
@@ -232,18 +262,17 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       ["assets", uiCopy.rail.assets],
       ["settings", uiCopy.rail.settings],
     ];
-
     return (
       <div className="editor-shell">
         <header className="editor-shell-header editor-glass">
           <strong>{uiCopy.brand}</strong>
           <span className="editor-shell-tagline">{uiCopy.editor}</span>
-          <ShellMenuBar getBridge={getBridge} getView={getView} />
+          <ShellMenuBar store={store} getView={getView} />
           <button
             className="editor-shell-primary"
             type="button"
             data-vigilia-save-package=""
-            onClick={() => void bridge?.session.savePackage()}
+            onClick={() => void store.bridge?.session.savePackage()}
           >
             {uiCopy.file.savePackage}
           </button>
@@ -258,10 +287,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 key={id}
                 type="button"
                 aria-label={label}
+                title={label}
                 aria-pressed={pane === id}
                 onClick={() => setPane(id)}
               >
-                {label.slice(0, 1)}
+                {uiCopy.railMark[id]}
               </button>
             ))}
           </nav>
@@ -305,35 +335,36 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             />
           </main>
           <aside className="editor-shell-inspector editor-glass">
-            {kind === "none" ? (
-              <Host node={hosts.document} />
-            ) : (
-              <Tabs.Root defaultValue="design">
-                <Tabs.List className="editor-shell-tabs">
-                  {(["design", "data", "style"] as const).map((tab) => (
-                    <Tabs.Tab key={tab} value={tab}>
-                      {uiCopy.inspector[tab]}
-                    </Tabs.Tab>
-                  ))}
-                </Tabs.List>
-                <Tabs.Panel value="design">
+            <Tabs.Root defaultValue="design">
+              <Tabs.List className="editor-shell-tabs">
+                {(["design", "data", "style"] as const).map((tab) => (
+                  <Tabs.Tab key={tab} value={tab}>
+                    {uiCopy.inspector[tab]}
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+              {/* Document panels stay mounted in Design: a selection must not
+                  make the theme's own settings unreachable. */}
+              <Tabs.Panel value="design" keepMounted>
+                {kind !== "none" && (
                   <p className="editor-shell-hint">
                     {kind === "chart"
                       ? "Chart settings are under Data."
                       : "Move, arrange and lock the selection with the canvas dock."}
                   </p>
-                </Tabs.Panel>
-                <Tabs.Panel value="data">
-                  <Host node={hosts.chart} />
-                </Tabs.Panel>
-                <Tabs.Panel value="style">
-                  <p className="editor-shell-hint">
-                    Colours and type resolve through the theme palette and type
-                    presets.
-                  </p>
-                </Tabs.Panel>
-              </Tabs.Root>
-            )}
+                )}
+                <Host node={hosts.document} />
+              </Tabs.Panel>
+              <Tabs.Panel value="data" keepMounted>
+                <Host node={hosts.chart} />
+              </Tabs.Panel>
+              <Tabs.Panel value="style" keepMounted>
+                <p className="editor-shell-hint">
+                  Colours and type resolve through the theme palette and type
+                  presets.
+                </p>
+              </Tabs.Panel>
+            </Tabs.Root>
           </aside>
         </div>
         <footer id="status" className="editor-shell-status">
@@ -368,18 +399,20 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     stage,
     dock,
     setBridge(nextBridge, nextView) {
-      bridge = nextBridge;
+      // The store notifies subscribers, so React re-renders the inspector and
+      // menus without a manual root re-render — and it keeps working when the
+      // bridge is replaced by a later document mount.
       view = nextView;
+      store.set(nextBridge);
       flushSync(() => {
-        reactRoot?.render(<Shell />);
         dockRoot.render(
           <CanvasDock bridge={nextBridge} onVisibility={setDockVisible} />,
         );
       });
     },
     destroy() {
-      bridge?.destroy();
-      bridge = undefined;
+      store.bridge?.destroy();
+      store.set(undefined);
       dockRoot.unmount();
       reactRoot?.unmount();
       reactRoot = undefined;

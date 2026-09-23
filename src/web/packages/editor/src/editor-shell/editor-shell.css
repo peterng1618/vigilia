@@ -191,8 +191,14 @@ body,
 .editor-shell-menubar button[data-popup-open] {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
+/* Base UI portals the popup to `body`; the positioner must establish its own
+   stacking context or the stage (which is a positioned element inside #app,
+   later in paint order) intercepts pointer events over the menu. */
+.editor-shell-positioner {
+  z-index: 60;
+  position: relative;
+}
 .editor-shell-menu-popup {
-  z-index: 40;
   min-width: 190px;
   padding: 5px;
   border-radius: 8px;
@@ -258,6 +264,12 @@ body,
   flex-direction: column;
   gap: 6px;
   padding: 8px;
+  overflow: visible;
+}
+.editor-shell-rail button {
+  min-height: 38px;
+  font-size: 16px;
+  line-height: 1;
 }
 .editor-shell-rail button,
 .editor-shell-inspector button,
