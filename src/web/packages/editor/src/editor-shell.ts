@@ -12,6 +12,7 @@ import { createImageManager } from "./image-manager/index.js";
 import { createLayerManager } from "./layer-manager/index.js";
 import { createObjectLockManager } from "./object-lock-manager/index.js";
 import { createErrorManager } from "./error-manager/index.js";
+import { createCropManager } from "./crop-manager/index.js";
 import {
   resolveStyleValue,
   validateFabricThemeEnvelope,
@@ -165,6 +166,7 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
   /** A completed mouse-driven move/scale/rotate needs the same history entry
    * explicit actions get; Fabric only reports it after the gesture ends. */
   canvas.on("object:modified", save);
+  const errors = createErrorManager(canvas);
   return {
     canvas,
     historyManager: {
@@ -172,12 +174,19 @@ function createNativeEditor(container: HTMLElement, artboard: Artboard): EditorI
       resetHistory: () => history.reset(),
       undo: () => history.undo(),
       redo: () => history.redo(),
+      suspend: () => history.suspend(),
     },
     textManager: createTextManager(canvas, save),
     imageManager: createImageManager(canvas, save),
     layerManager: createLayerManager(canvas, save),
     objectLockManager: createObjectLockManager(canvas, save),
-    errorManager: createErrorManager(canvas),
+    errorManager: errors,
+    cropManager: createCropManager({
+      canvas,
+      save,
+      suspend: () => history.suspend(),
+      errors,
+    }),
     destroy: () => canvas.dispose(),
   };
 }

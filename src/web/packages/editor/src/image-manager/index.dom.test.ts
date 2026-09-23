@@ -1,7 +1,30 @@
 // @vitest-environment jsdom
 import { Canvas, FabricImage } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { boundedImportSize, boundedImageElement, createImageManager } from "./index.js";
+
+// Fabric's async RAF render of the added image can land after a test ends and
+// restoreMocks has restored jsdom's real context, which cannot drawImage an
+// undecoded img. The proxy keeps the render inert (browser covers paint).
+beforeEach(() => {
+  const real = document.createElement("canvas").getContext("2d");
+  if (real !== null) {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () =>
+        new Proxy(real, {
+          get(target, property) {
+            if (property === "drawImage") return (): void => {};
+            const value = Reflect.get(target, property, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+          set(target, property, value) {
+            if (property === "patternQuality") return true;
+            return Reflect.set(target, property, value);
+          },
+        }) as unknown as CanvasRenderingContext2D,
+    );
+  }
+});
 
 /** jsdom never loads images; capture decode's src and resolve the load event. */
 function interceptDecode(): { readonly urls: string[] } {

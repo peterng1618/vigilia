@@ -34,6 +34,17 @@ export class EditorHistory {
     this.#index = 0;
   }
 
+  /** Interactive sessions mutate the canvas before the user commits. */
+  suspend(): () => void {
+    this.#suspended += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.#suspended -= 1;
+    };
+  }
+
   save(): void {
     if (this.#suspended > 0) return;
     const scene = this.#serialize(this.#canvas);
