@@ -1,6 +1,6 @@
 # 0010 — Host, CLI and live telemetry
 
-- **Status:** active; baseline host implemented, extended providers/product flow incomplete
+- **Status:** active; host, CLI, transport, providers and LAN sessions implemented; product flow (mapping UI, theme storage) incomplete
 - **Design sections:** §93, §97, §111, §116, §120, §122, §141, §145
 
 ## Goal
@@ -123,9 +123,9 @@ started itself.
 ## Acceptance
 
 Current implemented path remains covered by tests for CLI parsing/port fallback,
-protocol framing/version refusal, keep-latest, CPU delta calculation, missing
-status, provider failure isolation, union polling and static-path safety.
-
-Future provider/LAN/theme-storage work must add evidence at its own boundary.
+protocol framing/version refusal, keep-latest, provider failure isolation,
+provider fallback, union polling, static-path safety and LAN session pairing.
 Current run counts and machine-specific observations belong in `status.md`, not
 this spec.
+
+Future provider/LAN/theme-storage work must add evidence at its own boundary.

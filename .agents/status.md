@@ -94,9 +94,8 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 ## Next
 
-1. Land the remaining editorial-shell follow-ups from
-   `docs/superpowers/plans/2026-09-24-editor-shell-visual-layout.md`: resize-time
-   snapping (spec 0014) and the reduced-transparency capture pass for the glass
+1. The editorial shell has landed; its remaining follow-ups are resize-time
+   snapping (spec 0014) and a reduced-transparency capture pass for the glass
    palettes.
 2. Revisit remaining spec-0014 candidates only when needed; the four new
    residuals (rotated-image crop, snapping-file split, `pixel-grid.ts`, size
