@@ -57,6 +57,9 @@ export const uiCopy = {
     chartRefresh: "Chart refresh",
     preview: "Preview",
     live: "Live",
+    valueRuns: "Value runs",
+    tokens: "tokens",
+    values: "values",
   },
   actions: {
     duplicate: "Duplicate",

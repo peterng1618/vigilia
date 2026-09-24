@@ -7,6 +7,7 @@ import type {
   PlanTextSegment,
   SampleSource,
   TextContent,
+  TextRun,
 } from "@vigilia/renderer-core";
 import { emptySampleSource, resolveTextSegments } from "@vigilia/renderer-core";
 import {
@@ -99,9 +100,24 @@ export function updateText(
  * what they see. `refreshBoundText` cannot serve that case, since it refreshes
  * only objects a sample resolves.
  */
+export interface ApplyAuthoredTextOptions {
+  /**
+   * Rewrites resolved segments before they are painted. The editor uses it to
+   * show a value run's token while authoring; a display never supplies it, so a
+   * token can never reach a screen.
+   */
+  readonly transform?: (
+    segments: readonly PlanTextSegment[],
+    runs: readonly TextRun[],
+    bindings: readonly Binding[],
+  ) => readonly PlanTextSegment[];
+  readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
+}
+
 export function applyAuthoredText(
   canvas: StaticCanvas,
   globals: FabricGlobals | undefined,
+  options: ApplyAuthoredTextOptions = {},
 ): void {
   const apply = (objects: readonly object[]): void => {
     for (const object of objects) {
@@ -112,14 +128,22 @@ export function applyAuthoredText(
         if (typeof id === "string" && isTextContent(authored)) {
           // Literal runs resolve against globals alone; a value run contributes
           // nothing without a sample, and keeps its authored placeholder.
-          const segments = resolveTextSegments(
+          const resolved = resolveTextSegments(
             id,
             authored.runs,
-            [],
+            options.bindings?.[id] ?? [],
             { source: emptySampleSource },
             globals ?? {},
             [],
           );
+          const segments =
+            options.transform === undefined
+              ? resolved
+              : options.transform(
+                  resolved,
+                  authored.runs,
+                  options.bindings?.[id] ?? [],
+                );
           const shape = textShapeFor(segments, {}, (value) =>
             object.graphemeSplit(value),
           );

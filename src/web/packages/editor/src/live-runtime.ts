@@ -3,8 +3,13 @@ import type {
   FabricGlobals,
   SampleSource,
 } from "@vigilia/renderer-core";
-import { refreshBoundText } from "@vigilia/scene-fabric";
+import { applyAuthoredText, refreshBoundText } from "@vigilia/scene-fabric";
 import type { StaticCanvas } from "fabric/es";
+import {
+  DEFAULT_RUN_DISPLAY_MODE,
+  type RunDisplayMode,
+  toAuthoringSegments,
+} from "./run-placeholder.js";
 
 /** Runtime samples update Fabric objects without becoming authored editor state. */
 export class LiveRuntime {
@@ -12,6 +17,7 @@ export class LiveRuntime {
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #source: SampleSource;
   #globals: FabricGlobals | undefined;
+  #runDisplay: RunDisplayMode = DEFAULT_RUN_DISPLAY_MODE;
 
   constructor(options: {
     readonly canvas: StaticCanvas;
@@ -38,7 +44,37 @@ export class LiveRuntime {
     this.#globals = globals;
   }
 
+  /** How value runs are shown while authoring; a display never sees this. */
+  setRunDisplay(mode: RunDisplayMode): void {
+    this.#runDisplay = mode;
+    this.refresh();
+  }
+
+  get runDisplay(): RunDisplayMode {
+    return this.#runDisplay;
+  }
+
   refresh(): void {
+    if (this.#runDisplay === "tokens") {
+      // Authoring view: each value run shows its token, so the structure of the
+      // text is visible. Painting this way also means a bound run no longer
+      // depends on a sample arriving to be readable.
+      applyAuthoredText(this.#canvas, this.#globals, {
+        bindings: this.#bindings,
+        transform: (segments, runs, bindings) =>
+          toAuthoringSegments(segments, runs, bindings),
+      });
+      this.#canvas.requestRenderAll();
+      return;
+    }
+
+    // Both paths must repaint every text object: tokens mode overwrites an
+    // unbound object's text, so switching back has to restore it even though
+    // `refreshBoundText` only handles objects a sample resolves.
+    applyAuthoredText(this.#canvas, this.#globals, {
+      bindings: this.#bindings,
+    });
     refreshBoundText(this.#canvas, this.#bindings, this.#source, this.#globals);
+    this.#canvas.requestRenderAll();
   }
 }

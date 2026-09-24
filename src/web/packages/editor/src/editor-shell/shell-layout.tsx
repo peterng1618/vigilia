@@ -14,6 +14,7 @@ import {
   shellPalettes,
   writeShellPalette,
 } from "./palette.js";
+import type { RunDisplayMode } from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
 
 /** Rail entries own one pane each; the inspector keeps the document panels. */
@@ -153,10 +154,12 @@ function ShellMenuBar({
   const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
   const [rate, setRate] = useState<1 | 30>(30);
+  const [runDisplay, setRunDisplay] = useState<RunDisplayMode>("tokens");
 
   useEffect(() => {
     setSource(getView()?.sourceMode() ?? "preview");
     setRate(getView()?.chartRefreshRate() ?? 30);
+    setRunDisplay(getView()?.runDisplay() ?? "tokens");
   }, [getView, selection.selectedCount]);
 
   const item = (label: string, run: () => void, disabled = false) => (
@@ -224,6 +227,14 @@ function ShellMenuBar({
           getView()?.setChartRefreshRate(next);
           setRate(next);
         })}
+        {item(
+          `${uiCopy.view.valueRuns}: ${runDisplay === "tokens" ? uiCopy.view.tokens : uiCopy.view.values}`,
+          () => {
+            const next = runDisplay === "tokens" ? "values" : "tokens";
+            getView()?.setRunDisplay(next);
+            setRunDisplay(next);
+          },
+        )}
       </MenuGroup>
     </nav>
   );

@@ -40,6 +40,7 @@ import {
   confirmDocumentReplacement,
   PersistenceManager,
 } from "./persistence-manager/index.js";
+import type { RunDisplayMode } from "./run-placeholder.js";
 import {
   createSelectionInspector,
   type SelectionInspector,
@@ -323,6 +324,15 @@ export class EditorSession {
   refresh(): void {
     this.#runtime.refresh();
     this.charts.refresh();
+  }
+
+  /** How value runs read while authoring (§89). */
+  runDisplay(): RunDisplayMode {
+    return this.#runtime.runDisplay;
+  }
+
+  setRunDisplay(mode: RunDisplayMode): void {
+    this.#runtime.setRunDisplay(mode);
   }
 
   async hydrateAssets(shell: EditorShell): Promise<void> {

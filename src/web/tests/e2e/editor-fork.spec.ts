@@ -735,6 +735,12 @@ test.describe("Fabric editor route", () => {
         ],
       },
     });
+    // Value runs read as tokens while authoring, which is the default, and
+    // loading a package remounts the editor. This test is about a sampled value
+    // reaching the canvas, so ask for values after the theme is loaded.
+    await page.getByRole("button", { name: "View", exact: true }).click();
+    await page.getByRole("menuitem", { name: /Value runs/ }).click();
+
     await expect
       .poll(() =>
         page.evaluate(() => {

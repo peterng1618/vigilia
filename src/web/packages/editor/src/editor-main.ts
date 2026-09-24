@@ -57,6 +57,8 @@ async function start(): Promise<void> {
       mode = next;
       replaceSource();
     },
+    runDisplay: () => active?.extensions.runDisplay() ?? "tokens",
+    setRunDisplay: (runMode) => active?.extensions.setRunDisplay(runMode),
     chartRefreshRate: () => chartRefreshRate,
     setChartRefreshRate: (rate) => {
       chartRefreshRate = rate;
