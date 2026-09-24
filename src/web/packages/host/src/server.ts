@@ -11,6 +11,7 @@ import {
   resolveStaticPath,
 } from "./serve/static-path.js";
 import type { SessionStore } from "./session/pairing.js";
+import type { ActiveThemeStore } from "./settings/active-theme.js";
 import {
   type DeviceSettingsStore,
   EMPTY_DEVICE_SETTINGS,
@@ -47,6 +48,8 @@ export interface HostServerOptions {
   readonly sessions?: SessionStore;
   /** Device assignments (§145). Omit to keep defaults with no configuration. */
   readonly devices?: DeviceSettingsStore;
+  /** Which theme this host displays. Omitted when the host keeps no choice. */
+  readonly activeTheme?: ActiveThemeStore;
   /** Called after an assignment change so providers re-read it. */
   readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -118,6 +121,85 @@ function sendJson(
  * The dashboard's first-run state. Plain HTML with no build step and no
  * dependency, matching the settings page.
  */
+/**
+ * Several themes are saved and none is chosen. The consumer's next step is to
+ * pick one, so the dashboard leads there rather than picking for them.
+ */
+function libraryPage(
+  themes: readonly { readonly id: string; readonly name: string }[],
+): string {
+  const counts = new Map<string, number>();
+  for (const theme of themes) {
+    counts.set(theme.name, (counts.get(theme.name) ?? 0) + 1);
+  }
+
+  const items = themes
+    .map((theme) => {
+      // Two themes can share a display name; the id is what tells them apart.
+      const label =
+        (counts.get(theme.name) ?? 0) > 1
+          ? `${theme.name} (${theme.id})`
+          : theme.name;
+      return `<li><button type="button" data-theme="${theme.id}">${label}</button></li>`;
+    })
+    .join("");
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vigilia — choose a theme</title>
+    <style>
+      html, body { margin: 0; height: 100%; }
+      body {
+        display: grid;
+        place-items: center;
+        background: #14161c;
+        color: #e8ecf3;
+        font: 15px/1.6 system-ui, sans-serif;
+        padding: 24px;
+      }
+      main { max-width: 32em; text-align: center; }
+      h1 { font-size: 22px; margin: 0 0 8px; }
+      p { color: #8a97ab; margin: 0 0 20px; }
+      ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+      button {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #2a3242;
+        background: #1d2530;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover { border-color: #e8ecf3; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Choose a theme</h1>
+      <p>This PC has several saved themes. Pick the one your displays should show.</p>
+      <ul>${items}</ul>
+    </main>
+    <script type="module">
+      for (const button of document.querySelectorAll("button[data-theme]")) {
+        button.addEventListener("click", async () => {
+          await fetch("/api/themes/active", {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: button.dataset.theme }),
+          });
+          location.reload();
+        });
+      }
+    </script>
+  </body>
+</html>`;
+}
+
 function firstRunPage(): string {
   return `<!doctype html>
 <html lang="en">
@@ -238,6 +320,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
   const devices = options.devices;
+  const activeTheme = options.activeTheme;
 
   /** Assignments in the shape providers consume; unset groups mean defaults. */
   async function currentAssignment(): Promise<DeviceAssignment> {
@@ -446,6 +529,64 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // Choosing the displayed theme is a consumer action, so it is loopback
+    // only like the other settings: it changes what every display shows.
+    if (url.pathname === "/api/themes/active") {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Settings are available on this PC only.");
+        return;
+      }
+
+      if (activeTheme === undefined) {
+        sendText(response, 404, "This host keeps no active theme.");
+        return;
+      }
+
+      if (request.method === "GET") {
+        const available = await themeStore.list();
+        sendJson(response, 200, {
+          active:
+            (await activeTheme.read(async (id: string) =>
+              available.some((entry) => entry.id === id),
+            )) ?? null,
+          themes: available,
+        });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        try {
+          const body = JSON.parse(await readBody(request)) as { id?: unknown };
+          const id = body.id;
+
+          if (typeof id !== "string") {
+            sendText(response, 400, "An id is required.");
+            return;
+          }
+
+          // Only a theme that exists can be chosen.
+          const available = await themeStore.list();
+          if (!available.some((entry) => entry.id === id)) {
+            sendText(response, 404, "No such theme.");
+            return;
+          }
+
+          await activeTheme.write(id);
+          sendJson(response, 200, { ok: true, active: id });
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
     const assetMatch = url.pathname.match(
       /^\/api\/themes\/([^/]+)\/assets\/(.+)$/,
     );
@@ -636,12 +777,30 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
     // Host-served player uses a stored theme and live data; standalone preview stays deterministic.
     if (url.pathname === "/" && !url.searchParams.has("data")) {
+      // Resolution order, in the consumer's terms: an explicit link wins, then
+      // the theme they chose, then the only theme if there is exactly one.
+      // Several themes and no choice means the library is the right next step.
+      const available = await themeStore.list();
+      const requested = url.searchParams.get("theme");
+      const stored =
+        requested === null && activeTheme !== undefined
+          ? await activeTheme.read(async (id: string) =>
+              available.some((entry) => entry.id === id),
+            )
+          : undefined;
       const theme =
-        url.searchParams.get("theme") ?? (await themeStore.list()).at(0)?.id;
+        requested ??
+        stored ??
+        (available.length === 1 ? available[0]?.id : undefined);
+
       if (theme === undefined) {
-        // First run: the dashboard has nothing to show, so it must lead the
-        // consumer to the editor rather than dead-end on an error sentence.
-        sendHtml(response, 200, firstRunPage());
+        // Nothing to show: either a first run, or a choice to make. Both lead
+        // the consumer somewhere they can act rather than to an error.
+        sendHtml(
+          response,
+          200,
+          available.length === 0 ? firstRunPage() : libraryPage(available),
+        );
         return;
       }
       url.searchParams.set("theme", theme);

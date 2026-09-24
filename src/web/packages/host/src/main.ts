@@ -13,6 +13,7 @@ import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
+import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createThemeStore } from "./themes/store.js";
 
@@ -95,6 +96,8 @@ export async function run(argv: readonly string[]): Promise<number> {
   const sessions = servingLan ? createSessionStore() : undefined;
   // Device assignments are admin state, stored beside the themes.
   const deviceSettings = createDeviceSettingsStore(themesDir);
+  // Which theme this host displays; consumer state beside the device choices.
+  const activeTheme = createActiveThemeStore(themesDir);
 
   const hosted = createHostServer({
     registry,
@@ -107,6 +110,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     themeStore: createThemeStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
+    activeTheme,
     onDeviceAssignment: (assignment) => {
       lhmProvider.setAssignment(assignment);
       libraryProvider.setAssignment(assignment);
