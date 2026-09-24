@@ -16,6 +16,9 @@ blob-report/
 .e2e-host-themes/
 # Downloaded e2e font bytes; the licence is declared in the fixture envelope.
 .e2e-font-cache/
+# Staged third-party release binaries (LibreHardwareMonitor). Provenance is
+# tracked in the script that stages them, never the binaries themselves.
+src/web/packages/host/vendor/
 # Vitest JSON reporter output (diagnostics only, never asserted against).
 .vitest/
 

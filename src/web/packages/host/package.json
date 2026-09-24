@@ -15,7 +15,8 @@
   },
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "vendor:lhm": "node ./scripts/vendor-lhm.mjs"
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",

@@ -67,6 +67,11 @@ export async function launchLhm(
 
   let child: Pick<ChildProcess, "kill" | "once" | "killed"> | undefined;
 
+  // `spawn` reports failure asynchronously through an `error` event, so a
+  // try/catch around it catches nothing and an unhandled event crashes the
+  // host. The event is what must be handled.
+  let spawnError: string | undefined;
+
   try {
     child =
       options.spawnProcess !== undefined
@@ -75,6 +80,10 @@ export async function launchLhm(
             detached: false,
             stdio: "ignore",
           });
+
+    child.once("error", (error: Error) => {
+      spawnError = error.message;
+    });
   } catch (error) {
     return {
       started: false,
@@ -95,6 +104,16 @@ export async function launchLhm(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
+    // A process that failed to start never will; report why rather than
+    // waiting out the full timeout.
+    if (spawnError !== undefined) {
+      return {
+        started: false,
+        reason: `could not start LibreHardwareMonitor: ${spawnError}`,
+        stop,
+      };
+    }
+
     if (await reachable(options.baseUrl, fetchOnce)) {
       return { started: true, stop };
     }

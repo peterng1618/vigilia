@@ -44,6 +44,30 @@ describe("LHM launcher", () => {
     expect(kill).toHaveBeenCalled();
   });
 
+  it("reports a spawn that fails asynchronously, as spawn actually does", async () => {
+    const kill = vi.fn();
+    const result = await launchLhm({
+      executable: import.meta.filename,
+      baseUrl: "http://127.0.0.1:8085",
+      timeoutMs: 5000,
+      fetcher: async () => ({ ok: false }),
+      // spawn emits "error" on the next tick rather than throwing.
+      spawnProcess: () =>
+        ({
+          kill,
+          killed: false,
+          once: (event: string, handler: (error: Error) => void) => {
+            if (event === "error")
+              setImmediate(() => handler(new Error("EACCES")));
+          },
+        }) as never,
+    });
+
+    // Reported promptly instead of waiting out the timeout, and never thrown.
+    expect(result.started).toBe(false);
+    expect(result.reason).toContain("EACCES");
+  });
+
   it("reports a spawn failure without throwing", async () => {
     const result = await launchLhm({
       executable: import.meta.filename,
