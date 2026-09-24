@@ -1,5 +1,6 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
 import { describeSemanticKey, diskDeviceId } from "@vigilia/renderer-core";
+import type { DeviceAssignment } from "./lhm-mapping.js";
 import type {
   ProviderHealth,
   SensorDescriptor,
@@ -34,6 +35,9 @@ const LIBRARY_KEYS = [
   "disk.used",
   "disk.used.percent",
   "disk.total",
+  "disk.data.used",
+  "disk.data.used.percent",
+  "disk.data.total",
   "network.download",
   "network.upload",
 ] as const;
@@ -68,6 +72,9 @@ export interface LibraryReadings {
   readonly vramTotalGb?: number;
   readonly diskUsedGb?: number;
   readonly diskTotalGb?: number;
+  /** The second disk slot; only set when a volume is assigned to it. */
+  readonly dataDiskUsedGb?: number;
+  readonly dataDiskTotalGb?: number;
   readonly download?: number;
   readonly upload?: number;
 }
@@ -80,6 +87,9 @@ interface MemLike {
 interface FsSizeLike {
   readonly size?: number;
   readonly used?: number;
+  /** Mount point or drive letter, used to identify the volume. */
+  readonly mount?: string;
+  readonly fs?: string;
 }
 
 interface NetStatsLike {
@@ -314,10 +324,51 @@ export function samplesFromLibrary(
   push("disk.used", readings.diskUsedGb);
   push("disk.used.percent", diskPercent);
   push("disk.total", readings.diskTotalGb);
+  push("disk.data.used", readings.dataDiskUsedGb);
+  push("disk.data.total", readings.dataDiskTotalGb);
+  // Derived from the slot's own two figures, so all three agree.
+  push(
+    "disk.data.used.percent",
+    readings.dataDiskUsedGb !== undefined &&
+      readings.dataDiskTotalGb !== undefined &&
+      readings.dataDiskTotalGb > 0
+      ? (readings.dataDiskUsedGb / readings.dataDiskTotalGb) * 100
+      : undefined,
+  );
   push("network.download", readings.download);
   push("network.upload", readings.upload);
 
   return entries;
+}
+
+/** The assigned volume's own figures, or undefined when it is not present. */
+function pickDataDisk(
+  filesystems: readonly FsSizeLike[],
+  assigned: string | undefined,
+): { readonly usedGb: number; readonly totalGb: number } | undefined {
+  if (assigned === undefined) {
+    return undefined;
+  }
+
+  for (const fsEntry of filesystems) {
+    // A volume is identified by its mount, and by both spellings the library
+    // and the device list use ("C:" and "C:"/"C:\").
+    const mount = (fsEntry.mount ?? fsEntry.fs ?? "").replace(/\$/, "");
+    if (diskDeviceId(mount) !== assigned && mount !== assigned) {
+      continue;
+    }
+
+    const size = finite(fsEntry.size);
+    const used = finite(fsEntry.used);
+
+    if (size === undefined || used === undefined || size <= 0) {
+      return undefined;
+    }
+
+    return { usedGb: used / BYTES_PER_GB, totalGb: size / BYTES_PER_GB };
+  }
+
+  return undefined;
 }
 
 type LibraryModule = {
@@ -335,8 +386,17 @@ export class LibrarySensorProvider implements SensorProvider {
   readonly label = "System information (baseline)";
 
   private failure: string | undefined;
+  /** Which volume answers each disk slot; refreshed by the host. */
+  private systemDisk: string | undefined;
+  private dataDisk: string | undefined;
 
   constructor(private readonly library?: LibraryModule) {}
+
+  /** Called when the consumer changes device assignments (§145). */
+  setAssignment(assignment: DeviceAssignment): void {
+    this.systemDisk = assignment.systemDisk;
+    this.dataDisk = assignment.dataDisk;
+  }
 
   /**
    * The GPUs and drives this machine reports, so a consumer can choose which
@@ -350,9 +410,9 @@ export class LibrarySensorProvider implements SensorProvider {
   }> {
     try {
       const library = await this.module();
-      const [graphics, layout] = await Promise.all([
+      const [graphics, filesystems] = await Promise.all([
         library.graphics(),
-        library.diskLayout(),
+        library.fsSize(),
       ]);
 
       const gpus = (graphics.controllers ?? [])
@@ -362,12 +422,13 @@ export class LibrarySensorProvider implements SensorProvider {
             typeof model === "string" && model.length > 0,
         )
         .map((model) => ({ id: diskDeviceId(model), name: model }));
-      const disks = layout
-        .map((disk) => disk.name)
-        .filter(
-          (name): name is string => typeof name === "string" && name.length > 0,
-        )
-        .map((name) => ({ id: diskDeviceId(name), name }));
+      // Volumes are listed by mount, because a mount is what this library can
+      // actually resolve a reading for. A model name would be a nicer label but
+      // could never match an assigned id back to a volume here.
+      const disks = filesystems
+        .map((entry) => (entry.mount ?? entry.fs ?? "").replace(/\$/, ""))
+        .filter((mount) => mount.length > 0)
+        .map((mount) => ({ id: diskDeviceId(mount), name: mount }));
 
       return { gpus, disks };
     } catch {
@@ -415,15 +476,37 @@ export class LibrarySensorProvider implements SensorProvider {
 
       this.failure = undefined;
 
+      const readings = readingsFromLibrary({
+        load,
+        speed,
+        mem,
+        // With a system disk assigned, the aggregate keys describe that volume
+        // alone, matching what the assignment means for the LHM provider.
+        filesystems:
+          this.systemDisk === undefined
+            ? filesystems
+            : filesystems.filter(
+                (entry) =>
+                  diskDeviceId(
+                    (entry.mount ?? entry.fs ?? "").replace(/\$/, ""),
+                  ) === this.systemDisk,
+              ),
+        network,
+        controllers: graphics.controllers ?? [],
+      });
+
+      // The data slot describes the assigned volume alone, matching the device
+      // ids the settings page lists so a choice made there applies here too.
+      const slot = pickDataDisk(filesystems, this.dataDisk);
+
       return samplesFromLibrary(
-        readingsFromLibrary({
-          load,
-          speed,
-          mem,
-          filesystems,
-          network,
-          controllers: graphics.controllers ?? [],
-        }),
+        slot === undefined
+          ? readings
+          : {
+              ...readings,
+              dataDiskUsedGb: slot.usedGb,
+              dataDiskTotalGb: slot.totalGb,
+            },
         owned,
         nowMs,
       );

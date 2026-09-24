@@ -153,6 +153,30 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     unit: "GB",
     expectedTier: "baseline",
   },
+  // The second disk slot. A theme showing two disks binds one to the system
+  // slot and one to this, so neither names a specific drive and the theme works
+  // on any machine (§145's device assignments decide which drive answers each).
+  {
+    key: "disk.data.used",
+    family: "disk",
+    label: "Data disk used",
+    unit: "GB",
+    expectedTier: "baseline",
+  },
+  {
+    key: "disk.data.used.percent",
+    family: "disk",
+    label: "Data disk used (share of total)",
+    unit: "%",
+    expectedTier: "baseline",
+  },
+  {
+    key: "disk.data.total",
+    family: "disk",
+    label: "Data disk total",
+    unit: "GB",
+    expectedTier: "baseline",
+  },
   {
     key: "disk.used.percent",
     family: "disk",

@@ -30,6 +30,10 @@ const LHM_TIMEOUT_MS = 2_000;
 
 /** Every key this provider can answer, whether or not a machine has the sensor. */
 const LHM_KEYS = [
+  // The second disk slot; which drive answers it is a device assignment.
+  "disk.data.used",
+  "disk.data.used.percent",
+  "disk.data.total",
   "cpu.temp",
   "cpu.power",
   "cpu.clock",

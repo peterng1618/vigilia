@@ -454,6 +454,17 @@ export interface DeviceAssignment {
  * assignment keeps the default behaviour (highest reading, summed capacity), so
  * an unconfigured host behaves exactly as before.
  */
+/** The data-disk slot's keys. */
+const DATA_DISK_KEYS = [
+  "disk.data.used",
+  "disk.data.total",
+  "disk.data.used.percent",
+] as const;
+
+function isDataDiskKey(key: string): boolean {
+  return (DATA_DISK_KEYS as readonly string[]).includes(key);
+}
+
 export function matchLhmSensorsAssigned(
   sensors: readonly LhmSensor[],
   semanticKeys: readonly string[],
@@ -475,5 +486,45 @@ export function matchLhmSensorsAssigned(
           return true;
         });
 
-  return matchLhmSensors(scoped, semanticKeys);
+  const matched = matchLhmSensors(scoped, semanticKeys);
+
+  // The data slot is a second disk: a theme binds one disk to the system keys
+  // and one to the data keys, so neither names a drive on any machine.
+  const dataId = assignment.dataDisk;
+
+  if (dataId === undefined || !semanticKeys.some(isDataDiskKey)) {
+    return matched;
+  }
+
+  const readings = diskDeviceReadings(sensors).find(
+    (device) => device.deviceId === dataId,
+  );
+
+  if (readings === undefined) {
+    return matched;
+  }
+
+  const dataValues: Record<string, number> = {
+    "disk.data.used": readings.usedGb,
+    "disk.data.total": readings.totalGb,
+    "disk.data.used.percent": readings.usedPercent,
+  };
+
+  return [
+    ...matched,
+    ...Object.entries(dataValues)
+      .filter(([key]) => semanticKeys.includes(key))
+      .map(([semanticKey, value]) => ({
+        semanticKey,
+        sensor: {
+          sensorId: `lhm:${semanticKey}`,
+          hardwareId: "",
+          hardwareType: "Storage",
+          text: readings.name,
+          type: "Data" as const,
+          value,
+        },
+        value,
+      })),
+  ];
 }

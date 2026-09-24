@@ -107,7 +107,10 @@ export async function run(argv: readonly string[]): Promise<number> {
     themeStore: createThemeStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
-    onDeviceAssignment: (assignment) => lhmProvider.setAssignment(assignment),
+    onDeviceAssignment: (assignment) => {
+      lhmProvider.setAssignment(assignment);
+      libraryProvider.setAssignment(assignment);
+    },
     // Both providers know the machine's devices; LHM's list is richer, so its
     // entries come first and the library fills in what LHM does not report
     // (a machine without LHM still gets a usable device list).
@@ -133,7 +136,7 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   // Apply the settled device choices before the first poll.
   const storedDevices = await deviceSettings.read();
-  lhmProvider.setAssignment({
+  const initialAssignment = {
     ...(storedDevices.assigned.gpu === undefined
       ? {}
       : { gpu: storedDevices.assigned.gpu }),
@@ -143,7 +146,9 @@ export async function run(argv: readonly string[]): Promise<number> {
     ...(storedDevices.assigned["data-disk"] === undefined
       ? {}
       : { dataDisk: storedDevices.assigned["data-disk"] }),
-  });
+  };
+  lhmProvider.setAssignment(initialAssignment);
+  libraryProvider.setAssignment(initialAssignment);
 
   let bound: number;
 
