@@ -141,13 +141,32 @@ export function createNewChartDefaults(
   }
 }
 
+/**
+ * The token a new object is painted with. Not simply the first entry: a palette
+ * conventionally starts with its background and letterbox colours, so taking
+ * the first one paints new content in the canvas colour — invisible, and
+ * therefore impossible to select or edit.
+ *
+ * A token named for content is preferred, then one that is not a known
+ * surface, then anything that is not the transparent fallback.
+ */
+const CONTENT_TOKENS = ["text", "ink", "foreground", "primary", "accent"];
+const SURFACE_TOKENS = ["background", "bars", "scene", "surface", "track"];
+
 function firstPalette(
   globals: FabricGlobals | undefined,
 ): readonly [string, NonNullable<FabricGlobals["palette"]>[string]] {
-  const entries = Object.entries(globals?.palette ?? {});
+  const entries = Object.entries(globals?.palette ?? {}).filter(
+    ([id]) => id !== "none",
+  );
+
   const selected =
-    entries.find(([id]) => id !== "none") ??
-    entries.find(([id]) => id === "none");
+    CONTENT_TOKENS.map((name) =>
+      entries.find(([id]) => id.toLowerCase() === name),
+    ).find((entry) => entry !== undefined) ??
+    entries.find(([id]) => !SURFACE_TOKENS.includes(id.toLowerCase())) ??
+    entries[0];
+
   if (selected === undefined)
     throw new Error("New objects require a palette token.");
   return selected;
