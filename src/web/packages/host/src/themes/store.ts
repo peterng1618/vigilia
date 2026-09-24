@@ -6,6 +6,8 @@ import { readThemePackage } from "@vigilia/theme-package";
 export interface ThemeStoreEntry {
   readonly id: string;
   readonly name: string;
+  /** The envelope's author, when it declares one; the library shows it. */
+  readonly author?: string;
   readonly updatedAt: string;
 }
 
@@ -53,9 +55,11 @@ export function createThemeStore(directory: string): ThemeStore {
               continue;
             }
             const stat = await fs.stat(filePath);
+            const author = parsed.envelope.metadata?.author;
             themes.push({
               id,
               name: parsed.envelope.metadata?.name ?? id,
+              ...(author === undefined ? {} : { author }),
               updatedAt: stat.mtime.toISOString(),
             });
           } catch {
@@ -81,10 +85,12 @@ export function createThemeStore(directory: string): ThemeStore {
           return undefined;
         }
         const stat = await fs.stat(filePath);
+        const author = parsed.envelope.metadata?.author;
         return {
           ok: true,
           id,
           name: parsed.envelope.metadata?.name ?? id,
+          ...(author === undefined ? {} : { author }),
           updatedAt: stat.mtime.toISOString(),
           envelope: parsed.envelope,
           assets: parsed.assets,
@@ -125,9 +131,11 @@ export function createThemeStore(directory: string): ThemeStore {
       }
 
       const stat = await fs.stat(targetPath);
+      const author = parsed.envelope.metadata?.author;
       return {
         id,
         name: parsed.envelope.metadata?.name ?? id,
+        ...(author === undefined ? {} : { author }),
         updatedAt: stat.mtime.toISOString(),
       };
     },

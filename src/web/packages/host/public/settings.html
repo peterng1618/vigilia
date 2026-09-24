@@ -53,6 +53,38 @@
         font: inherit;
       }
       .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+      section { margin-bottom: 28px; }
+      h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: 0.02em; }
+      .theme-list { display: grid; gap: 8px; }
+      .theme-option {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .theme-option[aria-pressed="true"] {
+        border-width: 2px;
+        border-color: var(--ink);
+        font-weight: 600;
+        background: color-mix(in srgb, var(--ink) 8%, transparent);
+      }
+      /* The chosen theme is stated in words too, so the state does not rest on
+         a visual difference alone. */
+      .theme-option .current {
+        margin-left: auto;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .theme-option .by { color: var(--muted); font-size: 13px; }
       #status {
         margin-top: 16px;
         padding: 10px 12px;
@@ -66,17 +98,29 @@
   </head>
   <body>
     <main>
-      <h1>Devices</h1>
+      <h1>This PC</h1>
       <p class="lead">
-        Choose which hardware this PC's dashboards report. A theme shows one GPU
-        and one disk; these settings decide which one that is on this machine.
+        Choose the theme your displays show, and which hardware it reports.
       </p>
-      <div id="groups"></div>
+      <section aria-labelledby="themes-heading">
+        <h2 id="themes-heading">Themes</h2>
+        <p class="hint" id="themes-hint"></p>
+        <div id="themes"></div>
+      </section>
+      <section aria-labelledby="devices-heading">
+        <h2 id="devices-heading">Devices</h2>
+        <p class="hint">
+          A theme shows one GPU and one disk; these settings decide which.
+        </p>
+        <div id="groups"></div>
+      </section>
       <div id="status">Loading…</div>
     </main>
     <script type="module">
       const status = document.querySelector("#status");
       const groups = document.querySelector("#groups");
+      const themesHost = document.querySelector("#themes");
+      const themesHint = document.querySelector("#themes-hint");
 
       const GROUP_LABELS = {
         gpu: "Graphics card",
@@ -85,6 +129,81 @@
       };
 
       let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
+      let themes = [];
+      let activeTheme = null;
+
+      function renderThemes() {
+        themesHost.replaceChildren();
+        themesHint.textContent =
+          themes.length === 0
+            ? "No themes are saved on this PC yet. Build one in the editor, then save it here."
+            : themes.length === 1
+              ? "The only saved theme is shown on every display."
+              : "Pick the theme your displays should show.";
+
+        if (themes.length === 0) return;
+
+        const list = document.createElement("div");
+        list.className = "theme-list";
+        for (const theme of themes) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "theme-option";
+          button.dataset.theme = theme.id;
+          const isActive = theme.id === activeTheme;
+          button.setAttribute("aria-pressed", String(isActive));
+          // Two themes can share a display name; the id tells them apart.
+          const duplicated =
+            themes.filter((other) => (other.name ?? other.id) === (theme.name ?? theme.id))
+              .length > 1;
+          button.append(
+            duplicated
+              ? `${theme.name ?? theme.id} (${theme.id})`
+              : (theme.name ?? theme.id),
+          );
+          if (theme.author !== undefined) {
+            const by = document.createElement("span");
+            by.className = "by";
+            by.textContent = theme.author;
+            button.append(by);
+          }
+          if (isActive) {
+            const current = document.createElement("span");
+            current.className = "current";
+            current.textContent = "Showing";
+            button.append(current);
+          }
+          button.addEventListener("click", () => chooseTheme(theme.id));
+          list.append(button);
+        }
+        themesHost.append(list);
+      }
+
+      async function chooseTheme(id) {
+        status.textContent = "Saving…";
+        try {
+          const response = await fetch("/api/themes/active", {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          if (!response.ok) throw new Error(await response.text());
+          activeTheme = id;
+          renderThemes();
+          status.textContent = "Saved. Displays show it on their next load.";
+        } catch (error) {
+          status.textContent = `Could not save: ${error.message}`;
+        }
+      }
+
+      async function loadThemes() {
+        const response = await fetch("/api/themes/active");
+        if (!response.ok) return;
+        const body = await response.json();
+        themes = body.themes ?? [];
+        activeTheme = body.active ?? null;
+        renderThemes();
+      }
       let saving = false;
 
       function optionsFor(group) {
@@ -154,8 +273,8 @@
           const empty = document.createElement("p");
           empty.className = "hint";
           empty.textContent =
-            "No GPUs or disks reported. Start LibreHardwareMonitor (with its " +
-            "web server enabled) to see them here.";
+            "No graphics card or disk was reported. Start LibreHardwareMonitor " +
+            "with its web server enabled, then reload this page.";
           groups.append(empty);
         }
       }
@@ -203,6 +322,7 @@
         }
       }
 
+      await loadThemes();
       await load();
     </script>
   </body>
