@@ -27,14 +27,14 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Added `viewport-manager/`: `createViewportManager` owns the Fabric canvas's
-  viewport transform, so pan and zoom pass one clamp in `pan-bounds.ts`
-  (`PAN_OVERSCROLL_MARGIN` 48) and the camera never mirrors the transform.
-- `resize`, `zoomToFit` and `zoomBy` refuse a zero-sized host instead of writing
-  a collapsed canvas; `onChange` reports every camera change to its subscribers
-  (Task 4's zoom readout) and `destroy` disconnects the observer and clears them.
-- `viewport.test.ts` anchors on the identity transform before asserting the
-  cursor point is fixed, so the jsdom zero-layout trap cannot make it vacuous.
+- Layer display names now read and write the envelope's `editorMetadata.layerNames`:
+  `EditorShellBridge.layers()`/`renameLayer()`, backed by `EditorActionFacade`'s
+  `layerNames()`/`setLayerNames()`; a blank rename deletes the key.
+- `mountEditorShell` owns the map, threads it into `snapshot(input)` and reads it
+  back from an opened envelope, so a rename survives save/reopen with no envelope
+  shape change. Renames stay out of authored history (§67/§172).
+- Editor spec gains a save/reopen browser test driven through the same bridge the
+  React layer panel will use (Task 5).
 
 ## Next
 

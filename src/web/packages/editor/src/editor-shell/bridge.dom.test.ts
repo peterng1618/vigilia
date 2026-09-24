@@ -37,20 +37,28 @@ function facadeStub(): EditorActionFacade {
     duplicate: vi.fn(),
     group: vi.fn(),
     ungroup: vi.fn(),
+    layerNames: vi.fn(() => ({})),
+    setLayerNames: vi.fn(),
   };
 }
 
-function bridgeFor(active: unknown, extra: Record<string, unknown> = {}) {
+function bridgeFor(
+  active: unknown,
+  extra: Record<string, unknown> = {},
+  sessionExtra: Record<string, unknown> = {},
+) {
   const listeners = new Map<string, () => void>();
+  const objects = active === undefined ? [] : [active];
   const canvas = {
     getActiveObject: () => active,
+    getObjects: () => objects,
     on: vi.fn((name: string, listener: () => void) =>
       listeners.set(name, listener),
     ),
     off: vi.fn(),
   };
   const editor = { canvas, ...extra };
-  const session = facadeStub();
+  const session = { ...facadeStub(), ...sessionExtra };
   return {
     bridge: createEditorShellBridge({ editor, session } as never),
     canvas,
@@ -149,4 +157,47 @@ it("gates ungroup on a real Group selection", () => {
 
   expect(bridge.can("ungroup")).toBe(true);
   expect(bridge.can("group")).toBe(false);
+});
+
+it("carries display names into the projection and back out again", () => {
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, session } = bridgeFor(
+    rect,
+    {},
+    {
+      layerNames: () => ({ header: "Header rule" }),
+    },
+  );
+  expect(bridge.layers()[0]?.name).toBe("Header rule");
+
+  bridge.renameLayer("header", "Top rule");
+  // The write goes to the facade, not to a local copy — assert it there. The
+  // stub does not feed the value back, so re-reading layers() here would only
+  // re-assert the seeded value.
+  expect(session.setLayerNames).toHaveBeenCalledWith({ header: "Top rule" });
+});
+
+it("clears the stored name when a rename is blank", () => {
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, session } = bridgeFor(rect);
+  bridge.renameLayer("header", "   ");
+  // Removing the key, not storing whitespace: Task 3's name ladder already
+  // falls back to the id for a row with no stored name.
+  expect(session.setLayerNames).toHaveBeenCalledWith({});
+});
+
+it("keeps sibling names when one is renamed", () => {
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, session } = bridgeFor(
+    rect,
+    {},
+    {
+      layerNames: () => ({ other: "Kept" }),
+    },
+  );
+  bridge.renameLayer("header", "Top rule");
+  expect(session.setLayerNames).toHaveBeenCalledWith({
+    other: "Kept",
+    header: "Top rule",
+  });
 });

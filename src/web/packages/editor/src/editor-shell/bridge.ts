@@ -7,6 +7,7 @@ import {
   type ObjectActionId,
   type ObjectTarget,
 } from "../object-actions.js";
+import { type LayerRow, projectLayers } from "./layer-tree.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
 /** Selection-kind routing for menu/tab eligibility. Transient, never persisted. */
@@ -27,6 +28,10 @@ export interface EditorShellBridge {
   target(): ObjectTarget;
   can(action: ShellAction): boolean;
   canArrange(action: ArrangeAction): boolean;
+  /** The layer tree, projected from Fabric on demand (§172). */
+  layers(): readonly LayerRow[];
+  /** Editor-only display state: never authored history, never a Fabric write. */
+  renameLayer(id: string, name: string): void;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
   readonly session: EditorActionFacade;
@@ -96,11 +101,43 @@ export function createEditorShellBridge(input: {
   // Eligibility is owned by the registry; this only adds the selection gate.
   const can = (action: ShellAction): boolean =>
     activeObject() !== undefined && actionEnabled(gate, action);
+  const names = (): Readonly<Record<string, string>> =>
+    input.session.layerNames();
+  // Seeded empty: Task 5's `setCollapsed` mutates it; this task only reads it.
+  const collapsedGroups = new Set<string>();
+  const layers = (): readonly LayerRow[] => {
+    const active = canvas.getActiveObject();
+    const selected =
+      active instanceof ActiveSelection
+        ? active.getObjects()
+        : active === undefined
+          ? []
+          : [active];
+    return projectLayers({
+      root: canvas.getObjects(),
+      selected,
+      names: names(),
+      collapsed: collapsedGroups,
+    });
+  };
+  const renameLayer = (id: string, name: string): void => {
+    const trimmed = name.trim();
+    const next = { ...names() };
+    // Removing the key, not storing blank: the projection falls back to the id.
+    if (trimmed === "") delete next[id];
+    else next[id] = trimmed;
+    // Display state is editor-only, so this deliberately skips saveState():
+    // §67 keeps runtime state out of authored history.
+    input.session.setLayerNames(next);
+    notify();
+  };
   return {
     snapshot,
     target,
     can,
     canArrange: canArrangeAction,
+    layers,
+    renameLayer,
     session: input.session,
     editor: input.editor,
     subscribe(listener) {

@@ -336,6 +336,10 @@ export class EditorSession {
       duplicate: () => void editor.clipboardManager.duplicate(),
       group: () => editor.groupingManager.group(),
       ungroup: () => editor.groupingManager.ungroup(),
+      // The shell holds display state; `snapshot` is where it reaches the
+      // envelope, so the session does not keep a second copy of it.
+      layerNames: () => options.shell.layerNames(),
+      setLayerNames: (names) => options.shell.setLayerNames(names),
     };
   }
 

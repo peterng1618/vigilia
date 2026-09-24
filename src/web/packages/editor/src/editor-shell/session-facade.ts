@@ -23,6 +23,9 @@ export interface EditorActionFacade {
   duplicate(): void;
   group(): void;
   ungroup(): void;
+  /** Editor-only display state; persisted in envelope.editorMetadata (§172). */
+  layerNames(): Readonly<Record<string, string>>;
+  setLayerNames(names: Readonly<Record<string, string>>): void;
 }
 
 /** Editor-main owns these; the View menu dispatches through them. */

@@ -124,4 +124,44 @@ describe("native editor shell", () => {
     shell.destroy();
     host.remove();
   });
+
+  it("writes display names into editorMetadata and reads them back on reopen", async () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const shell = await mountEditorShell({
+      host,
+      artboard: { width: 100, height: 100 },
+    });
+    const input = { id: "theme", artboard: { width: 100, height: 100 } };
+
+    // Nothing renamed yet: the key is absent rather than an empty object, so a
+    // document that never renamed a layer does not grow dead payload.
+    expect(shell.layerNames()).toEqual({});
+    expect(shell.snapshot(input).editorMetadata).toBeUndefined();
+
+    shell.setLayerNames({ header: "Header rule" });
+    const saved = shell.snapshot(input);
+    expect(saved.editorMetadata).toEqual({
+      layerNames: { header: "Header rule" },
+    });
+
+    shell.destroy();
+    host.remove();
+
+    // Reopening the saved envelope is what makes the name durable; keeping it
+    // only on the shell would pass every assertion above.
+    const reopened = await mountEditorShell({
+      host: document.createElement("div"),
+      artboard: { width: 100, height: 100 },
+      envelope: saved,
+    });
+    expect(reopened.layerNames()).toEqual({ header: "Header rule" });
+    expect(reopened.snapshot(input).editorMetadata).toEqual({
+      layerNames: { header: "Header rule" },
+    });
+    reopened.destroy();
+  });
 });

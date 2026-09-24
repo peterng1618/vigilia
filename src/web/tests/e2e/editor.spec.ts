@@ -1051,6 +1051,44 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
   });
 
+  test("keeps a layer's display name across save and reopen", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await renameLayer(page, "wordmark", "Brand mark");
+
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) return;
+    const names = saved.parsed.envelope as {
+      editorMetadata?: { layerNames?: Record<string, string> };
+    };
+    expect(names.editorMetadata).toEqual({
+      layerNames: { wordmark: "Brand mark" },
+    });
+
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "renamed.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened renamed.vigilia-theme",
+    );
+
+    // The reopened document's own projection must carry the name, not just the
+    // bytes: a reader that never loads the key would pass the assertion above.
+    await expect
+      .poll(() => layerNamesInPage(page))
+      .toMatchObject({ wordmark: "Brand mark" });
+  });
+
   test("round-trips an opened v2 Fabric scene through the save path", async ({
     page,
   }, testInfo) => {
@@ -1698,6 +1736,43 @@ async function selectStarterChart(page: Page): Promise<void> {
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();
+}
+
+/** The shell bridge, the one owner of a rename in the page. */
+async function renameLayer(
+  page: Page,
+  id: string,
+  name: string,
+): Promise<void> {
+  await page.evaluate(
+    ([layerId, next]) => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge?: {
+            renameLayer(id: string, name: string): void;
+          };
+        }
+      ).vigiliaEditorBridge;
+      if (bridge === undefined) throw new Error("No editor bridge is mounted.");
+      bridge.renameLayer(layerId, next);
+    },
+    [id, name] as const,
+  );
+}
+
+async function layerNamesInPage(page: Page): Promise<unknown> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge?: {
+          layers(): readonly { id: string; name: string }[];
+        };
+      }
+    ).vigiliaEditorBridge;
+    return Object.fromEntries(
+      (bridge?.layers() ?? []).map((row) => [row.id, row.name]),
+    );
+  });
 }
 
 async function captureVisualReview(

@@ -157,6 +157,10 @@ async function start(): Promise<void> {
       editor: shell.editor,
       session: extensions.actionFacade(),
     });
+    /** Editor-only display state has no other in-page surface yet (the React
+     * layer panel lands in a later task), so e2e drives the rename through the
+     * same bridge the shell will. */
+    (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
     active?.bridge.destroy();
     active?.extensions.destroy();
     active?.shell.destroy();
