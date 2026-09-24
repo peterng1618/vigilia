@@ -141,6 +141,8 @@
       let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
       let themes = [];
       let activeTheme = null;
+      // The device slots the chosen theme reads; empty means "ask about none".
+      let requiredDevices = [];
 
       function renderThemes() {
         themesHost.replaceChildren();
@@ -225,6 +227,7 @@
         const body = await response.json();
         themes = body.themes ?? [];
         activeTheme = body.active ?? null;
+        requiredDevices = body.requiredDevices ?? [];
         renderThemes();
       }
       let saving = false;
@@ -240,6 +243,7 @@
         for (const [group, label] of Object.entries(GROUP_LABELS)) {
           const devices = optionsFor(group);
           if (devices.length === 0) continue;
+
           rendered += 1;
 
           const fieldset = document.createElement("fieldset");

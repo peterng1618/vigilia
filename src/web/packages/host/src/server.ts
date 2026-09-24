@@ -16,6 +16,7 @@ import {
   type DeviceSettingsStore,
   EMPTY_DEVICE_SETTINGS,
 } from "./settings/devices.js";
+import { requiredDeviceGroups } from "./settings/required-devices.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -550,12 +551,20 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       if (request.method === "GET") {
         const available = await themeStore.list();
+        const chosen =
+          (await activeTheme.read(async (id: string) =>
+            available.some((entry) => entry.id === id),
+          )) ?? null;
+
+        // Which device slots the choice needs, so the settings page asks only
+        // the questions that theme raises.
+        const record =
+          chosen === null ? undefined : await themeStore.read(chosen);
+
         sendJson(response, 200, {
-          active:
-            (await activeTheme.read(async (id: string) =>
-              available.some((entry) => entry.id === id),
-            )) ?? null,
+          active: chosen,
           themes: available,
+          requiredDevices: requiredDeviceGroups(record?.envelope),
         });
         return;
       }
