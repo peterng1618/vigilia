@@ -74,6 +74,8 @@ Editor concept ownership:
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
+| Theme thumbnails (store and route) | `host/src/themes/thumbnails.ts` |
+| Thumbnail capture in the editor | `editor/src/thumbnail-capture.ts` |
 | Shell chrome, rail, inspector tabs, menus | `editor/src/editor-shell/shell-layout.tsx` |
 | Shell palette | `editor/src/editor-shell/palette.ts` |
 | Drag-time snapping and smart guides | `editor/src/snap-manager/` |
