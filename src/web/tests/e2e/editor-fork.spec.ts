@@ -736,7 +736,9 @@ test.describe("Fabric editor route", () => {
     await expect(style).toContainText("Body");
 
     // Selecting the text replaces the document's list with its own resolution.
-    await page.mouse.click(40, 40);
+    // Select through the layer row: the canvas origin is not a stable coordinate
+    // to click, because the stage letterboxes the artboard inside its host.
+    await page.locator('[data-vigilia-layer="cpu-label"]').click();
     await openInspectorTab(page, "Style");
     await expect(style).toContainText("palette.ink");
     await expect(style).toContainText("typePresets.body");
