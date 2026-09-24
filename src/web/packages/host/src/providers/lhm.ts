@@ -1,6 +1,6 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
-import { describeSemanticKey } from "@vigilia/renderer-core";
-import { matchLhmSensors } from "./lhm-mapping.js";
+import { describeSemanticKey, diskDeviceOf } from "@vigilia/renderer-core";
+import { diskDeviceReadings, matchLhmSensors } from "./lhm-mapping.js";
 import { flattenLhmSensors } from "./lhm-tree.js";
 import type {
   ProviderHealth,
@@ -117,8 +117,12 @@ export class LhmSensorProvider implements SensorProvider {
     semanticKeys: readonly string[],
     nowMs: number,
   ): Promise<readonly SampleEntry[]> {
-    const owned = semanticKeys.filter((key) =>
-      (LHM_KEYS as readonly string[]).includes(key),
+    // Per-device keys (disk dot id dot used) are discovered at runtime, so they
+    // are accepted by shape rather than by membership in the fixed list.
+    const owned = semanticKeys.filter(
+      (key) =>
+        (LHM_KEYS as readonly string[]).includes(key) ||
+        diskDeviceOf(key) !== undefined,
     );
 
     if (owned.length === 0) {
@@ -151,12 +155,20 @@ export class LhmSensorProvider implements SensorProvider {
       }));
     }
 
+    const sensors = flattenLhmSensors(payload);
     const matched = new Map(
-      matchLhmSensors(flattenLhmSensors(payload), owned).map((match) => [
+      matchLhmSensors(sensors, owned).map((match) => [
         match.semanticKey,
         match.value,
       ]),
     );
+
+    // Per-device disk keys, keyed by the slug of the drive's own name.
+    for (const device of diskDeviceReadings(sensors)) {
+      matched.set(`disk.${device.deviceId}.used`, device.usedGb);
+      matched.set(`disk.${device.deviceId}.total`, device.totalGb);
+      matched.set(`disk.${device.deviceId}.used.percent`, device.usedPercent);
+    }
 
     return owned.map((semanticKey) => {
       const value = matched.get(semanticKey);
@@ -168,7 +180,9 @@ export class LhmSensorProvider implements SensorProvider {
           sample: missing(
             `${LHM_PROVIDER_ID}:${semanticKey}`,
             timestamp,
-            "this machine reports no matching LibreHardwareMonitor sensor",
+            diskDeviceOf(semanticKey) === undefined
+              ? "this machine reports no matching LibreHardwareMonitor sensor"
+              : "this machine has no drive with that id",
           ),
         };
       }

@@ -34,7 +34,11 @@ function asRecord(value: unknown): LhmNode | undefined {
     : undefined;
 }
 
-/** LHM writes named floating-point literals for values it could not read. */
+/**
+ * LHM serialises `RawValue` as a **string carrying its unit** ("3.0 %",
+ * "1.2 MB/s", "45.5 W"), despite typing it `float`; `Number()` on that is NaN.
+ * Values it could not read arrive as the literal `"NaN"`, which is a gap.
+ */
 function numeric(value: unknown): number | undefined {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : undefined;
@@ -44,7 +48,13 @@ function numeric(value: unknown): number | undefined {
     return undefined;
   }
 
-  const parsed = Number(value);
+  // Take the leading number and ignore whatever unit follows it.
+  const match = /^\s*(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)/.exec(value);
+  if (match === null) {
+    return undefined;
+  }
+
+  const parsed = Number(match[1]);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 

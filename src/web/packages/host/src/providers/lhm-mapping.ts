@@ -1,7 +1,13 @@
+import { diskDeviceId } from "@vigilia/renderer-core";
 import type { LhmSensor } from "./lhm-tree.js";
 
 /** Which LHM sensor answers which Vigilia semantic key. Modelled on explicit
- * sensor names and LHM sensor kinds, never on provider instance identity (§93). */
+ * sensor names and LHM sensor kinds, never on provider instance identity (§93).
+ *
+ * LHM names a hardware node by its *model* ("Intel Core i9-10850K", "NVIDIA
+ * GeForce RTX 3080 Ti", "Ethernet"), not by kind, so hardware is matched by a
+ * pattern over that name. Every name below was read off a real LHM v0.9.6
+ * install; a hand-written fixture did not reveal them. */
 
 /** LHM's `SensorType`, spelling its kind as `data.json` reports it. */
 export type LhmSensorType =
@@ -11,250 +17,208 @@ export type LhmSensorType =
   | "Clock"
   | "Fan"
   | "Data"
+  | "SmallData"
   | "Throughput"
   | "Level"
   | "Voltage"
   | "Current";
 
+/** Which hardware node a binding applies to, matched against its name. */
+export type HardwareGroup = "cpu" | "cooling" | "gpu" | "storage" | "network";
+
 export interface LhmBinding {
   readonly semanticKey: string;
-  /** Hardware group the sensor must sit under, e.g. `GpuNvidia`. */
-  readonly hardwareType?: string;
+  readonly group: HardwareGroup;
   readonly type: LhmSensorType;
-  /** Exact LHM sensor name, when the name is unambiguous. */
-  readonly text?: string;
-  /** Accepted names, first match wins. */
-  readonly anyText?: readonly string[];
-  /** Converts LHM's SI value to the unit the vocabulary declares. */
-  readonly scale?: number;
+  /** Accepted sensor names, in priority order; first match wins. */
+  readonly anyText: readonly string[];
+  /** How repeated hardware instances combine. Default: highest. */
+  readonly combine?: "sum" | "highest";
 }
 
-const MEGABIT_PER_BYTE_PER_SECOND = 8 / 1_000_000;
+const CPU_PATTERN = /intel|amd|ryzen|core i\d|threadripper/i;
+/** A liquid cooler (NZXT Kraken, Corsair, …) drives the CPU, and so do the
+ * motherboard super-I/O fan headers (ITE/Nuvoton/Fintek chips). */
+const COOLING_PATTERN =
+  /kraken|corsair|nzxt|coolit|aio|liquid|ite it|nuvoton|fintek|prime|aorus|tomahawk/i;
+const GPU_PATTERN = /nvidia|geforce|radeon|gpu|arc a\d/i;
+/** Drive model designations vary widely: `Lexar 500GB SSD`, `ST4000DM004`,
+ * `WDC WD30NMVW`, `Samsung SSD 970`, `CT1000MX500SSD1`. */
+const STORAGE_PATTERN =
+  /ssd|hdd|nvme|disk|wdc|wd\d|\bst\d|ct\d|micron|samsung|lexar|seagate|kingston|toshiba|crucial|sandisk|intel ssd/i;
+const NETWORK_PATTERN = /ethernet|wi-?fi|wireless|network|802\.11/i;
 
-/** CPU, GPU and memory bindings, in priority order within each key. */
+export function groupOf(hardwareName: string): HardwareGroup | undefined {
+  // Order matters: a "Bluetooth Network Connection" is a network node, and a GPU
+  // named "Intel Arc" must not be read as a CPU.
+  if (NETWORK_PATTERN.test(hardwareName)) return "network";
+  if (COOLING_PATTERN.test(hardwareName)) return "cooling";
+  if (STORAGE_PATTERN.test(hardwareName)) return "storage";
+  if (GPU_PATTERN.test(hardwareName)) return "gpu";
+  if (CPU_PATTERN.test(hardwareName)) return "cpu";
+  return undefined;
+}
+
 const BINDINGS: readonly LhmBinding[] = [
-  // CPU
+  // CPU. `Core Average` is the package temperature LHM reports when a dedicated
+  // package sensor is absent; `Core Max` is the hotter reading.
   {
     semanticKey: "cpu.temp",
-    hardwareType: "Cpu",
+    group: "cpu",
     type: "Temperature",
-    anyText: ["CPU Package", "Core Average", "CPU Total"],
+    anyText: ["CPU Package", "Core Average", "Core Max"],
+  },
+  {
+    semanticKey: "cpu.temp",
+    group: "cooling",
+    type: "Temperature",
+    anyText: ["Liquid"],
   },
   {
     semanticKey: "cpu.power",
-    hardwareType: "Cpu",
+    group: "cpu",
     type: "Power",
-    anyText: ["Package", "CPU Package"],
+    anyText: ["CPU Package", "Package", "CPU Cores"],
   },
   {
     semanticKey: "cpu.clock",
-    hardwareType: "Cpu",
+    group: "cpu",
     type: "Clock",
-    anyText: ["Cores (Average)", "Core Average"],
+    anyText: ["Cores (Average)", "Core Average", "CPU Core #1", "Bus Speed"],
   },
-  { semanticKey: "cpu.fan", hardwareType: "Cpu", type: "Fan" },
+  // Only an explicit CPU fan name answers this; a case or AIO fan does not.
+  {
+    semanticKey: "cpu.fan",
+    group: "cpu",
+    type: "Fan",
+    anyText: ["CPU Fan", "CPU"],
+  },
+  {
+    semanticKey: "cpu.fan",
+    group: "cooling",
+    type: "Fan",
+    anyText: [
+      "Pump",
+      "Fan #1",
+      "Fan #2",
+      "Fan #3",
+      "Fan #4",
+      "Fan #5",
+      "Fan #6",
+    ],
+  },
 
   // GPU
   {
     semanticKey: "gpu.load",
-    hardwareType: "GpuNvidia",
-    type: "Load",
-    anyText: ["GPU Core", "D3D 3D"],
-  },
-  {
-    semanticKey: "gpu.load",
-    hardwareType: "GpuAmd",
+    group: "gpu",
     type: "Load",
     anyText: ["GPU Core", "D3D 3D"],
   },
   {
     semanticKey: "gpu.temp",
-    hardwareType: "GpuNvidia",
-    type: "Temperature",
-    anyText: ["GPU Core"],
-  },
-  {
-    semanticKey: "gpu.temp",
-    hardwareType: "GpuAmd",
+    group: "gpu",
     type: "Temperature",
     anyText: ["GPU Core"],
   },
   {
     semanticKey: "gpu.power",
-    hardwareType: "GpuNvidia",
-    type: "Power",
-    anyText: ["GPU Package", "GPU Power"],
-  },
-  {
-    semanticKey: "gpu.power",
-    hardwareType: "GpuAmd",
+    group: "gpu",
     type: "Power",
     anyText: ["GPU Package", "GPU Power"],
   },
   {
     semanticKey: "gpu.clock",
-    hardwareType: "GpuNvidia",
+    group: "gpu",
     type: "Clock",
     anyText: ["GPU Core"],
   },
   {
-    semanticKey: "gpu.clock",
-    hardwareType: "GpuAmd",
-    type: "Clock",
-    anyText: ["GPU Core"],
+    semanticKey: "gpu.fan",
+    group: "gpu",
+    type: "Fan",
+    anyText: ["GPU Fan 1", "GPU Fan"],
   },
-  { semanticKey: "gpu.fan", hardwareType: "GpuNvidia", type: "Fan" },
-  { semanticKey: "gpu.fan", hardwareType: "GpuAmd", type: "Fan" },
 
-  // VRAM: LHM reports `Data` in GB for memory, `Load` in % for its share.
+  // VRAM. LHM reports GPU memory as `SmallData` in MB, not `Data` in GB.
   {
     semanticKey: "vram.used",
-    hardwareType: "GpuNvidia",
-    type: "Data",
-    anyText: ["GPU Memory Used"],
-  },
-  {
-    semanticKey: "vram.used",
-    hardwareType: "GpuAmd",
-    type: "Data",
-    anyText: ["GPU Memory Used"],
+    group: "gpu",
+    type: "SmallData",
+    anyText: ["D3D Dedicated Memory Used", "GPU Memory Used"],
   },
   {
     semanticKey: "vram.total",
-    hardwareType: "GpuNvidia",
-    type: "Data",
-    anyText: ["GPU Memory Total"],
-  },
-  {
-    semanticKey: "vram.total",
-    hardwareType: "GpuAmd",
-    type: "Data",
+    group: "gpu",
+    type: "SmallData",
     anyText: ["GPU Memory Total"],
   },
   {
     semanticKey: "vram.used.percent",
-    hardwareType: "GpuNvidia",
-    type: "Load",
-    anyText: ["GPU Memory"],
-  },
-  {
-    semanticKey: "vram.used.percent",
-    hardwareType: "GpuAmd",
+    group: "gpu",
     type: "Load",
     anyText: ["GPU Memory"],
   },
 
-  // Disk capacity. `Used Space` is `SensorType.Load` yet carries a percentage
-  // (LHM computes `100 - free/total`), so it answers only the percent key.
-  // `disk.used` is derived from Total minus Free; see `deriveDiskUsed`.
+  // Disk capacity. `Used Space` is typed Load but carries a percentage, so it
+  // answers only the percent key; `disk.used` is derived from Total minus Free.
   {
     semanticKey: "disk.used.percent",
-    hardwareType: "Storage",
+    group: "storage",
     type: "Load",
     anyText: ["Used Space"],
   },
   {
     semanticKey: "disk.total",
-    hardwareType: "Storage",
+    group: "storage",
     type: "Data",
     anyText: ["Total Space"],
   },
   {
     semanticKey: "disk.free",
-    hardwareType: "Storage",
+    group: "storage",
     type: "Data",
     anyText: ["Free Space"],
   },
 
-  // Network: LHM's `Throughput` is bytes per second; the vocabulary is Mb/s.
+  // Network. LHM's `Throughput` is bytes per second; the vocabulary is Mb/s.
   {
     semanticKey: "network.download",
-    hardwareType: "Network",
+    group: "network",
     type: "Throughput",
     anyText: ["Download Speed"],
   },
   {
     semanticKey: "network.upload",
-    hardwareType: "Network",
+    group: "network",
     type: "Throughput",
     anyText: ["Upload Speed"],
   },
 ];
 
-/** LHM already reports  in GB, which is the vocabulary unit,
- * so it needs no conversion — only Throughput does. */
-const DATA_SCALE = 1;
+/** LHM reports `Data` in GB and `SmallData` in MB. */
+const MIB_PER_GB = 1024;
+const MEGABIT_PER_BYTE_PER_SECOND = 8 / 1_000_000;
 
-/**
- * `disk.used` has no direct LHM sensor: LHM exposes `Total Space` and
- * `Free Space` in GB and a `Used Space` that is really a percentage. Deriving
- * from the two GB figures keeps the unit the vocabulary promises.
- */
-function deriveDiskUsed(sensors: readonly LhmSensor[]): number | undefined {
-  const total = sumByType(sensors, ["Total Space"]);
-  const free = sumByType(sensors, ["Free Space"]);
-
-  return total === undefined || free === undefined ? undefined : total - free;
-}
-
-function sumByType(
-  sensors: readonly LhmSensor[],
-  names: readonly string[],
-): number | undefined {
-  let sum = 0;
-  let found = false;
-
-  for (const sensor of sensors) {
-    if (sensor.value === undefined || !names.includes(sensor.text)) {
-      continue;
-    }
-
-    sum += scaleFor({ semanticKey: "", type: "Data" }, sensor.value);
-    found = true;
+export function scaleFor(binding: LhmBinding, value: number): number {
+  switch (binding.type) {
+    case "SmallData":
+      // MB to GB, the unit the vocabulary declares for VRAM.
+      return value / MIB_PER_GB;
+    case "Throughput":
+      return value * MEGABIT_PER_BYTE_PER_SECOND;
+    default:
+      // `Data` is already GB, and the rest carry their own unit.
+      return value;
   }
-
-  return found ? sum : undefined;
 }
 
 function matches(binding: LhmBinding, sensor: LhmSensor): boolean {
-  if (sensor.type !== binding.type) {
-    return false;
-  }
-
-  if (
-    binding.hardwareType !== undefined &&
-    sensor.hardwareType !== binding.hardwareType
-  ) {
-    return false;
-  }
-
-  if (binding.text !== undefined) {
-    return sensor.text === binding.text;
-  }
-
-  if (binding.anyText !== undefined) {
-    return binding.anyText.includes(sensor.text);
-  }
-
-  // No name constraint: any sensor of this kind under this hardware group.
-  return true;
-}
-
-/** Converts a raw LHM value to the unit the vocabulary declares for the key. */
-export function scaleFor(binding: LhmBinding, value: number): number {
-  if (binding.scale !== undefined) {
-    return value * binding.scale;
-  }
-
-  if (binding.type === "Data") {
-    return value * DATA_SCALE;
-  }
-
-  if (binding.type === "Throughput") {
-    return value * MEGABIT_PER_BYTE_PER_SECOND;
-  }
-
-  return value;
+  return (
+    sensor.type === binding.type &&
+    groupOf(sensor.hardwareType) === binding.group &&
+    binding.anyText.includes(sensor.text)
+  );
 }
 
 export interface LhmMatch {
@@ -263,12 +227,101 @@ export interface LhmMatch {
   readonly value: number;
 }
 
+/** Sums a named sensor across every hardware node in a group. */
+function sumNamed(
+  sensors: readonly LhmSensor[],
+  group: HardwareGroup,
+  names: readonly string[],
+): number | undefined {
+  let sum = 0;
+  let found = false;
+
+  for (const sensor of sensors) {
+    if (
+      sensor.value === undefined ||
+      groupOf(sensor.hardwareType) !== group ||
+      !names.includes(sensor.text)
+    ) {
+      continue;
+    }
+
+    sum += scaleFor(
+      {
+        semanticKey: "",
+        group,
+        type: sensor.type as LhmSensorType,
+        anyText: names,
+      },
+      sensor.value,
+    );
+    found = true;
+  }
+
+  return found ? sum : undefined;
+}
+
+/** `disk.used` has no direct LHM sensor: LHM's `Used Space` is a percentage. */
+function deriveDiskUsed(sensors: readonly LhmSensor[]): number | undefined {
+  const total = sumNamed(sensors, "storage", ["Total Space"]);
+  const free = sumNamed(sensors, "storage", ["Free Space"]);
+
+  return total === undefined || free === undefined ? undefined : total - free;
+}
+
 /**
- * First sensor that answers each key. Multiple hardware instances of one group
- * (two GPUs, several disks) are aggregated: `Data` and `Throughput` sum, while
- * `Load`, `Temperature`, `Power` and `Clock` take the highest, which is what a
+ * First sensor that answers each key. Where a group has several instances (two
+ * GPUs, several disks, several NICs), capacity and throughput sum, while a
+ * percentage, temperature, power or clock takes the highest — which is what a
  * single figure for that key should mean.
  */
+/**
+ * One entry per discovered storage device, for the per-device disk keys.
+ * A drive reports Total and Free in GB and Used Space as a percentage, so used
+ * capacity is derived the same way the aggregate is.
+ */
+export interface DiskDeviceReading {
+  readonly deviceId: string;
+  readonly name: string;
+  readonly usedGb: number;
+  readonly totalGb: number;
+  readonly usedPercent: number;
+}
+
+export function diskDeviceReadings(
+  sensors: readonly LhmSensor[],
+): readonly DiskDeviceReading[] {
+  const names = new Map<string, string>();
+
+  for (const sensor of sensors) {
+    if (groupOf(sensor.hardwareType) === "storage") {
+      names.set(sensor.hardwareId, sensor.hardwareType);
+    }
+  }
+
+  const readings: DiskDeviceReading[] = [];
+
+  for (const [hardwareId, name] of names) {
+    const own = sensors.filter((sensor) => sensor.hardwareId === hardwareId);
+    const total = sumNamed(own, "storage", ["Total Space"]);
+    const free = sumNamed(own, "storage", ["Free Space"]);
+
+    if (total === undefined || free === undefined || total <= 0) {
+      continue;
+    }
+
+    const usedGb = total - free;
+    readings.push({
+      deviceId: diskDeviceId(name),
+      name,
+      usedGb,
+      totalGb: total,
+      usedPercent: (usedGb / total) * 100,
+    });
+  }
+
+  return readings;
+}
+
 export function matchLhmSensors(
   sensors: readonly LhmSensor[],
   semanticKeys: readonly string[],
@@ -302,7 +355,11 @@ export function matchLhmSensors(
         continue;
       }
 
-      const combines = binding.type === "Data" || binding.type === "Throughput";
+      const combines =
+        binding.combine === "sum" ||
+        binding.type === "Data" ||
+        binding.type === "SmallData" ||
+        binding.type === "Throughput";
       const next = combines
         ? existing.value + value
         : Math.max(existing.value, value);
@@ -311,9 +368,33 @@ export function matchLhmSensors(
     }
   }
 
+  // A summed percentage is meaningless; it must describe the same set of drives
+  // that `disk.used` and `disk.total` aggregate (see `deriveDiskUsed`).
+  if (wanted.has("disk.used.percent")) {
+    const used = deriveDiskUsed(sensors);
+    const total = sumNamed(sensors, "storage", ["Total Space"]);
+
+    if (used !== undefined && total !== undefined && total > 0) {
+      const sensor = chosen.get("disk.used.percent")?.sensor;
+
+      chosen.set("disk.used.percent", {
+        semanticKey: "disk.used.percent",
+        sensor: sensor ?? {
+          sensorId: "derived",
+          hardwareId: "",
+          hardwareType: "Storage",
+          text: "Used Space (derived)",
+          type: "Load",
+          value: 0,
+        },
+        value: (used / total) * 100,
+      });
+    }
+  }
+
   if (wanted.has("disk.used") && !chosen.has("disk.used")) {
     const used = deriveDiskUsed(sensors);
-    const total = sumByType(sensors, ["Total Space"]);
+    const total = sumNamed(sensors, "storage", ["Total Space"]);
 
     if (used !== undefined && total !== undefined && total > 0) {
       chosen.set("disk.used", {

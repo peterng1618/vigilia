@@ -1,0 +1,2693 @@
+{
+  "Text": "Sensor",
+  "Children": [
+    {
+      "Text": "PN-THUNDERJAW",
+      "Children": [
+        {
+          "Text": "Gigabyte Z590 GAMING X",
+          "HardwareId": "/motherboard",
+          "Children": [
+            {
+              "Text": "ITE IT8689E",
+              "HardwareId": "/lpc/it8689e/0",
+              "Children": [
+                {
+                  "Text": "Voltages",
+                  "Children": [
+                    {
+                      "Text": "Voltage #1",
+                      "SensorId": "/lpc/it8689e/0/voltage/0",
+                      "Type": "Voltage",
+                      "RawValue": "1.212 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #2",
+                      "SensorId": "/lpc/it8689e/0/voltage/1",
+                      "Type": "Voltage",
+                      "RawValue": "2.004 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #3",
+                      "SensorId": "/lpc/it8689e/0/voltage/2",
+                      "Type": "Voltage",
+                      "RawValue": "2.004 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #4",
+                      "SensorId": "/lpc/it8689e/0/voltage/3",
+                      "Type": "Voltage",
+                      "RawValue": "2.004 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #5",
+                      "SensorId": "/lpc/it8689e/0/voltage/4",
+                      "Type": "Voltage",
+                      "RawValue": "0.036 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #6",
+                      "SensorId": "/lpc/it8689e/0/voltage/5",
+                      "Type": "Voltage",
+                      "RawValue": "1.044 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Voltage #7",
+                      "SensorId": "/lpc/it8689e/0/voltage/6",
+                      "Type": "Voltage",
+                      "RawValue": "1.200 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "+3V Standby",
+                      "SensorId": "/lpc/it8689e/0/voltage/7",
+                      "Type": "Voltage",
+                      "RawValue": "3.384 V",
+                      "Children": []
+                    },
+                    {
+                      "Text": "CMOS Battery",
+                      "SensorId": "/lpc/it8689e/0/voltage/8",
+                      "Type": "Voltage",
+                      "RawValue": "3.168 V",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "Text": "Temperatures",
+                  "Children": [
+                    {
+                      "Text": "Temperature #1",
+                      "SensorId": "/lpc/it8689e/0/temperature/0",
+                      "Type": "Temperature",
+                      "RawValue": "35.0 °C",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Temperature #2",
+                      "SensorId": "/lpc/it8689e/0/temperature/1",
+                      "Type": "Temperature",
+                      "RawValue": "47.0 °C",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Temperature #3",
+                      "SensorId": "/lpc/it8689e/0/temperature/2",
+                      "Type": "Temperature",
+                      "RawValue": "40.0 °C",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Temperature #4",
+                      "SensorId": "/lpc/it8689e/0/temperature/3",
+                      "Type": "Temperature",
+                      "RawValue": "37.0 °C",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Temperature #5",
+                      "SensorId": "/lpc/it8689e/0/temperature/4",
+                      "Type": "Temperature",
+                      "RawValue": "47.0 °C",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Temperature #6",
+                      "SensorId": "/lpc/it8689e/0/temperature/5",
+                      "Type": "Temperature",
+                      "RawValue": "35.0 °C",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "Text": "Fans",
+                  "Children": [
+                    {
+                      "Text": "Fan #1",
+                      "SensorId": "/lpc/it8689e/0/fan/0",
+                      "Type": "Fan",
+                      "RawValue": "0 RPM",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #2",
+                      "SensorId": "/lpc/it8689e/0/fan/1",
+                      "Type": "Fan",
+                      "RawValue": "1048 RPM",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #3",
+                      "SensorId": "/lpc/it8689e/0/fan/2",
+                      "Type": "Fan",
+                      "RawValue": "0 RPM",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #4",
+                      "SensorId": "/lpc/it8689e/0/fan/3",
+                      "Type": "Fan",
+                      "RawValue": "0 RPM",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #5",
+                      "SensorId": "/lpc/it8689e/0/fan/4",
+                      "Type": "Fan",
+                      "RawValue": "1286 RPM",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "Text": "Controls",
+                  "Children": [
+                    {
+                      "Text": "Fan #1",
+                      "SensorId": "/lpc/it8689e/0/control/0",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #2",
+                      "SensorId": "/lpc/it8689e/0/control/1",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #3",
+                      "SensorId": "/lpc/it8689e/0/control/2",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #4",
+                      "SensorId": "/lpc/it8689e/0/control/3",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #5",
+                      "SensorId": "/lpc/it8689e/0/control/4",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    },
+                    {
+                      "Text": "Fan #6",
+                      "SensorId": "/lpc/it8689e/0/control/5",
+                      "Type": "Control",
+                      "RawValue": " %",
+                      "Children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Intel Core i9-10850K",
+          "HardwareId": "/intelcpu/0",
+          "Children": [
+            {
+              "Text": "Voltages",
+              "Children": [
+                {
+                  "Text": "CPU Core",
+                  "SensorId": "/intelcpu/0/voltage/0",
+                  "Type": "Voltage",
+                  "RawValue": "1.362 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1",
+                  "SensorId": "/intelcpu/0/voltage/1",
+                  "Type": "Voltage",
+                  "RawValue": "1.377 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2",
+                  "SensorId": "/intelcpu/0/voltage/2",
+                  "Type": "Voltage",
+                  "RawValue": "1.377 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3",
+                  "SensorId": "/intelcpu/0/voltage/3",
+                  "Type": "Voltage",
+                  "RawValue": "1.377 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4",
+                  "SensorId": "/intelcpu/0/voltage/4",
+                  "Type": "Voltage",
+                  "RawValue": "1.370 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5",
+                  "SensorId": "/intelcpu/0/voltage/5",
+                  "Type": "Voltage",
+                  "RawValue": "1.370 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6",
+                  "SensorId": "/intelcpu/0/voltage/6",
+                  "Type": "Voltage",
+                  "RawValue": "1.354 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7",
+                  "SensorId": "/intelcpu/0/voltage/7",
+                  "Type": "Voltage",
+                  "RawValue": "1.370 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8",
+                  "SensorId": "/intelcpu/0/voltage/8",
+                  "Type": "Voltage",
+                  "RawValue": "1.352 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9",
+                  "SensorId": "/intelcpu/0/voltage/9",
+                  "Type": "Voltage",
+                  "RawValue": "1.352 V",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10",
+                  "SensorId": "/intelcpu/0/voltage/10",
+                  "Type": "Voltage",
+                  "RawValue": "1.352 V",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Powers",
+              "Children": [
+                {
+                  "Text": "CPU Package",
+                  "SensorId": "/intelcpu/0/power/0",
+                  "Type": "Power",
+                  "RawValue": "21.8 W",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Cores",
+                  "SensorId": "/intelcpu/0/power/1",
+                  "Type": "Power",
+                  "RawValue": "15.3 W",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Memory",
+                  "SensorId": "/intelcpu/0/power/3",
+                  "Type": "Power",
+                  "RawValue": "0.0 W",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Platform",
+                  "SensorId": "/intelcpu/0/power/4",
+                  "Type": "Power",
+                  "RawValue": "0.0 W",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Clocks",
+              "Children": [
+                {
+                  "Text": "Bus Speed",
+                  "SensorId": "/intelcpu/0/clock/0",
+                  "Type": "Clock",
+                  "RawValue": "100.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1",
+                  "SensorId": "/intelcpu/0/clock/1",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2",
+                  "SensorId": "/intelcpu/0/clock/2",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3",
+                  "SensorId": "/intelcpu/0/clock/3",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4",
+                  "SensorId": "/intelcpu/0/clock/4",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5",
+                  "SensorId": "/intelcpu/0/clock/5",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6",
+                  "SensorId": "/intelcpu/0/clock/6",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7",
+                  "SensorId": "/intelcpu/0/clock/7",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8",
+                  "SensorId": "/intelcpu/0/clock/8",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9",
+                  "SensorId": "/intelcpu/0/clock/9",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10",
+                  "SensorId": "/intelcpu/0/clock/10",
+                  "Type": "Clock",
+                  "RawValue": "4800.0 MHz",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Core Max",
+                  "SensorId": "/intelcpu/0/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "41.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Core Average",
+                  "SensorId": "/intelcpu/0/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "38.2 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1",
+                  "SensorId": "/intelcpu/0/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "38.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2",
+                  "SensorId": "/intelcpu/0/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "41.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3",
+                  "SensorId": "/intelcpu/0/temperature/4",
+                  "Type": "Temperature",
+                  "RawValue": "39.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4",
+                  "SensorId": "/intelcpu/0/temperature/5",
+                  "Type": "Temperature",
+                  "RawValue": "38.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5",
+                  "SensorId": "/intelcpu/0/temperature/6",
+                  "Type": "Temperature",
+                  "RawValue": "40.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6",
+                  "SensorId": "/intelcpu/0/temperature/7",
+                  "Type": "Temperature",
+                  "RawValue": "37.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7",
+                  "SensorId": "/intelcpu/0/temperature/8",
+                  "Type": "Temperature",
+                  "RawValue": "37.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8",
+                  "SensorId": "/intelcpu/0/temperature/9",
+                  "Type": "Temperature",
+                  "RawValue": "36.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9",
+                  "SensorId": "/intelcpu/0/temperature/10",
+                  "Type": "Temperature",
+                  "RawValue": "38.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10",
+                  "SensorId": "/intelcpu/0/temperature/11",
+                  "Type": "Temperature",
+                  "RawValue": "38.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Package",
+                  "SensorId": "/intelcpu/0/temperature/12",
+                  "Type": "Temperature",
+                  "RawValue": "41.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/13",
+                  "Type": "Temperature",
+                  "RawValue": "62.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/14",
+                  "Type": "Temperature",
+                  "RawValue": "59.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/15",
+                  "Type": "Temperature",
+                  "RawValue": "61.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/16",
+                  "Type": "Temperature",
+                  "RawValue": "62.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/17",
+                  "Type": "Temperature",
+                  "RawValue": "60.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/18",
+                  "Type": "Temperature",
+                  "RawValue": "63.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/19",
+                  "Type": "Temperature",
+                  "RawValue": "63.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/20",
+                  "Type": "Temperature",
+                  "RawValue": "64.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/21",
+                  "Type": "Temperature",
+                  "RawValue": "62.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10 Distance to TjMax",
+                  "SensorId": "/intelcpu/0/temperature/22",
+                  "Type": "Temperature",
+                  "RawValue": "62.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "CPU Total",
+                  "SensorId": "/intelcpu/0/load/0",
+                  "Type": "Load",
+                  "RawValue": "0.5 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core Max",
+                  "SensorId": "/intelcpu/0/load/1",
+                  "Type": "Load",
+                  "RawValue": "4.7 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1 Thread #1",
+                  "SensorId": "/intelcpu/0/load/2",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #1 Thread #2",
+                  "SensorId": "/intelcpu/0/load/3",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2 Thread #1",
+                  "SensorId": "/intelcpu/0/load/4",
+                  "Type": "Load",
+                  "RawValue": "4.7 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #2 Thread #2",
+                  "SensorId": "/intelcpu/0/load/5",
+                  "Type": "Load",
+                  "RawValue": "1.6 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3 Thread #1",
+                  "SensorId": "/intelcpu/0/load/6",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #3 Thread #2",
+                  "SensorId": "/intelcpu/0/load/7",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4 Thread #1",
+                  "SensorId": "/intelcpu/0/load/8",
+                  "Type": "Load",
+                  "RawValue": "1.6 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #4 Thread #2",
+                  "SensorId": "/intelcpu/0/load/9",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5 Thread #1",
+                  "SensorId": "/intelcpu/0/load/10",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #5 Thread #2",
+                  "SensorId": "/intelcpu/0/load/11",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6 Thread #1",
+                  "SensorId": "/intelcpu/0/load/12",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #6 Thread #2",
+                  "SensorId": "/intelcpu/0/load/13",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7 Thread #1",
+                  "SensorId": "/intelcpu/0/load/14",
+                  "Type": "Load",
+                  "RawValue": "1.6 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #7 Thread #2",
+                  "SensorId": "/intelcpu/0/load/15",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8 Thread #1",
+                  "SensorId": "/intelcpu/0/load/16",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #8 Thread #2",
+                  "SensorId": "/intelcpu/0/load/17",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9 Thread #1",
+                  "SensorId": "/intelcpu/0/load/18",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #9 Thread #2",
+                  "SensorId": "/intelcpu/0/load/19",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10 Thread #1",
+                  "SensorId": "/intelcpu/0/load/20",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "CPU Core #10 Thread #2",
+                  "SensorId": "/intelcpu/0/load/21",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Virtual Memory",
+          "HardwareId": "/vram",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Memory",
+                  "SensorId": "/vram/load/1",
+                  "Type": "Load",
+                  "RawValue": "42.5 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Memory Used",
+                  "SensorId": "/vram/data/2",
+                  "Type": "Data",
+                  "RawValue": "14.4 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Memory Available",
+                  "SensorId": "/vram/data/3",
+                  "Type": "Data",
+                  "RawValue": "19.5 GB",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Total Memory",
+          "HardwareId": "/ram",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Memory",
+                  "SensorId": "/ram/load/0",
+                  "Type": "Load",
+                  "RawValue": "34.9 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Memory Used",
+                  "SensorId": "/ram/data/0",
+                  "Type": "Data",
+                  "RawValue": "11.1 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Memory Available",
+                  "SensorId": "/ram/data/1",
+                  "Type": "Data",
+                  "RawValue": "20.8 GB",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "DIMM #0",
+          "HardwareId": "/memory/dimm/0",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "DIMM #0",
+                  "SensorId": "/memory/dimm/0/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "40.7 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Temperature Sensor Resolution",
+                  "SensorId": "/memory/dimm/0/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "0.1 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Low Limit",
+                  "SensorId": "/memory/dimm/0/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor High Limit",
+                  "SensorId": "/memory/dimm/0/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Critical Limit",
+                  "SensorId": "/memory/dimm/0/temperature/4",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Capacity",
+                  "SensorId": "/memory/dimm/0/data/50",
+                  "Type": "Data",
+                  "RawValue": "8.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Timings",
+              "Children": [
+                {
+                  "Text": "tCKAVGmin (Minimum Cycle Time)",
+                  "SensorId": "/memory/dimm/0/timing/20",
+                  "Type": "Timing",
+                  "RawValue": "0.938 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCKAVGmax (Maximum Cycle Time)",
+                  "SensorId": "/memory/dimm/0/timing/21",
+                  "Type": "Timing",
+                  "RawValue": "1.600 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tAA (CAS Latency Time)",
+                  "SensorId": "/memory/dimm/0/timing/22",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRCD (RAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/23",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRP (Row Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/24",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRAS (Active to Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/25",
+                  "Type": "Timing",
+                  "RawValue": "33.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRC (Active to Active/Refresh Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/26",
+                  "Type": "Timing",
+                  "RawValue": "46.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC1 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/27",
+                  "Type": "Timing",
+                  "RawValue": "350.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC2 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/28",
+                  "Type": "Timing",
+                  "RawValue": "260.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC4 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/29",
+                  "Type": "Timing",
+                  "RawValue": "160.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tFAW (Four Activate Window Time)",
+                  "SensorId": "/memory/dimm/0/timing/30",
+                  "Type": "Timing",
+                  "RawValue": "21.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_S (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/31",
+                  "Type": "Timing",
+                  "RawValue": "3.700 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_L (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/32",
+                  "Type": "Timing",
+                  "RawValue": "5.300 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCCD_L (CAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/0/timing/33",
+                  "Type": "Timing",
+                  "RawValue": "5.625 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWR (Write Recovery Time)",
+                  "SensorId": "/memory/dimm/0/timing/34",
+                  "Type": "Timing",
+                  "RawValue": "15.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_S (Write to Read Time)",
+                  "SensorId": "/memory/dimm/0/timing/35",
+                  "Type": "Timing",
+                  "RawValue": "2.500 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_L (Write to Read Time)",
+                  "SensorId": "/memory/dimm/0/timing/36",
+                  "Type": "Timing",
+                  "RawValue": "7.500 ns",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "DIMM #1",
+          "HardwareId": "/memory/dimm/1",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "DIMM #1",
+                  "SensorId": "/memory/dimm/1/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "40.8 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Temperature Sensor Resolution",
+                  "SensorId": "/memory/dimm/1/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "0.1 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Low Limit",
+                  "SensorId": "/memory/dimm/1/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor High Limit",
+                  "SensorId": "/memory/dimm/1/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Critical Limit",
+                  "SensorId": "/memory/dimm/1/temperature/4",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Capacity",
+                  "SensorId": "/memory/dimm/1/data/50",
+                  "Type": "Data",
+                  "RawValue": "8.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Timings",
+              "Children": [
+                {
+                  "Text": "tCKAVGmin (Minimum Cycle Time)",
+                  "SensorId": "/memory/dimm/1/timing/20",
+                  "Type": "Timing",
+                  "RawValue": "0.938 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCKAVGmax (Maximum Cycle Time)",
+                  "SensorId": "/memory/dimm/1/timing/21",
+                  "Type": "Timing",
+                  "RawValue": "1.600 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tAA (CAS Latency Time)",
+                  "SensorId": "/memory/dimm/1/timing/22",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRCD (RAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/23",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRP (Row Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/24",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRAS (Active to Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/25",
+                  "Type": "Timing",
+                  "RawValue": "33.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRC (Active to Active/Refresh Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/26",
+                  "Type": "Timing",
+                  "RawValue": "46.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC1 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/27",
+                  "Type": "Timing",
+                  "RawValue": "350.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC2 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/28",
+                  "Type": "Timing",
+                  "RawValue": "260.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC4 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/29",
+                  "Type": "Timing",
+                  "RawValue": "160.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tFAW (Four Activate Window Time)",
+                  "SensorId": "/memory/dimm/1/timing/30",
+                  "Type": "Timing",
+                  "RawValue": "21.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_S (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/31",
+                  "Type": "Timing",
+                  "RawValue": "3.700 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_L (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/32",
+                  "Type": "Timing",
+                  "RawValue": "5.300 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCCD_L (CAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/1/timing/33",
+                  "Type": "Timing",
+                  "RawValue": "5.625 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWR (Write Recovery Time)",
+                  "SensorId": "/memory/dimm/1/timing/34",
+                  "Type": "Timing",
+                  "RawValue": "15.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_S (Write to Read Time)",
+                  "SensorId": "/memory/dimm/1/timing/35",
+                  "Type": "Timing",
+                  "RawValue": "2.500 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_L (Write to Read Time)",
+                  "SensorId": "/memory/dimm/1/timing/36",
+                  "Type": "Timing",
+                  "RawValue": "7.500 ns",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "DIMM #2",
+          "HardwareId": "/memory/dimm/2",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "DIMM #2",
+                  "SensorId": "/memory/dimm/2/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "41.5 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Temperature Sensor Resolution",
+                  "SensorId": "/memory/dimm/2/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "0.1 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Low Limit",
+                  "SensorId": "/memory/dimm/2/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor High Limit",
+                  "SensorId": "/memory/dimm/2/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Critical Limit",
+                  "SensorId": "/memory/dimm/2/temperature/4",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Capacity",
+                  "SensorId": "/memory/dimm/2/data/50",
+                  "Type": "Data",
+                  "RawValue": "8.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Timings",
+              "Children": [
+                {
+                  "Text": "tCKAVGmin (Minimum Cycle Time)",
+                  "SensorId": "/memory/dimm/2/timing/20",
+                  "Type": "Timing",
+                  "RawValue": "0.938 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCKAVGmax (Maximum Cycle Time)",
+                  "SensorId": "/memory/dimm/2/timing/21",
+                  "Type": "Timing",
+                  "RawValue": "1.600 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tAA (CAS Latency Time)",
+                  "SensorId": "/memory/dimm/2/timing/22",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRCD (RAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/23",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRP (Row Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/24",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRAS (Active to Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/25",
+                  "Type": "Timing",
+                  "RawValue": "33.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRC (Active to Active/Refresh Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/26",
+                  "Type": "Timing",
+                  "RawValue": "46.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC1 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/27",
+                  "Type": "Timing",
+                  "RawValue": "350.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC2 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/28",
+                  "Type": "Timing",
+                  "RawValue": "260.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC4 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/29",
+                  "Type": "Timing",
+                  "RawValue": "160.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tFAW (Four Activate Window Time)",
+                  "SensorId": "/memory/dimm/2/timing/30",
+                  "Type": "Timing",
+                  "RawValue": "21.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_S (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/31",
+                  "Type": "Timing",
+                  "RawValue": "3.700 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_L (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/32",
+                  "Type": "Timing",
+                  "RawValue": "5.300 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCCD_L (CAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/2/timing/33",
+                  "Type": "Timing",
+                  "RawValue": "5.625 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWR (Write Recovery Time)",
+                  "SensorId": "/memory/dimm/2/timing/34",
+                  "Type": "Timing",
+                  "RawValue": "15.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_S (Write to Read Time)",
+                  "SensorId": "/memory/dimm/2/timing/35",
+                  "Type": "Timing",
+                  "RawValue": "2.500 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_L (Write to Read Time)",
+                  "SensorId": "/memory/dimm/2/timing/36",
+                  "Type": "Timing",
+                  "RawValue": "7.500 ns",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "DIMM #3",
+          "HardwareId": "/memory/dimm/3",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "DIMM #3",
+                  "SensorId": "/memory/dimm/3/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "39.4 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Temperature Sensor Resolution",
+                  "SensorId": "/memory/dimm/3/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "0.1 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Low Limit",
+                  "SensorId": "/memory/dimm/3/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor High Limit",
+                  "SensorId": "/memory/dimm/3/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Thermal Sensor Critical Limit",
+                  "SensorId": "/memory/dimm/3/temperature/4",
+                  "Type": "Temperature",
+                  "RawValue": "0.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Capacity",
+                  "SensorId": "/memory/dimm/3/data/50",
+                  "Type": "Data",
+                  "RawValue": "8.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Timings",
+              "Children": [
+                {
+                  "Text": "tCKAVGmin (Minimum Cycle Time)",
+                  "SensorId": "/memory/dimm/3/timing/20",
+                  "Type": "Timing",
+                  "RawValue": "0.938 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCKAVGmax (Maximum Cycle Time)",
+                  "SensorId": "/memory/dimm/3/timing/21",
+                  "Type": "Timing",
+                  "RawValue": "1.600 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tAA (CAS Latency Time)",
+                  "SensorId": "/memory/dimm/3/timing/22",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRCD (RAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/23",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRP (Row Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/24",
+                  "Type": "Timing",
+                  "RawValue": "13.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRAS (Active to Precharge Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/25",
+                  "Type": "Timing",
+                  "RawValue": "33.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRC (Active to Active/Refresh Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/26",
+                  "Type": "Timing",
+                  "RawValue": "46.750 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC1 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/27",
+                  "Type": "Timing",
+                  "RawValue": "350.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC2 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/28",
+                  "Type": "Timing",
+                  "RawValue": "260.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRFC4 (Refresh Recovery Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/29",
+                  "Type": "Timing",
+                  "RawValue": "160.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tFAW (Four Activate Window Time)",
+                  "SensorId": "/memory/dimm/3/timing/30",
+                  "Type": "Timing",
+                  "RawValue": "21.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_S (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/31",
+                  "Type": "Timing",
+                  "RawValue": "3.700 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tRRD_L (Activate to Activate Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/32",
+                  "Type": "Timing",
+                  "RawValue": "5.300 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tCCD_L (CAS to CAS Delay Time)",
+                  "SensorId": "/memory/dimm/3/timing/33",
+                  "Type": "Timing",
+                  "RawValue": "5.625 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWR (Write Recovery Time)",
+                  "SensorId": "/memory/dimm/3/timing/34",
+                  "Type": "Timing",
+                  "RawValue": "15.000 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_S (Write to Read Time)",
+                  "SensorId": "/memory/dimm/3/timing/35",
+                  "Type": "Timing",
+                  "RawValue": "2.500 ns",
+                  "Children": []
+                },
+                {
+                  "Text": "tWTR_L (Write to Read Time)",
+                  "SensorId": "/memory/dimm/3/timing/36",
+                  "Type": "Timing",
+                  "RawValue": "7.500 ns",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "NVIDIA GeForce RTX 3080 Ti",
+          "HardwareId": "/gpu-nvidia/0",
+          "Children": [
+            {
+              "Text": "Voltages",
+              "Children": [
+                {
+                  "Text": "GPU Core Voltage",
+                  "SensorId": "/gpu-nvidia/0/voltage/0",
+                  "Type": "Voltage",
+                  "RawValue": "0.763 V",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Powers",
+              "Children": [
+                {
+                  "Text": "GPU Package",
+                  "SensorId": "/gpu-nvidia/0/power/0",
+                  "Type": "Power",
+                  "RawValue": "22.6 W",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Clocks",
+              "Children": [
+                {
+                  "Text": "GPU Core",
+                  "SensorId": "/gpu-nvidia/0/clock/0",
+                  "Type": "Clock",
+                  "RawValue": "210.0 MHz",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory",
+                  "SensorId": "/gpu-nvidia/0/clock/4",
+                  "Type": "Clock",
+                  "RawValue": "405.0 MHz",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "GPU Core",
+                  "SensorId": "/gpu-nvidia/0/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "38.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Hot Spot",
+                  "SensorId": "/gpu-nvidia/0/temperature/2",
+                  "Type": "Temperature",
+                  "RawValue": "44.6 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory Junction",
+                  "SensorId": "/gpu-nvidia/0/temperature/3",
+                  "Type": "Temperature",
+                  "RawValue": "44.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "GPU Core",
+                  "SensorId": "/gpu-nvidia/0/load/0",
+                  "Type": "Load",
+                  "RawValue": "3.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory Controller",
+                  "SensorId": "/gpu-nvidia/0/load/1",
+                  "Type": "Load",
+                  "RawValue": "4.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Video Engine",
+                  "SensorId": "/gpu-nvidia/0/load/2",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory",
+                  "SensorId": "/gpu-nvidia/0/load/3",
+                  "Type": "Load",
+                  "RawValue": "11.1 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Bus",
+                  "SensorId": "/gpu-nvidia/0/load/3",
+                  "Type": "Load",
+                  "RawValue": "2.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Power",
+                  "SensorId": "/gpu-nvidia/0/load/4",
+                  "Type": "Load",
+                  "RawValue": "6.4 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Board Power",
+                  "SensorId": "/gpu-nvidia/0/load/5",
+                  "Type": "Load",
+                  "RawValue": "7.1 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D 3D",
+                  "SensorId": "/gpu-nvidia/0/load/7",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/8",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/9",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/10",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/11",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/12",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Copy",
+                  "SensorId": "/gpu-nvidia/0/load/13",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Optical Flow Accelerator 0",
+                  "SensorId": "/gpu-nvidia/0/load/14",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Overlay",
+                  "SensorId": "/gpu-nvidia/0/load/15",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Security",
+                  "SensorId": "/gpu-nvidia/0/load/16",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Video Decode",
+                  "SensorId": "/gpu-nvidia/0/load/17",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Video Encode",
+                  "SensorId": "/gpu-nvidia/0/load/18",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D VR",
+                  "SensorId": "/gpu-nvidia/0/load/19",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Fans",
+              "Children": [
+                {
+                  "Text": "GPU Fan 1",
+                  "SensorId": "/gpu-nvidia/0/fan/1",
+                  "Type": "Fan",
+                  "RawValue": "0 RPM",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Fan 2",
+                  "SensorId": "/gpu-nvidia/0/fan/2",
+                  "Type": "Fan",
+                  "RawValue": "0 RPM",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Controls",
+              "Children": [
+                {
+                  "Text": "GPU Fan 1",
+                  "SensorId": "/gpu-nvidia/0/control/1",
+                  "Type": "Control",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Fan 2",
+                  "SensorId": "/gpu-nvidia/0/control/2",
+                  "Type": "Control",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "GPU Memory Free",
+                  "SensorId": "/gpu-nvidia/0/smalldata/0",
+                  "Type": "SmallData",
+                  "RawValue": "10929.0 MB",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory Used",
+                  "SensorId": "/gpu-nvidia/0/smalldata/1",
+                  "Type": "SmallData",
+                  "RawValue": "1358.0 MB",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU Memory Total",
+                  "SensorId": "/gpu-nvidia/0/smalldata/2",
+                  "Type": "SmallData",
+                  "RawValue": "12288.0 MB",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Dedicated Memory Used",
+                  "SensorId": "/gpu-nvidia/0/smalldata/3",
+                  "Type": "SmallData",
+                  "RawValue": "1164.4 MB",
+                  "Children": []
+                },
+                {
+                  "Text": "D3D Shared Memory Used",
+                  "SensorId": "/gpu-nvidia/0/smalldata/4",
+                  "Type": "SmallData",
+                  "RawValue": "200.3 MB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "GPU PCIe Rx",
+                  "SensorId": "/gpu-nvidia/0/throughput/0",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "GPU PCIe Tx",
+                  "SensorId": "/gpu-nvidia/0/throughput/1",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Lexar 500GB SSD",
+          "HardwareId": "/nvme/1",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Composite Temperature",
+                  "SensorId": "/nvme/1/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "43.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Temperature #1",
+                  "SensorId": "/nvme/1/temperature/1",
+                  "Type": "Temperature",
+                  "RawValue": "42.9 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Warning Temperature",
+                  "SensorId": "/nvme/1/temperature/10",
+                  "Type": "Temperature",
+                  "RawValue": "80.0 °C",
+                  "Children": []
+                },
+                {
+                  "Text": "Critical Temperature",
+                  "SensorId": "/nvme/1/temperature/11",
+                  "Type": "Temperature",
+                  "RawValue": "89.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Used Space",
+                  "SensorId": "/nvme/1/load/30",
+                  "Type": "Load",
+                  "RawValue": "61.1 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Read Activity",
+                  "SensorId": "/nvme/1/load/51",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Activity",
+                  "SensorId": "/nvme/1/load/52",
+                  "Type": "Load",
+                  "RawValue": "0.3 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Activity",
+                  "SensorId": "/nvme/1/load/53",
+                  "Type": "Load",
+                  "RawValue": "0.8 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Levels",
+              "Children": [
+                {
+                  "Text": "Life",
+                  "SensorId": "/nvme/1/level/20",
+                  "Type": "Level",
+                  "RawValue": "60.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Available Spare",
+                  "SensorId": "/nvme/1/level/100",
+                  "Type": "Level",
+                  "RawValue": "100.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Available Spare Threshold",
+                  "SensorId": "/nvme/1/level/101",
+                  "Type": "Level",
+                  "RawValue": "10.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Percentage Used",
+                  "SensorId": "/nvme/1/level/102",
+                  "Type": "Level",
+                  "RawValue": "40.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Factors",
+              "Children": [
+                {
+                  "Text": "Power On Count",
+                  "SensorId": "/nvme/1/factor/23",
+                  "Type": "Factor",
+                  "RawValue": "967.000",
+                  "Children": []
+                },
+                {
+                  "Text": "Power On Hours",
+                  "SensorId": "/nvme/1/factor/24",
+                  "Type": "Factor",
+                  "RawValue": "11718.000",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Read",
+                  "SensorId": "/nvme/1/data/21",
+                  "Type": "Data",
+                  "RawValue": "20978.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Written",
+                  "SensorId": "/nvme/1/data/22",
+                  "Type": "Data",
+                  "RawValue": "29968.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Free Space",
+                  "SensorId": "/nvme/1/data/31",
+                  "Type": "Data",
+                  "RawValue": "194.6 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Space",
+                  "SensorId": "/nvme/1/data/32",
+                  "Type": "Data",
+                  "RawValue": "500.1 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Read Rate",
+                  "SensorId": "/nvme/1/throughput/54",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Rate",
+                  "SensorId": "/nvme/1/throughput/55",
+                  "Type": "Throughput",
+                  "RawValue": "635529.6 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "ST4000DM004-2CV104",
+          "HardwareId": "/hdd/0",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Temperature",
+                  "SensorId": "/hdd/0/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "41.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Used Space",
+                  "SensorId": "/hdd/0/load/30",
+                  "Type": "Load",
+                  "RawValue": "40.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Read Activity",
+                  "SensorId": "/hdd/0/load/51",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Activity",
+                  "SensorId": "/hdd/0/load/52",
+                  "Type": "Load",
+                  "RawValue": "0.1 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Activity",
+                  "SensorId": "/hdd/0/load/53",
+                  "Type": "Load",
+                  "RawValue": "2.9 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Factors",
+              "Children": [
+                {
+                  "Text": "Power On Count",
+                  "SensorId": "/hdd/0/factor/23",
+                  "Type": "Factor",
+                  "RawValue": "957.000",
+                  "Children": []
+                },
+                {
+                  "Text": "Power On Hours",
+                  "SensorId": "/hdd/0/factor/24",
+                  "Type": "Factor",
+                  "RawValue": "12216.000",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Free Space",
+                  "SensorId": "/hdd/0/data/31",
+                  "Type": "Data",
+                  "RawValue": "2400.3 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Space",
+                  "SensorId": "/hdd/0/data/32",
+                  "Type": "Data",
+                  "RawValue": "4000.8 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Read Rate",
+                  "SensorId": "/hdd/0/throughput/54",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Rate",
+                  "SensorId": "/hdd/0/throughput/55",
+                  "Type": "Throughput",
+                  "RawValue": "12296.3 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "WDC WD30NMVW-11C3NS4",
+          "HardwareId": "/hdd/4",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Temperature",
+                  "SensorId": "/hdd/4/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "34.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Used Space",
+                  "SensorId": "/hdd/4/load/30",
+                  "Type": "Load",
+                  "RawValue": "69.5 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Read Activity",
+                  "SensorId": "/hdd/4/load/51",
+                  "Type": "Load",
+                  "RawValue": "1.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Activity",
+                  "SensorId": "/hdd/4/load/52",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Activity",
+                  "SensorId": "/hdd/4/load/53",
+                  "Type": "Load",
+                  "RawValue": "1.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Factors",
+              "Children": [
+                {
+                  "Text": "Power On Count",
+                  "SensorId": "/hdd/4/factor/23",
+                  "Type": "Factor",
+                  "RawValue": "771.000",
+                  "Children": []
+                },
+                {
+                  "Text": "Power On Hours",
+                  "SensorId": "/hdd/4/factor/24",
+                  "Type": "Factor",
+                  "RawValue": "34603.000",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Free Space",
+                  "SensorId": "/hdd/4/data/31",
+                  "Type": "Data",
+                  "RawValue": "914.2 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Space",
+                  "SensorId": "/hdd/4/data/32",
+                  "Type": "Data",
+                  "RawValue": "3000.6 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Read Rate",
+                  "SensorId": "/hdd/4/throughput/54",
+                  "Type": "Throughput",
+                  "RawValue": "497.9 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Rate",
+                  "SensorId": "/hdd/4/throughput/55",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "WDC WD50NMZW-59LG6S1",
+          "HardwareId": "/hdd/2",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Temperature",
+                  "SensorId": "/hdd/2/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "37.0 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Used Space",
+                  "SensorId": "/hdd/2/load/30",
+                  "Type": "Load",
+                  "RawValue": "36.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Read Activity",
+                  "SensorId": "/hdd/2/load/51",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Activity",
+                  "SensorId": "/hdd/2/load/52",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Activity",
+                  "SensorId": "/hdd/2/load/53",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Factors",
+              "Children": [
+                {
+                  "Text": "Power On Count",
+                  "SensorId": "/hdd/2/factor/23",
+                  "Type": "Factor",
+                  "RawValue": "209.000",
+                  "Children": []
+                },
+                {
+                  "Text": "Power On Hours",
+                  "SensorId": "/hdd/2/factor/24",
+                  "Type": "Factor",
+                  "RawValue": "30061.000",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Free Space",
+                  "SensorId": "/hdd/2/data/31",
+                  "Type": "Data",
+                  "RawValue": "3198.9 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Total Space",
+                  "SensorId": "/hdd/2/data/32",
+                  "Type": "Data",
+                  "RawValue": "5000.9 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Read Rate",
+                  "SensorId": "/hdd/2/throughput/54",
+                  "Type": "Throughput",
+                  "RawValue": "497.9 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Write Rate",
+                  "SensorId": "/hdd/2/throughput/55",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Bluetooth Network Connection",
+          "HardwareId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Network Utilization",
+                  "SensorId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D/load/1",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Uploaded",
+                  "SensorId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D/data/2",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Downloaded",
+                  "SensorId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D/data/3",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Upload Speed",
+                  "SensorId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D/throughput/7",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Download Speed",
+                  "SensorId": "/nic/%7B05752408-4B0B-457A-80B6-9AEE1BCC08C6%7D/throughput/8",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Ethernet",
+          "HardwareId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Network Utilization",
+                  "SensorId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D/load/1",
+                  "Type": "Load",
+                  "RawValue": "0.1 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Uploaded",
+                  "SensorId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D/data/2",
+                  "Type": "Data",
+                  "RawValue": "6.8 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Downloaded",
+                  "SensorId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D/data/3",
+                  "Type": "Data",
+                  "RawValue": "0.9 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Upload Speed",
+                  "SensorId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D/throughput/7",
+                  "Type": "Throughput",
+                  "RawValue": "6022.7 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Download Speed",
+                  "SensorId": "/nic/%7B6CD1EADB-15D5-4437-9FDD-FA853B6B09A8%7D/throughput/8",
+                  "Type": "Throughput",
+                  "RawValue": "110172.6 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Ethernet 2",
+          "HardwareId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Network Utilization",
+                  "SensorId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D/load/1",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Uploaded",
+                  "SensorId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D/data/2",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Downloaded",
+                  "SensorId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D/data/3",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Upload Speed",
+                  "SensorId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D/throughput/7",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Download Speed",
+                  "SensorId": "/nic/%7BA48E2BA5-C20C-4590-9A36-240741F20110%7D/throughput/8",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "Npcap Loopback Adapter",
+          "HardwareId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Network Utilization",
+                  "SensorId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D/load/1",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Uploaded",
+                  "SensorId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D/data/2",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Downloaded",
+                  "SensorId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D/data/3",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Upload Speed",
+                  "SensorId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D/throughput/7",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Download Speed",
+                  "SensorId": "/nic/%7B2E935955-E7B2-4E99-A7FB-942841711D0A%7D/throughput/8",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "vEthernet (WSL (Hyper-V firewall))",
+          "HardwareId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D",
+          "Children": [
+            {
+              "Text": "Load",
+              "Children": [
+                {
+                  "Text": "Network Utilization",
+                  "SensorId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D/load/1",
+                  "Type": "Load",
+                  "RawValue": "0.0 %",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Data",
+              "Children": [
+                {
+                  "Text": "Data Uploaded",
+                  "SensorId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D/data/2",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                },
+                {
+                  "Text": "Data Downloaded",
+                  "SensorId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D/data/3",
+                  "Type": "Data",
+                  "RawValue": "0.0 GB",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Throughput",
+              "Children": [
+                {
+                  "Text": "Upload Speed",
+                  "SensorId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D/throughput/7",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                },
+                {
+                  "Text": "Download Speed",
+                  "SensorId": "/nic/%7BEF82C6DC-5C1F-4275-88C1-FB6D8DA161F8%7D/throughput/8",
+                  "Type": "Throughput",
+                  "RawValue": "0.0 B/s",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Text": "NZXT Kraken X3",
+          "HardwareId": "/usbhid/1E71/2007/00000000001A",
+          "Children": [
+            {
+              "Text": "Temperatures",
+              "Children": [
+                {
+                  "Text": "Liquid",
+                  "SensorId": "/usbhid/1E71/2007/00000000001A/temperature/0",
+                  "Type": "Temperature",
+                  "RawValue": "33.9 °C",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Fans",
+              "Children": [
+                {
+                  "Text": "Pump",
+                  "SensorId": "/usbhid/1E71/2007/00000000001A/fan/0",
+                  "Type": "Fan",
+                  "RawValue": "1067 RPM",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "Text": "Controls",
+              "Children": [
+                {
+                  "Text": "Pump Control",
+                  "SensorId": "/usbhid/1E71/2007/00000000001A/control/0",
+                  "Type": "Control",
+                  "RawValue": "30.0 %",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

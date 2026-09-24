@@ -187,15 +187,85 @@ const BY_KEY = new Map(
   SEMANTIC_KEYS.map((descriptor) => [descriptor.key, descriptor]),
 );
 
+/**
+ * A per-device disk key, e.g. `disk.nvme0.used`, `disk.volume.C.used.percent`.
+ * A machine's drives are discovered at runtime, so these cannot be enumerated
+ * in `SEMANTIC_KEYS`; the shape is still fixed, which is what themes and the
+ * editor bind against. `<id>` is the device's own stable name, slugged.
+ */
+export interface DiskKeyDescriptor extends SemanticKeyDescriptor {
+  readonly deviceId: string;
+}
+
+const DISK_KEY_PATTERN =
+  /^disk\.([a-z0-9_-]{1,64})\.(used|used\.percent|total)$/;
+
+export const DISK_DEVICE_QUANTITIES = [
+  "used",
+  "used.percent",
+  "total",
+] as const;
+
+export type DiskDeviceQuantity = (typeof DISK_DEVICE_QUANTITIES)[number];
+
+/** The device id a per-device key names, or undefined for any other key. */
+export function diskDeviceOf(key: string): string | undefined {
+  return DISK_KEY_PATTERN.exec(key)?.[1];
+}
+
+/** Slug for a device's model/name so it can appear in a semantic key. */
+export function diskDeviceId(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "disk"
+  );
+}
+
+/** Builds the vocabulary descriptor for a discovered device key. */
+export function describeDiskKey(
+  key: string,
+  deviceName?: string,
+): DiskKeyDescriptor | undefined {
+  const match = DISK_KEY_PATTERN.exec(key);
+  if (match === null) {
+    return undefined;
+  }
+
+  const deviceId = match[1]!;
+  const quantity = match[2] as DiskDeviceQuantity;
+  const label = QUANTITY_LABEL[quantity];
+
+  return {
+    key,
+    family: "disk",
+    deviceId,
+    label: `${deviceName ?? deviceId} ${label.text}`,
+    unit: label.unit,
+    expectedTier: "baseline",
+  };
+}
+
+const QUANTITY_LABEL: Record<
+  DiskDeviceQuantity,
+  { readonly text: string; readonly unit: string }
+> = {
+  used: { text: "used", unit: "GB" },
+  "used.percent": { text: "used (share)", unit: "%" },
+  total: { text: "total", unit: "GB" },
+};
+
 /** Unknown keys remain valid for newer/custom sensors; callers can fall back to raw key. */
 export function describeSemanticKey(
   key: string,
 ): SemanticKeyDescriptor | undefined {
-  return BY_KEY.get(key);
+  return BY_KEY.get(key) ?? describeDiskKey(key);
 }
 
 export function isKnownSemanticKey(key: string): boolean {
-  return BY_KEY.has(key);
+  return BY_KEY.has(key) || DISK_KEY_PATTERN.test(key);
 }
 
 /** Preserve unknown-key information by showing the raw key. */

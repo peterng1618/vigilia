@@ -10,7 +10,7 @@ const DATA_JSON = {
       Text: "Sensor",
       Children: [
         {
-          Text: "Cpu",
+          Text: "Intel Core i9-10850K",
           HardwareId: "/intelcpu/0",
           Children: [
             {
@@ -20,13 +20,13 @@ const DATA_JSON = {
                   Text: "CPU Package",
                   SensorId: "/intelcpu/0/temperature/0",
                   Type: "Temperature",
-                  RawValue: 62,
+                  RawValue: "62.0 °C",
                 },
                 {
                   Text: "Core #1",
                   SensorId: "/intelcpu/0/temperature/1",
                   Type: "Temperature",
-                  RawValue: 55,
+                  RawValue: "55.0 °C",
                 },
               ],
             },
@@ -37,7 +37,7 @@ const DATA_JSON = {
                   Text: "Package",
                   SensorId: "/intelcpu/0/power/0",
                   Type: "Power",
-                  RawValue: 45.5,
+                  RawValue: "45.5 W",
                 },
               ],
             },
@@ -48,14 +48,14 @@ const DATA_JSON = {
                   Text: "CPU Fan",
                   SensorId: "/intelcpu/0/fan/0",
                   Type: "Fan",
-                  RawValue: 1200,
+                  RawValue: "1200 RPM",
                 },
               ],
             },
           ],
         },
         {
-          Text: "GpuNvidia",
+          Text: "NVIDIA GeForce RTX 3080 Ti",
           HardwareId: "/gpu-nvidia/0",
           Children: [
             {
@@ -65,37 +65,37 @@ const DATA_JSON = {
                   Text: "GPU Core",
                   SensorId: "/gpu-nvidia/0/load/0",
                   Type: "Load",
-                  RawValue: 42,
+                  RawValue: "42.0 %",
                 },
                 {
                   Text: "GPU Memory",
                   SensorId: "/gpu-nvidia/0/load/1",
                   Type: "Load",
-                  RawValue: 63,
+                  RawValue: "63.0 %",
                 },
               ],
             },
             {
-              Text: "Data",
+              Text: "SmallData",
               Children: [
                 {
                   Text: "GPU Memory Used",
                   SensorId: "/gpu-nvidia/0/data/0",
-                  Type: "Data",
-                  RawValue: 4,
+                  Type: "SmallData",
+                  RawValue: "4096.0 MB",
                 },
                 {
                   Text: "GPU Memory Total",
                   SensorId: "/gpu-nvidia/0/data/1",
-                  Type: "Data",
-                  RawValue: 12,
+                  Type: "SmallData",
+                  RawValue: "12288.0 MB",
                 },
               ],
             },
           ],
         },
         {
-          Text: "Storage",
+          Text: "Lexar 500GB SSD",
           HardwareId: "/nvme/0",
           Children: [
             {
@@ -105,7 +105,7 @@ const DATA_JSON = {
                   Text: "Used Space",
                   SensorId: "/nvme/0/load/0",
                   Type: "Load",
-                  RawValue: 61.5,
+                  RawValue: "61.5 %",
                 },
               ],
             },
@@ -116,20 +116,20 @@ const DATA_JSON = {
                   Text: "Free Space",
                   SensorId: "/nvme/0/data/1",
                   Type: "Data",
-                  RawValue: 194,
+                  RawValue: "194.0 GB",
                 },
                 {
                   Text: "Total Space",
                   SensorId: "/nvme/0/data/2",
                   Type: "Data",
-                  RawValue: 499,
+                  RawValue: "499.0 GB",
                 },
               ],
             },
           ],
         },
         {
-          Text: "Network",
+          Text: "Ethernet",
           HardwareId: "/nic/0",
           Children: [
             {
@@ -139,13 +139,13 @@ const DATA_JSON = {
                   Text: "Download Speed",
                   SensorId: "/nic/0/throughput/0",
                   Type: "Throughput",
-                  RawValue: 1_250_000,
+                  RawValue: "1250000.0 B/s",
                 },
                 {
                   Text: "Upload Speed",
                   SensorId: "/nic/0/throughput/1",
                   Type: "Throughput",
-                  RawValue: 625_000,
+                  RawValue: "625000.0 B/s",
                 },
               ],
             },
@@ -211,7 +211,10 @@ describe("LHM sensor mapping", () => {
 
     expect(matched.get("disk.used")).toBeCloseTo(305, 6);
     expect(matched.get("disk.total")).toBeCloseTo(499, 6);
-    expect(matched.get("disk.used.percent")).toBe(61.5);
+    // Derived from the same used/total the other two keys report, so the three
+    // disk keys cannot describe different sets of drives. LHM's own
+    // `Used Space` reads 61.5 % here; 305/499 is the consistent figure.
+    expect(matched.get("disk.used.percent")).toBeCloseTo((305 / 499) * 100, 6);
   });
 
   it("answers only the requested keys", () => {
@@ -228,7 +231,7 @@ describe("LHM sensor mapping", () => {
           Text: "Sensor",
           Children: [
             {
-              Text: "GpuNvidia",
+              Text: "NVIDIA GeForce RTX 3080 Ti",
               HardwareId: "/gpu-nvidia/0",
               Children: [
                 {
@@ -245,7 +248,7 @@ describe("LHM sensor mapping", () => {
               ],
             },
             {
-              Text: "GpuNvidia",
+              Text: "NVIDIA GeForce RTX 3080 Ti",
               HardwareId: "/gpu-nvidia/1",
               Children: [
                 {
@@ -276,7 +279,7 @@ describe("LHM sensor mapping", () => {
           Text: "Sensor",
           Children: [
             {
-              Text: "Network",
+              Text: "Ethernet",
               HardwareId: "/nic/0",
               Children: [
                 {
@@ -293,7 +296,7 @@ describe("LHM sensor mapping", () => {
               ],
             },
             {
-              Text: "Network",
+              Text: "Ethernet",
               HardwareId: "/nic/1",
               Children: [
                 {

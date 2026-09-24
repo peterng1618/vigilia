@@ -132,7 +132,13 @@ export type {
   SensorTier,
 } from "./data/semantic-keys.js";
 export {
+  DISK_DEVICE_QUANTITIES,
+  type DiskDeviceQuantity,
+  type DiskKeyDescriptor,
+  describeDiskKey,
   describeSemanticKey,
+  diskDeviceId,
+  diskDeviceOf,
   isKnownSemanticKey,
   labelForSemanticKey,
   SEMANTIC_KEYS,
