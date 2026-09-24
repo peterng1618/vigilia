@@ -28,6 +28,23 @@ describe("object action registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("carries the whole inventory, so a dropped action fails here", () => {
+    expect(OBJECT_ACTIONS.map((action) => action.id)).toEqual([
+      "duplicate",
+      "copy",
+      "cut",
+      "front",
+      "bring-forward",
+      "send-backward",
+      "back",
+      "lock",
+      "unlock",
+      "group",
+      "ungroup",
+      "delete",
+    ]);
+  });
+
   it("offers group only for a real multi-selection", () => {
     expect(
       objectAction("group").eligible(target({ kind: "group", memberCount: 1 })),

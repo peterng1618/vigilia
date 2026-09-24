@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   Copy,
+  CopyPlus,
   Group,
   Lock,
   type LucideIcon,
@@ -63,7 +64,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
   {
     id: "duplicate",
     label: uiCopy.actions.duplicate,
-    icon: Copy,
+    icon: CopyPlus,
     // ClipboardManager.duplicate refuses a locked object; eligibility has to agree.
     eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.duplicate(),

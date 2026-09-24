@@ -14,7 +14,7 @@ inventory, not a release-grade transitive audit. Provenance:
 | react 19.3.0 | MIT | editor shell chrome |
 | react-dom 19.3.0 | MIT | editor shell chrome |
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
-| lucide-react 1.48.0 | ISC | editor action-bar icons |
+| lucide-react 1.48.0 | ISC AND MIT (Feather-derived subset) | editor action-bar icons |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
@@ -88,10 +88,16 @@ SOFTWARE.
 
 ## Runtime icons
 
-`lucide-react` 1.48.0 (ISC) supplies the editor's action-bar icons, imported
-per-icon by name so the bundler keeps only the ones the registry uses. ISC
-requires the copyright and permission notice to travel with copies, so the
-licence follows in full.
+`lucide-react` 1.48.0 supplies the editor's action-bar icons, imported per-icon
+by name so the bundler keeps only the ones the registry uses. **Four of the
+icons currently imported are derived from the Feather project and carry MIT as
+well as the package's ISC grant**: `ArrowDown`, `ArrowUp`, `Lock` and `Trash2`
+(`trash-2` in the package's own list). The remainder of the package's icons are
+covered by ISC alone — see `lucide-react`'s `LICENSE` for the authoritative
+Feather-derived list.
+
+ISC and MIT both require their copyright and permission notice to travel with
+copies of the covered work, so both follow in full.
 
 ISC License
 
@@ -108,6 +114,28 @@ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+The MIT License (MIT) — for the Feather-derived icons named above
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ## Assets and planned integrations
 
