@@ -1,10 +1,6 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useEffect, useState } from "react";
-import {
-  actionEnabled,
-  arrangeActions,
-  OBJECT_ACTIONS,
-} from "../object-actions.js";
+import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import type { EditorShellBridge } from "./bridge.js";
 
 const noSelection = {
@@ -13,7 +9,7 @@ const noSelection = {
   activeKind: "none",
 } as const;
 
-/** The dock is a pure registry render: what shows is the registry's answer. */
+/** The dock renders object actions only: arrange belongs to the top toolbar. */
 export function CanvasDock({
   bridge,
   onVisibility,
@@ -36,9 +32,7 @@ export function CanvasDock({
   const actions =
     bridge === undefined
       ? []
-      : [...OBJECT_ACTIONS, ...arrangeActions()].filter((action) =>
-          actionEnabled(bridge, action.id),
-        );
+      : OBJECT_ACTIONS.filter((action) => actionEnabled(bridge, action.id));
 
   return (
     <>

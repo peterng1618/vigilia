@@ -133,6 +133,33 @@ it("shows one rail pane at a time and routes the dock through the bridge", async
   layout.destroy();
 });
 
+it("keeps arrange off the dock even when a multi-selection is eligible", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // Arrange is the top toolbar's job; a two-object selection that `canArrange`
+  // would happily accept must still not put arrange buttons in the dock.
+  const bridge = bridgeStub({
+    snapshot: () => ({ selectedCount: 2, locked: false, activeKind: "group" }),
+    target: () => ({
+      kind: "group",
+      locked: false,
+      memberCount: 2,
+      isGroup: false,
+    }),
+    canArrange: () => true,
+  });
+
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+
+  const dock = layout.dock;
+  expect(dock.querySelector('[aria-label="Group"]')).not.toBeNull();
+  expect(dock.querySelector('[aria-label="Align left"]')).toBeNull();
+  expect(dock.querySelector('[aria-label="Distribute horizontally"]')).toBeNull();
+
+  layout.destroy();
+});
+
 it("routes the inspector to tabs on selection and back to document panels", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);

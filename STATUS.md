@@ -26,12 +26,14 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Fixed the snapping regression the review found: the port re-planned once per
-  drag instead of per pointer step, and hardcoded the Ctrl/axis intent fields.
-  The regression test fails against the pre-fix source.
-- Wrote and committed the snapping-fidelity spec, recording the current state of
-  each ported area against the fork.
-- Wrote all three implementation plans and reviewed each against its spec.
+- Landed the object action registry (`object-actions.ts`) as the one owner of
+  object actions: id, label, icon, eligibility and run for each, plus the shared
+  `actionEnabled` predicate that keeps surfaces from drifting.
+- Rendered the canvas dock from that registry instead of its own emoji table,
+  with Lucide icons and accessible names; `ShellAction` collapsed to a flat
+  `ObjectActionId` and the bridge's `can` now delegates to `actionEnabled`.
+- Kept arrange off the dock: `arrangeActions()` belongs to the top toolbar
+  (Task 7), and a regression test pins the exclusion.
 
 ## Next
 
