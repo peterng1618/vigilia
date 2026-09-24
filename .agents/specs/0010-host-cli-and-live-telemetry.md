@@ -42,6 +42,23 @@ Unknown protocol versions are refused rather than guessed.
 The display source exposes received samples immediately. Line-chart viewports
 trail one cadence so complete measured segments scroll in from the right.
 
+### Device assignment
+
+A theme binds one `gpu.load` and one `disk.total`, but a machine may have
+several of each. The consumer chooses which device those keys describe:
+
+- `host/src/settings/devices.ts` owns the stored choice and display names,
+  kept beside the themes; unknown groups and unsafe ids are dropped, and a
+  corrupt file falls back to defaults rather than failing a poll.
+- `/api/devices` (GET/PUT) and `/settings` are loopback-only, like pairing:
+  they change what every display shows.
+- Devices are discovered from whichever provider can report them, so the page
+  works without LibreHardwareMonitor.
+- An unassigned group keeps the previous behaviour (busiest GPU, all disks
+  combined), so an unconfigured host is unchanged.
+- Assigning a device that is no longer present reports a gap, never a reading
+  from a different device.
+
 ### LAN display sessions
 
 Loopback is trusted admin and needs no credential. A non-loopback display needs
@@ -102,7 +119,8 @@ longer reported through `/api/health`'s `unmapped`.
 
 - LibreHardwareMonitor is not yet packaged with the host, and its coexistence
   with Vanguard/EAC/BattlEye remains unverified;
-- provider/user mapping UI;
+- provider/user mapping UI: device assignment exists (a page and stored choice),
+  but there is no per-sensor provider mapping;
 - theme storage/editor save-to-host;
 - LAN onboarding polish: the launcher prints a pairing link, but there is no
   in-editor device list or QR-code flow, and no physical-phone test;

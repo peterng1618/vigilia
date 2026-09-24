@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| Device selection for consumers | A theme shows one GPU and one disk, so a machine with several needs to say which. `/settings` (loopback-only, served from one dependency-free HTML file) lists the real devices and stores the choice beside the themes; the aggregate keys follow it, and a device can be renamed. Verified 2026-09-24 against the real host: the page listed this machine's GPU and four drives, a choice persisted across a reload, and assigning one drive made a theme's `disk.total` report 3000.6 GB (that drive) instead of 12502.4 GB (all combined). Three rendering defects — a blank select for a single-device group, a name field showing another group's value, and a sticky status bar overlapping the last field — were found by inspecting the page and are fixed. Assignments are read through both providers, so the page works without LHM. Evidence: 1120-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | LHM packaging (opt-in launch) | `npm run vendor:lhm` stages the pinned v0.9.6 release unpacked into `packages/host/vendor/lhm`, adds the `LICENSE` and `THIRD-PARTY-NOTICES.txt` the archive omits, and records version/URL/sha256 in `PROVENANCE.txt` (`086d9f1b…`). Bundling was approved 2026-09-24. Launching is opt-in (`--lhm-exe`) because LHM’s manifest is `requireAdministrator` — it loads a kernel driver, so Windows refuses a non-elevated spawn and an automatic start would raise UAC on every host start. The launcher detects that and says so; a bundled copy is not launched on its own. Two defects found by running it: `spawn` failures arrive as an async `error` event (the try/catch caught nothing and the host crashed), and the EACCES was elevation, not the environment. Verified 2026-09-24: detection reports elevation for the real staged executable; the default run names LHM and its endpoint; `--lhm-exe` reports the administrator-rights reason while `library` keeps serving `cpu.load`/​`ram.used`. **Not verified:** a real LHM launch needs an elevated session. Evidence: 1102-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | Hardware metrics via LHM + systeminformation | Providers now read existing sources instead of a hand-rolled collector. Verified 2026-09-24 against the running host without LHM: `library` answered `cpu.load` 16.7%, `ram.used` 10.5 GB, `disk.used` 5396 GB across four volumes and `network.download` 0.014 Mb/s, while `lhm` reported its own absence with a reason rather than a value. Verified against a stub serving LHM's exact `data.json` shape: `lhm` answered `cpu.fan` 1450 RPM, `cpu.temp` 58.5 °C, `gpu.load` 71%, `gpu.temp` 64 °C, and `cpu.load` fell through to `library`, proving the registry's fallback. Two LHM traps were found in its source and handled: `Used Space` is typed Load but carries a percentage, and `Data` is already GB while `Throughput` is bytes per second. Evidence: 1093-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate (unchanged — the library stays host-side), browser suite 91 passed / 39 skipped / 0 failed. |
 | Line threshold bands — §85 gap closed, no engine gaps open | A threshold stroke now colours line segments per value through `visualMap.piecewise`, with the agreed mapping: authored 0–1 offsets resolve against the line's authored `min`/`max`, and a line declaring neither keeps one colour rather than guessing at a moving visible axis. The first implementation silently drew one colour because `VisualMapComponent` was missing from the modular ECharts registration; registering it is what makes the feature real. Verified by rendering a new stress-fixture chart whose samples climb 7 → 50 on a 0–100 axis: the line draws cyan below 40 and amber above. Evidence: 1111-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
@@ -94,13 +95,16 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 ## Next
 
-1. The editorial shell has landed; its remaining follow-ups are resize-time
+1. Device assignment has an API and a page (`/settings`, loopback-only), but the
+   editor does not yet offer a device picker while authoring, and a theme cannot
+   declare which group a chart wants.
+2. The editorial shell has landed; its remaining follow-ups are resize-time
    snapping (spec 0014) and a reduced-transparency capture pass for the glass
    palettes.
-2. Revisit remaining spec-0014 candidates only when needed; the four new
+3. Revisit remaining spec-0014 candidates only when needed; the four new
    residuals (rotated-image crop, snapping-file split, `pixel-grid.ts`, size
    indicator's `mouse:move` pass) are recorded in spec 0014.
-3. The fork's own Playwright snapping suite was **not** ported — only its two
+4. The fork's own Playwright snapping suite was **not** ported — only its two
    highest-value unit specs (resolver, spacing geometry) were. Vigilia's own
    Playwright drag capture covers rendered guide behaviour instead.
 

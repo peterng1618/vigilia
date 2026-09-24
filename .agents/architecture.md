@@ -201,6 +201,8 @@ usage.
 | Static-path safety | `host/src/serve/static-path.ts` |
 | SSE connection/keep-latest | `host/src/transport/` |
 | Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
+| Device assignment and display names | `host/src/settings/devices.ts` |
+| Consumer device-selection page | `host/public/settings.html` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |
 | systeminformation-backed baseline provider | `host/src/providers/library.ts` |
