@@ -13,10 +13,12 @@ implementation.
 
 ### Resize-time snapping
 
-Movement snapping and smart guides are implemented. Resize-time line/equal-space
-snapping was intentionally not ported because the old fork's scaling subsystem
-was large and coupled to object types Vigilia does not have. Revisit only if
-actual use shows the gap matters.
+Movement snapping and smart guides are implemented, but their fidelity against
+the fork's original is under review (§64, §175): the port reportedly guides worse
+than the source in practice. Resize-time line/equal-space snapping was
+intentionally not ported because the old fork's scaling subsystem was large and
+coupled to object types Vigilia does not have. Revisit only if actual use shows
+the gap matters.
 
 ### Rulers, configurable grid/guides and pixel snapping
 
@@ -65,12 +67,20 @@ are resolved.
 Current resize is main-thread. Add a worker only if measured import latency
 becomes a problem.
 
+## Promoted to requirements
+
+- **Canvas zoom and pan** — dropped while fit-to-panel sufficed; revived as
+  §174 on a demonstrated precise-placement need, together with group entry,
+  reachable multi-select, keyboard nudge and a canvas context menu.
+- **Layer panel shape and action ownership** — decided as §172: a tree with
+  per-row lock/visibility state, and one action registry behind the dock, the
+  layer-panel action row and the canvas context menu.
+
 ## Dropped unless a new product need appears
 
 - custom hit-testing/transform/group math from the original editor;
 - immutable-document history and the old DOM renderer;
 - the old inspector layout and multi-selection property editing;
-- canvas zoom/pan/viewport scrollbars while fit-to-panel remains sufficient;
 - the fork template manager until Vigilia has an actual templates feature;
 - a generic interaction blocker without a long-running operation that needs it;
 - fork-specific pixel-grid/type heuristics that do not match Vigilia objects.

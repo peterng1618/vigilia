@@ -102,8 +102,11 @@ related behaviour are reviewed in [editor behaviour review](../superpowers/specs
 
 ## §64 — Rulers, grid, guides and snapping (review)
 
-Movement (drag) snapping with smart guides shipped in the fork-parity work
-(2026-09-24). Pixel rulers, configurable grid/guides, additional snapping modes
+Movement (drag) snapping and smart guides shipped in the fork-parity work
+(2026-09-24), but their fidelity against the source they were ported from is
+**under review**: the port reportedly guides worse than the fork's original in
+practice. Treat the current behaviour as unverified until that comparison lands;
+see §175. Pixel rulers, configurable grid/guides, additional snapping modes
 and resize-time snapping are not present; treat those as review candidates in
 [editor behaviour review](../superpowers/specs/2026-09-24-editor-behaviour-review.md), not migration acceptance, until revalidated against the current
 editor workflow.
@@ -332,6 +335,66 @@ crop tool restricts a `FabricImage` to a rectangular source window, built on
 the existing `clipPath`-based fit mechanism (`fitImage`'s `cover` math in
 `scene-fabric`), not a new geometry primitive or the fork's `CropFrame`.
 Optional aspect lock; apply/cancel stays outside undo history until committed.
+
+## §172 — Layer tree and one action owner
+
+The layer panel is a tree, not a list: rows reflect group depth, groups collapse,
+and selection resolves a child through its owning group. Each row always shows
+that layer's lock and visibility state as icons that toggle on click; they are
+state indicators, not object actions.
+
+Object actions have **one owner** — a registry defining what each action is,
+whether it is eligible for the current selection, and how it runs. Surfaces
+render from that registry and never define behaviour themselves: the floating
+canvas dock, the layer panel's bottom action row, and the canvas context menu.
+Two renderings of one action must not be able to drift.
+
+Persisted editor-only state belongs in the envelope's `editorMetadata`, which
+already exists for it. Viewport, collapse and selection state are transient and
+never enter authored history (§67).
+
+Design: [editor UI polish](../superpowers/specs/2026-09-25-editor-ui-polish.md).
+
+## §173 — Authored density over decoration
+
+The editor is a professional authoring surface used for extended sessions. Its
+own chrome favours information density and a consistent row rhythm over spacious
+marketing-page layout, and follows Figma UI3 as its reference where Vigilia has
+no domain-specific answer of its own. Palette tokens, type presets and value runs
+are Vigilia concepts and keep their own shape rather than being bent to fit it.
+
+Motion is restrained and functional: short transitions on interaction feedback
+and panel reveals only. Decorative, scroll-driven, staggered or spring motion is
+out of scope. Motion respects `prefers-reduced-motion`, and every interactive
+control has a visible focus ring.
+
+Design: [editor UI polish](../superpowers/specs/2026-09-25-editor-ui-polish.md).
+
+## §174 — Canvas navigation
+
+The authoring canvas is a camera onto the workspace, not a fixed fit-to-panel
+view. An author zooms (about the pointer) and pans by the conventional gestures —
+scroll, space-drag, pinch, keyboard — with the artboard bounded so it cannot be
+lost off-screen, and a zoom readout offering fit and 100 %. The canvas viewport
+is not document geometry (§57) and never enters authored history (§67).
+
+This supersedes the earlier decision to drop canvas zoom/pan while fit-to-panel
+sufficed; precise placement is now a demonstrated authoring need. Reachable
+multi-select, entering a group to select its children, keyboard nudge, and a
+canvas context menu are part of the same navigation layer.
+
+Design: [editor viewport and mechanics](../superpowers/specs/2026-09-25-editor-viewport-and-mechanics.md).
+
+## §175 — Ported behaviour keeps its source's quality
+
+Behaviour ported from the retired `fabricjs-image-editor` fork is not complete
+until it matches the source's practical quality, not merely its shape. Porting a
+subset of a subsystem, or porting it with weaker tolerances, fewer snap types or
+missing affordances, counts as an unfinished port. Where a port's behaviour is
+observed to be worse than the fork's original, comparing against the pinned
+fork source (`9efdd78a`) is the required first step.
+
+This applies to snapping and smart guides as shipped (§64) and to any later port.
 
 ## Later
 
