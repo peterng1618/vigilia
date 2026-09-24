@@ -66,10 +66,8 @@ export async function run(argv: readonly string[]): Promise<number> {
   // covers any key LHM could not read. Both are optional sources, never a
   // collector Vigilia maintains (§97).
   const lhmProvider = new LhmSensorProvider({ baseUrl: lhmUrl });
-  const registry = new ProviderRegistry([
-    lhmProvider,
-    new LibrarySensorProvider(),
-  ]);
+  const libraryProvider = new LibrarySensorProvider();
+  const registry = new ProviderRegistry([lhmProvider, libraryProvider]);
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
@@ -86,12 +84,34 @@ export async function run(argv: readonly string[]): Promise<number> {
     bundles: {
       player: path.join(packagesDir, "player", "dist"),
       editor: path.join(packagesDir, "editor", "dist"),
+      // Served from source: the settings page has no build step.
+      admin: path.join(packagesDir, "host", "public"),
     },
     themeStore: createThemeStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     onDeviceAssignment: (assignment) => lhmProvider.setAssignment(assignment),
-    describeDevices: () => lhmProvider.describeDevices(),
+    // Both providers know the machine's devices; LHM's list is richer, so its
+    // entries come first and the library fills in what LHM does not report
+    // (a machine without LHM still gets a usable device list).
+    describeDevices: async () => {
+      const [fromLhm, fromLibrary] = await Promise.all([
+        lhmProvider.describeDevices(),
+        libraryProvider.describeDevices(),
+      ]);
+      const merge = (
+        first: readonly { readonly id: string; readonly name: string }[],
+        second: readonly { readonly id: string; readonly name: string }[],
+      ) => {
+        const seen = new Set(first.map((device) => device.id));
+        return [...first, ...second.filter((device) => !seen.has(device.id))];
+      };
+
+      return {
+        gpus: merge(fromLhm.gpus, fromLibrary.gpus),
+        disks: merge(fromLhm.disks, fromLibrary.disks),
+      };
+    },
   });
 
   // Apply the settled device choices before the first poll.

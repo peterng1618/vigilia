@@ -1,5 +1,5 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
-import { describeSemanticKey } from "@vigilia/renderer-core";
+import { describeSemanticKey, diskDeviceId } from "@vigilia/renderer-core";
 import type {
   ProviderHealth,
   SensorDescriptor,
@@ -87,7 +87,14 @@ interface NetStatsLike {
   readonly tx_sec?: number | null;
 }
 
+interface DiskLayoutLike {
+  readonly name?: string;
+  readonly device?: string;
+}
+
 interface ControllerLike {
+  /** GPU model name, used only to identify the device to a consumer. */
+  readonly model?: string | null;
   readonly utilizationGpu?: number | null;
   readonly temperatureGpu?: number | null;
   readonly powerDraw?: number | null;
@@ -320,6 +327,7 @@ type LibraryModule = {
   fsSize(): Promise<readonly FsSizeLike[]>;
   networkStats(): Promise<readonly NetStatsLike[]>;
   graphics(): Promise<{ controllers?: readonly ControllerLike[] }>;
+  diskLayout(): Promise<readonly DiskLayoutLike[]>;
 };
 
 export class LibrarySensorProvider implements SensorProvider {
@@ -329,6 +337,43 @@ export class LibrarySensorProvider implements SensorProvider {
   private failure: string | undefined;
 
   constructor(private readonly library?: LibraryModule) {}
+
+  /**
+   * The GPUs and drives this machine reports, so a consumer can choose which
+   * one a theme describes. The library names a disk by its model, the same
+   * identifier the LHM provider slugs, so a choice made with either provider
+   * matches the other.
+   */
+  async describeDevices(): Promise<{
+    readonly gpus: readonly { readonly id: string; readonly name: string }[];
+    readonly disks: readonly { readonly id: string; readonly name: string }[];
+  }> {
+    try {
+      const library = await this.module();
+      const [graphics, layout] = await Promise.all([
+        library.graphics(),
+        library.diskLayout(),
+      ]);
+
+      const gpus = (graphics.controllers ?? [])
+        .map((controller) => controller.model)
+        .filter(
+          (model): model is string =>
+            typeof model === "string" && model.length > 0,
+        )
+        .map((model) => ({ id: diskDeviceId(model), name: model }));
+      const disks = layout
+        .map((disk) => disk.name)
+        .filter(
+          (name): name is string => typeof name === "string" && name.length > 0,
+        )
+        .map((name) => ({ id: diskDeviceId(name), name }));
+
+      return { gpus, disks };
+    } catch {
+      return { gpus: [], disks: [] };
+    }
+  }
 
   /** Loaded lazily so a host that never needs metrics does not pay for it. */
   private async module(): Promise<LibraryModule> {

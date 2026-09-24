@@ -30,6 +30,8 @@ const SESSION_HEADER = "x-vigilia-session";
 export interface BundleRoots {
   readonly player: string;
   readonly editor: string;
+  /** Admin pages served from source (no build step), e.g. the settings page. */
+  readonly admin?: string;
 }
 
 export interface HostServerOptions {
@@ -516,6 +518,30 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
     if (url.pathname === "/api/sensors") {
       sendJson(response, 200, { sensors: await registry.describe() });
+      return;
+    }
+
+    // The settings page is an admin surface: it changes what every display
+    // shows, so it stays on this PC like the editor and pairing.
+    if (url.pathname === "/settings" || url.pathname.startsWith("/settings/")) {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Settings are available on this PC only.");
+        return;
+      }
+
+      if (bundles.admin === undefined) {
+        sendText(response, 404, "No settings page is installed.");
+        return;
+      }
+
+      await serveStatic(
+        response,
+        bundles.admin,
+        url.pathname === "/settings"
+          ? "/settings.html"
+          : url.pathname.slice("/settings".length),
+        "The settings page is missing from this installation.",
+      );
       return;
     }
 

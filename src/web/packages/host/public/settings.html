@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vigilia — devices</title>
+    <style>
+      /* Deliberately dependency-free: this page is served by the host itself,
+         so it must not need a build step or a network fetch. */
+      :root {
+        --ink: #14120e;
+        --paper: #f5f1e8;
+        --line: #14120e;
+        --muted: #5a5449;
+        --accent: #8a5a2b;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e8ecf3;
+          --paper: #14161c;
+          --line: #2a3242;
+          --muted: #8a97ab;
+          --accent: #ffab00;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--paper);
+        color: var(--ink);
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      h1 { font-size: 20px; letter-spacing: 0.02em; margin: 0 0 4px; }
+      p.lead { color: var(--muted); margin: 0 0 24px; }
+      fieldset {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 0 0 16px;
+      }
+      legend { padding: 0 6px; font-weight: 600; }
+      label { display: block; margin: 12px 0 4px; font-size: 13px; }
+      select, input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+      }
+      .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+      #status {
+        margin-top: 16px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Devices</h1>
+      <p class="lead">
+        Choose which hardware this PC's dashboards report. A theme shows one GPU
+        and one disk; these settings decide which one that is on this machine.
+      </p>
+      <div id="groups"></div>
+      <div id="status">Loading…</div>
+    </main>
+    <script type="module">
+      const status = document.querySelector("#status");
+      const groups = document.querySelector("#groups");
+
+      const GROUP_LABELS = {
+        gpu: "Graphics card",
+        "system-disk": "System disk",
+        "data-disk": "Data disk",
+      };
+
+      let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
+      let saving = false;
+
+      function optionsFor(group) {
+        return group === "gpu" ? state.available.gpus : state.available.disks;
+      }
+
+      function render() {
+        groups.replaceChildren();
+        let rendered = 0;
+
+        for (const [group, label] of Object.entries(GROUP_LABELS)) {
+          const devices = optionsFor(group);
+          if (devices.length === 0) continue;
+          rendered += 1;
+
+          const fieldset = document.createElement("fieldset");
+          const legend = document.createElement("legend");
+          legend.textContent = label;
+          fieldset.append(legend);
+
+          const selectLabel = document.createElement("label");
+          selectLabel.textContent = devices.length === 1
+            ? "Only one found"
+            : "Which device should dashboards use?";
+          const select = document.createElement("select");
+          select.dataset.group = group;
+
+          // A default option exists whatever the count, so the control always
+          // shows something and a consumer can undo a choice.
+          const all = document.createElement("option");
+          all.value = "";
+          all.textContent = group === "gpu"
+            ? "Busiest (default)"
+            : "All disks combined (default)";
+          select.append(all);
+
+          for (const device of devices) {
+            const option = document.createElement("option");
+            option.value = device.id;
+            option.textContent = state.names[device.id] ?? device.name;
+            select.append(option);
+          }
+
+          select.value = state.assigned[group] ?? "";
+          select.addEventListener("change", () => save({ assigned: { [group]: select.value } }));
+          // The name belongs to one device, so this field edits the device the
+          // select currently points at: the chosen one, else the first.
+          const targetFor = () => state.assigned[group] || devices[0]?.id || "";
+          const nameLabel = document.createElement("label");
+          nameLabel.textContent = "Name shown in this list";
+          const name = document.createElement("input");
+          name.type = "text";
+          name.dataset.name = group;
+          const targetDevice = devices.find((d) => d.id === targetFor());
+          name.placeholder = targetDevice?.name ?? "";
+          name.value = targetDevice ? (state.names[targetDevice.id] ?? "") : "";
+          name.addEventListener("change", () => {
+            const target = targetFor();
+            if (target) save({ names: { [target]: name.value } });
+          });
+
+          fieldset.append(selectLabel, select, nameLabel, name);
+          groups.append(fieldset);
+        }
+
+        if (rendered === 0) {
+          const empty = document.createElement("p");
+          empty.className = "hint";
+          empty.textContent =
+            "No GPUs or disks reported. Start LibreHardwareMonitor (with its " +
+            "web server enabled) to see them here.";
+          groups.append(empty);
+        }
+      }
+
+      async function save(patch) {
+        if (saving) return;
+        saving = true;
+        status.textContent = "Saving…";
+        try {
+          const response = await fetch("/api/devices", {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              assigned: { ...state.assigned, ...(patch.assigned ?? {}) },
+              names: { ...state.names, ...(patch.names ?? {}) },
+            }),
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const saved = await response.json();
+          state.assigned = saved.assigned.assigned;
+          state.names = saved.assigned.names;
+          status.textContent = "Saved. Displays update on their next frame.";
+          render();
+        } catch (error) {
+          status.textContent = `Could not save: ${error.message}`;
+        } finally {
+          saving = false;
+        }
+      }
+
+      async function load() {
+        try {
+          const response = await fetch("/api/devices");
+          if (!response.ok) throw new Error(await response.text());
+          const body = await response.json();
+          state = {
+            available: body.available,
+            assigned: body.assigned.assigned ?? {},
+            names: body.assigned.names ?? {},
+          };
+          status.textContent = "Changes apply to every display immediately.";
+          render();
+        } catch (error) {
+          status.textContent = `Could not read devices: ${error.message}`;
+        }
+      }
+
+      await load();
+    </script>
+  </body>
+</html>
