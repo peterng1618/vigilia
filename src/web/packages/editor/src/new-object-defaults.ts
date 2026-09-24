@@ -120,24 +120,32 @@ export function createNewChartDefaults(
   family: ChartFamily,
 ): ChartContent["settings"] {
   const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
+  const surface = surfacePalette(globals);
 
   if (paint === undefined) {
     throw new Error("New charts require a palette reference.");
   }
 
+  // A chart needs both: content (its data) and a surface (its track). Using the
+  // content token for the track would paint the background in the data colour.
   const ref = { ref: paint } as const;
+  const surfaceRef = { ref: `palette.${surface[0]}` } as const;
 
   switch (family) {
     case "gauge":
-      return { ...defaultGaugeSettings, track: ref, progress: ref };
+      return { ...defaultGaugeSettings, track: surfaceRef, progress: ref };
     case "line": {
       const { area: _area, ...settings } = defaultLineSettings;
       return { ...settings, stroke: ref, palette: [ref] };
     }
     case "bar":
-      return { ...defaultBarSettings, fill: ref, track: ref };
+      return { ...defaultBarSettings, fill: ref, track: surfaceRef };
     case "pie":
-      return { ...defaultPieSettings, palette: [ref], remainderFill: ref };
+      return {
+        ...defaultPieSettings,
+        palette: [ref],
+        remainderFill: surfaceRef,
+      };
   }
 }
 
@@ -152,6 +160,23 @@ export function createNewChartDefaults(
  */
 const CONTENT_TOKENS = ["text", "ink", "foreground", "primary", "accent"];
 const SURFACE_TOKENS = ["background", "bars", "scene", "surface", "track"];
+
+/** The token for a surface a chart draws on, such as its track. */
+function surfacePalette(
+  globals: FabricGlobals | undefined,
+): readonly [string, NonNullable<FabricGlobals["palette"]>[string]] {
+  const entries = Object.entries(globals?.palette ?? {}).filter(
+    ([id]) => id !== "none",
+  );
+  const selected =
+    SURFACE_TOKENS.map((name) =>
+      entries.find(([id]) => id.toLowerCase() === name),
+    ).find((entry) => entry !== undefined) ?? entries[0];
+
+  if (selected === undefined)
+    throw new Error("New charts require a palette token.");
+  return selected;
+}
 
 function firstPalette(
   globals: FabricGlobals | undefined,

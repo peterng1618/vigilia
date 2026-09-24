@@ -192,6 +192,8 @@ function createNativeEditor(
   const errors = createErrorManager(canvas);
   const deletion = createDeletionManager(canvas, save);
   const images = createImageManager(canvas, save);
+  const text = createTextManager(canvas, save);
+
   return {
     canvas,
     historyManager: {
@@ -201,7 +203,7 @@ function createNativeEditor(
       redo: () => history.redo(),
       suspend: () => history.suspend(),
     },
-    textManager: createTextManager(canvas, save),
+    textManager: text,
     imageManager: images,
     layerManager: createLayerManager(canvas, save),
     objectLockManager: createObjectLockManager(canvas, save),
@@ -225,7 +227,13 @@ function createNativeEditor(
       save,
       suspend: () => history.suspend(),
     }),
-    destroy: () => canvas.dispose(),
+    destroy: () => {
+      // The double-click editing listener outlives the canvas otherwise.
+      text.destroy();
+      // Disposal is asynchronous; a failure here must not be an unhandled
+      // rejection during teardown.
+      void canvas.dispose().catch(() => undefined);
+    },
   };
 }
 

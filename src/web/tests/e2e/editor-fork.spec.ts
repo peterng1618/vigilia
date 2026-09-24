@@ -77,13 +77,16 @@ test.describe("Fabric editor route", () => {
     const text = envelope.scene.objects.find(
       (object) => object.vigiliaText?.runs[0]?.text === "New text",
     );
+    // New content takes a token named for content, not the palette's first
+    // entry, which is the artboard background and would paint the text
+    // invisible.
     expect(text).toMatchObject({
-      vigiliaPaint: { fill: "palette.background" },
+      vigiliaPaint: { fill: "palette.text" },
       vigiliaText: {
         runs: [
           {
             typePreset: "typePresets.11-400",
-            style: { color: { ref: "palette.background" } },
+            style: { color: { ref: "palette.text" } },
           },
         ],
       },
@@ -116,11 +119,13 @@ test.describe("Fabric editor route", () => {
     const chart = saved.parsed.envelope.scene.objects
       .filter((object) => object["type"] === "VigiliaChart")
       .at(-1);
+    // A chart takes a content token for its data and a surface token for its
+    // track; one token cannot serve both.
     expect(chart).toMatchObject({
       family: "gauge",
       settings: {
         track: { ref: "palette.background" },
-        progress: { ref: "palette.background" },
+        progress: { ref: "palette.text" },
       },
     });
     expect(chart).not.toHaveProperty("option");
