@@ -203,4 +203,26 @@ describe("native editor shell", () => {
     expect(wrongShape.layerNames()).toEqual({});
     wrongShape.destroy();
   });
+
+  it("exposes a camera over the mounted canvas", async () => {
+    const host = document.createElement("div");
+    Object.defineProperty(host, "clientWidth", { value: 1000 });
+    Object.defineProperty(host, "clientHeight", { value: 800 });
+    document.body.append(host);
+    const shell = await mountEditorShell({
+      host,
+      artboard: {
+        width: 1280,
+        height: 720,
+        background: { kind: "solid", color: "#000" },
+        barColor: { kind: "solid", color: "#000" },
+      } as never,
+    });
+    expect(shell.editor.viewport.zoom()).toBeGreaterThan(0);
+    // The canvas fills the host, not the artboard: 1280x720 fitted into 1000x800
+    // would be a 1000px-wide canvas, and it must no longer be.
+    expect(shell.editor.canvas.getWidth()).toBe(1000);
+    expect(shell.editor.canvas.getHeight()).toBe(800);
+    shell.destroy();
+  });
 });

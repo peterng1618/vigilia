@@ -27,18 +27,19 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- The imperative `layer-panel.ts` is deleted; `editor-shell/layer-panel.tsx`
-  renders a Figma-style tree from `bridge.layers()` — one dense row per layer
-  with a depth indent, a kind icon, the name and exactly two state icons.
-- `EditorShellBridge` gained `selectLayer`, `setLayerVisible`, `setLayerLocked`
-  and `setCollapsed`; the first two and lock resolve a group child through
-  `ownerOf`, revealed from the tree because Fabric repoints `object.group` at an
-  active selection.
-- `layer-tree.ts` owns `findById`/`ownerOf`/`pathTo`, and `LayerRow` carries
-  `collapsed`, so a shut group drops its children from the projection. Collapse
-  is bridge-local view state, never authored history (§67).
-- `ShellHosts` and `EditorPanelHosts` lost their `layers` node; the pane renders
-  React-side, and the rail entry survives.
+- The canvas is a viewport onto the workspace, not a surface clamped to the
+  artboard: it takes the host's measured size and `createViewportManager` owns
+  its transform as the single writer. `EditorShell`/`EditorInteraction` expose
+  `viewport`.
+- `fitCanvasViewport` is gone and `fitArtboardViewport`'s resizing role with it;
+  `createNativeEditor` dropped its now-unused `artboard` parameter, and the
+  `ResizeObserver` only calls `viewport.resize()`.
+- The artboard paint moved from `canvas.backgroundColor` to a bounded,
+  non-exported `Rect` in `canvas.backgroundImage`, so the pasteboard stays
+  visible around the board; the plate is rebuilt after undo/redo through
+  `editor:history-state-loaded`.
+- Background media — a DOM sibling of the canvas — is repositioned to the
+  artboard's screen rect on every camera change.
 
 ## Next
 

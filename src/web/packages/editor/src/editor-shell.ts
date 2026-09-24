@@ -31,6 +31,7 @@ import {
   Canvas,
   classRegistry,
   type FabricObject,
+  Rect,
 } from "fabric/es";
 import { createClipboardManager } from "./clipboard-manager/index.js";
 import { applyEditorControls } from "./controls-manager/index.js";
@@ -44,6 +45,10 @@ import { createImageManager } from "./image-manager/index.js";
 import { createLayerManager } from "./layer-manager/index.js";
 import { createObjectLockManager } from "./object-lock-manager/index.js";
 import { createTextManager } from "./text-manager/index.js";
+import {
+  createViewportManager,
+  type ViewportManager,
+} from "./viewport-manager/index.js";
 
 export interface EditorShellOptions {
   readonly host: HTMLElement;
@@ -59,6 +64,8 @@ export interface EditorShellOptions {
 
 export interface EditorShell {
   readonly editor: EditorInteraction;
+  /** The camera over the mounted canvas, for readouts and view controls. */
+  readonly viewport: ViewportManager;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
   setArtboard(artboard: Artboard): void;
@@ -91,8 +98,8 @@ function layerNamesFrom(
   );
 }
 
-/** Last resolved artboard paint per mounted shell; a Gradient is only rebuilt
- * when its key changes. */
+/** Last resolved artboard paint per mounted shell; the plate is only rebuilt
+ * when its paint or its size changes. */
 interface PaintMemo {
   background: string | undefined;
 }
@@ -108,53 +115,47 @@ class SelectionOrderedActiveSelection extends ActiveSelection {
 
 classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
 
-function fitArtboardViewport(
-  container: HTMLElement,
-  host: HTMLElement,
-  artboard: EditorShellOptions["artboard"],
-  fitMode: FitMode,
-): number | undefined {
-  const scale =
-    fitMode === "contain"
-      ? Math.min(
-          host.clientWidth / artboard.width,
-          host.clientHeight / artboard.height,
-        )
-      : Math.max(
-          host.clientWidth / artboard.width,
-          host.clientHeight / artboard.height,
-        );
-
-  if (!Number.isFinite(scale) || scale <= 0) return undefined;
-
-  container.style.width = `${artboard.width * scale}px`;
-  container.style.height = `${artboard.height * scale}px`;
-  return scale;
+/** Where the artboard lands on screen, read off the camera's transform. The
+ * media layer is a DOM sibling of the canvas, so it only stays aligned with the
+ * board if it is told this rect after every camera change. */
+function artboardScreenRect(
+  canvas: Canvas,
+  artboard: Artboard,
+): { left: number; top: number; width: number; height: number } {
+  const vpt = canvas.viewportTransform;
+  const scale = vpt[0];
+  return {
+    left: vpt[4],
+    top: vpt[5],
+    width: artboard.width * scale,
+    height: artboard.height * scale,
+  };
 }
 
-function fitCanvasViewport(
-  editor: EditorInteraction,
-  container: HTMLElement,
-  host: HTMLElement,
-  artboard: EditorShellOptions["artboard"],
-  fitMode: FitMode,
-): void {
-  const scale = fitArtboardViewport(container, host, artboard, fitMode);
-
-  if (scale === undefined) return;
-
-  const width = artboard.width * scale;
-  const height = artboard.height * scale;
-  editor.canvas.setDimensions({ width, height });
-  editor.canvas.setViewportTransform([
-    scale,
-    0,
-    0,
-    scale,
-    (width - artboard.width * scale) / 2,
-    (height - artboard.height * scale) / 2,
-  ]);
-  editor.canvas.requestRenderAll();
+/** The artboard plate: a bounded region of the canvas, so the pasteboard stays
+ * visible around it. `canvas.backgroundColor` cannot do this — Fabric fills it
+ * as one path and the viewport transform never bounds that fill — and a
+ * `clipPath` would hide the objects outside the artboard too. */
+function artboardPlate(
+  artboard: Artboard,
+  background: unknown,
+): Rect {
+  return new Rect({
+    width: artboard.width,
+    height: artboard.height,
+    left: 0,
+    top: 0,
+    originX: "left",
+    originY: "top",
+    fill: fabricArtboardPaint(background, artboard.width, artboard.height) ?? "",
+    selectable: false,
+    evented: false,
+    hasControls: false,
+    hasBorders: false,
+    // The authored paint belongs to the envelope's artboard, so the scene must
+    // not carry a second copy of it.
+    excludeFromExport: true,
+  });
 }
 
 function applyArtboardPaint(
@@ -169,15 +170,17 @@ function applyArtboardPaint(
     return resolveStyleValue(value, globals ?? {}, "artboard", issues);
   };
   const background = resolve(artboard.background);
-  const paintKey = artboardPaintKey(background);
-
-  // Same memo as the player: any repaint that does not change the resolved
-  // paint (selection, drag, artboard resize) reuses the existing Gradient.
-  if (paintKey !== memo.background) {
+  // A gradient is rebuilt only when the paint or the board's size changes, the
+  // same memo the player keeps. The plate is rebuilt whenever it is missing,
+  // because `loadFromJSON` clears the canvas it lived on.
+  const paintKey = `${artboardPaintKey(background)}:${artboard.width}x${artboard.height}`;
+  if (paintKey !== memo.background || !(editor.canvas.backgroundImage instanceof Rect)) {
     memo.background = paintKey;
-    editor.canvas.backgroundColor =
-      fabricArtboardPaint(background, artboard.width, artboard.height) ?? "";
+    editor.canvas.backgroundImage = artboardPlate(artboard, background);
   }
+  // A revived envelope from before the camera carried the artboard paint here;
+  // left set it would cover the pasteboard again.
+  editor.canvas.backgroundColor = "";
   host.style.background =
     cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
   applyObjectPalettePaints(editor.canvas, globals);
@@ -185,16 +188,25 @@ function applyArtboardPaint(
   editor.canvas.requestRenderAll();
 }
 
-function createNativeEditor(
-  container: HTMLElement,
-  artboard: Artboard,
-): EditorInteraction {
+function createNativeEditor(input: {
+  readonly container: HTMLElement;
+  readonly host: HTMLElement;
+  readonly artboard: () => Artboard;
+}): EditorInteraction {
+  const { container, host } = input;
   applyEditorControls();
   const element = document.createElement("canvas");
   container.append(element);
+  // The canvas takes the host's size, not the artboard's: it is a viewport onto
+  // the workspace now, and the camera chooses what part of it the artboard fills.
   const canvas = new Canvas(element, {
-    width: artboard.width,
-    height: artboard.height,
+    width: Math.max(1, host.clientWidth),
+    height: Math.max(1, host.clientHeight),
+  });
+  const viewport = createViewportManager({
+    canvas,
+    host,
+    artboard: () => input.artboard(),
   });
   const history = new EditorHistory({
     canvas,
@@ -213,6 +225,7 @@ function createNativeEditor(
 
   return {
     canvas,
+    viewport,
     historyManager: {
       saveState: save,
       resetHistory: () => history.reset(),
@@ -247,6 +260,7 @@ function createNativeEditor(
     destroy: () => {
       // The double-click editing listener outlives the canvas otherwise.
       text.destroy();
+      viewport.destroy();
       // Disposal is asynchronous; a failure here must not be an unhandled
       // rejection during teardown.
       void canvas.dispose().catch(() => undefined);
@@ -285,53 +299,54 @@ export async function mountEditorShell({
   const debugKey = container.id;
   container.style.position = "absolute";
   container.style.inset = "0";
-  container.style.margin = "auto";
   container.style.visibility = "hidden";
   let currentArtboard = artboard;
   let globals: Globals | undefined = envelope?.globals;
   let layerNames = layerNamesFrom(envelope?.editorMetadata);
-  let fitMode: FitMode = currentArtboard.fitMode ?? "contain";
-  // The returned scale is irrelevant here; sizing the container is the point,
-  // and the editor is fitted explicitly once mounted below.
-  fitArtboardViewport(container, host, currentArtboard, fitMode);
   host.append(container);
-  let mounted: EditorInteraction | undefined;
-  const resize =
-    typeof ResizeObserver === "undefined"
-      ? undefined
-      : new ResizeObserver(() => {
-          if (mounted !== undefined)
-            fitCanvasViewport(
-              mounted,
-              container,
-              host,
-              currentArtboard,
-              fitMode,
-            );
-        });
-  resize?.observe(host);
   const paintMemo: PaintMemo = { background: undefined };
+  let resize: ResizeObserver | undefined;
 
   try {
-    const editor = createNativeEditor(container, artboard);
-    mounted = editor;
+    const editor = createNativeEditor({
+      container,
+      host,
+      artboard: () => currentArtboard,
+    });
     (window as unknown as Record<string, unknown>)[debugKey] = editor;
-    fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+    // The host drives the camera, so a host resize only needs the camera told.
+    resize =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(() => editor.viewport.resize());
+    resize?.observe(host);
+
+    // Undo and redo revive the scene through `loadFromJSON`, which drops the
+    // plate; the history manager's own post-revive signal is the point at which
+    // the canvas is settled again. `canvas:cleared` fires too early — Fabric
+    // re-applies the serialized background after it.
+    const restorePlate = (): void => {
+      applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+    };
+    editor.canvas.on("editor:history-state-loaded" as never, restorePlate);
 
     if (envelope !== undefined) {
       await reviveThemeEnvelope(editor.canvas, envelope);
       editor.historyManager.resetHistory();
     }
-    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
 
     const scene =
       plan === undefined && envelope === undefined
         ? undefined
         : createSceneAdapter({ canvas: editor.canvas });
 
+    // After the plan, because the adapter's own artboard paint is a canvas
+    // background and this shell owns the artboard region instead.
     if (plan !== undefined) {
       scene?.apply(plan);
     }
+    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+    editor.viewport.zoomToFit();
 
     host.replaceChildren(container);
     container.id = EDITOR_CONTAINER_ID;
@@ -351,9 +366,17 @@ export async function mountEditorShell({
             resolveAsset: mediaResolve,
             onMediaError: reportMediaError,
           });
+    // The media layer is a DOM sibling of the canvas rather than a Fabric
+    // object, so it has to be repositioned by hand whenever the camera moves.
+    const placeMedia = (): void => {
+      media?.setBounds(artboardScreenRect(editor.canvas, currentArtboard));
+    };
+    editor.viewport.onChange(placeMedia);
+    placeMedia();
 
     return {
       editor,
+      viewport: editor.viewport,
       ...(scene === undefined ? {} : { scene }),
       layerNames: () => layerNames,
       setLayerNames(names) {
@@ -378,8 +401,9 @@ export async function mountEditorShell({
       },
       setArtboard(nextArtboard) {
         currentArtboard = nextArtboard;
-        fitMode = currentArtboard.fitMode ?? "contain";
-        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+        // The camera frames the board; the authored fit mode belongs to the
+        // player's letterbox, which the editor no longer draws.
+        editor.viewport.zoomToFit();
         applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
         if (media !== undefined && mediaResolve !== undefined) {
           media.update({
@@ -387,6 +411,7 @@ export async function mountEditorShell({
             assets: mediaAssets,
             resolveAsset: mediaResolve,
           });
+          placeMedia();
         }
       },
       setBackgroundMedia(nextAssets, nextResolveAsset) {
@@ -400,14 +425,16 @@ export async function mountEditorShell({
           resolveAsset: mediaResolve,
           onMediaError: reportMediaError,
         });
+        placeMedia();
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;
         applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
       },
-      setFitMode(nextFitMode) {
-        fitMode = nextFitMode;
-        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
+      setFitMode() {
+        // The authoring view always frames the whole board; `cover` is the
+        // player's crop of it, which the stage does not draw.
+        editor.viewport.zoomToFit();
       },
       destroy() {
         resize?.disconnect();
