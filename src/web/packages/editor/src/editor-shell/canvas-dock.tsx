@@ -1,7 +1,11 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useEffect, useState } from "react";
-import { uiCopy } from "../ui-copy.js";
-import type { EditorShellBridge, ShellAction } from "./bridge.js";
+import {
+  actionEnabled,
+  arrangeActions,
+  OBJECT_ACTIONS,
+} from "../object-actions.js";
+import type { EditorShellBridge } from "./bridge.js";
 
 const noSelection = {
   selectedCount: 0,
@@ -9,34 +13,7 @@ const noSelection = {
   activeKind: "none",
 } as const;
 
-/** The dock carries the retired floating toolbar's action set verbatim. */
-export function dockActions(locked: boolean): readonly (readonly [
-  ShellAction,
-  string,
-  string,
-])[] {
-  const lock = locked
-    ? (["unlock", "\u{1F513}", uiCopy.actions.unlock] as const)
-    : (["lock", "\u{1F512}", uiCopy.actions.lock] as const);
-  return [
-    ["duplicate", "⧉", uiCopy.actions.duplicate],
-    lock,
-    ["front", "↑↑", uiCopy.actions.front],
-    ["bring-forward", "↑", uiCopy.actions.bringForward],
-    ["send-backward", "↓", uiCopy.actions.sendBackward],
-    ["back", "↓↓", uiCopy.actions.back],
-    ["group", "▣", uiCopy.actions.group],
-    ["ungroup", "▦", uiCopy.actions.ungroup],
-    [{ type: "arrange", action: "align-left" }, "⫷", uiCopy.actions.align],
-    [
-      { type: "arrange", action: "distribute-x" },
-      "↔",
-      uiCopy.actions.distribute,
-    ],
-    ["delete", "×", uiCopy.actions.delete],
-  ];
-}
-
+/** The dock is a pure registry render: what shows is the registry's answer. */
 export function CanvasDock({
   bridge,
   onVisibility,
@@ -56,29 +33,32 @@ export function CanvasDock({
     [onVisibility, snapshot.selectedCount],
   );
 
-  const actions = dockActions(snapshot.locked);
+  const actions =
+    bridge === undefined
+      ? []
+      : [...OBJECT_ACTIONS, ...arrangeActions()].filter((action) =>
+          actionEnabled(bridge, action.id),
+        );
 
   return (
     <>
-      {actions
-        .filter(([action]) => bridge?.can(action) === true)
-        .map(([action, icon, label]) => (
-          <Tooltip.Root key={label}>
-            <Tooltip.Trigger
-              aria-label={label}
-              onClick={() => bridge?.run(action)}
-            >
-              {icon}
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Positioner side="top" sideOffset={8}>
-                <Tooltip.Popup className="editor-shell-tooltip" role="tooltip">
-                  {label}
-                </Tooltip.Popup>
-              </Tooltip.Positioner>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        ))}
+      {actions.map(({ id, icon: Icon, label }) => (
+        <Tooltip.Root key={id}>
+          <Tooltip.Trigger
+            aria-label={label}
+            onClick={() => bridge?.run(id)}
+          >
+            <Icon aria-hidden size={15} strokeWidth={1.75} />
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Positioner side="top" sideOffset={8}>
+              <Tooltip.Popup className="editor-shell-tooltip" role="tooltip">
+                {label}
+              </Tooltip.Popup>
+            </Tooltip.Positioner>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      ))}
     </>
   );
 }

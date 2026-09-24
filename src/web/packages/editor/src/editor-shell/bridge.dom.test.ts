@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 
 import { VigiliaChart } from "@vigilia/scene-fabric";
-import { Group, Rect } from "fabric/es";
-import { expect, it, vi } from "vitest";
+import { ActiveSelection, Group, Rect } from "fabric/es";
+import { beforeEach, expect, it, vi } from "vitest";
+import { objectAction } from "../object-actions.js";
 import { createEditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";
+
+// A real applyArrange needs a live Fabric canvas; spying on it asserts the
+// dispatch itself, which `can` alone cannot.
+const applyArrange = vi.hoisted(() => vi.fn(() => true));
+vi.mock("../arrange.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../arrange.js")>()),
+  applyArrange,
+}));
+
+beforeEach(() => applyArrange.mockClear());
 
 function facadeStub(): EditorActionFacade {
   return {
@@ -82,12 +93,43 @@ it("delegates layer commands to the editor manager", () => {
 });
 
 it("runs arrange through the editor owner, not a duplicated implementation", () => {
-  const { bridge } = bridgeFor(new Rect(), {});
+  const { bridge } = bridgeFor(
+    new ActiveSelection([
+      new Rect({ left: 0, top: 0, width: 10, height: 10 }),
+      new Rect({ left: 20, top: 0, width: 10, height: 10 }),
+    ]),
+  );
 
-  // `canArrange` is false for a single object, so the action must not run.
-  bridge.run({ type: "arrange", action: "align-left" });
+  bridge.run("arrange:align-left");
 
-  expect(bridge.can({ type: "arrange", action: "align-left" })).toBe(false);
+  // Assert the dispatch: `can` alone would pass without running anything.
+  expect(applyArrange).toHaveBeenCalledWith(expect.anything(), "align-left");
+});
+
+it("reports a Fabric-free target for the action registry", () => {
+  const selection = new ActiveSelection([
+    new Rect({ left: 0, top: 0, width: 10, height: 10 }),
+    new Rect({ left: 20, top: 0, width: 10, height: 10 }),
+  ]);
+  const { bridge } = bridgeFor(selection);
+  expect(bridge.target()).toEqual({
+    kind: "group",
+    locked: false,
+    memberCount: 2,
+    // ActiveSelection extends Group, but it is not a Group for ungrouping.
+    isGroup: false,
+  });
+});
+
+it("agrees with the registry about eligibility", () => {
+  const { bridge } = bridgeFor(
+    new Group([new Rect({ width: 10, height: 10 })]),
+  );
+  expect(bridge.can("ungroup")).toBe(true);
+  expect(objectAction("ungroup").eligible(bridge.target())).toBe(true);
+  // The refusal side matters too: without it an always-true `can` would pass.
+  expect(bridge.can("group")).toBe(false);
+  expect(objectAction("group").eligible(bridge.target())).toBe(false);
 });
 
 it("does not advertise actions a locked selection cannot run", () => {
@@ -98,7 +140,7 @@ it("does not advertise actions a locked selection cannot run", () => {
   expect(bridge.can("delete")).toBe(false);
   expect(bridge.can("lock")).toBe(false);
   expect(bridge.can("unlock")).toBe(true);
-  expect(bridge.can({ type: "arrange", action: "align-left" })).toBe(false);
+  expect(bridge.can("arrange:align-left")).toBe(false);
 });
 
 it("gates ungroup on a real Group selection", () => {

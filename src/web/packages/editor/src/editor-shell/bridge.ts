@@ -2,25 +2,18 @@ import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import {
+  actionEnabled,
+  type ObjectActionId,
+  type ObjectTarget,
+} from "../object-actions.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
 /** Selection-kind routing for menu/tab eligibility. Transient, never persisted. */
 export type ActiveKind = "none" | "object" | "group" | "chart";
 
-export type ShellAction =
-  | "duplicate"
-  | "copy"
-  | "cut"
-  | "delete"
-  | "front"
-  | "bring-forward"
-  | "send-backward"
-  | "back"
-  | "lock"
-  | "unlock"
-  | "group"
-  | "ungroup"
-  | { readonly type: "arrange"; readonly action: ArrangeAction };
+/** The object actions the shell can run; the registry owns the ids. */
+export type ShellAction = ObjectActionId;
 
 export interface EditorShellSnapshot {
   readonly selectedCount: number;
@@ -30,10 +23,14 @@ export interface EditorShellSnapshot {
 
 export interface EditorShellBridge {
   snapshot(): EditorShellSnapshot;
+  /** The registry's view of the selection. Serializable; never a FabricObject. */
+  target(): ObjectTarget;
   can(action: ShellAction): boolean;
+  canArrange(action: ArrangeAction): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
   readonly session: EditorActionFacade;
+  readonly editor: EditorInteraction;
   destroy(): void;
 }
 
@@ -81,34 +78,42 @@ export function createEditorShellBridge(input: {
       activeKind: activeKindOf(active),
     };
   };
-  const can = (action: ShellAction): boolean => {
-    const active = activeObject();
-    if (active === undefined) return false;
-    const locked = active.get("locked") === true;
-    if (typeof action === "object")
-      return canArrange(input.editor, action.action);
-    if (action === "unlock") return locked;
-    if (action === "group")
-      return (
-        active instanceof ActiveSelection && active.getObjects().length > 1
-      );
-    if (action === "ungroup") return active instanceof Group;
-    return !locked;
+  const target = (): ObjectTarget => {
+    const base = snapshot();
+    const active = canvas.getActiveObject();
+    return {
+      kind: base.activeKind,
+      locked: base.locked,
+      memberCount: base.selectedCount,
+      // ActiveSelection extends Group, so the negative case has to be explicit:
+      // a bare multi-selection is not a Group for ungroup/group eligibility.
+      isGroup: active instanceof Group && !(active instanceof ActiveSelection),
+    };
   };
+  const canArrangeAction = (action: ArrangeAction): boolean =>
+    canArrange(input.editor, action);
+  const gate = { target, canArrange: canArrangeAction };
+  // Eligibility is owned by the registry; this only adds the selection gate.
+  const can = (action: ShellAction): boolean =>
+    activeObject() !== undefined && actionEnabled(gate, action);
   return {
     snapshot,
+    target,
     can,
+    canArrange: canArrangeAction,
     session: input.session,
+    editor: input.editor,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     run(action) {
       if (!can(action)) return;
-      const active = canvas.getActiveObject() as FabricObject | undefined;
-      if (active === undefined) return;
-      if (typeof action === "object") {
-        applyArrange(input.editor, action.action);
+      if (action.startsWith("arrange:")) {
+        applyArrange(
+          input.editor,
+          action.slice("arrange:".length) as ArrangeAction,
+        );
         notify();
         return;
       }

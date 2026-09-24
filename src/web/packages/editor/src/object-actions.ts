@@ -59,6 +59,25 @@ export interface ObjectAction {
 
 const hasSelection = (target: ObjectTarget): boolean => target.kind !== "none";
 
+/**
+ * What an action surface needs to know about itself to gate a control.
+ * Deliberately no per-id `can`: eligibility carries the whole rule, so a `can`
+ * here would only ever re-enter `actionEnabled`.
+ */
+export interface ActionGate {
+  readonly target: () => ObjectTarget;
+  readonly canArrange: (action: ArrangeAction) => boolean;
+}
+
+/** The one predicate both action surfaces use, so they cannot drift. */
+export function actionEnabled(gate: ActionGate, id: ObjectActionId): boolean {
+  if (!objectAction(id).eligible(gate.target())) return false;
+  return (
+    !id.startsWith("arrange:") ||
+    gate.canArrange(id.slice("arrange:".length) as ArrangeAction)
+  );
+}
+
 /** One owner for object actions: what each is, when it applies, how it runs. */
 export const OBJECT_ACTIONS: readonly ObjectAction[] = [
   {

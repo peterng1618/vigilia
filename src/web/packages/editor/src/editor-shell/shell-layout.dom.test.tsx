@@ -32,10 +32,18 @@ function bridgeStub(
 ): EditorShellBridge {
   return {
     snapshot: () => ({ selectedCount: 0, locked: false, activeKind: "none" }),
+    target: () => ({
+      kind: "none",
+      locked: false,
+      memberCount: 0,
+      isGroup: false,
+    }),
     can: () => false,
+    canArrange: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: facade(),
+    editor: {} as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,
   };
@@ -93,9 +101,15 @@ it("shows one rail pane at a time and routes the dock through the bridge", async
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const run = vi.fn();
+  // The dock renders the registry's answer, so eligibility comes from `target`.
   const bridge = bridgeStub({
     snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
-    can: (action) => action === "duplicate",
+    target: () => ({
+      kind: "object",
+      locked: false,
+      memberCount: 1,
+      isGroup: false,
+    }),
     run,
   });
 
@@ -108,8 +122,10 @@ it("shows one rail pane at a time and routes the dock through the bridge", async
     '[aria-label="Duplicate"]',
   );
   expect(duplicate).not.toBeNull();
-  // Undersized/absent eligibility must not advertise invalid actions.
+  // Ineligible actions must not be advertised: a single object cannot group,
+  // and `canArrange` refuses one too.
   expect(dock.querySelector('[aria-label="Group"]')).toBeNull();
+  expect(dock.querySelector('[aria-label="Align left"]')).toBeNull();
 
   duplicate?.click();
   expect(run).toHaveBeenCalledWith("duplicate");
