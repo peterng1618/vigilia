@@ -33,6 +33,8 @@ unpolished, and the canvas has no camera.
 - Id-less objects get distinct row ids (`unidentified`, `unidentified#2`, …) so
   later selection/reorder-by-id work cannot collide; a name that would render
   blank falls back to the id, then to the kind ("Shape").
+- Fixtures now exercise an ancestor lock and an empty group, so the path-wide
+  `locked` read and the `hasChildren` length check are both falsifiable.
 
 ## Next
 

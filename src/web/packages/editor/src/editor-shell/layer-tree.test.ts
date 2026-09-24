@@ -46,18 +46,32 @@ describe("layer projection", () => {
   });
 
   it("takes visibility and lock from the whole ancestor path", () => {
-    const group = new Group(
-      [new Rect({ id: "child", width: 10, height: 10 })],
-      {
-        visible: false,
-      },
-    );
+    const child = new Rect({ id: "child", width: 10, height: 10 });
+    const group = new Group([child], { visible: false });
     group.set("id", "group");
+    // Fabric has no `locked` prop, so it is set the way the lock manager does.
+    group.set("locked", true);
     const rows = projectLayers({ ...base, root: [group] });
+    // The child's own flags are both false; its row must still report the
+    // group's state, so this fails if either read stops walking the path.
+    expect(child.visible).toBe(true);
+    expect((child as { locked?: boolean }).locked).toBeUndefined();
     expect(rows[1]).toMatchObject({
       id: "child",
       visible: false,
-      locked: false,
+      locked: true,
+    });
+  });
+
+  it("reports an empty group as having no children", () => {
+    const empty = new Group([]);
+    empty.set("id", "empty");
+    const rows = projectLayers({ ...base, root: [empty] });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "empty",
+      kind: "group",
+      hasChildren: false,
     });
   });
 
