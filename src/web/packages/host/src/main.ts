@@ -7,6 +7,7 @@ import {
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
+import { ClockSensorProvider } from "./providers/clock.js";
 import { LhmSensorProvider } from "./providers/lhm.js";
 import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
@@ -15,6 +16,7 @@ import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
+import { createDisplaySettingsStore } from "./settings/display.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -87,8 +89,14 @@ export async function run(argv: readonly string[]): Promise<number> {
   // collector Vigilia maintains (§97).
   const lhmProvider = new LhmSensorProvider({ baseUrl: lhmUrl });
   const libraryProvider = new LibrarySensorProvider();
-  const registry = new ProviderRegistry([lhmProvider, libraryProvider]);
-
+  // Time is a reading from this PC, so displays agree and a wrong device clock
+  // cannot mislead.
+  const clockProvider = new ClockSensorProvider();
+  const registry = new ProviderRegistry([
+    clockProvider,
+    lhmProvider,
+    libraryProvider,
+  ]);
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
   const servingLan = !isLoopbackHost(host);
@@ -98,6 +106,9 @@ export async function run(argv: readonly string[]): Promise<number> {
   const sessions = servingLan ? createSessionStore() : undefined;
   // Device assignments are admin state, stored beside the themes.
   const deviceSettings = createDeviceSettingsStore(themesDir);
+  // The consumer's display preferences, read by the provider that acquires the
+  // readings they apply to.
+  const displaySettings = createDisplaySettingsStore(themesDir);
   // Which theme this host displays; consumer state beside the device choices.
   const activeTheme = createActiveThemeStore(themesDir);
 
@@ -114,6 +125,8 @@ export async function run(argv: readonly string[]): Promise<number> {
     themeSettings: createThemeSettingsStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
+    display: displaySettings,
+    onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     onDeviceAssignment: (assignment) => {
       lhmProvider.setAssignment(assignment);
@@ -143,6 +156,11 @@ export async function run(argv: readonly string[]): Promise<number> {
       };
     },
   });
+
+  // Apply the settled display choice before the first poll, so the first frame
+  // already shows the time the consumer asked for.
+  const storedDisplay = await displaySettings.read();
+  clockProvider.setTimeZone(storedDisplay.timeZone);
 
   // Apply the settled device choices before the first poll.
   const storedDevices = await deviceSettings.read();

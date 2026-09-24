@@ -21,6 +21,7 @@ import {
 import {
   loadFontAssets,
   mountFabricScene,
+  refreshBoundText,
   reviveThemeEnvelope,
   startChartRefresh,
   VigiliaChart,
@@ -253,6 +254,15 @@ async function startHostedTheme(
       handle.canvas.getObjects(),
       theme.bindings ?? {},
       liveHandle.source,
+    );
+    // Revived text carries the authored runs, not the sampled readings: the
+    // saved scene keeps placeholders, so every cadence re-resolves the runs
+    // through the bindings, the way a rebuilt plan would.
+    refreshBoundText(
+      handle.canvas,
+      theme.bindings ?? {},
+      liveHandle.source,
+      theme.globals,
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has

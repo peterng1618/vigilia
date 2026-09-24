@@ -156,6 +156,13 @@ export {
   requestedFontFamilies,
   unavailableFontFamilies,
 } from "./scene/fonts.js";
+export {
+  formatInstant,
+  isTimeZoneName,
+  knownTimeZones,
+  instantIn,
+  parseInstant,
+} from "./scene/datetime-format.js";
 export type { MountOptions, SceneHandle } from "./scene/mount.js";
 export { mountScene } from "./scene/mount.js";
 export type {

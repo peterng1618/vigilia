@@ -12,7 +12,11 @@ export type SemanticFamily =
   | "gpu"
   | "vram"
   | "disk"
-  | "network";
+  | "network"
+  // Time is read from the host, like any other reading, so two displays agree
+  // and a device with a wrong clock still shows the right time (§116).
+  | "time"
+  | "date";
 
 export interface SemanticKeyDescriptor {
   readonly key: string;
@@ -27,6 +31,12 @@ export interface SemanticKeyDescriptor {
    * preference must not pretend to cover families it cannot (spec 2026-09-24).
    */
   readonly converts?: "temperature";
+  /**
+   * A time/date reading: the provider's text is an ISO 8601 instant, so the
+   * binding's `format` and `timeZone` decide how it reads rather than the
+   * provider. Other text keys leave this off and are shown as sent.
+   */
+  readonly instant?: { readonly defaultFormat: string };
 }
 
 /** `family.quantity[.qualifier]`; availability is discovered separately. */
@@ -151,6 +161,24 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     label: "VRAM total",
     unit: "GB",
     expectedTier: "extended",
+  },
+
+  // A clock is read from this PC, like any other reading, and the author decides
+  // how it reads: the provider sends the instant, the binding's format and zone
+  // render it.
+  {
+    key: "time.now",
+    family: "time",
+    label: "Time",
+    expectedTier: "baseline",
+    instant: { defaultFormat: "HH:mm" },
+  },
+  {
+    key: "date.today",
+    family: "date",
+    label: "Date",
+    expectedTier: "baseline",
+    instant: { defaultFormat: "DD MMM YYYY" },
   },
 
   // Declared ahead of their providers so themes/editors share stable names.

@@ -38,6 +38,9 @@ export class LiveRuntime {
 
   setBindings(bindings: Readonly<Record<string, readonly Binding[]>>): void {
     this.#bindings = bindings;
+    // What a bound run paints is decided by its binding, so changing one must
+    // repaint rather than wait for the next sample.
+    this.refresh();
   }
 
   setGlobals(globals: FabricGlobals | undefined): void {

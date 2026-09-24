@@ -102,18 +102,7 @@ export async function canvasHas(
   key: string,
 ): Promise<boolean> {
   // Checked in-page: values like clipPath hold circular refs that do not survive serialization.
-  return page.evaluate(
-    ([id, prop]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle["adapter"] as {
-        objectFor(nodeId: string): { get(key: string): unknown } | undefined;
-      };
-      const value = adapter.objectFor(id)?.get(prop);
-
-      return value !== undefined && value !== null;
-    },
-    [nodeId, key] as const,
-  );
+  return (await readObject(page, nodeId, key)) !== undefined;
 }
 
 function isScalar(value: unknown): value is string | number | boolean {
@@ -124,12 +113,12 @@ function isScalar(value: unknown): value is string | number | boolean {
   );
 }
 
-/** Read one Fabric property through the adapter; missing means no such object. */
-async function readObject<T>(
+/** Read one Fabric property; missing means no such object. */
+async function readObject<T = unknown>(
   page: Page,
   nodeId: string,
   key: string,
-  guard: (value: unknown) => value is T,
+  guard?: (value: unknown) => value is T,
 ): Promise<T | undefined> {
   const value = await page.evaluate(
     ([id, prop]) => {
@@ -137,8 +126,16 @@ async function readObject<T>(
       const adapter = handle["adapter"] as {
         objectFor(nodeId: string): { get(key: string): unknown } | undefined;
       };
+      const canvas = handle["canvas"] as {
+        getObjects(): { get(key: string): unknown }[];
+      };
+      // The adapter indexes what a plan applied, and a scene revived from a
+      // saved package never went through one: there, the canvas is the index.
+      const object =
+        adapter.objectFor(id) ??
+        canvas.getObjects().find((entry) => entry.get("id") === id);
 
-      return adapter.objectFor(id)?.get(prop);
+      return object?.get(prop);
     },
     [nodeId, key] as const,
   );
@@ -147,7 +144,7 @@ async function readObject<T>(
     return undefined;
   }
 
-  return guard(value) ? value : undefined;
+  return guard === undefined || guard(value) ? (value as T) : undefined;
 }
 
 /** True when data ticks update the node without replacing its object. */

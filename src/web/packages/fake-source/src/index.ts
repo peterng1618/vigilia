@@ -1,7 +1,9 @@
-import type {
-  Sample,
-  SampleSource,
-  SensorStatus,
+import {
+  describeSemanticKey,
+  instantIn,
+  type Sample,
+  type SampleSource,
+  type SensorStatus,
 } from "@vigilia/renderer-core";
 
 /** Deterministic synthetic SampleSource for development/tests. Never real telemetry. */
@@ -158,6 +160,18 @@ export class FakeSampleSource implements SampleSource {
         timestamp,
         status: "ok",
         textValue: text,
+      };
+    }
+
+    // A key the vocabulary declares as an instant is the time this sample is
+    // for, so a clock previews in the editor and in a fixture theme exactly as
+    // the host would report it.
+    if (describeSemanticKey(semanticKey)?.instant !== undefined) {
+      return {
+        sensorId: semanticKey,
+        timestamp,
+        status: "ok",
+        textValue: instantIn(timeMs),
       };
     }
 

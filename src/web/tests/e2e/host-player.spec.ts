@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { canvasProp } from "./canvas-probe.js";
 import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
 
 /** Exercises the real Node host: the browser suite's only proof that hosted
@@ -147,5 +148,98 @@ test.describe("hosted player over the real host", () => {
           .vigilia?.live?.batchCount ?? 0,
     );
     expect(batchCount).toBeGreaterThan(0);
+  });
+});
+
+/** A `HH:mm:ss` reading as seconds past midnight; not a clock face means none. */
+function secondsOf(reading: string): number | undefined {
+  const match = /^(\d{2}):(\d{2}):(\d{2})$/.exec(reading.trim());
+  if (match === null) return undefined;
+  return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]);
+}
+
+/** A clock face wraps: 23:59:59 is one second from 00:00:00, not a day. */
+function secondsApart(a: number, b: number): number {
+  const gap = Math.abs(a - b) % 86_400;
+  return Math.min(gap, 86_400 - gap);
+}
+
+/** What a wall clock in `timeZone` — this PC's own when none is named — reads. */
+function zoneReading(page: Page, timeZone?: string): Promise<string> {
+  return page.evaluate(
+    (zone) =>
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: zone,
+        hourCycle: "h23",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date()),
+    timeZone,
+  );
+}
+
+/** The clock the host sent, as the scene actually painted it. */
+async function shownClock(page: Page): Promise<string> {
+  return String(await canvasProp(page, "clock", "text"));
+}
+
+/**
+ * Whether the painted clock agrees with a zone, to the second.
+ *
+ * The two readings are taken a round trip apart and the host samples at 1 Hz,
+ * so the tolerance is the read loop's, not the feature's.
+ */
+async function paintedInZone(page: Page, timeZone?: string): Promise<boolean> {
+  const shown = secondsOf(await shownClock(page));
+  const expected = secondsOf(await zoneReading(page, timeZone));
+  if (shown === undefined || expected === undefined) return false;
+  return secondsApart(shown, expected) <= 2;
+}
+
+test.describe("the clock the host reports", () => {
+  test("advances, and reads the zone this PC was set to", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+
+    // The reading is a sample like any other, so it must move on its own: a
+    // scene that painted once would show a frozen clock for ever.
+    const first = await shownClock(page);
+    await expect
+      .poll(() => shownClock(page), { timeout: 10_000 })
+      .not.toBe(first);
+
+    // Nothing was chosen, so the host read this PC's own zone.
+    await expect
+      .poll(() => paintedInZone(page), { timeout: 10_000 })
+      .toBe(true);
+
+    // The zone is a host setting, so its proof is a repainted reading rather
+    // than a stored preference. Tokyo is far enough from any plausible
+    // default that agreement cannot be coincidence.
+    const saved = await request.put(`${HOST}/api/display`, {
+      data: { timeZone: "Asia/Tokyo" },
+    });
+    expect(saved.ok()).toBe(true);
+
+    try {
+      await expect
+        .poll(() => paintedInZone(page, "Asia/Tokyo"), { timeout: 15_000 })
+        .toBe(true);
+    } finally {
+      // The host is shared with the rest of the suite, and `display.json`
+      // outlives this test even though the seeded themes do not.
+      await request.put(`${HOST}/api/display`, { data: {} });
+    }
   });
 });

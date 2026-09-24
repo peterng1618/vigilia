@@ -1,3 +1,4 @@
+import { isTimeZoneName } from "../scene/datetime-format.js";
 import {
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
@@ -702,7 +703,16 @@ function bindings(
       unknownKeys(
         entry,
         path,
-        ["id", "semanticKey", "precision", "unitDisplay", "scale", "offset"],
+        [
+          "id",
+          "semanticKey",
+          "precision",
+          "unitDisplay",
+          "scale",
+          "offset",
+          "format",
+          "timeZone",
+        ],
         "A binding",
         issues,
       );
@@ -767,6 +777,28 @@ function bindings(
               "wrong-type",
               `${path}/${key}`,
               `${key} must be a finite number.`,
+            ),
+          );
+        }
+      }
+      for (const key of ["format", "timeZone"] as const) {
+        const value = entry[key];
+        if (value === undefined) continue;
+
+        if (typeof value !== "string" || value.length > 64) {
+          issues.push(
+            issue(
+              "wrong-type",
+              `${path}/${key}`,
+              `${key} must be a string of at most 64 characters.`,
+            ),
+          );
+        } else if (key === "timeZone" && !isTimeZoneName(value)) {
+          issues.push(
+            issue(
+              "invalid-enum",
+              `${path}/${key}`,
+              `timeZone "${value}" is not a zone this runtime knows.`,
             ),
           );
         }

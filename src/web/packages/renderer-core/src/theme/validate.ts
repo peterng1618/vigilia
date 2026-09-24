@@ -1,3 +1,4 @@
+import { isTimeZoneName } from "../scene/datetime-format.js";
 import { isKnownStyleProperty } from "./capabilities.js";
 import {
   ASSET_PATH_PATTERN,
@@ -1176,6 +1177,33 @@ function validateBindings(
           binding[numeric],
           `${bindingPath}/${numeric}`,
           numeric,
+        );
+      }
+    }
+
+    for (const text of ["format", "timeZone"] as const) {
+      const value = binding[text];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      // A token string is short by nature; a zone is a name Intl resolves. An
+      // unknown zone is refused here rather than silently ignored at render.
+      if (typeof value !== "string" || value.length > 64) {
+        issues.add(
+          "wrong-type",
+          `${bindingPath}/${text}`,
+          `${text} must be a string of at most 64 characters.`,
+        );
+        continue;
+      }
+
+      if (text === "timeZone" && !isTimeZoneName(value)) {
+        issues.add(
+          "invalid-enum",
+          `${bindingPath}/${text}`,
+          `timeZone "${value}" is not a zone this runtime knows.`,
         );
       }
     }

@@ -115,7 +115,38 @@ const envelope = {
           ],
         },
       },
+      {
+        // Seconds, so a test can watch the reading move without waiting a
+        // minute for it.
+        type: "Textbox",
+        version: "7.4.0",
+        originX: "left",
+        originY: "top",
+        left: 40,
+        top: 220,
+        width: 420,
+        height: 60,
+        text: "--:--:--",
+        fontSize: 22,
+        fontFamily: "system-ui, sans-serif",
+        fill: "palette.ink",
+        id: "clock",
+        vigiliaPaint: { fill: "palette.ink" },
+        vigiliaText: {
+          runs: [
+            {
+              kind: "value",
+              bindingId: "clock-time",
+              typePreset: "typePresets.11-400",
+              style: { color: { ref: "palette.ink" } },
+            },
+          ],
+        },
+      },
     ],
+  },
+  bindings: {
+    clock: [{ id: "clock-time", semanticKey: "time.now", format: "HH:mm:ss" }],
   },
 };
 

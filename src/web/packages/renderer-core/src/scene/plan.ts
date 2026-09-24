@@ -7,6 +7,7 @@ import {
   type SeriesInput,
 } from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
+import { describeSemanticKey } from "../data/semantic-keys.js";
 import type { SampleSource } from "../data/source.js";
 import type {
   AssetKind,
@@ -23,6 +24,7 @@ import type {
   TypePreset,
 } from "../theme/document.js";
 import type { Sample, SensorStatus } from "../types.js";
+import { formatInstant } from "./datetime-format.js";
 import {
   convertForDisplay,
   DEFAULT_MEASUREMENT_SYSTEM,
@@ -472,7 +474,7 @@ function formatValueSegment(
     text = formatNumber(converted.value, precision);
     shown = converted.unit;
   } else if (sample.textValue !== undefined) {
-    text = sample.textValue;
+    text = formatTextReading(binding, sample.textValue);
   } else if (sample.booleanValue !== undefined) {
     text = sample.booleanValue ? "on" : "off";
   } else {
@@ -482,6 +484,27 @@ function formatValueSegment(
   const unit = formatUnit(shown, unitDisplay, context.longUnits);
 
   return { text: unit === "" ? text : `${text}${unit}`, style };
+}
+
+/**
+ * A time/date reading arrives as an instant, so the author's format and zone
+ * decide how it reads; any other text is shown exactly as the provider sent it.
+ * A value no formatter can read is shown raw rather than blanked.
+ */
+function formatTextReading(binding: Binding, value: string): string {
+  const instant = describeSemanticKey(binding.semanticKey)?.instant;
+
+  if (instant === undefined) {
+    return value;
+  }
+
+  return (
+    formatInstant(
+      value,
+      binding.format ?? instant.defaultFormat,
+      binding.timeZone,
+    ) ?? value
+  );
 }
 
 /** Explicit precision preserves trailing zeroes; default uses at most one decimal. */

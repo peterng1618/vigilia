@@ -102,6 +102,15 @@ Providers report actual capability and never fabricate readings. Baseline
 sensors need no driver. LHM, if implemented, runs as an external prebuilt
 program; Vigilia does not compile/link its .NET library.
 
+### A clock reading is an instant, and its zone is resolved on both sides
+
+The host sends an instant written with the offset it was read in, never a
+formatted wall clock, so a display never re-converts and two screens agree. The
+zone splits by who owns the fact: the consumer's default is applied **by the
+provider** (a machine preference, like the device assignment), and an author's
+pinned zone **by the display** at format time (design of that one clock). How it
+reads stays authored; a key per format would put presentation in the vocabulary.
+
 ### Performance budgets follow measurable costs
 
 Keep the player bundle-size gate. Add budgets when a real expensive path exists;

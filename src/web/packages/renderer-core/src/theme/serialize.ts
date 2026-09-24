@@ -43,6 +43,8 @@ const KEY_ORDER: readonly string[] = [
   "unitDisplay",
   "scale",
   "offset",
+  "format",
+  "timeZone",
   // Content
   "family",
   "settings",

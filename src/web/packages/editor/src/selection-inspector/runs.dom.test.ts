@@ -1,0 +1,204 @@
+// @vitest-environment jsdom
+import type { Binding, TextRun } from "@vigilia/renderer-core";
+import { formatInstant, instantIn } from "@vigilia/renderer-core";
+import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import { Canvas, Textbox } from "fabric/es";
+import { describe, expect, it, vi } from "vitest";
+import { createRunEditor } from "./runs.js";
+
+/**
+ * A text object's runs, plus the binding store a run's reading lives in: the
+ * envelope owns that, so the test stands in for the session.
+ */
+function harness(runs: readonly TextRun[]) {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const object = new Textbox("", { id: "clock-label" });
+  object.set(VIGILIA_TEXT_PROPERTY, { runs });
+  canvas.add(object);
+
+  let bindings: readonly Binding[] = [];
+  const host = document.createElement("div");
+  const render = (): void => {
+    host.replaceChildren();
+    host.append(
+      createRunEditor(
+        {
+          canvas,
+          historyManager: { saveState: vi.fn() },
+        } as never,
+        undefined,
+        object as never,
+        render,
+        {
+          bindings: () => bindings,
+          setBindings: (next) => {
+            bindings = next;
+          },
+        },
+      ).root,
+    );
+  };
+  render();
+
+  const pick = <T extends HTMLElement>(selector: string): T =>
+    host.querySelector<T>(selector)!;
+
+  return {
+    object,
+    host,
+    pick,
+    render,
+    runs: (): readonly TextRun[] =>
+      (object.get(VIGILIA_TEXT_PROPERTY) as { runs: readonly TextRun[] }).runs,
+    stored: (): readonly Binding[] => bindings,
+    dispose: () => canvas.dispose(),
+  };
+}
+
+const literalClock: readonly TextRun[] = [
+  {
+    kind: "literal",
+    text: "07:24",
+    typePreset: "typePresets.70-300",
+    style: { color: { ref: "palette.text" } },
+  },
+];
+
+/** Choosing from a select fires `change`; nothing else does. */
+function choose(select: HTMLSelectElement, value: string): void {
+  select.value = value;
+  select.dispatchEvent(new Event("change"));
+}
+
+describe("binding a text run to a sensor", () => {
+  it("turns a literal run into a reading, keeping how it looks", () => {
+    const box = harness(literalClock);
+
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+
+    const [binding] = box.stored();
+    expect(binding?.semanticKey).toBe("time.now");
+    expect(box.runs()[0]).toMatchObject({
+      kind: "value",
+      bindingId: binding?.id,
+      typePreset: "typePresets.70-300",
+      style: { color: { ref: "palette.text" } },
+    });
+    return box.dispose();
+  });
+
+  it("offers a format only for a key that is an instant", () => {
+    const box = harness(literalClock);
+    const source = box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]');
+
+    choose(source, "cpu.load");
+    box.render();
+    expect(box.host.querySelector('[data-vigilia-run-format="0"]')).toBeNull();
+
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+    expect(
+      box.host.querySelector('[data-vigilia-run-format="0"]'),
+    ).not.toBeNull();
+    return box.dispose();
+  });
+
+  it("previews the tokens as they are typed, and stores what was typed", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+
+    const input = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    input.value = "[It is ]dddd";
+    input.dispatchEvent(new Event("input"));
+
+    // The same instant the editor's own preview source reads, so the preview is
+    // the reading the run will paint rather than an example of one.
+    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+      formatInstant(instantIn(Date.now()), "[It is ]dddd"),
+    );
+
+    input.dispatchEvent(new Event("change"));
+    expect(box.stored()[0]?.format).toBe("[It is ]dddd");
+    return box.dispose();
+  });
+
+  it("falls back to the key's own default when the format is cleared", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+
+    const placeholder = box.pick<HTMLInputElement>(
+      '[data-vigilia-run-format="0"]',
+    ).placeholder;
+    expect(placeholder).toBe("HH:mm");
+
+    const input = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    input.value = "dddd";
+    input.dispatchEvent(new Event("change"));
+    box.render();
+
+    const cleared = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    cleared.value = "";
+    cleared.dispatchEvent(new Event("input"));
+    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+      formatInstant(instantIn(Date.now()), "HH:mm"),
+    );
+
+    cleared.dispatchEvent(new Event("change"));
+    expect(box.stored()[0]?.format).toBeUndefined();
+    return box.dispose();
+  });
+
+  it("drops a format that described the reading the run no longer reads", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+    const input = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    input.value = "dddd";
+    input.dispatchEvent(new Event("change"));
+    box.render();
+
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "cpu.load",
+    );
+
+    expect(box.stored()[0]?.semanticKey).toBe("cpu.load");
+    expect(box.stored()[0]?.format).toBeUndefined();
+    return box.dispose();
+  });
+
+  it("returns a run to prose, releasing the binding it named", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+
+    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'), "");
+
+    expect(box.stored()).toEqual([]);
+    expect(box.runs()[0]).toMatchObject({
+      kind: "literal",
+      typePreset: "typePresets.70-300",
+    });
+    return box.dispose();
+  });
+});

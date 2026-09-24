@@ -135,6 +135,15 @@
         </p>
         <div id="groups"></div>
       </section>
+      <section aria-labelledby="display-heading">
+        <h2 id="display-heading">Display</h2>
+        <p class="hint">
+          How this PC's readings are shown. A theme decides how a clock reads;
+          this decides which zone it reads.
+        </p>
+        <label for="timezone">Clock time zone</label>
+        <select id="timezone"></select>
+      </section>
       <section aria-labelledby="questions-heading" id="questions-section" hidden>
         <h2 id="questions-heading">This theme needs</h2>
         <p class="hint" id="questions-hint"></p>
@@ -467,8 +476,44 @@
         }
       }
 
+      async function loadDisplay() {
+        const select = document.querySelector("#timezone");
+        try {
+          const response = await fetch("/api/display");
+          if (!response.ok) throw new Error(await response.text());
+          const body = await response.json();
+          // This PC's own zone is the default and the most common answer, so it
+          // comes first and needs no name of its own.
+          const zones = ["", ...(body.zones ?? [])];
+          for (const zone of zones) {
+            const option = document.createElement("option");
+            option.value = zone;
+            option.textContent = zone === "" ? "This PC's own zone" : zone;
+            select.append(option);
+          }
+          select.value = body.settings?.timeZone ?? "";
+          select.addEventListener("change", async () => {
+            status.textContent = "Saving…";
+            try {
+              const saved = await fetch("/api/display", {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ timeZone: select.value }),
+              });
+              if (!saved.ok) throw new Error(await saved.text());
+              status.textContent = "Saved. Displays update on their next frame.";
+            } catch (error) {
+              status.textContent = `Could not save: ${error.message}`;
+            }
+          });
+        } catch (error) {
+          status.textContent = `Could not read display settings: ${error.message}`;
+        }
+      }
+
       await loadThemes();
       await load();
+      await loadDisplay();
     </script>
   </body>
 </html>

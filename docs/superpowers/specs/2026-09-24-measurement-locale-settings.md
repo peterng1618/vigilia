@@ -10,7 +10,7 @@ built when it has a consumer. Checked against the product before building any:
 | Setting | Consumer today? |
 |---|---|
 | Measurement system | **Partially.** Temperature is the only affected family, and only `cpu.temp`/`gpu.temp` reach it. |
-| Timezone | **None yet.** No semantic key produces a time or date; the demo theme's clock is authored literal text (`"07:24"`). A clock/date key and provider come first. |
+| Timezone | **Landed.** `time.now` and `date.today` exist with the clock provider, so the setting chooses the zone the host reads them in. |
 | Location | **None yet.** It arrives with weather: the provider is a §99 custom API with its own URL and credentials, and location is that provider's configuration. |
 
 Building all three would add settings a consumer can set that change nothing,
@@ -51,12 +51,15 @@ Mb/s. A consumer in a Fahrenheit context sees °C and has no way to change it.
 - A double conversion must be impossible: a value converted once must not be
   converted again when a theme's authored text also formats it.
 
-## Sequenced: timezone
+## Settled: timezone
 
-No semantic key yields a time or date. Adding the setting would mean inventing
-the keys, the provider and the authoring controls in one change — a feature, not
-a setting. **Sequenced behind**: a clock/date semantic key and a provider for it,
-at which point timezone becomes a formatting preference like the above.
+It was sequenced behind a clock key and provider, and both exist, so the setting
+was built with the consumer reached. It differs from the measurement preference
+in one way: **the provider applies it, not the display.** The reading the host
+sends is the instant written with the offset it was read in, so every display
+shows one clock and a device with a wrong clock still reads the host's time.
+The format stays authored; the zone is the machine fact. A clock an author pins
+to a named zone is unaffected.
 
 ## Sequenced: location (with weather)
 

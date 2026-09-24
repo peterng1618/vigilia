@@ -184,6 +184,28 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-fork-chart-binding");
   });
 
+  test("captures the controls that give a text run its reading", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    // The starter theme's clock is authored as a value run, so selecting it
+    // shows what an author chooses to read and how it should read.
+    await page.locator('[data-vigilia-layer="time"]').click();
+    const source = page.locator('[data-vigilia-run-source="0"]');
+    await expect(source).toBeVisible();
+    await expect(source).toHaveValue("time.now");
+    const format = page.locator('[data-vigilia-run-format="0"]');
+    await expect(format).toBeVisible();
+    await format.scrollIntoViewIfNeeded();
+
+    await captureVisualReview(page, testInfo, "editor-fork-text-reads");
+  });
+
   test("captures semantic layer controls for visual review", async ({
     page,
   }, testInfo) => {

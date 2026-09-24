@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
+import { createDisplaySettingsStore } from "./settings/display.js";
 import { createThemeStore } from "./themes/store.js";
 
 function createValidPackage(
@@ -544,5 +545,101 @@ describe("Host theme routes", () => {
     expect(res.status).toBe(200);
     expect(res.text()).toContain("Open the editor");
     expect(res.text()).toContain('href="/editor/"');
+  });
+});
+
+/** A JSON request body, which the routes parse the same way a browser sends one. */
+function json(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+describe("Display settings routes", () => {
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+  const changes: ({ readonly timeZone?: string } | undefined)[] = [];
+
+  beforeEach(async () => {
+    changes.length = 0;
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-display-"));
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      display: createDisplaySettingsStore(tmpDir),
+      onDisplayChange: (settings) => changes.push(settings),
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("offers the zones a consumer may choose, and this PC as the default", async () => {
+    const res = await request(hosted.server, "GET", "/api/display");
+    const body = res.json() as {
+      settings: { timeZone?: string };
+      zones: readonly string[];
+    };
+
+    // The page is dependency-free source, so the zone names travel with it.
+    expect(body.settings).toEqual({});
+    expect(body.zones).toContain("Asia/Tokyo");
+    expect(body.zones).toContain("Europe/Lisbon");
+  });
+
+  it("stores a zone and tells the providers to read it", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/display",
+      json({
+        timeZone: "Asia/Tokyo",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(changes).toEqual([{ timeZone: "Asia/Tokyo" }]);
+    expect(
+      (await request(hosted.server, "GET", "/api/display")).json(),
+    ).toMatchObject({ settings: { timeZone: "Asia/Tokyo" } });
+  });
+
+  it("refuses a zone no display could read", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/display",
+      json({
+        timeZone: "Mars/Olympus",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    // Refused, not stored-but-ignored: a setting that does nothing is worse
+    // than one that says why.
+    expect(changes).toEqual([]);
+    expect(
+      (await request(hosted.server, "GET", "/api/display")).json(),
+    ).toMatchObject({ settings: {} });
+  });
+
+  it("keeps a machine setting on this PC", async () => {
+    const lan = { remoteAddress: "192.168.1.50" };
+
+    expect(
+      (await request(hosted.server, "GET", "/api/display", undefined, lan))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/display",
+          json({ timeZone: "Asia/Tokyo" }),
+          lan,
+        )
+      ).status,
+    ).toBe(403);
   });
 });

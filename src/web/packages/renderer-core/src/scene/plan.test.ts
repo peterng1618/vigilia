@@ -325,6 +325,73 @@ describe("text (§89)", () => {
     expect(result.segments.map((segment) => segment.text)).toEqual(["61°C"]);
   });
 
+  /** A text-valued sample, which is what a clock key reports. */
+  function instant(textValue: string, sensorId: string): Sample {
+    return {
+      sensorId,
+      timestamp: new Date(NOW).toISOString(),
+      status: "ok",
+      textValue,
+    };
+  }
+
+  it("reads a time binding through the author's format", () => {
+    const source = storeWith({
+      "time.now": instant("2026-09-24T14:07:09+07:00", "clock:time.now"),
+    });
+
+    expect(
+      segments(
+        source,
+        [{ id: "b", semanticKey: "time.now" }],
+        [{ kind: "value", bindingId: "b" }],
+      ).segments.map((segment) => segment.text),
+    ).toEqual(["14:07"]);
+
+    // The same reading, told how to read: the author owns this, not the host.
+    expect(
+      segments(
+        source,
+        [
+          {
+            id: "b",
+            semanticKey: "time.now",
+            format: "dddd, DD MMMM",
+          },
+        ],
+        [{ kind: "value", bindingId: "b" }],
+      ).segments.map((segment) => segment.text),
+    ).toEqual(["Thursday, 24 September"]);
+  });
+
+  it("reads a pinned zone without the host's own offset deciding", () => {
+    const source = storeWith({
+      "time.now": instant("2026-09-24T14:07:09+07:00", "clock:time.now"),
+    });
+    const result = segments(
+      source,
+      [{ id: "b", semanticKey: "time.now", timeZone: "Asia/Tokyo" }],
+      [{ kind: "value", bindingId: "b" }],
+    );
+
+    // 14:07 +07:00 is 16:07 in Tokyo, which is the reading the author asked for.
+    expect(result.segments[0]!.text).toBe("16:07");
+  });
+
+  it("shows a text key that is not a time exactly as it was sent", () => {
+    const source = storeWith({
+      "cpu.model": instant("Ryzen 9", "cpu.model"),
+    });
+    const result = segments(
+      source,
+      [{ id: "b", semanticKey: "cpu.model", format: "HH:mm" }],
+      [{ kind: "value", bindingId: "b" }],
+    );
+
+    // An unknown key reports whatever it likes; no format is applied to it.
+    expect(result.segments[0]!.text).toBe("Ryzen 9");
+  });
+
   it("mixes literals and live values in one element", () => {
     const result = segments(
       storeWith({ "cpu.temp": ok(61.4, "°C", "cpu.temp") }),

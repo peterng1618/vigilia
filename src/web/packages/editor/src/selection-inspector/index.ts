@@ -1,4 +1,4 @@
-import type { FabricGlobals } from "@vigilia/renderer-core";
+import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
@@ -9,7 +9,7 @@ import {
   paintReferenceOf,
   resolveToken,
 } from "./appearance.js";
-import { createRunEditor } from "./runs.js";
+import { createRunEditor, type RunBindingPort } from "./runs.js";
 
 /**
  * Properties of the selected object. An author's most common action is "select a
@@ -61,6 +61,16 @@ export interface SelectionInspectorOptions {
   readonly editor: EditorInteraction;
   /** Theme globals, so a token's resolution can be shown. */
   readonly globals?: FabricGlobals;
+  /**
+   * A node's bindings, and the way to write them back. They belong to the theme
+   * envelope rather than to the Fabric object, so the session owns them and the
+   * inspector asks for them by node id.
+   */
+  readonly nodeBindings?: (nodeId: string) => readonly Binding[];
+  readonly onNodeBindingsChange?: (
+    nodeId: string,
+    bindings: readonly Binding[],
+  ) => void;
 }
 
 export function createSelectionInspector(
@@ -246,16 +256,23 @@ export function createSelectionInspector(
 
     // Styled runs, for a text object (§89). Nothing is shown for a run-less
     // selection, so a shape's inspector stays as it was.
+    const id = object.get("id");
+    const inspectable = object as unknown as {
+      get(n: string): unknown;
+      set(n: string, v: unknown): void;
+    };
+    // Without an id there is no node to key a binding by, so the run list stays
+    // what it was: a purely visual editor.
+    const port: RunBindingPort | undefined =
+      typeof id !== "string" || id.length === 0
+        ? undefined
+        : {
+            bindings: () => options.nodeBindings?.(id) ?? [],
+            setBindings: (next) => options.onNodeBindingsChange?.(id, next),
+          };
+
     root.append(
-      createRunEditor(
-        editor,
-        globals,
-        object as unknown as {
-          get(n: string): unknown;
-          set(n: string, v: unknown): void;
-        },
-        render,
-      ).root,
+      createRunEditor(editor, globals, inspectable, render, port).root,
     );
   };
 

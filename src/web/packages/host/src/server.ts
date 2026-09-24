@@ -1,7 +1,11 @@
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
-import { createBatch, SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
+import {
+  createBatch,
+  knownTimeZones,
+  SAMPLE_STREAM_PATH,
+} from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
@@ -16,6 +20,10 @@ import {
   type DeviceSettingsStore,
   EMPTY_DEVICE_SETTINGS,
 } from "./settings/devices.js";
+import type {
+  DisplaySettings,
+  DisplaySettingsStore,
+} from "./settings/display.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
@@ -59,6 +67,10 @@ export interface HostServerOptions {
   readonly activeTheme?: ActiveThemeStore;
   /** Called after an assignment change so providers re-read it. */
   readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
+  /** The consumer's display preferences. Omit when the host stores none. */
+  readonly display?: DisplaySettingsStore;
+  /** Called after a display change so providers read readings the new way. */
+  readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
   readonly describeDevices?: () => Promise<{
     readonly gpus: readonly { readonly id: string; readonly name: string }[];
@@ -329,6 +341,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
   const devices = options.devices;
+  const display = options.display;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
@@ -509,6 +522,57 @@ export function createHostServer(options: HostServerOptions): HostServer {
           const saved = await devices.write(body);
           options.onDeviceAssignment?.(await currentAssignment());
           sendJson(response, 200, { ok: true, assigned: saved });
+        } catch (error: unknown) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
+    // Display preferences are a machine fact, like device assignments, so they
+    // stay loopback-only and out of a theme.
+    if (url.pathname === "/api/display") {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(
+          response,
+          403,
+          "Display settings are available on this PC only.",
+        );
+        return;
+      }
+
+      if (display === undefined) {
+        sendText(
+          response,
+          404,
+          "Display settings are not enabled on this host.",
+        );
+        return;
+      }
+
+      if (request.method === "GET") {
+        // The zones travel with the setting: the page is dependency-free source
+        // and cannot resolve them any other way.
+        sendJson(response, 200, {
+          settings: await display.read(),
+          zones: knownTimeZones(),
+        });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        try {
+          const body = JSON.parse(await readBody(request)) as unknown;
+          const saved = await display.write(body);
+          options.onDisplayChange?.(saved);
+          sendJson(response, 200, { ok: true, settings: saved });
         } catch (error: unknown) {
           sendText(
             response,

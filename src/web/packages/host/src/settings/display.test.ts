@@ -1,0 +1,70 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  createDisplaySettingsStore,
+  EMPTY_DISPLAY_SETTINGS,
+  normalizeDisplaySettings,
+} from "./display.js";
+
+describe("display settings", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-display-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("keeps a zone this runtime resolves", () => {
+    expect(normalizeDisplaySettings({ timeZone: "Asia/Tokyo" })).toEqual({
+      timeZone: "Asia/Tokyo",
+    });
+  });
+
+  it("reads an emptied choice as this PC's own zone", () => {
+    // Clearing the field is going back to the default, not choosing "".
+    expect(normalizeDisplaySettings({ timeZone: "  " })).toEqual(
+      EMPTY_DISPLAY_SETTINGS,
+    );
+    expect(normalizeDisplaySettings({})).toEqual(EMPTY_DISPLAY_SETTINGS);
+    expect(normalizeDisplaySettings(null)).toEqual(EMPTY_DISPLAY_SETTINGS);
+  });
+
+  it("refuses a zone it cannot resolve rather than storing a dead setting", () => {
+    expect(() =>
+      normalizeDisplaySettings({ timeZone: "Mars/Olympus" }),
+    ).toThrow(/not a time zone/);
+  });
+
+  it("round-trips through the store", async () => {
+    const store = createDisplaySettingsStore(dir);
+
+    expect(await store.read()).toEqual(EMPTY_DISPLAY_SETTINGS);
+    await store.write({ timeZone: "Europe/Lisbon" });
+    expect(await store.read()).toEqual({ timeZone: "Europe/Lisbon" });
+    // Writing nothing is how a consumer goes back to this PC's own zone.
+    await store.write({});
+    expect(await store.read()).toEqual(EMPTY_DISPLAY_SETTINGS);
+  });
+
+  it("reads an unusable file as this PC's own zone instead of failing a poll", async () => {
+    await writeFile(path.join(dir, "display.json"), "{ not json", "utf8");
+    expect(await createDisplaySettingsStore(dir).read()).toEqual(
+      EMPTY_DISPLAY_SETTINGS,
+    );
+
+    // A zone the runtime has since dropped must not break a display either.
+    await writeFile(
+      path.join(dir, "display.json"),
+      JSON.stringify({ timeZone: "Mars/Olympus" }),
+      "utf8",
+    );
+    expect(await createDisplaySettingsStore(dir).read()).toEqual(
+      EMPTY_DISPLAY_SETTINGS,
+    );
+  });
+});

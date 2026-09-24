@@ -200,6 +200,10 @@ export class EditorSession {
       ...(options.envelope.globals === undefined
         ? {}
         : { globals: options.envelope.globals }),
+      // Bindings are envelope state, so the inspector reads and writes them
+      // through the session rather than holding a second copy of them.
+      nodeBindings: (id) => this.#envelope.bindings?.[id] ?? [],
+      onNodeBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
     this.charts = new ChartManager({
       editor: options.shell.editor,

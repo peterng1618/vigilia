@@ -302,6 +302,17 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         { id: "gpu-share", semanticKey: "gpu.load" },
         { id: "memory-share", semanticKey: "memory.used" },
       ],
+      time: [{ id: "clock-time", semanticKey: "time.now", format: "hh:mm" }],
+      "time-period": [
+        { id: "clock-period", semanticKey: "time.now", format: "A" },
+      ],
+      date: [
+        {
+          id: "clock-date",
+          semanticKey: "date.today",
+          format: "ddd, DD MMM YYYY",
+        },
+      ],
     },
     scene: {
       version: "7.4.0",
@@ -352,9 +363,9 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         ),
 
         card("time-card", 52, 150, 260, 330),
-        label("time", 78, 189, 210, "07:24", 70, text, "300"),
-        label("time-period", 253, 251, 45, "PM", 17, dim, "500"),
-        label("date", 80, 288, 200, "TUE, APR 23, 2024", 16, text, "400"),
+        valueLabel("time", 78, 189, 210, 70, text, "300", "clock-time"),
+        valueLabel("time-period", 253, 251, 45, 17, dim, "500", "clock-period"),
+        valueLabel("date", 80, 288, 200, 16, text, "400", "clock-date"),
         path(
           "time-rule",
           80,
@@ -623,6 +634,36 @@ function label(
       ],
     },
     ...positioned,
+  };
+}
+
+/**
+ * A label whose text is a reading rather than prose. The starter theme's clock
+ * was authored literal text, so it looked like a clock and was not one; a value
+ * run makes the default theme demonstrate a live one.
+ */
+function valueLabel(
+  id: string,
+  left: number,
+  top: number,
+  width: number,
+  fontSize: number,
+  fill: string,
+  fontWeight: string,
+  bindingId: string,
+): ObjectJson {
+  return {
+    ...label(id, left, top, width, "—", fontSize, fill, fontWeight),
+    vigiliaText: {
+      runs: [
+        {
+          kind: "value",
+          bindingId,
+          typePreset: `typePresets.${fontSize}-${fontWeight}`,
+          style: { color: { ref: `palette.${paletteIdFor(fill)}` } },
+        },
+      ],
+    },
   };
 }
 

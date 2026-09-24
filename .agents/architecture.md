@@ -74,6 +74,7 @@ Editor concept ownership:
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
+| The consumer's clock zone | `host/src/settings/display.ts` |
 | Theme thumbnails (store and route) | `host/src/themes/thumbnails.ts` |
 | Thumbnail capture in the editor | `editor/src/thumbnail-capture.ts` |
 | Shell chrome, rail, inspector tabs, menus | `editor/src/editor-shell/shell-layout.tsx` |
@@ -207,6 +208,8 @@ usage.
 | SSE connection/keep-latest | `host/src/transport/` |
 | Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
 | Device assignment and display names | `host/src/settings/devices.ts` |
+| Clock/date provider | `host/src/providers/clock.ts` |
+| Instant reading and author format tokens | `renderer-core/src/scene/datetime-format.ts` |
 | Consumer device-selection page | `host/public/settings.html` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |

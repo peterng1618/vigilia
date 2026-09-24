@@ -140,6 +140,17 @@ export interface Binding {
   readonly unitDisplay?: "none" | "short" | "long";
   readonly scale?: number;
   readonly offset?: number;
+  /**
+   * How a time/date reading is written out (`HH:mm`, `dddd DD MMMM`). How a clock
+   * *reads* is design, so the author owns it; how a value *is formatted* for its
+   * unit stays derived. Absent means the key's own default format.
+   */
+  readonly format?: string;
+  /**
+   * The zone this reading is shown in — a world-clocks theme pins one clock to
+   * `Asia/Tokyo` while another follows the consumer. Absent means this PC's zone.
+   */
+  readonly timeZone?: string;
 }
 
 export type TextRun =

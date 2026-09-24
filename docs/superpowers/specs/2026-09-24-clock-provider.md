@@ -28,8 +28,8 @@ Two, because they are read differently and refreshed differently:
 - `date.today` — the calendar date.
 
 They are **string** sensors: a clock is a formatted string, not a number. The
-family is new (`time`), so §93's vocabulary gains a family rather than
-overloading an existing one.
+families are new (`time`, `date`), so §93's vocabulary gains families rather
+than overloading an existing one.
 
 ### The provider measures; the display formats
 
@@ -46,6 +46,62 @@ So the provider reports a format the display could not have chosen alone, and th
 format preference (below) is applied where the rest of a display's preferences
 are.
 
+### The author owns format *and* zone; the consumer supplies the default
+
+Three decisions, and the first draft got two of them wrong:
+
+- **How it reads** is design, so the *author* owns it: `HH:mm`, `dddd, DD MMMM`,
+  day of week included.
+- **Which zone each clock shows** is *also* design. A world-clocks dashboard is a
+  legitimate theme: one clock in the consumer's own zone and others pinned to
+  named zones by the author. So the *author* may set a zone per binding, and a
+  binding that sets none follows the consumer's default.
+- **What the default zone is** is a machine fact, so the *consumer* owns that
+  one, in the global settings section.
+
+What the provider sends is an **instant**, never a formatted wall clock: the
+reading is written with the offset it was read in, so it cannot be misread as a
+local time and a display never re-converts. Which zone that reading is taken in
+is resolved in two places, and they do not overlap:
+
+- The **consumer's default zone is the provider's**, applied where the other
+  machine preferences are. Two displays of the same theme then agree, and a
+  device with a wrong clock still reads the host's time.
+- The **author's zone is the binding's**, applied at format time by the display:
+  it names the zone for that one clock, so a world-clocks theme works.
+
+This requires one envelope addition: the binding carries an optional author-chosen
+zone. That is presentation of a reading, not a new reading, so it belongs on the
+binding beside `precision` and `unitDisplay`. The model, the renderer and the
+formatting tests honour it; no authoring control writes it yet (see Non-goals).
+
+`Intl.DateTimeFormat` supplies zone offsets, so no date library is added.
+
+### Formatting is a small token set, not a pattern language
+
+```
+HH   24-hour padded      H   24-hour
+hh   12-hour padded      h   12-hour
+mm   minutes             ss   seconds
+dddd weekday name        ddd  weekday short
+DD   day padded          D    day
+MMMM month name          MMM  month short
+MM   month padded        M    month
+YYYY year                YY   year short
+A    day period (PM)     a    day period (pm)
+```
+
+Tokens concatenate, and `[bracketed]` text is always literal. Prose is full of
+letters, so an unquoted `[Today is ]dddd` must not read `T` `o` `d` `a` `y` as
+tokens; an unclosed bracket keeps its text rather than swallowing the string.
+This covers every clock a dashboard needs, including day of week, without
+shipping a pattern engine or a dependency. An arbitrary ICU pattern is explicitly
+**not** supported: it would be a parser, a second formatting model, and a source
+of silent mismatch with `Intl`.
+
+A binding with no format uses a sensible default per family (time `HH:mm`,
+date `DD MMM YYYY`).
+
 ### Refresh cadence
 
 A clock changes every minute and nothing else does. The host's cadence is 1 s, so
@@ -61,24 +117,24 @@ bytes, and adding "only send when changed" would be a protocol feature for one
 provider's benefit. If a real cost appears, a `stale`-style tick is the fix and
 it belongs to the protocol, not this provider.
 
-### The format is a preference, not a key per format
+### One key each, not one per format
 
-A consumer's timezone and clock format are global user preferences (the category
-the settings page now separates), so they configure the provider rather than
-multiplying semantic keys. `time.now` stays the one key; the host renders it
-using the consumer's timezone and 12/24-hour choice.
-
-This is why the provider belongs on the host: the format needs the consumer's
-settings, which the host owns.
+`time.now` and `date.today` stay single keys: format multiplies what an author
+can *say* about one reading, and a key per format would put presentation in the
+vocabulary. Two keys also keep the derivation and binding UIs unchanged.
 
 ### Timezone, finally buildable
 
 With the key and provider in place, timezone becomes what the settings spec said
-it would be: a formatting preference with a real consumer. It joins the global
-settings section beside the measurement system.
+it would be: a machine preference with a real consumer. It joins the global
+settings section beside the measurement system — and it is the *only* part of a
+clock a consumer configures, since the format is authored.
 
 ## Non-goals
 
+- An authoring control for the binding's own zone. The field is honoured end to
+  end but nothing writes it, so a pinned-zone clock is authored in the envelope
+  rather than in the editor.
 - A live-updating seconds clock: the cadence is the host's, and per-second redraw
   is a performance decision this does not need to make.
 - Timers, stopwatches, uptime or duration sensors.
@@ -98,11 +154,14 @@ settings section beside the measurement system.
 ## Acceptance
 
 - `time.now` and `date.today` appear in the authoring picker with the other keys.
+- An author can format each one, including day of week, and the rendered result
+  matches the tokens they wrote.
+- An unknown token renders literally rather than throwing or blanking the text.
 - A text run bound to `time.now` shows the host's current time, and updates as
   the cadence advances.
 - Choosing a different timezone changes what the dashboard shows, on the next
   cadence, without editing the theme.
-- A 12-hour format choice changes the rendering as expected.
+- A 12-hour format renders as the author's tokens specify.
 - The starter theme's authored `"07:24"` is replaced by a bound clock, so the
   default theme demonstrates the feature rather than a fixed string.
 - A theme bound to no time key is unaffected.
