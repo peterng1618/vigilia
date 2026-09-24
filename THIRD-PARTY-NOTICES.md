@@ -14,6 +14,7 @@ inventory, not a release-grade transitive audit. Provenance:
 | react 19.3.0 | MIT | editor shell chrome |
 | react-dom 19.3.0 | MIT | editor shell chrome |
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
+| lucide-react 1.48.0 | ISC | editor action-bar icons |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
@@ -84,6 +85,29 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Runtime icons
+
+`lucide-react` 1.48.0 (ISC) supplies the editor's action-bar icons, imported
+per-icon by name so the bundler keeps only the ones the registry uses. ISC
+requires the copyright and permission notice to travel with copies, so the
+licence follows in full.
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ## Assets and planned integrations
 

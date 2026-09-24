@@ -97,6 +97,17 @@ export const uiCopy = {
     copy: "Copy",
     cut: "Cut",
   },
+  /** One label per arrange action; keys mirror `ArrangeAction`. */
+  arrangeLabels: {
+    "align-left": "Align left",
+    "align-center-x": "Centre horizontally",
+    "align-right": "Align right",
+    "align-top": "Align top",
+    "align-center-y": "Centre vertically",
+    "align-bottom": "Align bottom",
+    "distribute-x": "Distribute horizontally",
+    "distribute-y": "Distribute vertically",
+  },
   dock: { label: "Selected object actions" },
   palette: "Shell palette",
   /** Chart family labels, shared by the Add panel and the Insert menu. */

@@ -8,6 +8,7 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 |---|---|---|---|
 | `echarts` | 6.1.0 | Apache-2.0 | charts |
 | `fabric` | 7.4.0 | MIT | scene graph |
+| `lucide-react` | 1.48.0 | ISC | editor action-bar icons |
 | `fflate` | 0.8.3 | MIT | theme ZIP codec |
 | `@biomejs/biome` | 2.5.14 | MIT OR Apache-2.0 | format/lint |
 | `vite` | 8.3.0 | MIT | build/dev |
@@ -21,6 +22,12 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 Fabric 7.4.0 metadata/LICENSE confirms MIT and no runtime dependencies. Use
 `fabric/es`; player and editor both use it directly, with no adopted
 image-editor package or its transitive graph.
+
+`lucide-react` 1.48.0 is the editor's only icon source: verified from its
+installed `package.json` (`license: ISC`) and its `LICENSE` file on 2026-09-25.
+It has no runtime dependencies, only a `react` peer that the editor already
+satisfies. Icons are imported by name so tree-shaking keeps the registry's
+eighteen. Full licence text in `THIRD-PARTY-NOTICES.md`.
 
 ## Vendored source
 
