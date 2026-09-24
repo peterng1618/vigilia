@@ -58,6 +58,40 @@ function toSnapSource(
   };
 }
 
+/**
+ * Picks the browser event as the step marker, exactly as the fork does. Fabric
+ * reuses one marker per native pointer event, so the runtime can tell a repeat
+ * of the same event (a target and its selection both moving) from a new step.
+ */
+function readMovementMarker({
+  event,
+}: {
+  event: { readonly e?: unknown } | undefined;
+}): object {
+  const browserEvent = event?.e;
+  if (
+    (typeof browserEvent === "object" && browserEvent !== null) ||
+    typeof browserEvent === "function"
+  ) {
+    return browserEvent;
+  }
+  return event ?? {};
+}
+
+/** Ctrl is the documented escape hatch: the unrounded, unsnapped drag. */
+function readMovementModifiers({
+  event,
+}: {
+  event: { readonly e?: unknown } | undefined;
+}): { readonly ctrlKey: boolean } {
+  const browserEvent = event?.e;
+  const ctrlKey =
+    typeof browserEvent === "object" && browserEvent !== null
+      ? (browserEvent as { ctrlKey?: unknown }).ctrlKey
+      : undefined;
+  return { ctrlKey: ctrlKey === true };
+}
+
 export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const { canvas, bounds, errors } = options;
   const runtime = new MovementSnappingRuntime();
@@ -69,19 +103,15 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   let lastGuides: readonly GuideLine[] = [];
   let lastSpacingGuides: readonly unknown[] = [];
   let gestureActive = false;
-  /**
-   * One marker per gesture: Fabric may deliver several object:moving events
-   * for the same pointer marker, and the runtime's duplicate detection is
-   * keyed on marker identity.
-   */
-  let gestureMarker: object | undefined;
+  /** The drag that owns the gesture; a second object's move must not join it. */
+  let gestureTarget: FabricObject | undefined;
 
   const stopGesture = (): void => {
     if (gestureActive) runtime.finishSession();
     gestureActive = false;
     target = undefined;
     targetStartBounds = undefined;
-    gestureMarker = undefined;
+    gestureTarget = undefined;
     lastGuides = [];
     lastSpacingGuides = [];
     canvas.requestRenderAll();
@@ -128,26 +158,28 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     });
     target = active;
     targetStartBounds = startBounds;
-    gestureMarker = { gesture: "moving" };
+    gestureTarget = active;
     gestureActive = true;
   };
 
-  const runStep = (): void => {
+  const runStep = (event: { readonly e?: unknown } | undefined): void => {
     const moved = target;
     const startBounds = targetStartBounds;
     if (
       !gestureActive ||
       moved === undefined ||
       startBounds === undefined ||
-      gestureMarker === undefined
+      moved !== gestureTarget
     )
       return;
 
-    // One marker per gesture: repeated object:moving events with unchanged
-    // geometry hit the runtime's duplicate path instead of re-planning.
-    const marker = gestureMarker;
-    const duplicate = runtime.getDuplicateStep({ marker });
-    if (duplicate !== null) return;
+    // One marker per native pointer event, as in the fork: Fabric delivers
+    // several object:moving events for one pointer move (target plus any
+    // active selection), and the runtime's duplicate detection is keyed on
+    // marker identity. The browser event is a fresh object per pointermove,
+    // so each real movement step re-plans; a repeat of the same event is
+    // recognised as a duplicate instead of being re-applied.
+    const marker = readMovementMarker({ event });
 
     const rawBounds = getObjectExactBounds({ object: moved });
     if (rawBounds === null) return;
@@ -172,8 +204,8 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
           left: moved.get("left") ?? startBounds.left,
           top: moved.get("top") ?? startBounds.top,
         },
-        axes: { x: true, y: true },
-        modifiers: { ctrlKey: false },
+        axes: { x: moved.lockMovementX !== true, y: moved.lockMovementY !== true },
+        modifiers: readMovementModifiers({ event }),
       },
     });
     if (step.kind !== "planned") return;
@@ -222,7 +254,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     if (lastGuides.length === 0 && lastSpacingGuides.length === 0) return;
     renderSnappingGuides({
       canvas,
-      guideBounds: null,
+      guideBounds: bounds(),
       guides: lastGuides,
       spacingGuides: lastSpacingGuides as never,
     });
@@ -240,10 +272,12 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     ["after:render", afterRender],
   ] as const;
 
-  const guard = (step: () => void): (() => void) => {
-    return () => {
+  const guard = (
+    step: (event?: never) => void,
+  ): ((event?: never) => void) => {
+    return (event?: never) => {
       try {
-        step();
+        step(event);
       } catch (error) {
         errors.error("snapping", "A snapping step failed.", error);
       }

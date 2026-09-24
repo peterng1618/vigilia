@@ -22,6 +22,11 @@ function setup() {
 }
 
 describe("SnapManager", () => {
+  /** Fires one movement step; each step carries its own browser event, as a real pointermove does. */
+  function move(canvas: Canvas, target: unknown, e: object = {}): void {
+    canvas.fire("object:moving" as never, { target, e } as never);
+  }
+
   it("nudges a dragged object onto a neighbour's edge", () => {
     const { canvas, snapping } = setup();
     const anchor = new Rect({
@@ -42,9 +47,66 @@ describe("SnapManager", () => {
     canvas.setActiveObject(dragged);
 
     canvas.fire("mouse:down" as never, { target: dragged } as never);
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
 
     expect(dragged.left).toBe(100);
+    snapping.destroy();
+  });
+
+  it("re-plans every movement step of one drag", () => {
+    const { canvas, snapping } = setup();
+    // A two-step drag with no neighbour near either step: only the second read
+    // can tell a re-planning step from a cached one.
+    const anchor = new Rect({
+      id: "a",
+      left: 100,
+      top: 20,
+      width: 40,
+      height: 40,
+    });
+    const dragged = new Rect({
+      id: "b",
+      left: 200,
+      top: 150,
+      width: 40,
+      height: 40,
+    });
+    canvas.add(anchor, dragged);
+    canvas.setActiveObject(dragged);
+
+    canvas.fire("mouse:down" as never, { target: dragged } as never);
+    dragged.set({ left: 120, top: 150 });
+    move(canvas, dragged);
+    dragged.set({ left: 99, top: 150 });
+    move(canvas, dragged);
+
+    expect(dragged.left).toBe(100);
+    snapping.destroy();
+  });
+
+  it("leaves the raw position alone while Ctrl is held", () => {
+    const { canvas, snapping } = setup();
+    const anchor = new Rect({
+      id: "a",
+      left: 100,
+      top: 20,
+      width: 40,
+      height: 40,
+    });
+    const dragged = new Rect({
+      id: "b",
+      left: 98.4,
+      top: 150,
+      width: 40,
+      height: 40,
+    });
+    canvas.add(anchor, dragged);
+    canvas.setActiveObject(dragged);
+
+    canvas.fire("mouse:down" as never, { target: dragged } as never);
+    move(canvas, dragged, { ctrlKey: true });
+
+    expect(dragged.left).toBe(98.4);
     snapping.destroy();
   });
 
@@ -68,7 +130,7 @@ describe("SnapManager", () => {
     canvas.setActiveObject(dragged);
 
     canvas.fire("mouse:down" as never, { target: dragged } as never);
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
 
     expect(dragged.left).toBe(250);
     snapping.destroy();
@@ -95,7 +157,7 @@ describe("SnapManager", () => {
     canvas.setActiveObject(dragged);
 
     canvas.fire("mouse:down" as never, { target: dragged } as never);
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
 
     expect(dragged.left).toBe(98);
     snapping.destroy();
@@ -118,7 +180,7 @@ describe("SnapManager", () => {
 
     snapping.destroy();
     canvas.fire("mouse:down" as never, { target: dragged } as never);
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
 
     expect(dragged.left).toBe(98);
   });
@@ -144,9 +206,9 @@ describe("SnapManager", () => {
     // Whole-pixel drag: the resolver's pixel rounding returns a zero-delta
     // plan. The pending token must still be verified so the next step runs.
     dragged.set({ left: 99, top: 151 });
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
     dragged.set({ left: 120, top: 160 });
-    canvas.fire("object:moving" as never, { target: dragged } as never);
+    move(canvas, dragged);
 
     expect(dragged.left).toBe(120);
     expect(logged).not.toHaveBeenCalled();
