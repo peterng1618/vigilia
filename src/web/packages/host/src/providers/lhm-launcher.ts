@@ -1,11 +1,27 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /**
  * Runs a local LibreHardwareMonitor so its web server can be read (§97). LHM is
  * an external program: Vigilia launches it and stops only the process it
  * started itself, never one the machine owner is already running.
+ *
+ * LHM's executable is manifested `requireAdministrator`, because reading most
+ * sensors needs its kernel driver. A non-elevated host therefore **cannot**
+ * start it — Windows refuses — so this reports that rather than a bare failure
+ * code, and launching is opt-in rather than automatic.
  */
+
+/** Detects the elevation requirement so the failure can be explained. */
+export function requiresElevation(executable: string): boolean {
+  try {
+    // Scans the PE for its manifest string; cheaper and more portable than
+    // parsing the resource directory.
+    return readFileSync(executable, "latin1").includes("requireAdministrator");
+  } catch {
+    return false;
+  }
+}
 
 export interface LhmLaunchOptions {
   /** Path to `LibreHardwareMonitor.exe`. */
@@ -61,6 +77,20 @@ export async function launchLhm(
     return {
       started: false,
       reason: `LibreHardwareMonitor was not found at ${options.executable}`,
+      stop: () => undefined,
+    };
+  }
+
+  // Windows will refuse a non-elevated spawn of an `requireAdministrator`
+  // binary, so say why instead of surfacing EACCES.
+  if (requiresElevation(options.executable)) {
+    return {
+      started: false,
+      reason:
+        "LibreHardwareMonitor needs administrator rights (it loads a driver), " +
+        "so Vigilia cannot start it from a normal user session. Start " +
+        "LibreHardwareMonitor yourself and enable its web server, or run " +
+        "Vigilia elevated.",
       stop: () => undefined,
     };
   }

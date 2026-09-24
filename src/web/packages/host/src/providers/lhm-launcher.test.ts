@@ -1,7 +1,24 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { launchLhm } from "./lhm-launcher.js";
+import { launchLhm, requiresElevation } from "./lhm-launcher.js";
 
 describe("LHM launcher", () => {
+  it("recognises an executable that needs administrator rights", () => {
+    // LHM asks for elevation because it loads a driver; spawning it from a
+    // normal session is what Windows refuses with EACCES.
+    const elevated = fileURLToPath(
+      new URL("./__fixtures__/elevated.bin", import.meta.url),
+    );
+    const invoker = fileURLToPath(
+      new URL("./__fixtures__/as-invoker.bin", import.meta.url),
+    );
+
+    expect(requiresElevation(elevated)).toBe(true);
+    expect(requiresElevation(invoker)).toBe(false);
+    // A missing file is not an elevation claim.
+    expect(requiresElevation("/definitely/not/here.exe")).toBe(false);
+  });
+
   it("leaves an LHM that is already answering alone", async () => {
     const spawnProcess = vi.fn();
     const result = await launchLhm({

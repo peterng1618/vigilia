@@ -22,16 +22,6 @@ function style(code: string, text: string): string {
   return process.stdout.isTTY ? `\u001b[${code}m${text}\u001b[0m` : text;
 }
 
-/**
- * Where a packaged LibreHardwareMonitor lives: `vendor/lhm/` beside the host
- * package. Absent until LHM is actually redistributed, which needs its licence
- * obligations settled first (`.agents/dependency-licences.md`).
- */
-function bundledLhmPath(): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(here, "..", "vendor", "lhm", "LibreHardwareMonitor.exe");
-}
-
 const VERSION = "0.1.0";
 
 export async function run(argv: readonly string[]): Promise<number> {
@@ -56,13 +46,18 @@ export async function run(argv: readonly string[]): Promise<number> {
     lhmExecutable,
   } = parsed.options;
 
-  // Starting LHM is opt-in via `--lhm-exe`; the provider reads whichever server
-  // answers, whether Vigilia launched it or the owner already runs it.
-  const lhm = await launchLhm({
-    executable: lhmExecutable ?? bundledLhmPath(),
-    baseUrl: lhmUrl,
-    ...(lhmExecutable === undefined ? {} : { timeoutMs: 20_000 }),
-  });
+  // Launching LHM is opt-in via `--lhm-exe`, never automatic: its manifest
+  // requires administrator rights, so starting it unattended would raise a UAC
+  // prompt on every host start. The provider reads whichever server answers,
+  // whether Vigilia launched it or the owner already runs it.
+  const lhm =
+    lhmExecutable === undefined
+      ? { started: false, stop: (): void => undefined }
+      : await launchLhm({
+          executable: lhmExecutable,
+          baseUrl: lhmUrl,
+          timeoutMs: 20_000,
+        });
 
   // Provider order defines ownership priority. LibreHardwareMonitor answers the
   // extended sensors (CPU temperature, fans, GPU detail) when the machine owner
@@ -139,7 +134,12 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
   } else {
     console.log(
-      style("2", `  Using the LibreHardwareMonitor already at ${lhmUrl}`),
+      style(
+        "2",
+        `  Extended sensors (CPU temperature, fans, power) need ` +
+          `LibreHardwareMonitor running at ${lhmUrl}.` +
+          "\n  Start it yourself with its web server enabled, or pass --lhm-exe.",
+      ),
     );
   }
 
