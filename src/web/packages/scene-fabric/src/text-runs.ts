@@ -47,7 +47,56 @@ export function textShapeFor(
   const text = segments.map((segment) => segment.text).join("");
 
   if (segments.length <= 1) {
-    return { text, styles: {}, unsupported: [] };
+    // One run needs no per-character styles *when it agrees with the object*.
+    // An author who styled that single run differently from its object must
+    // still see it, so the authored keys are emitted rather than dropped.
+    const only = segments[0];
+    if (only === undefined) {
+      return { text, styles: {}, unsupported: [] };
+    }
+
+    const paint = paintFor(only.style, "text");
+    const authored = Object.fromEntries(
+      Object.entries(paint).filter(([key]) =>
+        (PER_RUN_PAINT_SOURCES[key] ?? []).some(
+          (property) => property in only.style,
+        ),
+      ),
+    );
+
+    // Where the run resolves to what the object already paints, per-character
+    // styles would be a second copy of one fact. Where it differs — the author
+    // styled this run — they are the only way the difference can show.
+    const nodePaint = paintFor(nodeStyle, "text");
+    const differs = Object.entries(authored).some(
+      ([key, value]) => nodePaint[key] !== value,
+    );
+
+    if (!differs) {
+      return { text, styles: {}, unsupported: [] };
+    }
+
+    const unsupported: string[] = [];
+
+    if (Object.keys(authored).length === 0) {
+      return { text, styles: {}, unsupported: [] };
+    }
+
+    const perRun: MutableStyles = {};
+    let line = 0;
+    for (const [index, lineText] of only.text.split(/\r?\n/).entries()) {
+      if (index > 0) line += 1;
+      const target = (perRun[line] ??= {});
+      for (
+        let offset = 0;
+        offset < splitGraphemes(lineText).length;
+        offset += 1
+      ) {
+        target[offset] = authored;
+      }
+    }
+
+    return { text, styles: perRun, unsupported };
   }
 
   const styles: MutableStyles = {};

@@ -197,13 +197,42 @@ function firstPalette(
   return selected;
 }
 
+/**
+ * The preset a new text object uses. Not simply the first entry: presets are
+ * conventionally ordered smallest first, so the first is usually a caption too
+ * small to inspect comfortably.
+ *
+ * A body-role preset is preferred, the largest of them, with the largest
+ * remaining preset as the fallback. Heading presets are excluded: a 70px clock
+ * face is not a sensible default for a fresh text object.
+ */
 function firstTypePreset(
   globals: FabricGlobals | undefined,
 ): readonly [string, TypePreset] {
+  let body: readonly [string, TypePreset] | undefined;
+  let largest: readonly [string, TypePreset] | undefined;
+
   for (const [id, entry] of Object.entries(globals?.typePresets ?? {})) {
-    if (isTypePreset(entry.value)) return [id, entry.value];
+    if (!isTypePreset(entry.value)) continue;
+
+    if (largest === undefined || entry.value.size > largest[1].size) {
+      largest = [id, entry.value];
+    }
+
+    if (entry.value.trioRole !== "body") continue;
+
+    if (body === undefined || entry.value.size > body[1].size) {
+      body = [id, entry.value];
+    }
   }
-  throw new Error("New text requires a type preset.");
+
+  const chosen = body ?? largest;
+
+  if (chosen === undefined) {
+    throw new Error("New text requires a type preset.");
+  }
+
+  return chosen;
 }
 
 function isTypePreset(value: unknown): value is TypePreset {

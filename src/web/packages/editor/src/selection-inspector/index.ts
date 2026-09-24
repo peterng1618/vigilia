@@ -1,4 +1,4 @@
-import type { Globals } from "@vigilia/renderer-core";
+import type { FabricGlobals } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
@@ -9,6 +9,7 @@ import {
   paintReferenceOf,
   resolveToken,
 } from "./appearance.js";
+import { createRunEditor } from "./runs.js";
 
 /**
  * Properties of the selected object. An author's most common action is "select a
@@ -24,7 +25,7 @@ export interface SelectionInspector {
   /** Re-reads the active object; call on every selection change. */
   render(): void;
   /** Theme globals changed, so a displayed resolution may have too. */
-  setGlobals(next: Globals | undefined): void;
+  setGlobals(next: FabricGlobals | undefined): void;
 }
 
 /** A geometry field, in whole artboard units. */
@@ -59,7 +60,7 @@ function readField(object: FabricObject, key: GeometryField["key"]): number {
 export interface SelectionInspectorOptions {
   readonly editor: EditorInteraction;
   /** Theme globals, so a token's resolution can be shown. */
-  readonly globals?: Globals;
+  readonly globals?: FabricGlobals;
 }
 
 export function createSelectionInspector(
@@ -242,6 +243,20 @@ export function createSelectionInspector(
       ),
     );
     root.append(appearance);
+
+    // Styled runs, for a text object (§89). Nothing is shown for a run-less
+    // selection, so a shape's inspector stays as it was.
+    root.append(
+      createRunEditor(
+        editor,
+        globals,
+        object as unknown as {
+          get(n: string): unknown;
+          set(n: string, v: unknown): void;
+        },
+        render,
+      ).root,
+    );
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields

@@ -85,7 +85,9 @@ test.describe("Fabric editor route", () => {
       vigiliaText: {
         runs: [
           {
-            typePreset: "typePresets.11-400",
+            // A body-role preset, not the first (a caption too small to
+            // inspect comfortably).
+            typePreset: "typePresets.17-500",
             style: { color: { ref: "palette.text" } },
           },
         ],

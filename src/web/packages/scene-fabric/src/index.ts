@@ -28,7 +28,11 @@ export {
 } from "./chart-object.js";
 export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
 export type { UnsupportedReporter } from "./fabric-nodes.js";
-export { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
+export {
+  applyAuthoredText,
+  refreshBoundText,
+  VIGILIA_TEXT_PROPERTY,
+} from "./fabric-text.js";
 export { type FontAssetLoadOptions, loadFontAssets } from "./font-assets.js";
 export {
   type FabricAssetReference,

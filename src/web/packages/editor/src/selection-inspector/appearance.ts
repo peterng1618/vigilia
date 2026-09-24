@@ -1,4 +1,4 @@
-import type { FabricPalette, Globals } from "@vigilia/renderer-core";
+import type { FabricGlobals, FabricPalette } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
@@ -16,7 +16,7 @@ const PAINT_PROPERTY = "vigiliaPaint";
 
 export interface AppearanceContext {
   readonly editor: EditorInteraction;
-  readonly globals: Globals | undefined;
+  readonly globals: FabricGlobals | undefined;
 }
 
 /** The object's own palette reference, if it carries one. */
@@ -35,7 +35,7 @@ export function paintReferenceOf(
 
 /** What a palette token currently resolves to, for display. */
 export function resolveToken(
-  globals: Globals | undefined,
+  globals: FabricGlobals | undefined,
   ref: string | undefined,
 ): string | undefined {
   if (ref === undefined || !ref.startsWith("palette.")) {

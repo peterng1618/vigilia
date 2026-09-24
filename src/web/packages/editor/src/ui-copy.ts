@@ -31,6 +31,11 @@ export const uiCopy = {
     paint: "Paint",
     notSet: "not set",
     unresolved: "no longer resolves",
+    runs: "Runs",
+    runPreset: "Type preset",
+    runColour: "Colour",
+    valueRun: "Value",
+    emptyRun: "(empty)",
   },
   menus: {
     file: "File",

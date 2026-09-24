@@ -8,7 +8,7 @@ import type {
   SampleSource,
   TextContent,
 } from "@vigilia/renderer-core";
-import { resolveTextSegments } from "@vigilia/renderer-core";
+import { emptySampleSource, resolveTextSegments } from "@vigilia/renderer-core";
 import {
   FabricText,
   Group,
@@ -92,6 +92,52 @@ export function updateText(
 }
 
 /** Apply sampled values while retaining the authored runs used for persistence. */
+/**
+ * Reapplies a text object's own authored runs to Fabric, with no source or
+ * bindings involved. The editor needs this after an author changes a run: the
+ * authored content is what they edited, and Fabric's per-character styles are
+ * what they see. `refreshBoundText` cannot serve that case, since it refreshes
+ * only objects a sample resolves.
+ */
+export function applyAuthoredText(
+  canvas: StaticCanvas,
+  globals: FabricGlobals | undefined,
+): void {
+  const apply = (objects: readonly object[]): void => {
+    for (const object of objects) {
+      if (isTextObject(object)) {
+        const id = object.get("id");
+        const authored = object.get(VIGILIA_TEXT_PROPERTY);
+
+        if (typeof id === "string" && isTextContent(authored)) {
+          // Literal runs resolve against globals alone; a value run contributes
+          // nothing without a sample, and keeps its authored placeholder.
+          const segments = resolveTextSegments(
+            id,
+            authored.runs,
+            [],
+            { source: emptySampleSource },
+            globals ?? {},
+            [],
+          );
+          const shape = textShapeFor(segments, {}, (value) =>
+            object.graphemeSplit(value),
+          );
+          object.set({ text: shape.text, styles: shape.styles });
+          object.initDimensions();
+        }
+      }
+
+      const children = (
+        object as { getObjects?: () => readonly object[] }
+      ).getObjects?.();
+      if (children !== undefined) apply(children);
+    }
+  };
+
+  apply(canvas.getObjects());
+}
+
 export function refreshBoundText(
   canvas: StaticCanvas,
   bindings: Readonly<Record<string, readonly Binding[]>>,
