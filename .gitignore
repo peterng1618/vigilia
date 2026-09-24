@@ -44,6 +44,9 @@ docs/evidence/screenshots/**/raw/
 # in docs/superpowers/specs/ instead.
 .claude/plans/
 .worktrees/
+# Playwright MCP scratch: screenshots, snapshots and console logs from an
+# interactive browser session. Regenerated at will, never evidence.
+.playwright-mcp/
 
 # Credentials, at any depth. A Claude Code process launched with a cwd inside
 # this repo and a home that did not resolve once created a whole config home
