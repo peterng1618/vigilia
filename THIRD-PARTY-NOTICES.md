@@ -2,7 +2,7 @@
 
 Vigilia is MIT licensed; see [LICENSE](LICENSE). This is the current development
 inventory, not a release-grade transitive audit. Provenance:
-[`.agents/dependency-licences.md`](.agents/dependency-licences.md).
+[`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).
 
 ## Runtime/editor
 
@@ -42,7 +42,7 @@ Release packaging must include `vendor/lhm/LICENSE` and
 distribution. PawnIO is **not** in the archive — LHM fetches it at runtime and
 it is LGPL-2.1 — so a first-run PawnIO download needs its own review before
 being enabled. Provenance and the pinned digest:
-`.agents/dependency-licences.md`; `vendor/lhm/PROVENANCE.txt` records the
+`docs/engineering/dependencies.md`; `vendor/lhm/PROVENANCE.txt` records the
 version, source URL and sha256 of the staged release.
 
 ## Build/test

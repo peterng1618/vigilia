@@ -1630,7 +1630,7 @@ async function captureVisualReview(
     process.env["VIGILIA_CAPTURE_DIR"] ??
     (process.env["VIGILIA_CAPTURE"] === undefined
       ? "test-results/screenshots"
-      : "../../.agents/screenshots");
+      : "../../docs/evidence/screenshots");
   const filename = `${name}-${testInfo.project.name}.png`;
   const screenshot = await page.screenshot({
     path: `${directory}/${filename}`,

@@ -1,4 +1,4 @@
-# Dashboard screenshots
+# Visual evidence screenshots
 
 Visual evidence from built bundles; **not** cross-platform pixel baselines.
 

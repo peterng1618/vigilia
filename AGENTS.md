@@ -24,17 +24,13 @@ Vigilia process.
 - Designs/specs live in `docs/superpowers/specs/`.
 - Executable plans live in `docs/superpowers/plans/`; completed/superseded
   plans move to `docs/superpowers/plans/archive/`.
-- Do not create project workflow skills, alternate spec/plan directories, or
-  duplicate Superpowers instructions under `.agents/` or `.claude/`.
-- `.agents/status.md` is only the current product handoff. Git and archived
-  plans keep history.
-- Durable project truth lives under `docs/`; see `docs/README.md` for the canonical map.
+- Do not create project workflow skills, alternate spec/plan directories, or duplicate Superpowers workflow instructions elsewhere in the repository.
+- Durable project truth lives under `docs/`; see `docs/README.md` for the canonical map. Before cross-cutting changes, read `docs/architecture/ownership.md`.
 - `§N` product-requirement markers are stable; never renumber them.
 
 ## Architecture guardrails
 
-- **One owner per concept.** Check `docs/architecture/ownership.md` and the existing owner before adding a type, key,
-  default, action, route, helper, style property or schema value.
+- **One owner per concept.** Check `docs/architecture/ownership.md` and the existing owner before adding a type, key, default, action, route, helper, style property or schema value.
 - `renderer-core` stays Fabric/DOM-free.
 - Player may use `scene-fabric`, never editor UI/managers or interactive
   `Canvas`.
@@ -86,7 +82,7 @@ Do not reject a library merely because its API is unfamiliar.
 - Comments are normally 1–3 lines and explain **why**, not what the code says.
 - Never write diary-style comments, debugging chronology or long implementation
   narratives into source.
-- Do not repeat the same rationale across status/specs/decisions/comments.
+- Do not repeat the same rationale across specs/ADRs/architecture/comments.
 - Current docs describe current truth. Git stores the story.
 
 ## Verification requirements

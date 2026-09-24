@@ -9,7 +9,7 @@
  *
  * The budget below is a PLACEHOLDER. §157 requires Gate 0 to establish real
  * budgets on named reference hardware; replace these once those numbers exist,
- * and record the measurement in .agents/decisions.md.
+ * and record any approved policy change in docs/adr/ and keep §47/§126 current.
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises';

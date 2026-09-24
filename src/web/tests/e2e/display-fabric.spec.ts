@@ -646,7 +646,7 @@ test.describe("every fixture renders", () => {
         process.env["VIGILIA_CAPTURE_DIR"] ??
         (process.env["VIGILIA_CAPTURE"] === undefined
           ? "test-results/screenshots"
-          : "../../.agents/screenshots");
+          : "../../docs/evidence/screenshots");
 
       await openCanvasPlayer(page, `/?theme=${fixture.name}`);
       const size = page.viewportSize()!;
