@@ -41,7 +41,7 @@ Observed by driving the running editor, not by reading code:
 | `editor/src/editor-session.ts` | Compose the inspector into the document inspectors' slot |
 | `editor/src/font-preview.ts` (existing) | Unchanged; the inspector links to the preset panel rather than duplicating it |
 | `editor/src/ui-copy.ts` | New field labels |
-| `tests/e2e/editor-fork.spec.ts` | Rendered inspection of each selection state |
+| `tests/e2e/editor.spec.ts` | Rendered inspection of each selection state |
 
 ## Tasks
 

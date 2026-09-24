@@ -113,7 +113,7 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
-    await captureVisualReview(page, testInfo, "editor-fork-chart-creation");
+    await captureVisualReview(page, testInfo, "editor-chart-creation");
 
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
@@ -155,7 +155,7 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    await captureVisualReview(page, testInfo, "editor-fork");
+    await captureVisualReview(page, testInfo, "editor");
   });
 
   test("captures selected chart binding controls for visual review", async ({
@@ -181,7 +181,7 @@ test.describe("Fabric editor route", () => {
     await progressPaint.scrollIntoViewIfNeeded();
     await expect(progressPaint).toBeVisible();
 
-    await captureVisualReview(page, testInfo, "editor-fork-chart-binding");
+    await captureVisualReview(page, testInfo, "editor-chart-binding");
   });
 
   test("captures the controls that give a text run its reading", async ({
@@ -239,7 +239,7 @@ test.describe("Fabric editor route", () => {
 
     await zone.scrollIntoViewIfNeeded();
 
-    await captureVisualReview(page, testInfo, "editor-fork-text-reads");
+    await captureVisualReview(page, testInfo, "editor-text-reads");
   });
 
   test("captures semantic layer controls for visual review", async ({
@@ -289,7 +289,7 @@ test.describe("Fabric editor route", () => {
       page.locator("[data-vigilia-artboard-background]"),
     ).toHaveValue("palette.bars");
 
-    await captureVisualReview(page, testInfo, "editor-fork-artboard");
+    await captureVisualReview(page, testInfo, "editor-artboard");
   });
 
   test("rejects literal artboard paint in a v2 document", async ({
@@ -377,10 +377,10 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    await captureVisualReview(page, testInfo, "editor-fork-artboard-gradient");
+    await captureVisualReview(page, testInfo, "editor-artboard-gradient");
   });
 
-  test("edits an artboard palette token through the fork property surface", async ({
+  test("edits an artboard palette token through the property surface", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -405,7 +405,7 @@ test.describe("Fabric editor route", () => {
       color: "rgb(16 32 48)",
     });
 
-    await captureVisualReview(page, testInfo, "editor-fork-palette-solid");
+    await captureVisualReview(page, testInfo, "editor-palette-solid");
   });
 
   test("reassigns palette references before deleting a token", async ({
@@ -426,7 +426,7 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(
       page,
       testInfo,
-      "editor-fork-palette-reassignment",
+      "editor-palette-reassignment",
     );
     await page.locator("[data-vigilia-palette-delete]").click();
     await expect(
@@ -474,7 +474,7 @@ test.describe("Fabric editor route", () => {
     ).toEqual({ ref: "palette.bars" });
   });
 
-  test("edits a global type preset through the fork property surface", async ({
+  test("edits a global type preset through the property surface", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -530,7 +530,7 @@ test.describe("Fabric editor route", () => {
     await page
       .locator("[data-vigilia-type-letter-spacing]")
       .scrollIntoViewIfNeeded();
-    await captureVisualReview(page, testInfo, "editor-fork-type-preset");
+    await captureVisualReview(page, testInfo, "editor-type-preset");
   });
 
   test("captures curated font trio controls for visual review", async ({
@@ -549,7 +549,7 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.getByRole("button", { name: "Apply trio" }),
     ).toBeVisible();
-    await captureVisualReview(page, testInfo, "editor-fork-font-trio");
+    await captureVisualReview(page, testInfo, "editor-font-trio");
   });
 
   test("reassigns text type presets before deleting one", async ({
@@ -566,7 +566,7 @@ test.describe("Fabric editor route", () => {
       .locator("[data-vigilia-type-replacement]")
       .selectOption("11-500");
     await page.locator("[data-vigilia-type-delete]").scrollIntoViewIfNeeded();
-    await captureVisualReview(page, testInfo, "editor-fork-type-reassignment");
+    await captureVisualReview(page, testInfo, "editor-type-reassignment");
     await page.locator("[data-vigilia-type-delete]").click();
     await expect(
       page.locator('[data-vigilia-type-preset] option[value="11-400"]'),
@@ -616,7 +616,7 @@ test.describe("Fabric editor route", () => {
     await page.keyboard.press("Control+n");
     await expect(page.locator("dialog")).toBeVisible();
 
-    await captureVisualReview(page, testInfo, "editor-fork-dirty-replacement");
+    await captureVisualReview(page, testInfo, "editor-dirty-replacement");
   });
 
   test("selects a chart in the starter theme through the visible Fabric canvas", async ({
@@ -744,7 +744,7 @@ test.describe("Fabric editor route", () => {
     await expect(style).toContainText("typePresets.body");
     await expect(style.locator("[data-vigilia-globals]")).toHaveCount(0);
 
-    await captureVisualReview(page, testInfo, "editor-fork-style-tab");
+    await captureVisualReview(page, testInfo, "editor-style-tab");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
@@ -994,7 +994,7 @@ test.describe("Fabric editor route", () => {
         top: expect.any(Number),
       }),
     });
-    await captureVisualReview(page, testInfo, "editor-fork-live-text");
+    await captureVisualReview(page, testInfo, "editor-live-text");
 
     const envelope = (await saveEnvelope(page)) as {
       scene: {
@@ -1052,7 +1052,7 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
   });
 
-  test("round-trips an opened v2 Fabric scene through the fork save path", async ({
+  test("round-trips an opened v2 Fabric scene through the save path", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -1208,7 +1208,7 @@ test.describe("Fabric editor route", () => {
     await page
       .getByRole("heading", { name: "Assets" })
       .scrollIntoViewIfNeeded();
-    await captureVisualReview(page, testInfo, "editor-fork-assets");
+    await captureVisualReview(page, testInfo, "editor-assets");
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
@@ -1264,7 +1264,7 @@ test.describe("Fabric editor route", () => {
     await page
       .locator("[data-vigilia-background-asset]")
       .scrollIntoViewIfNeeded();
-    await captureVisualReview(page, testInfo, "editor-fork-background-media");
+    await captureVisualReview(page, testInfo, "editor-background-media");
 
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
@@ -1276,7 +1276,7 @@ test.describe("Fabric editor route", () => {
     expect(saved.parsed.assets["assets/hero.png"]).toBeDefined();
   });
 
-  test("persists an ordinary fork drag and restores it through undo", async ({
+  test("persists an ordinary drag and restores it through undo", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -1549,7 +1549,7 @@ test.describe("Fabric editor route", () => {
     await page.mouse.down();
     await page.mouse.move(drop.x, drop.y, { steps: 12 });
 
-    await captureVisualReview(page, testInfo, "editor-fork-snap-guides");
+    await captureVisualReview(page, testInfo, "editor-snap-guides");
     await page.mouse.up();
   });
 
@@ -1582,7 +1582,7 @@ test.describe("Fabric editor route", () => {
     await page.mouse.down();
     await page.mouse.move(handle.x + 30, handle.y + 30, { steps: 12 });
 
-    await captureVisualReview(page, testInfo, "editor-fork-rotation-indicator");
+    await captureVisualReview(page, testInfo, "editor-rotation-indicator");
     await page.mouse.up();
   });
 
@@ -1612,7 +1612,7 @@ test.describe("Fabric editor route", () => {
     // A single object cannot be ungrouped.
     await expect(dock.getByRole("button", { name: "Ungroup" })).toHaveCount(0);
 
-    await captureVisualReview(page, testInfo, "editor-fork-toolbar");
+    await captureVisualReview(page, testInfo, "editor-toolbar");
   });
 });
 

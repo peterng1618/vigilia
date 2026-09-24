@@ -20,23 +20,23 @@ result, not merely a mounted editor.
 
 | Domain | Visible action | Capture / title regex |
 |---|---|---|
-| Workspace | Load starter document | `editor-fork` / `captures the mounted editor` |
-| Selection/bindings | Select chart; change semantic key/transform | `editor-fork-chart-binding` / `captures selected chart binding controls` |
-| Live bindings | Open a bound text document and observe its preview value | `editor-fork-live-text` / `refreshes bound text without saving its sampled value` |
-| Live bindings | Select a bound text run, format its value and pin its zone | `editor-fork-text-reads` / `captures the controls that give a text run its reading` |
+| Workspace | Load starter document | `editor` / `captures the mounted editor` |
+| Selection/bindings | Select chart; change semantic key/transform | `editor-chart-binding` / `captures selected chart binding controls` |
+| Live bindings | Open a bound text document and observe its preview value | `editor-live-text` / `refreshes bound text without saving its sampled value` |
+| Live bindings | Select a bound text run, format its value and pin its zone | `editor-text-reads` / `captures the controls that give a text run its reading` |
 | Layers/arrange | Select a semantic layer and expose its layer/arrange controls | `editor-layer-arrange` / `captures semantic layer controls` |
-| Chart settings | Change family-specific scalar setting | `editor-fork-chart-binding` / `captures selected chart binding controls` |
-| Artboard | Change dimensions or preview fit | `editor-fork-artboard` / `captures changed artboard controls` |
-| Artboard | Change gradient/literal artboard paint | `editor-fork-artboard-gradient` / `renders palette gradients` |
-| Session | Show dirty New/Open confirmation | `editor-fork-dirty-replacement` / `captures dirty document replacement confirmation` |
+| Chart settings | Change family-specific scalar setting | `editor-chart-binding` / `captures selected chart binding controls` |
+| Artboard | Change dimensions or preview fit | `editor-artboard` / `captures changed artboard controls` |
+| Artboard | Change gradient/literal artboard paint | `editor-artboard-gradient` / `renders palette gradients` |
+| Session | Show dirty New/Open confirmation | `editor-dirty-replacement` / `captures dirty document replacement confirmation` |
 | Open | Valid, invalid or incompatible file | add when changed |
 | History | Save changed document or undo visible drag | add when changed |
-| Fork mechanics | Transform/group/duplicate/delete/reorder | `editor-fork-snap-guides` / `snaps a dragged object`; `editor-fork-rotation-indicator` / `rotation-angle indicator`; `editor-fork-toolbar` / `captures the selection toolbar` |
+| Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-guides` / `snaps a dragged object`; `editor-rotation-indicator` / `rotation-angle indicator`; `editor-toolbar` / `captures the selection toolbar` |
 | Object tools | Add/edit shape, text, image or SVG | add when integration changes |
-| Assets | Import, replace and reopen a packaged image | `editor-fork-assets-desktop-chromium` / `imports and round-trips packaged images` |
-| Palette | Edit or reassign a palette token | `editor-fork-palette-solid` or `editor-fork-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
-| Type presets | Edit, reassign or apply a font trio | `editor-fork-type-preset`, `editor-fork-type-reassignment` or `editor-fork-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` |
-| Theme settings | Author a background image | `editor-fork-background-media` / `authors a packaged background image` |
+| Assets | Import, replace and reopen a packaged image | `editor-assets-desktop-chromium` / `imports and round-trips packaged images` |
+| Palette | Edit or reassign a palette token | `editor-palette-solid` or `editor-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
+| Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` |
+| Theme settings | Author a background image | `editor-background-media` / `authors a packaged background image` |
 | Viewport | Resize or change zoom | add when changed |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
@@ -49,5 +49,6 @@ result, not merely a mounted editor.
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
 
-Fork-owned mechanics need captures only when Vigilia changes their rendered
-outcome. Keep this table aligned with `src/web/tests/e2e/editor-fork.spec.ts`.
+Mechanics ported from the retired editor fork need captures only when Vigilia
+changes their rendered outcome. Keep this table aligned with
+`src/web/tests/e2e/editor.spec.ts`.
