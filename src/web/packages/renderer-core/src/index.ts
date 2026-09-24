@@ -149,6 +149,13 @@ export { emptySampleSource } from "./data/source.js";
 export type { SampleStoreOptions } from "./data/store.js";
 export { defaultSampleStoreOptions, SampleStore } from "./data/store.js";
 export {
+  formatInstant,
+  instantIn,
+  isTimeZoneName,
+  knownTimeZones,
+  parseInstant,
+} from "./scene/datetime-format.js";
+export {
   GENERIC_FAMILIES,
   isGenericFamily,
   missingFontFamilies,
@@ -156,13 +163,13 @@ export {
   requestedFontFamilies,
   unavailableFontFamilies,
 } from "./scene/fonts.js";
+export type { ConvertedValue, MeasurementSystem } from "./scene/measurement.js";
 export {
-  formatInstant,
-  isTimeZoneName,
-  knownTimeZones,
-  instantIn,
-  parseInstant,
-} from "./scene/datetime-format.js";
+  convertForDisplay,
+  DEFAULT_MEASUREMENT_SYSTEM,
+  isMeasurementSystem,
+  MEASUREMENT_SYSTEMS,
+} from "./scene/measurement.js";
 export type { MountOptions, SceneHandle } from "./scene/mount.js";
 export { mountScene } from "./scene/mount.js";
 export type {

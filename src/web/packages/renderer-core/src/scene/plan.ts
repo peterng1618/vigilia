@@ -396,7 +396,7 @@ export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: Pick<PlanContext, "source" | "longUnits">,
+  context: Pick<PlanContext, "source" | "longUnits" | "measurement">,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {

@@ -1,6 +1,7 @@
 import type {
   Binding,
   FabricGlobals,
+  MeasurementSystem,
   PlanBox,
   PlanNode,
   PlanTextLayout,
@@ -176,6 +177,7 @@ export function refreshBoundText(
   bindings: Readonly<Record<string, readonly Binding[]>>,
   source: SampleSource,
   globals: FabricGlobals | undefined,
+  measurement?: MeasurementSystem,
 ): void {
   const refresh = (objects: readonly object[]): void => {
     for (const object of objects) {
@@ -191,7 +193,7 @@ export function refreshBoundText(
             id,
             authored.runs,
             bindings[id],
-            { source },
+            measurement === undefined ? { source } : { source, measurement },
             globals ?? {},
             [],
           );

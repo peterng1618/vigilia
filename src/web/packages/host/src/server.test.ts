@@ -391,6 +391,7 @@ describe("Host theme routes", () => {
         registry: new ProviderRegistry([]),
         bundles: { player: lanDir, editor: lanDir },
         themeStore: createThemeStore(lanDir),
+        display: createDisplaySettingsStore(lanDir),
         sessions,
       });
       await request(
@@ -452,6 +453,46 @@ describe("Host theme routes", () => {
       ).toBe(200);
       expect(
         (await streamStatus(paired.server, "/ws?keys=cpu.load")).status,
+      ).toBe(403);
+    });
+
+    it("lets a paired display read this PC's preferences, not change them", async () => {
+      const issued = sessions.create("phone");
+      const lan = { remoteAddress: "192.168.1.50" };
+      const pairedPhone = {
+        ...lan,
+        headers: { "x-vigilia-session": issued.token },
+      };
+
+      // A display obeys the units and the zone, so it must be able to read
+      // them: a phone that cannot learn the preference cannot honour it.
+      expect(
+        (
+          await request(
+            paired.server,
+            "GET",
+            "/api/display",
+            undefined,
+            pairedPhone,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await request(paired.server, "GET", "/api/display", undefined, lan))
+          .status,
+      ).toBe(403);
+
+      // Changing one stays this PC's business.
+      expect(
+        (
+          await request(
+            paired.server,
+            "PUT",
+            "/api/display",
+            json({ timeZone: "Asia/Tokyo" }),
+            pairedPhone,
+          )
+        ).status,
       ).toBe(403);
     });
 

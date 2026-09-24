@@ -40,6 +40,29 @@ describe("display settings", () => {
     ).toThrow(/not a time zone/);
   });
 
+  it("keeps a measurement system this build can display", () => {
+    expect(normalizeDisplaySettings({ measurement: "imperial" })).toEqual({
+      measurement: "imperial",
+    });
+    // The page sends both fields together; neither may be lost to the other.
+    expect(
+      normalizeDisplaySettings({
+        timeZone: "Asia/Tokyo",
+        measurement: "imperial",
+      }),
+    ).toEqual({ timeZone: "Asia/Tokyo", measurement: "imperial" });
+  });
+
+  it("refuses a measurement system it cannot display", () => {
+    expect(() => normalizeDisplaySettings({ measurement: "furlongs" })).toThrow(
+      /not a measurement system/,
+    );
+    // An unchosen field is a form with nothing in it, not a third system.
+    expect(normalizeDisplaySettings({ measurement: "" })).toEqual(
+      EMPTY_DISPLAY_SETTINGS,
+    );
+  });
+
   it("round-trips through the store", async () => {
     const store = createDisplaySettingsStore(dir);
 

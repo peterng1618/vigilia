@@ -1,6 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { canvasProp } from "./canvas-probe.js";
-import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
+import {
+  CLOCK_NODE_ID,
+  HOST_PORT,
+  HOST_TEMP_THEME_ID,
+  HOST_THEME_ID,
+  TEMPERATURE_NODE_ID,
+} from "./host-theme.js";
 
 /** Exercises the real Node host: the browser suite's only proof that hosted
  * theme loading, declared package-asset serving and the SSE stream work end to
@@ -181,7 +187,7 @@ function zoneReading(page: Page, timeZone?: string): Promise<string> {
 
 /** The clock the host sent, as the scene actually painted it. */
 async function shownClock(page: Page): Promise<string> {
-  return String(await canvasProp(page, "clock", "text"));
+  return String(await canvasProp(page, CLOCK_NODE_ID, "text"));
 }
 
 /**
@@ -239,6 +245,128 @@ test.describe("the clock the host reports", () => {
     } finally {
       // The host is shared with the rest of the suite, and `display.json`
       // outlives this test even though the seeded themes do not.
+      await request.put(`${HOST}/api/display`, { data: {} });
+    }
+  });
+});
+
+/** The live temperature sample the display consumed, as the display holds it. */
+async function temperatureSample(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const source = (
+      window as unknown as {
+        vigilia?: { live?: { source?: { latest(key: string): unknown } } };
+      }
+    ).vigilia?.live?.source;
+    const sample = source?.latest("gpu.temp") as
+      | { status?: string; value?: number; unit?: string }
+      | undefined;
+
+    return sample?.value === undefined
+      ? "no reading"
+      : `${sample.value}${sample.unit ?? ""}`;
+  });
+}
+
+/**
+ * Whether the painted temperature is the sample the display consumed, in the
+ * units this PC chose — or, when it is not, what was painted instead.
+ *
+ * Both sides are read in one `evaluate`, from the sample source the refresh
+ * cycle reads, so the comparison is against the reading the paint came from and
+ * not a later one that arrived over the stream in between. The sample's own
+ * unit is checked first: a display that converted the reading rather than what
+ * it shows would be changing what every other reader of that key sees (§97).
+ */
+async function paintsIn(
+  page: Page,
+  system: "metric" | "imperial",
+): Promise<true | string> {
+  return page.evaluate(
+    ([chosen, nodeId]) => {
+      const bridge = (
+        window as unknown as {
+          vigilia?: {
+            handle?: {
+              canvas?: { getObjects(): { get(key: string): unknown }[] };
+            };
+            live?: { source?: { latest(key: string): unknown } };
+          };
+        }
+      ).vigilia;
+      const sample = bridge?.live?.source?.latest("gpu.temp") as
+        | { value?: number; unit?: string }
+        | undefined;
+      const object = bridge?.handle?.canvas
+        ?.getObjects()
+        .find((entry) => entry.get("id") === nodeId);
+
+      if (sample?.value === undefined || object === undefined) {
+        return "no reading to compare";
+      }
+
+      if (sample.unit !== "°C") {
+        return `the sample's own unit became ${sample.unit}`;
+      }
+
+      const expected =
+        chosen === "imperial"
+          ? `${Math.round((sample.value * 9) / 5 + 32)}°F`
+          : `${Math.round(sample.value)}°C`;
+      const painted = String(object.get("text"));
+
+      return painted === expected
+        ? true
+        : `painted ${painted}, expected ${expected}`;
+    },
+    [system, TEMPERATURE_NODE_ID] as const,
+  );
+}
+
+test.describe("the units this PC reads in", () => {
+  test("shows a temperature in the units this PC chose, converting nothing else", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_TEMP_THEME_ID}&data=live`);
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+
+    // A GPU temperature is hardware this host may simply not have. A display
+    // showing nothing is then the correct behaviour, not a failure of the
+    // preference, so say which of the two this run is.
+    test.skip(
+      (await temperatureSample(page)) === "no reading",
+      "this host reports no GPU temperature",
+    );
+
+    // Nothing was chosen, so the reading is what the provider measured.
+    await expect
+      .poll(() => paintsIn(page, "metric"), { timeout: 15_000 })
+      .toBe(true);
+
+    const saved = await request.put(`${HOST}/api/display`, {
+      data: { measurement: "imperial" },
+    });
+    expect(saved.ok()).toBe(true);
+
+    try {
+      // The preference is read when a display loads, so the screen that is
+      // already up is not what shows it.
+      await page.reload();
+      await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+        timeout: 15_000,
+      });
+      await expect
+        .poll(() => paintsIn(page, "imperial"), { timeout: 15_000 })
+        .toBe(true);
+    } finally {
       await request.put(`${HOST}/api/display`, { data: {} });
     }
   });

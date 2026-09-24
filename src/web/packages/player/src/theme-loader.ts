@@ -1,7 +1,36 @@
 import {
+  DEFAULT_MEASUREMENT_SYSTEM,
   type FabricThemeEnvelope,
+  isMeasurementSystem,
+  type MeasurementSystem,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+
+/**
+ * The consumer's preferences for this PC: what a display obeys rather than
+ * authors. A host that cannot answer, or answers with something this build
+ * cannot display, leaves the display on what providers report.
+ */
+export async function loadDisplayPreferences(
+  fetcher: typeof fetch,
+): Promise<MeasurementSystem> {
+  try {
+    const response = await fetcher("/api/display");
+    if (!response.ok) {
+      return DEFAULT_MEASUREMENT_SYSTEM;
+    }
+
+    const body = (await response.json()) as {
+      settings?: { measurement?: unknown };
+    };
+    const measurement = body.settings?.measurement;
+    return isMeasurementSystem(measurement)
+      ? measurement
+      : DEFAULT_MEASUREMENT_SYSTEM;
+  } catch {
+    return DEFAULT_MEASUREMENT_SYSTEM;
+  }
+}
 
 export async function loadHostedTheme(
   id: string,

@@ -11,7 +11,16 @@ import { describeSemanticKey } from "../data/semantic-keys.js";
 
 export type MeasurementSystem = "metric" | "imperial";
 
+export const MEASUREMENT_SYSTEMS = ["metric", "imperial"] as const;
+
 export const DEFAULT_MEASUREMENT_SYSTEM: MeasurementSystem = "metric";
+
+/** Whether a stored preference names a system this build can display. */
+export function isMeasurementSystem(
+  value: unknown,
+): value is MeasurementSystem {
+  return (MEASUREMENT_SYSTEMS as readonly unknown[]).includes(value);
+}
 
 /** Families that convert, keyed by what the vocabulary declares. */
 export type ConvertibleFamily = "temperature";

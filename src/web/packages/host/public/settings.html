@@ -139,10 +139,16 @@
         <h2 id="display-heading">Display</h2>
         <p class="hint">
           How this PC's readings are shown. A theme decides how a clock reads;
-          this decides which zone it reads.
+          this decides which zone it reads and which units temperatures use.
         </p>
         <label for="timezone">Clock time zone</label>
         <select id="timezone"></select>
+        <!-- Only temperature converts today, so the labels name only that. -->
+        <label for="measurement">Temperature units</label>
+        <select id="measurement">
+          <option value="metric">Celsius (°C)</option>
+          <option value="imperial">Fahrenheit (°F)</option>
+        </select>
       </section>
       <section aria-labelledby="questions-heading" id="questions-section" hidden>
         <h2 id="questions-heading">This theme needs</h2>
@@ -199,11 +205,14 @@
           shot.className = "theme-shot";
           shot.alt = "";
           shot.src = `/api/themes/${encodeURIComponent(theme.id)}/thumbnail`;
-          // No picture is a normal state, not a broken one: the element stays so
-          // every entry keeps the same shape, showing a neutral placeholder.
+          // No picture is a normal state, not a broken one: the element is
+          // swapped for one of the same size, because an `<img>` whose source
+          // failed keeps drawing the browser's own broken-image glyph over it.
           shot.addEventListener("error", () => {
-            shot.removeAttribute("src");
-            shot.dataset.placeholder = "";
+            const placeholder = document.createElement("div");
+            placeholder.className = "theme-shot";
+            placeholder.dataset.placeholder = "";
+            shot.replaceWith(placeholder);
           });
           button.append(shot);
           const isActive = theme.id === activeTheme;
@@ -480,7 +489,30 @@
       }
 
       async function loadDisplay() {
-        const select = document.querySelector("#timezone");
+        const zone = document.querySelector("#timezone");
+        const units = document.querySelector("#measurement");
+        // The host replaces the whole object on PUT, so both fields are held
+        // here and sent together: saving one must not clear the other.
+        const chosen = { timeZone: "", measurement: "metric" };
+
+        // The zone is applied where the host takes the reading, so it lands on
+        // the next frame; the units are read once when a display loads, so a
+        // screen already showing a theme keeps its old units until it reloads.
+        const saveDisplay = async (applies) => {
+          status.textContent = "Saving…";
+          try {
+            const saved = await fetch("/api/display", {
+              method: "PUT",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(chosen),
+            });
+            if (!saved.ok) throw new Error(await saved.text());
+            status.textContent = applies;
+          } catch (error) {
+            status.textContent = `Could not save: ${error.message}`;
+          }
+        };
+
         try {
           const response = await fetch("/api/display");
           if (!response.ok) throw new Error(await response.text());
@@ -488,26 +520,24 @@
           // This PC's own zone is the default and the most common answer, so it
           // comes first and needs no name of its own.
           const zones = ["", ...(body.zones ?? [])];
-          for (const zone of zones) {
+          for (const zoneName of zones) {
             const option = document.createElement("option");
-            option.value = zone;
-            option.textContent = zone === "" ? "This PC's own zone" : zone;
-            select.append(option);
+            option.value = zoneName;
+            option.textContent = zoneName === "" ? "This PC's own zone" : zoneName;
+            zone.append(option);
           }
-          select.value = body.settings?.timeZone ?? "";
-          select.addEventListener("change", async () => {
-            status.textContent = "Saving…";
-            try {
-              const saved = await fetch("/api/display", {
-                method: "PUT",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ timeZone: select.value }),
-              });
-              if (!saved.ok) throw new Error(await saved.text());
-              status.textContent = "Saved. Displays update on their next frame.";
-            } catch (error) {
-              status.textContent = `Could not save: ${error.message}`;
-            }
+          chosen.timeZone = body.settings?.timeZone ?? "";
+          chosen.measurement = body.settings?.measurement ?? "metric";
+          zone.value = chosen.timeZone;
+          units.value = chosen.measurement;
+
+          zone.addEventListener("change", () => {
+            chosen.timeZone = zone.value;
+            saveDisplay("Saved. Displays update on their next frame.");
+          });
+          units.addEventListener("change", () => {
+            chosen.measurement = units.value;
+            saveDisplay("Saved. Displays already open keep their old units until they reload.");
           });
         } catch (error) {
           status.textContent = `Could not read display settings: ${error.message}`;

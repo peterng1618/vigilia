@@ -9,6 +9,7 @@ import {
   type FabricThemeEnvelope,
   type LiveSourceHandle,
   type LiveSourceStatus,
+  type MeasurementSystem,
   missingFontFamilies,
   requiredSemanticKeys,
   SAMPLE_STREAM_PATH,
@@ -27,7 +28,11 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { type DisplaySessionToken, displaySession } from "./session.js";
-import { loadHostedFontAssets, loadHostedTheme } from "./theme-loader.js";
+import {
+  loadDisplayPreferences,
+  loadHostedFontAssets,
+  loadHostedTheme,
+} from "./theme-loader.js";
 import { uiCopy } from "./ui-copy.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
@@ -56,7 +61,14 @@ async function start(host: HTMLElement): Promise<void> {
     if (!result.ok) {
       throw new Error(`Fixture theme "${requested}" is invalid.`);
     }
-    startFixtureTheme(host, result.document, parameters, requested, animate);
+    startFixtureTheme(
+      host,
+      result.document,
+      parameters,
+      requested,
+      animate,
+      await loadDisplayPreferences(fetch),
+    );
     return;
   }
 
@@ -88,6 +100,7 @@ function startFixtureTheme(
   parameters: URLSearchParams,
   requested: string | null,
   animate: boolean,
+  measurement: MeasurementSystem,
 ): void {
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get("data") === "live";
@@ -117,6 +130,7 @@ function startFixtureTheme(
       nowMs: Date.now(),
       resolveAsset,
       animate,
+      measurement,
     });
 
   const first = plan();
@@ -215,6 +229,7 @@ async function startHostedTheme(
 ): Promise<void> {
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
+  const measurement = await loadDisplayPreferences(session.fetch);
   const keys = Object.values(theme.bindings ?? {})
     .flat()
     .map((binding) => binding.semanticKey);
@@ -263,6 +278,7 @@ async function startHostedTheme(
       theme.bindings ?? {},
       liveHandle.source,
       theme.globals,
+      measurement,
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has

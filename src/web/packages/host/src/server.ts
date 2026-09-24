@@ -546,18 +546,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    // Display preferences are a machine fact, like device assignments, so they
-    // stay loopback-only and out of a theme.
+    // Display preferences are a machine fact, like device assignments, and they
+    // stay out of a theme. Changing them is this PC's business; reading them is
+    // a display's, which must obey the measurement preference a phone cannot
+    // otherwise learn.
     if (url.pathname === "/api/display") {
-      if (!isLoopbackRemote(request.socket.remoteAddress)) {
-        sendText(
-          response,
-          403,
-          "Display settings are available on this PC only.",
-        );
-        return;
-      }
-
       if (display === undefined) {
         sendText(
           response,
@@ -568,6 +561,14 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       if (request.method === "GET") {
+        if (
+          !isLoopbackRemote(request.socket.remoteAddress) &&
+          !allowed(request, url)
+        ) {
+          sendText(response, 403, "This display is not paired with the host.");
+          return;
+        }
+
         // The zones travel with the setting: the page is dependency-free source
         // and cannot resolve them any other way.
         sendJson(response, 200, {
@@ -578,6 +579,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       if (request.method === "PUT") {
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(
+            response,
+            403,
+            "Display settings are available on this PC only.",
+          );
+          return;
+        }
+
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
           const saved = await display.write(body);

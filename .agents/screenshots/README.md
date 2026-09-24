@@ -46,5 +46,8 @@ result, not merely a mounted editor.
 |---|---|---|
 | Settings scope | Choose a theme whose bindings need a device | `settings-theme-question` / `captures the question a theme raises` |
 
+The capture is the whole page, so the Devices and Display sections (including
+the units choice) are evidence from the same file.
+
 Fork-owned mechanics need captures only when Vigilia changes their rendered
 outcome. Keep this table aligned with `src/web/tests/e2e/editor-fork.spec.ts`.

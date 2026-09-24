@@ -300,8 +300,12 @@ describe("text (§89)", () => {
     source: SampleStore | typeof emptySampleSource,
     bindings: unknown[],
     runs: unknown[],
+    overrides: Partial<PlanContext> = {},
   ) {
-    const result = plan(documentWith([node(bindings, runs)]), { source });
+    const result = plan(documentWith([node(bindings, runs)]), {
+      source,
+      ...overrides,
+    });
     const content = result.nodes[0]!.content;
     if (content.kind !== "text") {
       throw new Error("expected a text node");
@@ -390,6 +394,56 @@ describe("text (§89)", () => {
 
     // An unknown key reports whatever it likes; no format is applied to it.
     expect(result.segments[0]!.text).toBe("Ryzen 9");
+  });
+
+  it("converts a temperature for the consumer, once, after the author's scale", () => {
+    const source = storeWith({ "cpu.temp": ok(61.4, "°C", "cpu.temp") });
+    const bindings = [{ id: "b", semanticKey: "cpu.temp", scale: 2 }];
+    const runs = [{ kind: "value", bindingId: "b", precision: 1 }];
+
+    // The author's scale is part of the reading, so the preference converts what
+    // that produces (122.8 °C → 253.04 °F), never the value it started from.
+    expect(
+      segments(source, bindings, runs, {
+        measurement: "imperial",
+      }).segments.map((segment) => segment.text),
+    ).toEqual(["253.0°F"]);
+
+    // Metric shows what the provider measured, with no conversion at all.
+    expect(
+      segments(source, bindings, runs, { measurement: "metric" }).segments.map(
+        (segment) => segment.text,
+      ),
+    ).toEqual(["122.8°C"]);
+  });
+
+  it("leaves every other family, and a gap, exactly as measured", () => {
+    const stale: Sample = {
+      sensorId: "cpu.temp",
+      timestamp: new Date(NOW).toISOString(),
+      status: "stale",
+    };
+    const result = segments(
+      storeWith({ "ram.used": ok(10.5, "GB", "ram.used"), "cpu.temp": stale }),
+      [
+        { id: "ram", semanticKey: "ram.used" },
+        { id: "temp", semanticKey: "cpu.temp" },
+      ],
+      [
+        { kind: "value", bindingId: "ram" },
+        { kind: "literal", text: " / " },
+        { kind: "value", bindingId: "temp" },
+      ],
+      { measurement: "imperial" },
+    );
+
+    // An imperial consumer still reads memory in the unit it was reported in,
+    // and a gap stays a gap rather than becoming a converted number.
+    expect(result.segments.map((segment) => segment.text)).toEqual([
+      "10.5 GB",
+      " / ",
+      MISSING_VALUE_TEXT,
+    ]);
   });
 
   it("mixes literals and live values in one element", () => {

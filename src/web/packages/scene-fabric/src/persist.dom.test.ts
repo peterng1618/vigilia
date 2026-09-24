@@ -425,6 +425,37 @@ describe("identity survives a round trip", () => {
     expect(serialiseScene(canvas).objects[0]!.text).toBe("CPU —");
   });
 
+  it("paints a hosted reading in the consumer's units, not the author's", () => {
+    const text = new FabricText("--");
+    text.set("id", "readout");
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "value", bindingId: "temp", precision: 0 }],
+    });
+    const source = {
+      latest: () => ({
+        sensorId: "gpu.temp",
+        timestamp: new Date(NOW_MS).toISOString(),
+        status: "ok" as const,
+        value: 39,
+        unit: "°C",
+      }),
+      history: () => [],
+    };
+
+    // A hosted theme is revived, not planned, so this is the only place its
+    // readings can be converted; the sample itself stays what was measured.
+    refreshBoundText(
+      canvasOf(text),
+      { readout: [{ id: "temp", semanticKey: "gpu.temp" }] },
+      source,
+      undefined,
+      "imperial",
+    );
+
+    expect(text.text).toBe("102°F");
+    expect(source.latest().unit).toBe("°C");
+  });
+
   it("carries an id on every object, nested ones included", async () => {
     const child = new FabricText("inner");
     child.set("id", "child");

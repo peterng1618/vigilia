@@ -22,14 +22,22 @@ export const HOST_PORT = 4175;
 export const HOST_THEME_ID = "e2e-hosted";
 /** Binds a disk, so the settings page has a question to ask it. */
 export const HOST_DISK_THEME_ID = "e2e-disk";
+/** Binds a temperature, so a display's own unit preference has something to convert. */
+export const HOST_TEMP_THEME_ID = "e2e-temp";
 export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
 
+/** The node a reading is painted into, by the id a test reads it back by. */
+export const CLOCK_NODE_ID = "clock";
+export const TEMPERATURE_NODE_ID = "temperature";
+
 /** The one bound reading is what separates the seeded themes: a disk key makes
- * the theme raise a question, a clock key does not. */
+ * the theme raise a question, a clock key does not, and a temperature key is
+ * the only one a display's measurement preference can change. */
 const envelopeFor = (
   id: string,
   name: string,
-  binding: { semanticKey: string; format?: string },
+  nodeId: string,
+  binding: { semanticKey: string; format?: string; precision?: number },
 ) => ({
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
@@ -145,7 +153,36 @@ const envelopeFor = (
           runs: [
             {
               kind: "value",
-              bindingId: "clock-time",
+              bindingId: "bound-value",
+              typePreset: "typePresets.11-400",
+              style: { color: { ref: "palette.ink" } },
+            },
+          ],
+        },
+      },
+      {
+        // Where a temperature lands. A clock reports text, which no measurement
+        // preference touches, so this node is what proves the preference reached
+        // the screen rather than the theme.
+        type: "Textbox",
+        version: "7.4.0",
+        originX: "left",
+        originY: "top",
+        left: 40,
+        top: 300,
+        width: 420,
+        height: 60,
+        text: "--°C",
+        fontSize: 22,
+        fontFamily: "system-ui, sans-serif",
+        fill: "palette.ink",
+        id: TEMPERATURE_NODE_ID,
+        vigiliaPaint: { fill: "palette.ink" },
+        vigiliaText: {
+          runs: [
+            {
+              kind: "value",
+              bindingId: "bound-value",
               typePreset: "typePresets.11-400",
               style: { color: { ref: "palette.ink" } },
             },
@@ -155,7 +192,7 @@ const envelopeFor = (
     ],
   },
   bindings: {
-    clock: [{ id: "clock-time", ...binding }],
+    [nodeId]: [{ id: "bound-value", ...binding }],
   },
 });
 
@@ -194,11 +231,19 @@ export async function seedHostTheme(): Promise<void> {
   };
 
   const themes = [
-    envelopeFor(HOST_THEME_ID, "E2E hosted", {
+    envelopeFor(HOST_THEME_ID, "E2E hosted", CLOCK_NODE_ID, {
       semanticKey: "time.now",
       format: "HH:mm:ss",
     }),
-    envelopeFor(HOST_DISK_THEME_ID, "E2E disk", { semanticKey: "disk.used" }),
+    envelopeFor(HOST_DISK_THEME_ID, "E2E disk", CLOCK_NODE_ID, {
+      semanticKey: "disk.used",
+    }),
+    // Whole degrees, so a test can compare the painted reading against the
+    // sample it came from without re-implementing the renderer's number format.
+    envelopeFor(HOST_TEMP_THEME_ID, "E2E temperature", TEMPERATURE_NODE_ID, {
+      semanticKey: "gpu.temp",
+      precision: 0,
+    }),
   ];
 
   rmSync(HOST_THEMES_DIR, { recursive: true, force: true });

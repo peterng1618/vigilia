@@ -1,16 +1,16 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  expect,
   type APIRequestContext,
+  expect,
   type Page,
   test,
 } from "@playwright/test";
 import {
   HOST_DISK_THEME_ID,
   HOST_PORT,
-  HOST_THEMES_DIR,
   HOST_THEME_ID,
+  HOST_THEMES_DIR,
 } from "./host-theme.js";
 
 /** Drives the consumer settings page against the real host. The page is the
@@ -123,6 +123,50 @@ test.describe("the settings page a consumer configures", () => {
     await expect(page.locator('select[data-group="system-disk"]')).toHaveValue(
       chosen,
     );
+  });
+
+  test("keeps both display preferences whichever one is saved", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "one desktop pass owns the shared host state",
+    );
+
+    // `display.json` is in the same directory but not in `resetStores`, so this
+    // clears it too.
+    await request.put(`${HOST}/api/display`, { data: {} });
+    await page.goto(`${HOST}/settings`);
+    await expect(page.locator("#timezone option").first()).toBeAttached();
+
+    try {
+      await page.locator("#measurement").selectOption("imperial");
+      await expect(page.locator("#status")).toHaveText(
+        "Saved. Displays already open keep their old units until they reload.",
+      );
+
+      // The host replaces the whole settings object, so a page that sent one
+      // field at a time would drop the other without saying so.
+      await page.locator("#timezone").selectOption("Asia/Tokyo");
+      await expect(page.locator("#status")).toHaveText(
+        "Saved. Displays update on their next frame.",
+      );
+
+      const body = (await (
+        await request.get(`${HOST}/api/display`)
+      ).json()) as { settings: unknown };
+      expect(body.settings).toEqual({
+        timeZone: "Asia/Tokyo",
+        measurement: "imperial",
+      });
+
+      await page.reload();
+      await expect(page.locator("#timezone")).toHaveValue("Asia/Tokyo");
+      await expect(page.locator("#measurement")).toHaveValue("imperial");
+    } finally {
+      await request.put(`${HOST}/api/display`, { data: {} });
+    }
   });
 
   test("asks a theme's disk question once, and remembers the answer", async ({

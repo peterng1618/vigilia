@@ -111,6 +111,26 @@ provider** (a machine preference, like the device assignment), and an author's
 pinned zone **by the display** at format time (design of that one clock). How it
 reads stays authored; a key per format would put presentation in the vocabulary.
 
+### A unit preference is applied by the display, never stored in a sample
+
+Providers report SI. The consumer's measurement system changes only what is
+shown, so conversion happens at presentation — after a binding's own scale and
+offset, before formatting — and never in the reading: a converted sample would
+put a derived number where a measurement belongs, and every other reader of that
+key would see the conversion (§97). Only a family that declares a conversion
+converts (temperature today), so the setting cannot appear to cover a unit it
+does not. Like the zone default it is global rather than per theme — a person's
+units do not change per dashboard — but unlike the zone the display applies it,
+because the zone is a fact about the machine's clock and this is not. A display
+reads it once at load, so a screen already showing a theme keeps its units until
+it reloads, which the settings page says.
+
+### Location is built with the weather provider, not offered before it
+
+Weather is the first consumer of a location, and it is a §99 custom-API provider
+whose URL and credentials are its own configuration. Offering the setting now
+would add a control that changes nothing.
+
 ### Performance budgets follow measurable costs
 
 Keep the player bundle-size gate. Add budgets when a real expensive path exists;

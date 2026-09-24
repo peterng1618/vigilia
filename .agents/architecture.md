@@ -168,7 +168,7 @@ usage.
 
 | Setting | Scope | Owner |
 |---|---|---|
-| Device assignments, display names, clock zone | this PC, whatever theme is shown | `host/src/settings/devices.ts`, `host/src/settings/display.ts` |
+| Device assignments, display names, clock zone, measurement system | this PC, whatever theme is shown | `host/src/settings/devices.ts`, `host/src/settings/display.ts` |
 | A theme's device answers | one theme on this machine; asked only for the slots its bindings need | `host/src/settings/theme-settings.ts`, `host/src/settings/required-devices.ts` |
 
 A global setting never reads the active theme: filtering this PC's own controls
@@ -177,6 +177,18 @@ resolves in one place — theme answer → global answer → provider default �
 every input to it (devices, the chosen theme, a theme's answers) publishes
 through `publishAssignment()` in `host/src/server.ts`, or a display keeps showing
 the device the consumer just replaced.
+
+Where a preference is applied follows from what it is about. The zone is a fact
+about the machine's clock, so the **provider** applies it when it reads, and every
+display agrees without re-converting. The measurement system changes presentation
+only, so the **display** applies it: a sample stays what the provider measured
+(§97), conversion happens after a binding's own scale and offset and before
+formatting, and only for a family that declares one — temperature today, in
+`renderer-core/src/scene/measurement.ts`. Both display paths convert: the planned
+scene (`buildScenePlan`'s `measurement`) and a hosted theme, which is revived
+rather than planned and converts in `refreshBoundText`. A display reads the
+preference once at load (`player/src/theme-loader.ts`); the editor preview does
+not, so it stays metric.
 
 ## Ownership registry
 
@@ -227,6 +239,8 @@ the device the consumer just replaced.
 | Device-assignment resolution handed to providers | `host/src/server.ts` (`publishAssignment`) |
 | Clock/date provider | `host/src/providers/clock.ts` |
 | Instant reading, author format tokens and the zone list | `renderer-core/src/scene/datetime-format.ts` |
+| Measurement conversion for display, and which families convert | `renderer-core/src/scene/measurement.ts` |
+| The preference a display reads at load | `player/src/theme-loader.ts` (`loadDisplayPreferences`) |
 | Consumer device-selection page | `host/public/settings.html` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |
