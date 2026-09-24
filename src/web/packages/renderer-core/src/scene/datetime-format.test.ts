@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatInstant, instantIn, parseInstant } from "./datetime-format.js";
+import {
+  formatInstant,
+  instantIn,
+  isTimeZoneName,
+  knownTimeZones,
+  parseInstant,
+} from "./datetime-format.js";
 
 /** A Thursday: 2026-09-24, 14:07:09 at +07:00. */
 const INSTANT = "2026-09-24T14:07:09+07:00";
@@ -98,5 +104,14 @@ describe("the instant a provider reports", () => {
 
   it("falls back to this machine rather than losing the clock", () => {
     expect(instantIn(NOW_MS, "Mars/Olympus")).toBe(instantIn(NOW_MS));
+  });
+});
+
+describe("the zones an author may pin", () => {
+  it("offers UTC, and only names this runtime resolves", () => {
+    const zones = knownTimeZones();
+
+    expect(zones[0]).toBe("UTC");
+    expect(zones.every(isTimeZoneName)).toBe(true);
   });
 });

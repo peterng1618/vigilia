@@ -72,8 +72,12 @@ is resolved in two places, and they do not overlap:
 
 This requires one envelope addition: the binding carries an optional author-chosen
 zone. That is presentation of a reading, not a new reading, so it belongs on the
-binding beside `precision` and `unitDisplay`. The model, the renderer and the
-formatting tests honour it; no authoring control writes it yet (see Non-goals).
+binding beside `precision` and `unitDisplay`. The run row authors it beside
+**Format**: a **Zone** picker whose first option follows the display and whose
+remaining options are every name `Intl` resolves — UTC included, since `Intl`
+resolves it but omits it from its canonical list and server time is the zone a
+dashboard most often pins. The preview is the reading the run will paint, so it
+re-renders in the pinned zone.
 
 `Intl.DateTimeFormat` supplies zone offsets, so no date library is added.
 
@@ -132,9 +136,6 @@ clock a consumer configures, since the format is authored.
 
 ## Non-goals
 
-- An authoring control for the binding's own zone. The field is honoured end to
-  end but nothing writes it, so a pinned-zone clock is authored in the envelope
-  rather than in the editor.
 - A live-updating seconds clock: the cadence is the host's, and per-second redraw
   is a performance decision this does not need to make.
 - Timers, stopwatches, uptime or duration sensors.
@@ -171,3 +172,8 @@ clock a consumer configures, since the format is authored.
 Driven in a browser against the real host, checking two things the DOM alone
 cannot prove: that the shown time advances across cadences, and that changing the
 timezone changes the rendered value rather than only a stored setting.
+
+The authoring control is driven in the editor the same way: pinning a zone
+rebuilds the control from what was written and the preview then reads that zone's
+wall clock, which is what makes the control do something rather than store a
+value.

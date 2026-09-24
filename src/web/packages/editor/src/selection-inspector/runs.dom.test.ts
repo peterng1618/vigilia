@@ -90,13 +90,14 @@ describe("binding a text run to a sensor", () => {
     return box.dispose();
   });
 
-  it("offers a format only for a key that is an instant", () => {
+  it("offers a format and a zone only for a key that is an instant", () => {
     const box = harness(literalClock);
     const source = box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]');
 
     choose(source, "cpu.load");
     box.render();
     expect(box.host.querySelector('[data-vigilia-run-format="0"]')).toBeNull();
+    expect(box.host.querySelector('[data-vigilia-run-zone="0"]')).toBeNull();
 
     choose(
       box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
@@ -105,6 +106,9 @@ describe("binding a text run to a sensor", () => {
     box.render();
     expect(
       box.host.querySelector('[data-vigilia-run-format="0"]'),
+    ).not.toBeNull();
+    expect(
+      box.host.querySelector('[data-vigilia-run-zone="0"]'),
     ).not.toBeNull();
     return box.dispose();
   });
@@ -162,7 +166,7 @@ describe("binding a text run to a sensor", () => {
     return box.dispose();
   });
 
-  it("drops a format that described the reading the run no longer reads", () => {
+  it("drops what described the reading the run no longer reads", () => {
     const box = harness(literalClock);
     choose(
       box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
@@ -173,6 +177,10 @@ describe("binding a text run to a sensor", () => {
     input.value = "dddd";
     input.dispatchEvent(new Event("change"));
     box.render();
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-zone="0"]'),
+      "Asia/Tokyo",
+    );
 
     choose(
       box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
@@ -181,6 +189,34 @@ describe("binding a text run to a sensor", () => {
 
     expect(box.stored()[0]?.semanticKey).toBe("cpu.load");
     expect(box.stored()[0]?.format).toBeUndefined();
+    expect(box.stored()[0]?.timeZone).toBeUndefined();
+    return box.dispose();
+  });
+
+  it("reads the clock in the zone the author pinned to it", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "time.now",
+    );
+    box.render();
+
+    // Unpinned is the default: the display reads wherever its consumer is.
+    const zone = box.pick<HTMLSelectElement>('[data-vigilia-run-zone="0"]');
+    expect(zone.value).toBe("");
+
+    choose(zone, "Asia/Tokyo");
+    box.render();
+    expect(box.stored()[0]?.timeZone).toBe("Asia/Tokyo");
+
+    // The preview is the reading the run will paint, so pinning a zone has to
+    // change what it says rather than only what is stored.
+    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+      formatInstant(instantIn(Date.now()), "HH:mm", "Asia/Tokyo"),
+    );
+
+    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-zone="0"]'), "");
+    expect(box.stored()[0]?.timeZone).toBeUndefined();
     return box.dispose();
   });
 

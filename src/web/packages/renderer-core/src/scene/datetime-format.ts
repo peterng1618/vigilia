@@ -230,9 +230,13 @@ export function isTimeZoneName(value: string): boolean {
   }
 }
 
-/** Every zone an author may pin a clock to, for the authoring control. */
+/**
+ * Every zone an author may pin a clock to, for the authoring control. `Intl`
+ * resolves UTC but omits it from the canonical list, and server time is the zone
+ * a dashboard most often pins, so it leads.
+ */
 export function knownTimeZones(): readonly string[] {
-  return Intl.supportedValuesOf("timeZone");
+  return ["UTC", ...Intl.supportedValuesOf("timeZone")];
 }
 
 /** Renders an instant with the author's tokens; literals pass through. */

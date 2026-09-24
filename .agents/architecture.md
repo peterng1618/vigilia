@@ -209,7 +209,7 @@ usage.
 | Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
 | Device assignment and display names | `host/src/settings/devices.ts` |
 | Clock/date provider | `host/src/providers/clock.ts` |
-| Instant reading and author format tokens | `renderer-core/src/scene/datetime-format.ts` |
+| Instant reading, author format tokens and the zone list | `renderer-core/src/scene/datetime-format.ts` |
 | Consumer device-selection page | `host/public/settings.html` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |

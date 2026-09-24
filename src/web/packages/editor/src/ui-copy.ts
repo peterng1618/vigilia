@@ -37,6 +37,8 @@ export const uiCopy = {
     runSource: "Reads",
     staticText: "Static text",
     runFormat: "Format",
+    runZone: "Zone",
+    runZoneFollows: "Follow the display",
     valueRun: "Value",
     emptyRun: "(empty)",
     align: "Align",

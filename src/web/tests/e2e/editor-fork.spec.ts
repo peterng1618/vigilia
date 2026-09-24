@@ -201,7 +201,43 @@ test.describe("Fabric editor route", () => {
     await expect(source).toHaveValue("time.now");
     const format = page.locator('[data-vigilia-run-format="0"]');
     await expect(format).toBeVisible();
-    await format.scrollIntoViewIfNeeded();
+    // The starter clock's own tokens, so the reading below is one this test can
+    // compute rather than one it wrote.
+    await expect(format).toHaveValue("hh:mm");
+
+    // A clock pinned to another city is the point of a world clock, so the zone
+    // has to change the reading rather than only the envelope: the control is
+    // rebuilt from what was written, and the preview follows it.
+    const zone = page.locator('[data-vigilia-run-zone="0"]');
+    await expect(zone).toHaveValue("");
+    await zone.selectOption("Asia/Tokyo");
+    await expect(zone).toHaveValue("Asia/Tokyo");
+    await expect
+      .poll(
+        async () => {
+          const shown = (
+            await page
+              .locator('[data-vigilia-run-format-preview="0"]')
+              .textContent()
+          )?.trim();
+          const tokyo = await page.evaluate(() => {
+            const parts = new Intl.DateTimeFormat("en-GB", {
+              timeZone: "Asia/Tokyo",
+              hour12: true,
+              hour: "2-digit",
+              minute: "2-digit",
+            }).formatToParts(new Date());
+            const part = (type: string): string =>
+              parts.find((entry) => entry.type === type)?.value ?? "";
+            return `${part("hour")}:${part("minute")}`;
+          });
+          return shown === tokyo;
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+
+    await zone.scrollIntoViewIfNeeded();
 
     await captureVisualReview(page, testInfo, "editor-fork-text-reads");
   });

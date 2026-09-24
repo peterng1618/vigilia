@@ -8,6 +8,7 @@ import {
   describeSemanticKey,
   formatInstant,
   instantIn,
+  knownTimeZones,
   SEMANTIC_KEYS,
 } from "@vigilia/renderer-core";
 import { applyAuthoredText } from "@vigilia/scene-fabric";
@@ -91,6 +92,18 @@ function withFormat(binding: Binding, format: string): Binding {
   }
 
   return { ...binding, format: trimmed };
+}
+
+/** A binding with `timeZone` pinned, or without the field when none is. */
+function withZone(binding: Binding, timeZone: string): Binding {
+  const trimmed = timeZone.trim();
+
+  if (trimmed.length === 0) {
+    const { timeZone: _timeZone, ...rest } = binding;
+    return rest;
+  }
+
+  return { ...binding, timeZone: trimmed };
 }
 
 /** A binding for `key`, with the fields the previous key's reading needed dropped. */
@@ -336,6 +349,57 @@ export function createRunEditor(
     return wrapper;
   };
 
+  /**
+   * Which zone the reading is taken in. A dashboard showing another city than
+   * the one it runs in is the point of a world clock, so the zone is the
+   * author's to pin; leaving it alone follows the display, which reads in
+   * whatever zone its consumer chose.
+   */
+  const zoneField = (
+    index: number,
+    binding: Binding,
+    port: RunBindingPort,
+  ): HTMLElement => {
+    const wrapper = document.createElement("label");
+    wrapper.textContent = uiCopy.inspectorFields.runZone;
+    const select = document.createElement("select");
+    select.dataset["vigiliaRunZone"] = String(index);
+    const follows = document.createElement("option");
+    follows.value = "";
+    follows.textContent = uiCopy.inspectorFields.runZoneFollows;
+    select.append(follows);
+
+    const pinned = binding.timeZone;
+    const zones = knownTimeZones();
+    // An alias the canonical list omits (`US/Pacific`) is a zone the envelope
+    // accepts, so it keeps its own entry rather than reading as unpinned.
+    for (const name of pinned !== undefined && !zones.includes(pinned)
+      ? [pinned, ...zones]
+      : zones) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.append(option);
+    }
+
+    select.value = pinned ?? "";
+    select.addEventListener("change", () => {
+      port.setBindings(
+        port
+          .bindings()
+          .map((candidate) =>
+            candidate.id === binding.id
+              ? withZone(candidate, select.value)
+              : candidate,
+          ),
+      );
+      onChange();
+    });
+
+    wrapper.append(select);
+    return wrapper;
+  };
+
   runs.forEach((run, index) => {
     const row = document.createElement("section");
     row.dataset["vigiliaRun"] = String(index);
@@ -406,7 +470,10 @@ export function createRunEditor(
         bound !== undefined &&
         describeSemanticKey(bound.semanticKey)?.instant !== undefined
       ) {
-        row.append(formatField(index, bound, port));
+        row.append(
+          formatField(index, bound, port),
+          zoneField(index, bound, port),
+        );
       }
     }
 
