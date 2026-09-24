@@ -38,6 +38,11 @@ LibreHardwareMonitor/PawnIO are not current dependencies or redistributed.
 Earlier planning research found LHM MPL-2.0 and PawnIO modules under GPL/LGPL;
 re-open the analysis before bundling, downloading or installing them.
 
+`systeminformation` 5.33.13 (MIT, no dependencies of its own) is the host's
+hardware-metrics source: verified from the package's own `LICENSE` and `npm
+view` metadata on 2026-09-24. It reads platform counters; it is not a vendored
+or linked third-party executable.
+
 ## Release rule
 
 Before publishing: enumerate the runtime/transitive graph from the lockfile,

@@ -1,0 +1,395 @@
+import { describe, expect, it, vi } from "vitest";
+import { LHM_DESCRIPTORS, LhmSensorProvider } from "./lhm.js";
+import { matchLhmSensors } from "./lhm-mapping.js";
+import { flattenLhmSensors } from "./lhm-tree.js";
+
+/** Minimal `data.json` shaped like a real LHM reply. */
+const DATA_JSON = {
+  Children: [
+    {
+      Text: "Sensor",
+      Children: [
+        {
+          Text: "Cpu",
+          HardwareId: "/intelcpu/0",
+          Children: [
+            {
+              Text: "Temperature",
+              Children: [
+                {
+                  Text: "CPU Package",
+                  SensorId: "/intelcpu/0/temperature/0",
+                  Type: "Temperature",
+                  RawValue: 62,
+                },
+                {
+                  Text: "Core #1",
+                  SensorId: "/intelcpu/0/temperature/1",
+                  Type: "Temperature",
+                  RawValue: 55,
+                },
+              ],
+            },
+            {
+              Text: "Power",
+              Children: [
+                {
+                  Text: "Package",
+                  SensorId: "/intelcpu/0/power/0",
+                  Type: "Power",
+                  RawValue: 45.5,
+                },
+              ],
+            },
+            {
+              Text: "Fan",
+              Children: [
+                {
+                  Text: "CPU Fan",
+                  SensorId: "/intelcpu/0/fan/0",
+                  Type: "Fan",
+                  RawValue: 1200,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          Text: "GpuNvidia",
+          HardwareId: "/gpu-nvidia/0",
+          Children: [
+            {
+              Text: "Load",
+              Children: [
+                {
+                  Text: "GPU Core",
+                  SensorId: "/gpu-nvidia/0/load/0",
+                  Type: "Load",
+                  RawValue: 42,
+                },
+                {
+                  Text: "GPU Memory",
+                  SensorId: "/gpu-nvidia/0/load/1",
+                  Type: "Load",
+                  RawValue: 63,
+                },
+              ],
+            },
+            {
+              Text: "Data",
+              Children: [
+                {
+                  Text: "GPU Memory Used",
+                  SensorId: "/gpu-nvidia/0/data/0",
+                  Type: "Data",
+                  RawValue: 4,
+                },
+                {
+                  Text: "GPU Memory Total",
+                  SensorId: "/gpu-nvidia/0/data/1",
+                  Type: "Data",
+                  RawValue: 12,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          Text: "Storage",
+          HardwareId: "/nvme/0",
+          Children: [
+            {
+              Text: "Load",
+              Children: [
+                {
+                  Text: "Used Space",
+                  SensorId: "/nvme/0/load/0",
+                  Type: "Load",
+                  RawValue: 61.5,
+                },
+              ],
+            },
+            {
+              Text: "Data",
+              Children: [
+                {
+                  Text: "Free Space",
+                  SensorId: "/nvme/0/data/1",
+                  Type: "Data",
+                  RawValue: 194,
+                },
+                {
+                  Text: "Total Space",
+                  SensorId: "/nvme/0/data/2",
+                  Type: "Data",
+                  RawValue: 499,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          Text: "Network",
+          HardwareId: "/nic/0",
+          Children: [
+            {
+              Text: "Throughput",
+              Children: [
+                {
+                  Text: "Download Speed",
+                  SensorId: "/nic/0/throughput/0",
+                  Type: "Throughput",
+                  RawValue: 1_250_000,
+                },
+                {
+                  Text: "Upload Speed",
+                  SensorId: "/nic/0/throughput/1",
+                  Type: "Throughput",
+                  RawValue: 625_000,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+describe("LHM sensor mapping", () => {
+  const sensors = flattenLhmSensors(DATA_JSON);
+
+  it("answers each key from the sensor that owns it", () => {
+    const matched = new Map(
+      matchLhmSensors(sensors, [
+        "cpu.temp",
+        "cpu.power",
+        "cpu.fan",
+        "gpu.load",
+        "gpu.temp",
+      ]).map((match) => [match.semanticKey, match.value]),
+    );
+
+    // CPU Package is preferred over the per-core reading.
+    expect(matched.get("cpu.temp")).toBe(62);
+    expect(matched.get("cpu.power")).toBe(45.5);
+    expect(matched.get("cpu.fan")).toBe(1200);
+    expect(matched.get("gpu.load")).toBe(42);
+    // No NVIDIA temperature sensor in this fixture: absent, not zero.
+    expect(matched.has("gpu.temp")).toBe(false);
+  });
+
+  it("converts Data to GB and Throughput to Mb/s", () => {
+    const matched = new Map(
+      matchLhmSensors(sensors, [
+        "vram.used",
+        "vram.total",
+        "vram.used.percent",
+        "network.download",
+        "network.upload",
+      ]).map((match) => [match.semanticKey, match.value]),
+    );
+
+    expect(matched.get("vram.used")).toBeCloseTo(4, 6);
+    expect(matched.get("vram.total")).toBeCloseTo(12, 6);
+    expect(matched.get("vram.used.percent")).toBe(63);
+    // 1_250_000 B/s is 10 Mb/s.
+    expect(matched.get("network.download")).toBeCloseTo(10, 6);
+    expect(matched.get("network.upload")).toBeCloseTo(5, 6);
+  });
+
+  it("derives disk.used from total minus free, because Used Space is a percent", () => {
+    // The trap: LHM types `Used Space` as Load but its value is 61.5 %, so
+    // reporting it as GB would be wrong by two orders of magnitude.
+    const matched = new Map(
+      matchLhmSensors(sensors, [
+        "disk.used",
+        "disk.total",
+        "disk.used.percent",
+      ]).map((match) => [match.semanticKey, match.value]),
+    );
+
+    expect(matched.get("disk.used")).toBeCloseTo(305, 6);
+    expect(matched.get("disk.total")).toBeCloseTo(499, 6);
+    expect(matched.get("disk.used.percent")).toBe(61.5);
+  });
+
+  it("answers only the requested keys", () => {
+    expect(
+      matchLhmSensors(sensors, ["cpu.fan"]).map((m) => m.semanticKey),
+    ).toEqual(["cpu.fan"]);
+    expect(matchLhmSensors(sensors, ["cpu.load"])).toEqual([]);
+  });
+
+  it("takes the highest reading when hardware repeats", () => {
+    const twoGpus = flattenLhmSensors({
+      Children: [
+        {
+          Text: "Sensor",
+          Children: [
+            {
+              Text: "GpuNvidia",
+              HardwareId: "/gpu-nvidia/0",
+              Children: [
+                {
+                  Text: "Load",
+                  Children: [
+                    {
+                      Text: "GPU Core",
+                      SensorId: "a",
+                      Type: "Load",
+                      RawValue: 20,
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              Text: "GpuNvidia",
+              HardwareId: "/gpu-nvidia/1",
+              Children: [
+                {
+                  Text: "Load",
+                  Children: [
+                    {
+                      Text: "GPU Core",
+                      SensorId: "b",
+                      Type: "Load",
+                      RawValue: 70,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(matchLhmSensors(twoGpus, ["gpu.load"])[0]?.value).toBe(70);
+  });
+
+  it("sums throughput across links rather than reporting one", () => {
+    const twoNics = flattenLhmSensors({
+      Children: [
+        {
+          Text: "Sensor",
+          Children: [
+            {
+              Text: "Network",
+              HardwareId: "/nic/0",
+              Children: [
+                {
+                  Text: "Throughput",
+                  Children: [
+                    {
+                      Text: "Download Speed",
+                      SensorId: "a",
+                      Type: "Throughput",
+                      RawValue: 125_000,
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              Text: "Network",
+              HardwareId: "/nic/1",
+              Children: [
+                {
+                  Text: "Throughput",
+                  Children: [
+                    {
+                      Text: "Download Speed",
+                      SensorId: "b",
+                      Type: "Throughput",
+                      RawValue: 125_000,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    // 250000 B/s total is 2 Mb/s.
+    expect(
+      matchLhmSensors(twoNics, ["network.download"])[0]?.value,
+    ).toBeCloseTo(2, 6);
+  });
+});
+
+describe("LHM provider", () => {
+  function providerReturning(
+    response: { ok: boolean; status: number; body: unknown } | Error,
+  ): LhmSensorProvider {
+    return new LhmSensorProvider({
+      fetcher: vi.fn(async () => {
+        if (response instanceof Error) throw response;
+        return {
+          ok: response.ok,
+          status: response.status,
+          text: async () => JSON.stringify(response.body),
+        };
+      }),
+    });
+  }
+
+  it("describes the extended vocabulary it can answer", () => {
+    expect(LHM_DESCRIPTORS.map((d) => d.semanticKey)).toContain("cpu.temp");
+    expect(LHM_DESCRIPTORS.every((d) => d.tier === "extended")).toBe(true);
+  });
+
+  it("maps a live answer onto vocabulary units", async () => {
+    const provider = providerReturning({
+      ok: true,
+      status: 200,
+      body: DATA_JSON,
+    });
+
+    const entries = await provider.sample(
+      ["cpu.temp", "network.download"],
+      Date.UTC(2026, 8, 24),
+    );
+
+    expect(entries.map((entry) => entry.sample)).toMatchObject([
+      { status: "ok", value: 62, unit: "°C" },
+      { status: "ok", value: 10, unit: "Mb/s" },
+    ]);
+    expect(provider.health().available).toBe(true);
+  });
+
+  it("reports LHM being absent as a gap with a reason, never a reading", async () => {
+    const provider = providerReturning(new Error("connect ECONNREFUSED"));
+
+    const entries = await provider.sample(["cpu.temp"], 0);
+
+    expect(entries[0]?.sample).toMatchObject({ status: "missing" });
+    expect(entries[0]?.sample).not.toHaveProperty("value");
+    expect(entries[0]?.sample.message).toContain("ECONNREFUSED");
+    expect(provider.health().available).toBe(false);
+  });
+
+  it("reports a sensor the machine does not have as a gap", async () => {
+    const provider = providerReturning({
+      ok: true,
+      status: 200,
+      body: DATA_JSON,
+    });
+
+    const entries = await provider.sample(["gpu.temp"], 0);
+
+    expect(entries[0]?.sample).toMatchObject({ status: "missing" });
+    expect(entries[0]?.sample.message).toContain("no matching");
+  });
+
+  it("skips keys it does not own", async () => {
+    const fetcher = vi.fn();
+    const provider = new LhmSensorProvider({ fetcher });
+
+    expect(await provider.sample(["ram.used"], 0)).toEqual([]);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+});

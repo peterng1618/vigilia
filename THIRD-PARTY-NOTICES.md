@@ -14,8 +14,14 @@ inventory, not a release-grade transitive audit. Provenance:
 | react 19.3.0 | MIT | editor shell chrome |
 | react-dom 19.3.0 | MIT | editor shell chrome |
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
+| systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
+
+LibreHardwareMonitor is **not** a dependency and its source is not vendored.
+It is an optional external program the machine owner may run; the host reads
+the JSON its own web server publishes and never links or compiles its .NET
+library. LibreHardwareMonitor is MPL-2.0 (`.agents/dependency-licences.md`).
 
 ## Build/test
 

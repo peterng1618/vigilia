@@ -7,8 +7,8 @@ import {
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
-import { DiskSensorProvider } from "./providers/disk.js";
-import { OsSensorProvider } from "./providers/os.js";
+import { LhmSensorProvider } from "./providers/lhm.js";
+import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
@@ -43,10 +43,14 @@ export async function run(argv: readonly string[]): Promise<number> {
     themesDir,
   } = parsed.options;
 
-  // Provider order defines ownership priority; baseline OS sensors come first.
+  // Provider order defines ownership priority. LibreHardwareMonitor answers the
+  // extended sensors (CPU temperature, fans, GPU detail) when the machine owner
+  // runs it; the systeminformation-backed provider answers everything else, and
+  // covers any key LHM could not read. Both are optional sources, never a
+  // collector Vigilia maintains (§97).
   const registry = new ProviderRegistry([
-    new OsSensorProvider(),
-    new DiskSensorProvider(),
+    new LhmSensorProvider(),
+    new LibrarySensorProvider(),
   ]);
 
   const here = path.dirname(fileURLToPath(import.meta.url));

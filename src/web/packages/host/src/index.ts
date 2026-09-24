@@ -26,16 +26,25 @@ export {
 } from "./cli/net.js";
 export { run } from "./main.js";
 
-export type { CpuTimes, OsReadings } from "./providers/os.js";
-
 export {
-  cpuLoadBetween,
-  OS_DESCRIPTORS,
-  OS_PROVIDER_ID,
-  OsSensorProvider,
-  readingsFromCpus,
-  samplesFromReadings,
-} from "./providers/os.js";
+  DEFAULT_LHM_URL,
+  LHM_DESCRIPTORS,
+  LHM_PROVIDER_ID,
+  LhmSensorProvider,
+} from "./providers/lhm.js";
+export { type LhmMatch, matchLhmSensors } from "./providers/lhm-mapping.js";
+export {
+  flattenLhmSensors,
+  type LhmSensor,
+} from "./providers/lhm-tree.js";
+export {
+  LIBRARY_DESCRIPTORS,
+  LIBRARY_PROVIDER_ID,
+  type LibraryReadings,
+  LibrarySensorProvider,
+  readingsFromLibrary,
+  samplesFromLibrary,
+} from "./providers/library.js";
 export type {
   ProviderHealth,
   SensorDescriptor,

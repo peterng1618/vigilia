@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",
-    "@vigilia/theme-package": "*"
+    "@vigilia/theme-package": "*",
+    "systeminformation": "^5.33.13"
   },
   "devDependencies": {
     "@types/node": "22.10.2"

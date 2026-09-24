@@ -76,6 +76,8 @@ export class ProviderRegistry {
     const entries: SampleEntry[] = [];
     const failures: ProviderFailure[] = [];
     const claimed = new Set<string>();
+    /** Samples every provider returned, `ok` or not, in precedence order. */
+    const returned: SampleEntry[] = [];
 
     settled.forEach((result, index) => {
       const provider = this.providers[index];
@@ -93,8 +95,12 @@ export class ProviderRegistry {
       }
 
       for (const entry of result.value) {
-        // Keep the earliest provider's answer for each semantic key.
-        if (claimed.has(entry.semanticKey)) {
+        returned.push(entry);
+
+        // Keep the earliest provider's answer for each semantic key. A
+        // non-`ok` sample does not claim the key, so a later provider with the
+        // same sensor can still answer it (§97's fallback).
+        if (entry.sample.status !== "ok" || claimed.has(entry.semanticKey)) {
           continue;
         }
 
@@ -103,10 +109,30 @@ export class ProviderRegistry {
       }
     });
 
+    // A key no provider measured still needs a sample, or a display cannot tell
+    // "no reading yet" from "nothing reports this". The earliest gap wins, so a
+    // specific reason from the preferred provider is the one shown.
+    const gap = new Set<string>();
+
+    for (const entry of returned) {
+      if (
+        claimed.has(entry.semanticKey) ||
+        gap.has(entry.semanticKey) ||
+        !semanticKeys.includes(entry.semanticKey)
+      ) {
+        continue;
+      }
+
+      gap.add(entry.semanticKey);
+      entries.push(entry);
+    }
+
     return {
       entries,
       failures,
-      unmapped: semanticKeys.filter((key) => !claimed.has(key)),
+      unmapped: semanticKeys.filter(
+        (key) => !claimed.has(key) && !gap.has(key),
+      ),
     };
   }
 }

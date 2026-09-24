@@ -67,31 +67,41 @@ provider must not stop the others.
 Themes bind semantic keys, never provider ids. Missing/unavailable data remains
 missing/stale/error; zero is never fabricated.
 
-### Baseline providers
+A non-`ok` sample does **not** claim its key: a later provider may still answer
+it, so the providers form a fallback chain. A key no provider measured keeps the
+earliest provider's gap, so the display shows a specific reason rather than a
+blank.
 
-Implemented with Node built-ins:
+### Providers
 
-- `cpu.load` from deltas of cumulative `os.cpus()` ticks;
-- `ram.used`, `ram.used.percent`, `ram.total` from `node:os` memory data;
-- `disk.used`, `disk.used.percent`, `disk.total` from `fs.statfs` on one
-  volume (`C:\` on Windows, `/` elsewhere). Usage is a snapshot, so it needs no
-  delta. An unreadable volume reports `missing` with its reason; health reports
-  unavailable.
+Vigilia does not maintain a hardware collector. Collection belongs to a library
+or an existing external program (§97).
 
-The first CPU sample after start is `missing` because there is no prior counter
-to diff. It must not render as an idle CPU.
+| Provider | Source | Answers |
+|---|---|---|
+| `lhm` (preferred) | LibreHardwareMonitor's own web server, `data.json` | CPU temperature/power/clock/fan, GPU load/temp/power/clock/fan, VRAM, network throughput |
+| `library` (fallback) | the `systeminformation` npm package (MIT, no dependencies) | CPU load/clock, RAM, GPU load/temp/power, VRAM, disk capacity, network throughput, plus every key LHM could not answer |
 
-`network.download` and `network.upload` are declared baseline in the vocabulary
-but have **no** provider: `node:os` exposes interface addresses only, never byte
-counters, so implementing them needs an unimplemented external source. A theme
-bound to them gets a gap. `/api/health` returns the requested-but-unanswered
-keys under `unmapped` so this reads as an explained gap, not a silent one.
+- LHM is an optional external prebuilt program. Vigilia reads the JSON its
+  server publishes; it never links or compiles its .NET library, and it stops
+  only processes it started itself.
+- LHM answers `SensorType` values, and `RawValue` is the consistent number to
+  read (`Value` is a formatted display string). LHM writes `"NaN"` for a sensor
+  it cannot read; that is a gap, never a zero.
+- Two LHM traps are handled explicitly: `Used Space` is typed `Load` yet carries
+  a **percentage**, so `disk.used` is derived from `Total Space` minus
+  `Free Space`, both of which are GB; and `SensorType.Data` is already GB while
+  `Throughput` is bytes per second, so only the latter is converted (to Mb/s).
+- The `library` provider sums capacity across mounted filesystems and throughput
+  across interfaces, so a multi-volume or multi-NIC machine reports totals.
+
+`network.download` and `network.upload` now have real providers; they are no
+longer reported through `/api/health`'s `unmapped`.
 
 ## Not implemented yet
 
-- network throughput (no stdlib counter; needs a source that is not yet chosen);
-- LibreHardwareMonitor extended provider for temperatures, power, clocks, fans,
-  voltages and motherboard sensors;
+- LibreHardwareMonitor is not yet packaged with the host, and its coexistence
+  with Vanguard/EAC/BattlEye remains unverified;
 - provider/user mapping UI;
 - theme storage/editor save-to-host;
 - LAN onboarding polish: the launcher prints a pairing link, but there is no
