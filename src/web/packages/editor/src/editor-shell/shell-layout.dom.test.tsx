@@ -43,6 +43,10 @@ function bridgeStub(
     can: () => false,
     canArrange: () => false,
     layers: () => [],
+    selectLayer: vi.fn(),
+    setLayerVisible: vi.fn(),
+    setLayerLocked: vi.fn(),
+    setCollapsed: vi.fn(),
     renameLayer: vi.fn(),
     subscribe: () => () => undefined,
     run: vi.fn(),
@@ -79,8 +83,8 @@ it("keeps panel hosts mounted outside React's control", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // Panel owners hold these nodes; React only positions them.
-  expect(layout.hosts.layers).toBeInstanceOf(HTMLElement);
+  // Panel owners hold these nodes; React only positions them. The Layers pane
+  // is the exception: React renders that tree, so it owns no host node.
   expect(layout.hosts.add).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.assets).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.document.parentElement).not.toBeNull();

@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasDock } from "./canvas-dock.js";
+import { LayerPanel } from "./layer-panel.js";
 import {
   applyShellPalette,
   DEFAULT_SHELL_PALETTE,
@@ -22,10 +23,10 @@ export type RailPane = "layers" | "add" | "assets" | "settings";
 export type InspectorTab = "design" | "data" | "style";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
- * these; it never renders panel content. */
+ * these; it never renders panel content. The Layers pane has no node here: the
+ * tree is React-owned and renders inside `Shell` from the bridge directly. */
 export interface ShellHosts {
   readonly canvas: HTMLElement;
-  readonly layers: HTMLElement;
   readonly add: HTMLElement;
   readonly assets: HTMLElement;
   readonly document: HTMLElement;
@@ -250,7 +251,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
   const hosts: ShellHosts = {
     canvas: element(),
-    layers: element("vigiliaPanelHostLayers"),
     add: element("vigiliaPanelHostAdd"),
     assets: element("vigiliaPanelHostAssets"),
     document: element("vigiliaPanelHostDocument"),
@@ -313,7 +313,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             ))}
           </nav>
           <aside className="editor-shell-panel editor-glass">
-            <Host node={hosts.layers} hidden={pane !== "layers"} />
+            <div hidden={pane !== "layers"}>
+              <LayerPanel bridge={store.bridge} />
+            </div>
             <Host node={hosts.add} hidden={pane !== "add"} />
             <Host node={hosts.assets} hidden={pane !== "assets"} />
             <div hidden={pane !== "settings"}>

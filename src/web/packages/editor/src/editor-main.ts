@@ -121,7 +121,6 @@ async function start(): Promise<void> {
       envelope: next.input,
       ...(next.assets === undefined ? {} : { assets: next.assets }),
       panelHosts: {
-        layers: layout.hosts.layers,
         add: layout.hosts.add,
         assets: layout.hosts.assets,
         document: layout.hosts.document,

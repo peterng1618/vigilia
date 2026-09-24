@@ -20,25 +20,29 @@ unpolished, and the canvas has no camera.
   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
     scale/resize snapping, relax the candidate filter, then replace the
     byte-length screenshot check with a move-and-resize behaviour matrix.
-- Spec A is under execution, task by task; the other two have no execution
-  method chosen yet.
+- Specs A and B are both under execution, task by task; snapping has no
+  execution method chosen yet.
 - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
   only outstanding item in that plan.
 
 ## Last completed change
 
-- Layer display names now read and write the envelope's `editorMetadata.layerNames`:
-  `EditorShellBridge.layers()`/`renameLayer()`, backed by `EditorActionFacade`'s
-  `layerNames()`/`setLayerNames()`; a blank rename deletes the key.
-- `mountEditorShell` owns the map, threads it into `snapshot(input)` and reads it
-  back from an opened envelope, so a rename survives save/reopen with no envelope
-  shape change. Renames stay out of authored history (§67/§172).
-- Editor spec gains a save/reopen browser test driven through the same bridge the
-  React layer panel will use (Task 5).
+- The imperative `layer-panel.ts` is deleted; `editor-shell/layer-panel.tsx`
+  renders a Figma-style tree from `bridge.layers()` — one dense row per layer
+  with a depth indent, a kind icon, the name and exactly two state icons.
+- `EditorShellBridge` gained `selectLayer`, `setLayerVisible`, `setLayerLocked`
+  and `setCollapsed`; the first two and lock resolve a group child through
+  `ownerOf`, revealed from the tree because Fabric repoints `object.group` at an
+  active selection.
+- `layer-tree.ts` owns `findById`/`ownerOf`/`pathTo`, and `LayerRow` carries
+  `collapsed`, so a shut group drops its children from the projection. Collapse
+  is bridge-local view state, never authored history (§67).
+- `ShellHosts` and `EditorPanelHosts` lost their `layers` node; the pane renders
+  React-side, and the rail entry survives.
 
 ## Next
 
-1. Continue Spec A with Task 2 (the canvas becomes a viewport).
+1. Continue Spec B with Task 6 (bottom action row and drag reorder).
 2. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified

@@ -333,8 +333,6 @@ body,
 .editor-shell-panel select,
 .editor-shell-inspector input,
 .editor-shell-inspector select {
-  display: block;
-  width: 100%;
   padding: 4px 6px;
 }
 .editor-shell-panel button,
@@ -345,6 +343,80 @@ body,
 .editor-shell-inspector button:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
+}
+
+/* Opt-in density primitives: a panel chooses a dense row rather than the shell
+   forcing every control onto its own full-width line. */
+.vigilia-field {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vigilia-field-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 12px;
+}
+.vigilia-numeric {
+  font-variant-numeric: tabular-nums;
+}
+.vigilia-field input,
+.vigilia-field select,
+.vigilia-field-row input,
+.vigilia-field-row select {
+  width: auto;
+  display: inline-block;
+  margin: 0;
+}
+
+/* The layer tree: one dense line per layer, indentation carrying the depth. */
+.vigilia-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: calc(6px + var(--layer-depth, 0) * 13px);
+  min-height: 24px;
+  border-radius: 5px;
+  cursor: default;
+}
+.vigilia-layer-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+  color: var(--shell-text);
+}
+.vigilia-layer-row button {
+  min-height: 20px;
+  width: 20px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+}
+.vigilia-layer-row button:hover {
+  border: 0;
+}
+.vigilia-layer-twisty {
+  width: 20px;
+  display: inline-flex;
+  justify-content: center;
+}
+.vigilia-layer-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vigilia-layer-rename {
+  flex: 1;
+  min-width: 0;
+  min-height: 22px;
+  margin: 0;
 }
 .editor-shell-stage {
   min-width: 0;

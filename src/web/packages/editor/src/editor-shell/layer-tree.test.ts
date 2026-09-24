@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { projectLayers } from "./layer-tree.js";
+import { findById, ownerOf, pathTo, projectLayers } from "./layer-tree.js";
 
 const base = { names: {}, collapsed: new Set<string>(), selected: [] } as const;
 
@@ -136,5 +136,61 @@ describe("layer projection", () => {
       names: { header: "   " },
     });
     expect(rows[0]?.name).toBe("header");
+  });
+
+  it("reports collapse on the group itself, not on the children it hides", () => {
+    const child = new Rect({ id: "child", width: 10, height: 10 });
+    const group = new Group([child]);
+    group.set("id", "group");
+    const rows = projectLayers({
+      ...base,
+      root: [group],
+      collapsed: new Set(["group"]),
+    });
+    expect(rows[0]?.collapsed).toBe(true);
+    expect(rows[0]?.hasChildren).toBe(true);
+  });
+});
+
+describe("layer tree lookups", () => {
+  it("resolves an id to the same object the projection named", () => {
+    const child = new Rect({ id: "child", width: 10, height: 10 });
+    const group = new Group([child]);
+    group.set("id", "group");
+    const rows = projectLayers({ ...base, root: [group] });
+    // The id the row carried has to resolve back to the object that row drew,
+    // including the nested child, or every bridge command targets the wrong one.
+    expect(findById([group], rows[1]!.id)).toBe(child);
+  });
+
+  it("resolves the anonymous fallback ids the projection hands out", () => {
+    const first = new Rect({ width: 10, height: 10 });
+    const second = new Rect({ width: 10, height: 10 });
+    const rows = projectLayers({ ...base, root: [first, second] });
+    expect(rows.map((row) => row.id)).toEqual([
+      "unidentified",
+      "unidentified#2",
+    ]);
+    expect(findById([first, second], rows[0]!.id)).toBe(second);
+    expect(findById([first, second], rows[1]!.id)).toBe(first);
+  });
+
+  it("names the owning group of a child and nothing above a top-level object", () => {
+    const child = new Rect({ id: "child", width: 10, height: 10 });
+    const group = new Group([child]);
+    group.set("id", "group");
+    expect(ownerOf([group], "child")).toBe(group);
+    expect(ownerOf([group], "group")).toBeUndefined();
+    expect(ownerOf([group], "missing")).toBeUndefined();
+  });
+
+  it("returns the root-first path to a nested id, and nothing for a miss", () => {
+    const child = new Rect({ id: "child", width: 10, height: 10 });
+    const inner = new Group([child]);
+    inner.set("id", "inner");
+    const outer = new Group([inner]);
+    outer.set("id", "outer");
+    expect(pathTo([outer], "child")).toEqual([outer, inner, child]);
+    expect(pathTo([outer], "missing")).toEqual([]);
   });
 });

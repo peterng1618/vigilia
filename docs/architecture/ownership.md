@@ -20,7 +20,7 @@ If implementation moves an owner, update this map in the same change.
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
-| Semantic layer projection and arrange actions | `editor/src/layer-panel.ts`, `editor/src/arrange.ts` |
+| Semantic layer projection and arrange actions | `editor/src/editor-shell/layer-tree.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
@@ -56,7 +56,8 @@ adoption; `scene-fabric/src/font-assets.ts` owns loaded-face lifecycle. The UI
 adapter does not own catalog, preview or adoption semantics.
 
 `editor-shell.ts` owns generic z-order, grouping and locks; the Vigilia layer
-panel projects that state without a parallel scene tree.
+tree (`editor-shell/layer-tree.ts`) projects that state without a parallel scene
+tree, and `editor-shell/layer-panel.tsx` renders those rows.
 
 ## Ownership registry
 

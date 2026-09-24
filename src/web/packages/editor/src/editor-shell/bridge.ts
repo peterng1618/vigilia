@@ -7,7 +7,13 @@ import {
   type ObjectActionId,
   type ObjectTarget,
 } from "../object-actions.js";
-import { type LayerRow, projectLayers } from "./layer-tree.js";
+import {
+  type LayerRow,
+  findById,
+  ownerOf,
+  pathTo,
+  projectLayers,
+} from "./layer-tree.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
 /** Selection-kind routing for menu/tab eligibility. Transient, never persisted. */
@@ -30,6 +36,13 @@ export interface EditorShellBridge {
   canArrange(action: ArrangeAction): boolean;
   /** The layer tree, projected from Fabric on demand (§172). */
   layers(): readonly LayerRow[];
+  /** Selects a row's object, resolving a group child through its owning group. */
+  selectLayer(id: string): void;
+  /** Hiding leaves the selection alone; showing reveals the whole ancestor path. */
+  setLayerVisible(id: string, visible: boolean): void;
+  setLayerLocked(id: string, locked: boolean): void;
+  /** Transient view state: never authored history, never a Fabric write (§67). */
+  setCollapsed(id: string, collapsed: boolean): void;
   /** Editor-only display state: never authored history, never a Fabric write. */
   renameLayer(id: string, name: string): void;
   subscribe(listener: () => void): () => void;
@@ -103,7 +116,8 @@ export function createEditorShellBridge(input: {
     activeObject() !== undefined && actionEnabled(gate, action);
   const names = (): Readonly<Record<string, string>> =>
     input.session.layerNames();
-  // Seeded empty: Task 5's `setCollapsed` mutates it; this task only reads it.
+  // View state lives here, not in the panel: the projection reads it, so a
+  // remount keeps the groups the author shut.
   const collapsedGroups = new Set<string>();
   const layers = (): readonly LayerRow[] => {
     const active = canvas.getActiveObject();
@@ -119,6 +133,46 @@ export function createEditorShellBridge(input: {
       names: names(),
       collapsed: collapsedGroups,
     });
+  };
+  const selectLayer = (id: string): void => {
+    const root = canvas.getObjects();
+    const target = findById(root, id);
+    if (target === undefined) return;
+    // A child of a group is selected through its owning group, as the DOM panel
+    // did: selecting the child directly would put a Fabric-only object on the
+    // canvas that no transform control can reach.
+    canvas.setActiveObject(ownerOf(root, id) ?? target);
+    canvas.requestRenderAll();
+    notify();
+  };
+  const setLayerVisible = (id: string, visible: boolean): void => {
+    const target = findById(canvas.getObjects(), id);
+    if (target === undefined) return;
+    // Showing a descendant whose ancestor is hidden would show nothing, so the
+    // whole path is revealed; hiding touches only the requested object.
+    if (visible)
+      for (const entry of pathTo(canvas.getObjects(), id))
+        entry.set("visible", true);
+    else target.set("visible", false);
+    target.setCoords();
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
+    notify();
+  };
+  const setLayerLocked = (id: string, locked: boolean): void => {
+    const root = canvas.getObjects();
+    const target = findById(root, id);
+    if (target === undefined) return;
+    // Locks go through the owning group for the same reason selection does.
+    const subject = ownerOf(root, id) ?? target;
+    if (locked) input.editor.objectLockManager.lockObject({ object: subject });
+    else input.editor.objectLockManager.unlockObject({ object: subject });
+    notify();
+  };
+  const setCollapsed = (id: string, collapsed: boolean): void => {
+    if (collapsed) collapsedGroups.add(id);
+    else collapsedGroups.delete(id);
+    notify();
   };
   const renameLayer = (id: string, name: string): void => {
     const trimmed = name.trim();
@@ -137,6 +191,10 @@ export function createEditorShellBridge(input: {
     can,
     canArrange: canArrangeAction,
     layers,
+    selectLayer,
+    setLayerVisible,
+    setLayerLocked,
+    setCollapsed,
     renameLayer,
     session: input.session,
     editor: input.editor,

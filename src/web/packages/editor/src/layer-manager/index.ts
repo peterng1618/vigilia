@@ -1,6 +1,7 @@
 import type { Canvas, FabricObject } from "fabric/es";
 
-/** Generic canvas stacking order; semantic layer projection lives in layer-panel.ts. */
+/** Generic canvas stacking order; semantic layer projection lives in
+ * editor-shell/layer-tree.ts. */
 export interface LayerManager {
   bringToFront(object?: FabricObject): void;
   bringForward(object?: FabricObject): void;

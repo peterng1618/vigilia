@@ -23,7 +23,6 @@ import {
   createIndicatorManager,
   type IndicatorManager,
 } from "./indicator-manager/index.js";
-import { createLayerPanel, type LayerPanel } from "./layer-panel.js";
 import { LiveRuntime } from "./live-runtime.js";
 import { createNewTextDefaults } from "./new-object-defaults.js";
 import {
@@ -65,8 +64,6 @@ import {
 } from "./type-preset-manager/index.js";
 
 export interface EditorPanelHosts {
-  /** Semantic layer tree and arrange controls. */
-  readonly layers: HTMLElement;
   /** Text and chart creation. */
   readonly add: HTMLElement;
   /** Imported asset list and controls. */
@@ -110,7 +107,6 @@ export class EditorSession {
   readonly #newObjects: NewObjectPanel;
   readonly #selection: SelectionInspector;
   readonly #style: StylePanel;
-  readonly #layers: LayerPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
@@ -143,10 +139,6 @@ export class EditorSession {
     // used to hold the buttons is gone.
     this.#options = options;
     this.#panelHosts = options.panelHosts;
-    this.#layers = createLayerPanel(
-      options.panelHosts.layers,
-      options.shell.editor,
-    );
     this.#snapping = createSnapManager({
       canvas: options.shell.editor.canvas,
       bounds: () => {
@@ -424,7 +416,6 @@ export class EditorSession {
     this.#palette.root.remove();
     this.#types.root.remove();
     this.#newObjects.root.remove();
-    this.#layers.destroy();
     this.#snapping.destroy();
     this.#indicators.destroy();
   }

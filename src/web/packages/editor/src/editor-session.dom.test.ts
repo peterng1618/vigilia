@@ -3,14 +3,9 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const createLayerPanel = vi.hoisted(() => vi.fn());
-const destroyLayerPanel = vi.hoisted(() => vi.fn());
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
 const markSavedMock = vi.hoisted(() => vi.fn());
 
-vi.mock("./layer-panel.js", () => ({
-  createLayerPanel: (...args: readonly unknown[]) => createLayerPanel(...args),
-}));
 vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
 vi.mock("./palette-manager/index.js", () => ({
   createPalettePanel: () => panel(),
@@ -57,53 +52,9 @@ const envelope: FabricThemeEnvelope = {
 
 describe("EditorSession", () => {
   beforeEach(() => {
-    createLayerPanel.mockReset();
-    destroyLayerPanel.mockReset();
     saveMock.mockReset();
     markSavedMock.mockReset();
-    createLayerPanel.mockReturnValue({
-      root: document.createElement("section"),
-      destroy: destroyLayerPanel,
-    });
     document.body.replaceChildren();
-  });
-
-  it("owns the semantic layer panel lifecycle", () => {
-    const editor = {
-      canvas: {
-        on: vi.fn(),
-        off: vi.fn(),
-        getActiveObject: () => undefined,
-        getObjects: () => [],
-        requestRenderAll: vi.fn(),
-      },
-    };
-    const extensions = new EditorSession({
-      shell: {
-        editor,
-        scene: {},
-        snapshot: vi.fn(() => envelope),
-        setBackgroundMedia: vi.fn(),
-      } as never,
-      source: {} as never,
-      envelope,
-      panelHosts: {
-        layers: document.body,
-        add: document.body,
-        assets: document.body,
-        document: document.body,
-        chart: document.body,
-        selection: document.body,
-        style: document.body,
-      },
-      onNew: vi.fn(),
-      onOpen: vi.fn(),
-      onSaved: vi.fn(),
-    });
-
-    expect(createLayerPanel).toHaveBeenCalledWith(document.body, editor);
-    extensions.destroy();
-    expect(destroyLayerPanel).toHaveBeenCalledTimes(1);
   });
 
   it("dispatches package and library actions through the shell façade", async () => {
@@ -134,7 +85,6 @@ describe("EditorSession", () => {
       source: {} as never,
       envelope,
       panelHosts: {
-        layers: document.body,
         add: document.body,
         assets: document.body,
         document: document.body,
@@ -191,7 +141,6 @@ describe("EditorSession", () => {
       source: {} as never,
       envelope: { ...envelope, metadata: { version: "1.2.3" } },
       panelHosts: {
-        layers: document.body,
         add: document.body,
         assets: document.body,
         document: document.body,
@@ -267,7 +216,6 @@ describe("EditorSession", () => {
         },
       },
       panelHosts: {
-        layers: document.body,
         add: document.body,
         assets: document.body,
         document: document.body,
@@ -350,7 +298,6 @@ describe("EditorSession", () => {
         },
       },
       panelHosts: {
-        layers: document.body,
         add: document.body,
         assets: document.body,
         document: document.body,
@@ -423,7 +370,6 @@ describe("EditorSession", () => {
         },
       },
       panelHosts: {
-        layers: document.body,
         add: document.body,
         assets: document.body,
         document: document.body,

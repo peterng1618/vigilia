@@ -46,16 +46,19 @@ function bridgeFor(
   active: unknown,
   extra: Record<string, unknown> = {},
   sessionExtra: Record<string, unknown> = {},
+  canvasExtra: Record<string, unknown> = {},
 ) {
   const listeners = new Map<string, () => void>();
   const objects = active === undefined ? [] : [active];
   const canvas = {
     getActiveObject: () => active,
     getObjects: () => objects,
+    requestRenderAll: vi.fn(),
     on: vi.fn((name: string, listener: () => void) =>
       listeners.set(name, listener),
     ),
     off: vi.fn(),
+    ...canvasExtra,
   };
   const editor = { canvas, ...extra };
   const session = { ...facadeStub(), ...sessionExtra };
@@ -200,4 +203,102 @@ it("keeps sibling names when one is renamed", () => {
     other: "Kept",
     header: "Top rule",
   });
+});
+
+it("selects a group child through its owning group, not the child", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const setActiveObject = vi.fn();
+  const { bridge } = bridgeFor(group, {}, {}, { setActiveObject });
+  // bridgeFor puts the group on the canvas, so its child is reachable by id.
+  bridge.selectLayer("child");
+  expect(setActiveObject).toHaveBeenCalledWith(group);
+});
+
+it("reveals a hidden ancestor path but hides only the requested object", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  // The sibling is hidden on its own account: revealing the child must not
+  // reveal it, or "show" would mean "show everything under this group".
+  const sibling = new Rect({ id: "sibling", width: 10, height: 10 });
+  sibling.set("visible", false);
+  const group = new Group([child, sibling], { visible: false });
+  group.set("id", "group");
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(
+    group,
+    { historyManager: { saveState } },
+    {},
+    { requestRenderAll: vi.fn() },
+  );
+
+  bridge.setLayerVisible("child", true);
+  expect(group.visible).toBe(true);
+  expect(child.visible).toBe(true);
+  expect(sibling.visible).toBe(false);
+  expect(saveState).toHaveBeenCalledTimes(1);
+
+  bridge.setLayerVisible("child", false);
+  expect(child.visible).toBe(false);
+  expect(group.visible).toBe(true);
+});
+
+it("locks through the owning group so a group child stays protected", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const lockObject = vi.fn();
+  const unlockObject = vi.fn();
+  const { bridge } = bridgeFor(group, {
+    objectLockManager: { lockObject, unlockObject },
+  });
+
+  bridge.setLayerLocked("child", true);
+  expect(lockObject).toHaveBeenCalledWith({ object: group });
+  bridge.setLayerLocked("child", false);
+  expect(unlockObject).toHaveBeenCalledWith({ object: group });
+});
+
+it("keeps collapse in the bridge and drops the children from the projection", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const { bridge } = bridgeFor(group);
+
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group", "child"]);
+  bridge.setCollapsed("group", true);
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group"]);
+  expect(bridge.layers()[0]?.collapsed).toBe(true);
+  bridge.setCollapsed("group", false);
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group", "child"]);
+});
+
+it("notifies subscribers when a layer command changes the projection", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const { bridge } = bridgeFor(group);
+  const seen = vi.fn();
+  bridge.subscribe(seen);
+
+  bridge.setCollapsed("group", true);
+  expect(seen).toHaveBeenCalled();
+});
+
+it("ignores a layer command aimed at an id the tree does not have", () => {
+  const setActiveObject = vi.fn();
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(
+    new Rect({ id: "only" }),
+    { historyManager: { saveState } },
+    {},
+    { setActiveObject, requestRenderAll: vi.fn() },
+  );
+
+  bridge.selectLayer("missing");
+  bridge.setLayerVisible("missing", true);
+  bridge.setLayerLocked("missing", true);
+  // A refusal that still did any of this would corrupt unrelated state.
+  expect(setActiveObject).not.toHaveBeenCalled();
+  expect(saveState).not.toHaveBeenCalled();
 });

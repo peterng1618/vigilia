@@ -121,6 +121,13 @@ export const uiCopy = {
   panels: {
     layers: "Layers",
     arrange: "Arrange",
+    /** Layer-tree row controls. The accessible name of a row's own control is
+     * this word plus the layer's name, so two rows never share one. */
+    hide: "Hide",
+    show: "Show",
+    rename: "Rename",
+    collapse: "Collapse",
+    expand: "Expand",
     add: "Add",
     text: "Text",
     assets: "Assets",

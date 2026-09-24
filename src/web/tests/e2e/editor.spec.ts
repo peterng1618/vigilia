@@ -254,13 +254,10 @@ test.describe("Fabric editor route", () => {
     const layer = page.locator('[data-vigilia-layer="load-gauge"]');
     await expect(layer).toBeVisible();
     await layer.click();
-    await expect(layer).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      page.locator('[data-vigilia-arrange="align-left"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-vigilia-arrange="distribute-x"]'),
-    ).toBeDisabled();
+    await expect(layer).toHaveAttribute("aria-selected", "true");
+    // One dense line per layer: the state icons, not the old six text buttons.
+    await expect(layer.locator("button")).toHaveCount(2);
+    await expect(layer.locator('[aria-label="Hide"]')).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-layer-arrange");
   });
