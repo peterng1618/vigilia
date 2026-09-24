@@ -21,6 +21,12 @@ export interface SemanticKeyDescriptor {
   readonly unit?: string;
   /** Authoring hint, not a claim about this machine. */
   readonly expectedTier: SensorTier;
+  /**
+   * The family a display's measurement preference converts, when it converts
+   * this key. Absent means the reported unit is the only sensible one: a unit
+   * preference must not pretend to cover families it cannot (spec 2026-09-24).
+   */
+  readonly converts?: "temperature";
 }
 
 /** `family.quantity[.qualifier]`; availability is discovered separately. */
@@ -39,6 +45,7 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     label: "CPU temperature",
     unit: "°C",
     expectedTier: "extended",
+    converts: "temperature",
   },
   {
     key: "cpu.power",
@@ -99,6 +106,7 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     label: "GPU temperature",
     unit: "°C",
     expectedTier: "extended",
+    converts: "temperature",
   },
   {
     key: "gpu.power",

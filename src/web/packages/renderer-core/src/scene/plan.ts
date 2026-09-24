@@ -23,6 +23,11 @@ import type {
   TypePreset,
 } from "../theme/document.js";
 import type { Sample, SensorStatus } from "../types.js";
+import {
+  convertForDisplay,
+  DEFAULT_MEASUREMENT_SYSTEM,
+  type MeasurementSystem,
+} from "./measurement.js";
 
 /**
  * Pure document + telemetry → render plan. All renderer-independent decisions
@@ -138,6 +143,8 @@ export interface PlanContext {
   readonly resolveAsset?: (assetId: string) => string | undefined;
   /** Long unit names keyed by short symbol; absent entries fall back to short. */
   readonly longUnits?: Readonly<Record<string, string>>;
+  /** The consumer's measurement preference; metric shows what was measured. */
+  readonly measurement?: MeasurementSystem;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
@@ -434,7 +441,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, "longUnits">,
+  context: Pick<PlanContext, "longUnits" | "measurement">,
 ): PlanTextSegment {
   if (sample.status !== "ok") {
     return {
@@ -449,10 +456,21 @@ function formatValueSegment(
   const unitDisplay = run.unitDisplay ?? binding.unitDisplay ?? "short";
 
   let text: string;
+  let shown = sample.unit;
 
   if (typeof sample.value === "number" && Number.isFinite(sample.value)) {
     const scaled = sample.value * (binding.scale ?? 1) + (binding.offset ?? 0);
-    text = formatNumber(scaled, precision);
+    // The consumer's measurement preference converts what is displayed, after
+    // the binding's own scale and offset and before formatting, so a converted
+    // value is never fed back through a scale.
+    const converted = convertForDisplay(
+      binding.semanticKey,
+      scaled,
+      sample.unit,
+      context.measurement ?? DEFAULT_MEASUREMENT_SYSTEM,
+    );
+    text = formatNumber(converted.value, precision);
+    shown = converted.unit;
   } else if (sample.textValue !== undefined) {
     text = sample.textValue;
   } else if (sample.booleanValue !== undefined) {
@@ -461,7 +479,7 @@ function formatValueSegment(
     return { text: MISSING_VALUE_TEXT, style, status: "error" };
   }
 
-  const unit = formatUnit(sample.unit, unitDisplay, context.longUnits);
+  const unit = formatUnit(shown, unitDisplay, context.longUnits);
 
   return { text: unit === "" ? text : `${text}${unit}`, style };
 }
