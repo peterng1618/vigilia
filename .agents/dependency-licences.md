@@ -66,10 +66,13 @@ Findings:
   launching a desktop application on the user's machine.
 
 Conclusion: redistribution is **permissible with notices added**, and is not
-blocked by licence. It remains a product decision with external effects
-(shipping a third-party GUI app, and a driver-download path), so it needs the
-maintainer's sign-off and the notices above before any release includes it.
-`.agents/dependency-licences.md`'s release rule still applies.
+blocked by licence. **Decided by:** user, 2026-09-24 — bundling approved, so
+Vigilia releases ship LHM with its notices. The third-party notices are listed
+in `THIRD-PARTY-NOTICES.md`, and the vendor script stages LHM's `LICENSE` and
+`THIRD-PARTY-NOTICES.txt` because the release archive omits them. Release
+packaging must include those files. A PawnIO module download (LGPL-2.1,
+fetched by LHM at runtime) remains separately unreviewed and must not be
+enabled without its own assessment.
 
 `systeminformation` 5.33.13 (MIT, no dependencies of its own) is the host's
 hardware-metrics source: verified from the package's own `LICENSE` and `npm

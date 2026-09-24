@@ -18,10 +18,32 @@ inventory, not a release-grade transitive audit. Provenance:
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
 
-LibreHardwareMonitor is **not** a dependency and its source is not vendored.
-It is an optional external program the machine owner may run; the host reads
-the JSON its own web server publishes and never links or compiles its .NET
-library. LibreHardwareMonitor is MPL-2.0 (`.agents/dependency-licences.md`).
+### LibreHardwareMonitor (bundled external program)
+
+A Vigilia release ships LibreHardwareMonitor v0.9.6 (MPL-2.0) as an external
+program, staged by `npm run vendor:lhm -w @vigilia/host`. Vigilia links nothing
+and compiles nothing: it runs the executable and reads the JSON its web server
+publishes. It is not a dependency and its source is not vendored.
+
+MPL-2.0 permits redistribution in a larger work provided LHM's own source stays
+under MPL and its notices travel with it. **The release archive omits every
+licence file**, so the vendor script adds LHM's `LICENSE` and
+`THIRD-PARTY-NOTICES.txt` beside the binaries; the latter carries the required
+notices for the third-party binaries the archive bundles:
+
+| Bundled binary | Notice |
+|---|---|
+| Aga.Controls.dll | BSD (Andrey Gliznetsov) |
+| HidSharp.dll, OxyPlot.dll, OxyPlot.WindowsForms.dll, RAMSPDToolkit-NDD.dll | per LHM's `THIRD-PARTY-NOTICES.txt` |
+| Microsoft.* / System.* support assemblies | Microsoft .NET, MIT |
+
+Release packaging must include `vendor/lhm/LICENSE` and
+`vendor/lhm/THIRD-PARTY-NOTICES.txt` (and so the notices above) in the shipped
+distribution. PawnIO is **not** in the archive — LHM fetches it at runtime and
+it is LGPL-2.1 — so a first-run PawnIO download needs its own review before
+being enabled. Provenance and the pinned digest:
+`.agents/dependency-licences.md`; `vendor/lhm/PROVENANCE.txt` records the
+version, source URL and sha256 of the staged release.
 
 ## Build/test
 
