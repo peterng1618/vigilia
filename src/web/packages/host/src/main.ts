@@ -8,6 +8,7 @@ import {
   waitUntilReachable,
 } from "./cli/net.js";
 import { LhmSensorProvider } from "./providers/lhm.js";
+import { launchLhm } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
@@ -19,6 +20,16 @@ import { createThemeStore } from "./themes/store.js";
 /** ANSI styling only for TTY output. */
 function style(code: string, text: string): string {
   return process.stdout.isTTY ? `\u001b[${code}m${text}\u001b[0m` : text;
+}
+
+/**
+ * Where a packaged LibreHardwareMonitor lives: `vendor/lhm/` beside the host
+ * package. Absent until LHM is actually redistributed, which needs its licence
+ * obligations settled first (`.agents/dependency-licences.md`).
+ */
+function bundledLhmPath(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(here, "..", "vendor", "lhm", "LibreHardwareMonitor.exe");
 }
 
 const VERSION = "0.1.0";
@@ -41,7 +52,17 @@ export async function run(argv: readonly string[]): Promise<number> {
     host,
     openBrowser: shouldOpen,
     themesDir,
+    lhmUrl,
+    lhmExecutable,
   } = parsed.options;
+
+  // Starting LHM is opt-in via `--lhm-exe`; the provider reads whichever server
+  // answers, whether Vigilia launched it or the owner already runs it.
+  const lhm = await launchLhm({
+    executable: lhmExecutable ?? bundledLhmPath(),
+    baseUrl: lhmUrl,
+    ...(lhmExecutable === undefined ? {} : { timeoutMs: 20_000 }),
+  });
 
   // Provider order defines ownership priority. LibreHardwareMonitor answers the
   // extended sensors (CPU temperature, fans, GPU detail) when the machine owner
@@ -49,7 +70,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   // covers any key LHM could not read. Both are optional sources, never a
   // collector Vigilia maintains (§97).
   const registry = new ProviderRegistry([
-    new LhmSensorProvider(),
+    new LhmSensorProvider({ baseUrl: lhmUrl }),
     new LibrarySensorProvider(),
   ]);
 
@@ -103,6 +124,24 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   console.log(`  Dashboard  ${url}`);
   console.log(`  Editor     ${url}/editor`);
+
+  // Say what the extended sensors will do, rather than leaving the display to
+  // show gaps without explanation.
+  if (lhm.started) {
+    console.log(style("2", `  LibreHardwareMonitor started for ${lhmUrl}`));
+  } else if (lhm.reason !== undefined) {
+    console.log(
+      style(
+        "33",
+        `  Extended sensors unavailable: ${lhm.reason}` +
+          "\n  Baseline sensors still work; temperature and fan keys will be gaps.",
+      ),
+    );
+  } else {
+    console.log(
+      style("2", `  Using the LibreHardwareMonitor already at ${lhmUrl}`),
+    );
+  }
 
   if (!isLoopbackHost(host)) {
     const lan = lanAddress();
@@ -165,6 +204,8 @@ export async function run(argv: readonly string[]): Promise<number> {
 
       stopping = true;
       console.log("\nStopping.");
+      // Stop only the LHM this run started; one the owner already ran is theirs.
+      lhm.stop();
       void hosted.close().then(resolve, resolve);
     };
 

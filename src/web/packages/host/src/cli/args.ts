@@ -1,5 +1,6 @@
 import os from "node:os";
 import path from "node:path";
+import { DEFAULT_LHM_URL } from "../providers/lhm.js";
 
 /** Pure command-line parsing. */
 
@@ -8,6 +9,10 @@ export interface HostOptions {
   readonly host: string;
   readonly openBrowser: boolean;
   readonly themesDir: string;
+  /** Endpoint of a LibreHardwareMonitor web server, if the owner runs one. */
+  readonly lhmUrl: string;
+  /** Path to `LibreHardwareMonitor.exe`; set to launch it with the host. */
+  readonly lhmExecutable?: string;
 }
 
 export const DEFAULT_PORT = 5227;
@@ -33,8 +38,14 @@ Options:
   -H, --host <addr>       Address to bind (default: ${DEFAULT_HOST}, loopback only)
   -n, --no-browser        Do not open a browser
       --themes-dir <dir>  Directory for saved theme packages
+      --lhm-url <url>     LibreHardwareMonitor web server (default ${DEFAULT_LHM_URL})
+      --lhm-exe <path>    Launch LibreHardwareMonitor.exe with the host
   -v, --version           Print the version
   -h, --help              Print this help
+
+Extended sensors (temperatures, fans, power) come from LibreHardwareMonitor
+when it is running; Vigilia reads its web server and never controls its
+hardware support. Everything else is read through systeminformation.
 
 LAN access is off by default. Passing --host 0.0.0.0 serves your hardware
 telemetry to every device on the network; plain LAN HTTP has no
@@ -74,6 +85,8 @@ export function parseArgs(
   let host = DEFAULT_HOST;
   let openBrowser = true;
   let themesDir = DEFAULT_THEMES_DIR;
+  let lhmUrl = DEFAULT_LHM_URL;
+  let lhmExecutable: string | undefined;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -124,6 +137,33 @@ export function parseArgs(
         break;
       }
 
+      case "--lhm-url": {
+        const value = argv[index + 1];
+
+        if (value === undefined || value.startsWith("-")) {
+          return { kind: "error", message: `${arg} needs a URL.` };
+        }
+
+        lhmUrl = value.replace(/\/$/, "");
+        index += 1;
+        break;
+      }
+
+      case "--lhm-exe": {
+        const value = argv[index + 1];
+
+        if (value === undefined || value.startsWith("-")) {
+          return {
+            kind: "error",
+            message: `${arg} needs a path to LibreHardwareMonitor.exe.`,
+          };
+        }
+
+        lhmExecutable = path.resolve(value);
+        index += 1;
+        break;
+      }
+
       case "--themes-dir": {
         const value = argv[index + 1];
 
@@ -144,5 +184,15 @@ export function parseArgs(
     }
   }
 
-  return { kind: "run", options: { port, host, openBrowser, themesDir } };
+  return {
+    kind: "run",
+    options: {
+      port,
+      host,
+      openBrowser,
+      themesDir,
+      lhmUrl,
+      ...(lhmExecutable === undefined ? {} : { lhmExecutable }),
+    },
+  };
 }

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_LHM_URL } from "../providers/lhm.js";
 import {
   DEFAULT_HOST,
   DEFAULT_PORT,
@@ -24,6 +25,7 @@ describe("parseArgs", () => {
         host: DEFAULT_HOST,
         openBrowser: true,
         themesDir: DEFAULT_THEMES_DIR,
+        lhmUrl: DEFAULT_LHM_URL,
       },
     });
   });
@@ -55,6 +57,27 @@ describe("parseArgs", () => {
     });
   });
 
+  it("reads an LHM endpoint from --lhm-url and trims a trailing slash", () => {
+    expect(run("--lhm-url", "http://127.0.0.1:9000/")).toMatchObject({
+      options: { lhmUrl: "http://127.0.0.1:9000" },
+    });
+  });
+
+  it("reads an LHM executable from --lhm-exe", () => {
+    expect(run("--lhm-exe", "C:/tools/LibreHardwareMonitor.exe")).toMatchObject(
+      {
+        options: {
+          lhmExecutable: path.resolve("C:/tools/LibreHardwareMonitor.exe"),
+        },
+      },
+    );
+  });
+
+  it("refuses an LHM flag with no value rather than defaulting it", () => {
+    expect(run("--lhm-url")).toMatchObject({ kind: "error" });
+    expect(run("--lhm-exe")).toMatchObject({ kind: "error" });
+  });
+
   it.each(["--no-browser", "-n"])("%s suppresses the browser", (flag) => {
     expect(run(flag)).toMatchObject({ options: { openBrowser: false } });
   });
@@ -77,6 +100,7 @@ describe("parseArgs", () => {
         host: "0.0.0.0",
         openBrowser: false,
         themesDir: path.resolve("my-themes"),
+        lhmUrl: DEFAULT_LHM_URL,
       },
     });
   });
