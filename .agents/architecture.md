@@ -257,8 +257,8 @@ Establish one owner when these become active work:
 - asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.
 
-Legacy behaviour candidates such as advanced snapping remain review-only in
-spec 0014.
+Legacy behaviour candidates such as advanced snapping remain review-only in the
+[editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md).
 
 ## Verification boundaries
 

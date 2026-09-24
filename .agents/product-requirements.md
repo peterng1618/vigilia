@@ -98,14 +98,14 @@ DOM/geometry model.
 
 Old custom-editor QoL that is absent from the fork route is **not automatically
 a requirement**. Keep/replacement decisions for layers, align/distribute and
-related behaviour are reviewed in spec 0014 before implementation.
+related behaviour are reviewed in [editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md) before implementation.
 
 ## §64 — Rulers, grid, guides and snapping (review)
 
 Movement (drag) snapping with smart guides shipped in the fork-parity work
 (2026-09-24). Pixel rulers, configurable grid/guides, additional snapping modes
 and resize-time snapping are not present; treat those as review candidates in
-spec 0014, not migration acceptance, until revalidated against the current
+[editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md), not migration acceptance, until revalidated against the current
 editor workflow.
 
 ## §67 — Undo/runtime separation
@@ -312,7 +312,7 @@ assignments, fit mode and hosting.
 ## §157 — Sequencing
 
 Finish authoring-core contracts before shell modernization. Recreate a legacy
-editor behaviour only after spec 0014 retains or replaces it. Current completion
+editor behaviour only after [editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md) retains or replaces it. Current completion
 state and next work belong in `status.md`.
 
 Human review is for scope expansion, product taste and external effects, not
@@ -337,7 +337,7 @@ Optional aspect lock; apply/cancel stays outside undo history until committed.
 
 ### Editor research candidates (non-requirements)
 
-  - After spec 0014 retention review, consider fork-owned rulers, guides and
+  - After [editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md) retention review, consider fork-owned rulers, guides and
     hover preselection, plus measured stress fixtures from yft-design.
   - After §35, consider a creation/assets/templates rail, central artboard,
     contextual property rail and zoom/status footer. Actions stay visibly

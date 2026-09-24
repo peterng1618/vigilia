@@ -141,8 +141,8 @@ reproducible browser profiles suffice without a physical-device release gate.
 `movement-snapping-resolver.ts` and `spacing.ts` are vendored verbatim at over
 1,300 lines each, exceeding the 800-line stop. Re-cutting proven geometry during
 transcription is where silent numerical bugs enter; a byte-comparable diff
-against the original is worth more than the line budget. Splitting is a
-spec-0014 follow-up.
+against the original is worth more than the line budget. Splitting is an
+[editor behaviour review](../docs/superpowers/specs/2026-09-24-editor-behaviour-review.md) follow-up.
 
 ### Pasting is owned by the document paste event
 
@@ -165,8 +165,6 @@ feature asks for. Refusing is honest where approximating is not.
 
 - **Extended sensors:** PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains
   unverified and belongs to provider validation.
-- **Network throughput:** decided to adopt an external source for
-  `network.download`/`network.upload`; no source or dependency chosen yet.
 
 ### Chart thresholds resolve fractions against the authored range
 
