@@ -372,15 +372,53 @@
         return group === "gpu" ? state.available.gpus : state.available.disks;
       }
 
+      /** A name belongs to one device, so it is edited on that device. Editing
+       * it from a group renamed whichever device the group happened to point
+       * at — and a group following the default points at none. */
+      function namesFieldset(devices) {
+        const fieldset = document.createElement("fieldset");
+        const legend = document.createElement("legend");
+        legend.textContent = "Names";
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.textContent =
+          "What dashboards call each device. Leave one blank to use the name it reports.";
+        fieldset.append(legend, hint);
+
+        for (const device of devices) {
+          const label = document.createElement("label");
+          label.textContent = device.name;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.dataset.name = device.id;
+          input.placeholder = "Use the reported name";
+          input.value = state.names[device.id] ?? "";
+          input.addEventListener("change", () =>
+            save({ names: { [device.id]: input.value } }),
+          );
+          label.append(input);
+          fieldset.append(label);
+        }
+        return fieldset;
+      }
+
       function render() {
         groups.replaceChildren();
-        let rendered = 0;
+        const devices = [...state.available.gpus, ...state.available.disks];
+
+        if (devices.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "hint";
+          empty.textContent =
+            "No graphics card or disk was reported. Start LibreHardwareMonitor " +
+            "with its web server enabled, then reload this page.";
+          groups.append(empty);
+          return;
+        }
 
         for (const [group, label] of Object.entries(GROUP_LABELS)) {
-          const devices = optionsFor(group);
-          if (devices.length === 0) continue;
-
-          rendered += 1;
+          const options = optionsFor(group);
+          if (options.length === 0) continue;
 
           const fieldset = document.createElement("fieldset");
           const legend = document.createElement("legend");
@@ -388,7 +426,7 @@
           fieldset.append(legend);
 
           const selectLabel = document.createElement("label");
-          selectLabel.textContent = devices.length === 1
+          selectLabel.textContent = options.length === 1
             ? "Only one found"
             : "Which device should dashboards use?";
           const select = document.createElement("select");
@@ -403,7 +441,7 @@
             : "All disks combined (default)";
           select.append(all);
 
-          for (const device of devices) {
+          for (const device of options) {
             const option = document.createElement("option");
             option.value = device.id;
             option.textContent = state.names[device.id] ?? device.name;
@@ -412,34 +450,12 @@
 
           select.value = state.assigned[group] ?? "";
           select.addEventListener("change", () => save({ assigned: { [group]: select.value } }));
-          // The name belongs to one device, so this field edits the device the
-          // select currently points at: the chosen one, else the first.
-          const targetFor = () => state.assigned[group] || devices[0]?.id || "";
-          const nameLabel = document.createElement("label");
-          nameLabel.textContent = "Name shown in this list";
-          const name = document.createElement("input");
-          name.type = "text";
-          name.dataset.name = group;
-          const targetDevice = devices.find((d) => d.id === targetFor());
-          name.placeholder = targetDevice?.name ?? "";
-          name.value = targetDevice ? (state.names[targetDevice.id] ?? "") : "";
-          name.addEventListener("change", () => {
-            const target = targetFor();
-            if (target) save({ names: { [target]: name.value } });
-          });
 
-          fieldset.append(selectLabel, select, nameLabel, name);
+          fieldset.append(selectLabel, select);
           groups.append(fieldset);
         }
 
-        if (rendered === 0) {
-          const empty = document.createElement("p");
-          empty.className = "hint";
-          empty.textContent =
-            "No graphics card or disk was reported. Start LibreHardwareMonitor " +
-            "with its web server enabled, then reload this page.";
-          groups.append(empty);
-        }
+        groups.append(namesFieldset(devices));
       }
 
       async function save(patch) {

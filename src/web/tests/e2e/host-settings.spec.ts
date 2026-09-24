@@ -31,18 +31,36 @@ function resetStores(): void {
   writeFileSync(ANSWERS_FILE, "{}\n", "utf8");
 }
 
-async function disksOn(request: APIRequestContext): Promise<string[]> {
-  const body = (await (await request.get(`${HOST}/api/devices`)).json()) as {
-    available: { disks: { id: string }[] };
+interface DeviceState {
+  available: {
+    gpus: { id: string; name: string }[];
+    disks: { id: string; name: string }[];
   };
-  return body.available.disks.map((disk) => disk.id);
+  assigned: Record<string, string>;
+  names: Record<string, string>;
+}
+
+async function deviceState(request: APIRequestContext): Promise<DeviceState> {
+  const body = (await (await request.get(`${HOST}/api/devices`)).json()) as {
+    available: DeviceState["available"];
+    assigned: {
+      assigned?: Record<string, string>;
+      names?: Record<string, string>;
+    };
+  };
+  return {
+    available: body.available,
+    assigned: body.assigned.assigned ?? {},
+    names: body.assigned.names ?? {},
+  };
+}
+
+async function disksOn(request: APIRequestContext): Promise<string[]> {
+  return (await deviceState(request)).available.disks.map((disk) => disk.id);
 }
 
 async function assignedSystemDisk(request: APIRequestContext): Promise<string> {
-  const body = (await (await request.get(`${HOST}/api/devices`)).json()) as {
-    assigned: { assigned: Record<string, string> };
-  };
-  return body.assigned.assigned["system-disk"] ?? "";
+  return (await deviceState(request)).assigned["system-disk"] ?? "";
 }
 
 async function answersFor(
@@ -123,6 +141,60 @@ test.describe("the settings page a consumer configures", () => {
     await expect(page.locator('select[data-group="system-disk"]')).toHaveValue(
       chosen,
     );
+  });
+
+  test("names the device the consumer edited, not the first one", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "one desktop pass owns the shared host state",
+    );
+
+    const before = await deviceState(request);
+    test.skip(
+      before.available.disks.length < 2,
+      "this machine reports fewer than two disks",
+    );
+
+    resetStores();
+    const first = before.available.disks[0]!.id;
+    const other = before.available.disks[1]!.id;
+    const reported = before.available.disks[1]!.name;
+    await request.put(`${HOST}/api/devices`, {
+      data: { assigned: before.assigned, names: {} },
+    });
+
+    try {
+      await page.goto(`${HOST}/settings`);
+
+      // One field per reported device, labelled by that device. The bug this
+      // guards: a group following the default points at no single device, and a
+      // name field hung off the group renamed whichever device came first.
+      const field = page.locator(`#groups input[data-name="${other}"]`);
+      await expect(page.locator("#groups input[data-name]")).toHaveCount(
+        before.available.gpus.length + before.available.disks.length,
+      );
+      await expect(page.locator(`label:has(input[data-name="${other}"])`)).toHaveText(
+        reported,
+      );
+      await expect(page.locator('select[data-group="data-disk"]')).toHaveValue("");
+
+      await field.fill("Archive");
+      await field.blur();
+      await expect(page.locator("#status")).toHaveText(
+        "Saved. Displays update on their next frame.",
+      );
+
+      const after = await deviceState(request);
+      expect(after.names[other]).toBe("Archive");
+      expect(after.names[first]).toBeUndefined();
+    } finally {
+      await request.put(`${HOST}/api/devices`, {
+        data: { assigned: before.assigned, names: before.names },
+      });
+    }
   });
 
   test("keeps both display preferences whichever one is saved", async ({
