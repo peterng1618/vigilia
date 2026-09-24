@@ -17,6 +17,7 @@ import {
   EMPTY_DEVICE_SETTINGS,
 } from "./settings/devices.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
+import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -50,6 +51,8 @@ export interface HostServerOptions {
   readonly sessions?: SessionStore;
   /** Device assignments (§145). Omit to keep defaults with no configuration. */
   readonly devices?: DeviceSettingsStore;
+  /** Per-theme answers. Omitted when the host stores none. */
+  readonly themeSettings?: ThemeSettingsStore;
   /** Theme thumbnails. Omitted when the host stores none. */
   readonly thumbnails?: ThumbnailStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
@@ -328,22 +331,37 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const devices = options.devices;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
+  const themeSettings = options.themeSettings;
 
   /** Assignments in the shape providers consume; unset groups mean defaults. */
   async function currentAssignment(): Promise<DeviceAssignment> {
     const stored =
       devices === undefined ? EMPTY_DEVICE_SETTINGS : await devices.read();
 
+    // Global answers describe this PC; a theme may override one for itself.
+    // Only where a theme differs is an answer stored, so a consumer who set the
+    // system disk once is not asked again by every theme that reads a disk.
+    const chosen =
+      activeTheme === undefined
+        ? undefined
+        : await activeTheme.read(async () => true);
+    const perTheme =
+      chosen === undefined || themeSettings === undefined
+        ? {}
+        : await themeSettings.read(chosen);
+
+    const pick = (
+      group: "gpu" | "system-disk" | "data-disk",
+    ): string | undefined => perTheme[group] ?? stored.assigned[group];
+
+    const gpu = pick("gpu");
+    const systemDisk = pick("system-disk");
+    const dataDisk = pick("data-disk");
+
     return {
-      ...(stored.assigned.gpu === undefined
-        ? {}
-        : { gpu: stored.assigned.gpu }),
-      ...(stored.assigned["system-disk"] === undefined
-        ? {}
-        : { systemDisk: stored.assigned["system-disk"] }),
-      ...(stored.assigned["data-disk"] === undefined
-        ? {}
-        : { dataDisk: stored.assigned["data-disk"] }),
+      ...(gpu === undefined ? {} : { gpu }),
+      ...(systemDisk === undefined ? {} : { systemDisk }),
+      ...(dataDisk === undefined ? {} : { dataDisk }),
     };
   }
 
@@ -634,6 +652,53 @@ export function createHostServer(options: HostServerOptions): HostServer {
         "cache-control": "no-store",
       });
       response.end(Buffer.from(bytes));
+      return;
+    }
+
+    // A theme's own answers: which devices *this* theme reads (§145).
+    const answersMatch = url.pathname.match(
+      /^\/api\/themes\/([^/]+)\/answers$/,
+    );
+    if (answersMatch) {
+      const rawId = decodeURIComponent(answersMatch[1] ?? "");
+
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Settings are available on this PC only.");
+        return;
+      }
+
+      if (themeSettings === undefined || !isValidThemeId(rawId)) {
+        sendText(response, 404, "No per-theme settings on this host.");
+        return;
+      }
+
+      if (request.method === "GET") {
+        const record = await themeStore.read(rawId);
+        sendJson(response, 200, {
+          answers: await themeSettings.read(rawId),
+          required: requiredDeviceGroups(record?.envelope),
+        });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        try {
+          const body = JSON.parse(await readBody(request)) as unknown;
+          sendJson(response, 200, {
+            ok: true,
+            answers: await themeSettings.write(rawId, body),
+          });
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
       return;
     }
 

@@ -15,6 +15,7 @@ import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
+import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 
@@ -110,6 +111,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     },
     themeStore: createThemeStore(themesDir),
     thumbnails: createThumbnailStore(themesDir),
+    themeSettings: createThemeSettingsStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     activeTheme,

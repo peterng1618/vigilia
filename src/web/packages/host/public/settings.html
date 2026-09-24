@@ -93,7 +93,17 @@
         object-fit: cover;
         border-radius: 4px;
         border: 1px solid var(--line);
-        background: var(--panel, #00000010);
+        background: color-mix(in srgb, var(--muted) 14%, transparent);
+      }
+      .theme-shot[data-placeholder] {
+        /* Reserved space with nothing in it, so the entry still reads as whole. */
+        background: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 6px,
+          color-mix(in srgb, var(--muted) 18%, transparent) 6px,
+          color-mix(in srgb, var(--muted) 18%, transparent) 12px
+        );
       }
       #status {
         margin-top: 16px;
@@ -118,11 +128,17 @@
         <div id="themes"></div>
       </section>
       <section aria-labelledby="devices-heading">
-        <h2 id="devices-heading">Devices</h2>
+        <h2 id="devices-heading">Devices on this PC</h2>
         <p class="hint">
-          A theme shows one GPU and one disk; these settings decide which.
+          Which hardware this PC reports. These apply to every theme, unless a
+          theme asks for something different.
         </p>
         <div id="groups"></div>
+      </section>
+      <section aria-labelledby="questions-heading" id="questions-section" hidden>
+        <h2 id="questions-heading">This theme needs</h2>
+        <p class="hint" id="questions-hint"></p>
+        <div id="questions"></div>
       </section>
       <div id="status">Loading…</div>
     </main>
@@ -130,6 +146,9 @@
       const status = document.querySelector("#status");
       const groups = document.querySelector("#groups");
       const themesHost = document.querySelector("#themes");
+      const questionsSection = document.querySelector("#questions-section");
+      const questionsHost = document.querySelector("#questions");
+      const questionsHint = document.querySelector("#questions-hint");
       const themesHint = document.querySelector("#themes-hint");
 
       const GROUP_LABELS = {
@@ -143,6 +162,8 @@
       let activeTheme = null;
       // The device slots the chosen theme reads; empty means "ask about none".
       let requiredDevices = [];
+      // Answers this theme already has, so a question is asked only once.
+      let themeAnswers = {};
 
       function renderThemes() {
         themesHost.replaceChildren();
@@ -169,7 +190,12 @@
           shot.className = "theme-shot";
           shot.alt = "";
           shot.src = `/api/themes/${encodeURIComponent(theme.id)}/thumbnail`;
-          shot.addEventListener("error", () => shot.remove());
+          // No picture is a normal state, not a broken one: the element stays so
+          // every entry keeps the same shape, showing a neutral placeholder.
+          shot.addEventListener("error", () => {
+            shot.removeAttribute("src");
+            shot.dataset.placeholder = "";
+          });
           button.append(shot);
           const isActive = theme.id === activeTheme;
           button.setAttribute("aria-pressed", String(isActive));
@@ -204,6 +230,97 @@
         themesHost.append(list);
       }
 
+      function renderQuestions(required, answers) {
+        const unanswered = required.filter((group) => answers[group] === undefined);
+        questionsHost.replaceChildren();
+
+        if (activeTheme === null || required.length === 0 || unanswered.length === 0) {
+          questionsSection.hidden = true;
+          return;
+        }
+
+        questionsSection.hidden = false;
+        questionsHint.textContent =
+          "This theme reads hardware that has no answer yet. Pick a device, or leave it following this PC's settings.";
+
+        for (const group of unanswered) {
+          const fieldset = document.createElement("fieldset");
+          const legend = document.createElement("legend");
+          legend.textContent = GROUP_LABELS[group] ?? group;
+          fieldset.append(legend);
+
+          const select = document.createElement("select");
+          select.dataset.question = group;
+
+          // The global choice is the default, so most consumers can skip this.
+          const inherit = document.createElement("option");
+          inherit.value = "";
+          inherit.textContent = "Use this PC's settings";
+          select.append(inherit);
+
+          for (const device of optionsFor(group)) {
+            const option = document.createElement("option");
+            option.value = device.id;
+            option.textContent = state.names[device.id] ?? device.name;
+            select.append(option);
+          }
+
+          const label = document.createElement("label");
+          label.textContent = "Which one should this theme use?";
+          label.append(select);
+          fieldset.append(label);
+          select.addEventListener("change", () => answerTheme(group, select.value));
+          questionsHost.append(fieldset);
+        }
+      }
+
+      async function answerTheme(group, value) {
+        if (activeTheme === null) return;
+        status.textContent = "Saving…";
+        try {
+          const answers = { ...themeAnswers };
+          if (value === "") delete answers[group];
+          else answers[group] = value;
+
+          const response = await fetch(
+            `/api/themes/${encodeURIComponent(activeTheme)}/answers`,
+            {
+              method: "PUT",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(answers),
+            },
+          );
+          if (!response.ok) throw new Error(await response.text());
+          const saved = await response.json();
+          themeAnswers = saved.answers ?? {};
+          requiredDevices = requiredDevices;
+          renderQuestions(requiredDevices, themeAnswers);
+          status.textContent = "Saved. Only this theme is affected.";
+        } catch (error) {
+          status.textContent = `Could not save: ${error.message}`;
+        }
+      }
+
+      async function loadQuestions() {
+        if (activeTheme === null) {
+          requiredDevices = [];
+          themeAnswers = {};
+          renderQuestions([], {});
+          return;
+        }
+        const response = await fetch(
+          `/api/themes/${encodeURIComponent(activeTheme)}/answers`,
+        );
+        if (!response.ok) {
+          renderQuestions([], {});
+          return;
+        }
+        const body = await response.json();
+        requiredDevices = body.required ?? [];
+        themeAnswers = body.answers ?? {};
+        renderQuestions(requiredDevices, themeAnswers);
+      }
+
       async function chooseTheme(id) {
         status.textContent = "Saving…";
         try {
@@ -215,6 +332,7 @@
           if (!response.ok) throw new Error(await response.text());
           activeTheme = id;
           renderThemes();
+          await loadQuestions();
           status.textContent = "Saved. Displays show it on their next load.";
         } catch (error) {
           status.textContent = `Could not save: ${error.message}`;
@@ -227,8 +345,8 @@
         const body = await response.json();
         themes = body.themes ?? [];
         activeTheme = body.active ?? null;
-        requiredDevices = body.requiredDevices ?? [];
         renderThemes();
+        await loadQuestions();
       }
       let saving = false;
 
