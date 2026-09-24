@@ -164,4 +164,43 @@ describe("native editor shell", () => {
     });
     reopened.destroy();
   });
+
+  it("reads only string-valued layer names out of a hand-edited editorMetadata", async () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const envelopeFor = (layerNames: unknown) => ({
+      schemaVersion: 2 as const,
+      fabricVersion: "7.4.0",
+      id: "theme",
+      artboard: { width: 100, height: 100 },
+      scene: { version: "7.4.0", objects: [] },
+      // Seeded literally: `setLayerNames` only ever writes the shape the editor
+      // produces, so only a literal envelope exercises the reader against a file
+      // carrying something else under the same key.
+      editorMetadata: { layerNames },
+    });
+
+    // `logo` and the blank key survive a naive Object.fromEntries, so the filter
+    // is the only thing keeping them out.
+    const shell = await mountEditorShell({
+      host,
+      artboard: { width: 100, height: 100 },
+      envelope: envelopeFor({ header: "Header rule", logo: 42, "  ": 7 }),
+    });
+    expect(shell.layerNames()).toEqual({ header: "Header rule" });
+    shell.destroy();
+    host.remove();
+
+    // The key itself is free-form JSON too; a wrong-shaped one must not throw.
+    const wrongShape = await mountEditorShell({
+      host: document.createElement("div"),
+      artboard: { width: 100, height: 100 },
+      envelope: envelopeFor(null),
+    });
+    expect(wrongShape.layerNames()).toEqual({});
+    wrongShape.destroy();
+  });
 });

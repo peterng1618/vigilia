@@ -156,16 +156,16 @@ async function start(): Promise<void> {
       editor: shell.editor,
       session: extensions.actionFacade(),
     });
-    /** Editor-only display state has no other in-page surface yet (the React
-     * layer panel lands in a later task), so e2e drives the rename through the
-     * same bridge the shell will. */
-    (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
     active?.bridge.destroy();
+    delete (window as unknown as Record<string, unknown>).vigiliaEditorBridge;
     active?.extensions.destroy();
     active?.shell.destroy();
     active?.source.close();
     active?.releaseFonts();
     active = { shell, extensions, source, releaseFonts, bridge };
+    /** e2e drives a rename through the same bridge the layer panel calls, so the
+     * global is published only after the previous document's is torn down. */
+    (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
     layout.setBridge(bridge, viewControls);
   };
 
