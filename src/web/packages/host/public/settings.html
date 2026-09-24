@@ -58,8 +58,8 @@
       .theme-list { display: grid; gap: 8px; }
       .theme-option {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
+        align-items: center;
+        gap: 10px;
         width: 100%;
         padding: 10px 12px;
         border: 1px solid var(--line);
@@ -84,7 +84,17 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
       }
+      .theme-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .theme-option .by { color: var(--muted); font-size: 13px; }
+      .theme-shot {
+        flex: none;
+        width: 96px;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid var(--line);
+        background: var(--panel, #00000010);
+      }
       #status {
         margin-top: 16px;
         padding: 10px 12px;
@@ -150,13 +160,24 @@
           button.type = "button";
           button.className = "theme-option";
           button.dataset.theme = theme.id;
+
+          // A theme saved before pictures existed has none; the entry still
+          // lists, just without an image.
+          const shot = document.createElement("img");
+          shot.className = "theme-shot";
+          shot.alt = "";
+          shot.src = `/api/themes/${encodeURIComponent(theme.id)}/thumbnail`;
+          shot.addEventListener("error", () => shot.remove());
+          button.append(shot);
           const isActive = theme.id === activeTheme;
           button.setAttribute("aria-pressed", String(isActive));
           // Two themes can share a display name; the id tells them apart.
+          const text = document.createElement("span");
+          text.className = "theme-text";
           const duplicated =
             themes.filter((other) => (other.name ?? other.id) === (theme.name ?? theme.id))
               .length > 1;
-          button.append(
+          text.append(
             duplicated
               ? `${theme.name ?? theme.id} (${theme.id})`
               : (theme.name ?? theme.id),
@@ -165,8 +186,10 @@
             const by = document.createElement("span");
             by.className = "by";
             by.textContent = theme.author;
-            button.append(by);
+            text.append(by);
           }
+          button.append(text);
+
           if (isActive) {
             const current = document.createElement("span");
             current.className = "current";

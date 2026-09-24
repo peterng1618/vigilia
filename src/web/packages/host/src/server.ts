@@ -21,6 +21,7 @@ import {
   isValidThemeId,
   type ThemeStore,
 } from "./themes/store.js";
+import type { ThumbnailStore } from "./themes/thumbnails.js";
 import { SseConnection } from "./transport/sse.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
@@ -48,6 +49,8 @@ export interface HostServerOptions {
   readonly sessions?: SessionStore;
   /** Device assignments (§145). Omit to keep defaults with no configuration. */
   readonly devices?: DeviceSettingsStore;
+  /** Theme thumbnails. Omitted when the host stores none. */
+  readonly thumbnails?: ThumbnailStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
   /** Called after an assignment change so providers re-read it. */
@@ -67,6 +70,8 @@ export interface HostServer {
 
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
 const MAX_THEME_UPLOAD_BYTES = 64 * 1024 * 1024;
+/** A dashboard screenshot; the store enforces the same bound. */
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 /** Recognizes loopback forms Node may report. */
 function isLoopbackRemote(address: string | undefined): boolean {
@@ -321,6 +326,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const sessions = options.sessions;
   const devices = options.devices;
   const activeTheme = options.activeTheme;
+  const thumbnails = options.thumbnails;
 
   /** Assignments in the shape providers consume; unset groups mean defaults. */
   async function currentAssignment(): Promise<DeviceAssignment> {
@@ -484,7 +490,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
           const saved = await devices.write(body);
           options.onDeviceAssignment?.(await currentAssignment());
           sendJson(response, 200, { ok: true, assigned: saved });
-        } catch (error) {
+        } catch (error: unknown) {
           sendText(
             response,
             400,
@@ -619,6 +625,79 @@ export function createHostServer(options: HostServerOptions): HostServer {
         "cache-control": "no-store",
       });
       response.end(Buffer.from(bytes));
+      return;
+    }
+
+    const thumbMatch = url.pathname.match(
+      /^\/api\/themes\/([^/]+)\/thumbnail$/,
+    );
+    if (thumbMatch) {
+      const rawId = decodeURIComponent(thumbMatch[1] ?? "");
+
+      if (request.method === "GET") {
+        const bytes =
+          thumbnails === undefined || !isValidThemeId(rawId)
+            ? undefined
+            : await thumbnails.read(rawId);
+
+        // No picture is not an error: the library falls back to the theme name.
+        if (bytes === undefined) {
+          sendText(response, 404, "No thumbnail for that theme.");
+          return;
+        }
+
+        response.writeHead(200, {
+          "content-type": "image/png",
+          "cache-control": "no-cache",
+        });
+        response.end(bytes);
+        return;
+      }
+
+      if (request.method === "PUT") {
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(response, 403, "Theme modification is loopback only.");
+          return;
+        }
+
+        const store = thumbnails;
+
+        if (store === undefined || !isValidThemeId(rawId)) {
+          sendText(response, 400, "Invalid theme id.");
+          return;
+        }
+
+        try {
+          const chunks: Buffer[] = [];
+          let received = 0;
+
+          for await (const chunk of request) {
+            const buffer = Buffer.isBuffer(chunk)
+              ? chunk
+              : Buffer.from(chunk as string);
+            received += buffer.byteLength;
+
+            if (received > MAX_THUMBNAIL_BYTES) {
+              sendText(response, 413, "That thumbnail is too large.");
+              return;
+            }
+
+            chunks.push(buffer);
+          }
+
+          await store.write(rawId, new Uint8Array(Buffer.concat(chunks)));
+          sendJson(response, 200, { ok: true });
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
       return;
     }
 

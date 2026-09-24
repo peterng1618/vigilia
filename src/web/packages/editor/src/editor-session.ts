@@ -52,6 +52,7 @@ import {
   type ThemeLibraryClient,
   type ThemeLibraryEntry,
 } from "./theme-library-client.js";
+import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
   reassignTypePresetToken,
@@ -421,6 +422,22 @@ export class EditorSession {
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
       await client.save(current.id, result.bytes);
+
+      // The picture is this machine's rendering of the theme, so the browser
+      // that already has it on screen is the right place to make one. Failing to
+      // capture must not fail the save: the theme is the thing that matters.
+      try {
+        const png = await captureThumbnail(options.shell.editor.canvas);
+        if (png !== undefined && client.saveThumbnail !== undefined) {
+          await client.saveThumbnail(current.id, png);
+        }
+      } catch (error) {
+        options.shell.editor.errorManager.warn(
+          "controls",
+          `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+
       this.#persistence.markSaved(current, this.#assets.assets);
       options.onSaved("Saved to library");
     } catch (error) {

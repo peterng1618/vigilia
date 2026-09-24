@@ -8,6 +8,9 @@ export interface ThemeLibraryClient {
   list(): Promise<readonly ThemeLibraryEntry[]>;
   open(id: string): Promise<Uint8Array>;
   save(id: string, bytes: Uint8Array): Promise<void>;
+  /** Stores the theme's picture, so the library can show one. Optional: a
+   * failure here must not fail the save. */
+  saveThumbnail?(id: string, png: Uint8Array): Promise<void>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -75,6 +78,23 @@ export function createThemeLibraryClient(options?: {
         throw new Error(
           `Could not save theme "${id}" (${response.status}): ${errorText}`,
         );
+      }
+    },
+
+    async saveThumbnail(id: string, png: Uint8Array): Promise<void> {
+      if (!THEME_ID_REGEX.test(id)) {
+        throw new Error("Invalid theme id.");
+      }
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(id)}/thumbnail`,
+        {
+          method: "PUT",
+          headers: { "content-type": "image/png" },
+          body: png as unknown as BodyInit,
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`Could not save the thumbnail (${response.status}).`);
       }
     },
   };

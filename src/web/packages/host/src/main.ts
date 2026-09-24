@@ -16,6 +16,7 @@ import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createThemeStore } from "./themes/store.js";
+import { createThumbnailStore } from "./themes/thumbnails.js";
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
 
@@ -108,6 +109,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       admin: path.join(packagesDir, "host", "public"),
     },
     themeStore: createThemeStore(themesDir),
+    thumbnails: createThumbnailStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     activeTheme,
