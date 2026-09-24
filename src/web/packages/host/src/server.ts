@@ -114,6 +114,68 @@ function sendJson(
   response.end(payload);
 }
 
+/**
+ * The dashboard's first-run state. Plain HTML with no build step and no
+ * dependency, matching the settings page.
+ */
+function firstRunPage(): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vigilia</title>
+    <style>
+      html, body { margin: 0; height: 100%; }
+      body {
+        display: grid;
+        place-items: center;
+        background: #14161c;
+        color: #e8ecf3;
+        font: 15px/1.6 system-ui, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      h1 { font-size: 22px; letter-spacing: 0.02em; margin: 0 0 8px; }
+      p { color: #8a97ab; margin: 0 0 24px; max-width: 34em; }
+      a {
+        display: inline-block;
+        padding: 10px 18px;
+        border-radius: 8px;
+        background: #e8ecf3;
+        color: #14161c;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      code { color: #b5c6c0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>No dashboard yet</h1>
+      <p>
+        This PC has no saved theme, so there is nothing to display. Open the
+        editor to build one, then save it to this PC's library.
+      </p>
+      <a href="/editor/">Open the editor</a>
+    </main>
+  </body>
+</html>`;
+}
+
+function sendHtml(
+  response: http.ServerResponse,
+  status: number,
+  body: string,
+): void {
+  response.writeHead(status, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(body);
+}
+
 function sendText(
   response: http.ServerResponse,
   status: number,
@@ -577,11 +639,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       const theme =
         url.searchParams.get("theme") ?? (await themeStore.list()).at(0)?.id;
       if (theme === undefined) {
-        sendText(
-          response,
-          404,
-          "No hosted theme is available. Save a theme from the editor first.",
-        );
+        // First run: the dashboard has nothing to show, so it must lead the
+        // consumer to the editor rather than dead-end on an error sentence.
+        sendHtml(response, 200, firstRunPage());
         return;
       }
       url.searchParams.set("theme", theme);

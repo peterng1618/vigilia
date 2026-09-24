@@ -536,9 +536,13 @@ describe("Host theme routes", () => {
     expect(res.headers.location).toBe("/?theme=living-room&data=live");
   });
 
-  it("returns a clear root error when storage is empty", async () => {
+  it("leads a first-run consumer to the editor instead of dead-ending", async () => {
     const res = await request(hosted.server, "GET", "/");
-    expect(res.status).toBe(404);
-    expect(res.text()).toContain("No hosted theme is available");
+
+    // An empty library is a first run, not an error: the page must offer the
+    // way forward rather than a sentence the consumer cannot act on.
+    expect(res.status).toBe(200);
+    expect(res.text()).toContain("Open the editor");
+    expect(res.text()).toContain('href="/editor/"');
   });
 });
