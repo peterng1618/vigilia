@@ -1,6 +1,6 @@
-# Lessons
+# Engineering gotchas
 
-Durable rules learned from real failures. Keep the rule; git keeps the story.
+Non-obvious failure modes worth checking before repeating expensive investigations. Git keeps the incident history; this file keeps the reusable rule.
 
 ## Verification
 

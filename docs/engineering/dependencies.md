@@ -1,4 +1,4 @@
-# Dependency findings
+# Dependency provenance
 
 Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before release.
 

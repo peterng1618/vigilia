@@ -28,17 +28,12 @@ Vigilia process.
   duplicate Superpowers instructions under `.agents/` or `.claude/`.
 - `.agents/status.md` is only the current product handoff. Git and archived
   plans keep history.
-- Durable project truth stays in:
-  - `.agents/product-requirements.md`
-  - `.agents/architecture.md`
-  - `.agents/decisions.md`
-  - `.agents/lessons.md`
-  - `.agents/dependency-licences.md`
+- Durable project truth lives under `docs/`; see `docs/README.md` for the canonical map.
 - `§N` product-requirement markers are stable; never renumber them.
 
 ## Architecture guardrails
 
-- **One owner per concept.** Find the existing owner before adding a type, key,
+- **One owner per concept.** Check `docs/architecture/ownership.md` and the existing owner before adding a type, key,
   default, action, route, helper, style property or schema value.
 - `renderer-core` stays Fabric/DOM-free.
 - Player may use `scene-fabric`, never editor UI/managers or interactive
@@ -135,7 +130,7 @@ lists.
 
 - Before adding a shipped dependency, verify its licence from primary/package
   metadata and update `THIRD-PARTY-NOTICES.md` plus
-  `.agents/dependency-licences.md` when required.
+  `docs/engineering/dependencies.md` when required.
 - Do not hand-edit `src/web/package-lock.json`; change manifests then run
   `npm install`.
 - Do not hand-edit `src/web/packages/*/dist/**`.
@@ -155,7 +150,7 @@ lists.
 - Build the host before running `bin/vigilia.js`.
 - Install Chromium with `npx playwright install chromium` if needed.
 - Screenshot capture requires `VIGILIA_CAPTURE=1` and `--workers=1`; capture
-  only affected actions registered in `.agents/screenshots/README.md`.
+  only affected actions registered in `docs/evidence/screenshots/README.md`.
 - Vite 8 uses Rolldown; `manualChunks` must be a function.
 - Use `fileURLToPath` for file URLs on Windows.
 - Symlinks are not reliable in tracked content in this repo.
