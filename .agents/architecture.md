@@ -71,6 +71,9 @@ Editor concept ownership:
 | Group and ungroup | `editor/src/grouping-manager/` |
 | Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
 | Selection snapshot and dock eligibility | `editor/src/editor-shell/bridge.ts` |
+| Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
+| Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
+| Which theme a host displays | `host/src/settings/active-theme.ts` |
 | Shell chrome, rail, inspector tabs, menus | `editor/src/editor-shell/shell-layout.tsx` |
 | Shell palette | `editor/src/editor-shell/palette.ts` |
 | Drag-time snapping and smart guides | `editor/src/snap-manager/` |
