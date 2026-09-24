@@ -35,13 +35,13 @@ secrets.local.json
 
 # ---------- Screenshot evidence ----------
 # Commit the written results; keep raw captures local.
-.agents/screenshots/**/raw/
+docs/evidence/screenshots/**/raw/
 
 # ---------- Agent environment ----------
 # Personal overrides; the committed .claude/settings.json is the shared one.
 .claude/settings.local.json
 # Throwaway implementation plans are not repository content. Tracked specs live
-# in .agents/specs/ instead.
+# in docs/superpowers/specs/ instead.
 .claude/plans/
 .worktrees/
 

@@ -325,7 +325,7 @@ test.describe("the settings page in a screenshot", () => {
     await expect(questions(page)).toBeVisible();
 
     const directory =
-      process.env["VIGILIA_CAPTURE_DIR"] ?? "../../.agents/screenshots";
+      process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
     const name = `settings-theme-question-${testInfo.project.name}.png`;
     const screenshot = await page.screenshot({
       fullPage: true,
