@@ -32,6 +32,8 @@ export interface ShellHosts {
   readonly chart: HTMLElement;
   /** Properties of the selected object, in the Design tab. */
   readonly selection: HTMLElement;
+  /** What the selection's references resolve to, in the Style tab. */
+  readonly style: HTMLElement;
   readonly status: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -254,6 +256,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     document: element("vigiliaPanelHostDocument"),
     chart: element("vigiliaPanelHostChart"),
     selection: element("vigiliaPanelHostSelection"),
+    style: element("vigiliaPanelHostStyle"),
     status: document.createElement("span"),
     dock: document.createElement("nav"),
   };
@@ -374,10 +377,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 <Host node={hosts.chart} />
               </Tabs.Panel>
               <Tabs.Panel value="style" keepMounted>
-                <p className="editor-shell-hint">
-                  Colours and type resolve through the theme palette and type
-                  presets.
-                </p>
+                <Host node={hosts.style} />
               </Tabs.Panel>
             </Tabs.Root>
           </aside>

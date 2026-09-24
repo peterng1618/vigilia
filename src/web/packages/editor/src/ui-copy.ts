@@ -34,6 +34,7 @@ export const uiCopy = {
     runs: "Runs",
     runPreset: "Type preset",
     editTypePresets: "Edit type presets",
+    documentStyle: "This document",
     runColour: "Colour",
     runSource: "Reads",
     staticText: "Static text",

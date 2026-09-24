@@ -73,6 +73,18 @@ it("keeps panel hosts mounted outside React's control", () => {
   expect(layout.hosts.assets).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.document.parentElement).not.toBeNull();
   expect(layout.hosts.status.parentElement).not.toBeNull();
+  // The Style tab holds a panel, not a sentence: the appearance section needs a
+  // host the same way the other tabs do.
+  expect(layout.hosts.style.parentElement).not.toBeNull();
+
+  layout.destroy();
+});
+
+it("gives the Style tab a panel host instead of a placeholder sentence", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  expect(root.textContent).not.toContain("Colours and type resolve");
 
   layout.destroy();
 });

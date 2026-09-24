@@ -45,6 +45,10 @@ import {
   createSelectionInspector,
   type SelectionInspector,
 } from "./selection-inspector/index.js";
+import {
+  createStylePanel,
+  type StylePanel,
+} from "./selection-inspector/style.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
@@ -73,6 +77,8 @@ export interface EditorPanelHosts {
   readonly chart: HTMLElement;
   /** Properties of the selected object, shown in the Design tab. */
   readonly selection: HTMLElement;
+  /** What the selection's references resolve to, shown in the Style tab. */
+  readonly style: HTMLElement;
 }
 
 export interface EditorSessionOptions {
@@ -103,6 +109,7 @@ export class EditorSession {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #selection: SelectionInspector;
+  readonly #style: StylePanel;
   readonly #layers: LayerPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
@@ -209,6 +216,12 @@ export class EditorSession {
       revealTypePresets: () => {
         this.#types.root.scrollIntoView({ block: "start" });
       },
+    });
+    this.#style = createStylePanel(options.panelHosts.style, {
+      editor: options.shell.editor,
+      // Pulled, not held: the panel is mounted for the session and read-only, so
+      // this cannot show a copy of globals that a theme edit has since changed.
+      globals: () => this.#envelope.globals,
     });
     this.charts = new ChartManager({
       editor: options.shell.editor,
@@ -402,6 +415,7 @@ export class EditorSession {
     this.#assetPanel.remove();
     this.charts.destroy();
     this.#selection.root.remove();
+    this.#style.destroy();
     this.#artboard.root.remove();
     this.#palette.root.remove();
     this.#types.root.remove();
@@ -575,6 +589,7 @@ export class EditorSession {
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#selection.setGlobals(this.#envelope.globals);
+    this.#style.render();
     this.#palette.render(palette);
   }
 
@@ -600,6 +615,7 @@ export class EditorSession {
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#selection.setGlobals(this.#envelope.globals);
+    this.#style.render();
     this.#artboard.render(artboard);
     this.#palette.render(palette);
   }
@@ -613,6 +629,7 @@ export class EditorSession {
     this.#runtime.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
+    this.#style.render();
   }
 
   async #downloadFace(face: CuratedFontFace): Promise<Uint8Array> {
@@ -650,6 +667,7 @@ export class EditorSession {
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
+    this.#style.render();
   }
 
   #snapshot(shell: EditorShell): FabricThemeEnvelope {
