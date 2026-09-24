@@ -471,6 +471,9 @@
           };
           status.textContent = "Changes apply to every display immediately.";
           render();
+          // A question offers the devices this list holds, and the theme that
+          // raises it may have been read before the devices were.
+          renderQuestions(requiredDevices, themeAnswers);
         } catch (error) {
           status.textContent = `Could not read devices: ${error.message}`;
         }

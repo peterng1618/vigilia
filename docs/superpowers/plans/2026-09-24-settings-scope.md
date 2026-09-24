@@ -41,48 +41,48 @@ remembered.
 
 ### Task 1 — Per-theme answers, stored
 
-- [ ] `theme-settings.ts`: read and write one answers object per theme id,
+- [x] `theme-settings.ts`: read and write one answers object per theme id,
       validating groups and ids the way the global store does.
-- [ ] Tests: absent reads as nothing; a round-trip persists; unknown groups and
+- [x] Tests: absent reads as nothing; a round-trip persists; unknown groups and
       unsafe ids are dropped; a theme deleted leaves no stale answers.
-- [ ] Commit.
+- [x] Commit.
 
 ### Task 2 — Show global settings unaffected by the theme
 
-- [ ] The Global section renders every slot the machine has, whatever theme is
+- [x] The Global section renders every slot the machine has, whatever theme is
       active, and states that these apply to every theme unless a theme overrides
       them.
-- [ ] Tests: the same groups appear with no theme, a theme reading nothing, and a
+- [x] Tests: the same groups appear with no theme, a theme reading nothing, and a
       theme reading one slot.
-- [ ] Commit.
+- [x] Commit.
 
 ### Task 3 — Ask a theme's questions when it is first chosen
 
-- [ ] Choosing a theme with requirements and no stored answers opens them: only
+- [x] Choosing a theme with requirements and no stored answers opens them: only
       the slots it reads, one question each, with the global answer shown as the
       default.
-- [ ] A theme needing nothing shows no questions; a theme already answered shows
+- [x] A theme needing nothing shows no questions; a theme already answered shows
       none.
-- [ ] Tests: each of those four states.
-- [ ] Rendered proof of each, inspected.
-- [ ] Commit.
+- [x] Tests: each of those four states.
+- [x] Rendered proof of each, inspected.
+- [x] Commit.
 
 ### Task 4 — Resolve theme over the global answer
 
-- [ ] Resolution reads theme answer → global answer → provider default, at the
+- [x] Resolution reads theme answer → global answer → provider default, at the
       one existing assignment boundary.
-- [ ] Tests: a theme override changes its own samples and leaves another theme's
+- [x] Tests: a theme override changes its own samples and leaves another theme's
       alone; an unanswered theme follows the global choice.
-- [ ] Commit.
+- [x] Commit.
 
 ### Task 5 — Integration proof
 
-- [ ] `npm run format:check && npm run lint && npm run typecheck && npm test &&
+- [x] `npm run format:check && npm run lint && npm run typecheck && npm test &&
       npm run build && npm run size`.
-- [ ] Full local `npm run test:e2e`.
-- [ ] Capture and inspect the four states from Task 3 plus the Global section.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` and the spec.
-- [ ] Commit.
+- [x] Full local `npm run test:e2e`.
+- [x] Capture and inspect the four states from Task 3 plus the Global section.
+- [x] Update `.agents/status.md`, `.agents/architecture.md` and the spec.
+- [x] Commit.
 
 ## Self-Review
 

@@ -6,15 +6,20 @@ import { Readable, Writable } from "node:stream";
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
+import { createActiveThemeStore } from "./settings/active-theme.js";
+import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 
 function createValidPackage(
   id = "living-room",
   name = "Living Room",
+  semanticKey?: string,
 ): Uint8Array {
   const envelope: FabricThemeEnvelope = {
     schemaVersion: 2,
@@ -22,7 +27,66 @@ function createValidPackage(
     id,
     artboard: { width: 1920, height: 1080 },
     metadata: { name },
-    scene: { version: "7.4.0", objects: [] },
+    ...(semanticKey === undefined
+      ? {}
+      : {
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid" as const, color: "transparent" },
+              },
+              ink: {
+                name: "Ink",
+                value: { kind: "solid" as const, color: "#e8ecf3" },
+              },
+            },
+            typePresets: {
+              "11-400": {
+                name: "Caption",
+                value: {
+                  family: "system-ui, sans-serif",
+                  size: 22,
+                  weight: "400",
+                },
+              },
+            },
+          },
+        }),
+    scene: {
+      version: "7.4.0",
+      objects:
+        semanticKey === undefined
+          ? []
+          : [
+              {
+                type: "Textbox",
+                version: "7.4.0",
+                left: 40,
+                top: 40,
+                width: 200,
+                height: 40,
+                text: "--",
+                id: "readout",
+                vigiliaPaint: { fill: "palette.ink" },
+                vigiliaText: {
+                  runs: [
+                    {
+                      kind: "value" as const,
+                      bindingId: "readout-value",
+                      typePreset: "typePresets.11-400" as const,
+                      style: { color: { ref: "palette.ink" as const } },
+                    },
+                  ],
+                },
+              },
+            ],
+    },
+    // Which device slots a theme needs is derived from what it binds, so a
+    // fixture can only ask for a slot by binding a key in that family.
+    ...(semanticKey === undefined
+      ? {}
+      : { bindings: { readout: [{ id: "readout-value", semanticKey }] } }),
   };
   const result = writeThemePackage({ envelope, assets: {} });
   if (!result.ok) throw new Error(result.message);
@@ -641,5 +705,157 @@ describe("Display settings routes", () => {
         )
       ).status,
     ).toBe(403);
+  });
+});
+
+describe("A theme's own device answers", () => {
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+  const pushed: DeviceAssignment[] = [];
+
+  /** Writes one theme package into the store the host reads. */
+  async function seed(id: string, semanticKey?: string): Promise<void> {
+    await request(
+      hosted.server,
+      "PUT",
+      `/api/themes/${id}`,
+      createValidPackage(id, id, semanticKey),
+    );
+  }
+
+  beforeEach(async () => {
+    pushed.length = 0;
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-answers-"));
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      devices: createDeviceSettingsStore(tmpDir),
+      activeTheme: createActiveThemeStore(tmpDir),
+      themeSettings: createThemeSettingsStore(tmpDir),
+      onDeviceAssignment: (assignment) => pushed.push(assignment),
+    });
+
+    await seed("disk-only", "disk.total");
+    await seed("disk-spare", "disk.total");
+    await seed("cpu-only", "cpu.load");
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("asks only for the slots a theme reads", async () => {
+    const disk = (
+      await request(hosted.server, "GET", "/api/themes/disk-only/answers")
+    ).json() as { answers: unknown; required: readonly string[] };
+    const cpu = (
+      await request(hosted.server, "GET", "/api/themes/cpu-only/answers")
+    ).json() as { answers: unknown; required: readonly string[] };
+
+    expect(disk.required).toEqual(["system-disk"]);
+    expect(disk.answers).toEqual({});
+    // A theme that reads no assignable hardware asks nothing at all.
+    expect(cpu.required).toEqual([]);
+  });
+
+  it("keeps a theme's answer to this PC", async () => {
+    const lan = { remoteAddress: "192.168.1.50" };
+
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          "/api/themes/disk-only/answers",
+          undefined,
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/themes/disk-only/answers",
+          json({ "system-disk": "disk-c" }),
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it("stores an answer, and drops a group no device can fill", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/disk-only/answers",
+      json({ "system-disk": "disk-d", nonsense: "disk-c" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((res.json() as { answers: unknown }).answers).toEqual({
+      "system-disk": "disk-d",
+    });
+  });
+
+  it("overrides the global choice for its theme, and tells the providers", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/devices",
+      json({ assigned: { "system-disk": "disk-c" } }),
+    );
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "disk-only" }),
+    );
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/disk-only/answers",
+      json({ "system-disk": "disk-d" }),
+    );
+
+    // The answer is the difference, so the providers must be told about it:
+    // without this the dashboard keeps showing the disk the consumer replaced.
+    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-d" });
+
+    // Another theme reads the machine's own answer, not this theme's.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "disk-spare" }),
+    );
+    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-c" });
+  });
+
+  it("publishes the assignment a chosen theme implies", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/devices",
+      json({ assigned: { gpu: "gpu-1" } }),
+    );
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/disk-only/answers",
+      json({ "system-disk": "disk-d" }),
+    );
+
+    // Choosing the theme is what makes its answer apply, so the choice itself
+    // has to reach the providers.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "disk-only" }),
+    );
+    expect(pushed.at(-1)).toEqual({ gpu: "gpu-1", systemDisk: "disk-d" });
   });
 });

@@ -18,14 +18,23 @@ const FONT_SOURCE_URL =
 const FONT_CACHE_DIR = path.join(here, "..", "..", ".e2e-font-cache");
 
 export const HOST_PORT = 4175;
+/** Binds the clock only, so the settings page asks it nothing about devices. */
 export const HOST_THEME_ID = "e2e-hosted";
+/** Binds a disk, so the settings page has a question to ask it. */
+export const HOST_DISK_THEME_ID = "e2e-disk";
 export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
 
-const envelope = {
+/** The one bound reading is what separates the seeded themes: a disk key makes
+ * the theme raise a question, a clock key does not. */
+const envelopeFor = (
+  id: string,
+  name: string,
+  binding: { semanticKey: string; format?: string },
+) => ({
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
-  id: HOST_THEME_ID,
-  metadata: { name: "E2E hosted" },
+  id,
+  metadata: { name },
   artboard: {
     width: 640,
     height: 360,
@@ -146,9 +155,9 @@ const envelope = {
     ],
   },
   bindings: {
-    clock: [{ id: "clock-time", semanticKey: "time.now", format: "HH:mm:ss" }],
+    clock: [{ id: "clock-time", ...binding }],
   },
-};
+});
 
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <circle cx="12" cy="12" r="10" fill="#e8ecf3" />
@@ -176,25 +185,34 @@ async function fontBytes(): Promise<Uint8Array> {
   }
 }
 
-/** Writes the package the host serves. `writeThemePackage` owns validation, so
+/** Writes the packages the host serves. `writeThemePackage` owns validation, so
  * the fixture cannot drift into an envelope the player would reject. */
 export async function seedHostTheme(): Promise<void> {
-  const result = writeThemePackage({
-    envelope,
-    assets: {
-      "assets/badge.svg": new TextEncoder().encode(badge),
-      "assets/inter-400.woff2": await fontBytes(),
-    },
-  });
+  const assets = {
+    "assets/badge.svg": new TextEncoder().encode(badge),
+    "assets/inter-400.woff2": await fontBytes(),
+  };
 
-  if (!result.ok) {
-    throw new Error(`E2E host fixture is invalid: ${result.message}`);
-  }
+  const themes = [
+    envelopeFor(HOST_THEME_ID, "E2E hosted", {
+      semanticKey: "time.now",
+      format: "HH:mm:ss",
+    }),
+    envelopeFor(HOST_DISK_THEME_ID, "E2E disk", { semanticKey: "disk.used" }),
+  ];
 
   rmSync(HOST_THEMES_DIR, { recursive: true, force: true });
   mkdirSync(HOST_THEMES_DIR, { recursive: true });
-  writeFileSync(
-    path.join(HOST_THEMES_DIR, `${HOST_THEME_ID}.vigilia-theme`),
-    result.bytes,
-  );
+
+  for (const envelope of themes) {
+    const result = writeThemePackage({ envelope, assets });
+    if (!result.ok) {
+      throw new Error(`E2E host fixture is invalid: ${result.message}`);
+    }
+
+    writeFileSync(
+      path.join(HOST_THEMES_DIR, `${envelope.id}.vigilia-theme`),
+      result.bytes,
+    );
+  }
 }

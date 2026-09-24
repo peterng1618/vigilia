@@ -40,5 +40,11 @@ result, not merely a mounted editor.
 | Viewport | Resize or change zoom | add when changed |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
+## Settings page (`/settings`, real host)
+
+| Domain | Visible action | Capture / title regex |
+|---|---|---|
+| Settings scope | Choose a theme whose bindings need a device | `settings-theme-question` / `captures the question a theme raises` |
+
 Fork-owned mechanics need captures only when Vigilia changes their rendered
 outcome. Keep this table aligned with `src/web/tests/e2e/editor-fork.spec.ts`.

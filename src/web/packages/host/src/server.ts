@@ -346,6 +346,16 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
 
+  /**
+   * Hands the providers the assignment every current input resolves to. Three
+   * things can change it — this PC's devices, which theme is chosen, and a
+   * theme's own answers — so each has to publish, or a display keeps showing the
+   * device the consumer just replaced.
+   */
+  async function publishAssignment(): Promise<void> {
+    options.onDeviceAssignment?.(await currentAssignment());
+  }
+
   /** Assignments in the shape providers consume; unset groups mean defaults. */
   async function currentAssignment(): Promise<DeviceAssignment> {
     const stored =
@@ -520,7 +530,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
           const saved = await devices.write(body);
-          options.onDeviceAssignment?.(await currentAssignment());
+          await publishAssignment();
           sendJson(response, 200, { ok: true, assigned: saved });
         } catch (error: unknown) {
           sendText(
@@ -669,6 +679,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
           }
 
           await activeTheme.write(id);
+          // The chosen theme may answer a device question for itself, so the
+          // choice is part of what the providers read.
+          await publishAssignment();
           sendJson(response, 200, { ok: true, active: id });
         } catch (error) {
           sendText(
@@ -748,10 +761,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "PUT") {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
-          sendJson(response, 200, {
-            ok: true,
-            answers: await themeSettings.write(rawId, body),
-          });
+          const saved = await themeSettings.write(rawId, body);
+          await publishAssignment();
+          sendJson(response, 200, { ok: true, answers: saved });
         } catch (error) {
           sendText(
             response,
