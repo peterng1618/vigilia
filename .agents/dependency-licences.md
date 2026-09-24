@@ -38,6 +38,39 @@ LibreHardwareMonitor/PawnIO are not current dependencies or redistributed.
 Earlier planning research found LHM MPL-2.0 and PawnIO modules under GPL/LGPL;
 re-open the analysis before bundling, downloading or installing them.
 
+### LibreHardwareMonitor packaging review — 2026-09-24
+
+Assessed against the `v0.9.6` release archive
+(`LibreHardwareMonitor.zip`, 6.6 MB, 43 files) and the repository's own
+`LICENSE` and `THIRD-PARTY-NOTICES.txt`. Scope: redistributing LHM inside a
+Vigilia release so it ships as the default extended-sensor source.
+
+Findings:
+
+- **LHM itself is MPL-2.0.** File-level copyleft: redistribution is permitted,
+  including in a larger work, provided LHM's own source stays MPL and its
+  notices travel with it. Vigilia links nothing and modifies nothing.
+- **The archive ships no licence or notice file at all**, while bundling
+  third-party binaries whose licences require notices: `Aga.Controls.dll`
+  (BSD), `HidSharp`, `OxyPlot`, `RAMSPDToolkit-NDD` and the .NET support
+  assemblies. Shipping the archive as-is would omit notices those licences
+  require, so **Vigilia must add LHM's `LICENSE` and `THIRD-PARTY-NOTICES.txt`
+  plus the per-dependency notices** to its own distribution.
+- **No PawnIO driver binary is in the archive** (no `.sys`; the `PawnIo`
+  module is fetched separately at runtime and is LGPL-2.1). Bundling the
+  archive therefore does not itself redistribute PawnIO, but a first-run
+  download of the PawnIO module would, and that path needs its own review
+  before being enabled.
+- LHM runs with a GUI and enables its web server through an in-app menu, not a
+  command-line switch, so shipping it as the *default* source means Vigilia
+  launching a desktop application on the user's machine.
+
+Conclusion: redistribution is **permissible with notices added**, and is not
+blocked by licence. It remains a product decision with external effects
+(shipping a third-party GUI app, and a driver-download path), so it needs the
+maintainer's sign-off and the notices above before any release includes it.
+`.agents/dependency-licences.md`'s release rule still applies.
+
 `systeminformation` 5.33.13 (MIT, no dependencies of its own) is the host's
 hardware-metrics source: verified from the package's own `LICENSE` and `npm
 view` metadata on 2026-09-24. It reads platform counters; it is not a vendored
