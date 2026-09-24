@@ -8,7 +8,7 @@ import {
   waitUntilReachable,
 } from "./cli/net.js";
 import { LhmSensorProvider } from "./providers/lhm.js";
-import { launchLhm } from "./providers/lhm-launcher.js";
+import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
@@ -24,6 +24,12 @@ function style(code: string, text: string): string {
 }
 
 const VERSION = "0.1.0";
+
+/** The staged LibreHardwareMonitor, for setup commands that need a default. */
+function defaultLhmExecutable(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(here, "..", "vendor", "lhm", "LibreHardwareMonitor.exe");
+}
 
 export async function run(argv: readonly string[]): Promise<number> {
   const parsed = parseArgs(argv, VERSION);
@@ -45,7 +51,18 @@ export async function run(argv: readonly string[]): Promise<number> {
     themesDir,
     lhmUrl,
     lhmExecutable,
+    registerLhmTask: shouldRegisterTask,
   } = parsed.options;
+
+  // One-time setup, then exit: registering needs an elevated shell with a
+  // visible consent prompt, so it must not run inside the server.
+  if (shouldRegisterTask === true) {
+    const outcome = await registerLhmTask(
+      lhmExecutable ?? defaultLhmExecutable(),
+    );
+    console.log(outcome.message);
+    return outcome.ok ? 0 : 1;
+  }
 
   // Launching LHM is opt-in via `--lhm-exe`, never automatic: its manifest
   // requires administrator rights, so starting it unattended would raise a UAC

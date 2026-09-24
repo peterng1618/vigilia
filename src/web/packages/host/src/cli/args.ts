@@ -13,6 +13,8 @@ export interface HostOptions {
   readonly lhmUrl: string;
   /** Path to `LibreHardwareMonitor.exe`; set to launch it with the host. */
   readonly lhmExecutable?: string;
+  /** Register the elevated startup task for LHM, then exit. */
+  readonly registerLhmTask?: boolean;
 }
 
 export const DEFAULT_PORT = 5227;
@@ -40,6 +42,7 @@ Options:
       --themes-dir <dir>  Directory for saved theme packages
       --lhm-url <url>     LibreHardwareMonitor web server (default ${DEFAULT_LHM_URL})
       --lhm-exe <path>    Launch LibreHardwareMonitor.exe with the host
+      --register-lhm-task Register LHM to start elevated at sign-in (one prompt)
   -v, --version           Print the version
   -h, --help              Print this help
 
@@ -87,6 +90,7 @@ export function parseArgs(
   let themesDir = DEFAULT_THEMES_DIR;
   let lhmUrl = DEFAULT_LHM_URL;
   let lhmExecutable: string | undefined;
+  let registerLhmTask = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -136,6 +140,10 @@ export function parseArgs(
         index += 1;
         break;
       }
+
+      case "--register-lhm-task":
+        registerLhmTask = true;
+        break;
 
       case "--lhm-url": {
         const value = argv[index + 1];
@@ -193,6 +201,7 @@ export function parseArgs(
       themesDir,
       lhmUrl,
       ...(lhmExecutable === undefined ? {} : { lhmExecutable }),
+      ...(registerLhmTask ? { registerLhmTask } : {}),
     },
   };
 }

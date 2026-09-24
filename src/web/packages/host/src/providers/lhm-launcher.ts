@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -226,4 +226,75 @@ export async function launchLhm(
         `${options.baseUrl}. Enable "Run web server" in LHM's Options menu.`,
     stop,
   };
+}
+
+/**
+ * Registers the scheduled task LHM's own StartupManager registers, so Windows
+ * starts LHM elevated at sign-in with no further prompts.
+ *
+ * This is the one-time "approve once" step. It needs administrator rights, so
+ * Windows shows a single consent dialog; the caller must run from a terminal
+ * where that dialog can appear.
+ */
+export interface RegisterTaskResult {
+  readonly ok: boolean;
+  readonly message: string;
+}
+
+export function registerLhmTask(
+  executable: string,
+): Promise<RegisterTaskResult> {
+  if (process.platform !== "win32") {
+    return Promise.resolve({
+      ok: false,
+      message: "LibreHardwareMonitor only runs on Windows.",
+    });
+  }
+
+  if (!existsSync(executable)) {
+    return Promise.resolve({
+      ok: false,
+      message: `LibreHardwareMonitor was not found at ${executable}`,
+    });
+  }
+
+  // schtasks is the supported path and takes the working directory with the exe.
+  return new Promise((resolve) => {
+    execFile(
+      "schtasks",
+      [
+        "/Create",
+        "/TN",
+        LHM_TASK_NAME,
+        "/TR",
+        `"${executable}"`,
+        "/SC",
+        "ONLOGON",
+        "/RL",
+        "HIGHEST",
+        "/F",
+      ],
+      { timeout: 60_000, windowsHide: true },
+      (error, _stdout, stderr) => {
+        if (error) {
+          // A refused consent dialog surfaces here, worded plainly.
+          resolve({
+            ok: false,
+            message: `could not register the startup task: ${
+              stderr?.trim() || error.message
+            }. Approve the permission prompt, or run this from an elevated terminal.`,
+          });
+          return;
+        }
+
+        resolve({
+          ok: true,
+          message:
+            "Registered. Windows will start LibreHardwareMonitor elevated at " +
+            "sign-in with no prompt. Start it now with: schtasks /Run /TN " +
+            LHM_TASK_NAME,
+        });
+      },
+    );
+  });
 }

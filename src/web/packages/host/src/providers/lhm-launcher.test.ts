@@ -5,6 +5,7 @@ import {
   hasLhmStartupTask,
   launchChild,
   launchLhm,
+  registerLhmTask,
   requiresElevation,
 } from "./lhm-launcher.js";
 
@@ -56,6 +57,15 @@ describe("LHM launcher", () => {
     const child = launchChild(real);
     expect(child.killed).toBe(false);
     child.kill();
+  });
+
+  it("refuses to register a task for a missing executable", async () => {
+    const outcome = await registerLhmTask("/definitely/not/here.exe");
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.message).toContain("was not found");
+    // Never a silent success: the caller must see why it failed.
+    expect(outcome.message.length).toBeGreaterThan(20);
   });
 
   it("leaves an LHM that is already answering alone", async () => {
