@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| LHM packaged as the default sensor source | `npm run vendor:lhm` stages the pinned v0.9.6 release into `packages/host/vendor/lhm` (unpacked, so the launcher finds the executable where it looks) and adds the `LICENSE` and `THIRD-PARTY-NOTICES.txt` the release archive omits, plus a `PROVENANCE.txt` naming the version, URL and sha256 (`086d9f1b…`, verified on download). The launcher starts it when absent, reuses one already answering, and stops only the process it started. A launch-blocking defect was found by running the host with a bundled executable: `spawn` reports failure asynchronously through an `error` event, so the try/catch caught nothing and the unhandled event crashed the host; the event is now handled with a regression test that emits it the way `spawn` does. Verified 2026-09-24: the host with an unexecutable bundled LHM stayed up, reported "could not start … EACCES" with the consequence, and the `library` provider kept serving `cpu.load` 18.2% and `ram.used` 10.5 GB. **Not verified:** a real LHM launch — this environment cannot execute external binaries, and releasing the bundled copy still needs maintainer sign-off (MPL-2.0, third-party GUI app). Evidence: 1101-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | Hardware metrics via LHM + systeminformation | Providers now read existing sources instead of a hand-rolled collector. Verified 2026-09-24 against the running host without LHM: `library` answered `cpu.load` 16.7%, `ram.used` 10.5 GB, `disk.used` 5396 GB across four volumes and `network.download` 0.014 Mb/s, while `lhm` reported its own absence with a reason rather than a value. Verified against a stub serving LHM's exact `data.json` shape: `lhm` answered `cpu.fan` 1450 RPM, `cpu.temp` 58.5 °C, `gpu.load` 71%, `gpu.temp` 64 °C, and `cpu.load` fell through to `library`, proving the registry's fallback. Two LHM traps were found in its source and handled: `Used Space` is typed Load but carries a percentage, and `Data` is already GB while `Throughput` is bytes per second. Evidence: 1093-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate (unchanged — the library stays host-side), browser suite 91 passed / 39 skipped / 0 failed. |
 | Line threshold bands — §85 gap closed, no engine gaps open | A threshold stroke now colours line segments per value through `visualMap.piecewise`, with the agreed mapping: authored 0–1 offsets resolve against the line's authored `min`/`max`, and a line declaring neither keeps one colour rather than guessing at a moving visible axis. The first implementation silently drew one colour because `VisualMapComponent` was missing from the modular ECharts registration; registering it is what makes the feature real. Verified by rendering a new stress-fixture chart whose samples climb 7 → 50 on a 0–100 axis: the line draws cyan below 40 and amber above. Evidence: 1111-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | §35 copy centralization landed | Shell modernization triggered §35's requirement that each frontend package keep visible copy in one typed module. `@vigilia/editor`'s `ui-copy.ts` now owns every panel heading, field label and action name as well as the shell's, and `@vigilia/player` gained its own for the load-failure panel, the connection banner and the synthetic-data disclosure. The Insert menu and the Add panel had drifted into two copies of the chart-family labels; that is now one owner. Developer status text ("Fabric editor ready") stays inline, which §35 excludes. Rendered output unchanged: the editor capture was inspected before and after and is identical. Evidence: 1107-unit suite, `biome check` exit 0, seven-project typecheck, builds, 269.7 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
@@ -76,7 +77,8 @@ unit, build, size and visual evidence. The full local browser suite passed on
   clock/fan, GPU detail, VRAM, network throughput) and the `library` provider
   uses the `systeminformation` package for CPU load/clock, RAM, GPU, disks,
   network and any key LHM could not answer.
-- LHM remains an optional external program; nothing links or compiles its .NET
+- LHM can be staged and launched by the host (`npm run vendor:lhm`); nothing
+  links or compiles its .NET
   library, and it is not packaged with the host yet.
 - `/api/health` reports requested-but-unanswered keys under `unmapped`.
   `network.download`/`network.upload` now have providers, so they no longer
@@ -110,10 +112,13 @@ unit, build, size and visual evidence. The full local browser suite passed on
 - No physical-phone gate exists. LAN pairing is proven with server/unit tests
   and a manual pass from this machine's LAN address, but never on real phone
   hardware or a device that is not the host itself.
-- LHM is read but not packaged, and is not verified against a real install: the
-  provider was proved against a stub serving LHM's documented `data.json` shape.
-  LHM/PawnIO coexistence with Vanguard/EAC/BattlEye is unverified, and bundling
-  LHM needs the licence analysis reopened (MPL-2.0).
+- LHM is read and can be staged, but is not verified against a real install: the
+  provider was proved against a stub serving LHM's documented `data.json` shape,
+  and a real launch cannot be exercised in this environment. LHM/PawnIO
+  coexistence with Vanguard/EAC/BattlEye is unverified, and releasing the
+  bundled copy still needs maintainer sign-off (the licence analysis in
+  `.agents/dependency-licences.md` found redistribution permissible with
+  notices, not blocked).
 - `disk.used`/`disk.used.percent` sum every mounted filesystem, so a machine with
   a removable volume reports it as part of "disk". A per-volume key fan-out is a
   separate product decision.
