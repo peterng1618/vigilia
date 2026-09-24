@@ -203,6 +203,20 @@ describe("the selection inspector", () => {
     expect(revealTypePresets).toHaveBeenCalled();
   });
 
+  it("offers a shape none of a text object's fields", () => {
+    const { host } = setup(rect);
+
+    // A shape has no text layout to edit, so it must not be offered one.
+    for (const field of [
+      "[data-vigilia-text-align]",
+      "[data-vigilia-text-wrap]",
+      "[data-vigilia-text-overflow]",
+      '[data-vigilia-resolution="Type preset"]',
+    ]) {
+      expect(host.querySelector(field)).toBeNull();
+    }
+  });
+
   it("keeps describing the same object after history drops the selection", () => {
     const { inspector, host } = setup(rect);
     rect.set({ id: "keep-me" });

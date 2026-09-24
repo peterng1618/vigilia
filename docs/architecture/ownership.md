@@ -34,6 +34,7 @@ If implementation moves an owner, update this map in the same change.
 | Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
 | Selection snapshot and dock eligibility | `editor/src/editor-shell/bridge.ts` |
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
+| The Style tab (resolved references, document globals) | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
 | The consumer's clock zone | `host/src/settings/display.ts` |

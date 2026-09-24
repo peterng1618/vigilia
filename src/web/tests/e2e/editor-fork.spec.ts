@@ -666,6 +666,85 @@ test.describe("Fabric editor route", () => {
     expect(leftFor(envelope, "wordmark")).toBe(54);
   });
 
+  test("shows the Style tab's resolved appearance for a selection", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    await setThemePackage(page, "style-tab.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "style-tab",
+      artboard: {
+        width: 320,
+        height: 180,
+        background: { ref: "palette.background" },
+        barColor: { ref: "palette.none" },
+      },
+      globals: {
+        palette: {
+          none: { name: "None", value: { kind: "solid", color: "transparent" } },
+          background: {
+            name: "Background",
+            value: { kind: "solid", color: "#102030" },
+          },
+          ink: { name: "Ink", value: { kind: "solid", color: "#00b8d9" } },
+        },
+        typePresets: {
+          body: { name: "Body", value: { family: "sans-serif", size: 16 } },
+        },
+      },
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Textbox",
+            id: "cpu-label",
+            left: 20,
+            top: 20,
+            width: 200,
+            text: "CPU",
+            originX: "left",
+            originY: "top",
+            fill: "#00b8d9",
+            vigiliaPaint: { fill: "palette.ink" },
+            vigiliaText: {
+              runs: [
+                {
+                  kind: "literal",
+                  text: "CPU",
+                  typePreset: "typePresets.body",
+                  style: { color: { ref: "palette.ink" } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    // With nothing selected the tab lists what the document offers, which is
+    // what an author needs before they have picked anything.
+    await openInspectorTab(page, "Style");
+    const style = page.locator('[data-vigilia-panel="style"]');
+    await expect(style).toContainText("palette.ink");
+    await expect(style).toContainText("#00b8d9");
+    await expect(style).toContainText("Body");
+
+    // Selecting the text replaces the document's list with its own resolution.
+    await page.mouse.click(40, 40);
+    await openInspectorTab(page, "Style");
+    await expect(style).toContainText("palette.ink");
+    await expect(style).toContainText("typePresets.body");
+    await expect(style.locator("[data-vigilia-globals]")).toHaveCount(0);
+
+    await captureVisualReview(page, testInfo, "editor-fork-style-tab");
+  });
+
   test("persists a selected chart binding", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "desktop-chromium",
