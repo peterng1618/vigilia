@@ -36,4 +36,12 @@ describe("object action registry", () => {
       objectAction("group").eligible(target({ kind: "group", memberCount: 2 })),
     ).toBe(true);
   });
+
+  it("refuses arrange for a locked multi-selection, as canArrange does", () => {
+    const align = objectAction("arrange:align-left");
+    expect(align.eligible(target({ memberCount: 2 }))).toBe(true);
+    expect(align.eligible(target({ memberCount: 2, locked: true }))).toBe(
+      false,
+    );
+  });
 });

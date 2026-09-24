@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   Copy,
+  Group,
   Lock,
   type LucideIcon,
   Scissors,
@@ -63,23 +64,28 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "duplicate",
     label: uiCopy.actions.duplicate,
     icon: Copy,
-    eligible: hasSelection,
+    // ClipboardManager.duplicate refuses a locked object; eligibility has to agree.
+    eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.duplicate(),
   },
   {
     id: "copy",
     label: uiCopy.actions.copy,
     icon: Copy,
-    eligible: hasSelection,
+    // ClipboardManager.copy refuses a locked object; eligibility has to agree.
+    eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.copy(),
   },
   {
     id: "cut",
     label: uiCopy.actions.cut,
     icon: Scissors,
-    eligible: hasSelection,
+    // Cut refuses through copy(), which refuses a locked object.
+    eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.cut(),
   },
+  // No manager refuses on lock for the ordering actions, so they stay on bare
+  // hasSelection: narrowing further would advertise a refusal that never happens.
   {
     id: "front",
     label: uiCopy.actions.front,
@@ -122,10 +128,11 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     eligible: (t) => hasSelection(t) && t.locked,
     run: (e) => e.objectLockManager.unlockObject(),
   },
+  // GroupingManager reads no lock, so grouping stays on bare selection too.
   {
     id: "group",
     label: uiCopy.actions.group,
-    icon: Lock,
+    icon: Group,
     eligible: (t) => t.kind === "group" && t.memberCount > 1 && !t.isGroup,
     run: (e) => e.groupingManager.group(),
   },
@@ -163,7 +170,8 @@ export function arrangeActions(): readonly ObjectAction[] {
     id: `arrange:${action}` as const,
     label: uiCopy.arrangeLabels[action],
     icon: ARRANGE_ICONS[action],
-    eligible: (target) => target.memberCount > 1,
+    // canArrange also refuses a locked member, so eligibility has to agree.
+    eligible: (target) => target.memberCount > 1 && !target.locked,
     run: (editor) => void applyArrange(editor, action),
   }));
 }
