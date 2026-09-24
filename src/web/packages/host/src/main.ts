@@ -13,6 +13,7 @@ import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
+import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createThemeStore } from "./themes/store.js";
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
@@ -64,8 +65,9 @@ export async function run(argv: readonly string[]): Promise<number> {
   // runs it; the systeminformation-backed provider answers everything else, and
   // covers any key LHM could not read. Both are optional sources, never a
   // collector Vigilia maintains (§97).
+  const lhmProvider = new LhmSensorProvider({ baseUrl: lhmUrl });
   const registry = new ProviderRegistry([
-    new LhmSensorProvider({ baseUrl: lhmUrl }),
+    lhmProvider,
     new LibrarySensorProvider(),
   ]);
 
@@ -76,6 +78,8 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Sessions exist only when the server is LAN-reachable; a loopback-only host
   // refuses non-loopback reads outright rather than trusting them.
   const sessions = servingLan ? createSessionStore() : undefined;
+  // Device assignments are admin state, stored beside the themes.
+  const deviceSettings = createDeviceSettingsStore(themesDir);
 
   const hosted = createHostServer({
     registry,
@@ -85,6 +89,23 @@ export async function run(argv: readonly string[]): Promise<number> {
     },
     themeStore: createThemeStore(themesDir),
     ...(sessions === undefined ? {} : { sessions }),
+    devices: deviceSettings,
+    onDeviceAssignment: (assignment) => lhmProvider.setAssignment(assignment),
+    describeDevices: () => lhmProvider.describeDevices(),
+  });
+
+  // Apply the settled device choices before the first poll.
+  const storedDevices = await deviceSettings.read();
+  lhmProvider.setAssignment({
+    ...(storedDevices.assigned.gpu === undefined
+      ? {}
+      : { gpu: storedDevices.assigned.gpu }),
+    ...(storedDevices.assigned["system-disk"] === undefined
+      ? {}
+      : { systemDisk: storedDevices.assigned["system-disk"] }),
+    ...(storedDevices.assigned["data-disk"] === undefined
+      ? {}
+      : { dataDisk: storedDevices.assigned["data-disk"] }),
   });
 
   let bound: number;

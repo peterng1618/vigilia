@@ -274,6 +274,29 @@ function deriveDiskUsed(sensors: readonly LhmSensor[]): number | undefined {
  * percentage, temperature, power or clock takes the highest — which is what a
  * single figure for that key should mean.
  */
+/** A GPU this machine reports, so a consumer can choose between them. */
+export interface GpuDeviceReading {
+  readonly deviceId: string;
+  readonly name: string;
+}
+
+export function gpuDeviceReadings(
+  sensors: readonly LhmSensor[],
+): readonly GpuDeviceReading[] {
+  const seen = new Map<string, string>();
+
+  for (const sensor of sensors) {
+    if (groupOf(sensor.hardwareType) === "gpu") {
+      seen.set(sensor.hardwareId, sensor.hardwareType);
+    }
+  }
+
+  return [...seen].map(([hardwareId, name]) => ({
+    deviceId: diskDeviceId(name) || hardwareId,
+    name,
+  }));
+}
+
 /**
  * One entry per discovered storage device, for the per-device disk keys.
  * A drive reports Total and Free in GB and Used Space as a percentage, so used
@@ -413,4 +436,44 @@ export function matchLhmSensors(
   }
 
   return [...chosen.values()];
+}
+
+/** A consumer's device choice, applied to the aggregate keys a theme binds. */
+export interface DeviceAssignment {
+  /** Device id whose readings answer the unsuffixed `gpu.*` keys. */
+  readonly gpu?: string;
+  /** Device id answering `disk.used`/`disk.total`/`disk.used.percent`. */
+  readonly systemDisk?: string;
+  /** Device id for the per-device data-disk keys, when a theme names one. */
+  readonly dataDisk?: string;
+}
+
+/**
+ * Readings limited to the assigned devices, so a two-GPU machine can show the
+ * GPU the consumer chose under the theme's single `gpu.*` keys. A group with no
+ * assignment keeps the default behaviour (highest reading, summed capacity), so
+ * an unconfigured host behaves exactly as before.
+ */
+export function matchLhmSensorsAssigned(
+  sensors: readonly LhmSensor[],
+  semanticKeys: readonly string[],
+  assignment: DeviceAssignment,
+): readonly LhmMatch[] {
+  const gpuId = assignment.gpu;
+  const diskId = assignment.systemDisk;
+
+  const scoped =
+    gpuId === undefined && diskId === undefined
+      ? sensors
+      : sensors.filter((sensor) => {
+          const group = groupOf(sensor.hardwareType);
+          const id = diskDeviceId(sensor.hardwareType);
+
+          // Keep everything that is not one of the assigned groups.
+          if (group === "gpu" && gpuId !== undefined) return id === gpuId;
+          if (group === "storage" && diskId !== undefined) return id === diskId;
+          return true;
+        });
+
+  return matchLhmSensors(scoped, semanticKeys);
 }

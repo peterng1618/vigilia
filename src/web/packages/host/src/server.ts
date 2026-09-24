@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { createBatch, SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
+import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
 import {
   contentTypeFor,
@@ -10,6 +11,10 @@ import {
   resolveStaticPath,
 } from "./serve/static-path.js";
 import type { SessionStore } from "./session/pairing.js";
+import {
+  type DeviceSettingsStore,
+  EMPTY_DEVICE_SETTINGS,
+} from "./settings/devices.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -38,6 +43,15 @@ export interface HostServerOptions {
    * loopback-only server needs none, and a non-loopback display is then
    * refused rather than trusted. */
   readonly sessions?: SessionStore;
+  /** Device assignments (§145). Omit to keep defaults with no configuration. */
+  readonly devices?: DeviceSettingsStore;
+  /** Called after an assignment change so providers re-read it. */
+  readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
+  /** Devices a consumer may choose between. Omitted when none are known. */
+  readonly describeDevices?: () => Promise<{
+    readonly gpus: readonly { readonly id: string; readonly name: string }[];
+    readonly disks: readonly { readonly id: string; readonly name: string }[];
+  }>;
 }
 
 export interface HostServer {
@@ -58,6 +72,30 @@ function isLoopbackRemote(address: string | undefined): boolean {
   const normalized = address.replace(/^::ffff:/, "");
 
   return normalized === "127.0.0.1" || normalized === "::1";
+}
+
+/** Bounded JSON body for admin writes; a runaway body must not be buffered. */
+async function readBody(
+  request: http.IncomingMessage,
+  limit = 64 * 1024,
+): Promise<string> {
+  const chunks: Buffer[] = [];
+  let received = 0;
+
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk)
+      ? chunk
+      : Buffer.from(chunk as string);
+    received += buffer.byteLength;
+
+    if (received > limit) {
+      throw new Error("That request body is too large.");
+    }
+
+    chunks.push(buffer);
+  }
+
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 function sendJson(
@@ -135,6 +173,48 @@ export function createHostServer(options: HostServerOptions): HostServer {
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
+  const devices = options.devices;
+
+  /** Assignments in the shape providers consume; unset groups mean defaults. */
+  async function currentAssignment(): Promise<DeviceAssignment> {
+    const stored =
+      devices === undefined ? EMPTY_DEVICE_SETTINGS : await devices.read();
+
+    return {
+      ...(stored.assigned.gpu === undefined
+        ? {}
+        : { gpu: stored.assigned.gpu }),
+      ...(stored.assigned["system-disk"] === undefined
+        ? {}
+        : { systemDisk: stored.assigned["system-disk"] }),
+      ...(stored.assigned["data-disk"] === undefined
+        ? {}
+        : { dataDisk: stored.assigned["data-disk"] }),
+    };
+  }
+
+  /**
+   * The devices a consumer can choose between, discovered from the providers
+   * rather than guessed at. An unconfigured machine returns empty groups, which
+   * the settings UI reports as "only one device found" rather than as an error.
+   */
+  async function availableDevices(): Promise<{
+    readonly gpus: readonly { readonly id: string; readonly name: string }[];
+    readonly disks: readonly { readonly id: string; readonly name: string }[];
+  }> {
+    const describe_devices = options.describeDevices;
+
+    if (describe_devices === undefined) {
+      return { gpus: [], disks: [] };
+    }
+
+    try {
+      return await describe_devices();
+    } catch {
+      // A provider that cannot answer leaves the lists empty, never fails the page.
+      return { gpus: [], disks: [] };
+    }
+  }
 
   /** A request's token, from a header (fetch) or query (EventSource cannot set
    * request headers, so the stream carries it in the URL). */
@@ -219,6 +299,55 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
       openStream(request, response, url);
+      return;
+    }
+
+    // Device assignments are an admin action, like pairing: they change what
+    // every display shows, so they stay loopback-only.
+    if (url.pathname.startsWith("/api/devices")) {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(
+          response,
+          403,
+          "Device settings are available on this PC only.",
+        );
+        return;
+      }
+
+      if (devices === undefined) {
+        sendText(
+          response,
+          404,
+          "Device settings are not enabled on this host.",
+        );
+        return;
+      }
+
+      if (url.pathname === "/api/devices" && request.method === "GET") {
+        sendJson(response, 200, {
+          available: await availableDevices(),
+          assigned: await devices.read(),
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/devices" && request.method === "PUT") {
+        try {
+          const body = JSON.parse(await readBody(request)) as unknown;
+          const saved = await devices.write(body);
+          options.onDeviceAssignment?.(await currentAssignment());
+          sendJson(response, 200, { ok: true, assigned: saved });
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
       return;
     }
 

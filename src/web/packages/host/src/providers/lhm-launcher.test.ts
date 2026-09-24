@@ -1,6 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { launchLhm, requiresElevation } from "./lhm-launcher.js";
+import {
+  hasLhmStartupTask,
+  launchLhm,
+  requiresElevation,
+} from "./lhm-launcher.js";
 
 describe("LHM launcher", () => {
   it("recognises an executable that needs administrator rights", () => {
@@ -17,6 +21,14 @@ describe("LHM launcher", () => {
     expect(requiresElevation(invoker)).toBe(false);
     // A missing file is not an elevation claim.
     expect(requiresElevation("/definitely/not/here.exe")).toBe(false);
+  });
+
+  it("detects whether LHM's elevated startup task is registered", () => {
+    // A registered task runs with RunLevel.Highest, so Windows starts LHM
+    // elevated with no prompt; the launcher must then advise differently from
+    // a first install.
+    expect(hasLhmStartupTask("/definitely/not/a/task/dir")).toBe(false);
+    expect(hasLhmStartupTask(import.meta.dirname)).toBe(false);
   });
 
   it("leaves an LHM that is already answering alone", async () => {

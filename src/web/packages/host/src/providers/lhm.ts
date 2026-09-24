@@ -1,6 +1,11 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
 import { describeSemanticKey, diskDeviceOf } from "@vigilia/renderer-core";
-import { diskDeviceReadings, matchLhmSensors } from "./lhm-mapping.js";
+import {
+  type DeviceAssignment,
+  diskDeviceReadings,
+  gpuDeviceReadings,
+  matchLhmSensorsAssigned,
+} from "./lhm-mapping.js";
 import { flattenLhmSensors } from "./lhm-tree.js";
 import type {
   ProviderHealth,
@@ -100,6 +105,8 @@ export class LhmSensorProvider implements SensorProvider {
   readonly label = "LibreHardwareMonitor (extended)";
 
   private readonly baseUrl: string;
+  /** Which device answers each aggregate group; refreshed per sample. */
+  private assignment: DeviceAssignment = {};
   private readonly fetcher: Fetcher;
   private failure: string | undefined;
 
@@ -109,8 +116,44 @@ export class LhmSensorProvider implements SensorProvider {
       options.fetcher ?? boundedFetcher(options.timeoutMs ?? LHM_TIMEOUT_MS);
   }
 
+  /** Called when the consumer changes device assignments (§145). */
+  setAssignment(assignment: DeviceAssignment): void {
+    this.assignment = assignment;
+  }
+
   async describe(): Promise<readonly SensorDescriptor[]> {
     return LHM_DESCRIPTORS;
+  }
+
+  /**
+   * The GPUs and drives this machine reports, so a consumer can choose which
+   * one a theme describes. The discovery read is the same payload sampling
+   * uses; a failure yields empty lists rather than an error page.
+   */
+  async describeDevices(): Promise<{
+    readonly gpus: readonly { readonly id: string; readonly name: string }[];
+    readonly disks: readonly { readonly id: string; readonly name: string }[];
+  }> {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/data.json`);
+      if (!response.ok) {
+        return { gpus: [], disks: [] };
+      }
+
+      const sensors = flattenLhmSensors(JSON.parse(await response.text()));
+      return {
+        gpus: gpuDeviceReadings(sensors).map((device) => ({
+          id: device.deviceId,
+          name: device.name,
+        })),
+        disks: diskDeviceReadings(sensors).map((device) => ({
+          id: device.deviceId,
+          name: device.name,
+        })),
+      };
+    } catch {
+      return { gpus: [], disks: [] };
+    }
   }
 
   async sample(
@@ -157,7 +200,7 @@ export class LhmSensorProvider implements SensorProvider {
 
     const sensors = flattenLhmSensors(payload);
     const matched = new Map(
-      matchLhmSensors(sensors, owned).map((match) => [
+      matchLhmSensorsAssigned(sensors, owned, this.assignment).map((match) => [
         match.semanticKey,
         match.value,
       ]),

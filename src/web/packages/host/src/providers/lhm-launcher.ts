@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 /**
  * Runs a local LibreHardwareMonitor so its web server can be read (§97). LHM is
@@ -18,6 +19,33 @@ export function requiresElevation(executable: string): boolean {
     // Scans the PE for its manifest string; cheaper and more portable than
     // parsing the resource directory.
     return readFileSync(executable, "latin1").includes("requireAdministrator");
+  } catch {
+    return false;
+  }
+}
+
+/** The task LHM registers for "Start on Windows startup". */
+export const LHM_TASK_NAME = "LibreHardwareMonitor";
+
+/**
+ * Whether LHM's own startup task is registered. Such a task runs with
+ * `TaskRunLevel.Highest`, so Windows starts it elevated and never prompts
+ * again: once the owner has approved that task, an elevated session is no
+ * longer needed to run LHM, and the launcher's advice must say so.
+ *
+ * Reads the task store directly rather than shelling out, and treats any
+ * failure as "not registered" so this can only ever make the message more
+ * conservative.
+ */
+export function hasLhmStartupTask(
+  taskDirectory = path.join(
+    process.env["SystemRoot"] ?? "C:\\Windows",
+    "System32",
+    "Tasks",
+  ),
+): boolean {
+  try {
+    return existsSync(path.join(taskDirectory, LHM_TASK_NAME));
   } catch {
     return false;
   }
@@ -84,15 +112,19 @@ export async function launchLhm(
   // Windows will refuse a non-elevated spawn of an `requireAdministrator`
   // binary, so say why instead of surfacing EACCES.
   if (requiresElevation(options.executable)) {
-    return {
-      started: false,
-      reason:
-        "LibreHardwareMonitor needs administrator rights (it loads a driver), " +
-        "so Vigilia cannot start it from a normal user session. Start " +
-        "LibreHardwareMonitor yourself and enable its web server, or run " +
-        "Vigilia elevated.",
-      stop: () => undefined,
-    };
+    // Once the owner has registered LHM's own startup task, Windows starts LHM
+    // elevated without prompting, so the advice differs from a first install.
+    const reason = hasLhmStartupTask()
+      ? "LibreHardwareMonitor needs administrator rights (it loads a driver), " +
+        "and its startup task is registered, so Windows starts it elevated at " +
+        "sign-in. It is not running now: start LibreHardwareMonitor from its " +
+        "own shortcut and enable its web server."
+      : "LibreHardwareMonitor needs administrator rights (it loads a driver). " +
+        "Approve that once by enabling Options > Start on Windows startup in " +
+        "LibreHardwareMonitor (Windows then starts it elevated at sign-in " +
+        "without prompting), or run Vigilia elevated.";
+
+    return { started: false, reason, stop: () => undefined };
   }
 
   let child: Pick<ChildProcess, "kill" | "once" | "killed"> | undefined;
