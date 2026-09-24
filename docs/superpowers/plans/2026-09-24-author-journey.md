@@ -98,7 +98,7 @@ the document model as it already stands.
 - [ ] Capture and inspect each state: shape, text, run, chart, none.
 - [ ] Inspect the **persisted envelope** after save/reopen for each change, not
       only the live DOM.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` and the spec.
+- [ ] Update `docs/architecture/README.md` / `docs/architecture/ownership.md` and the spec.
 - [ ] Commit.
 
 ## Self-Review

@@ -81,7 +81,7 @@ remembered.
       npm run build && npm run size`.
 - [x] Full local `npm run test:e2e`.
 - [x] Capture and inspect the four states from Task 3 plus the Global section.
-- [x] Update `.agents/status.md`, `.agents/architecture.md` and the spec.
+- [x] Update `docs/architecture/README.md` / `docs/architecture/ownership.md` and the spec.
 - [x] Commit.
 
 ## Self-Review

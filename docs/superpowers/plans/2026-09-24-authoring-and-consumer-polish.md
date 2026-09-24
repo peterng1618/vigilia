@@ -106,7 +106,7 @@ Observed by driving the running editor, not by reading code:
       npm run build && npm run size`.
 - [ ] Full local `npm run test:e2e`.
 - [ ] Capture and inspect each selection state (shape, text, chart, none).
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` (new owner) and the
+- [ ] Update `docs/architecture/ownership.md` and the
       spec's acceptance section.
 - [ ] Commit.
 

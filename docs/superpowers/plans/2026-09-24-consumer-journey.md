@@ -100,7 +100,7 @@ Driven against the running host, not read from code:
 - [ ] Full local `npm run test:e2e`.
 - [ ] Capture and inspect: the library with several themes, a theme that needs
       no configuration, and `/` after a restart.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` and the spec's
+- [ ] Update `docs/architecture/README.md` / `docs/architecture/ownership.md` and the spec's
       acceptance section with what was observed.
 - [ ] Commit.
 
