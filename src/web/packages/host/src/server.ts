@@ -635,10 +635,31 @@ export function createHostServer(options: HostServerOptions): HostServer {
       [...connections].map((connection) => connection.semanticKeys),
     );
     const cycle = await registry.sample(keys, now());
-    const payload = JSON.stringify(createBatch(cycle.entries, now()));
 
-    // Requested keys no provider answered. Recorded for `/api/health` so an
-    // unsupported sensor explains itself instead of reading as a silent gap.
+    // A key no provider even considers would otherwise be absent from the frame
+    // entirely, so a display cannot tell "nothing reports this" from "no data
+    // yet" (§97). An explicit gap carries the reason to the display.
+    const answered = new Set(cycle.entries.map((entry) => entry.semanticKey));
+    const timestamp = new Date(now()).toISOString();
+    const gaps = cycle.unmapped
+      .filter((key) => !answered.has(key))
+      .map((key) => ({
+        semanticKey: key,
+        sample: {
+          sensorId: "host:" + key,
+          timestamp,
+          status: "missing" as const,
+          message:
+            "no provider on this PC reports that sensor; check the device " +
+            "assignment or that its source is running",
+        },
+      }));
+
+    const payload = JSON.stringify(
+      createBatch([...cycle.entries, ...gaps], now()),
+    );
+
+    // Recorded for `/api/health` so an unsupported sensor explains itself.
     lastUnmapped = cycle.unmapped;
 
     for (const connection of connections) {
