@@ -33,6 +33,7 @@ export const uiCopy = {
     unresolved: "no longer resolves",
     runs: "Runs",
     runPreset: "Type preset",
+    editTypePresets: "Edit type presets",
     runColour: "Colour",
     runSource: "Reads",
     staticText: "Static text",

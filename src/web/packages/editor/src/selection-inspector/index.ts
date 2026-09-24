@@ -6,8 +6,11 @@ import {
   type AppearanceContext,
   createOpacityField,
   createResolutionLine,
+  createTypePresetReveal,
   paintReferenceOf,
   resolveToken,
+  resolveTypePreset,
+  typePresetOf,
 } from "./appearance.js";
 import { createRunEditor, type RunBindingPort } from "./runs.js";
 
@@ -71,6 +74,11 @@ export interface SelectionInspectorOptions {
     nodeId: string,
     bindings: readonly Binding[],
   ) => void;
+  /**
+   * Brings the existing type-preset panel into view. The panel owns a preset's
+   * fields, so a text selection links there instead of duplicating them.
+   */
+  readonly revealTypePresets?: () => void;
 }
 
 export function createSelectionInspector(
@@ -252,6 +260,23 @@ export function createSelectionInspector(
         resolveToken(context().globals, reference),
       ),
     );
+
+    // Type belongs to a text object; a shape has none, so it gets no line.
+    const preset = typePresetOf(object);
+    if (preset !== undefined) {
+      appearance.append(
+        createResolutionLine(
+          uiCopy.inspectorFields.runPreset,
+          preset,
+          resolveTypePreset(context().globals, preset),
+        ),
+      );
+      const reveal = options.revealTypePresets;
+      if (reveal !== undefined) {
+        appearance.append(createTypePresetReveal(reveal));
+      }
+    }
+
     root.append(appearance);
 
     // Styled runs, for a text object (§89). Nothing is shown for a run-less

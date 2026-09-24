@@ -1,7 +1,12 @@
-import type { FabricGlobals, FabricPalette } from "@vigilia/renderer-core";
+import type {
+  FabricGlobals,
+  FabricPalette,
+  TypePreset,
+} from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
+import { textRunsOf } from "./runs.js";
 
 /**
  * Appearance of the selected object: its opacity and what its paint and type
@@ -59,6 +64,42 @@ export function resolveToken(
   return value.kind === "gradient" ? "gradient" : value.color;
 }
 
+/**
+ * The type preset a text object is set in. The model names a preset per *run*,
+ * and `applyObjectTypePresets` paints the object from its first run, so the
+ * object's own type is that same run's reference — one owner, not a second rule.
+ */
+export function typePresetOf(
+  object: FabricObject,
+): `typePresets.${string}` | undefined {
+  const ref = textRunsOf(object)[0]?.typePreset;
+  return ref === undefined ? undefined : ref;
+}
+
+/** What a type preset resolves to, in the terms the author chose it by. */
+export function resolveTypePreset(
+  globals: FabricGlobals | undefined,
+  ref: string | undefined,
+): string | undefined {
+  if (ref === undefined || !ref.startsWith("typePresets.")) {
+    return undefined;
+  }
+
+  const preset = globals?.typePresets?.[ref.slice("typePresets.".length)] as
+    | { readonly value?: TypePreset }
+    | undefined;
+  const value = preset?.value;
+  if (value === undefined) {
+    return undefined;
+  }
+
+  // "Inter 600 16px" — the family, weight and size the author would see in the
+  // preset panel, without duplicating its fields.
+  return [value.family, value.weight, `${value.size}px`]
+    .filter((part) => part !== undefined && part !== "")
+    .join(" ");
+}
+
 /** A read-only line naming a token and what it resolves to. */
 export function createResolutionLine(
   label: string,
@@ -81,6 +122,19 @@ export function createResolutionLine(
       ? `${label}: ${ref} (${uiCopy.inspectorFields.unresolved})`
       : `${label}: ${ref} → ${resolved}`;
   return line;
+}
+
+/**
+ * Reveals the type-preset panel. The panel already owns a preset's fields, so
+ * the inspector links to it rather than growing a second set that could drift.
+ */
+export function createTypePresetReveal(onReveal: () => void): HTMLElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset["vigiliaRevealTypePresets"] = "";
+  button.textContent = uiCopy.inspectorFields.editTypePresets;
+  button.addEventListener("click", onReveal);
+  return button;
 }
 
 /**

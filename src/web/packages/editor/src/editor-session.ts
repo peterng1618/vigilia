@@ -204,6 +204,11 @@ export class EditorSession {
       // through the session rather than holding a second copy of them.
       nodeBindings: (id) => this.#envelope.bindings?.[id] ?? [],
       onNodeBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
+      // The panel already owns a preset's fields and sits in the same tab, so
+      // revealing it is bringing the author to it, not drawing a second copy.
+      revealTypePresets: () => {
+        this.#types.root.scrollIntoView({ block: "start" });
+      },
     });
     this.charts = new ChartManager({
       editor: options.shell.editor,

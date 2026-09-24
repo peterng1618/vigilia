@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Rect } from "fabric/es";
+import { IText, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
 
@@ -22,15 +22,23 @@ function setup(active: unknown) {
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
   };
+  const revealTypePresets = vi.fn();
   const inspector = createSelectionInspector(host, {
     editor: editor as never,
     globals: {
       palette: {
         ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
       },
+      typePresets: {
+        body: {
+          name: "Body",
+          value: { family: "Inter", size: 16, weight: "600" },
+        },
+      },
     } as never,
+    revealTypePresets,
   });
-  return { inspector, host, history, editor };
+  return { inspector, host, history, editor, revealTypePresets };
 }
 
 describe("the selection inspector", () => {
@@ -136,6 +144,63 @@ describe("the selection inspector", () => {
     expect(
       host.querySelector("[data-vigilia-resolution]")?.textContent,
     ).toContain("no longer resolves");
+  });
+
+  it("names the type preset a text object is set in, and what it resolves to", () => {
+    const text = new IText("Hi", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+    const { host } = setup(text);
+
+    // The object's type is its first authored run's preset — the same run
+    // `applyObjectTypePresets` reads — shown with what it means.
+    const line = host.querySelector('[data-vigilia-resolution="Type preset"]');
+    expect(line?.textContent).toContain("typePresets.body");
+    expect(line?.textContent).toContain("Inter");
+  });
+
+  it("reports a text object whose type preset no longer resolves", () => {
+    const text = new IText("Hi", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.gone" }],
+      },
+    });
+    const { host } = setup(text);
+
+    expect(
+      host.querySelector('[data-vigilia-resolution="Type preset"]')
+        ?.textContent,
+    ).toContain("no longer resolves");
+  });
+
+  it("offers a shape no type preset, because a shape has no type", () => {
+    const { host } = setup(rect);
+
+    expect(
+      host.querySelector('[data-vigilia-resolution="Type preset"]'),
+    ).toBeNull();
+  });
+
+  it("reveals the type-preset panel rather than duplicating its fields", () => {
+    const text = new IText("Hi", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+    const { host, revealTypePresets } = setup(text);
+
+    // Activating the control is what makes the panel reachable; the fields
+    // themselves stay owned by the panel.
+    host
+      .querySelector<HTMLButtonElement>("[data-vigilia-reveal-type-presets]")
+      ?.click();
+
+    expect(revealTypePresets).toHaveBeenCalled();
   });
 
   it("keeps describing the same object after history drops the selection", () => {

@@ -220,6 +220,39 @@ describe("binding a text run to a sensor", () => {
     return box.dispose();
   });
 
+  it("writes alignment, wrap and overflow into the object's authored text", () => {
+    const box = harness(literalClock);
+    const content = (): Record<string, unknown> =>
+      box.object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>;
+
+    choose(box.pick<HTMLSelectElement>("[data-vigilia-text-align]"), "center");
+    choose(box.pick<HTMLSelectElement>("[data-vigilia-text-wrap]"), "nowrap");
+    choose(
+      box.pick<HTMLSelectElement>("[data-vigilia-text-overflow]"),
+      "ellipsis",
+    );
+
+    // These are the object's layout, which the renderer already honours; they
+    // persist in the same authored content the runs do.
+    expect(content()["align"]).toBe("center");
+    expect(content()["wrap"]).toBe(false);
+    expect(content()["overflow"]).toBe("ellipsis");
+    return box.dispose();
+  });
+
+  it("shows alignment, wrap and overflow again from what was stored", () => {
+    const box = harness(literalClock);
+    choose(box.pick<HTMLSelectElement>("[data-vigilia-text-align]"), "right");
+
+    // Reopening rebuilds the control from the persisted content, so a re-read
+    // must show the stored choice rather than a default.
+    box.render();
+    expect(box.pick<HTMLSelectElement>("[data-vigilia-text-align]").value).toBe(
+      "right",
+    );
+    return box.dispose();
+  });
+
   it("returns a run to prose, releasing the binding it named", () => {
     const box = harness(literalClock);
     choose(
