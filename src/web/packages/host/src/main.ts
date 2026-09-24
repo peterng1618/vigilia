@@ -119,17 +119,19 @@ export async function run(argv: readonly string[]): Promise<number> {
         lhmProvider.describeDevices(),
         libraryProvider.describeDevices(),
       ]);
-      const merge = (
-        first: readonly { readonly id: string; readonly name: string }[],
-        second: readonly { readonly id: string; readonly name: string }[],
-      ) => {
-        const seen = new Set(first.map((device) => device.id));
-        return [...first, ...second.filter((device) => !seen.has(device.id))];
-      };
+      // Not a union: the two providers name a drive differently (LHM by model,
+      // the library by mount) and LHM reports no mount, so listing both would
+      // show one physical drive twice. The list must describe what the provider
+      // that answers readings can actually serve, so LHM's list wins whenever
+      // it has one and the library's fills in only when it does not.
+      const prefer = <T extends { readonly id: string }>(
+        first: readonly T[],
+        second: readonly T[],
+      ): readonly T[] => (first.length > 0 ? first : second);
 
       return {
-        gpus: merge(fromLhm.gpus, fromLibrary.gpus),
-        disks: merge(fromLhm.disks, fromLibrary.disks),
+        gpus: prefer(fromLhm.gpus, fromLibrary.gpus),
+        disks: prefer(fromLhm.disks, fromLibrary.disks),
       };
     },
   });
