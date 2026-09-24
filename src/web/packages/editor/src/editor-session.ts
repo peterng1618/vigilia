@@ -193,10 +193,12 @@ export class EditorSession {
     this.#types.render(
       this.#envelope.globals?.typePresets as TypePresets | undefined,
     );
-    this.#selection = createSelectionInspector(
-      options.panelHosts.selection,
-      options.shell.editor,
-    );
+    this.#selection = createSelectionInspector(options.panelHosts.selection, {
+      editor: options.shell.editor,
+      ...(options.envelope.globals === undefined
+        ? {}
+        : { globals: options.envelope.globals }),
+    });
     this.charts = new ChartManager({
       editor: options.shell.editor,
       scene: options.shell.scene,
@@ -536,6 +538,7 @@ export class EditorSession {
     this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
+    this.#selection.setGlobals(this.#envelope.globals);
     this.#palette.render(palette);
   }
 
@@ -560,6 +563,7 @@ export class EditorSession {
     this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
+    this.#selection.setGlobals(this.#envelope.globals);
     this.#artboard.render(artboard);
     this.#palette.render(palette);
   }

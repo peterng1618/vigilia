@@ -1,6 +1,14 @@
+import type { Globals } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
+import {
+  type AppearanceContext,
+  createOpacityField,
+  createResolutionLine,
+  paintReferenceOf,
+  resolveToken,
+} from "./appearance.js";
 
 /**
  * Properties of the selected object. An author's most common action is "select a
@@ -15,6 +23,8 @@ export interface SelectionInspector {
   readonly root: HTMLElement;
   /** Re-reads the active object; call on every selection change. */
   render(): void;
+  /** Theme globals changed, so a displayed resolution may have too. */
+  setGlobals(next: Globals | undefined): void;
 }
 
 /** A geometry field, in whole artboard units. */
@@ -46,10 +56,19 @@ function readField(object: FabricObject, key: GeometryField["key"]): number {
   return object.angle;
 }
 
+export interface SelectionInspectorOptions {
+  readonly editor: EditorInteraction;
+  /** Theme globals, so a token's resolution can be shown. */
+  readonly globals?: Globals;
+}
+
 export function createSelectionInspector(
   host: HTMLElement,
-  editor: EditorInteraction,
+  options: SelectionInspectorOptions,
 ): SelectionInspector {
+  const editor = options.editor;
+  let globals = options.globals;
+  const context = (): AppearanceContext => ({ editor, globals });
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
@@ -208,6 +227,21 @@ export function createSelectionInspector(
     }
 
     root.append(grid);
+
+    // Appearance, and what the object's references actually resolve to.
+    const appearance = document.createElement("div");
+    appearance.className = "vigilia-selection-appearance";
+    appearance.append(createOpacityField(context(), object, render));
+
+    const reference = paintReferenceOf(object);
+    appearance.append(
+      createResolutionLine(
+        uiCopy.inspectorFields.paint,
+        reference,
+        resolveToken(context().globals, reference),
+      ),
+    );
+    root.append(appearance);
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields
@@ -222,5 +256,12 @@ export function createSelectionInspector(
 
   render();
 
-  return { root, render };
+  return {
+    root,
+    render,
+    setGlobals(next) {
+      globals = next;
+      render();
+    },
+  };
 }

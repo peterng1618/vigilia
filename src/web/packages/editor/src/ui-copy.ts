@@ -27,6 +27,10 @@ export const uiCopy = {
     rotation: "Rotation",
     invalidValue: "That value cannot be applied to the selection.",
     nothingSelected: "Select an object to inspect it.",
+    opacity: "Opacity %",
+    paint: "Paint",
+    notSet: "not set",
+    unresolved: "no longer resolves",
   },
   menus: {
     file: "File",

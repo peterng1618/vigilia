@@ -22,7 +22,14 @@ function setup(active: unknown) {
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
   };
-  const inspector = createSelectionInspector(host, editor as never);
+  const inspector = createSelectionInspector(host, {
+    editor: editor as never,
+    globals: {
+      palette: {
+        ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
+      },
+    } as never,
+  });
   return { inspector, host, history, editor };
 }
 
@@ -78,6 +85,57 @@ describe("the selection inspector", () => {
     expect(rect.scaleX).toBe(1);
     expect(history.saveState).not.toHaveBeenCalled();
     expect(editor.errorManager.warn).toHaveBeenCalled();
+  });
+
+  it("shows opacity as a percentage and stores Fabric's 0-1", () => {
+    rect.set({ opacity: 0.5 });
+    const { host, history } = setup(rect);
+    const opacity = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
+
+    expect(opacity.value).toBe("50");
+
+    opacity.value = "25";
+    opacity.dispatchEvent(new Event("change"));
+
+    expect(rect.opacity).toBe(0.25);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses opacity outside the range rather than clamping it", () => {
+    rect.set({ opacity: 0.5 });
+    const { host, history, editor } = setup(rect);
+    const opacity = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
+
+    opacity.value = "150";
+    opacity.dispatchEvent(new Event("change"));
+
+    expect(rect.opacity).toBe(0.5);
+    expect(opacity.value).toBe("50");
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).toHaveBeenCalled();
+  });
+
+  it("names what a paint reference resolves to", () => {
+    rect.set({ vigiliaPaint: { fill: "palette.ink" } });
+    const { host } = setup(rect);
+    const line = host.querySelector("[data-vigilia-resolution]");
+
+    // The author chose a token; they must see what it means.
+    expect(line?.textContent).toContain("palette.ink");
+    expect(line?.textContent).toContain("#e8ecf3");
+  });
+
+  it("reports a reference that no longer resolves rather than blanking it", () => {
+    rect.set({ vigiliaPaint: { fill: "palette.gone" } });
+    const { host } = setup(rect);
+
+    expect(
+      host.querySelector("[data-vigilia-resolution]")?.textContent,
+    ).toContain("no longer resolves");
   });
 
   it("keeps describing the same object after history drops the selection", () => {
