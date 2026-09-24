@@ -152,15 +152,17 @@ never zero.
 
 A supported setting needs a property control, persisted authored representation
 and visual fixture. If ECharts cannot express a treatment, surface the gap and
-get product agreement before stabilising an approximation.
+get product agreement before stabilising an approximation. **No chart engine
+gaps are open.**
 
-Gauge angular gradients are **no longer a gap**: ECharts applies gauge progress
-colour across the swept arc, so the adapter expresses the gradient as arc
-segments. Open gap: discrete line-threshold bands. Per-segment line colouring
-would need `visualMap`, whose piecewise boundaries are values, while authored
-threshold offsets are 0–1 fractions of a range a line does not always declare
-(`LineSettings.min`/`max` are optional). Resolving the fraction-to-value
-mapping needs product agreement before any approximation is stabilised.
+- Gauge angular gradients: ECharts applies gauge progress colour across the
+  swept arc, so the adapter expresses the gradient as arc segments.
+- Line threshold bands: resolved with the agreed mapping — authored 0–1
+  offsets resolve against the line's authored `min`/`max` through
+  `visualMap.piecewise`. Without an authored range the stroke stays one colour
+  rather than guessing at the visible axis.
+- `VisualMapComponent` must stay registered in `scene-fabric/chart-engine.ts`;
+  without it ECharts accepts the option and silently draws one colour.
 
 ## §87 — Typed chart settings
 

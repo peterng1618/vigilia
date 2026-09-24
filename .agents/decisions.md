@@ -134,8 +134,14 @@ feature asks for. Refusing is honest where approximating is not.
 
 ## Open
 
-- **Chart engine:** authored treatment for discrete line-threshold bands
-  (product requirements §85). Gauge angular gradients are resolved — the gauge
-  adapter expresses them as arc segments, which ECharts applies along the sweep.
 - **Extended sensors:** PawnIO/LHM coexistence with Vanguard/EAC/BattlEye remains
   unverified and belongs to provider validation.
+- **Network throughput:** decided to adopt an external source for
+  `network.download`/`network.upload`; no source or dependency chosen yet.
+
+### Chart thresholds resolve fractions against the authored range
+
+A threshold fill's offsets are 0–1 fractions; per-value line colouring needs
+values. Fractions resolve against the line's authored `min`/`max`, and a line
+with neither keeps a single colour rather than mapping onto a moving visible
+axis. **Decided by:** user, 2026-09-24.
