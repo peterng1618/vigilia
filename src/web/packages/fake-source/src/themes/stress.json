@@ -222,6 +222,35 @@
       }
     },
     {
+      "id": "threshold-line",
+      "type": "chart",
+      "name": "Threshold line: colour follows the value",
+      "transform": { "x": 620, "y": 380, "width": 240, "height": 120 },
+      "bindings": [{ "id": "s-thresh", "semanticKey": "cpu.load" }],
+      "content": {
+        "family": "line",
+        "settings": {
+          "lineWidth": 3,
+          "interpolation": "smooth",
+          "min": 0,
+          "max": 100,
+          "stroke": {
+            "kind": "thresholds",
+            "bands": [
+              { "offset": 0.4, "color": "#22d3ee" },
+              { "offset": 0.75, "color": "#fbbf24" },
+              { "offset": 1, "color": "#f472b6" }
+            ]
+          },
+          "showMarkers": false,
+          "markerSize": 3,
+          "windowSeconds": 15,
+          "maxPoints": 8,
+          "showAxes": true
+        }
+      }
+    },
+    {
       "id": "sparkline",
       "type": "chart",
       "name": "Sparkline: no axes, edge to edge",

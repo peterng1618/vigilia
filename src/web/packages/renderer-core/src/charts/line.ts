@@ -8,7 +8,7 @@ import {
 } from "./animation.js";
 import { resolveChartPaint } from "./chart-paint.js";
 import type { EngineColor, LinearGradientColor } from "./fill.js";
-import { resolveThresholdColor, toLinearGradient } from "./fill.js";
+import { clamp01, resolveThresholdColor, toLinearGradient } from "./fill.js";
 import { type CartesianGrid, cartesianGrid } from "./grid.js";
 
 // Preserved public exports; implementation moved to fill.ts.
@@ -109,13 +109,29 @@ export interface LineOption extends EngineAnimation {
     readonly connectNulls: false;
     readonly lineStyle: {
       readonly width: number;
-      readonly color: EngineColor;
+      /** Absent when `visualMap` colours the segments per value (§85). */
+      readonly color?: EngineColor;
       readonly type: DashPattern;
     };
     readonly areaStyle?: { readonly color: EngineColor };
     readonly sampling?: "lttb" | "average";
     readonly silent: true;
   }[];
+  /**
+   * Per-value line colouring for a threshold stroke. Emitted only when the
+   * settings declare the range the authored fractions map onto (§85).
+   */
+  readonly visualMap?: {
+    readonly show: false;
+    readonly type: "piecewise";
+    readonly dimension: 1;
+    readonly seriesIndex: 0;
+    readonly pieces: readonly {
+      readonly min: number;
+      readonly max: number;
+      readonly color: string;
+    }[];
+  };
 }
 
 /** Window, sort and cap samples while preserving missing-data gaps. */
@@ -167,9 +183,28 @@ export function buildLineOption(
     settings.sampling && settings.sampling !== "none"
       ? settings.sampling
       : undefined;
+  // A threshold first-series stroke colours line segments by value, which one
+  // `lineStyle` colour cannot express; `visualMap` is the engine's mechanism
+  // for it. Absent an authored range there is no honest mapping (§85).
+  const threshold = thresholdBands(strokeFor(settings, 0), palette, settings);
   return {
     ...toEngineAnimation(settings.animation, animate),
     ...(renderOverscanRightMs === 0 ? {} : { renderOverscanRightMs }),
+    ...(threshold === undefined
+      ? {}
+      : {
+          visualMap: {
+            show: false,
+            type: "piecewise" as const,
+            dimension: 1,
+            seriesIndex: 0,
+            pieces: threshold.map((band) => ({
+              min: band.min,
+              max: band.max,
+              color: band.color,
+            })),
+          },
+        }),
     grid: cartesianGrid(
       {
         left: settings.showAxes ? 8 : 0,
@@ -204,10 +239,16 @@ export function buildLineOption(
       connectNulls: false as const,
       lineStyle: {
         width: settings.lineWidth,
-        color: toEngineColor(
-          resolveChartPaint(strokeFor(settings, index), palette),
-          "stroke",
-        ),
+        // A threshold stroke is per-segment, so `visualMap` owns its colour.
+        ...(thresholdBands(strokeFor(settings, index), palette, settings) ===
+        undefined
+          ? {
+              color: toEngineColor(
+                resolveChartPaint(strokeFor(settings, index), palette),
+                "stroke",
+              ),
+            }
+          : {}),
         type: settings.dash ?? "solid",
       },
       // Area fill is intentionally limited to the first series for readability.
@@ -225,6 +266,46 @@ export function buildLineOption(
       silent: true as const,
     })),
   };
+}
+
+/**
+ * A threshold stroke as `visualMap` value bands, or undefined when it cannot be
+ * expressed. Authored offsets are 0–1 fractions of a range, while `visualMap`
+ * pieces are values, so the mapping needs an authored `min`/`max`; without one
+ * there is no honest mapping to the visible axis, and the stroke stays a single
+ * colour (§85).
+ */
+export function thresholdBands(
+  paint: ChartPaint,
+  palette: FabricPalette | undefined,
+  range: { readonly min?: number; readonly max?: number },
+): readonly { min: number; max: number; color: string }[] | undefined {
+  if (range.min === undefined || range.max === undefined) {
+    return undefined;
+  }
+
+  const span = range.max - range.min;
+  if (!(span > 0)) {
+    return undefined;
+  }
+
+  const fill = resolveChartPaint(paint, palette);
+  if (fill.kind !== "thresholds" || fill.bands.length === 0) {
+    return undefined;
+  }
+
+  const sorted = [...fill.bands].sort((a, b) => a.offset - b.offset);
+  const valueAt = (offset: number): number =>
+    range.min! + clamp01(offset) * span;
+
+  // `resolveThresholdColor` picks the first band whose offset reaches the value,
+  // so each piece runs from the previous boundary up to its own. The first is
+  // open below and the last open above, covering the whole axis.
+  return sorted.map((band, index) => ({
+    min: index === 0 ? -Infinity : valueAt(sorted[index - 1]!.offset),
+    max: index === sorted.length - 1 ? Infinity : valueAt(band.offset),
+    color: band.color,
+  }));
 }
 
 function sampleTimeMs(sample: Sample): number {

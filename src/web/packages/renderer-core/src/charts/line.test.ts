@@ -383,6 +383,89 @@ describe("buildLineOption", () => {
 
     expect(option.animation).toBe(false);
   });
+
+  it("colours threshold line segments per value when a range is authored", () => {
+    // Authored offsets are fractions; `visualMap` pieces are values, so the
+    // mapping comes from the declared min/max. A band runs from the previous
+    // boundary to its own, matching `resolveThresholdColor`'s "up to here".
+    const option = buildLineOption(
+      {
+        ...defaultLineSettings,
+        min: 0,
+        max: 200,
+        stroke: {
+          kind: "thresholds",
+          bands: [
+            { offset: 0.25, color: "#00ff00" },
+            { offset: 0.5, color: "#ffab00" },
+            { offset: 1, color: "#ff0000" },
+          ],
+        },
+      },
+      [{ sensorId: "a", samples: [at(10, 1)] }],
+      NOW,
+    );
+
+    expect(option.visualMap).toMatchObject({
+      show: false,
+      type: "piecewise",
+      dimension: 1,
+      seriesIndex: 0,
+      pieces: [
+        { min: -Infinity, max: 50, color: "#00ff00" },
+        { min: 50, max: 100, color: "#ffab00" },
+        { min: 100, max: Infinity, color: "#ff0000" },
+      ],
+    });
+    // The whole-series colour would fight the per-segment one.
+    expect(option.series[0]!.lineStyle).not.toHaveProperty("color");
+  });
+
+  it("leaves a threshold line unsplit without an authored range", () => {
+    const option = buildLineOption(
+      {
+        ...defaultLineSettings,
+        stroke: {
+          kind: "thresholds",
+          bands: [{ offset: 0.5, color: "#ff0000" }],
+        },
+      },
+      [{ sensorId: "a", samples: [at(10, 1)] }],
+      NOW,
+    );
+
+    expect(option.visualMap).toBeUndefined();
+    expect(option.series[0]!.lineStyle.color).toBe("#ff0000");
+  });
+
+  it("ignores a threshold range that cannot span", () => {
+    const option = buildLineOption(
+      {
+        ...defaultLineSettings,
+        min: 5,
+        max: 5,
+        stroke: {
+          kind: "thresholds",
+          bands: [{ offset: 0.5, color: "#ff0000" }],
+        },
+      },
+      [{ sensorId: "a", samples: [at(10, 1)] }],
+      NOW,
+    );
+
+    expect(option.visualMap).toBeUndefined();
+  });
+
+  it("leaves a solid line's colour untouched", () => {
+    const option = buildLineOption(
+      defaultLineSettings,
+      [{ sensorId: "a", samples: [at(10, 1)] }],
+      NOW,
+    );
+
+    expect(option.visualMap).toBeUndefined();
+    expect(option.series[0]!.lineStyle.color).toBe("#00b8d9");
+  });
 });
 
 describe("toEngineColor", () => {
@@ -454,9 +537,10 @@ describe("toEngineColor", () => {
     ).toBe("#abc");
   });
 
-  it("reduces thresholds to the top band, which is the recorded engine gap", () => {
-    // A line's colour is a whole-series property, so per-value banding is not
-    // expressible. §85 requires the gap be explicit, not silently approximated.
+  it("reduces thresholds to the top band when no range is authored", () => {
+    // A line's colour is a whole-series property and the authored offsets are
+    // fractions. Without a declared range there is no honest value mapping, so
+    // the whole-series fallback stands (§85).
     const color = toEngineColor(
       {
         kind: "thresholds",
