@@ -13,12 +13,24 @@ import path from "node:path";
  * code, and launching is opt-in rather than automatic.
  */
 
-/** Detects the elevation requirement so the failure can be explained. */
+/**
+ * Detects the elevation requirement so the failure can be explained.
+ *
+ * The manifest string is scanned for rather than parsed out of the resource
+ * directory, but only in a real PE image: scanning any file's text would read
+ * a source file that merely mentions `requireAdministrator` as needing
+ * elevation.
+ */
 export function requiresElevation(executable: string): boolean {
   try {
-    // Scans the PE for its manifest string; cheaper and more portable than
-    // parsing the resource directory.
-    return readFileSync(executable, "latin1").includes("requireAdministrator");
+    const image = readFileSync(executable, "latin1");
+
+    // "MZ" is the DOS stub every PE begins with.
+    if (!image.startsWith("MZ")) {
+      return false;
+    }
+
+    return image.includes("requireAdministrator");
   } catch {
     return false;
   }
@@ -83,6 +95,45 @@ async function reachable(
 }
 
 /**
+ * Starts the executable, requesting elevation when it needs it.
+ *
+ * `spawn` cannot elevate: a non-elevated process spawning a
+ * `requireAdministrator` binary simply fails. Windows' own `runas` verb is
+ * the supported way to ask, and it shows the normal UAC prompt once — after
+ * which LHM's own startup task keeps it elevated without prompting.
+ */
+export function launchChild(
+  executable: string,
+): Pick<ChildProcess, "kill" | "once" | "killed"> {
+  if (process.platform !== "win32" || !requiresElevation(executable)) {
+    return spawn(executable, [], { detached: false, stdio: "ignore" });
+  }
+
+  // A registered task already holds the owner's approval and runs elevated, so
+  // starting the task prompts for nothing. This is the "approve once" path.
+  if (hasLhmStartupTask()) {
+    return spawn("schtasks", ["/Run", "/TN", LHM_TASK_NAME], {
+      detached: false,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+  }
+
+  // No task yet: request elevation, which raises the one consent dialog. A
+  // process started this way is owned by the owner, not by us, so `stop` may
+  // not reach it — reported the same way as an LHM the owner started.
+  return spawn(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      `Start-Process -FilePath '${executable.replace(/'/g, "''")}' -Verb RunAs`,
+    ],
+    { detached: false, stdio: "ignore", windowsHide: true },
+  );
+}
+
+/**
  * Starts LHM if it is not already answering, then waits for its server.
  *
  * LHM's web server is off until the machine owner enables it in LHM's own menu
@@ -109,43 +160,12 @@ export async function launchLhm(
     };
   }
 
-  // Windows will refuse a non-elevated spawn of an `requireAdministrator`
-  // binary, so say why instead of surfacing EACCES.
-  if (requiresElevation(options.executable)) {
-    // Once the owner has registered LHM's own startup task, Windows starts LHM
-    // elevated without prompting, so the advice differs from a first install.
-    const reason = hasLhmStartupTask()
-      ? "LibreHardwareMonitor needs administrator rights (it loads a driver), " +
-        "and its startup task is registered, so Windows starts it elevated at " +
-        "sign-in. It is not running now: start LibreHardwareMonitor from its " +
-        "own shortcut and enable its web server."
-      : "LibreHardwareMonitor needs administrator rights (it loads a driver). " +
-        "Approve that once by enabling Options > Start on Windows startup in " +
-        "LibreHardwareMonitor (Windows then starts it elevated at sign-in " +
-        "without prompting), or run Vigilia elevated.";
-
-    return { started: false, reason, stop: () => undefined };
-  }
-
   let child: Pick<ChildProcess, "kill" | "once" | "killed"> | undefined;
 
-  // `spawn` reports failure asynchronously through an `error` event, so a
-  // try/catch around it catches nothing and an unhandled event crashes the
-  // host. The event is what must be handled.
-  let spawnError: string | undefined;
-
   try {
-    child =
-      options.spawnProcess !== undefined
-        ? options.spawnProcess(options.executable)
-        : spawn(options.executable, [], {
-            detached: false,
-            stdio: "ignore",
-          });
-
-    child.once("error", (error: Error) => {
-      spawnError = error.message;
-    });
+    child = options.spawnProcess
+      ? options.spawnProcess(options.executable)
+      : launchChild(options.executable);
   } catch (error) {
     return {
       started: false,
@@ -155,6 +175,15 @@ export async function launchLhm(
       stop: () => undefined,
     };
   }
+
+  // `spawn` reports failure asynchronously through an `error` event, so a
+  // try/catch around it catches nothing and an unhandled event ends the
+  // process. The event is what must be handled.
+  let spawnError: string | undefined;
+
+  child.once("error", (error: Error) => {
+    spawnError = error.message;
+  });
 
   const stop = (): void => {
     // Only ever stops the process this call started.
@@ -183,11 +212,18 @@ export async function launchLhm(
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
+  // The process may be waiting on a consent dialog this session cannot show,
+  // so say what is known rather than claiming it started.
+  const elevated = requiresElevation(options.executable);
+
   return {
     started: false,
-    reason:
-      `LibreHardwareMonitor started but its web server did not answer at ` +
-      `${options.baseUrl}. Enable "Run web server" in LHM's Options menu.`,
+    reason: elevated
+      ? `LibreHardwareMonitor was asked to start, but nothing is answering at ` +
+        `${options.baseUrl}. If a permission prompt is waiting, approve it; LHM's ` +
+        `web server also has to be enabled once in its Options menu.`
+      : `LibreHardwareMonitor was started but its web server did not answer at ` +
+        `${options.baseUrl}. Enable "Run web server" in LHM's Options menu.`,
     stop,
   };
 }

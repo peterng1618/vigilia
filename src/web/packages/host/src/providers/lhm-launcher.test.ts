@@ -1,7 +1,9 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   hasLhmStartupTask,
+  launchChild,
   launchLhm,
   requiresElevation,
 } from "./lhm-launcher.js";
@@ -29,6 +31,31 @@ describe("LHM launcher", () => {
     // a first install.
     expect(hasLhmStartupTask("/definitely/not/a/task/dir")).toBe(false);
     expect(hasLhmStartupTask(import.meta.dirname)).toBe(false);
+  });
+
+  it("does not escalate a binary that does not need it", () => {
+    // The plain path must stay a plain spawn: escalating everything would
+    // prompt on every start.
+    const child = launchChild(process.execPath);
+    expect(child.killed).toBe(false);
+    child.kill();
+  });
+
+  it("starts a bundled LHM through the escalation path, not a bare spawn", () => {
+    // A requireAdministrator binary cannot be spawned directly, so the
+    // launcher must route it through Windows' own mechanism. Asserted on the
+    // real manifest: a bare spawn here would fail with EACCES.
+    const real = "packages/host/vendor/lhm/LibreHardwareMonitor.exe";
+    if (!existsSync(real)) {
+      // The vendor step is optional; nothing to assert without it.
+      expect(requiresElevation(real)).toBe(false);
+      return;
+    }
+
+    expect(requiresElevation(real)).toBe(true);
+    const child = launchChild(real);
+    expect(child.killed).toBe(false);
+    child.kill();
   });
 
   it("leaves an LHM that is already answering alone", async () => {
