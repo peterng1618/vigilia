@@ -20,25 +20,25 @@ unpolished, and the canvas has no camera.
   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
     scale/resize snapping, relax the candidate filter, then replace the
     byte-length screenshot check with a move-and-resize behaviour matrix.
-- Execution method not yet chosen for any of the three.
+- Spec A is under execution, task by task; the other two have no execution
+  method chosen yet.
 - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
   only outstanding item in that plan.
 
 ## Last completed change
 
-- Added `editor-shell/layer-tree.ts`: `projectLayers` flattens the live Fabric
-  hierarchy into serializable `LayerRow`s (paint order reversed, group children
-  indented, visibility/lock from the whole ancestor path, collapsed groups keep
-  their row) with no second scene tree and no Fabric state mirrored in React.
-- Id-less objects get distinct row ids (`unidentified`, `unidentified#2`, …) so
-  later selection/reorder-by-id work cannot collide; a name that would render
-  blank falls back to the id, then to the kind ("Shape").
-- Fixtures now exercise an ancestor lock and an empty group, so the path-wide
-  `locked` read and the `hasChildren` length check are both falsifiable.
+- Added `viewport-manager/`: `createViewportManager` owns the Fabric canvas's
+  viewport transform, so pan and zoom pass one clamp in `pan-bounds.ts`
+  (`PAN_OVERSCROLL_MARGIN` 48) and the camera never mirrors the transform.
+- `resize`, `zoomToFit` and `zoomBy` refuse a zero-sized host instead of writing
+  a collapsed canvas; `onChange` reports every camera change to its subscribers
+  (Task 4's zoom readout) and `destroy` disconnects the observer and clears them.
+- `viewport.test.ts` anchors on the identity transform before asserting the
+  cursor point is fixed, so the jsdom zero-layout trap cannot make it vacuous.
 
 ## Next
 
-1. Choose an execution method per plan and start Spec B.
+1. Continue Spec A with Task 2 (the canvas becomes a viewport).
 2. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified
