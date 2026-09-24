@@ -8,6 +8,7 @@ Current handoff only. Durable rules: `AGENTS.md`; product:
 
 | Check | Result |
 |---|---|
+| Hardware metrics via LHM + systeminformation | Providers now read existing sources instead of a hand-rolled collector. Verified 2026-09-24 against the running host without LHM: `library` answered `cpu.load` 16.7%, `ram.used` 10.5 GB, `disk.used` 5396 GB across four volumes and `network.download` 0.014 Mb/s, while `lhm` reported its own absence with a reason rather than a value. Verified against a stub serving LHM's exact `data.json` shape: `lhm` answered `cpu.fan` 1450 RPM, `cpu.temp` 58.5 °C, `gpu.load` 71%, `gpu.temp` 64 °C, and `cpu.load` fell through to `library`, proving the registry's fallback. Two LHM traps were found in its source and handled: `Used Space` is typed Load but carries a percentage, and `Data` is already GB while `Throughput` is bytes per second. Evidence: 1093-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate (unchanged — the library stays host-side), browser suite 91 passed / 39 skipped / 0 failed. |
 | Line threshold bands — §85 gap closed, no engine gaps open | A threshold stroke now colours line segments per value through `visualMap.piecewise`, with the agreed mapping: authored 0–1 offsets resolve against the line's authored `min`/`max`, and a line declaring neither keeps one colour rather than guessing at a moving visible axis. The first implementation silently drew one colour because `VisualMapComponent` was missing from the modular ECharts registration; registering it is what makes the feature real. Verified by rendering a new stress-fixture chart whose samples climb 7 → 50 on a 0–100 axis: the line draws cyan below 40 and amber above. Evidence: 1111-unit suite, `biome check` exit 0, seven-project typecheck, builds, 281.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | §35 copy centralization landed | Shell modernization triggered §35's requirement that each frontend package keep visible copy in one typed module. `@vigilia/editor`'s `ui-copy.ts` now owns every panel heading, field label and action name as well as the shell's, and `@vigilia/player` gained its own for the load-failure panel, the connection banner and the synthetic-data disclosure. The Insert menu and the Add panel had drifted into two copies of the chart-family labels; that is now one owner. Developer status text ("Fabric editor ready") stays inline, which §35 excludes. Rendered output unchanged: the editor capture was inspected before and after and is identical. Evidence: 1107-unit suite, `biome check` exit 0, seven-project typecheck, builds, 269.7 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
 | Gauge angular gradients — §85 gap closed | ECharts applies gauge `progress` colour across the swept arc, so the adapter now expresses a gradient progress as the same arc segments it already used for the track, replacing a cartesian `to-right` gradient that did not follow the ring. Threshold progress is deliberately unchanged (one flat colour for the current value). The stress fixture's reverse gauge carries a gradient progress so the arc renders in the browser suite; the inspected capture shows colour sweeping along the ring. Evidence: 1107-unit suite, `biome check` exit 0, seven-project typecheck, builds, 269.6 KB size gate, browser suite 91 passed / 39 skipped / 0 failed. |
@@ -69,12 +70,17 @@ unit, build, size and visual evidence. The full local browser suite passed on
 
 ### Host
 
-- Node/TypeScript host, CLI, SSE transport and baseline CPU/RAM/disk telemetry
-  work; the disk provider reads `fs.statfs` (no driver, no elevation).
-- Network throughput has no provider: `node:os` exposes interface addresses,
-  never byte counters. `/api/health` reports requested-but-unanswered keys
-  under `unmapped`, so an unsupported sensor reads as an explained gap.
-- LibreHardwareMonitor extended telemetry is not implemented.
+- Node/TypeScript host, CLI and SSE transport work. Hardware metrics come from
+  existing sources, never a collector Vigilia maintains: the `lhm` provider
+  reads LibreHardwareMonitor's own web server JSON (CPU temperature/power/
+  clock/fan, GPU detail, VRAM, network throughput) and the `library` provider
+  uses the `systeminformation` package for CPU load/clock, RAM, GPU, disks,
+  network and any key LHM could not answer.
+- LHM remains an optional external program; nothing links or compiles its .NET
+  library, and it is not packaged with the host yet.
+- `/api/health` reports requested-but-unanswered keys under `unmapped`.
+  `network.download`/`network.upload` now have providers, so they no longer
+  appear there.
 - Package storage and loopback-only mutation work; LAN displays pair through
   short-lived revocable sessions (§145). The launcher prints a pairing link;
   there is no in-editor device list, QR flow or physical-phone test.
@@ -104,8 +110,13 @@ unit, build, size and visual evidence. The full local browser suite passed on
 - No physical-phone gate exists. LAN pairing is proven with server/unit tests
   and a manual pass from this machine's LAN address, but never on real phone
   hardware or a device that is not the host itself.
-- LHM extended telemetry is still a contract; network throughput has no
-  provider (no stdlib counter) and reports as unmapped.
+- LHM is read but not packaged, and is not verified against a real install: the
+  provider was proved against a stub serving LHM's documented `data.json` shape.
+  LHM/PawnIO coexistence with Vanguard/EAC/BattlEye is unverified, and bundling
+  LHM needs the licence analysis reopened (MPL-2.0).
+- `disk.used`/`disk.used.percent` sum every mounted filesystem, so a machine with
+  a removable volume reports it as part of "disk". A per-volume key fan-out is a
+  separate product decision.
 - Canvas text cannot guarantee tabular numerals.
 - Hosted player font loading is now verified through the real host; the fixture
   needs network access once to fetch the font bytes into a local cache.
