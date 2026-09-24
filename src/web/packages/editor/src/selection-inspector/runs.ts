@@ -78,14 +78,84 @@ export function createRunEditor(
   root.dataset["vigiliaRuns"] = "";
 
   const runs = textRunsOf(object);
-
-  if (runs.length === 0) {
+  // Not "no runs": a text object with none still has layout worth editing, and
+  // this is the only owner of the authored text content.
+  if (object.get(TEXT_PROPERTY) === undefined) {
     return { root };
   }
 
   const heading = document.createElement("h3");
   heading.textContent = uiCopy.inspectorFields.runs;
   root.append(heading);
+
+  // Text layout lives beside the runs in the same authored content, and the
+  // renderer already honours all of it (alignment, wrapping, overflow).
+  const content = object.get(TEXT_PROPERTY) as Record<string, unknown>;
+  const setLayout = (patch: Record<string, unknown>): void => {
+    object.set(TEXT_PROPERTY, { ...content, ...patch });
+    applyAuthoredText(editor.canvas, globals, { bindings: {} });
+    editor.canvas.requestRenderAll();
+    editor.historyManager.saveState();
+    onChange();
+  };
+
+  const choice = (
+    label: string,
+    data: string,
+    options: readonly (readonly [string, string])[],
+    current: string,
+    onPick: (value: string) => void,
+  ): HTMLElement => {
+    const wrapper = document.createElement("label");
+    wrapper.textContent = label;
+    const select = document.createElement("select");
+    select.dataset[data] = "";
+    for (const [value, text] of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    select.value = current;
+    select.addEventListener("change", () => onPick(select.value));
+    wrapper.append(select);
+    return wrapper;
+  };
+
+  root.append(
+    choice(
+      uiCopy.inspectorFields.align,
+      "vigiliaTextAlign",
+      [
+        ["left", uiCopy.inspectorFields.left],
+        ["center", uiCopy.inspectorFields.centre],
+        ["right", uiCopy.inspectorFields.right],
+      ],
+      typeof content["align"] === "string" ? content["align"] : "left",
+      (value) => setLayout({ align: value }),
+    ),
+    choice(
+      uiCopy.inspectorFields.wrap,
+      "vigiliaTextWrap",
+      [
+        ["wrap", uiCopy.inspectorFields.on],
+        ["nowrap", uiCopy.inspectorFields.off],
+      ],
+      content["wrap"] === false ? "nowrap" : "wrap",
+      (value) => setLayout({ wrap: value === "wrap" }),
+    ),
+    choice(
+      uiCopy.inspectorFields.overflow,
+      "vigiliaTextOverflow",
+      [
+        ["clip", uiCopy.inspectorFields.clip],
+        ["ellipsis", uiCopy.inspectorFields.ellipsis],
+        ["visible", uiCopy.inspectorFields.overflowVisible],
+      ],
+      typeof content["overflow"] === "string" ? content["overflow"] : "clip",
+      (value) => setLayout({ overflow: value }),
+    ),
+  );
 
   const commit = (index: number, next: TextRun): void => {
     // Rewrite the whole run list: the content is one authored value.

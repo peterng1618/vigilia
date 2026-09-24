@@ -147,7 +147,16 @@ export function applyAuthoredText(
           const shape = textShapeFor(segments, {}, (value) =>
             object.graphemeSplit(value),
           );
-          object.set({ text: shape.text, styles: shape.styles });
+          // Authored layout belongs to the same content, so reapplying the
+          // text must reapply it: alignment lives only here and at construction,
+          // and a layout control would otherwise change nothing on screen.
+          object.set({
+            text: shape.text,
+            styles: shape.styles,
+            ...(authored.align === undefined
+              ? {}
+              : { textAlign: authored.align }),
+          });
           object.initDimensions();
         }
       }
