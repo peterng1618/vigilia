@@ -5,6 +5,7 @@ artifacts and from Git history.
 
 | Need | Canonical source |
 |---|---|
+| Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
@@ -15,7 +16,7 @@ artifacts and from Git history.
 | Dependency/licence provenance | [`engineering/dependencies.md`](engineering/dependencies.md) |
 | Rendered verification evidence | [`evidence/screenshots/`](evidence/screenshots/) |
 
-Implementation truth is always the code and tests. Git stores chronology.
+Implementation truth is always the code and tests. `STATUS.md` is a compact handoff, not history. Git stores chronology.
 Superpowers owns change-specific design/planning and its temporary
 `.superpowers/sdd/` execution ledger. Do not recreate a separate status,
 lessons, spec or plan system elsewhere.

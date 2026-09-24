@@ -24,7 +24,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "size": "npm run size -w @vigilia/player"
+    "size": "npm run size -w @vigilia/player",
+    "status:check": "node ../../scripts/check-status.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

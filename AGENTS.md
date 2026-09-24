@@ -20,6 +20,14 @@ Vigilia process.
 
 ## Process and documentation
 
+- **Start with `STATUS.md`.** A fresh session should be able to continue from it
+  without a long user prompt; follow its active Superpowers spec/plan/SDD links.
+- Before each completed task commit, **replace** `STATUS.md`'s "Last completed
+  change" with a concise 1–5 bullet summary of what that commit achieved. Never
+  append older commit summaries; GitHub already owns commit history.
+- Keep `STATUS.md` to current objective, active work, latest completed change,
+  next steps and blockers/unverified only. Maximum 70 lines; run
+  `npm run status:check` from `src/web/`.
 - Let Superpowers own the workflow and its artifacts.
 - Designs/specs live in `docs/superpowers/specs/`.
 - Executable plans live in `docs/superpowers/plans/`; completed/superseded

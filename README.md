@@ -62,7 +62,7 @@ trusted networks only — never the internet.
 
 ## Docs
 
-Start with [`AGENTS.md`](AGENTS.md) and the [documentation map](docs/README.md).
+For ongoing work, start with [`STATUS.md`](STATUS.md). Agent rules are in [`AGENTS.md`](AGENTS.md), and the full documentation map is in [docs/README.md](docs/README.md).
 Current product truth lives in [product requirements](docs/product/requirements.md),
 [current architecture](docs/architecture/README.md), and the
 [ownership map](docs/architecture/ownership.md). Major architecture choices are
