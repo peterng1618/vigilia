@@ -29,6 +29,8 @@ export interface ShellHosts {
   readonly assets: HTMLElement;
   readonly document: HTMLElement;
   readonly chart: HTMLElement;
+  /** Properties of the selected object, in the Design tab. */
+  readonly selection: HTMLElement;
   readonly status: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -240,6 +242,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     assets: element("vigiliaPanelHostAssets"),
     document: element("vigiliaPanelHostDocument"),
     chart: element("vigiliaPanelHostChart"),
+    selection: element("vigiliaPanelHostSelection"),
     status: document.createElement("span"),
     dock: document.createElement("nav"),
   };
@@ -346,6 +349,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               {/* Document panels stay mounted in Design: a selection must not
                   make the theme's own settings unreachable. */}
               <Tabs.Panel value="design" keepMounted>
+                <Host node={hosts.selection} />
                 {kind !== "none" && (
                   <p className="editor-shell-hint">
                     {kind === "chart"

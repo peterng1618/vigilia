@@ -40,6 +40,10 @@ import {
   confirmDocumentReplacement,
   PersistenceManager,
 } from "./persistence-manager/index.js";
+import {
+  createSelectionInspector,
+  type SelectionInspector,
+} from "./selection-inspector/index.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
@@ -65,6 +69,8 @@ export interface EditorPanelHosts {
   readonly document: HTMLElement;
   /** Chart settings and bindings, shown for a chart selection. */
   readonly chart: HTMLElement;
+  /** Properties of the selected object, shown in the Design tab. */
+  readonly selection: HTMLElement;
 }
 
 export interface EditorSessionOptions {
@@ -94,6 +100,7 @@ export class EditorSession {
   readonly #palette: PalettePanel;
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
+  readonly #selection: SelectionInspector;
   readonly #layers: LayerPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
@@ -185,6 +192,10 @@ export class EditorSession {
     );
     this.#types.render(
       this.#envelope.globals?.typePresets as TypePresets | undefined,
+    );
+    this.#selection = createSelectionInspector(
+      options.panelHosts.selection,
+      options.shell.editor,
     );
     this.charts = new ChartManager({
       editor: options.shell.editor,
@@ -368,6 +379,7 @@ export class EditorSession {
     releaseFontPreview();
     this.#assetPanel.remove();
     this.charts.destroy();
+    this.#selection.root.remove();
     this.#artboard.root.remove();
     this.#palette.root.remove();
     this.#types.root.remove();

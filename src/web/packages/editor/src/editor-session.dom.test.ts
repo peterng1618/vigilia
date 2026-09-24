@@ -69,7 +69,15 @@ describe("EditorSession", () => {
   });
 
   it("owns the semantic layer panel lifecycle", () => {
-    const editor = { canvas: { on: vi.fn(), off: vi.fn() } };
+    const editor = {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+    };
     const extensions = new EditorSession({
       shell: {
         editor,
@@ -85,6 +93,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       onNew: vi.fn(),
       onOpen: vi.fn(),
@@ -97,7 +106,15 @@ describe("EditorSession", () => {
   });
 
   it("dispatches package and library actions through the shell façade", async () => {
-    const editor = { canvas: { on: vi.fn(), off: vi.fn() } };
+    const editor = {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+    };
     const onOpenPackage = vi.fn();
     const onSaved = vi.fn();
     const mockClient = {
@@ -121,6 +138,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       libraryClient: mockClient,
       onNew: vi.fn(),
@@ -153,7 +171,15 @@ describe("EditorSession", () => {
       vi.fn(() => "patch"),
     );
     const shell = {
-      editor: { canvas: { on: vi.fn(), off: vi.fn() } },
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+      },
       scene: {},
       snapshot: vi.fn((input) => ({ ...envelope, ...input })),
       setBackgroundMedia: vi.fn(),
@@ -168,6 +194,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       onNew: vi.fn(),
       onSaved: vi.fn(),
@@ -193,7 +220,13 @@ describe("EditorSession", () => {
     vi.stubGlobal("fetch", fetch);
     const shell = {
       editor: {
-        canvas: { on: vi.fn(), off: vi.fn() },
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -236,6 +269,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       onNew: vi.fn(),
       onSaved: vi.fn(),
@@ -277,7 +311,13 @@ describe("EditorSession", () => {
     );
     const shell = {
       editor: {
-        canvas: { on: vi.fn(), off: vi.fn() },
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -311,6 +351,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       onNew: vi.fn(),
       onSaved: vi.fn(),
@@ -348,7 +389,13 @@ describe("EditorSession", () => {
     );
     const shell = {
       editor: {
-        canvas: { on: vi.fn(), off: vi.fn() },
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -376,6 +423,7 @@ describe("EditorSession", () => {
         assets: document.body,
         document: document.body,
         chart: document.body,
+        selection: document.body,
       },
       onNew: vi.fn(),
       onSaved: vi.fn(),

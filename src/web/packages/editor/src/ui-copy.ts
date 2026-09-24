@@ -17,6 +17,17 @@ export const uiCopy = {
     settings: "⚙",
   },
   inspector: { design: "Design", data: "Data", style: "Style" },
+  /** Selection inspector field labels. */
+  inspectorFields: {
+    selection: "Selection",
+    x: "X",
+    y: "Y",
+    width: "Width",
+    height: "Height",
+    rotation: "Rotation",
+    invalidValue: "That value cannot be applied to the selection.",
+    nothingSelected: "Select an object to inspect it.",
+  },
   menus: {
     file: "File",
     edit: "Edit",
