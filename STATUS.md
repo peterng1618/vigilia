@@ -26,14 +26,13 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Landed the object action registry (`object-actions.ts`) as the one owner of
-  object actions: id, label, icon, eligibility and run for each, plus the shared
-  `actionEnabled` predicate that keeps surfaces from drifting.
-- Rendered the canvas dock from that registry instead of its own emoji table,
-  with Lucide icons and accessible names; `ShellAction` collapsed to a flat
-  `ObjectActionId` and the bridge's `can` now delegates to `actionEnabled`.
-- Kept arrange off the dock: `arrangeActions()` belongs to the top toolbar
-  (Task 7), and a regression test pins the exclusion.
+- Added `editor-shell/layer-tree.ts`: `projectLayers` flattens the live Fabric
+  hierarchy into serializable `LayerRow`s (paint order reversed, group children
+  indented, visibility/lock from the whole ancestor path, collapsed groups keep
+  their row) with no second scene tree and no Fabric state mirrored in React.
+- Id-less objects get distinct row ids (`unidentified`, `unidentified#2`, …) so
+  later selection/reorder-by-id work cannot collide; a name that would render
+  blank falls back to the id, then to the kind ("Shape").
 
 ## Next
 
@@ -46,7 +45,5 @@ unpolished, and the canvas has no camera.
   `test-results/summary.json`. Three spec acceptance items stay unverified —
   browser round-trip of text align/wrap/overflow, in-place edit + undo, and run
   preset/override persistence.
-- `npm run format:check` still reports unrelated formatting in
-  `tests/e2e/host-settings.spec.ts`; no broad formatting churn was applied.
 - Two pre-existing `display-fabric.spec.ts` phone-chromium failures hang at
   `document.fonts.ready` after `page.clock.runFor()`; not absorbed.
