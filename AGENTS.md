@@ -11,8 +11,9 @@ keep this file about how to work.
 - No .NET or Python toolchain is required.
 - Fabric 7.4.0 is the shared scene renderer; the editor mounts it natively via
   `fabric/es` with no adopted image-editor package.
-- The current Vigilia shell is TypeScript/Vite, not React. React + shadcn/Base UI
-  is a later shell-modernization stage in product requirements §35, not a current dependency.
+- The editor shell is React 19 + Base UI + Tailwind (product requirements §35,
+  landed 2026-09-24); the player and host keep their own UIs. Fabric stays
+  imperative behind `mountEditorShell`; never mirror Fabric objects in React.
 
 ## Non-negotiables
 

@@ -69,20 +69,20 @@ The v2 Fabric envelope is the migration branch format; there is no v1 reader.
 Unreleased semantic/property shapes may change incompatibly. Released formats
 require normal migration/version rules.
 
-### Later shell: shadcn/Base UI
+### Shell: React + Base UI + Tailwind
 
-After the Fabric authoring core stabilizes, migrate the outer shell incrementally
-to shadcn/Base UI patterns and Tailwind/CSS variables while retaining the
-TypeScript/Vite shell. Fabric stays imperative behind an editor/controller
-boundary. This must not block the migration. **Decided by:** user, 2026-09-20.
+The editor shell is React 19 over Base UI with Tailwind, mounted around the
+unchanged imperative Fabric boundary; the player and host keep their own UIs.
+Fabric stays imperative behind the `mountEditorShell`/`EditorInteraction`
+boundary. **Decided by:** user, 2026-09-20. *Landed 2026-09-24.*
 
 ### UI copy is package-local and typed
 
-When shell modernization starts, each frontend package will own a `ui-copy.ts`
-module for visible labels, dialogs, notices and user-facing errors. Authored
-theme text, telemetry values and developer errors remain outside it. This is a
-future plan, not implemented behavior. Do not add i18n infrastructure until
-multiple locales become a product requirement. **Decided by:** user, 2026-09-21.
+Each frontend package owns a `ui-copy.ts` for visible labels, dialogs, notices
+and user-facing errors. Authored theme text, telemetry values and developer
+errors stay outside it. Do not add i18n infrastructure until multiple locales
+become a product requirement. **Decided by:** user, 2026-09-21. *Editor and
+player migrated 2026-09-24; host UI copy not yet.*
 
 ### Charts remain typed Vigilia objects over ECharts
 

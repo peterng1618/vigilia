@@ -41,23 +41,21 @@ persistence, security and accessibility invariants.
 Code/library claims are hypotheses. Visible changes require browser/rendered
 verification plus appropriate tests. State what was not verified.
 
-## §35 — Application shell (later)
+## §35 — Application shell
 
-Today the Vigilia shell is TypeScript/Vite and the adopted editor fork; there is
-no React dependency. After the Fabric migration/core authoring path stabilizes,
-modernize the surrounding shell incrementally with shadcn and Base UI patterns,
-Tailwind/CSS variables, and the existing imperative TypeScript boundary.
+The editor shell migrated to React 19 over Base UI with Tailwind (2026-09-24):
+header menus, rail plus pane, inspector tabs and a canvas dock, over the
+unchanged imperative Fabric boundary in `mountEditorShell`. The player and host
+keep their own UIs.
 
 Fabric remains imperative behind an editor/controller boundary. Do not mirror
 Fabric objects declaratively. Editor-shell theming is separate from authored
-dashboard theme globals. This modernization must not block the current
-migration.
+dashboard theme globals.
 
-When shell modernization starts, centralize each frontend package's UI copy in a
-typed `ui-copy.ts` module. Include visible labels, dialogs, notices and
-user-facing errors; exclude authored theme text, telemetry values and developer
-errors. This is a future plan; it is not implemented. Multiple locales are not
-in scope.
+Each frontend package keeps its visible copy in a typed `ui-copy.ts`: labels,
+dialogs, notices and user-facing errors, excluding authored theme text,
+telemetry values and developer errors. The editor and player are migrated;
+host/player shell styling is not. Multiple locales are not in scope.
 
 ## §43 — Feasibility
 
@@ -104,10 +102,11 @@ related behaviour are reviewed in spec 0014 before implementation.
 
 ## §64 — Rulers, grid, guides and snapping (review)
 
-The previous custom editor specified pixel rulers, configurable grid/guides and
-multiple snapping modes. None is currently present on the fork route. Treat
-those as review candidates in spec 0014, not hard migration acceptance, until
-they are revalidated against the new editor workflow.
+Movement (drag) snapping with smart guides shipped in the fork-parity work
+(2026-09-24). Pixel rulers, configurable grid/guides, additional snapping modes
+and resize-time snapping are not present; treat those as review candidates in
+spec 0014, not migration acceptance, until revalidated against the current
+editor workflow.
 
 ## §67 — Undo/runtime separation
 

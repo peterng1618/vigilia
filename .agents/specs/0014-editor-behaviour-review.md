@@ -123,41 +123,29 @@ Vigilia's curated font catalog (`font-catalog.ts`/`font-preview.ts`/
 `font-assets.ts`) and declarative background (`artboard-panel.ts`/
 `artboard-paint.ts`/`background-media.ts`) are deliberately different from
 and superior in fit to the fork's arbitrary-upload `font-manager/` and
-imperative `background-manager/`. Technique study complete; adoptable items:
+imperative `background-manager/`.
 
-- `background-media.ts` has no error-reporting path (`update()` silently
-  no-ops on unresolved asset/kind mismatch). Add an `onError`/`onAssetError`
-  callback to `BackgroundMediaOptions`, matching the convention
-  `fabric-image.ts`'s `onAssetError` and `font-assets.ts`'s `onError`
-  already use.
-- **Not a bug, verified:** an earlier pass flagged `scene.ts`'s
-  `mountFabricScene(...).update(next)` for never calling `media.update(...)`.
-  Checked against the actual types: `ScenePlan["artboard"]`
-  (`renderer-core/src/scene/plan.ts`) carries no `backgroundMedia` field at
-  all — it's a resolved-paint-only shape, distinct from the document-level
-  `Artboard` type that has it. `mountFabricScene` only ever receives a full
-  `Artboard` once, at mount, as its own `options.artboard`; `update()`
-  legitimately has no new `backgroundMedia` to propagate. `editor-shell.ts`'s
-  `setArtboard` isn't a comparable path — it takes a real `Artboard`
-  directly, never a `ScenePlan`. If live background-media swapping after
-  mount is ever wanted, that is a new feature (a `ScenePlan`/`Artboard`
-  reshape or a separate `updateArtboard` method), not a fix.
-- `adapter.ts`'s `applyArtboard` recomputes `fabricArtboardPaint` and
-  reassigns `canvas.backgroundColor` (allocating a new `Gradient`) on every
-  `apply(plan)` call, including every player render tick. Add a cheap
-  "same `artboard.background` as last apply → skip" memo.
-- `font-assets.ts`'s `loadFontAssets` has no dedup: concurrent
-  `mountFabricScene` instances loading overlapping trio faces each
-  unconditionally `FontFace(...).load()` + `fonts.add()`, double-loading
-  identical bytes. A refcounted registration-key cache (assetId/family+
-  weight+style) would let concurrent instances share a load.
-- Not adopted: `font-catalog.ts`/`font-preview.ts` already avoid the
-  redundant-load problem by construction (one active preview at a time);
-  `artboard-paint.ts`'s gradient-angle math is already more correct than the
-  fork's (`_angleToCoords` midpoint approximation vs. Vigilia's CSS-matching
-  reach formula); the fork's `<style>`-tag `@font-face` fallback for missing
-  `FontFace` support is compat glue for a gap none of Vigilia's evergreen
-  targets have.
+`background-media.ts` reports an unresolvable declared background through
+`onMediaError` (wired to the editor's diagnostics); artboard paint is memoized
+per mount so a render tick allocating a `Gradient` only on a real paint change;
+and `loadFontAssets` refcounts registration by asset/family/weight/style so
+concurrent mounts share one `FontFace`. All three landed 2026-09-24.
+
+**Not a bug, verified:** an earlier pass flagged `scene.ts`'s
+`mountFabricScene(...).update(next)` for never calling `media.update(...)`.
+`ScenePlan["artboard"]` (`renderer-core/src/scene/plan.ts`) carries no
+`backgroundMedia` field at all — it is a resolved-paint-only shape, distinct
+from the document-level `Artboard` type that has it. `mountFabricScene` receives
+a full `Artboard` once, at mount; `update()` legitimately has no new
+`backgroundMedia` to propagate.
+
+Not adopted: `font-catalog.ts`/`font-preview.ts` already avoid the
+redundant-load problem by construction (one active preview at a time);
+`artboard-paint.ts`'s gradient-angle math is already more correct than the
+fork's (`_angleToCoords` midpoint approximation vs. Vigilia's CSS-matching
+reach formula); the fork's `<style>`-tag `@font-face` fallback for missing
+`FontFace` support is compat glue for a gap none of Vigilia's evergreen
+targets have.
 
 ## Not carried forward
 

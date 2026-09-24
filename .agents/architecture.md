@@ -36,6 +36,12 @@ dirty-work confirmation and deterministic disposal. `scene-fabric`'s
 `FabricSceneHandle` exposes `updateArtboard` for document-level artboard
 changes that a `ScenePlan` cannot carry (it never carries `backgroundMedia`).
 
+`editor-shell/` is React chrome over that boundary: it owns the header menus,
+rail, inspector tabs and canvas dock, and React re-renders only on selection
+changes. It never creates or mirrors Fabric objects — menus and dock dispatch
+through `editor-session.ts`'s action façade and `EditorInteraction`, and panels
+keep their own DOM, relocated into React-owned host nodes.
+
 Editor concept ownership:
 
 | Concept | Owner |
@@ -63,7 +69,10 @@ Editor concept ownership:
 | Active-object and selection deletion | `editor/src/deletion-manager/` |
 | OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
 | Group and ungroup | `editor/src/grouping-manager/` |
-| Floating selection toolbar | `editor/src/toolbar-manager/` |
+| Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
+| Selection snapshot and dock eligibility | `editor/src/editor-shell/bridge.ts` |
+| Shell chrome, rail, inspector tabs, menus | `editor/src/editor-shell/shell-layout.tsx` |
+| Shell palette | `editor/src/editor-shell/palette.ts` |
 | Drag-time snapping and smart guides | `editor/src/snap-manager/` |
 | Rotation-angle and size indicators | `editor/src/indicator-manager/` |
 | Per-image crop session | `editor/src/crop-manager/` |
@@ -100,6 +109,9 @@ StaticCanvas / interactive Canvas
 
 Rules: non-`ok` data is a gap, never zero; fake data is test/dev only; providers
 acquire while the host schedules; themes bind semantic keys, not provider IDs.
+Providers form a fallback chain: a non-`ok` sample does not claim its key, so a
+later provider may still answer it; a key nobody measured keeps the earliest
+provider's stated reason.
 
 ## Persisted theme
 
@@ -188,7 +200,11 @@ usage.
 | Declared package-asset HTTP reads | `host/src/server.ts` |
 | Static-path safety | `host/src/serve/static-path.ts` |
 | SSE connection/keep-latest | `host/src/transport/` |
-| Provider scheduling/failure isolation | `host/src/providers/registry.ts` |
+| Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
+| LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
+| LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |
+| systeminformation-backed baseline provider | `host/src/providers/library.ts` |
+| LAN display sessions and pairing | `host/src/session/pairing.ts` |
 
 ## Known ownership gaps
 

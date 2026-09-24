@@ -72,3 +72,24 @@ Durable rules learned from real failures. Keep the rule; git keeps the story.
 - `document.fonts.check()` is not a reliable font-availability test.
 - A chart whose visible content is animated may paint nothing at time zero;
   deterministic captures must control time deliberately.
+- A modular ECharts build silently ignores a component that was never
+  registered: `visualMap` needs `VisualMapComponent` in `use()`, and without it
+  `setOption` succeeds and draws the wrong thing. Verify a new option in the
+  rendered output, not by reading back the option object.
+- Playwright previews built bundles. A source change with no rebuild produces
+  failures that look like logic bugs.
+- `spawn` reports failure asynchronously through an `error` event; a try/catch
+  around it catches nothing and an unhandled event ends the process. Handle the
+  event.
+- A Windows binary manifested `requireAdministrator` cannot be started from a
+  non-elevated process; the spawn fails with `EACCES`. Read the manifest rather
+  than reporting the bare code.
+- External binaries hit `EACCES` under this environment's sandbox while system
+  executables run, so "the environment cannot execute binaries" is not a valid
+  conclusion without comparing a control.
+
+## Documentation
+
+- A claim about the environment belongs in a doc only after a control
+  experiment; "the sandbox prevents it" was wrong once and would have hidden a
+  real elevation requirement.
