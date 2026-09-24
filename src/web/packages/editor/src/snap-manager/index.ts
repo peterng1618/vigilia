@@ -204,7 +204,10 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
           left: moved.get("left") ?? startBounds.left,
           top: moved.get("top") ?? startBounds.top,
         },
-        axes: { x: moved.lockMovementX !== true, y: moved.lockMovementY !== true },
+        axes: {
+          x: moved.lockMovementX !== true,
+          y: moved.lockMovementY !== true,
+        },
         modifiers: readMovementModifiers({ event }),
       },
     });
@@ -272,9 +275,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     ["after:render", afterRender],
   ] as const;
 
-  const guard = (
-    step: (event?: never) => void,
-  ): ((event?: never) => void) => {
+  const guard = (step: (event?: never) => void): ((event?: never) => void) => {
     return (event?: never) => {
       try {
         step(event);

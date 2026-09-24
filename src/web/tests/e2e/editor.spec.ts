@@ -423,11 +423,7 @@ test.describe("Fabric editor route", () => {
     await page
       .locator("[data-vigilia-palette-replacement]")
       .selectOption("bars");
-    await captureVisualReview(
-      page,
-      testInfo,
-      "editor-palette-reassignment",
-    );
+    await captureVisualReview(page, testInfo, "editor-palette-reassignment");
     await page.locator("[data-vigilia-palette-delete]").click();
     await expect(
       page.locator('[data-vigilia-palette-token] option[value="background"]'),
@@ -687,7 +683,10 @@ test.describe("Fabric editor route", () => {
       },
       globals: {
         palette: {
-          none: { name: "None", value: { kind: "solid", color: "transparent" } },
+          none: {
+            name: "None",
+            value: { kind: "solid", color: "transparent" },
+          },
           background: {
             name: "Background",
             value: { kind: "solid", color: "#102030" },

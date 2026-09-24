@@ -176,10 +176,12 @@ test.describe("the settings page a consumer configures", () => {
       await expect(page.locator("#groups input[data-name]")).toHaveCount(
         before.available.gpus.length + before.available.disks.length,
       );
-      await expect(page.locator(`label:has(input[data-name="${other}"])`)).toHaveText(
-        reported,
+      await expect(
+        page.locator(`label:has(input[data-name="${other}"])`),
+      ).toHaveText(reported);
+      await expect(page.locator('select[data-group="data-disk"]')).toHaveValue(
+        "",
       );
-      await expect(page.locator('select[data-group="data-disk"]')).toHaveValue("");
 
       await field.fill("Archive");
       await field.blur();
