@@ -29,16 +29,14 @@ export interface SnapManagerOptions {
   readonly errors: ErrorManager;
 }
 
-/** Any movable object snaps; Vigilia has no composite type to allow-list. */
+/** Alignable content, following the fork's object filter: visibility and
+ * explicit exclusion decide, not lock. Locking prevents moving an object, not
+ * aligning to it. */
 function isSnapTarget(
   object: FabricObject,
   excluded: Set<FabricObject>,
 ): boolean {
-  return (
-    object.selectable === true &&
-    object.get("locked") !== true &&
-    !shouldIgnoreObject({ object, excluded })
-  );
+  return !shouldIgnoreObject({ object, excluded });
 }
 
 /** Builds one candidate source from an eligible neighbour object. */
@@ -48,7 +46,6 @@ function toSnapSource(
   excluded: Set<FabricObject>,
 ): MovementSnapCandidateSource | undefined {
   if (!isSnapTarget(object, excluded)) return undefined;
-  if (excluded.has(object)) return undefined;
   const bounds = getObjectExactBounds({ object });
   if (bounds === null) return undefined;
   return {

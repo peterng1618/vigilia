@@ -1,7 +1,9 @@
 import { ActiveSelection, type FabricObject } from "fabric/es";
 
-/** No Vigilia object type is excluded by id. */
-export const IGNORED_IDS: readonly string[] = [];
+/** Scene objects that are decoration rather than alignable content. The
+ * artboard plate spans the whole artboard, so its centre would otherwise snap
+ * every centred object; see new-fabric-theme.ts's `backgroundOnly`. */
+export const IGNORED_IDS: readonly string[] = ["scene"];
 
 /** Collects the set of objects excluded from processing. */
 export const collectExcludedObjects = ({

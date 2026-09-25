@@ -136,7 +136,7 @@ describe("SnapManager", () => {
     snapping.destroy();
   });
 
-  it("skips a locked neighbour as a snap target", () => {
+  it("aligns to a locked neighbour, which lock must not prevent", () => {
     const { canvas, snapping } = setup();
     const locked = new Rect({
       id: "a",
@@ -145,6 +145,79 @@ describe("SnapManager", () => {
       width: 40,
       height: 40,
       locked: true,
+      selectable: false,
+      evented: false,
+    });
+    // Deliberately narrow: the dragged rect's right edge (110) must stay far from
+    // the neighbour's right edge (140), or that 30-wide gap competes with the
+    // 2-wide left-edge gap and the drag resolves to the wrong anchor.
+    const dragged = new Rect({
+      id: "b",
+      left: 98,
+      top: 150,
+      width: 12,
+      height: 40,
+    });
+    canvas.add(locked, dragged);
+    canvas.setActiveObject(dragged);
+
+    canvas.fire("mouse:down" as never, { target: dragged } as never);
+    move(canvas, dragged);
+
+    // Only the neighbour's left edge is in range: 100 - 98 = 2 <= SNAP_THRESHOLD.
+    expect(dragged.left).toBe(100);
+    snapping.destroy();
+  });
+
+  it("ignores the artboard plate even though it is large and centrally placed", () => {
+    const { canvas, snapping } = setup();
+    // The plate spans most of the artboard, so its centre would otherwise be a
+    // candidate for anything placed near it. Its geometry is deliberately
+    // off-centre from the artboard: a plate centred at the artboard's own centre
+    // (200, 150) would be indistinguishable from the artboard's
+    // domain-boundary guide. The real plate is also `selectable: false`, which
+    // this fixture omits so that the id, not selectability, is what excludes it.
+    const plate = new Rect({
+      id: "scene",
+      left: 40,
+      top: 30,
+      width: 240,
+      height: 180,
+      evented: false,
+    });
+    const dragged = new Rect({
+      id: "b",
+      left: 158,
+      top: 40,
+      width: 20,
+      height: 20,
+    });
+    canvas.add(plate, dragged);
+    canvas.setActiveObject(dragged);
+
+    canvas.fire("mouse:down" as never, { target: dragged } as never);
+    move(canvas, dragged);
+
+    // The plate's centreX is 160, so the dragged rect's left bounds edge (157.5,
+    // stroke included) is 2.5 away — inside SNAP_THRESHOLD. Without the id
+    // exclusion the drag would resolve to left 160.5. Ignored ids never
+    // contribute a candidate, so it stays put.
+    expect(dragged.left).toBe(158);
+    snapping.destroy();
+  });
+
+  it("still ignores a hidden neighbour", () => {
+    // A regression guard, not a new behaviour: `visible === false` is already
+    // handled by `shouldIgnoreObject` and this step does not change it. It passes
+    // before this task's change and after it, which is the point.
+    const { canvas, snapping } = setup();
+    const hidden = new Rect({
+      id: "a",
+      left: 100,
+      top: 20,
+      width: 40,
+      height: 40,
+      visible: false,
     });
     const dragged = new Rect({
       id: "b",
@@ -153,7 +226,7 @@ describe("SnapManager", () => {
       width: 40,
       height: 40,
     });
-    canvas.add(locked, dragged);
+    canvas.add(hidden, dragged);
     canvas.setActiveObject(dragged);
 
     canvas.fire("mouse:down" as never, { target: dragged } as never);
