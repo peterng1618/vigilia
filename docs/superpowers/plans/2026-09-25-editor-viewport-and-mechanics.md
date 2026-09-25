@@ -1952,9 +1952,10 @@ and the grep reported a non-zero test count rather than exiting zero having run 
 
 **Files:**
 - Modify: `src/web/tests/e2e/editor.spec.ts`
-- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.dom.test.ts` (Step 1 — the zoom coverage this file has never had)
-- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.ts` (only if Step 2's inspection finds a defect)
-- Modify: `src/web/packages/editor/src/indicator-manager/index.ts` (only if verification finds a defect).
+- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.dom.test.ts` (Steps 2 and 4 — the zoom coverage this file has never had)
+- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.ts` (only if Steps 2 or 4's inspection finds a defect)
+- Modify: `src/web/packages/editor/src/indicator-manager/index.ts` (only if Step 3's inspection finds a defect).
+- Modify: `src/web/packages/editor/src/indicator-manager/index.dom.test.ts` (Step 3 — the zoom coverage this file has never had)
 
 **Interfaces:**
 - Consumes: the camera (Tasks 1–2) and `ViewportManager.artboardScreenRect()` (**Task 5**, which owns it). Produces: nothing new.
@@ -1969,9 +1970,9 @@ Fix the mapping at its owner rather than re-deriving it in the spec. **Task 5 al
 
 **Teeth check for the mapping fix:** with the old box-relative mapping restored, the two drag tests must fail as they did at `093b3ec` (40 and 432, the untouched originals).
 
-- [ ] **Step 1: Repair the box-relative mapping, and add the helper Steps 2–3 use**
+- [ ] **Step 1: Repair the box-relative mapping, and add the helpers the repointed sites use**
 
-*(This step is the mapping work described above. It was prose only until a read-through found that Step 2's `clientOfScene` — "the one Step 0's mapping fix also uses" — referred to a step that did not exist, and that the deliverable of two repaired red tests had no step of its own.)*
+*(This step is the mapping work described above. It was prose only until a read-through found that a later step's `clientOfScene` — "the one the mapping fix also uses" — referred to a step that did not exist, and that the deliverable of two repaired red tests had no step of its own.)*
 
 **First, read the mapping that already exists and steal it rather than re-deriving it.** Two blocks in this file already solved this problem correctly and documented why — find them with `grep -n "artboardScreenRect" src/web/tests/e2e/editor.spec.ts`. Each calls `artboardScreenRect()` through the bridge, adds the canvas box once, and carries an explicit comment that the offset is what keeps the gesture from landing off-canvas and passing vacuously. The helpers below are that work lifted to file scope so every mapping site can use it. Read one before writing them — they are the convention authority, and the comments below restate their reasoning rather than replacing it.
 
@@ -2016,15 +2017,22 @@ async function sceneToClient(
 
 /** The client point at an object's centre, by id. Reads the object's own
  * geometry through the bridge rather than restating fixture coordinates, so a
- * fixture tweak cannot leave this test dragging at a stale point. `left`/`top`
- * are origin-relative, so the centre is the origin plus half the scaled size —
- * NOT `getCenterPoint()`, which returns the origin itself and would aim at the
- * top-left corner. Every fixture in this file sets `originX`/`originY`
- * explicitly, which is what makes `left`/`top` the origin here: **Fabric 7's
- * default origin is CENTER** (`shapes/Object/defaultValues.mjs` holds
- * `originX: CENTER`), so a fixture that omitted them would put `left` at the
- * shape's centre and this helper would aim half a width too far right. If you
- * add a fixture, set the origins. */
+ * fixture tweak cannot leave this test dragging at a stale point.
+ *
+ * Use `getCenterPoint()`, NOT `left + getScaledWidth() / 2`. An earlier revision
+ * of this helper used the manual form and justified it by claiming
+ * `getCenterPoint()` "returns the origin itself" — **that is false, and the
+ * manual form is the one that breaks.** `getCenterPoint()` goes through
+ * `translateToCenterPoint(left, top, originX, originY)`, so it converts from
+ * whatever origin the object actually has; the manual form silently assumes the
+ * origin is `left`/`top`.
+ *
+ * That assumption does not hold for the object this helper is used on. The
+ * starter scene's `chart()` helper sets `originX: "center"` / `originY: "center"`
+ * (`new-fabric-theme.ts:730`), and `load-gauge` is a chart. Measured on a
+ * 112x88 object at `left: 432, top: 418`: the manual form gives (488, 462) and
+ * `getCenterPoint()` gives (432, 418) — the manual form aims at the shape's
+ * bottom-right corner, half a width and half a height past the centre. */
 async function clientOfScene(
   page: Page, id: string, sceneWidth = 1280,
 ): Promise<{ x: number; y: number }> {
@@ -2035,10 +2043,7 @@ async function clientOfScene(
           canvas: {
             getObjects(): Array<{
               id?: string;
-              left?: number;
-              top?: number;
-              getScaledWidth(): number;
-              getScaledHeight(): number;
+              getCenterPoint(): { x: number; y: number };
             }>;
           };
         };
@@ -2048,10 +2053,8 @@ async function clientOfScene(
       .getObjects()
       .find((candidate) => candidate.id === objectId);
     if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    return {
-      x: (object.left ?? 0) + object.getScaledWidth() / 2,
-      y: (object.top ?? 0) + object.getScaledHeight() / 2,
-    };
+    const point = object.getCenterPoint();
+    return { x: point.x, y: point.y };
   }, id);
   return sceneToClient(page, sceneWidth, centre.x, centre.y);
 }
@@ -2066,18 +2069,21 @@ Then repoint every mapping site at it. **Read the set from the file with the gre
 rg -n 'box\.(x|y|width|height)' src/web/tests/e2e/editor.spec.ts
 ```
 
-Measured at `92e846a`, that returns **14 lines — seven x/y pairs**, not "nine sites": the earlier count was a line count read as a site count. Six of the seven are the naive box-relative form and are in scope:
+Measured at `92e846a`, that returns **14 lines — seven x/y pairs**, not "nine sites": the earlier count was a line count read as a site count. Six of the seven are the naive box-relative form and are in scope. **Identify them by shape, not by line — this file has moved under every task in this plan and the numbers below were already stale once:**
 
-- `:1412-1413` and `:2005-2006` scale by the fixture's own artboard size (`/ 320`, `/ 180`) — the mapping defect in its plainest form.
-- `:1648-1649`, `:1943-1944`, `:1973-1974` and `:2570-2571` are the same form against `1280x720` fixtures.
+- **one pair** scales by the fixture's own artboard size — the only pair using `/ 320` and `/ 180` **against `box.width`/`box.height`**. This is the mapping defect in its plainest form. Note a *correct* block also divides by 320 and 180, but against `rect.width`/`rect.height`; the grep is what tells them apart, since only the `box.*` form is listed.
+- **one asymmetric pair** uses `/ 180` with `/ 1280` — a mismatched numerator and denominator, so it is wrong on both axes.
+- **one pair** whose numerator is not a variable (a literal `432 / 1280` with `418 / 720`) inside a test body.
+- **two more** of the plain `/ 1280` + `/ 720` form, each in its own test body.
+- **one pair** in `selectStarterChart` with the *same* `432 / 1280` + `418 / 720` numbers as the literal pair above — find the helper by name (`grep -n "async function selectStarterChart"`), not by line.
 
-**The seventh, `:1730-1731`, is the most important one and is easy to talk yourself out of.** It reads `viewportTransform` off the editor through an `Object.entries(window).find(([key]) => key.startsWith("vigilia-fabric-editor-"))` probe and applies `x: box.x + panX + zoom * x` by hand. That is not a mapping that happens to be correct — it is a **second copy of the camera's transform**, plus a private-instance hack that reaches past the bridge, which is precisely what this task exists to delete. It computes the same point `artboardScreenRect()` does (`rect.left` is the transform's `tx`, which is what that code calls `panX`), so repointing it is behaviour-preserving; the thing that test verifies is the marquee's reachability, not the transform. **Repoint it like the rest**, and if you conclude otherwise, say why in the report rather than leaving it silently unlisted.
+**The seventh is the most important one and is easy to talk yourself out of. Find it by its `panX`** — it is the only pair in the file that names a `panX`/`panY` variable, and the only one reaching for `viewportTransform` by hand. It reads that transform off the editor through an `Object.entries(window).find(([key]) => key.startsWith("vigilia-fabric-editor-"))` probe and applies `x: box.x + panX + zoom * x` by hand. That is not a mapping that happens to be correct — it is a **second copy of the camera's transform**, plus a private-instance hack that reaches past the bridge, which is precisely what this task exists to delete. It computes the same point `artboardScreenRect()` does (`rect.left` is the transform's `tx`, which is what that code calls `panX`), so repointing it is behaviour-preserving; the thing that test verifies is the marquee's reachability, not the transform. **Repoint it like the rest**, and if you conclude otherwise, say why in the report rather than leaving it silently unlisted.
 
 The grep is the authority for the *set*; anything still listed when you are done is a site you missed:
 
 | What the site is | How to find it |
 |---|---|
-| a `320x180` fixture's scene→client map | the only pair using `/ 320` and `/ 180` |
+| a `320x180` fixture's scene→client map | the only pair using `/ 320` and `/ 180` against `box.width`/`box.height` |
 | two test bodies mapping `/ 1280` and `/ 720` | look for the duplicated pair |
 | a third test body mapping `/ 1280` and `/ 720` | same shape, different test |
 | a `180 / 1280` + `220 / 720` pair | the only asymmetric pair |
@@ -2100,8 +2106,10 @@ the report rather than silently skipping it.
 active object after the click, before it opens the Data tab, so the near-miss described above cannot
 silently widen into a selection of the parent card. The assertion goes between the `page.mouse.click`
 and the `openInspectorTab(page, "Data")` call, because the tab lookup is what turns a wrong selection
-into a confusing timeout rather than a named failure. `selectStarterChart` has five call sites, so
-this one assertion covers four tests.
+into a confusing timeout rather than a named failure. `selectStarterChart` has **six** call sites
+(`:266`, `:285`, `:739`, `:868`, `:897`, `:1740` — the count is a reading aid and the file moves, so
+`grep -n "await selectStarterChart(page)"` is the authority), each in a different test, so this one
+assertion covers six.
 
 Run: `npx playwright test --project=desktop-chromium --grep "restores it through undo|rehydrates a chart runtime" --workers=1`
 Expected: PASS, both. These two are the tests Task 2 turned red.
@@ -2112,7 +2120,7 @@ with only the `box.x`/`box.y` terms dropped** while the `rect.left`/`rect.top` t
 must fail again. That second break is the one that matters — it is the frame confusion this step was
 corrected for, and a helper that adds the offset in the wrong place still passes the first break.
 
-- [ ] **Step 2: Pin the zoom arithmetic**
+- [ ] **Step 2: Pin the guide zoom arithmetic**
 
 **The zoom-correctness decision is a unit test, not a browser assertion.** Guides are painted straight onto `canvas.getSelectionContext()` (`guide-renderer.ts:29-40`) — they were never Fabric objects, so nothing in `getObjects()` can see them, and a browser test would only be able to assert on pixels. The two things that can actually be wrong are pure arithmetic, and `guide-renderer.dom.test.ts` already has the context spy to pin them. **That file has zero zoom coverage today**, so `GUIDE_WIDTH / zoom` at `:37` is entirely unpinned — which is why it is first.
 
@@ -2152,8 +2160,10 @@ it("clamps guides to the given bounds rather than the viewport", () => {
     spacingGuides: [],
   });
 
-  // A vertical guide spans the bounds' full height: 0 to 720, not the 0-to-180
-  // the viewport covers at 4x over a 720-tall canvas.
+  // A vertical guide spans the bounds' full height: 0 to 720, not the 0-to-37.5
+  // the viewport covers at 4x. `new Canvas(document.createElement("canvas"))`
+  // gives a 300x150 backing store — measured, not assumed — so the viewport
+  // bounds here are 0-75 by 0-37.5, far inside the 1280x720 artboard.
   const ys = context.moveTo.mock.calls
     .concat(context.lineTo.mock.calls)
     .map((call) => call[1] as number);
@@ -2163,19 +2173,102 @@ it("clamps guides to the given bounds rather than the viewport", () => {
 ```
 
 Run: `npx vitest run packages/editor/src/snap-manager/guide-renderer.dom.test.ts`
-Expected: PASS. Then change `GUIDE_WIDTH / zoom` to `GUIDE_WIDTH * zoom` and confirm the first test fails (`2` where `0.5` is expected at 4x). Restore.
+Expected: PASS. Then change `GUIDE_WIDTH / zoom` to `GUIDE_WIDTH * zoom` and confirm the first test fails. It
+fails on the **first** iteration, `zoom = 0.5`, reading `expected 2, received 0.5` — the loop is
+`[0.5, 1, 2, 4]`, so it never reaches 4x. Restore.
 
-- [ ] **Step 1b: Pin that the spacing pass is painted under the same transform and width**
+**Second teeth check, for the clamp test.** Drop the `guideBounds` honouring — change
+`const bounds = guideBounds ?? calculateSnappingViewportBounds({ canvas });` at `:28` to
+`const bounds = calculateSnappingViewportBounds({ canvas });` — and confirm the clamp test fails with `37.5`
+where `720` is expected. That number comes from the canvas's 300x150 backing store divided by the 4x zoom, and
+it is measured rather than derived, so a different value there means the canvas size is not what this step
+assumes and the finding is worth reporting. Restore.
 
-Every assertion in Step 1 passes `spacingGuides: []`, so none of them reaches `drawSpacingGuides`. That is a
+- [ ] **Step 3: Pin that the indicators are zoom-independent**
+
+**This step exists because the task's own spec line names indicators and Steps 2–3 do not reach them.** The
+acceptance item reads *"Snapping guides and indicators stay correct at non-1 zoom"*, and `indicator-manager` is
+listed in this task's Files — but until this step no part of the task verified it, so the claim was carried by
+the title alone.
+
+Reading the module says the claim holds, and says exactly why: the two indicators are zoom-independent for
+**different** reasons, and only one of them is a fact a future edit could break.
+
+- `cursor-indicator.ts:121-123` positions with `point.clientX - parentRect.left` — **client space**, so the
+  pointer's own screen position is the whole input and no scene coordinate is involved.
+- The size readout passes `target.getScaledWidth()` / `getScaledHeight()` (`index.ts:95-98`) — **scene units**.
+  Fabric's `getScaledWidth()` is the object's own `width * scaleX`; it does **not** include the viewport zoom.
+  So at 2x zoom a 100-wide object must still read `100 × 50`, not `200 × 100`.
+
+The second is the one worth pinning. Multiplying by `canvas.getZoom()` there is a plausible edit — it reads
+like the same "convert to screen units" instinct that `GUIDE_WIDTH / zoom` correctly implements in the guide
+renderer, which is precisely why someone would reach for it here. It would be wrong, and no existing test
+covers a non-1 zoom, so nothing would catch it.
+
+Add to `index.dom.test.ts`, inside its existing `describe("IndicatorManager")`:
+
+```ts
+it("reports scene size rather than screen size when the camera is zoomed", () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const object = new Rect({
+    id: "shape",
+    width: 100,
+    height: 50,
+    strokeWidth: 0,
+  });
+  canvas.add(object);
+  // Zoom the CAMERA, not the object: `getScaledWidth()` must ignore this, or the
+  // readout would report the on-screen size and disagree with the inspector.
+  canvas.setViewportTransform([2, 0, 0, 2, 0, 0]);
+  const indicators = createIndicatorManager({ canvas });
+
+  canvas.fire(
+    "object:scaling" as never,
+    { transform: { target: object }, e: pointer() } as never,
+  );
+
+  expect(
+    document.querySelector<HTMLElement>(".vigilia-size-indicator")?.textContent,
+  ).toBe("100 × 50");
+  indicators.destroy();
+});
+```
+
+Run: `npx vitest run packages/editor/src/indicator-manager/index.dom.test.ts`
+Expected: PASS.
+
+**Teeth check:** change the two arguments at `index.ts:95-98` to multiply by the canvas zoom
+(`target.getScaledWidth() * canvas.getZoom()`, same for height) and confirm this test fails reading
+`200 × 100`. Restore. The other cases in the file stay green through that break — they run at zoom 1 — which is
+the point of adding this one.
+
+- [ ] **Step 4: Pin that the spacing pass is painted under the same transform and width**
+
+Every assertion in Step 2 passes `spacingGuides: []`, so none of them reaches `drawSpacingGuides`. That is a
 coverage hole, not a defect: the spacing pass is called at `guide-renderer.ts:41`, **inside** the
 `context.save()` / `transform(...)` / `context.lineWidth = GUIDE_WIDTH / zoom` block that opens at `:32`, so
 it currently inherits the right width for free. The invariant is worth pinning because it is inherited rather
 than set — moving that call one line down, past the `context.restore()` at `:43`, silently gives spacing
 guides a 1-pixel *scene* width that grows with zoom, and no test would notice.
 
+**The assertion must be on ordering, not on `lineWidth` — an earlier revision of this step read
+`context.lineWidth` and could not fail.** `contextSpy`'s `restore` is a bare `vi.fn()` (`:9`), so it does not
+put `lineWidth` back; and nothing in the spacing path sets it either — `drawSpacingGuide` strokes without
+assigning it, and `drawGuideLabel` sets `lineWidth / safeZoom` inside its own save/restore pair. So
+`context.lineWidth` reads `1 / zoom` whether the call sits inside the block or below it, and the teeth check
+below would have passed in its broken state. Read the call order instead: the invariant is *the spacing stroke
+happens before the outer restore*, which is exactly what "painted under the same transform" means.
+
+**The spy needs one more method before this test can run at all.** `contextSpy` (`guide-renderer.dom.test.ts:6-34`)
+defines no `quadraticCurveTo`, and `drawRoundedRectPath` (`guide-painting.ts:23`) calls it for the badge's rounded
+corners — so a non-empty `spacingGuides` throws `TypeError: context.quadraticCurveTo is not a function` and the
+test dies on the crash rather than reaching its assertion. **Add `quadraticCurveTo: vi.fn(),` to the spy's method
+list**, next to the existing `arcTo`. That is the only spy change this step needs, and it is safe for the file's
+existing cases: they all pass `spacingGuides: []`, which never reaches a label. Verified by probe — with the
+method added, the run reaches the assertion and reads `strokeOrder [10]` against `restoreOrder [27, 44, 45]`.
+
 ```ts
-it("paints spacing guides under the same transform and width", () => {
+it("paints spacing guides before the context is restored", () => {
   const canvas = new Canvas(document.createElement("canvas"));
   const context = contextSpy(canvas);
 
@@ -2191,10 +2284,16 @@ it("paints spacing guides under the same transform and width", () => {
           activeStart: 20, activeEnd: 30, distance: 10 },
       ],
     });
-    // The spacing pass is called inside the save/transform block, so this reads
-    // the scene width the primary guide set. Moving that call below
-    // `context.restore()` makes this 1 instead of 1/zoom at 4x.
-    expect(context.lineWidth).toBeCloseTo(1 / zoom, 10);
+
+    // Exactly one stroke: `guides` is empty, and `drawGuideLabel` only fills.
+    expect(context.stroke).toHaveBeenCalledOnce();
+    // The spacing pass must stroke while the save/transform block is still open.
+    // The first `restore` is a label's, so the stroke has to precede it; move the
+    // `drawSpacingGuides` call below the outer `context.restore()` and this
+    // inverts, because that outer restore becomes the first one.
+    expect(context.stroke.mock.invocationCallOrder[0]).toBeLessThan(
+      context.restore.mock.invocationCallOrder[0] as number,
+    );
   }
 });
 ```
@@ -2203,20 +2302,23 @@ Run it. **Expected: PASS** — if it fails, the spacing pass is not where this s
 finding to report rather than a fix to improvise.
 
 **Teeth check: move the `drawSpacingGuides` call at `:41` below the `context.restore()` at `:43` and confirm
-this test fails, then restore it.** Do not instead reach for hoisting a single `context.lineWidth` above the
-save block — that changes what the primary guide paints, which is the regression this step is here to
-prevent.
+this test fails on the ordering assertion, then restore it.** Measured: the assertion's inputs invert from
+`stroke [10]` / `restore [27, 44, 45]` to `stroke [11]` / `restore [5, 28, 45]`, so it goes false — the outer
+restore becomes the first one. Do not instead reach for hoisting a single `context.lineWidth` above the save
+block — that changes what the primary guide paints, which is the regression this step is here to prevent.
 
 **No capture, and nothing to register.** The `Viewport | Resize or change zoom` row already has both a capture
-and a test — `editor-zoom-readout` / `tracks the camera's zoom in the stage readout`, which exists at
-`editor.spec.ts:2169` and owns `editor-zoom-readout-desktop-chromium.png`. **Do not overwrite it.** A name this
+and a test — `editor-zoom-readout` / `tracks the camera's zoom in the stage readout`, which exists (find it by
+name; it was at `:2169` when this paragraph was written and is at `:2209` now) and owns
+`editor-zoom-readout-desktop-chromium.png`. **Do not overwrite it.** A name this
 step invents (`editor-guides-at-2x-zoom`) would have no test behind it, so the row would point the next reader at
 an image nothing regenerates, which is worse than the `add when changed` placeholder it replaced.
 
-This task's claim is arithmetic — the hairline stays one screen pixel and the clamp is to the artboard — and
-Steps 2 and 1b pin both as unit tests against the context spy, where a browser test could only assert on pixels.
+This task's claim is arithmetic — the hairline stays one screen pixel, the clamp is to the artboard, and the
+indicators report scene units — and Steps 2, 3 and 4 pin all three as unit tests against the context spy and the
+jsdom DOM, where a browser test could only assert on pixels.
 Guides are painted straight onto `canvas.getSelectionContext()` and were never Fabric objects, so no capture can
-see them either way. If the inspection in Steps 1–2 *does* find a defect and you fix it, say so in the report;
+see them either way. If the inspection in Steps 2–3 *does* find a defect and you fix it, say so in the report;
 the registration question does not reopen.
 
 ```bash
