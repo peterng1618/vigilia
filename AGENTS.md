@@ -22,6 +22,28 @@ Vigilia process.
 
 - **Start with `STATUS.md`.** A fresh session should be able to continue from it
   without a long user prompt; follow its active Superpowers spec/plan/SDD links.
+- **Exactly one implementation plan is active.** `STATUS.md` names it; every
+  other incomplete plan is queued. Never execute two plans concurrently.
+- Parallel subagents may work only inside the active plan and active phase, on
+  independent scopes with non-overlapping ownership.
+- Plans are contracts, not scripts. Organize work into phases of 3–5 tasks.
+  Each task should state the outcome, owning symbols/landmarks, constraints,
+  acceptance or failure modes, and verification. Avoid brittle line numbers,
+  pasted implementation bodies, exact assertion text, expected test counts,
+  staging recipes and speculative future edits unless one is itself a required
+  invariant.
+- **The agent environment is user-owned.** During product work, do not install,
+  enable, disable, copy, edit or remove plugins, skills, hooks, MCP servers,
+  Claude/Codex settings or `AGENTS.md` unless the user explicitly requests that
+  exact environment change. Do not create project-local skills to improve the
+  agent's own workflow.
+- Keep the root session through one substantial usable outcome or active phase.
+  Start a fresh root only at a major phase boundary, when the user asks, or when
+  context/state is no longer reliable. `STATUS.md` is the handoff.
+- In multi-agent mode, the root orchestrates; workers implement disjoint tasks;
+  an independent reviewer checks the contract and evidence. Reviews report
+  findings back to the root rather than changing process or environment.
+
 - Before each completed task commit, **replace** `STATUS.md`'s "Last completed
   change" with a concise 1–5 bullet summary of what that commit achieved. Never
   append older commit summaries; GitHub already owns commit history.
@@ -31,7 +53,8 @@ Vigilia process.
 - Let Superpowers own the workflow and its artifacts.
 - Designs/specs live in `docs/superpowers/specs/`.
 - Executable plans live in `docs/superpowers/plans/`; completed/superseded
-  plans move to `docs/superpowers/plans/archive/`.
+  plans move to `docs/superpowers/plans/archive/` once no active or queued plan
+  depends on them.
 - Do not create project workflow skills, alternate spec/plan directories, or duplicate Superpowers workflow instructions elsewhere in the repository.
 - Durable project truth lives under `docs/`; see `docs/README.md` for the canonical map. Before cross-cutting changes, read `docs/architecture/ownership.md`.
 - `§N` product-requirement markers are stable; never renumber them.
