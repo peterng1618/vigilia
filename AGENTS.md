@@ -29,9 +29,10 @@ Vigilia process.
 - Plans are contracts, not scripts. Organize work into phases of 3–5 tasks.
   Each task should state the outcome, owning symbols/landmarks, constraints,
   acceptance or failure modes, and verification. Avoid brittle line numbers,
-  pasted implementation bodies, exact assertion text, expected test counts,
-  staging recipes and speculative future edits unless one is itself a required
-  invariant.
+  pasted implementation bodies, exact assertion text, test counts for work not
+  yet written, staging recipes and speculative future edits unless one is itself
+  a required invariant. A count recorded as evidence that a case was collected
+  is such an invariant; a count predicted before the code exists is not.
 - **The agent environment is user-owned.** During product work, do not install,
   enable, disable, copy, edit or remove plugins, skills, hooks, MCP servers,
   Claude/Codex settings or `AGENTS.md` unless the user explicitly requests that
@@ -43,7 +44,12 @@ Vigilia process.
 - In multi-agent mode, the root orchestrates; workers implement disjoint tasks;
   an independent reviewer checks the contract and evidence. Reviews report
   findings back to the root rather than changing process or environment.
-
+- The ledger records rulings and completions, never what is running. Write
+  `<workspace>/dispatch.md` (plan, task, agent id, base sha, state) when you
+  dispatch and rewrite it on completion — compaction cannot reconstruct an
+  unrecorded dispatch. A PreCompact hook snapshots git state and ledger tails to
+  `.superpowers/sdd/checkpoint/` and re-injects the dispatch state after
+  compaction.
 - Before each completed task commit, **replace** `STATUS.md`'s "Last completed
   change" with a concise 1–5 bullet summary of what that commit achieved. Never
   append older commit summaries; GitHub already owns commit history.
