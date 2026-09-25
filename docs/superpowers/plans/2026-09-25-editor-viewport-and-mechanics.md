@@ -1671,6 +1671,8 @@ git commit -m "feat(editor): enter and exit a group from the canvas"
 - Modify: `src/web/packages/editor/src/editor-shell/layer-panel.tsx`
 - Modify: `src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx`
 - Modify: `src/web/packages/editor/src/editor-shell/bridge.ts`
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/tests/e2e/editor.spec.ts`
 
 **Interfaces:**
 - Consumes: `GroupingManager.groupContext()` (Task 7), `LayerPanel` (UI-polish plan Task 5). **This task depends on the UI-polish plan.**
@@ -1727,6 +1729,32 @@ Mark `data-context="true"` on **every row inside the current context, not only t
 
 Because the tree can now select a group's children directly, the old "selection resolves a child through its owning group" behaviour is no longer the only path: keep it for a canvas click, but let a tree click on a child select the child itself when its group is the current context.
 
+**The muted style is a stylesheet rule, not an inline style.** `data-context` is already on the row, so `editor-shell.css` owns the declaration next to `.vigilia-layer-row`:
+
+```css
+/* Only an entered group dims anything: with no context every row is reachable,
+   and the rows would carry the attribute with the misleading value. */
+.vigilia-layer-row[data-context="false"] {
+  opacity: 0.45;
+}
+```
+
+`layer-panel.tsx` gets **no** `opacity` in its `style` object. Its existing inline entries (`"--layer-depth"` and the `paddingLeft` that dereferences it) are values *handed to* CSS, with the declaration itself in `editor-shell.css:483`; an `opacity` declaration there would be a second owner of the visual language.
+
+**The `context.size > 0` guard stays, and it is not redundant with the attribute.** With no group entered, `context.has(row.id)` is `false` for every row, so **every** row renders `data-context="false"` — React writes the string `"false"`, it does not drop the attribute, which the assertion at `layer-panel.dom.test.tsx:201` already pins. A bare `[data-context="false"]` rule would therefore dim the entire tree the moment the editor is opened with nothing entered, which is the exact regression the guard prevents: with no group entered every top-level layer *is* selectable on the canvas, and a tree greyed out by default asserts the opposite of the truth. So the guard is what keeps the attribute honest, not a duplicate of the rule.
+
+**Both halves need a test, and the existing one covers only the attribute.** The muted style has no assertion anywhere — deleting the declaration leaves the suite green — so the fix must add one. In jsdom the stylesheet is not applied (vitest does not process the `editor-main.ts` CSS import), so the jsdom half pins the *attribute* that the rule keys on, and the browser half pins the *rendering*. Add both:
+
+```tsx
+// jsdom: the attribute the stylesheet rule keys on, for both values.
+expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
+expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+```
+
+and a second jsdom case with `{ groupContext: () => [] }` asserting no row reads `"true"` — the empty-context reading, which the brief's case above cannot decide because it only ever supplies a non-empty context.
+
+In `tests/e2e/editor.spec.ts`, extend Task 7's committed "enters a group, steps back out, and survives an undo" case rather than writing a new spec: it already carries the `grouping.vigilia-theme` fixture and the camera-mapped `at(x, y)`. After it enters the group, assert on its existing rows that the entered group's row and its child read `data-context="true"`, an outside row reads `"false"`, and the outside row's computed `opacity` is `"0.45"` while the child's is not — the computed value, not the attribute, is what proves the stylesheet rule actually selects the row. **This file is single-occupancy**: the UI-polish plan's Task 9 (B9) and this plan's Tasks 7 and 10 all edit it, so dispatch this fix only when no other implementer holds it.
+
 **That conditional is a real branch in `selectLayer`, and the existing test already pins the other half.** `bridge.dom.test.ts:212-217` asserts `selectLayer("child")` calls `setActiveObject(group)` — the owning group — and Task 5's `bridgeFor` widened the canvas stub, so that assertion is live. The new branch must therefore be *only* "the child's group is the current context", leaving the group resolution in place for every other case; a bare "select the child" rewrite turns that existing test red for the right reason. Note also that `selectLayer` resolves through `ownerOf(root, id)` (`bridge.ts:150`; this read `:144`, which is `const root = canvas.getObjects();` — the same function, three lines above the call), whose first parameter is root and whose only caller here passes `canvas.getObjects()` — not the object form.
 
 - [ ] **Step 4: Run the tests and inspect**
@@ -1739,7 +1767,9 @@ Expected: PASS. Then rebuild, enter a group in the browser, and confirm in the c
 ```bash
 git add src/web/packages/editor/src/editor-shell/layer-panel.tsx \
   src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx \
-  src/web/packages/editor/src/editor-shell/bridge.ts
+  src/web/packages/editor/src/editor-shell/bridge.ts \
+  src/web/packages/editor/src/editor-shell/editor-shell.css \
+  src/web/tests/e2e/editor.spec.ts
 git commit -m "feat(editor): layer tree reflects the group context"
 ```
 
