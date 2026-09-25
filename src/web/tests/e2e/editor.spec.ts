@@ -199,6 +199,40 @@ test.describe("Fabric editor route", () => {
     });
     expect(reveal.duration).not.toBe("0s");
     expect(reveal.keyframes).toBeGreaterThanOrEqual(2);
+
+    // The suppression assertion above reads 0s whether or not the shorthand
+    // exists, so pin the shorthand itself: five compositor-owned properties,
+    // never a layout one.
+    const motion = await page
+      .locator(".editor-shell button")
+      .first()
+      .evaluate((el) => ({
+        properties: getComputedStyle(el).transitionProperty,
+        duration: getComputedStyle(el).transitionDuration,
+      }));
+    expect(motion.properties).toBe(
+      "background-color, border-color, color, transform, opacity",
+    );
+    expect(motion.duration).toBe("0.14s, 0.14s, 0.14s, 0.14s, 0.14s");
+
+    // Base UI portals the popup to `body`, where `.editor-shell *` cannot reach
+    // it, so the media block names the popup's own class. Without the injection
+    // this reads 0s either way and would pass with that selector deleted; with
+    // it, only the media block can produce the 0s below.
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.getByRole("button", { name: "View", exact: true }).click();
+    // The zoom readout's popup stays mounted (`keepMounted`), so two popups are
+    // in the DOM; only the open View menu's is visible.
+    const popup = page.locator(".editor-shell-menu-popup:visible");
+    await expect(popup).toBeVisible();
+    const popupTransition = () =>
+      popup.evaluate((el) => {
+        el.style.transition = "opacity 200ms ease";
+        return getComputedStyle(el).transitionDuration;
+      });
+    await expect.poll(popupTransition).toBe("0.2s");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect.poll(popupTransition).toBe("0s");
   });
 
   test("captures selected chart binding controls for visual review", async ({

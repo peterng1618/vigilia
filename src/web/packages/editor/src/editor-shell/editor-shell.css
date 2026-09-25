@@ -365,9 +365,10 @@ body,
 .editor-shell button:active {
   transform: translateY(1px);
 }
-/* The popup renders in a portal outside `.editor-shell`, so this rule misses
-   it; `[role="menuitem"]` stays absent here to keep that true if it moves in.
-   `:where` drops the tabpanel without raising this rule's specificity. */
+/* The popup is portalled outside `.editor-shell`, so this rule misses it — that
+   portal is the only protection, since Base UI marks menu items `tabindex="-1"`
+   and one moved in-shell would match through `[tabindex]`. `:where` drops the
+   tabpanel without raising this rule's specificity. */
 .editor-shell
 :is(
   button,
