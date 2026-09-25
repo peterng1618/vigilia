@@ -2217,12 +2217,13 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-canvas-context-menu");
 
     // Phase 1 adds a second owner of the arrow keys. Read the object's own
-    // position rather than asserting, so the recorded outcome is the real one.
-    // Both axes, because `nudge-down` moves `top`: reading `left` alone would
-    // report "did not move" whether or not the nudge ran.
+    // origin point — both axes, because `nudge-down` moves `top`: reading `left`
+    // alone would report "did not move" whether or not the nudge ran. A lost
+    // selection throws rather than returning nulls, which would make that same
+    // "did not move" true for the wrong reason.
     const activePosition = async (): Promise<{
-      left: number | null;
-      top: number | null;
+      left: number;
+      top: number;
     }> =>
       page.evaluate(() => {
         const active = (
@@ -2238,7 +2239,12 @@ test.describe("Fabric editor route", () => {
             };
           }
         ).vigiliaEditorBridge.editor.canvas.getActiveObject();
-        return { left: active?.left ?? null, top: active?.top ?? null };
+        if (active?.left === undefined || active.top === undefined) {
+          throw new Error(
+            "The test needs an active object with an origin point.",
+          );
+        }
+        return { left: active.left, top: active.top };
       });
     const before = await activePosition();
     await page.keyboard.press("ArrowDown");
@@ -2246,22 +2252,17 @@ test.describe("Fabric editor route", () => {
     const after = await activePosition();
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
-    // The control that makes the line above mean something: the arrow must
-    // nudge when no menu owns the keyboard, so "did not move" is the menu
-    // stopping it and not a nudge that was broken all along.
+    // The requirement this task exists to prove: with the menu open, the arrow
+    // reaches no canvas owner, so the selection does not move at all.
+    expect(after).toEqual(before);
+    // And the control that stops that requirement from being vacuous: the arrow
+    // must still nudge once the menu has closed. An exact delta, measured in
+    // this browser as `(0, +1)` — `NUDGE_STEP` in `canvas-nudge.ts` — not
+    // `not.toEqual(before)`, so a dead nudge and a wrong step both fail here
+    // instead of sliding through.
     await page.keyboard.press("ArrowDown");
-    await expect.poll(activePosition).not.toEqual(before);
-    // Recorded as evidence, not as a requirement: either arrow outcome is a
-    // finding, and this is what the surface does today.
-    expect({
-      before,
-      after,
-      moved: JSON.stringify(before) !== JSON.stringify(after),
-    }).toEqual({
-      before: { left: expect.any(Number), top: expect.any(Number) },
-      after: before,
-      moved: false,
-    });
+    const nudged = await activePosition();
+    expect(nudged).toEqual({ left: before.left, top: before.top + 1 });
   });
 
   test("zooms and pans the canvas, and cannot lose the artboard", async ({
