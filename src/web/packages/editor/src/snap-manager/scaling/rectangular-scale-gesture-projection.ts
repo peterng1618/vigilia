@@ -702,31 +702,26 @@ export function projectRectangularScaleBounds({
   if (!Number.isFinite(multipliers.x) || !Number.isFinite(multipliers.y))
     return null;
 
-  const topLeft = RECTANGULAR_SCALE_CONTROL_COORDINATES.tl;
-  const topRight = RECTANGULAR_SCALE_CONTROL_COORDINATES.tr;
-  const bottomRight = RECTANGULAR_SCALE_CONTROL_COORDINATES.br;
-  const bottomLeft = RECTANGULAR_SCALE_CONTROL_COORDINATES.bl;
-
   return createProjectedBounds({
     topLeft: projectScaledPoint({
       projection,
       multipliers,
-      coordinates: topLeft,
+      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.tl,
     }),
     topRight: projectScaledPoint({
       projection,
       multipliers,
-      coordinates: topRight,
+      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.tr,
     }),
     bottomRight: projectScaledPoint({
       projection,
       multipliers,
-      coordinates: bottomRight,
+      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.br,
     }),
     bottomLeft: projectScaledPoint({
       projection,
       multipliers,
-      coordinates: bottomLeft,
+      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.bl,
     }),
   });
 }
