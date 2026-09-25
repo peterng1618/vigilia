@@ -1701,6 +1701,18 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect.poll(() => injectedTransition(popup)).toBe("0s");
 
+  // The menu item is the element a hover transition would land on, and it is
+  // outside `.editor-shell`, so the in-shell shorthand
+  // `.editor-shell [role="menuitem"]` cannot reach it — the popup's own `*`
+  // line is its only suppression. Without this assertion, adding a transition
+  // to a menu row and deleting the `*` lines leaves the suite green under
+  // `reduce`.
+  const menuItem = popup.getByRole("menuitem", { name: /Value runs/ });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect.poll(() => injectedTransition(menuItem)).toBe("0.2s");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(() => injectedTransition(menuItem)).toBe("0s");
+
   // The positioner is a separate portalled element, styled in its own right
   // (`z-index: 60`), and it is NOT covered by the popup's selectors — the popup
   // nests inside it, not the reverse. A popup-position animation lands here.
@@ -1787,19 +1799,21 @@ animation would land; the tooltip's `Tooltip.Positioner` (`canvas-dock.tsx:48`) 
 
 The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — that file has moved three times and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous.
 
-**Teeth checks — six, and each must fail in its broken state.** Delete, rebuild (`npx vite build packages/editor`), run the grep, restore:
+**Teeth checks — seven, and each must fail in its broken state.** Delete, rebuild (`npx vite build packages/editor`), run the grep, restore:
 
 1. the whole `prefers-reduced-motion` block → fails at `expect(duration).toBe("0s")`
 2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
 3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
-4. **both** `.editor-shell-positioner` selectors → must fail on the popup assertion with `0.2s` where `0s` is expected
+4. **both** `.editor-shell-positioner` selectors → must fail on the **positioner** assertion — the `injectedTransition(positioner)` poll that expects `"0s"`, the last of the three positioner lines. **Not the popup assertion** — the popup element still matches its own `.editor-shell-menu-popup` selector, so that one passes. Deleting the popup's pair on its own is green (the popup is covered through its parent); deleting both pairs fails one block earlier, on the popup assertion. An earlier revision of this check named the popup assertion, from a time before the positioner assertion existed.
 5. the two `.editor-shell-tooltip` selectors → must fail on the tooltip assertion, the same way
 6. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
+7. **both `*` descendant lines together** — `.editor-shell-menu-popup *` and `.editor-shell-positioner *` → must fail on the **menu-item** assertion, the `injectedTransition(menuItem)` poll that expects `"0s"`, with `0.2s` received. Delete them one at a time and the suite stays green: either line alone still reaches the item, since the popup nests inside the positioner. `.editor-shell-tooltip *` is deliberately **not** part of this check — it matches no element at all (see below), so deleting it can change nothing.
 
-**Delete each class's pair separately, never as one "delete all six" — and expect checks 4 and 5 to be the only two that fail.** Two facts about this block are counter-intuitive enough that a reader will otherwise conclude the test is broken when it is the check that is:
+**Delete each class's pair separately, never as one "delete all six" — and expect checks 4, 5 and 7 to be the only three that fail.** Two facts about this block are counter-intuitive enough that a reader will otherwise conclude the test is broken when it is the check that is:
 
-- **The popup is a child of the positioner** (`shell-layout.tsx:175-177`: `Menu.Positioner` wraps `Menu.Popup`), so `.editor-shell-positioner *` already matches the popup. **Deleting the two `.editor-shell-menu-popup` selectors on their own leaves the suite GREEN, and that is correct** — the popup is still suppressed through its parent. Do not read that as a vacuous test and do not add a deletion that "fixes" it. Deleting the positioner pair is what removes the popup's coverage, which is why check 4 is the positioner's and there is no popup-only check.
+- **The popup is a child of the positioner** (`shell-layout.tsx:175-177`: `Menu.Positioner` wraps `Menu.Popup`), so `.editor-shell-positioner *` already matches the popup. **Deleting the two `.editor-shell-menu-popup` selectors on their own leaves the suite GREEN, and that is correct** — the popup is still suppressed through its parent. Do not read that as a vacuous test and do not add a deletion that "fixes" it. Deleting the positioner pair alone still fails at the **positioner** assertion, not the popup's — that is why check 4 is the positioner's and there is no popup-only check. Only deleting **both** pairs reaches the popup assertion, one block earlier, because by then nothing covers the popup at all.
 - **The tooltip is the reverse case**: `canvas-dock.tsx:48`'s `Tooltip.Positioner` carries **no class at all**, so `.editor-shell-tooltip` is the whole of the tooltip's coverage and check 5 fails as specified.
+- **`.editor-shell-tooltip *` matches nothing, and that is a fact about the markup rather than a defect to fix.** `canvas-dock.tsx:49-51` renders `<Tooltip.Popup …>{label}</Tooltip.Popup>`, and `label` is a plain string — the popup's only child is a text node, so no element descendant exists to match. The line is harmless but unreachable. The popup's and the positioner's `*` lines are the load-bearing two, because both of those render `{children}` — ReactNode containing the menu items. Do not delete the tooltip's `*` line as dead code without also deciding the tooltip popup should carry markup; and do not add a teeth check that deletes it, because it cannot fail.
 
 That is also why the batched "delete all six" check this step originally carried proved nothing: it could not distinguish "the popup is covered by its own selectors" from "the popup is covered by its parent's", and it left the positioner and tooltip unguarded through two review rounds.
 
