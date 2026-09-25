@@ -1803,6 +1803,14 @@ The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `
 
 That is also why the batched "delete all six" check this step originally carried proved nothing: it could not distinguish "the popup is covered by its own selectors" from "the popup is covered by its parent's", and it left the positioner and tooltip unguarded through two review rounds.
 
+**One more check, and it is a "wrong element" check rather than a deletion.** The `Value runs` anchor exists so the
+positive control cannot pass while measuring the zoom menu. Prove it by opening the **zoom** menu with the View
+menu never opened — focus `.editor-shell-zoom`, press `ArrowDown` — and confirm the run **fails on the `Value runs`
+assertion**. Deleting the View click instead does *not* test this: the run then fails on the earlier
+`expect(popup).toBeVisible()`, because no menu opened at all, so it never reaches the anchor. Confirm the anchor is
+load-bearing by removing it under the zoom-menu scenario and seeing the suite go green — that counterfactual is
+what shows the assertion is doing work rather than riding along behind `toBeVisible()`.
+
 If a check passes in its broken state, report it rather than adjusting the test until it fails.
 
 Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
