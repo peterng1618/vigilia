@@ -205,8 +205,7 @@ describe("ShortcutManager unmodified keys", () => {
     const manager = new ShortcutManager();
     const nudge = vi.fn();
     // One id, one handler: the large step is the handler reading event.shiftKey,
-    // not a second action id. `ShortcutHandler` takes no argument today, so the
-    // shift step is the handler's own concern — Step 5 proves it in the browser.
+    // not a second action id. A bare `vi.fn()` accepts and ignores that argument.
     // The Produces union above is the authority on which ids exist.
     manager.register("canvas.nudge-left", nudge);
 

@@ -7,10 +7,15 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
-import { ActiveSelection, type FabricObject, Point } from "fabric/es";
+import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
 import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
+import {
+  type CanvasNudge,
+  createCanvasNudge,
+  stepFor,
+} from "./canvas-nudge.js";
 import { ChartManager } from "./chart-manager/index.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
@@ -114,6 +119,7 @@ export class EditorSession {
   readonly #assets = new AssetManager();
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
+  readonly #nudge: CanvasNudge;
   readonly #panelHosts: EditorPanelHosts;
   readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
@@ -319,82 +325,25 @@ export class EditorSession {
       canvas.requestRenderAll();
     });
 
-    const NUDGE_STEP = 1;
-    const NUDGE_STEP_LARGE = 10;
-    const NUDGE_IDLE_MS = 300;
-    const stepFor = (event: KeyboardEvent): number =>
-      event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
-
-    const nudge = (dx: number, dy: number): void => {
-      const active = canvas.getActiveObject();
-      if (active === undefined) return;
-      const targets = (
-        active instanceof ActiveSelection ? active.getObjects() : [active]
-      ).filter((object) => object.get("locked") !== true);
-      if (targets.length === 0) return;
-      for (const object of targets) {
-        // Read and write must name the same origin: `getCenterPoint` is the
-        // origin point under `originX/originY`, not the bounding-box centre.
-        const centre = object.getCenterPoint();
-        object.setPositionByOrigin(
-          new Point(centre.x + dx, centre.y + dy),
-          "center",
-          "center",
-        );
-        object.setCoords();
-      }
-      canvas.requestRenderAll();
-    };
-
-    let release: (() => void) | undefined;
-    let idle: number | undefined;
-
-    /** The burst ends on the idle window or on any other action. Resuming before
-     * saving is what makes the entry exist at all: `save()` is a no-op while the
-     * suspension counter is non-zero. */
-    const endBurst = (): void => {
-      if (idle !== undefined) clearTimeout(idle);
-      idle = undefined;
-      if (release === undefined) return;
-      release();
-      release = undefined;
-      options.shell.editor.historyManager.saveState();
-    };
-
-    const nudgeBy = (dx: number, dy: number): void => {
-      const active = canvas.getActiveObject();
-      // Before suspending: suspending with no selection would open a burst that
-      // never records anything, swallowing the next unrelated `saveState`.
-      if (active === undefined) return;
-      if (release === undefined) {
-        release = options.shell.editor.historyManager.suspend();
-      }
-      if (idle !== undefined) clearTimeout(idle);
-      idle = window.setTimeout(endBurst, NUDGE_IDLE_MS);
-      nudge(dx, dy);
-      // Fired per press and deliberately NOT the thing that records history: it
-      // has three other listeners that need it (`chart-manager`,
-      // `indicator-manager`, `selection-inspector`), and `save` is a no-op for
-      // the whole burst because the suspension counter is still non-zero.
-      // `endBurst` is what records the entry. Do not "simplify" this call away,
-      // and do not delete the explicit `saveState` inside `endBurst`.
-      canvas.fire("object:modified", { target: active });
-    };
+    this.#nudge = createCanvasNudge({
+      canvas,
+      history: options.shell.editor.historyManager,
+    });
 
     // Four literal registrations, not a loop over a key map: `ProductShortcutId`
     // is a closed union and a template literal is not assignable to it without a
     // cast.
     this.#shortcuts.register("canvas.nudge-left", (event) => {
-      nudgeBy(-stepFor(event), 0);
+      this.#nudge.nudgeBy(-stepFor(event), 0);
     });
     this.#shortcuts.register("canvas.nudge-right", (event) => {
-      nudgeBy(stepFor(event), 0);
+      this.#nudge.nudgeBy(stepFor(event), 0);
     });
     this.#shortcuts.register("canvas.nudge-up", (event) => {
-      nudgeBy(0, -stepFor(event));
+      this.#nudge.nudgeBy(0, -stepFor(event));
     });
     this.#shortcuts.register("canvas.nudge-down", (event) => {
-      nudgeBy(0, stepFor(event));
+      this.#nudge.nudgeBy(0, stepFor(event));
     });
   }
 
@@ -509,6 +458,7 @@ export class EditorSession {
 
   destroy(): void {
     this.#shortcuts.destroy();
+    this.#nudge.dispose();
     this.#persistence.destroy();
     this.#assets.destroy();
     releaseFontPreview();

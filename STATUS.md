@@ -25,21 +25,26 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Keyboard authoring: arrow keys nudge the selection (Shift = 10, plain = 1),
-  `mod+]`/`mod+[` move it to front/back through `layerManager`, and `mod+a`
-  selects every `selectable` object. `ShortcutHandler` now takes the
-  `KeyboardEvent`, which is what lets one arrow binding serve both steps.
-- A nudge burst is ONE history entry: `nudgeBy` suspends history on the first
-  press and `endBurst` resumes *and then* calls `saveState()` explicitly, because
-  `save()` early-returns while the suspension counter is non-zero. The idle window
-  is 300 ms; measured inter-press gap is 37 ms.
-- `mod+a` joined the renamed `MODIFIED_KEY_DEFERRED_ACTION_IDS`, so Ctrl+A inside
-  a rename field stays the field's own select-all. `history-manager/index.test.ts`
-  is the test that pins the burst mechanism — the e2e assertions cannot, because
-  `undo()`'s own `reviveScene` re-fires `object:modified`.
+- Extracted the nudge/burst machinery into `canvas-nudge.ts` as
+  `createCanvasNudge({ canvas, history })`, which took `editor-session.ts` from
+  815 to 765 lines (the repo's 800 stop) and gave the burst a unit-testable seam.
+  `EditorSession.destroy()` calls `nudge.dispose()`, which clears the pending
+  timer and lifts an open suspension.
+- `canvas-nudge.dom.test.ts` (fake timers) is now the burst's test: one `suspend`
+  and zero `saveState` while a three-press burst is open, exactly one `saveState`
+  after the 300 ms idle window, and two bursts more than 300 ms apart produce two
+  entries. Measured with teeth: deleting `endBurst`'s `saveState()` fails on
+  `0` against `1`; deleting its `release()` fails to `1` against `0` on the
+  suspension depth. This supersedes the round-1 claim that
+  `history-manager/index.test.ts` pinned the wiring — it only pinned the
+  primitive, and disabling `endBurst` left the whole suite green.
+- Keyboard authoring unchanged: arrow keys nudge (Shift = 10, plain = 1),
+  `mod+]`/`mod+[` move to front/back through `layerManager`, `mod+a` selects every
+  `selectable` object, and Ctrl+A inside a rename field stays the field's own
+  select-all via `MODIFIED_KEY_DEFERRED_ACTION_IDS`.
 - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
-  `rehydrates a chart runtime…`) fail identically with and without recent
-  changes; they are pre-existing and belong to Spec A Task 10.
+  `rehydrates a chart runtime…`) fail identically with and without these changes;
+  they are pre-existing and belong to Spec A Task 10.
 
 ## Next
 
