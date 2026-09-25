@@ -247,6 +247,18 @@ test.describe("Fabric editor route", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect.poll(() => injectedTransition(popup)).toBe("0s");
 
+    // The menu item is the element a hover transition would land on, and it is
+    // outside `.editor-shell`, so the in-shell shorthand
+    // `.editor-shell [role="menuitem"]` cannot reach it — the popup's own `*`
+    // line is its only suppression. Without this assertion, adding a transition
+    // to a menu row and deleting the `*` lines leaves the suite green under
+    // `reduce`.
+    const menuItem = popup.getByRole("menuitem", { name: /Value runs/ });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect.poll(() => injectedTransition(menuItem)).toBe("0.2s");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect.poll(() => injectedTransition(menuItem)).toBe("0s");
+
     // The positioner is a separate portalled element, styled in its own right
     // (`z-index: 60`), and it is NOT covered by the popup's selectors — the popup
     // nests inside it, not the reverse. A popup-position animation lands here.
