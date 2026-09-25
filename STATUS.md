@@ -25,24 +25,23 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- `serialiseScene` now persists `selectable`, `evented` and `locked`. Fabric's
-  `toObject` omits all three, so any undo revived a scene where every object was
-  selectable again — the starter background became draggable and locked objects
-  unlatched. First open looked correct only because the authored JSON still
-  carried the flags literally.
-- Pinned by a `persist.dom.test.ts` round trip (with teeth: it fails as
-  `selectable: true` with the fix reverted) and by `editor.spec.ts`, which
-  reproduces the reported journey in a browser and asserts the object's flags
-  rather than a hit test — `findTarget` skips `evented: false`, so it cannot
-  witness this bug.
+- The stage shows a zoom readout — percentage plus a menu offering zoom to fit,
+  zoom to selection and 100 % — subscribed to `ViewportManager.onChange`, so it
+  follows a wheel or a pan rather than rendering once at mount.
+- The brief's guard for it was a production no-op: it read a `let bridge` local
+  that nothing assigned, so Rolldown folded the whole readout out of the built
+  bundle. Now guards on `store.bridge`. Registering the popup needed
+  `Menu.Portal keepMounted` (Base UI portals to `body` and unmounts while
+  closed), and `.editor-shell-positioner` dropped `position: relative` so it
+  stopped trapping the popup inside the stage's `overflow: hidden`.
 - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
-  `rehydrates a chart runtime…`) fail identically with and without this change;
-  they are pre-existing and belong to Spec A Task 10.
+  `rehydrates a chart runtime…`) fail identically with and without recent
+  changes; they are pre-existing and belong to Spec A Task 10.
 
 ## Next
 
 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
-2. Continue Spec A from Task 4 (zoom readout), then Task 6, 7, 8, 9.
+2. Continue Spec A from Task 5, then Task 6, 7, 8, 9.
 3. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified
