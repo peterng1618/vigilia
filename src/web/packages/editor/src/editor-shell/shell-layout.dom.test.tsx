@@ -53,7 +53,14 @@ function bridgeStub(
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: facade(),
-    editor: {} as EditorShellBridge["editor"],
+    // Only the camera is stubbed: the readout subscribes to it, so an empty
+    // object here would throw rather than exercise the shell.
+    editor: {
+      viewport: {
+        zoom: () => 1,
+        onChange: () => () => undefined,
+      },
+    } as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,
   };

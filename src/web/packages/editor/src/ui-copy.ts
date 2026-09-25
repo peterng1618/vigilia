@@ -109,6 +109,13 @@ export const uiCopy = {
     "distribute-y": "Distribute vertically",
   },
   dock: { label: "Selected object actions" },
+  /** The stage camera's readout; `label` is also the control's accessible name. */
+  zoom: {
+    label: "Zoom level",
+    toFit: "Zoom to fit",
+    toSelection: "Zoom to selection",
+    actualSize: "100 %",
+  },
   palette: "Shell palette",
   /** Chart family labels, shared by the Add panel and the Insert menu. */
   chartFamilies: {

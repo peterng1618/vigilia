@@ -8,6 +8,7 @@ import { uiCopy } from "../ui-copy.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { LayerPanel } from "./layer-panel.js";
+import { ZoomReadout } from "./zoom-readout.js";
 import {
   applyShellPalette,
   DEFAULT_SHELL_PALETTE,
@@ -262,7 +263,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   };
   hosts.canvas.id = "canvas-host";
 
-  let bridge: EditorShellBridge | undefined;
   let view: EditorViewControls | undefined;
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
@@ -352,6 +352,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 }
               }}
             />
+            {/* The store, not a local: a late-set bridge must reach the readout
+                the same way it reaches the inspector and menus. */}
+            {store.bridge === undefined ? null : (
+              <ZoomReadout viewport={store.bridge.editor.viewport} />
+            )}
           </main>
           <aside className="editor-shell-inspector editor-glass">
             <Tabs.Root defaultValue="design">

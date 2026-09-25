@@ -37,7 +37,7 @@ result, not merely a mounted editor.
 | Palette | Edit or reassign a palette token | `editor-palette-solid` or `editor-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
 | Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` |
 | Theme settings | Author a background image | `editor-background-media` / `authors a packaged background image` |
-| Viewport | Resize or change zoom | add when changed |
+| Viewport | Resize or change zoom | `editor-zoom-readout` / `tracks the camera's zoom in the stage readout` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
 ## Settings page (`/settings`, real host)

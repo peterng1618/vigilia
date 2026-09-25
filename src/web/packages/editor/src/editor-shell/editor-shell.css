@@ -193,10 +193,11 @@ body,
 }
 /* Base UI portals the popup to `body`; the positioner must establish its own
    stacking context or the stage (which is a positioned element inside #app,
-   later in paint order) intercepts pointer events over the menu. */
+   later in paint order) intercepts pointer events over the menu. `relative`
+   would also make it the containing block for the popup's fixed positioning,
+   trapping the popup inside the stage's `overflow: hidden`. */
 .editor-shell-positioner {
   z-index: 60;
-  position: relative;
 }
 .editor-shell-menu-popup {
   min-width: 190px;
@@ -491,6 +492,17 @@ body,
 .editor-shell-dock button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+.editor-shell-zoom {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 12px;
+  min-width: 54px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 .editor-shell-inspector {
   padding: 12px;

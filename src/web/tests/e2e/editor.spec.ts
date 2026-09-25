@@ -1872,6 +1872,54 @@ test.describe("Fabric editor route", () => {
     expect(await translate()).toEqual(atLimit);
   });
 
+  test("tracks the camera's zoom in the stage readout", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+
+    await page.goto(EDITOR);
+    const readout = page.locator("[data-vigilia-zoom]");
+    await expect(readout).toBeVisible();
+    // Read the camera, not the canvas: `ViewportManager` owns zoom, so only the
+    // camera can tell a readout that stopped following it from one that works.
+    const cameraZoom = () =>
+      page.evaluate(() =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: { viewport: { zoom(): number } };
+            };
+          }
+        ).vigiliaEditorBridge.editor.viewport.zoom(),
+      );
+    const percent = async (): Promise<number> =>
+      Number((await readout.textContent())?.replace("%", ""));
+    const fitted = await percent();
+    expect(fitted).toBe(Math.round((await cameraZoom()) * 100));
+
+    // A pan moves the canvas without changing the zoom: this is what separates a
+    // readout that tracks the camera from one rendered once at mount.
+    await page.keyboard.down("Space");
+    await page.mouse.move(400, 400);
+    await page.mouse.down();
+    await page.mouse.move(500, 470, { steps: 10 });
+    await page.mouse.up();
+    await page.keyboard.up("Space");
+    expect(await percent()).toBe(fitted);
+
+    // A wheel without the modifier pans too — only ctrl-wheel zooms.
+    await page
+      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .hover({ position: { x: 200, y: 200 } });
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, -400);
+    await page.keyboard.up("Control");
+    expect(await percent()).toBe(Math.round((await cameraZoom()) * 100));
+    expect(await percent()).toBeGreaterThan(fitted);
+
+    await captureVisualReview(page, testInfo, "editor-zoom-readout");
+  });
+
   test("reorders a layer and refuses a cross-group drop", async ({
     page,
   }, testInfo) => {
