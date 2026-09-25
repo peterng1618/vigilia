@@ -1461,6 +1461,144 @@ test.describe("Fabric editor route", () => {
       .toBeGreaterThan(0);
   });
 
+  test("keeps the starter background unselectable after an undo", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    // The reported bug: the starter background is authored `selectable: false`,
+    // so it resists a click on first open — but undo revives the scene through
+    // serialisation, and Fabric omits `selectable`/`evented` from `toObject`,
+    // so it came back an ordinary draggable object.
+    //
+    // This clicks bare artboard, because the plate is not what the author sees:
+    // the starter scene's own full-artboard `background` rect is the topmost
+    // object at that point, and it must decline the click on its own. A test
+    // aimed at the plate would pass even while that rect stayed selectable.
+    await page.goto(EDITOR);
+
+    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) return;
+
+    /** Artboard coordinates to page pixels, through the live camera. */
+    const at = async (
+      x: number,
+      y: number,
+    ): Promise<{ x: number; y: number }> => {
+      const [zoom = 1, , , , panX = 0, panY = 0] = await page.evaluate(() => {
+        const editor = Object.entries(
+          window as unknown as Record<string, unknown>,
+        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+          | { canvas: { viewportTransform: number[] } }
+          | undefined;
+        return editor?.canvas.viewportTransform ?? [];
+      });
+      return {
+        x: box.x + panX + zoom * x,
+        y: box.y + panY + zoom * y,
+      };
+    };
+
+    /** The authored background object, by id, as the page's own instance. */
+    const background = async (): Promise<unknown> =>
+      page.evaluate(() => {
+        const editor = Object.entries(
+          window as unknown as Record<string, unknown>,
+        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+          | { canvas: { getObjects(): Array<{ get(n: string): unknown }> } }
+          | undefined;
+        const object = editor?.canvas
+          .getObjects()
+          .find((candidate) => candidate.get("id") === "background");
+        return object === undefined
+          ? null
+          : {
+              selectable: object.get("selectable"),
+              evented: object.get("evented"),
+            };
+      });
+
+    /** Whether the background geometrically covers a point, page coordinates. */
+    const covers = async (point: { x: number; y: number }): Promise<boolean> =>
+      page.evaluate(
+        ([clientX, clientY]) => {
+          const editor = Object.entries(
+            window as unknown as Record<string, unknown>,
+          ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+            | {
+                canvas: {
+                  getScenePoint(e: {
+                    clientX: number;
+                    clientY: number;
+                  }): unknown;
+                  getObjects(): Array<{
+                    get(n: string): unknown;
+                    containsPoint(p: unknown): boolean;
+                  }>;
+                };
+              }
+            | undefined;
+          const object = editor?.canvas
+            .getObjects()
+            .find((candidate) => candidate.get("id") === "background");
+          if (editor === undefined || object === undefined) return false;
+          return object.containsPoint(
+            editor.canvas.getScenePoint({ clientX: clientX, clientY: clientY }),
+          );
+        },
+        [point.x, point.y],
+      );
+
+    const selected = async (): Promise<unknown> =>
+      page.evaluate(() => {
+        const editor = Object.entries(
+          window as unknown as Record<string, unknown>,
+        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+          | {
+              canvas: {
+                getActiveObject(): { get(name: string): unknown } | undefined;
+              };
+            }
+          | undefined;
+        return editor?.canvas.getActiveObject()?.get("id") ?? null;
+      });
+
+    // A point in bare artboard, clear of every authored card and label.
+    const spot = await at(640, 690);
+
+    // The guard is geometric, not a hit test: `findTarget` skips an object with
+    // `evented: false`, so it reports nothing here whether or not the background
+    // is still armed — it cannot witness the bug. `containsPoint` asks the
+    // object's own bounds, which is true either way, so a pass below means the
+    // background declined the click rather than that no object was there.
+    expect(await covers(spot)).toBe(true);
+    expect(await background()).toEqual({ selectable: false, evented: false });
+
+    await page.mouse.click(spot.x, spot.y);
+    expect(await selected()).toBeNull();
+
+    // One authored change, so undo has entries either side of the revive.
+    const marker = await at(432, 418);
+    await page.mouse.move(marker.x, marker.y);
+    await page.mouse.down();
+    await page.mouse.move(marker.x + 40, marker.y);
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(400);
+
+    expect(await covers(spot)).toBe(true);
+    expect(await background()).toEqual({ selectable: false, evented: false });
+
+    await page.mouse.click(spot.x, spot.y);
+    expect(await selected()).toBeNull();
+  });
+
   test("keeps the active document when Fabric cannot revive a schema-valid scene", async ({
     page,
   }, testInfo) => {

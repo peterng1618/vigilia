@@ -478,6 +478,60 @@ describe("identity survives a round trip", () => {
     ).toEqual(["child"]);
   });
 
+  it("keeps an authored interaction lock across a round trip", async () => {
+    // The bug this pins: undo revives through this save path, and Fabric omits
+    // `selectable`, `evented` and `locked` from `toObject`, so a scene saved
+    // without them came back with every object selectable — an authored
+    // background, or a locked object, unbroke itself on the first undo. The
+    // first mount looked correct only because the authored JSON still carried
+    // the flags literally; nothing had been saved and revived yet.
+    const background = new Rect({ width: 400, height: 300, fill: "#123" });
+    background.set({ id: "background", selectable: false, evented: false });
+    const locked = new Rect({ width: 10, height: 10 });
+    locked.set({
+      id: "locked",
+      selectable: false,
+      evented: false,
+      locked: true,
+    });
+    const ordinary = new Rect({ width: 10, height: 10 });
+    ordinary.set("id", "ordinary");
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(
+      revived,
+      serialiseScene(canvasOf(background, locked, ordinary)),
+    );
+
+    const state = revived
+      .getObjects()
+      .map((object) => [
+        object.get("id"),
+        object.selectable,
+        object.evented,
+        object.get("locked"),
+      ]);
+
+    expect(state).toEqual([
+      ["background", false, false, undefined],
+      ["locked", false, false, true],
+      // The other half of the contract: an ordinary object is still selectable,
+      // so a fix that disarmed everything would fail here rather than pass.
+      ["ordinary", true, true, undefined],
+    ]);
+  });
+
+  it("strips the interaction flags again for an object that is ordinary", () => {
+    const ordinary = new Rect({ width: 10, height: 10 });
+    ordinary.set("id", "ordinary");
+
+    // Listing a property is not the same as persisting it: defaults still go,
+    // so an ordinary object adds no keys to the document.
+    expect(keysOf(serialiseScene(canvasOf(ordinary)))).not.toContain(
+      "selectable",
+    );
+  });
+
   it("matches by id and never by position", async () => {
     // The failure this prevents is silent: with position matching, inserting
     // one object at index 0 shifts every binding by one node and each id still
@@ -698,6 +752,9 @@ describe("there is exactly one owner of scene serialisation", () => {
       VIGILIA_TEXT_PROPERTY,
       VIGILIA_PAINT_PROPERTY,
       VIGILIA_ASSET_PROPERTY,
+      "selectable",
+      "evented",
+      "locked",
     ]);
   });
 });

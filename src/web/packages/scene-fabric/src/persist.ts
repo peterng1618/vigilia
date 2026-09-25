@@ -28,6 +28,12 @@ classRegistry.setClass(Textbox);
 /**
  * Single owner of Fabric scene serialization. Defaults are stripped so persisted
  * keys are authored deviations; `id` is explicitly included because Fabric omits it.
+ *
+ * The three interaction flags are authored state, not runtime state: the lock
+ * manager writes them and saves, and a theme's own background is authored
+ * non-selectable. Fabric omits all three from `toObject`, so without them here a
+ * revived scene hands every object Fabric's `selectable: true` — an undo would
+ * turn an authored background or a locked object back into an ordinary one.
  */
 
 export const SCENE_PERSISTED_PROPERTIES = [
@@ -35,6 +41,9 @@ export const SCENE_PERSISTED_PROPERTIES = [
   VIGILIA_TEXT_PROPERTY,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_ASSET_PROPERTY,
+  "selectable",
+  "evented",
+  "locked",
 ] as const;
 
 export interface SerialisedScene {
