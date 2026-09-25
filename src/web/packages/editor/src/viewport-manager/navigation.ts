@@ -16,19 +16,42 @@ const PAN_ACTIVE_CURSOR = "grabbing";
 const ZOOM_IN_KEYS: ReadonlySet<string> = new Set(["+", "="]);
 const ZOOM_OUT_KEYS: ReadonlySet<string> = new Set(["-", "_"]);
 
-/** Space activates the focused control, so the camera keys must not claim it
- * there: without this, Space on a focused toolbar button would pan instead. */
+/** Line-mode wheels report a handful of lines, pixel-mode a hundred pixels;
+ * without normalising, one notch pans ~3px on the former. 16 is the
+ * conventional px-per-line. */
+const LINE_HEIGHT = 16;
+
+/** Roles without a native element that take Space as their activation. */
+const SPACE_ACTIVATED_ROLES: ReadonlySet<string> = new Set([
+  "button",
+  "checkbox",
+  "menuitem",
+  "radio",
+  "switch",
+  "tab",
+]);
+
+const wheelDelta = (event: WheelEvent): number =>
+  event.deltaMode === WheelEvent.DOM_DELTA_LINE
+    ? event.deltaY * LINE_HEIGHT
+    : event.deltaY;
+
+/** Space activates the focused control, so the camera must not claim it there:
+ * without this, Space on a focused toolbar button pans instead of pressing it. */
 function activatesOnSpace(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  if (target instanceof HTMLButtonElement) return true;
-  return new Set([
-    "button",
-    "checkbox",
-    "menuitem",
-    "radio",
-    "switch",
-    "tab",
-  ]).has(target.getAttribute("role") ?? "");
+  if (target instanceof HTMLAnchorElement) return target.hasAttribute("href");
+  if (
+    target instanceof HTMLButtonElement ||
+    target instanceof HTMLSelectElement ||
+    // No HTMLSummaryElement interface in lib.dom, so the tag is the only check.
+    target.tagName === "SUMMARY"
+  )
+    return true;
+  // `isTextEntryTarget` is false for exactly the `<input>` types that consume
+  // Space as their own activation, so the negative case reuses that owner.
+  if (target instanceof HTMLInputElement) return !isTextEntryTarget(target);
+  return SPACE_ACTIVATED_ROLES.has(target.getAttribute("role") ?? "");
 }
 
 export interface ViewportNavigationInput {
@@ -57,6 +80,8 @@ export function bindViewportNavigation({
   let lastY = 0;
   let resumeCursor = "";
   let resumeDefaultCursor: string | undefined;
+  let resumeSkipTargetFind = false;
+  let resumeSelection = false;
 
   /** Fabric re-applies `defaultCursor` on every hover, so writing the canvas
    * element's cursor directly is overwritten at the next mouse move. Fabric's
@@ -73,6 +98,8 @@ export function bindViewportNavigation({
     claimed = true;
     resumeCursor = element.style.cursor;
     resumeDefaultCursor = canvas.defaultCursor;
+    resumeSkipTargetFind = canvas.skipTargetFind;
+    resumeSelection = canvas.selection;
     canvas.skipTargetFind = true;
     canvas.selection = false;
     showCursor(PAN_CURSOR);
@@ -81,8 +108,8 @@ export function bindViewportNavigation({
   const release = (): void => {
     if (!claimed) return;
     claimed = false;
-    canvas.skipTargetFind = false;
-    canvas.selection = true;
+    canvas.skipTargetFind = resumeSkipTargetFind;
+    canvas.selection = resumeSelection;
     if (resumeDefaultCursor !== undefined) {
       canvas.defaultCursor = resumeDefaultCursor;
     }
@@ -93,18 +120,21 @@ export function bindViewportNavigation({
 
   const onWheel = (event: WheelEvent): void => {
     // The editor owns the wheel over the canvas; the page behind it must not
-    // scroll under the gesture.
+    // scroll under the gesture. ponytail: page-mode deltas are left raw —
+    // preventDefault already stops the page scroll and a page-mode wheel over a
+    // canvas is vanishingly rare.
     event.preventDefault();
+    const delta = wheelDelta(event);
     if (event.ctrlKey || event.metaKey) {
       viewport.zoomToPoint(
         canvas.getViewportPoint(event),
-        viewport.zoom() * Math.exp(-event.deltaY / WHEEL_ZOOM_DIVISOR),
+        viewport.zoom() * Math.exp(-delta / WHEEL_ZOOM_DIVISOR),
       );
       return;
     }
     // Shift swaps the wheel's axis, as every other canvas app does.
-    if (event.shiftKey) viewport.panBy(-event.deltaY, 0);
-    else viewport.panBy(0, -event.deltaY);
+    if (event.shiftKey) viewport.panBy(-delta, 0);
+    else viewport.panBy(0, -delta);
   };
 
   const onMouseDown = (event: MouseEvent): void => {
@@ -120,6 +150,13 @@ export function bindViewportNavigation({
 
   const onMouseMove = (event: MouseEvent): void => {
     if (!panning) return;
+    // A `mouseup` that lands outside the window never reaches `endPan`, so the
+    // gesture would stay claimed: every later move would pan and Fabric would
+    // never find a target again. The button bit is the liveness signal.
+    if (event.buttons === 0) {
+      endPan();
+      return;
+    }
     viewport.panBy(event.clientX - lastX, event.clientY - lastY);
     lastX = event.clientX;
     lastY = event.clientY;
@@ -144,6 +181,9 @@ export function bindViewportNavigation({
       isTextEntryTarget(document.activeElement)
     )
       return;
+    // Ctrl+Space is an IME toggle and Alt+Space the window menu; the camera
+    // claims bare keys only, so the browser's own chords are never taken.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === " ") {
       // Space also activates the focused control, which owns the key there.
       if (activatesOnSpace(event.target)) return;
@@ -157,7 +197,6 @@ export function bindViewportNavigation({
       showCursor(PAN_CURSOR);
       return;
     }
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (ZOOM_IN_KEYS.has(event.key)) {
       viewport.zoomBy(ZOOM_STEP);
       return;
