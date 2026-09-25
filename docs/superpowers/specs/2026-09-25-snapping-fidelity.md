@@ -66,7 +66,8 @@ the active object and its selection children, `visible === false`, and
 `IGNORED_IDS`. It has **no** `selectable` and **no** `locked` check: locking a
 logo prevents *moving* it, not *aligning to* it.
 
-Vigilia requires `selectable === true` and `locked !== true`. Two consequences:
+Vigilia required `selectable === true` and `locked !== true`. Two consequences,
+both of which this change closes:
 
 - A locked object cannot be aligned against. This is a behaviour regression
   against the fork and contradicts the user's expectation that lock is a
@@ -79,8 +80,17 @@ Vigilia requires `selectable === true` and `locked !== true`. Two consequences:
 
 Resolve by intent, not by object class: extend `IGNORED_IDS` to the specific
 non-alignable scene objects (the artboard plate is the clear case), then relax
-the filter to the fork's rule. `IGNORED_IDS` is currently empty; the id for the
-artboard plate is `scene` (`new-fabric-theme.ts:329`).
+the filter to the fork's rule.
+
+The artboard plate's id is **`"background"`**, not `"scene"`. The call is
+`rect("background", 0, 0, 1280, 720, twilightGradient, 0, backgroundOnly, "scene")`
+(`new-fabric-theme.ts:320-330`): `"background"` is the `id` parameter, and
+`"scene"` is the ninth argument, `paletteId`, which becomes
+`vigiliaPaint: { fill: "palette.scene" }`. `new-fabric-theme.test.ts:64` asserts
+the plate's `id` is `"background"`, and no object in the product carries
+`id: "scene"` — an ignored-ids list of `["scene"]` therefore excludes nothing.
+This mirrors the fork, whose own list is
+`['montage-area', 'background', 'interaction-blocker']`.
 
 ### 3. Spacing context stickiness
 

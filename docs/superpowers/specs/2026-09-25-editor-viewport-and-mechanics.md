@@ -33,8 +33,8 @@ indicators) and stopped. The fork's `zoom-manager`, `pan-constraint-manager` and
   `zoomToPoint`, clamped pan bounds, fit-zoom and space+drag panning.
 - **Fabric already provides** `zoomToPoint`, `setViewportTransform`,
   `getZoom`, `moveObjectTo` and the marquee. This is wiring, not invention.
-- **`snap-manager` and `guide-renderer` already read zoom** (`snap-manager/index.ts:125`,
-  `guide-renderer/index.ts:30`) and divide guide width by it, so they are
+- **`snap-manager` and `guide-renderer` already read zoom** (`snap-manager/index.ts:155`,
+  `snap-manager/guide-renderer.ts:30`) and divide guide width by it, so they are
   zoom-aware already and need no change.
 - **Base UI** ships `ContextMenu` unused.
 

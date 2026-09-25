@@ -30,11 +30,13 @@
 
 The five failure modes most likely to bite an author, and where each is pinned:
 
-1. **Reordering a layer silently drops it out of its group.** A drag that lands between two groups must refuse, not restack. → Task 6.
-2. **Collapsing a group makes its children unselectable from the tree, and the current selection vanishes from view.** The parent must keep the child selected, or the panel must reveal the ancestor path. → Task 5.
-3. **A rename that collides with an existing id, or is empty/whitespace.** Names are display-only, so a collision is survivable, but an empty name renders a blank row. → Task 7.
-4. **A lock/visibility toggle on a group child with a hidden or locked ancestor.** Toggling the child must not silently do nothing; the row shows effective state, so clicking must reconcile the path. → Task 4.
-5. **The two action surfaces drifting.** A dock button that is enabled while the layer row's twin is disabled, or vice versa, for the same selection. → Task 3.
+1. **Reordering a layer silently drops it out of its group.** A drag that lands between two groups must refuse, not restack — and a drag that lands *inside* a group must restack there without lifting the child out of it. The second half is not a hypothetical: it shipped once and the review caught it. → Task 6 Steps 1 (unit) and 6 (browser).
+2. **Collapsing a group makes its children unselectable from the tree, and the current selection vanishes from view.** The parent must keep the child selected, or the panel must reveal the ancestor path. → Task 5 Steps 1 and 6.
+3. **A rename that collides with an existing id, or is empty/whitespace.** Names are display-only, so a collision is survivable, but an empty name renders a blank row. → Task 4 Step 1 (blank name) and Task 5 Step 3 (the rename input).
+4. **A lock/visibility toggle on a group child with a hidden or locked ancestor.** Toggling the child must not silently do nothing; the row shows effective state, so clicking must reconcile the path. → Task 5 Step 7.
+5. **The two action surfaces drifting.** A dock button that is enabled while the layer row's twin is disabled, or vice versa, for the same selection. → Task 2 Step 6 and Task 6 Step 1.
+
+*(Every arrow above was wrong in an earlier revision — items 2–5 pointed at Tasks 5, 7, 4 and 3 as a group, i.e. one task off from the coverage table below for three of them, and item 1 pointed at Task 6 while the item it describes is exactly the Critical that shipped. The list and the Self-Review's coverage table now agree.)*
 
 ---
 
@@ -581,29 +583,61 @@ git commit -m "feat(editor): project Fabric layers into serializable rows"
 
 **Interfaces:**
 - Consumes: `projectLayers`, `LayerRow` (Task 3).
-- Produces: `EditorShellBridge.layers(): readonly LayerRow[]` and `EditorShellBridge.renameLayer(id: string, name: string): void`; `EditorActionFacade.layerNames(): Readonly<Record<string, string>>` and `setLayerNames(names: Readonly<Record<string, string>>): void`.
+- Produces: `EditorShellBridge.layers(): readonly LayerRow[]` and `EditorShellBridge.renameLayer(id: string, name: string): void`; `EditorActionFacade.layerNames(): Readonly<Record<string, string>>` and `setLayerNames(names: Readonly<Record<string, string>>): void`. (`setCollapsed` is **Task 5's**, not this task's.)
 
 `editorMetadata` is validated and serialized today but has no reader or writer. It needs no shape change: `layerNames` is one key inside it.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `bridge.dom.test.ts`:
+The existing `bridgeFor` helper (`bridge.dom.test.ts:43`) takes `(active, extra)` and spreads `extra` into the **editor**, not the bridge — so `{ layerNames: … }` would land in the wrong object. Its `facadeStub()` (`:20`) also has no `layerNames`/`setLayerNames`, and its canvas stub has no `getObjects()`, which `layers()` needs. Widen the helper first:
+
+```ts
+function bridgeFor(
+  active: unknown,
+  extra: Record<string, unknown> = {},
+  sessionExtra: Record<string, unknown> = {},
+) {
+  const listeners = new Map<string, () => void>();
+  const objects = active === undefined ? [] : [active];
+  const canvas = {
+    getActiveObject: () => active,
+    getObjects: () => objects,
+    on: vi.fn((name: string, listener: () => void) =>
+      listeners.set(name, listener),
+    ),
+    off: vi.fn(),
+  };
+  const editor = { canvas, ...extra };
+  const session = { ...facadeStub(), ...sessionExtra };
+  // …unchanged below
+```
+
+Add the two members to `facadeStub()` as well: `layerNames: vi.fn(() => ({}))` and `setLayerNames: vi.fn()`.
+
+Then append:
 
 ```ts
 it("carries display names into the projection and back out again", () => {
   const rect = new Rect({ id: "header", width: 10, height: 10 });
-  const bridge = bridgeFor(rect, { layerNames: { header: "Header rule" } });
+  const { bridge, session } = bridgeFor(rect, {}, {
+    layerNames: () => ({ header: "Header rule" }),
+  });
   expect(bridge.layers()[0]?.name).toBe("Header rule");
 
   bridge.renameLayer("header", "Top rule");
-  expect(bridge.layers()[0]?.name).toBe("Top rule");
+  // The write goes to the facade, not to a local copy — assert it there. The
+  // stub does not feed the value back, so re-reading layers() here would only
+  // re-assert the seeded value.
+  expect(session.setLayerNames).toHaveBeenCalledWith({ header: "Top rule" });
 });
 
-it("falls back to the id when a rename is blank", () => {
+it("clears the stored name when a rename is blank", () => {
   const rect = new Rect({ id: "header", width: 10, height: 10 });
-  const bridge = bridgeFor(rect);
+  const { bridge, session } = bridgeFor(rect);
   bridge.renameLayer("header", "   ");
-  expect(bridge.layers()[0]?.name).toBe("header");
+  // Removing the key, not storing whitespace: Task 3's name ladder already
+  // falls back to the id for a row with no stored name.
+  expect(session.setLayerNames).toHaveBeenCalledWith({});
 });
 ```
 
@@ -629,6 +663,8 @@ In `editor-shell.ts`, hold the map beside `let globals` and expose it through th
 ```ts
   const names = (): Readonly<Record<string, string>> => input.session.layerNames();
 
+  const collapsedGroups = new Set<string>();
+
   const layers = (): readonly LayerRow[] => {
     const active = canvas.getActiveObject();
     const selected =
@@ -653,7 +689,7 @@ In `editor-shell.ts`, hold the map beside `let globals` and expose it through th
   };
 ```
 
-`collapsedGroups` is a bridge-local `Set<string>` for now (Task 5 lifts it into the shell). A rename is editor-only metadata, so it does **not** call `historyManager.saveState()` — it is not authored document content, and §67 keeps runtime state out of authored history.
+`collapsedGroups` stays a bridge-local `Set<string>` seeded empty: this task only *reads* it into the projection, and Task 5 adds the `setCollapsed(id, collapsed)` that mutates it. A rename is editor-only metadata, so it does **not** call `historyManager.saveState()` — it is not authored document content, and §67 keeps runtime state out of authored history.
 
 - [ ] **Step 5: Run the tests**
 
@@ -674,7 +710,12 @@ git add src/web/packages/editor/src/editor-shell/bridge.ts \
   src/web/packages/editor/src/editor-shell/bridge.dom.test.ts \
   src/web/packages/editor/src/editor-shell/session-facade.ts \
   src/web/packages/editor/src/editor-shell.ts \
-  src/web/tests/e2e/editor.spec.ts
+  src/web/packages/editor/src/editor-shell.dom.test.ts \
+  src/web/packages/editor/src/editor-session.ts \
+  src/web/packages/editor/src/editor-main.ts \
+  src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx \
+  src/web/tests/e2e/editor.spec.ts \
+  STATUS.md
 git commit -m "feat(editor): persist layer display names in editorMetadata"
 ```
 
@@ -775,9 +816,29 @@ Expected: FAIL — import does not resolve.
 - is `aria-selected` and calls `selectLayer(row.id)` on click;
 - on double-click swaps the name for an `<input>` with `aria-label={`${uiCopy.panels.rename} ${row.name}`}`, committing on Enter/blur via `renameLayer`, cancelling on Escape.
 
-Re-render on bridge events using the same `useSyncExternalStore` pattern `shell-layout.tsx:116-118` already uses, with `bridge.layers()` as the snapshot. Keep the snapshot referentially stable: `useSyncExternalStore` requires `getSnapshot` to return an equal value when nothing changed, so cache the projection and only recompute inside the `subscribe` listener.
+Re-render on bridge events with a `SelectionStore`-shaped store, **not** by handing `bridge.layers()` straight to `useSyncExternalStore`. `getSnapshot` is called on every render and compared with `Object.is`, so a projection built fresh on each call re-renders forever. Cache the projection in a field of a small store object, return that cached field from `getSnapshot`, and recompute it (a) on every `subscribe` notification and (b) after any call that mutates the projection — `renameLayer` and `setCollapsed`. That store shape is what `shell-layout.tsx:88-118` already does for the snapshot; follow it rather than inventing a second one, and do not fall back to `useState` + `useEffect`, which is the React-mirroring pattern this shell avoids.
 
-Delete `src/web/packages/editor/src/layer-panel.ts` and its mount in `editor-shell.ts`; the shell's `hosts.layers` node is replaced by a React slot rendered inside `shell-layout.tsx`.
+Delete `src/web/packages/editor/src/layer-panel.ts` and its mount in `editor-session.ts`; the shell's `hosts.layers` node is replaced by a React slot rendered inside `shell-layout.tsx`.
+
+**Do this part first — it is the task's widest blast radius, and the file list above understates it.** `layer-panel.ts` is imported in more places than the panel itself, and each needs a decision:
+
+| Site | What it needs |
+|---|---|
+| `editor-session.ts:26` | delete the `createLayerPanel, type LayerPanel` import |
+| `editor-session.ts:113` | delete `readonly #layers: LayerPanel` |
+| `editor-session.ts:146-149` | delete the `createLayerPanel(...)` call |
+| `editor-session.ts:67-70` | `EditorPanelHosts.layers` becomes unused — remove the member and its doc comment |
+| `editor-shell.ts` | the host creation for `hosts.layers` moves to the React slot |
+| `editor-main.ts:124` | remove `layers: layout.hosts.layers` |
+| `shell-layout.tsx:28,253` | drop the `layers` member from `ShellHosts` (`:28`) and its element creation (`:253`) |
+| `shell-layout.tsx:316` | drop the `<Host node={hosts.layers} hidden={…} />`; the `"layers"` literal in `RailPane` (`:21`), the `useState` default (`:273`) and the rail entry (`:277`) stay — the pane itself survives, only its host node goes |
+| `editor-session.dom.test.ts` | 7 occurrences — `vi.mock("./layer-panel.js")` at `:11` and a `layers:` member in each of the 6 `panelHosts` literals (lines ~90, 136, 193, 269, 352, 425) |
+| `layer-panel.dom.test.ts` | delete with its source |
+| `layer-manager/index.ts:3` | a doc comment pointing at `layer-panel.ts` as the projection owner — repoint it at the new file |
+
+Remove the `layers` host from `ShellHosts` only if nothing else reads it; otherwise leave the node and render the tree into it, which is the smaller change. Decide from what compiles.
+
+`editor-session.dom.test.ts` and `editor-session.ts` are **not** in the Files list above, which is a defect in the plan — add them to the commit's `git add` regardless.
 
 - [ ] **Step 4: Implement the four commands**
 
@@ -865,7 +926,12 @@ git add src/web/packages/editor/src/editor-shell/layer-panel.tsx \
   src/web/packages/editor/src/editor-shell/shell-layout.tsx \
   src/web/packages/editor/src/editor-shell/editor-shell.css \
   src/web/packages/editor/src/layer-panel.ts \
-  src/web/packages/editor/src/editor-shell.ts
+  src/web/packages/editor/src/layer-panel.dom.test.ts \
+  src/web/packages/editor/src/editor-shell.ts \
+  src/web/packages/editor/src/editor-session.ts \
+  src/web/packages/editor/src/editor-session.dom.test.ts \
+  src/web/packages/editor/src/editor-main.ts \
+  src/web/packages/editor/src/layer-manager/index.ts
 git commit -m "feat(editor): layer tree with per-row state icons"
 ```
 
@@ -896,15 +962,151 @@ it("renders object actions in a bottom row, not on the selected row", async () =
 });
 
 it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
-  const can = vi.fn((action: string) => action === "delete");
+  // Eligibility is expressed through `target()`: `actionEnabled` reads the
+  // ActionGate, and the bridge has no `can` in that path. Overriding `can` here
+  // would change nothing and the test would silently assert the unfiltered row.
+  const none = () => ({ kind: "none", locked: false, memberCount: 0, isGroup: false });
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge(rows, { can })} />));
-  const row = host.querySelector("[data-vigilia-layer-actions]");
-  expect(row?.querySelectorAll("button")).toHaveLength(1);
-  expect(row?.querySelector("button")?.getAttribute("aria-label")).toBe("Delete");
+  await act(async () => root.render(<LayerPanel bridge={bridge(rows, { target: none })} />));
+  const empty = host.querySelector("[data-vigilia-layer-actions]");
+  expect(empty?.querySelectorAll("button")).toHaveLength(0);
+
+  // With the helper's default single unlocked object the row is the registry's
+  // own answer, derived rather than hand-written — a literal count here would
+  // only pass if the row re-derived eligibility, which Step 3 forbids.
+  const host2 = document.createElement("div");
+  const root2 = createRoot(host2);
+  await act(async () => root2.render(<LayerPanel bridge={bridge(rows)} />));
+  const gate = bridge(rows);
+  const expected = OBJECT_ACTIONS
+    .filter((action) => actionEnabled(gate, action.id))
+    .map((action) => action.label);
+  const rendered = [...(host2.querySelector("[data-vigilia-layer-actions]")
+    ?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label"));
+  expect(rendered.sort()).toEqual([...expected].sort());
+  expect(expected.length).toBeGreaterThan(1);
 });
 ```
+
+Note there is deliberately **no** target that makes exactly one action eligible: `delete`, `copy`, `cut`, `duplicate`, `lock` and the four ordering actions all share `hasSelection && !locked`. A fixture asserting a single button cannot be built from the registry's real rules, so do not try.
+
+**Also write `reorderLayer`'s unit tests here, before implementing it.** Step 4 adds the whole reorder operation with no test of its own — its parent check, its anchor lookup and its return value are the risky part, and Step 6's browser test cannot pin them.
+
+These need a **real `Canvas`**, not `bridgeFor`'s stub: the stub canvas has no `moveObjectTo`, and the cross-group case needs real `Group` parentage for `ownerOf` to walk. That file imports `Group`, `Rect` and `ActiveSelection` from `fabric/es`; add `Canvas` to that import, and `vi` is already imported.
+
+**`bridgeFor` lives in `bridge.dom.test.ts:45` and is not exported.** Either export it from there and import it here, or — better, since these three tests are bridge behaviour rather than panel behaviour — put all three in `bridge.dom.test.ts` beside it and keep `layer-panel.dom.test.tsx` for the two DOM tests above. Do not copy the factory; a duplicate would drift from the stub the rest of the suite uses.
+
+**The factory's second parameter is spread into `editor`, and its canvas stub spreads your `canvasExtra` over the defaults, so `bridgeFor(undefined, { canvas, historyManager: { saveState } })` threads both.** Read `bridgeFor` at `:45-71` before relying on that: the `canvas.getObjects()` / `getActiveObject()` accessors are **not** overridable through it, which is why `bridgeFor(undefined, ...)` rather than a fake active object is what you want here.
+
+```ts
+it("reorders within one parent and reports the move", () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const alpha = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const beta = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  alpha.set("id", "alpha");
+  beta.set("id", "beta");
+  canvas.add(alpha, beta);
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(undefined, { canvas, historyManager: { saveState } });
+
+  const order = (): unknown[] =>
+    canvas.getObjects().map((object) => object.get("id"));
+
+  // Paint order is bottom-first; the panel reverses it for display.
+  expect(order()).toEqual(["alpha", "beta"]);
+  expect(bridge.reorderLayer("alpha", "beta")).toBe(true);
+  expect(order()).toEqual(["beta", "alpha"]);
+  // Reordering is authored state: without this the drop would not reach the
+  // saved envelope, and the browser test below is the only other thing that
+  // would notice.
+  expect(saveState).toHaveBeenCalledTimes(1);
+});
+
+it("refuses to move a layer across a group boundary", () => {
+  // Crossing owners changes membership, which is a different operation.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  const group = new Group([child]);
+  group.set("id", "grp");
+  const sibling = new Rect({ left: 60, top: 0, width: 10, height: 10 });
+  sibling.set("id", "sibling");
+  canvas.add(group, sibling);
+  const { bridge } = bridgeFor(undefined, { canvas, historyManager: { saveState: vi.fn() } });
+
+  const before = canvas.getObjects().map((object) => object.get("id"));
+  expect(bridge.reorderLayer("child", "sibling")).toBe(false);
+  expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
+  // The refusal must not have reparented the child either.
+  expect(child.group).toBe(group);
+});
+
+it("reorders inside a group without lifting the child out of it", () => {
+  // The regression this test exists for: `siblings` is the group's array while
+  // the move was issued on the canvas, so the child landed in the canvas root
+  // *and* stayed in the group. `canvas.getObjects()` is the assertion that
+  // catches it — the same-parent test above cannot, because its siblings are
+  // canvas-root and the two arrays happen to be the same one.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const peer = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  peer.set("id", "peer");
+  const group = new Group([child, peer]);
+  group.set("id", "grp");
+  canvas.add(group);
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(undefined, { canvas, historyManager: { saveState } });
+
+  const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
+    objects.map((object) => object.get("id"));
+
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["child", "peer"]);
+  expect(bridge.reorderLayer("child", "peer")).toBe(true);
+  // The group is still the only canvas-root object, and the child is still in it.
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["peer", "child"]);
+  expect(child.group).toBe(group);
+  expect(saveState).toHaveBeenCalledTimes(1);
+});
+
+it("refuses an unknown id instead of moving something else", () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const alpha = new Rect();
+  const beta = new Rect();
+  alpha.set("id", "alpha");
+  beta.set("id", "beta");
+  canvas.add(alpha, beta);
+  const { bridge } = bridgeFor(undefined, { canvas, historyManager: { saveState: vi.fn() } });
+
+  const before = canvas.getObjects().map((object) => object.get("id"));
+  expect(bridge.reorderLayer("nope", "beta")).toBe(false);
+  expect(bridge.reorderLayer("alpha", "nope")).toBe(false);
+  expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
+});
+```
+
+Confidence notes, so you do not spend the round re-deriving them: `moveObjectTo(object, index): boolean` is confirmed on `StaticCanvas` (`node_modules/fabric/dist/src/canvas/StaticCanvas.d.ts:56`; the implementation is `createCollectionMixin`'s at `node_modules/fabric/dist/index.mjs:1162-1168`, which `:1978` and `:9132` apply to both `StaticCanvas` and `Group`). It does its own remove + splice, so a real `Canvas` needs no hand-maintained splice. `ownerOf` walks the object tree via `pathTo` (`layer-tree.ts:139-152`), so real `Group` nesting is what makes it resolve.
+
+**Measured against Fabric 7.4.0, not reasoned about.** Four probes were run during planning; all four results are below, because three of them contradict what this step used to say.
+
+1. **`Group.getObjects()` returns a copy.** `getObjects(...types)` is `return [...this._objects]` (`index.mjs:1037`). Never mutate it; use `moveObjectTo` on the owning `Group`. **The sketch originally called `canvas.moveObjectTo` here, which is the defect in result 3 — corrected below.**
+
+2. **The cross-group case is refused by the owner comparison, not by the index guard.** *(Corrected after implementation. This result previously claimed the opposite — that `grp.getObjects().indexOf(sibling)` being `-1` meant the guard "already refuses" and "the `ownerOf` line is not what makes this test pass". Measured on a real `Canvas`, that is false: with the owner comparison removed, the implementer's cross-group test passes with the guard still in place, and only fails once the guard is deleted **too**. So the owner comparison is load-bearing, and the teeth check below is written to match.)*
+
+3. **A silent reparent is possible, and it is the same-parent case — which is exactly what `reorderLayer` exists to serve.** `moveObjectTo` returns `false` when `object === this._objects[index]`, and `removeFromArray` leaves the array alone when the object is absent, so `splice` still runs at a stale index. **This is a real defect, not a hypothetical: the shipped code had it.** `siblings` is correctly taken from the owning group while `canvas.moveObjectTo` splices `canvas._objects` — so reordering `child` among its group siblings returned `true`, inserted the child into the canvas root, left it inside `grp`, and gave `getObjects()` and the group's own array each their own copy of one object. A review reproduced it on a real `Canvas` (`grp` = [`child`,`peer`]; `reorderLayer("child","peer")` → `true`, root `["grp","child"]`, `grp` still `["child","peer"]`), and the same-parent test missed it only because its siblings happen to be canvas-root.
+
+   **The fix is the container, not the guard: reorder on the object that owns the array.** `moveObjectTo` is `createCollectionMixin`'s and applies to `Group` as well as `StaticCanvas` (`:1978`, `:9132`), so `parent ?? canvas` is the right receiver. The index guard stays, but it is defence in depth against an inconsistent read and **no longer the thing that prevents reparenting** — with the container correct, a group child cannot leave its group by this path at all.
+
+**Teeth check — three steps, all required. The single check this step used to name does not work.** It said "delete the `ownerOf` comparison and confirm the cross-group test fails". Measured: deleting that line alone leaves the cross-group test **passing** (the guard refuses instead), so the named check proves nothing. Both halves must go together.
+
+1. **Break the scoping.** Change `const parent = ownerOf(moved)` to `const parent = undefined` **and delete the index guard** (`if (from < 0 || anchorAt < 0) return false;`). The cross-group test must now fail with `canvas.getObjects()` containing the **child** at the root beside `grp` and `sibling`. Restore both lines, and restore the owner comparison if you removed it to check the claim above.
+2. **Break the arithmetic.** In the same-parent test, change `let target = anchorAt + 1;` to `target = from;`. Fabric returns `false` (the object already sits there), so `reorderLayer` returns `false` and the test fails on `expect(...).toBe(true)`. Restore.
+3. **Break the container — the regression this step now exists to catch.** Put `canvas.moveObjectTo(moved, target)` back in place of `parent ?? canvas`, and confirm the **new intra-group test fails** with the child present in both the canvas root and the group. Without this step the Critical defect this plan shipped once can ship again with a green suite, because every existing test's siblings are canvas-root.
+
+Report both exact assertions. A teeth check that passes on the correct code *and* on the broken code is worse than none, because it reads as coverage.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -913,22 +1115,21 @@ Expected: FAIL — no `[data-vigilia-layer-actions]` element.
 
 - [ ] **Step 3: Implement the bottom row**
 
-Below the tree, render one row of icon buttons from `bridge.target()`:
+Below the tree, render one row of icon buttons, filtered by the **one** shared predicate:
 
 ```tsx
-const target = bridge?.target();
 <footer data-vigilia-layer-actions="">
-  {[...OBJECT_ACTIONS, ...arrangeActions()]
-    .filter((action) => target !== undefined && action.eligible(target) && eligibleInShell(action.id))
+  {OBJECT_ACTIONS
+    .filter((action) => bridge !== undefined && actionEnabled(bridge, action.id))
     .map(({ id, icon: Icon, label }) => (
-      <button key={id} type="button" aria-label={label} onClick={() => runAction(id)}>
+      <button key={id} type="button" aria-label={label} onClick={() => bridge.run(id)}>
         <Icon aria-hidden size={15} strokeWidth={1.75} />
       </button>
     ))}
 </footer>
 ```
 
-`eligibleInShell` is the one shared predicate: extract it from `canvas-dock.tsx` (Task 2) into `object-actions.ts` as `export function actionEnabled(bridge, id): boolean` so the dock and this row call the same function. Seeing the same function in both places is the point of the task — do not re-implement the check here.
+**Ruled: `OBJECT_ACTIONS` only — the registry already holds `actionEnabled` and the dock already calls it.** `actionEnabled(gate, id)` lives in `object-actions.ts` and `canvas-dock.tsx` is already a pure registry render (`onClick={() => bridge?.run(id)}`) as of Task 2, so there is nothing to extract and nothing to re-implement. `arrangeActions()` is **not** in this row: the spec's defect table moves arrange out of the layer panel to the top toolbar, and Task 7 owns it. The dock and this row therefore render the same list for the same gate — which is the property the test above pins — and arrange appears in exactly one place.
 
 - [ ] **Step 4: Implement reorder**
 
@@ -936,18 +1137,36 @@ In `bridge.ts`:
 
 ```ts
   reorderLayer(id, beforeId) {
-    const moved = findById(canvas.getObjects(), id);
-    const anchor = findById(canvas.getObjects(), beforeId);
+    const root = canvas.getObjects();
+    const moved = findById(root, id);
+    const anchor = findById(root, beforeId);
     if (moved === undefined || anchor === undefined) return false;
     // v1 restacks inside one parent only: crossing a group boundary changes
     // membership, which is a different operation with different semantics.
-    if (ownerOf(moved) !== ownerOf(anchor)) return false;
-    const parent = ownerOf(moved);
-    const siblings = parent === undefined ? canvas.getObjects() : parent.getObjects();
-    const target = siblings.indexOf(anchor);
-    if (target < 0) return false;
-    // Fabric is the sole order owner; moveObjectTo reorders the array Fabric paints.
-    canvas.moveObjectTo(moved, target);
+    if (ownerOf(root, id) !== ownerOf(root, beforeId)) return false;
+    const parent = ownerOf(root, id);
+    const siblings = parent === undefined ? root : parent.getObjects();
+    const from = siblings.indexOf(moved);
+    const anchorAt = siblings.indexOf(anchor);
+    // Defence in depth, NOT the thing that stops a reparent: with the receiver
+    // below chosen from the same `parent` these indices came from, a mismatch
+    // can no longer cross arrays. Keep it for an inconsistent read.
+    if (from < 0 || anchorAt < 0) return false;
+    // `beforeId` means directly above that row in the panel, and the panel paints
+    // topmost-first, so in Fabric's bottom-first paint order the target is one
+    // past the anchor. Fabric's `moveObjectTo` removes the object and then
+    // splices at `index` in the *post-removal* array, so an upward move in paint
+    // order shifts down by one.
+    let target = anchorAt + 1;
+    if (from < target) target -= 1;
+    // The receiver must be the collection `siblings` came from. `moveObjectTo` is
+    // `createCollectionMixin`'s and exists on `Group` too (`index.mjs:1978`,
+    // `:9132`), but it splices `this._objects` — so calling it on the canvas while
+    // indexing the group's array inserts the child into the canvas root and
+    // leaves it inside the group, giving Fabric's paint and serialization arrays
+    // one object each. Its boolean return is the move's own verdict — it answers
+    // false when the object already sits at `target` — so keep checking it.
+    if (!(parent ?? canvas).moveObjectTo(moved, target)) return false;
     canvas.requestRenderAll();
     input.editor.historyManager.saveState();
     notify();
@@ -955,7 +1174,16 @@ In `bridge.ts`:
   },
 ```
 
+**Four details that decide whether this compiles and behaves:**
+
+- **`ownerOf` takes `(root, id)`, not an object** (`layer-tree.ts:139-146`). The earlier sketch wrote `ownerOf(moved)` / `ownerOf(anchor)`; that does not compile. `findById` is also `(root, id)` (`:125`, `:133`). Pass `root` and the **id**, and hold `root` in a local so the three reads cannot see different arrays.
+- **The receiver is `parent ?? canvas`, and this is the one line that decides correctness.** `moveObjectTo` lives on `createCollectionMixin`, so `Group` and `StaticCanvas` both have it (`index.mjs:1978`, `:9132`) — but each splices **its own** `_objects`. Compute `siblings` from one collection and move in the other and the object ends up in both. Shipped once; review reproduced it. Do not "simplify" it back to `canvas`.
+- **`canvas.requestRenderAll()` is redundant but harmless.** `moveObjectTo` calls `_onStackOrderChanged`, which for a canvas is `this.renderOnAddRemove && this.requestRenderAll()` (`index.mjs:2041`). Keep the explicit call: it is how the rest of `bridge.ts` ends a mutation (`selectLayer` at `:145`, `setLayerVisible` at `:158`), and depending on `renderOnAddRemove` being left at its default is a coupling nobody would remember.
+- **The index arithmetic is the whole bug surface besides the receiver, and it is already resolved above.** Read from Fabric 7.4.0's own source (`node_modules/fabric/dist/index.mjs:1162-1168`): `moveObjectTo` returns `false` when `object === this._objects[index]`, otherwise removes the object and splices at `index` **in the post-removal array**. Probed the shipped computation against a real `Canvas`: `["alpha","beta"]` with `from = 0, anchorAt = 1` gives `target = 1` and yields `["beta","alpha"]`, which is what the same-parent test asserts. Do not re-derive it; the unit tests are the contract and one run will confirm it.
+
 Wire HTML5 drag events on rows (`draggable`, `onDragStart`, `onDragOver` to show the drop line, `onDrop` → `reorderLayer`). A refused drop shows no line and changes nothing.
+
+**Ruled: the drop line's row pitch is named once on each side, and the row is fixed-height.** The panel positions the line with `index * 24` while the CSS gave the row `min-height: 24px` — two independent 24s, and `min-height` let a row grow taller than the line assumed, which would put the marker in the wrong slot with no test noticing. Change the CSS rule to `height: 24px` (with `overflow: hidden`, so a long name truncates instead of wrapping past it) and hoist the panel's literal to a module constant — `const ROW_HEIGHT = 24;` — with a comment naming `.vigilia-layer-row`'s height as the pair. `min-height` was the defect, not the duplication: a fixed row height is what makes `index * pitch` true. `layer-panel.dom.test.tsx:274-275` already pins both numbers, so it is the check.
 
 - [ ] **Step 5: Run the tests**
 
@@ -967,15 +1195,101 @@ Expected: PASS.
 ```ts
 test("reorders a layer and refuses a cross-group drop", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+
   await page.goto(EDITOR);
-  // Drag the text row above the shape row inside the same parent, then assert
-  // the new order in the panel and that a save/reopen keeps it.
-  // Then drag a child onto a sibling in another group and assert nothing moved.
+  // A fixture with both shapes the rule distinguishes: two plain siblings, and a
+  // group whose child must not be movable across the boundary.
+  // `vigiliaPaint` and `globals.palette` are not decoration: a literal `fill`
+  // with no paint ref is `unresolved-global-ref` and `setThemePackage` asserts
+  // `writeThemePackage` returned ok, so a fixture without them fails before the
+  // editor opens. Copied from the `movable.vigilia-theme` fixture at `:1322`.
+  const paint = {
+    palette: {
+      none: { name: "None", value: { kind: "solid", color: "transparent" } },
+      accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+    },
+  };
+  const rect = (id: string, left: number, top: number) => ({
+    type: "Rect",
+    id,
+    left,
+    top,
+    width: 40,
+    height: 40,
+    fill: "#00b8d9",
+    vigiliaPaint: { fill: "palette.accent" },
+    originX: "left",
+    originY: "top",
+  });
+  await setThemePackage(page, "reorder.vigilia-theme", {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id: "reorder",
+    artboard: { width: 320, height: 180 },
+    globals: paint,
+    scene: {
+      version: "7.4.0",
+      objects: [
+        rect("alpha", 20, 20),
+        rect("beta", 80, 20),
+        {
+          type: "Group",
+          id: "grp",
+          left: 20,
+          top: 90,
+          objects: [{ ...rect("child", 0, 0), width: 30, height: 30 }],
+        },
+      ],
+    },
+  });
+  await expect(page.locator("#status")).toHaveText("Opened reorder.vigilia-theme");
+
+  const panelOrder = (): Promise<(string | null)[]> =>
+    page.locator("[data-vigilia-layer]").evaluateAll((rows) =>
+      rows.map((row) => row.getAttribute("data-vigilia-layer")),
+    );
+  // The panel paints topmost-first, so its row order is the reverse of the
+  // serialized paint order. Compare the pair's *relative* order, never an
+  // absolute index, so this holds whichever direction the projection uses.
+  const idsIn = (envelope: unknown): string[] =>
+    ((envelope as { scene: { objects: Array<{ id?: string }> } }).scene.objects)
+      .map((object) => object.id ?? "");
+  const pairRelativeTo = (ids: string[]): boolean =>
+    ids.indexOf("alpha") < ids.indexOf("beta");
+
+  const beforeIds = idsIn(await saveEnvelope(page));
+  const beforePanel = await panelOrder();
+  expect(beforeIds).toContain("alpha");
+  expect(beforeIds).toContain("beta");
+
+  // Same parent: drop alpha on beta's row.
+  await page
+    .locator('[data-vigilia-layer="alpha"]')
+    .dragTo(page.locator('[data-vigilia-layer="beta"]'));
+  const afterPanel = await panelOrder();
+  expect(afterPanel).not.toEqual(beforePanel);
+
+  // Reordering is authored state (Step 4 calls `saveState`), so it must reach
+  // the saved envelope — a panel-only change would be a projection bug.
+  const afterIds = idsIn(await saveEnvelope(page));
+  expect(pairRelativeTo(afterIds)).toBe(!pairRelativeTo(beforeIds));
+
+  // Cross-group: a child dropped on a top-level sibling changes membership,
+  // which this operation must refuse outright.
+  await page
+    .locator('[data-vigilia-layer="child"]')
+    .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
+  expect(await panelOrder()).toEqual(afterPanel);
+  expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
 });
 ```
 
 Run: `npx playwright test --project=desktop-chromium --grep "reorders a layer" --workers=1`
-Expected: PASS. Then make `reorderLayer` ignore the parent check and confirm the cross-group case fails. Restore.
+Expected: PASS.
+
+**Teeth check — the same two breaks as Step 1, because this test asserts the same rules one layer up.** Step 1's named check was toothless and is replaced there; do not reintroduce it here. In `reorderLayer`, first change `const parent = ownerOf(root, id)` to `const parent = undefined` **and** delete `if (from < 0 || anchorAt < 0) return false;` — the cross-group block must fail. Restore, then change `let target = anchorAt + 1;` to `target = from;` — the same-parent block must fail on `expect(afterPanel).not.toEqual(beforePanel)`. Restore both and confirm the test is green again.
+
+**Note the vacuity guard this test does and does not have.** `expect(afterPanel).not.toEqual(beforePanel)` fails if the drag did nothing, so a dead HTML5 drag path cannot pass silently — provided `panelOrder()` returns rows at all. It returns an empty array if the panel is not rendered, and `[] !== []` is false, so `not.toEqual` catches that too. What it does **not** catch is a drag that *fires* but reaches `reorderLayer` with the wrong ids; the envelope assertion on the next line is what pins that, since it compares the pair's relative order before and after.
 
 - [ ] **Step 7: Commit**
 
@@ -1004,7 +1318,7 @@ git commit -m "feat(editor): layer panel bottom action row and drag reorder"
 - Consumes: `arrangeActions()`, `actionEnabled` (Tasks 1, 6).
 - Produces: nothing consumed by later tasks.
 
-The layer panel's arrange block (`layer-panel.ts:183-212`) is deleted with the file in Task 5. Following Figma, arrange belongs on a toolbar above the canvas, where it applies to a multi-selection.
+Task 5 replaced `layer-panel.tsx` entirely, so the old 6-buttons-per-row panel that used to carry an arrange block no longer exists — nothing here needs deleting. Following Figma, arrange belongs on a toolbar above the canvas, where it applies to a multi-selection. (The line range this sentence used to cite, `layer-panel.ts:183-212`, now points at the visibility and lock buttons of a row.)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1014,7 +1328,10 @@ it("puts arrange on the canvas toolbar, disabled without a multi-selection", () 
   const layout = createShellLayout(root);
   const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
   expect(toolbar).not.toBeNull();
-  expect(toolbar?.querySelectorAll("button")).toHaveLength(8);
+  // Derived, not a literal: `ARRANGE_ICONS` holds eight today, and a ninth
+  // added to the registry must fail here rather than be silently dropped by
+  // the toolbar. Same rule as Task 9's context menu.
+  expect(toolbar?.querySelectorAll("button")).toHaveLength(arrangeActions().length);
   for (const button of toolbar?.querySelectorAll("button") ?? [])
     expect(button.disabled).toBe(true);
 });
@@ -1027,7 +1344,34 @@ Expected: FAIL — no toolbar element.
 
 - [ ] **Step 3: Implement the toolbar**
 
-Add a `<div className="editor-shell-arrange" data-vigilia-arrange-toolbar="">` inside `.editor-shell-stage`, above the dock, rendering `arrangeActions()` filtered by `actionEnabled(bridge, action.id)` and `target.memberCount > 1`, each an icon button with `aria-label` and a `title`.
+Add a `<div className="editor-shell-arrange" data-vigilia-arrange-toolbar="">` inside `.editor-shell-stage`, above the dock. Render every `arrangeActions()` entry, each an icon button with `aria-label` and `title`.
+
+**`disabled` comes from the snapshot's `memberCount`, not from `actionEnabled`.** This is the one place this task's original text was wrong, and it is wrong in a way that fails the test above.
+
+- `actionEnabled(bridge, id)` calls `bridge.target()`. The bridge passed to the stage is `EditorShellBridge | undefined` — `Shell()` reads `store.bridge` (`shell-layout.tsx:317` passes exactly that to `LayerPanel`), and `store.bridge` is `undefined` until `setBridge` runs (`SelectionStore.set`, `shell-layout.tsx:90-93`; this read `:89-92`). `createShellLayout(root)` alone leaves it undefined, so `disabled={!actionEnabled(bridge, id)}` **throws** on the very fixture Step 1 uses: `matchMedia` is already stubbed for this test file, so the layout renders, then the toolbar dereferences `undefined`.
+- The existing dock solves this by **not** asking the question when there is no bridge: `bridge === undefined ? [] : OBJECT_ACTIONS.filter(...)` (`canvas-dock.tsx:32-35`).
+
+Read the selection through the store's own hook, exactly as `Shell()` already does — `useSelection(store)` (`shell-layout.tsx:118-120`) returns the cached `EditorShellSnapshot`, whose `memberCount` is the snapshot's `selectedCount` field and whose default is `{ selectedCount: 0, locked: false, activeKind: "none" }` (`:83-87`, re-applied at `:101`). So with no bridge the count is `0` and every button is disabled, which is Step 1's expectation, with no `undefined` to guard.
+
+```tsx
+const selection = useSelection(store);
+// Arrange stays visible and greyed rather than being filtered out, so the
+// controls are discoverable before a multi-selection exists — Figma's
+// behaviour, and what Step 1's length assertion pins.
+const canArrange = selection.selectedCount > 1 && !selection.locked;
+{arrangeActions().map(({ id, icon: Icon, label }) => (
+  <button key={id} type="button" aria-label={label} title={label}
+    disabled={!canArrange} onClick={() => store.bridge?.run(id)}>
+    <Icon aria-hidden size={15} strokeWidth={1.75} />
+  </button>
+))}
+```
+
+(`store` is in scope in `Shell()` — the same binding `:317` passes to `LayerPanel`.)
+
+`memberCount > 1 && !snapshot.locked` is not a re-derivation of the registry's rule, it is the same rule read from the surface that owns it: `arrangeActions()`' own `eligible` is `(target) => target.memberCount > 1 && !target.locked` (`object-actions.ts:194`, inside the factory at `:187-196`; this read `:187-192`, which lands on the factory's `id`/`label`/`icon` lines and not on `eligible` at all), and `ActionGate` deliberately has no non-arrange `can` precisely so nothing re-enters `actionEnabled`. Exporting the predicate from `object-actions.ts` and calling it with the snapshot is acceptable and slightly better if the shape is a clean fit — prefer it if so, since it keeps one owner of the rule.
+
+Note the dock's filter stays a filter: it renders only *enabled* object actions today, so it will now render **no** arrange entries at all while this toolbar renders eight disabled ones. That is the intended split — the dock is "what you can do now", the toolbar is "what arrange offers" — and Step 1's assertion is the one that pins the toolbar half.
 
 - [ ] **Step 4: Run the test**
 
@@ -1049,81 +1393,148 @@ git commit -m "feat(editor): move arrange to the canvas toolbar"
 ### Task 8: Dense field controls
 
 **Files:**
-- Create: `src/web/packages/editor/src/editor-shell/controls/number-field.tsx`
-- Create: `src/web/packages/editor/src/editor-shell/controls/linked-pair.tsx`
-- Create: `src/web/packages/editor/src/editor-shell/controls/color-swatch.tsx`
-- Create: `src/web/packages/editor/src/editor-shell/controls/controls.dom.test.tsx`
+- Create: `src/web/packages/editor/src/editor-shell/controls/number-field.ts`
+- Create: `src/web/packages/editor/src/editor-shell/controls/linked-pair.ts`
+- Create: `src/web/packages/editor/src/editor-shell/controls/controls.dom.test.ts`
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
 - Modify: `src/web/packages/editor/src/artboard-panel.ts`
 
 **Interfaces:**
-- Consumes: Base UI `Popover`, `Collapsible`.
-- Produces:
+- Consumes: nothing new.
+- Produces: framework-free DOM factories, not React components — see the ruling in Step 3.
   ```ts
-  export function NumberField(props: {
+  export function numberField(options: {
     label: string; value: number; step?: number; min?: number; max?: number;
-    onCommit: (value: number) => void; invalidMessage?: string;
-  }): React.JSX.Element;
-  export function LinkedPair(props: {
-    label: string; first: { label: string; value: number };
-    second: { label: string; value: number };
+    invalidMessage?: string; data: string;
+    onCommit: (value: number) => void;
+  }): { readonly row: HTMLElement; readonly input: HTMLInputElement;
+        setValue(value: number): void };
+  export function linkedPair(options: {
+    rowLabel: string;
+    first: { label: string; value: number; data: string };
+    second: { label: string; value: number; data: string };
+    min?: number; max?: number; invalidMessage?: string;
     onCommit: (first: number, second: number) => void;
-  }): React.JSX.Element;
-  export function ColorSwatch(props: {
-    label: string; value: string; tokens: readonly { key: string; label: string; css: string }[];
-    onPick: (key: string) => void;
-  }): React.JSX.Element;
+  }): { readonly row: HTMLElement;
+        readonly first: HTMLInputElement; readonly second: HTMLInputElement;
+        setValues(first: number, second: number): void };
   ```
 
 - [ ] **Step 1: Write the failing tests**
 
-```tsx
-it("rejects an out-of-range number instead of coercing it to zero", async () => {
+Clear `document.body` in an `afterEach`, as `artboard-panel.dom.test.ts` does — the factories
+append to it.
+
+```ts
+it("rejects an out-of-range number instead of coercing it to zero", () => {
   const onCommit = vi.fn();
-  const host = document.createElement("div");
-  const root = createRoot(host);
-  await act(async () => root.render(
-    <NumberField label="Width" value={100} min={1} max={4096} onCommit={onCommit} />,
-  ));
-  const input = host.querySelector("input")!;
-  await act(async () => {
-    input.value = "abc";
-    input.dispatchEvent(new Event("change", { bubbles: true }));
+  const field = numberField({
+    label: "Width", value: 100, min: 1, max: 4096,
+    data: "vigiliaArtboardWidth", onCommit,
   });
+  document.body.append(field.row);
+  const input = field.row.querySelector("input")!;
+
+  input.value = "abc";
+  input.dispatchEvent(new Event("change"));
   expect(onCommit).not.toHaveBeenCalled();
-  expect(host.querySelector("[role=alert]")).not.toBeNull();
+  expect(field.row.querySelector("[role=alert]")).not.toBeNull();
+  // The field shows the last value it accepted, not the rejected text. This is
+  // not cosmetic: `artboard-panel.dom.test.ts:44-52` already requires it, and
+  // that test has to keep passing once the panel's own `render(current)`
+  // rollback disappears with this refactor.
+  expect(input.value).toBe("100");
+
+  // The assertion above is only meaningful if a valid edit does commit —
+  // otherwise "no handler ran" and "invalid input was refused" look identical.
+  input.value = "200";
+  input.dispatchEvent(new Event("change"));
+  expect(onCommit).toHaveBeenCalledWith(200);
+  expect(field.row.querySelector("[role=alert]")).toBeNull();
+
+  // Out of range is refused the same way as unparseable, not clamped.
+  input.value = "99999";
+  input.dispatchEvent(new Event("change"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+
+  // A rejected edit must not become the new "last valid": the field still shows
+  // 200, so a second rejection restores 200 rather than the 99999 it refused.
+  expect(input.value).toBe("200");
+
+  // `setValue` is the only other writer of the input, and it is what the panel's
+  // `render()` calls; it must not fire `onCommit`, or a re-render would look
+  // like an edit and dirty the document on every refresh.
+  field.setValue(320);
+  expect(input.value).toBe("320");
+  expect(onCommit).toHaveBeenCalledTimes(1);
 });
 
-it("emits one commit for a linked pair", async () => {
+it("emits a commit carrying both values for a linked pair", () => {
   const onCommit = vi.fn();
-  const host = document.createElement("div");
-  const root = createRoot(host);
-  await act(async () => root.render(
-    <LinkedPair label="Position" first={{ label: "X", value: 1 }} second={{ label: "Y", value: 2 }}
-      onCommit={onCommit} />,
-  ));
-  const [x, y] = host.querySelectorAll("input");
-  await act(async () => {
-    x!.value = "10"; x!.dispatchEvent(new Event("change", { bubbles: true }));
-    y!.value = "20"; y!.dispatchEvent(new Event("change", { bubbles: true }));
+  const pair = linkedPair({
+    rowLabel: "Size",
+    first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
+    second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
+    min: 1, max: 4096, onCommit,
   });
-  expect(onCommit).toHaveBeenCalledTimes(2);
+  document.body.append(pair.row);
+
+  pair.first.value = "10";
+  pair.first.dispatchEvent(new Event("change"));
+  // The pair commits both current values, so the untouched field still reads 200.
+  expect(onCommit).toHaveBeenLastCalledWith(10, 200);
+  pair.second.value = "20";
+  pair.second.dispatchEvent(new Event("change"));
   expect(onCommit).toHaveBeenLastCalledWith(10, 20);
 });
 ```
 
+**Step 1's third assertion block is not decoration — it closes a live regression the refactor would otherwise open.** `artboard-panel.dom.test.ts:44-52` requires that rejecting an invalid dimension leaves the input showing the **last valid value** (`expect(width.value).toBe("1280")`). Today the panel achieves that itself: `submit()` calls `render(current)` on rejection (`artboard-panel.ts:70-73`) and `render` writes `input.value`. Once the panel reads values through `linkedPair` and `submit` no longer parses raw input, that rollback lives **nowhere** unless the factory owns it. So: the control keeps its last accepted value and restores it to the input on rejection, and `setValue` is the writer `render()` uses. Both are asserted above, because a suite that only checked "no commit happened" would pass on a field left displaying `"99999"`.
+
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `npx vitest run packages/editor/src/editor-shell/controls/controls.dom.test.tsx`
+Run: `npx vitest run packages/editor/src/editor-shell/controls/controls.dom.test.ts`
 Expected: FAIL — imports do not resolve.
 
-- [ ] **Step 3: Implement the three controls**
+- [ ] **Step 3: Implement the two controls**
 
-Each uses the `.vigilia-field` / `.vigilia-field-row` / `.vigilia-numeric` classes from Task 5 and never a full-width control. Refusing invalid input rather than coercing is an existing project rule — `artboard-panel.ts`'s `isDimension` already does this; reuse that predicate rather than writing a second one.
+**Ruled: these are DOM factories, not React components, and the spec's `ColorSwatch` is not built here.** The spec calls all of this "field surfaces become React components under `editor-shell/controls/`", but only `NumberField` and `LinkedPair` have a consumer, and that consumer is `artboard-panel.ts` — an imperative panel mounted into a plain host div (`editor-session.ts:160`, `panelHosts.document`), which the spec itself says stays as it is: *"`artboard-panel.ts:119-147` must regroup its eleven flat siblings into field wrappers; that is the one consequence outside CSS."* Writing React components would force a `createRoot` inside an imperative panel whose whole test file (`artboard-panel.dom.test.ts`, 7 `createArtboardPanel` call sites) asserts synchronously right after the call — a React root renders asynchronously, so that file would have to be rewritten for a rendering-model change no requirement asks for.
+
+`ColorSwatch` is cut for the same reason read the other way: it has **no consumer in this plan**. Nothing in Tasks 8–10 renders it, and the one surface that would — the selection inspector's colour fields — is imperatively built too (`selection-inspector/index.ts`). A dependency-free swatch earns its place when a panel consumes it.
+
+Both factories use the `.vigilia-field` / `.vigilia-field-row` / `.vigilia-numeric` classes from Task 5 and never a full-width control.
+
+**The `data` option is the camelCase dataset KEY, not the kebab attribute name** — an implementer who passes `"data-vigilia-artboard-width"` gets `data-data-vigilia-artboard-width` and every existing selector silently stops matching. The factories do `input.dataset[options.data] = ""`, exactly as `artboard-panel.ts:197` does today, so pass `"vigiliaArtboardWidth"`. The keys, and the attributes they produce: `vigiliaArtboardWidth` → `data-vigilia-artboard-width`, `vigiliaArtboardHeight` → `data-vigilia-artboard-height`, `vigiliaArtboardFitMode` → `data-vigilia-artboard-fit-mode`, `vigiliaArtboardBackground` → `data-vigilia-artboard-background`, `vigiliaArtboardBarColor` → `data-vigilia-artboard-bar-color`, `vigiliaBackgroundAsset` → `data-vigilia-background-asset`, `vigiliaBackgroundMediaFit` → `data-vigilia-background-media-fit`, `vigiliaThemeName` → `data-vigilia-theme-name`, `vigiliaThemeAuthor` → `data-vigilia-theme-author`, `vigiliaThemeDescription` → `data-vigilia-theme-description`. The browser tests at `editor.spec.ts:277-278` and `:642-643` and the three `artboard-panel.dom.test.ts` lookups are what break if this is wrong, and they break loudly — but only after the panel has been rewritten, so get it right the first time.
+
+Commit on `change`, as the panel does today — not on every keystroke. A half-typed `1` of `1000` must not be committed as a resize.
+
+**Refusing invalid input rather than coercing it is an existing project rule, but `isDimension` is not reusable here and `NumberField` must not import it.** `isDimension` is **module-private** at `artboard-panel.ts:302` and compares against `MAX_ARTBOARD_DIMENSION`, which `artboard-panel.ts:5` imports from another module. `controls/` is a generic sibling of `artboard-panel.ts`, so importing the artboard panel from it inverts the dependency, and an artboard-shaped predicate inside a generic numeric control is wrong even if the panel exported it.
+
+**The control takes the rule, it does not know it.** `NumberField` is already specified with `min`, `max` and `invalidMessage` props; rejection is `Number.isInteger(value) && value >= min && value <= max` plus the existing "refuse rather than coerce" behaviour. The **artboard panel** keeps `isDimension` and passes `min={1} max={MAX_ARTBOARD_DIMENSION}`, which is where that knowledge belongs. Do not add a second `isDimension` and do not widen the private one.
+
+**Which of the two then reports an out-of-range value is not a free choice, and the brief must not leave it to the implementer.** `isDimension` is exactly `Number.isInteger(value) && value > 0 && value <= MAX_ARTBOARD_DIMENSION` (`artboard-panel.ts:302-306`) and `numberField`'s check is the same predicate with `min`/`max` supplied — so the two **cannot both fire**, and the factory's is always the one that fires first. That has a visible consequence: the `[role=alert]` message is the factory's `invalidMessage`, and `isDimension` in `submit` becomes unreachable for anything the control accepted. Keep it as the panel's own guard on values arriving from anywhere else, and **do not write an artboard-specific regression test for it** — a test asserting "a dimension of 0 is refused" exercises the factory's range check and passes whether or not `isDimension` exists, which is the green-and-wrong shape AGENTS.md's teeth rule exists to prevent. The factory's range-rejection case in Step 1 is what covers this behaviour.
+
+**The factory also owns the rejected-edit rollback, and each factory holds its last accepted value.** On rejection the row shows `[role=alert]` with `invalidMessage` and the input is restored to the last value it accepted; on acceptance that value is updated. `setValue(v)` / `setValues(a, b)` overwrite the displayed value *and* that last-accepted value without calling `onCommit`. This is what lets the panel drop its `render(current)` rollback (`artboard-panel.ts:70-73`) without breaking `artboard-panel.dom.test.ts:44-52` — the requirement lives in the control now, and it is asserted in Step 1. A `linkedPair` rejection restores **that** field and leaves the other alone.
 
 - [ ] **Step 4: Regroup the artboard panel**
 
-`artboard-panel.ts:119-147` appends eleven flat siblings. Group them into field rows: width/height as a `LinkedPair`, name/author/description as text fields, and the three selects on `vigilia-field-row`s. It stays an imperative DOM panel for now — a `ponytail:` comment records that only the markup changed, with React migration as a later step if that panel grows.
+`artboard-panel.ts:119-147` appends `root.append(...)` **23 top-level arguments** — counted by parsing
+the call, not by eye: `heading`, eight pairs of label-plus-control (name, author, description, version,
+width, height, preview fit, background, bar colour), two of which are built inline via
+`Object.assign(document.createElement("label"), …)`, plus `version`'s `output`, `select`,
+`background.select`, `bars.select`, `media` and `mediaFit`. The exact number is not load-bearing and has
+been written as 22 and 24 in earlier revisions; what matters is the shape: **group the label/control pairs
+into field rows.** If you need the count, derive it — do not trust any figure in this paragraph. Width and height become one `linkedPair`; name, author and description keep their existing `textField`-built inputs and move onto a `.vigilia-field` row each; the four selects (preview fit, background, bar colour, media fit) get a `.vigilia-field` row each, with their existing inline `Object.assign` label replaced by the row's own label element. The version label and its `output` stay as they are — a read-only readout is not a field.
+
+**There is no new text-field factory in this plan, and that is deliberate.** `numberField` parses and range-checks a number and owns a rejected-edit rollback; the metadata fields already come from `textField` (`artboard-panel.ts:193-199`), which builds a label and an input and needs no parse step at all. Its one real fault is that the label is a separate `root.append` argument rather than part of a row — so pass `textField`'s `label` into the new row alongside its `input` and leave the helper alone. Do not generalise `numberField` into a union-typed control to cover both: the two have different failure modes and only one of them can fail.
+
+It stays an imperative DOM panel — a `ponytail:` comment records that only the markup changed, with React migration as a later step if that panel grows.
+
+`submit()` reads `Number(width.input.value)` and then rejects with `isDimension`. Once the inputs come from `linkedPair`, that raw read is gone: `numberField`/`linkedPair` own parsing and pass the **already-validated** numbers to `onCommit`, so `submit` keeps only the artboard-shaped half — `isDimension` over each value it is handed. `isDimension` stays private here and compares against `MAX_ARTBOARD_DIMENSION`; the factory is told `min={1} max={MAX_ARTBOARD_DIMENSION}` and does not know why. `render()` calls `setValue`/`setValues` rather than writing `.value`, so the displayed value and the factory's last committed value cannot disagree.
+
+**`render()` does not only get called on refresh, and the refactor must keep that true.** It is the rejection path *and* the `setGlobals` repaint: `submit` calls `render(current)` on a refused edit (`artboard-panel.ts:71`) and `setGlobals` calls `render(current)` after refreshing the palette options (`:175`). So `setValue`/`setValues` is written on every globals change — the "does not fire `onCommit`" rule in Step 1 is what stops a palette refresh from looking like a dimension edit and dirtying the document. The two call sites are the reason that assertion exists; keep both.
+
+One consequence to check in Step 5: `width.input.value = String(artboard.width)` today writes `"1000"`; the factory's `type="number"` input must show the same string, or the existing e2e `fill("1000")` assertion drifts.
 
 - [ ] **Step 5: Run the tests and inspect**
 
@@ -1156,7 +1567,7 @@ git commit -m "feat(editor): dense field controls for document panels"
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
-- Modify: `src/web/packages/editor/src/editor-shell/layer-panel.tsx`
+- Modify: `src/web/tests/e2e/editor.spec.ts`
 
 **Interfaces:**
 - Consumes: nothing. Produces: nothing.
@@ -1191,10 +1602,14 @@ git commit -m "feat(editor): dense field controls for document panels"
 
 Only `background-color`, `border-color`, `color`, `transform` and `opacity` are transitioned — never `top`/`left`/`width`/`height`.
 
+**Scope the focus-ring rule away from menu items.** `editor-shell.css:223-228` already sets `outline: none` on `.editor-shell-menu-popup [role="menuitem"]:focus-visible` and `[role="menuitemradio"]:focus-visible`, because a popup menu shows focus through its own highlight background. The rule above matches `[role="menuitem"]` at the same specificity, and `:is()` takes the specificity of its most specific argument — so if it lands **after** the existing rule it wins the tie and paints a ring back onto every menu item. Exclude the popup rather than relying on source order: write it as `:is(button, input, select, [role="tab"], [tabindex]):focus-visible` plus the two popup roles only if the menu is meant to gain a ring, which it is not. Verify by focusing a menu item in the capture and confirming it still reads as a highlight, not a ring.
+
 - [ ] **Step 2: Verify in the browser**
 
 Run: `cd src/web && npm run build && VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "captures the mounted editor for visual review" --workers=1`
 Expected: PASS, and the capture still renders (motion must not leave a panel invisible).
+
+**Check the grep matched something before trusting the PASS.** A `--grep` that matches no test exits successfully having run nothing — a green result for having run nothing, which is the failure shape the sibling snapping plan's Task 9 exists to remove. The string above is the real title (`editor.spec.ts:145`, and `docs/evidence/screenshots/README.md:23` registers the shorter `captures the mounted editor`); confirm the reported count is non-zero rather than reading the exit code. Then open the capture and confirm the panels are visible, not mid-animation at zero opacity.
 
 - [ ] **Step 3: Verify the reduced-motion guard**
 
@@ -1211,7 +1626,9 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
 ```
 
 Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
-Expected: PASS.
+Expected: PASS. Then delete the `prefers-reduced-motion` block and confirm the test reads a non-zero duration and fails. Restore.
+
+The selector is real: the two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — this file has moved three times already and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous, and the `@keyframes` is what sets `animationDuration`. If the assertion reads `"0s"` **before** the reduced-motion rule exists, the animation is not applying at all — check that the keyframes name in Step 1 matches the one the rule references, rather than concluding the guard works.
 
 - [ ] **Step 4: Commit**
 
@@ -1225,7 +1642,56 @@ git commit -m "feat(editor): restrained motion and visible focus rings"
 
 ### Task 10: Full gate
 
-**Files:** none created; verification only.
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx` (Step 0 — the held fix from Task 7)
+
+- [ ] **Step 0: Land Task 7's held cast fix**
+
+Task 7's review left one Minor open and held it: a **double cast** in `shell-layout.dom.test.tsx` that bypasses structural checking. It was held rather than run because no task between there and here touches that file — this step is its owner, and it must not outlive the plan silently.
+
+The cast is at `shell-layout.dom.test.tsx:60-65`: a stub supplying only `viewport: { zoom, onChange }`, closed with `} as unknown as EditorShellBridge["editor"]`, under a comment at `:57-59` claiming "the shell only reaches `viewport`".
+
+**The comment is right about reach, and the cast is still the defect.** `shell-layout.tsx` touches `store.bridge.editor` at exactly one place — `:393`, `bridge.editor.viewport` passed to `ZoomReadout` — so `viewport` really is the only member reached. What the `as unknown as` erases is narrower and is the actual risk: the **`viewport` stub itself is unchecked**. Its two members are the shape `ZoomReadout` needs (which is a `ViewportManager`, the same type `zoom-readout.dom.test.tsx:14-32` already pins with `satisfies ViewportManager`).
+
+**The defect is real, and the fix moves the check inside the cast rather than removing the cast:**
+
+```ts
+editor: {
+  viewport: {
+    zoom: () => 1,
+    onChange: () => () => undefined,
+  } satisfies Pick<ViewportManager, "zoom" | "onChange">,
+} as unknown as EditorInteraction,
+```
+
+**The `as unknown as` stays, and an earlier revision of this step that told you to replace it with
+`as Pick<EditorInteraction, "viewport">` does not compile — probed, both halves.** `editor` is typed
+`EditorInteraction` (`bridge.ts:57`), a thirteen-member interface, and the stub supplies one member. So:
+
+- An **assertion** to `Pick<EditorInteraction, "viewport">` fails `TS2352` ("neither type sufficiently
+  overlaps") and, even if it were allowed, the result is missing `canvas`, `imageManager`, `textManager`,
+  `layerManager` and eight more — `TS2740` at the site that passes it to `createShellLayout`. The `unknown`
+  hop is not what B10 said it was; it is the honest shape for "one member of thirteen", and it is
+  unavoidable.
+- What actually fixes the defect is the **`satisfies`**, which is a *checked* narrowing and needs no cast:
+  it pins the two members the readout uses against `ViewportManager` and rejects a wrong type at the
+  literal. That is the assertion the `as unknown as` alone was erasing, and adding it is the whole change.
+
+Use `satisfies Pick<ViewportManager, "zoom" | "onChange">` and **change nothing else**. Do not widen the
+stub to a full `ViewportManager`: `ZoomReadout` is the only consumer, a full stub would fabricate members
+nothing exercises, and `zoom-readout.dom.test.tsx:14-32` is where the complete shape belongs — it already
+has it.
+
+If, while doing this, you find the shell reaching a second member of `editor`, stop and report it — that
+would mean the comment at `:57-59` is wrong, which is a finding in its own right rather than a reason to
+widen the stub.
+
+**Teeth check, and report the output verbatim:** add `satisfies Pick<ViewportManager, "zoom" | "onChange">`
+first and confirm `npm run typecheck` is **clean** — that is the state the fix ships in. Then change
+`zoom: () => 1` to `zoom: "1"` and confirm it now **fails to compile**, with `TS2322: Type 'string' is not
+assignable to type '() => number'` pointing at the `satisfies`. Restore afterwards. If the clean run is not
+clean, or the broken run is not broken, the `satisfies` is not doing the work and the step has not been
+done.
 
 - [ ] **Step 1: Run the broad gate**
 
@@ -1234,7 +1700,7 @@ cd src/web
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run size
 ```
 
-`format:check` currently reports unrelated formatting in `tests/e2e/host-settings.spec.ts`; if that is still the only failure, record it rather than reformatting an untouched file.
+The "unrelated formatting in `tests/e2e/host-settings.spec.ts`" line that used to sit here was stale and has been removed from `STATUS.md`; if `format:check` fails now, it is this change's doing and must be fixed, not recorded. (An earlier revision also cited a file count here. It was wrong when written and staler by the time you read it — the command's own output is the number, and there is no value in restating it.)
 
 - [ ] **Step 2: Run the browser suite**
 
@@ -1243,11 +1709,30 @@ npx playwright install chromium   # if needed
 npm run test:e2e
 ```
 
-`display-fabric.spec.ts` has two known pre-existing phone-chromium failures ("keeps repainting as samples arrive", "is byte-stable at a fixed clock on one platform"). Confirm they are unchanged and report them; do not absorb them into this change.
+**No known-failing tests are carried into this gate — a red suite is a failure to investigate, not to accept.** This step previously named two pre-existing phone-chromium failures in `display-fabric.spec.ts`; both were measured and **both pass**:
+
+```
+npx playwright test --project=phone-chromium --grep "keeps repainting as samples arrive" --workers=1
+  ✓ 1 passed (32.4s)
+npx playwright test --project=phone-chromium --grep "is byte-stable at a fixed clock" --workers=1
+  ✓ 1 passed (32.9s)
+```
+
+Report any red test with its output and a base-commit run proving when it started. Do not classify a failure as pre-existing without that proof.
 
 - [ ] **Step 3: Inspect the rendered editor**
 
-Rebuild and capture the editor, then open the image and check each spec acceptance item by eye: indentation and collapse, two state icons per row, actions in the bottom row only, arrange on the toolbar, paired geometry fields, focus rings.
+Rebuild, then re-capture and open:
+
+```bash
+cd src/web && npm run build
+VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
+  --grep "captures the mounted editor for visual review"
+```
+
+`captureVisualReview` returns immediately unless `VIGILIA_CAPTURE` is set, so a plain run writes no file and this step becomes "open an image that is not there". Confirm the run reported a non-zero test count — a `--grep` matching nothing exits successfully having run nothing.
+
+In the image, check each spec acceptance item by eye: indentation and collapse, two state icons per row, actions in the bottom row only, arrange on the toolbar, paired geometry fields, focus rings. The capture is the whole editor at default zoom; if a specific control is too small to judge there, open the host (`node packages/host/bin/vigilia.js`, built first) and look at it directly rather than zooming a PNG.
 
 - [ ] **Step 4: Update STATUS.md**
 
@@ -1256,9 +1741,11 @@ Replace the "Last completed change" section with a 1–5 bullet summary of this 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add STATUS.md
+git add STATUS.md src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx
 git commit -m "docs(status): record the editor UI polish"
 ```
+
+Step 0's test file is in the `git add` deliberately: a code change that cannot be committed alongside the commit that records it is the failure this step would otherwise have shipped.
 
 ---
 
@@ -1280,13 +1767,14 @@ git commit -m "docs(status): record the editor UI polish"
 | Bridge `layers()` and commands | 4, 5, 6 |
 | Density CSS primitive and field components | 5, 8 |
 | `artboard-panel` regrouping | 8 |
+| `Slider` and `ColorSwatch` | **not built** — no consumer in this plan; see Task 8 Step 3 |
 | Motion and focus rings | 9 |
 | Lucide dependency and notices | 1 |
 | Acceptance: full gate | 10 |
 
 **Placeholder scan:** no "TBD"/"handle edge cases"/"similar to Task N". Every implementation step carries code or an exact predicate. Task 4 Step 3 and Task 5 Step 4 name behaviour to implement rather than reproducing a whole file, because the surrounding file is the owner and duplicating it here would drift; each names the exact function and the exact call.
 
-**Type consistency:** `ObjectTarget` fields (`kind`, `locked`, `memberCount`, `isGroup`) are the same in Tasks 1, 2, 6. `LayerRow` fields are the same in Tasks 3, 4, 5. `actionEnabled(bridge, id)` is defined once (Task 2, extracted in Task 6) and used by both surfaces. `reorderLayer` returns `boolean` in Task 6 and is asserted as such.
+**Type consistency:** `ObjectTarget` fields (`kind`, `locked`, `memberCount`, `isGroup`) are the same in Tasks 1, 2, 6. `LayerRow` fields are the same in Tasks 3, 4, 5. `actionEnabled(gate: ActionGate, id)` is defined once, in `object-actions.ts` alongside `OBJECT_ACTIONS` — there is nothing to extract and no second owner, which is why Task 6's earlier "extract it from `canvas-dock.tsx`" instruction was removed; `EditorShellBridge` satisfies `ActionGate` structurally (its `target()` at `bridge.ts:34` and `canArrange` at `:36`), which is how a bridge is passed where a gate is expected. It is used by the dock and by the layer panel's bottom row — **not** by Task 7's toolbar, which reads eligibility from the snapshot instead, because the bridge in that scope is `EditorShellBridge | undefined` and `actionEnabled` dereferences its gate. `reorderLayer` returns `boolean` in Task 6 and is asserted as such.
 
 **Review Focus coverage:** item 1 → Task 6 Step 6; item 2 → Task 5 Step 1 and Step 7; item 3 → Task 4 Step 1 (blank name) and Task 5 Step 3 (rename input); item 4 → Task 5 Step 7; item 5 → Task 2 Step 6 and Task 6 Step 1.
 
