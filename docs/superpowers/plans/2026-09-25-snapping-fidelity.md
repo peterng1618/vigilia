@@ -1188,7 +1188,6 @@ The fork's `movement-snapping-controller.ts:127` marker pattern applies here ide
 jsdom has no pointer input, so drive the controller the way Fabric does: fire `object:scaling` with the real event payload (`{ e, transform, pointer }`) and pre-set the object's scales to what Fabric would have produced. Keep a running "what Fabric would do" transform so the gesture has a coherent `original`.
 
 ```ts
-// src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
 // @vitest-environment jsdom
 import { Canvas, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
