@@ -1298,10 +1298,16 @@ Open the capture and confirm guides appear during the resize, span the artboard,
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/web/packages/editor/src/snap-manager
-git add src/web/tests/e2e/editor.spec.ts docs/evidence/screenshots
+git add src/web/packages/editor/src/snap-manager/index.ts \
+  src/web/packages/editor/src/snap-manager/guide-renderer.ts \
+  src/web/packages/editor/src/snap-manager/scaling
+git add src/web/tests/e2e/editor.spec.ts \
+  docs/evidence/screenshots/editor-snap-resize-desktop-chromium.png \
+  docs/evidence/screenshots/README.md
 git commit -m "feat(editor): resize-time snapping with verified guides"
 ```
+
+**Stage `scaling/` as a directory because the task creates that directory and every file in it is this task's; stage the capture by name.** `docs/evidence/screenshots/` holds ~40 PNGs belonging to other tasks and another plan, and it currently carries a modified `editor-desktop-chromium.png` that no task in this plan owns — `git add docs/evidence/screenshots` would sweep that unrelated capture into this commit. Name the one capture this task writes and the `README.md` row it edits.
 
 ---
 
@@ -1434,9 +1440,13 @@ Reintroduce the `83248dc` bug — a per-gesture marker — and rerun. Expected: 
 The matrix's captures belong in the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`), which already lists `editor-snap-guides` / `snaps a dragged object`. Add the resize capture to the same row rather than inventing a domain: it is the same visible action class. Capture titles go through `captureVisualReview(page, testInfo, "<name>")` as the existing tests do.
 
 ```bash
-git add src/web/tests/e2e/snapping.spec.ts docs/evidence/screenshots
+git add src/web/tests/e2e/snapping.spec.ts \
+  docs/evidence/screenshots/README.md
+git add docs/evidence/screenshots/*snap*.png
 git commit -m "test(editor): snapping behaviour matrix for move and resize"
 ```
+
+**Name the captures; do not stage the directory.** `docs/evidence/screenshots/` holds ~40 PNGs owned by other tasks and another plan, and it carries a modified `editor-desktop-chromium.png` that no task in this plan owns — a directory-wide `git add` sweeps that unrelated capture into this commit. The `*snap*.png` glob is this matrix's own captures by the naming convention Step 5's capture names establish.
 
 ---
 
