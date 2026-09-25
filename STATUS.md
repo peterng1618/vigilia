@@ -13,8 +13,8 @@ and interaction layer before snapping fidelity resumes.
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md`.
   Camera/viewport, navigation, marquee, keyboard, group context and non-1x
-  snapping/indicator work are landed. Remaining: canvas context menu, then the
-  plan gate.
+  snapping/indicator work are landed. Phase 1 (canvas context menu, Task 1) is
+  in flight; Phase 2 is the plan gate.
 - **Queued:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md`. Do not
   execute until the active plan closes and `STATUS.md` promotes it.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
@@ -40,13 +40,18 @@ and interaction layer before snapping fidelity resumes.
 
 ## Next
 
-1. Finish the active viewport plan's canvas context-menu phase.
-2. Run its broad/browser/visual gate and close the plan.
+1. Finish the active viewport plan's Phase 1 context menu (Task 1, in flight).
+2. Run its Phase 2 broad/browser/visual gate and close the plan.
 3. Promote snapping fidelity only after the viewport plan is closed.
 4. Close author-journey Task 6 when its pending browser evidence is available.
 
 ## Blockers / unverified
 
+- Whether arrow keys reach `canvas.nudge-*` while a Base UI menu is open.
+  `ShortcutManager.#onKeyDown` never consults `event.defaultPrevented` and a menu
+  item is not a text-entry target, but four jsdom probes hung on the interaction,
+  so it is unmeasured. Task 1's browser test is where it is settled; the guard, if
+  needed, belongs in the shortcut manager.
 - Whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction is
   undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
 - No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
@@ -56,8 +61,8 @@ and interaction layer before snapping fidelity resumes.
   points, which is why the silent `snapshot` no-op got through.
 - The layer panel's bottom action row is still unverified by eye because the
   current capture has no selection.
-- Two `display-fabric.spec.ts` player tests exceed Playwright's 30s default on
-  this machine but pass with a longer explicit timeout; config behavior remains
-  unconfirmed.
-- Browser round-trip of text align/wrap/overflow, in-place edit + undo, and run
-  preset/override persistence remain unverified.
+- Five `display-fabric.spec.ts` player tests exceed Playwright's 30s default on
+  this machine (30.2–47.7s) and pass with a longer explicit timeout; the
+  per-project `60_000` apparently does not take effect and that is unconfirmed.
+  Browser round-trip of text align/wrap/overflow, in-place edit + undo, and run
+  preset/override persistence are also unverified.
