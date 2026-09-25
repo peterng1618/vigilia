@@ -487,6 +487,12 @@ body,
   border-radius: 5px;
   cursor: default;
 }
+/* Only an entered group dims anything: with no group entered every top-level
+   layer is selectable on the canvas, and a tree greyed out by default would
+   say the opposite. */
+.vigilia-layer-row[data-context="false"] {
+  opacity: 0.45;
+}
 /* One line for the whole tree, positioned at the slot the drop would land on,
    so a moved row can never leave a second marker behind. */
 .vigilia-layer-dropline {

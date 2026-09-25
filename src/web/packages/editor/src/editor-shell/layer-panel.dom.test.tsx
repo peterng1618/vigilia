@@ -180,18 +180,19 @@ const rows = [
     hasChildren: false, visible: true, locked: true, selected: true },
 ];
 
+/** Two groups, so the negative half of the assertion has a row to read. The
+ * non-current group is what makes this a test of "dims the rest" rather than
+ * of "sets an attribute somewhere". */
+const contextRows = [
+  { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+    hasChildren: true, visible: true, locked: false, selected: false },
+  { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+    hasChildren: false, visible: true, locked: false, selected: true },
+  { id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined,
+    hasChildren: true, visible: true, locked: false, selected: false },
+];
+
 it("marks the group whose children are current and dims the rest", async () => {
-  // Two groups, so the negative half of the assertion has a row to read. The
-  // non-current group is what makes this a test of "dims the rest" rather than
-  // of "sets an attribute somewhere".
-  const contextRows = [
-    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
-      hasChildren: true, visible: true, locked: false, selected: false },
-    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
-      hasChildren: false, visible: true, locked: false, selected: true },
-    { id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined,
-      hasChildren: true, visible: true, locked: false, selected: false },
-  ];
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(
@@ -202,6 +203,24 @@ it("marks the group whose children are current and dims the rest", async () => {
   // The child inside the current context is selectable in its own right — the
   // half of the branch that Step 3 adds, and the reason the context is marked.
   expect(host.querySelector('[data-vigilia-layer="child"]')?.getAttribute("data-context")).toBe("true");
+});
+
+it("dims nothing when no group is entered", async () => {
+  // With no group entered the context is empty, so the guard must keep the
+  // attribute off the rows entirely. React writes a boolean `false` as the
+  // *string* "false", which is exactly what the stylesheet rule dims on, and
+  // with nothing entered every top-level layer is selectable on the canvas — a
+  // tree greyed out on open would say the opposite. jsdom applies no stylesheet
+  // (nothing imports `editor-main.ts` here), so what this pins is the guard that
+  // makes the attribute honest: an attribute reading "false" on every row is the
+  // state that rule turns into a fully dimmed tree.
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(
+    <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
+  ));
+  for (const row of host.querySelectorAll(".vigilia-layer-row"))
+    expect(row.getAttribute("data-context")).toBeNull();
 });
 
 it("renders object actions in a bottom row, not on the selected row", async () => {

@@ -25,11 +25,13 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- The layer tree follows the group context: `EditorShellBridge.groupContext()`
-  projects the entered group as ids (never Fabric objects), and the panel marks
-  the group and its descendants `data-context="true"`, dimming the rest.
-- `selectLayer` selects a group's child directly when that group is the entered
-  context, keeping the owning-group resolution everywhere else.
+- The muted layer style moved into `editor-shell.css` next to `.vigilia-layer-row`,
+  and `layer-panel.tsx` no longer carries an inline `opacity` declaration.
+- The empty-context guard now gates the `data-context` attribute itself, so a bare
+  `[data-context="false"]` rule cannot dim the whole tree on open.
+- The muted half has teeth on both legs: a jsdom case for the empty context, and
+  the committed `enters a group` e2e case asserting computed opacity `0.45` outside
+  the context and `1` inside it.
 
 ## Next
 

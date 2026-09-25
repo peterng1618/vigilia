@@ -103,10 +103,6 @@ export function LayerPanel({
   // and publishes on every selection change, so entering a group re-renders
   // here with the context the manager has already recorded.
   const context = contextRows(rows, bridge?.groupContext() ?? []);
-  // Only an entered group dims anything: with no context every row is reachable,
-  // and a tree greyed out by default would say the opposite.
-  const dimmed = (id: string): boolean =>
-    context.size > 0 && !context.has(id);
 
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
@@ -143,8 +139,13 @@ export function LayerPanel({
               data-vigilia-layer={row.id}
               data-selected={row.selected}
               // The entered group and its descendants are what a tree click can
-              // reach on its own; everything else is dimmed to say so.
-              data-context={context.has(row.id)}
+              // reach on its own; everything else is dimmed to say so. With no
+              // group entered there is no context to be outside of, so the
+              // attribute is omitted rather than written false: React renders a
+              // boolean `data-*` as the string "false", which is the value the
+              // stylesheet rule dims on, and a tree greyed out on open would
+              // claim every selectable top-level layer is unreachable.
+              data-context={context.size > 0 ? context.has(row.id) : undefined}
               role="treeitem"
               aria-selected={row.selected}
               aria-level={row.depth + 1}
@@ -208,9 +209,6 @@ export function LayerPanel({
                 {
                   "--layer-depth": String(row.depth),
                   paddingLeft: "calc(6px + var(--layer-depth) * 13px)",
-                  // Outside the entered group a row is reachable only through
-                  // its group, so it reads back rather than as a target.
-                  opacity: dimmed(row.id) ? 0.45 : undefined,
                 } as CSSProperties
               }
               onClick={() => store.mutate(() => bridge?.selectLayer(row.id))}

@@ -1588,6 +1588,32 @@ test.describe("Fabric editor route", () => {
     await page.mouse.dblclick(cx, cy);
     await expect.poll(async () => (await state()).active).toBe("child");
 
+    // The entered group and its child are reachable; the row outside the context is
+    // not. `data-context` is the attribute the stylesheet keys on, and the computed
+    // opacity is the only thing that shows the rule matches the row it should.
+    const rowStyle = (id: string) =>
+      page.locator(`[data-vigilia-layer="${id}"]`).evaluate((node) => {
+        const style = getComputedStyle(node);
+        return {
+          context: node.getAttribute("data-context"),
+          opacity: style.opacity,
+        };
+      });
+
+    await expect.poll(async () => (await rowStyle("grp")).context).toBe("true");
+    await expect
+      .poll(async () => (await rowStyle("child")).context)
+      .toBe("true");
+    await expect
+      .poll(async () => (await rowStyle("outside")).context)
+      .toBe("false");
+    await expect
+      .poll(async () => (await rowStyle("outside")).opacity)
+      .toBe("0.45");
+    // The positive half of the same rule: the child is inside the context and must
+    // not be dimmed. Without this, a rule that dimmed every row would pass.
+    await expect.poll(async () => (await rowStyle("child")).opacity).toBe("1");
+
     const before = (await state()).childLeft;
     // `toBeTypeOf` is Vitest's; Playwright's `expect` has no such matcher.
     expect(typeof before).toBe("number");
