@@ -17,14 +17,19 @@ reach context, so the read-back half can be an injection.
 
 ## Decision
 
-- Recovery state is the live dispatch record, not a heuristic over other files.
-  **The active plan is the workspace holding a live dispatch record.** Ledger
-  mtime and `STATUS.md` parsing both create a second, weaker definition of
-  "active"; neither is used.
+- **`STATUS.md` remains the sole authority for which plan is active.** Dispatch
+  records say what is running *inside* that plan; they never redefine it. A
+  record found under a queued plan is a dispatch against the wrong plan — a
+  mistake to reconcile, not work to resume — so it is reported as unreconciled
+  rather than promoting its workspace. Ledger mtime is not a signal at all.
 - The record is written by the controller, one file per in-flight agent, under
   the plan's git-ignored SDD workspace. `SubagentStart`/`SubagentStop` carry
   `agent_id` and `agent_type` but not the task, plan or base commit, so lifecycle
   hooks cannot author the record — they can only audit it.
+- A record older than its TTL is an **expired recovery artifact**, not evidence
+  of a live agent. Expired records are reported as expired rather than dropped,
+  because "nothing was ever dispatched here" and "a dispatch was abandoned here"
+  are different facts and only the second one is actionable.
 - Controller-oriented recovery hooks no-op inside a subagent. Project hooks run
   in subagents, so a worker that compacts must not receive instructions about
   reconciling other agents. `agent_id` presence is the discriminator.
@@ -33,9 +38,10 @@ reach context, so the read-back half can be an injection.
 
 ## Consequences
 
-Queued and completed plans cannot be mistaken for active, and a live dispatch
-stays recoverable regardless of how long its ledger has been quiet.
+A live dispatch stays recoverable regardless of how long its ledger has been
+quiet, and a dispatch recorded against the wrong plan is surfaced as a
+contradiction instead of silently becoming that plan's authority.
 
 The one failure recovery cannot repair is a dispatch the controller never
-recorded. A `SubagentStop` audit for unrecorded agent ids is the only mechanism
+recorded: a `SubagentStop` audit for unrecorded agent ids is the only mechanism
 that could catch it, and is not implemented.

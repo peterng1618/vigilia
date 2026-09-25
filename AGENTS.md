@@ -47,10 +47,11 @@ Vigilia process.
 - The ledger records rulings and completions, never what is running. Write
   `<workspace>/dispatch-<agent id>.md` (plan, task, agent id, base sha, state)
   when you dispatch and delete it on completion — compaction cannot reconstruct
-  an unrecorded dispatch, and a plan counts as active only while it holds such a
-  record (ADR-0010). A PreCompact hook snapshots git state and ledger tails to
-  `.superpowers/sdd/checkpoint/` and re-injects the dispatch state after
-  compaction.
+  an unrecorded dispatch. `STATUS.md` still owns which plan is active; records
+  only say what is running inside it, and one found under a queued plan is a
+  dispatch against the wrong plan (ADR-0010). A PreCompact hook snapshots git
+  state and ledger tails to `.superpowers/sdd/checkpoint/` and re-injects the
+  dispatch state after compaction.
 - Before each completed task commit, **replace** `STATUS.md`'s "Last completed
   change" with a concise 1–5 bullet summary of what that commit achieved. Never
   append older commit summaries; GitHub already owns commit history.
