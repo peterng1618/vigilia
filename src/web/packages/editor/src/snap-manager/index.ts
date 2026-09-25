@@ -1,3 +1,4 @@
+import { ActiveSelection } from "fabric/es";
 import type { Canvas, FabricObject } from "fabric/es";
 import type { ErrorManager } from "../error-manager/index.js";
 import { getObjectExactBounds, type ObjectBounds } from "./bounds.js";
@@ -16,6 +17,7 @@ import {
   type FinalMovementGeometry,
 } from "./movement-snapping-resolver.js";
 import { MovementSnappingRuntime } from "./movement-snapping-runtime.js";
+import { isSupportedActiveSelection } from "./selection-eligibility.js";
 import type { GuideLine } from "./types.js";
 
 export interface SnapManager {
@@ -117,6 +119,14 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const startGesture = (): void => {
     const active = canvas.getActiveObject();
     if (active === undefined) return;
+    // A composed selection the fork declined must not join a gesture: a scaled
+    // text selection would let the movement path be reinterpreted as an
+    // unfinished scale.
+    if (
+      active instanceof ActiveSelection &&
+      !isSupportedActiveSelection({ selection: active })
+    )
+      return;
     const startBounds = getObjectExactBounds({ object: active });
     if (startBounds === null) return;
 

@@ -23,19 +23,17 @@ and interaction layer before snapping fidelity resumes.
 
 ## Last completed change
 
-- Applied the editor-ui-polish final review's four fixes. The arrange toolbar now
-  gates each button through `arrangeEligible(count, locked, id)`, which reads the
-  per-action threshold from `arrangeMinimum` — the same owner `canArrange` uses —
-  so the two distribute buttons are disabled at a two-object selection instead of
-  advertising a click that silently does nothing.
-- The selection inspector's geometry is now paired rows (X/Y, W/H, rotation
-  alone) through the existing `linkedPair` primitive, meeting the spec's
-  acceptance line; a committed pair edit still records one history entry.
-- Deleted the two dead class names (`vigilia-selection-grid`,
-  `vigilia-selection-appearance`) that had no CSS rule.
-- Spec amended by ruling: the `LinkedPair` chain toggle and the layer-row context
-  menu are dropped; the group disclosure stays a hand-rolled `aria-expanded`
-  button. Focused suite green (23 files / 111 tests), full unit suite 1455 passed.
+- Landed snapping-fidelity Task 2: `isSupportedActiveSelection` decides whether a
+  composed selection may snap as a unit, ported from the fork with its per-child
+  kind allow-list dropped — Vigilia's snap path is type-agnostic
+  (`getObjectExactBounds` takes any `FabricObject`), unlike the fork's
+  type-specific movement/scale path.
+- `startGesture` now refuses a gesture for an unsupported `ActiveSelection`, so a
+  scaled text selection cannot let movement be reinterpreted as unfinished
+  scaling.
+- Five jsdom unit cases and two browser cases cover it; both browser cases were
+  shown to fail with the guard disabled before being trusted.
+- Full unit suite 1455 passed; `format:check`, `lint` and `typecheck` clean.
 
 ## Next
 

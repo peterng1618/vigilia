@@ -97,6 +97,200 @@ async function clientOfScene(
   return sceneToClient(page, sceneWidth, centre.x, centre.y);
 }
 
+/** Shift-clicks two starter labels into an `ActiveSelection`, the product's own
+ * multi-selection path. Both centres sit inside their label and outside every
+ * card behind it, so each click resolves to the label itself. A drag then moves
+ * the composed selection as one unit. */
+async function selectTwoLabels(page: Page): Promise<void> {
+  const first = await clientOfScene(page, "status-title");
+  const second = await clientOfScene(page, "status-main");
+  await page.mouse.click(first.x, first.y);
+  await page.keyboard.down("Shift");
+  await page.mouse.click(second.x, second.y);
+  await page.keyboard.up("Shift");
+}
+
+/** The active object's scene geometry through the bridge. `members` counts an
+ * `ActiveSelection`'s children and a single object as one, so a test can tell a
+ * composed selection from a lone object — the guard's whole subject. */
+async function activeGeometry(page: Page): Promise<{
+  members: number;
+  centre: { x: number; y: number };
+  rect: ArtboardRect;
+}> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getActiveObject():
+                | {
+                    getObjects?(): unknown[];
+                    getCenterPoint(): { x: number; y: number };
+                    getBoundingRect(): {
+                      left: number;
+                      top: number;
+                      width: number;
+                      height: number;
+                    };
+                  }
+                | undefined;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const active = bridge.editor.canvas.getActiveObject();
+    if (active === undefined) throw new Error("no active object");
+    return {
+      members: active.getObjects?.().length ?? 1,
+      centre: active.getCenterPoint(),
+      rect: active.getBoundingRect(),
+    };
+  });
+}
+
+/** A named object's world-space left edge, the snap line a neighbour offers.
+ * Read from the object itself rather than restated: the value carries the
+ * card's half-pixel stroke, which a hand-copied fixture number would miss. */
+async function worldLeftOf(page: Page, id: string): Promise<number> {
+  return page.evaluate((objectId) => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getObjects(): Array<{
+                id?: string;
+                getBoundingRect(): { left: number };
+              }>;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const object = bridge.editor.canvas
+      .getObjects()
+      .find((candidate) => candidate.id === objectId);
+    if (object === undefined) throw new Error(`no object with id ${objectId}`);
+    return object.getBoundingRect().left;
+  }, id);
+}
+
+/** Gives the active selection a non-unit scale, which is what the eligibility
+ * guard refuses when a `Textbox` child is present. The product cannot reach this
+ * state — only a scale gesture leaves one, and that deselects first — so the
+ * test sets it directly through the live canvas. `setCoords` is not optional:
+ * without it the selection's hit area stays at the old scale, the press misses
+ * it, and Fabric clears the selection and drags the card behind instead. */
+async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
+  await page.evaluate((value) => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getActiveObject():
+                | {
+                    set(values: Record<string, number>): void;
+                    setCoords(): void;
+                  }
+                | undefined;
+              requestRenderAll(): void;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const active = bridge.editor.canvas.getActiveObject();
+    if (active === undefined) throw new Error("no active object");
+    active.set({ scaleX: value, scaleY: value });
+    active.setCoords();
+    bridge.editor.canvas.requestRenderAll();
+  }, factor);
+}
+
+/** Drags the active selection by `amount` scene px in one gesture and reports
+ * the world left edge it landed on plus the pointer's exact scene travel.
+ *
+ * Every leg is at least 30px, and `dragToLine` below parks the selection when
+ * the target is nearer. That floor is load-bearing: `sceneToClient` quantises to
+ * client pixels, so a leg sized only by the distance to a nearby line can round
+ * to no pointer movement — the browser sends no `mousemove`, Fabric never fires
+ * `object:moving`, and a test built on that leg passes without exercising
+ * anything. `travelled` is read through the canvas's own `getScenePoint` at the
+ * two client points actually sent, so `startLeft + travelled` is exactly the
+ * landing Fabric's drag would leave unsnapped — the baseline a snap correction
+ * is measured against. */
+async function dragActiveSelection(
+  page: Page,
+  amount: number,
+): Promise<{ left: number; travelled: number }> {
+  const current = await activeGeometry(page);
+  const from = await sceneToClient(
+    page,
+    1280,
+    current.centre.x,
+    current.centre.y,
+  );
+  const to = await sceneToClient(
+    page,
+    1280,
+    current.centre.x + amount,
+    current.centre.y,
+  );
+  const travelled = await page.evaluate(
+    ([fx, fy, tx, ty]) => {
+      const c = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getScenePoint(e: { clientX: number; clientY: number }): {
+                  x: number;
+                  y: number;
+                };
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge.editor.canvas;
+      const a = c.getScenePoint({ clientX: fx!, clientY: fy! });
+      const b = c.getScenePoint({ clientX: tx!, clientY: ty! });
+      return b.x - a.x;
+    },
+    [from.x, from.y, to.x, to.y],
+  );
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  const left = (await activeGeometry(page)).rect.left;
+  await page.mouse.up();
+  return { left, travelled };
+}
+
+/** Drags the active selection so its raw landing is `offset` scene px past
+ * `line`, and reports that landing alongside the left edge it finally sits on.
+ * Parks 80px away first when the selection is already within 30px of the
+ * target, so the approach leg is always long enough to move the pointer (see
+ * above). */
+async function dragToLine(
+  page: Page,
+  line: number,
+  offset: number,
+): Promise<{ left: number; raw: number }> {
+  let startLeft = (await activeGeometry(page)).rect.left;
+  if (Math.abs(line + offset - startLeft) < 30) {
+    startLeft = (await dragActiveSelection(page, -80)).left;
+  }
+  const { left, travelled } = await dragActiveSelection(
+    page,
+    line + offset - startLeft,
+  );
+  return { left, raw: startLeft + travelled };
+}
+
 test.describe("Fabric editor route", () => {
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
@@ -2000,6 +2194,74 @@ test.describe("Fabric editor route", () => {
 
     await captureVisualReview(page, testInfo, "editor-snap-guides");
     await page.mouse.up();
+  });
+
+  test("snaps a two-object selection as a unit", async ({ page }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    await selectTwoLabels(page);
+    const before = await activeGeometry(page);
+    // Without this the drag below is one object's, and the guard's whole
+    // subject — a composed selection — is never exercised.
+    expect(before.members).toBe(2);
+
+    // `status-card`'s world left edge is a line near the drag's landing, read
+    // rather than restated so the card's half-pixel stroke is included.
+    const line = await worldLeftOf(page, "status-card");
+
+    // Raw landing 4px past the line: inside the acquire threshold, so an eligible
+    // selection is pulled onto a candidate. 4px, not 1px, because the pointer's
+    // scene travel can shift by about a pixel.
+    const { left } = await dragToLine(page, line, 4);
+
+    // The drag ran: the selection moved well clear of where it started.
+    expect(Math.abs(left - before.rect.left)).toBeGreaterThan(30);
+    // The composed selection joined the snap and sits on the line. A selection
+    // that never entered the gesture lands ~5px past it, so this is the
+    // assertion the guard has to fail.
+    expect(Math.abs(left - line)).toBeLessThan(0.5);
+  });
+
+  test("refuses a snap gesture for a scaled text selection", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    await selectTwoLabels(page);
+    expect((await activeGeometry(page)).members).toBe(2);
+    // `status-card`'s world left edge is a candidate line near the drag landing.
+    const line = await worldLeftOf(page, "status-card");
+
+    // Positive control: the SAME gesture on the same objects while still
+    // eligible. The raw landing is 4px past a candidate line, inside the acquire
+    // threshold, so an eligible selection is pulled onto it — which is what
+    // makes the refusal below a difference rather than a drag that missed.
+    const snapped = await dragToLine(page, line, 4);
+    expect(Math.abs(snapped.left - line)).toBeLessThan(0.5);
+
+    // The refusal: a non-unit scale with a `Textbox` child. This is why the case
+    // cannot be a jsdom test — the claim is about Fabric's own drag still running
+    // while the snapping path never joins it.
+    await scaleActiveSelection(page, 1.5);
+
+    const refused = await dragToLine(page, line, 4);
+    // Fabric's drag ran and nothing corrected it: the selection sits on the
+    // landing the pointer asked for, 4px past the line, where the eligible
+    // control above was pulled onto it. Measured against the landing rather
+    // than the line because a refused drag may settle near a *different*
+    // candidate; with the guard disabled the snap runs and this deviation is
+    // several pixels, which is what the assertion has to catch.
+    expect(Math.abs(refused.left - refused.raw)).toBeLessThan(1.5);
   });
 
   test("shows the rotation-angle indicator beside the pointer mid-rotation", async ({
