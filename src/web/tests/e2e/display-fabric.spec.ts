@@ -8,6 +8,7 @@ import {
   openCanvasPlayer,
   probe,
   sourceColorFraction,
+  waitForInk,
 } from "./canvas-probe.js";
 import { openPaused } from "./clock.js";
 
@@ -173,6 +174,43 @@ async function profileOfAsset(
 }
 
 test.describe("the scene reaches the canvas", () => {
+  test("waits out a slow asset rather than outspending it in simulated time", async ({
+    page,
+  }) => {
+    // The regression guard for this suite's flake under parallel load. The ink
+    // guard in `openCanvasPlayer` waits by advancing a *paused clock*, but an
+    // asset fetch and decode is *real*-time async work that no amount of
+    // simulated time can advance. Under load the decode outran the budget and
+    // the guard threw "the artboard never painted" at two tests in this file.
+    //
+    // A delayed response proves the mechanism with no load at all: measured
+    // against the pre-fix guard, 800 ms and 1500 ms both reported 0 pixels
+    // while 0, 300 and 3000 ms passed — the delay is dwarfed by the ~150 ms of
+    // wall time two `runFor(100)` calls cost, so the budget is spent before the
+    // bytes land. The delay is deliberately inside that window.
+    await page.route("**/assets/**", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.continue();
+    });
+
+    await openCanvasPlayer(page, "/?theme=assets");
+
+    // The teeth are the line above: the pre-fix guard threw here. This only
+    // pins that the guard still refuses a blank artboard rather than returning
+    // early on a timeout — it deliberately does *not* assert that the delayed
+    // assets have decoded, because `openCanvasPlayer` promises ink, not that
+    // every asset has arrived.
+    const size = page.viewportSize() ?? { width: 1280, height: 720 };
+    expect(
+      await drawnFractionIn(page, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+      }),
+    ).toBeGreaterThan(0.1);
+  });
+
   test("builds identified canvas objects", async ({ page }) => {
     await openCanvasPlayer(page);
 
@@ -686,7 +724,17 @@ test.describe("every fixture renders", () => {
         "/?theme=stress&static=1",
         'canvas[data-vigilia="artboard"]',
       );
+      // The 1500 ms window is the regression this test exists for (see above)
+      // and stays. What it could not guarantee is that anything was painted by
+      // the end of it: `runFor` spends only *simulated* time, while the scene's
+      // first paint also waits on real-time work (asset fetch and decode, font
+      // load). Under load that outran the window — measured, the two captures
+      // came back 117173 and 8051 bytes, one of them a nearly empty artboard.
+      // Bytes that differ because one image is blank say nothing about frame
+      // determinism, so the ink condition is asserted before the two captures
+      // are compared.
       await page.clock.runFor(1500);
+      await waitForInk(page);
       await page.evaluate(() => document.fonts.ready);
       const shot = await page
         .locator('canvas[data-vigilia="artboard"]')

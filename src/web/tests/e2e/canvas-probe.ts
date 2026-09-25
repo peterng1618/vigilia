@@ -26,10 +26,33 @@ type HandleWindow = typeof window & {
   vigilia: { handle: Record<string, unknown> };
 };
 
-/** Simulated ms per ink attempt, and how many before the scene is declared
- * unpainted. 200 total is the old fixed 100 with one retry of slack. */
+/**
+ * Simulated ms advanced per ink attempt, real ms allowed before giving up, and
+ * how long to wait between attempts.
+ *
+ * ## Both budgets, because the two are not interchangeable
+ *
+ * The clock is paused, so `runFor` is the only thing that moves simulated time
+ * and it is what a paint needs: measured, a paused page with 21 objects built
+ * draws **zero** pixels no matter how much real time passes, and paints on the
+ * first simulated advance.
+ *
+ * But the pixels cannot arrive before the asset bytes do, and a fetch plus a
+ * decode is *real*-time async work that no amount of `runFor` can advance. The
+ * first version of this guard had only the simulated budget — two `runFor(100)`
+ * calls, ~150 ms of wall time — so a decode slower than that left nothing to
+ * paint and the guard threw "the artboard never painted". Under parallel load
+ * that happened in two tests in this file; reproduced with no load at all by
+ * delaying an asset response past that window.
+ *
+ * So the loop spends simulated time *and* real time, and gives up on a
+ * real-time deadline rather than on an attempt count. The simulated steps stay
+ * small so a slow asset is noticed quickly, and the wall-clock budget is what
+ * genuinely covers decode latency.
+ */
 const INK_STEP_MS = 100;
-const INK_ATTEMPTS = 2;
+const INK_ATTEMPT_GAP_MS = 50;
+const INK_TIMEOUT_MS = 15_000;
 
 /**
  * Painted pixels on the artboard; 0 means nothing has been drawn yet.
@@ -96,6 +119,19 @@ export async function openCanvasPlayer(
   await page.goto(
     query.includes("?") ? `${query}&static=1` : `${query}?static=1`,
   );
+  await waitForInk(page);
+}
+
+/**
+ * Advances simulated time until the artboard actually carries ink, or throws.
+ *
+ * Exported because the byte-stability test waits on the same condition and
+ * cannot use {@link openCanvasPlayer}: it navigates with its own `openPaused`
+ * so it can pin the URL. A second copy of this loop is what let that test keep
+ * its own, weaker, `runFor(1500)` — see the constants above for why the
+ * distinction between simulated and real time is load-bearing.
+ */
+export async function waitForInk(page: Page): Promise<void> {
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
   // The artboard element existing is not the scene being in it: the theme
   // envelope is revived asynchronously after mount, and a chart's clear/redraw
@@ -104,9 +140,13 @@ export async function openCanvasPlayer(
   // ink assertion in this file into a vacuous pass. Advancing in steps also
   // makes the loaded case robust: under worker load the scene can still be in
   // flight when the clock moves, and the loop simply waits for it.
-  for (let attempt = 0; attempt < INK_ATTEMPTS; attempt += 1) {
+  //
+  // The deadline is real time, not an attempt count — see the constants above.
+  const deadline = Date.now() + INK_TIMEOUT_MS;
+  while (Date.now() < deadline) {
     await page.clock.runFor(INK_STEP_MS);
     if ((await drawnPixels(page)) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, INK_ATTEMPT_GAP_MS));
   }
   throw new Error("the artboard never painted");
 }
