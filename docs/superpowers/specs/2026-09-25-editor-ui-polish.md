@@ -127,14 +127,21 @@ rather than being forced into it:
 .vigilia-numeric   { font-variant-numeric: tabular-nums; }
 ```
 
-Field surfaces become React components under `editor-shell/controls/`:
+Field surfaces become DOM factories under `editor-shell/controls/`:
 
 - `NumberField` — label left, control right, tabular figures.
-- `LinkedPair` — two numbers on one row, committed together (X/Y, W/H). No chain
-  toggle: neither the artboard's W/H nor the inspector's X/Y and W/H have
-  linked-resize semantics, so an aspect lock would gate nothing.
-- `ColorSwatch` — inline swatch opening a Base UI `Popover` of palette tokens.
-- `Slider` — opacity, paired with a numeric readout.
+- `LinkedPair` — two numbers on one row, sharing one set of bounds, each half
+  committing its own value (X/Y, W/H). No chain toggle: neither the artboard's
+  W/H nor the inspector's X/Y and W/H have linked-resize semantics, so an aspect
+  lock would gate nothing — and because they do not, a pair that committed both
+  halves would rewrite a dimension the author never edited.
+
+`ColorSwatch` (an inline swatch opening a Base UI `Popover` of palette tokens)
+and `Slider` (opacity, paired with a numeric readout) are **not built**: neither
+has a consumer in this plan, and the surfaces that would render them are
+imperative panels, as `NumberField` and `LinkedPair`'s own consumer is. The
+factories are framework-free for that reason — the plan's Task 8 Step 3 rules
+the point in full.
 
 Group disclosure is a hand-rolled button carrying `aria-expanded` rather than
 Base UI `Collapsible`: the interaction model is already ruled (roles kept, no
