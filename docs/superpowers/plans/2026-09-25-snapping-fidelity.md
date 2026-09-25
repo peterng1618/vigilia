@@ -396,7 +396,7 @@ describe("equal-spacing hold", () => {
     const { canvas, snapping, active } = scene();
     canvas.fire("mouse:down" as never, { target: active } as never);
 
-    // 200 is the exact equal-spacing position: 160 + (280 - 160 - 40) / 2.
+    // 200 is the exact equal-spacing position: 161 + (280 - 161 - 41) / 2.
     move(canvas, active, 200);
     expect(active.left).toBe(200);
 
