@@ -3,7 +3,6 @@ import {
   type AssetReference,
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
-  type FitMode,
   type Globals,
   resolveStyleValue,
   type ScenePlan,
@@ -75,7 +74,7 @@ export interface EditorShell {
     resolveAsset: (assetId: string) => BackgroundMediaSource | undefined,
   ): void;
   setGlobals(globals: Globals | undefined): void;
-  setFitMode(fitMode: FitMode): void;
+  setFitMode(): void;
   /** Layer display names: editor metadata, not authored document content (§172). */
   layerNames(): Readonly<Record<string, string>>;
   setLayerNames(names: Readonly<Record<string, string>>): void;

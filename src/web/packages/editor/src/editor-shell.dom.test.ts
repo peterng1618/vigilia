@@ -212,7 +212,7 @@ describe("native editor shell", () => {
   it("exposes a camera over the mounted canvas", async () => {
     const host = document.createElement("div");
     Object.defineProperty(host, "clientWidth", { value: 1000 });
-    Object.defineProperty(host, "clientHeight", { value: 800 });
+    Object.defineProperty(host, "clientHeight", { value: 400 });
     document.body.append(host);
     const shell = await mountEditorShell({
       host,
@@ -224,10 +224,11 @@ describe("native editor shell", () => {
       } as never,
     });
     expect(shell.editor.viewport.zoom()).toBeGreaterThan(0);
-    // The canvas fills the host, not the artboard: 1280x720 fitted into 1000x800
-    // would be a 1000px-wide canvas, and it must no longer be.
+    // The canvas fills the host, not the artboard: a canvas sized to the
+    // artboard would be 711 wide at this host's fit scale; it must fill the
+    // host instead.
     expect(shell.editor.canvas.getWidth()).toBe(1000);
-    expect(shell.editor.canvas.getHeight()).toBe(800);
+    expect(shell.editor.canvas.getHeight()).toBe(400);
     shell.destroy();
   });
 });
