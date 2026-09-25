@@ -27,18 +27,16 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- `viewport-manager/navigation.ts` binds the camera's gestures: wheel pans,
-  ctrl/meta-wheel zooms about the pointer, space-drag and middle-drag pan, and
-  `+`/`=`/`-`/`shift+1` zoom. It is wired into `createNativeEditor` and unbound
-  on destroy.
-- A pan claims the canvas through Fabric's own `skipTargetFind`/`selection`, so
-  a drag pans the camera and never moves authored content; `blur` clears the
-  hold so a lost keyup cannot wedge the editor in pan mode.
-- The camera keys defer to a focused text field through the newly exported
-  `isTextEntryTarget`, and Space is left to a focused button, which activates on
-  it. Both guards fail a test when removed.
-- `isTextEntryTarget` is now exported from `shortcut-manager` instead of copied;
-  one concept, one owner.
+- The layer panel moves objects: rows are HTML5 drag sources, and a drop
+  restacks the layer through the bridge's new `reorderLayer` when both rows
+  share a parent. A cross-group drop is refused and left unmarked.
+- One native drop indicator, positioned by the browser's own dragover target,
+  so the marker cannot outlive the gesture or promise a drop that would refuse.
+- The panel's six-per-row action buttons are gone; a bottom row renders
+  `OBJECT_ACTIONS` through the same `actionEnabled` predicate the dock uses.
+- `layer-panel.dom.test.tsx` and `bridge.dom.test.ts` cover the row filter,
+  the drop slot and `reorderLayer`'s two refusals; `editor.spec.ts` drags a row
+  in a real browser and re-saves the envelope.
 
 ## Next
 

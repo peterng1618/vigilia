@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { VigiliaChart } from "@vigilia/scene-fabric";
-import { ActiveSelection, Group, Rect } from "fabric/es";
+import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { beforeEach, expect, it, vi } from "vitest";
 import { objectAction } from "../object-actions.js";
 import { createEditorShellBridge } from "./bridge.js";
@@ -301,4 +301,69 @@ it("ignores a layer command aimed at an id the tree does not have", () => {
   // A refusal that still did any of this would corrupt unrelated state.
   expect(setActiveObject).not.toHaveBeenCalled();
   expect(saveState).not.toHaveBeenCalled();
+});
+
+it("reorders within one parent and reports the move", () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const alpha = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const beta = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  alpha.set("id", "alpha");
+  beta.set("id", "beta");
+  canvas.add(alpha, beta);
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState },
+  });
+
+  const order = (): unknown[] =>
+    canvas.getObjects().map((object) => object.get("id"));
+
+  // Paint order is bottom-first; the panel reverses it for display.
+  expect(order()).toEqual(["alpha", "beta"]);
+  expect(bridge.reorderLayer("alpha", "beta")).toBe(true);
+  expect(order()).toEqual(["beta", "alpha"]);
+  // Reordering is authored state: without this the drop would not reach the
+  // saved envelope, and the browser test below is the only other thing that
+  // would notice.
+  expect(saveState).toHaveBeenCalledTimes(1);
+});
+
+it("refuses to move a layer across a group boundary", () => {
+  // Crossing owners changes membership, which is a different operation.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  const group = new Group([child]);
+  group.set("id", "grp");
+  const sibling = new Rect({ left: 60, top: 0, width: 10, height: 10 });
+  sibling.set("id", "sibling");
+  canvas.add(group, sibling);
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+
+  const before = canvas.getObjects().map((object) => object.get("id"));
+  expect(bridge.reorderLayer("child", "sibling")).toBe(false);
+  expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
+  expect(child.group).toBe(group);
+});
+
+it("refuses an unknown id instead of moving something else", () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const alpha = new Rect();
+  const beta = new Rect();
+  alpha.set("id", "alpha");
+  beta.set("id", "beta");
+  canvas.add(alpha, beta);
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+
+  const before = canvas.getObjects().map((object) => object.get("id"));
+  expect(bridge.reorderLayer("nope", "beta")).toBe(false);
+  expect(bridge.reorderLayer("alpha", "nope")).toBe(false);
+  expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
 });

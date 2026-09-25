@@ -45,6 +45,12 @@ export interface EditorShellBridge {
   setCollapsed(id: string, collapsed: boolean): void;
   /** Editor-only display state: never authored history, never a Fabric write. */
   renameLayer(id: string, name: string): void;
+  /** Whether both ids share one parent, i.e. whether `reorderLayer` would
+   * accept the drop. The panel asks this to mark only reachable slots. */
+  sameLayerParent(a: string, b: string): boolean;
+  /** Restacks `id` directly above `beforeId`, inside one parent only.
+   * `true` when the move happened; a refusal changes nothing. */
+  reorderLayer(id: string, beforeId: string): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
   readonly session: EditorActionFacade;
@@ -185,6 +191,51 @@ export function createEditorShellBridge(input: {
     input.session.setLayerNames(next);
     notify();
   };
+  // The owner comparison `reorderLayer` refuses on, exposed so the panel can
+  // mark only the drops that would land. Never `object.group`: an active
+  // selection temporarily repoints it at the selection itself.
+  const sameLayerParent = (a: string, b: string): boolean => {
+    const root = canvas.getObjects();
+    return (
+      findById(root, a) !== undefined &&
+      findById(root, b) !== undefined &&
+      ownerOf(root, a) === ownerOf(root, b)
+    );
+  };
+  const reorderLayer = (id: string, beforeId: string): boolean => {
+    const root = canvas.getObjects();
+    const moved = findById(root, id);
+    const anchor = findById(root, beforeId);
+    if (moved === undefined || anchor === undefined) return false;
+    // v1 restacks inside one parent only: crossing a group boundary changes
+    // membership, which is a different operation with different semantics.
+    if (ownerOf(root, id) !== ownerOf(root, beforeId)) return false;
+    const parent = ownerOf(root, id);
+    const siblings = parent === undefined ? root : parent.getObjects();
+    const from = siblings.indexOf(moved);
+    const anchorAt = siblings.indexOf(anchor);
+    // Load-bearing, not tidiness: `moveObjectTo` splices at `index` even when the
+    // object is absent from the array (`removeFromArray` no-ops, `splice(-1, …)`
+    // then inserts at the end), so a mismatch here would reparent the object
+    // instead of refusing.
+    if (from < 0 || anchorAt < 0) return false;
+    // `beforeId` means directly above that row in the panel, and the panel paints
+    // topmost-first, so in Fabric's bottom-first paint order the target is one
+    // past the anchor. Fabric's `moveObjectTo` removes the object and then
+    // splices at `index` in the *post-removal* array, so an upward move in paint
+    // order shifts down by one.
+    let target = anchorAt + 1;
+    if (from < target) target -= 1;
+    // Fabric is the sole order owner; moveObjectTo reorders the array Fabric paints.
+    // Its boolean return is the move's own verdict — it answers false when the
+    // object already sits at `target`, and discarding that would report success
+    // for a move that did not happen, so the drop line would lie.
+    if (!canvas.moveObjectTo(moved, target)) return false;
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
+    notify();
+    return true;
+  };
   return {
     snapshot,
     target,
@@ -196,6 +247,8 @@ export function createEditorShellBridge(input: {
     setLayerLocked,
     setCollapsed,
     renameLayer,
+    sameLayerParent,
+    reorderLayer,
     session: input.session,
     editor: input.editor,
     subscribe(listener) {

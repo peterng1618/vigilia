@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
+import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { LayerKind, LayerRow } from "./layer-tree.js";
@@ -85,6 +86,16 @@ export function LayerPanel({
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
 
+  // The drag's own state, not React's: a ref set mid-gesture lands without a
+  // re-render, so a drop that follows within the same frame cannot see the
+  // stale value a state update would leave behind.
+  const drag = useRef<{ from: string; before: string | undefined } | undefined>(
+    undefined,
+  );
+  // One line for the whole tree: the browser applies it to whatever element is
+  // under the cursor, which is exactly the slot that would take the drop.
+  const indicator = useRef<HTMLDivElement | null>(null);
+
   const commit = (id: string, name: string): void => {
     setEditing(undefined);
     store.mutate(() => bridge?.renameLayer(id, name));
@@ -94,12 +105,15 @@ export function LayerPanel({
     <section data-vigilia-panel="layers">
       <h2>{uiCopy.panels.layers}</h2>
       <div role="tree" aria-label={uiCopy.panels.layers}>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const Icon = KIND_ICONS[row.kind];
           const twisty = row.collapsed ? uiCopy.panels.expand : uiCopy.panels.collapse;
           return (
             <div
-              key={row.id}
+              // The row's own id is not unique once an object moves: a stale
+              // projection can hold one id twice, and a duplicate key makes
+              // React reuse the wrong row. Slot identity is what re-renders.
+              key={`${row.id}#${index}`}
               className="vigilia-layer-row"
               data-vigilia-layer={row.id}
               data-selected={row.selected}
@@ -111,6 +125,54 @@ export function LayerPanel({
               // the roving state, so all rows stay tabbable.
               tabIndex={0}
               title={row.id}
+              // A row being renamed is a text field: its own drag gesture is
+              // selecting text, not restacking the layer.
+              draggable={editing !== row.id}
+              onDragStart={(event) => {
+                // Chrome will not start a drag without payload, and one of our
+                // own rows is the only thing that may start one.
+                event.dataTransfer.setData("application/x-vigilia-layer", row.id);
+                drag.current = { from: row.id, before: undefined };
+              }}
+              // The row is the drop slot's height, so the browser pointing its
+              // drop indicator at this row is the same thing as a pointer aimed
+              // between this row and the one above it.
+              onDragOver={(event) => {
+                const active = drag.current;
+                if (active === undefined) return;
+                // A permanent marker reads as state, not as a target.
+                event.preventDefault();
+                if (active.before === row.id) return;
+                // Not above ourselves: that is where the layer already is.
+                const moved = row.id !== active.from;
+                // Nothing marked outside one parent — the bridge would refuse
+                // it, and a marker there would promise a drop that cannot land.
+                active.before = moved && bridge?.sameLayerParent(active.from, row.id)
+                  ? row.id
+                  : undefined;
+                const line = indicator.current;
+                if (line === null || !moved) return;
+                line.hidden = active.before === undefined;
+                if (active.before === undefined) return;
+                line.style.setProperty("--layer-dropline-top", String(index * 24));
+                line.style.setProperty(
+                  "--layer-dropline-left",
+                  String(6 + row.depth * 13),
+                );
+              }}
+              onDrop={(event) => {
+                const active = drag.current;
+                drag.current = undefined;
+                if (indicator.current !== null) indicator.current.hidden = true;
+                const before = active?.before;
+                if (active === undefined || before === undefined) return;
+                event.preventDefault();
+                store.mutate(() => bridge?.reorderLayer(active.from, before));
+              }}
+              onDragEnd={() => {
+                drag.current = undefined;
+                if (indicator.current !== null) indicator.current.hidden = true;
+              }}
               style={
                 {
                   "--layer-depth": String(row.depth),
@@ -212,7 +274,28 @@ export function LayerPanel({
             </div>
           );
         })}
+        <div
+          ref={indicator}
+          hidden
+          aria-hidden
+          data-vigilia-layer-dropline=""
+          className="vigilia-layer-dropline"
+        />
       </div>
+      <footer data-vigilia-layer-actions>
+        {OBJECT_ACTIONS.filter(
+          (action) => bridge !== undefined && actionEnabled(bridge, action.id),
+        ).map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            type="button"
+            aria-label={label}
+            onClick={() => bridge?.run(id)}
+          >
+            <Icon aria-hidden size={15} strokeWidth={1.75} />
+          </button>
+        ))}
+      </footer>
     </section>
   );
 }

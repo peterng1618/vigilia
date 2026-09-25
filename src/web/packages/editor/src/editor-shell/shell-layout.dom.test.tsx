@@ -48,6 +48,8 @@ function bridgeStub(
     setLayerLocked: vi.fn(),
     setCollapsed: vi.fn(),
     renameLayer: vi.fn(),
+    sameLayerParent: () => false,
+    reorderLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: facade(),

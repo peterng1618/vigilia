@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { LayerPanel } from "./layer-panel.js";
 import type { EditorShellBridge } from "./bridge.js";
+import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 
 function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
   return {
@@ -17,6 +18,8 @@ function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
     setLayerLocked: vi.fn(),
     renameLayer: vi.fn(),
     setCollapsed: vi.fn(),
+    sameLayerParent: () => false,
+    reorderLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: { savePackage: vi.fn() } as never,
@@ -167,4 +170,112 @@ it("collapses and expands a group from its twisty", async () => {
     host.querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')?.click(),
   );
   expect(setCollapsed).toHaveBeenCalledWith("group", true);
+});
+
+const rows = [
+  { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+    hasChildren: true, visible: true, locked: false, selected: false },
+  { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+    hasChildren: false, visible: true, locked: true, selected: true },
+];
+
+it("renders object actions in a bottom row, not on the selected row", async () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
+  const row = host.querySelector('[data-vigilia-layer="child"]');
+  expect(row?.querySelector('[aria-label="Duplicate"]')).toBeNull();
+  expect(host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]')).not.toBeNull();
+});
+
+it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
+  // Eligibility is expressed through `target()`: `actionEnabled` reads the
+  // ActionGate, and the bridge has no `can` in that path. Overriding `can` here
+  // would change nothing and the test would silently assert the unfiltered row.
+  const none = () => ({ kind: "none", locked: false, memberCount: 0, isGroup: false });
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(<LayerPanel bridge={bridge(rows, { target: none })} />));
+  const empty = host.querySelector("[data-vigilia-layer-actions]");
+  expect(empty?.querySelectorAll("button")).toHaveLength(0);
+
+  // With the helper's default single unlocked object the row is the registry's
+  // own answer, derived rather than hand-written — a literal count here would
+  // only pass if the row re-derived eligibility, which Step 3 forbids.
+  const host2 = document.createElement("div");
+  const root2 = createRoot(host2);
+  await act(async () => root2.render(<LayerPanel bridge={bridge(rows)} />));
+  const gate = bridge(rows);
+  const expected = OBJECT_ACTIONS
+    .filter((action) => actionEnabled(gate, action.id))
+    .map((action) => action.label);
+  const rendered = [...(host2.querySelector("[data-vigilia-layer-actions]")
+    ?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label"));
+  expect(rendered.sort()).toEqual([...expected].sort());
+  expect(expected.length).toBeGreaterThan(1);
+});
+
+it("only marks a drop slot that would actually land", async () => {
+  const reorderLayer = vi.fn(() => false);
+  // A drop is a pointing gesture: without this the click that precedes the
+  // drag would select the row the drop refused.
+  const selectLayer = vi.fn();
+  // Two children in one group and a sibling at the top level: the first pair
+  // shares a parent, so a drop between them lands; the sibling does not, so the
+  // same gesture across the boundary must stay unmarked — including a drop on
+  // the group's own row, since a child is not the group's sibling.
+  const tree = [
+    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false },
+    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined,
+      hasChildren: false, visible: true, locked: false, selected: false },
+  ];
+  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const host = await renderPanel(tree, {
+    reorderLayer,
+    selectLayer,
+    // The bridge's own owner comparison, keyed by the tree above.
+    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+  });
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const line = (): HTMLElement =>
+    host.querySelector<HTMLElement>("[data-vigilia-layer-dropline]")!;
+
+  // The marker is permanent chrome, so "no drop" has to be its hidden state.
+  expect(line().hidden).toBe(true);
+  // jsdom has neither DragEvent nor DataTransfer: the handler only writes the
+  // payload Chrome needs to start a drag, so a plain event with a stub on it
+  // carries everything the component actually reads.
+  const drag = (type: string): Event => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { setData: () => undefined },
+    });
+    return event;
+  };
+
+  await act(async () => row("child").dispatchEvent(drag("dragstart")));
+  for (const refused of ["sibling", "group"]) {
+    await act(async () => row(refused).dispatchEvent(drag("dragover")));
+    // Across the boundary the same pointer position that lands below is left
+    // unmarked: the difference can only come from the parent comparison.
+    expect(line().hidden).toBe(true);
+  }
+
+  await act(async () => row("peer").dispatchEvent(drag("dragover")));
+  // Landing: the child moves above its peer, inside their shared group. The
+  // line is placed at the slot the drop would take.
+  expect(line().hidden).toBe(false);
+  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("48");
+  expect(line().style.getPropertyValue("--layer-dropline-left")).toBe("19");
+
+  await act(async () => row("peer").dispatchEvent(drag("drop")));
+  expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
+  expect(selectLayer).not.toHaveBeenCalled();
+  expect(line().hidden).toBe(true);
 });

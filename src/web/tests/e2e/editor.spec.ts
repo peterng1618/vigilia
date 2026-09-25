@@ -1733,6 +1733,103 @@ test.describe("Fabric editor route", () => {
     await page.keyboard.up("Space");
     expect(await translate()).toEqual(atLimit);
   });
+
+  test("reorders a layer and refuses a cross-group drop", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+
+    await page.goto(EDITOR);
+    // A fixture with both shapes the rule distinguishes: two plain siblings, and a
+    // group whose child must not be movable across the boundary.
+    // `vigiliaPaint` and `globals.palette` are not decoration: a literal `fill`
+    // with no paint ref is `unresolved-global-ref` and `setThemePackage` asserts
+    // `writeThemePackage` returned ok, so a fixture without them fails before the
+    // editor opens. Copied from the `movable.vigilia-theme` fixture at `:1322`.
+    const paint = {
+      palette: {
+        none: { name: "None", value: { kind: "solid", color: "transparent" } },
+        accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+      },
+    };
+    const rect = (id: string, left: number, top: number) => ({
+      type: "Rect",
+      id,
+      left,
+      top,
+      width: 40,
+      height: 40,
+      fill: "#00b8d9",
+      vigiliaPaint: { fill: "palette.accent" },
+      originX: "left",
+      originY: "top",
+    });
+    await setThemePackage(page, "reorder.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "reorder",
+      artboard: { width: 320, height: 180 },
+      globals: paint,
+      scene: {
+        version: "7.4.0",
+        objects: [
+          rect("alpha", 20, 20),
+          rect("beta", 80, 20),
+          {
+            type: "Group",
+            id: "grp",
+            left: 20,
+            top: 90,
+            objects: [{ ...rect("child", 0, 0), width: 30, height: 30 }],
+          },
+        ],
+      },
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened reorder.vigilia-theme",
+    );
+
+    const panelOrder = (): Promise<(string | null)[]> =>
+      page
+        .locator("[data-vigilia-layer]")
+        .evaluateAll((rows) =>
+          rows.map((row) => row.getAttribute("data-vigilia-layer")),
+        );
+    // The panel paints topmost-first, so its row order is the reverse of the
+    // serialized paint order. Compare the pair's *relative* order, never an
+    // absolute index, so this holds whichever direction the projection uses.
+    const idsIn = (envelope: unknown): string[] =>
+      (
+        envelope as { scene: { objects: Array<{ id?: string }> } }
+      ).scene.objects.map((object) => object.id ?? "");
+    const pairRelativeTo = (ids: string[]): boolean =>
+      ids.indexOf("alpha") < ids.indexOf("beta");
+
+    const beforeIds = idsIn(await saveEnvelope(page));
+    const beforePanel = await panelOrder();
+    expect(beforeIds).toContain("alpha");
+    expect(beforeIds).toContain("beta");
+
+    // Same parent: drop alpha on beta's row.
+    await page
+      .locator('[data-vigilia-layer="alpha"]')
+      .dragTo(page.locator('[data-vigilia-layer="beta"]'));
+    const afterPanel = await panelOrder();
+    expect(afterPanel).not.toEqual(beforePanel);
+
+    // Reordering is authored state (Step 4 calls `saveState`), so it must reach
+    // the saved envelope — a panel-only change would be a projection bug.
+    const afterIds = idsIn(await saveEnvelope(page));
+    expect(pairRelativeTo(afterIds)).toBe(!pairRelativeTo(beforeIds));
+
+    // Cross-group: a child dropped on a top-level sibling changes membership,
+    // which this operation must refuse outright.
+    await page
+      .locator('[data-vigilia-layer="child"]')
+      .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
+    expect(await panelOrder()).toEqual(afterPanel);
+    expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
