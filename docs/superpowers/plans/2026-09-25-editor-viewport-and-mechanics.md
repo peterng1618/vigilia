@@ -2011,7 +2011,14 @@ Then repoint every mapping site at it. **Read the set from the file with the gre
 rg -n 'box\.(x|y|width|height)' src/web/tests/e2e/editor.spec.ts
 ```
 
-Measured, that returns **nine** `box`-relative arithmetic sites, and the count has moved every time this task has been read (seven, then eight, then nine) because two other tasks added e2e cases to this file in between. **So the table is by description, not by line, and the grep is the only authority for the set.** Anything the grep still lists when you are done is a site you missed:
+Measured at `92e846a`, that returns **14 lines — seven x/y pairs**, not "nine sites": the earlier count was a line count read as a site count. Six of the seven are the naive box-relative form and are in scope:
+
+- `:1412-1413` and `:2005-2006` scale by the fixture's own artboard size (`/ 320`, `/ 180`) — the mapping defect in its plainest form.
+- `:1648-1649`, `:1943-1944`, `:1973-1974` and `:2570-2571` are the same form against `1280x720` fixtures.
+
+**The seventh, `:1730-1731`, is the most important one and is easy to talk yourself out of.** It reads `viewportTransform` off the editor through an `Object.entries(window).find(([key]) => key.startsWith("vigilia-fabric-editor-"))` probe and applies `x: box.x + panX + zoom * x` by hand. That is not a mapping that happens to be correct — it is a **second copy of the camera's transform**, plus a private-instance hack that reaches past the bridge, which is precisely what this task exists to delete. It computes the same point `artboardScreenRect()` does (`rect.left` is the transform's `tx`, which is what that code calls `panX`), so repointing it is behaviour-preserving; the thing that test verifies is the marquee's reachability, not the transform. **Repoint it like the rest**, and if you conclude otherwise, say why in the report rather than leaving it silently unlisted.
+
+The grep is the authority for the *set*; anything still listed when you are done is a site you missed:
 
 | What the site is | How to find it |
 |---|---|
