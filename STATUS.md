@@ -20,8 +20,7 @@ and interaction layer before snapping fidelity resumes.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
   Task 6, after the active plan's browser evidence is complete.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md)
-  decides it; the review it answers is
-  `docs/superpowers/2026-09-25-compaction-recovery-review.md`.
+  decides it.
 
 ## Last completed change
 
@@ -50,6 +49,7 @@ and interaction layer before snapping fidelity resumes.
   undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
 - No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
   audit for unknown agent ids is the only candidate and is not implemented.
+  Concurrent dispatches, stale ledgers and malformed records are also untested.
 - The layer panel's bottom action row is still unverified by eye because the
   current capture has no selection.
 - Two `display-fabric.spec.ts` player tests exceed Playwright's 30s default on
