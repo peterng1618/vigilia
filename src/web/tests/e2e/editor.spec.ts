@@ -1,4 +1,10 @@
-import { expect, type Page, type TestInfo, test } from "@playwright/test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+  test,
+} from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 
@@ -215,6 +221,12 @@ test.describe("Fabric editor route", () => {
     );
     expect(motion.duration).toBe("0.14s, 0.14s, 0.14s, 0.14s, 0.14s");
 
+    const injectedTransition = (locator: Locator) =>
+      locator.evaluate((el) => {
+        el.style.transition = "opacity 200ms ease";
+        return getComputedStyle(el).transitionDuration;
+      });
+
     // Base UI portals the popup to `body`, where `.editor-shell *` cannot reach
     // it, so the media block names the popup's own class. Without the injection
     // this reads 0s either way and would pass with that selector deleted; with
@@ -225,14 +237,30 @@ test.describe("Fabric editor route", () => {
     // in the DOM; only the open View menu's is visible.
     const popup = page.locator(".editor-shell-menu-popup:visible");
     await expect(popup).toBeVisible();
-    const popupTransition = () =>
-      popup.evaluate((el) => {
-        el.style.transition = "opacity 200ms ease";
-        return getComputedStyle(el).transitionDuration;
-      });
-    await expect.poll(popupTransition).toBe("0.2s");
+    // Anchored to the View popup's own item, not merely to "a visible popup": the
+    // zoom menu also satisfies `:visible`, so a popup-agnostic locator would let
+    // the positive control pass while measuring the wrong menu.
+    await expect(
+      popup.getByRole("menuitem", { name: /Value runs/ }),
+    ).toBeVisible();
+    await expect.poll(() => injectedTransition(popup)).toBe("0.2s");
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await expect.poll(popupTransition).toBe("0s");
+    await expect.poll(() => injectedTransition(popup)).toBe("0s");
+
+    // The dock tooltip is portalled under its own class, and its positioner carries
+    // no class at all — so `.editor-shell-tooltip` is the whole of its coverage. The
+    // dock renders no triggers until something is selected.
+    await page.keyboard.press("Escape");
+    await expect(popup).toBeHidden();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await selectStarterChart(page);
+    const dock = page.locator('[aria-label="Selected object actions"]');
+    await dock.getByRole("button", { name: "Duplicate" }).hover();
+    const tooltip = page.locator(".editor-shell-tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect.poll(() => injectedTransition(tooltip)).toBe("0.2s");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect.poll(() => injectedTransition(tooltip)).toBe("0s");
   });
 
   test("captures selected chart binding controls for visual review", async ({
