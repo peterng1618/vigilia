@@ -303,6 +303,11 @@ export class EditorSession {
     this.#shortcuts.register("edit.ungroup", () => {
       options.shell.editor.groupingManager.ungroup();
     });
+    // Context-only, so it is registered here rather than in `PRODUCT_SHORTCUTS`:
+    // no menu or tooltip displays "Escape".
+    this.#shortcuts.register("view.exit-group", () => {
+      options.shell.editor.groupingManager.exitGroup();
+    });
     this.#shortcuts.register("canvas.front", () => {
       options.shell.editor.layerManager.bringToFront();
     });

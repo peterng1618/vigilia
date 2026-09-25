@@ -47,9 +47,12 @@ export function createCanvasNudge(options: CanvasNudgeOptions): CanvasNudge {
     ).filter((object) => (object as NudgeObject).locked !== true);
     if (targets.length === 0) return;
     for (const object of targets) {
-      // Read and write must name the same origin: `getCenterPoint` is the
-      // origin point under `originX/originY`, not the bounding-box centre.
-      const centre = object.getCenterPoint();
+      // Read and write must name the same origin: this is the origin point under
+      // `originX/originY`, not the bounding-box centre. It must also be the same
+      // *plane*: `getCenterPoint` maps a grouped child through its group, while
+      // `setPositionByOrigin` writes that child's local `left`/`top`, so a
+      // grouped child would move by the offset of the group's own centre.
+      const centre = object.getRelativeCenterPoint();
       object.setPositionByOrigin(
         new Point(centre.x + dx, centre.y + dy),
         "center",

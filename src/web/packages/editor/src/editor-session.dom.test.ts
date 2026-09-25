@@ -349,7 +349,7 @@ describe("EditorSession", () => {
     const undo = vi.fn();
     const object = {
       locked: false,
-      getCenterPoint: () => ({ x: 10, y: 20 }),
+      getRelativeCenterPoint: () => ({ x: 10, y: 20 }),
       setPositionByOrigin: vi.fn(),
       setCoords: vi.fn(),
     };

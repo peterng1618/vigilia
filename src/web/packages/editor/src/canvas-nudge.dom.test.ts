@@ -97,7 +97,7 @@ function canvasWith(start: { readonly x: number; readonly y: number }) {
   let y = start.y;
   const object = {
     locked: false,
-    getCenterPoint: () => ({ x, y }),
+    getRelativeCenterPoint: () => ({ x, y }),
     setPositionByOrigin: (point: {
       readonly x: number;
       readonly y: number;

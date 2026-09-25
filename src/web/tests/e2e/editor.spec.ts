@@ -1404,6 +1404,191 @@ test.describe("Fabric editor route", () => {
     expect(leftFor(savedAfterUndo, "panel")).toBeCloseTo(40, 3);
   });
 
+  test("enters a group, steps back out, and survives an undo", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    await page.goto(EDITOR);
+    await setThemePackage(page, "grouping.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "grouping",
+      artboard: { width: 320, height: 180 },
+      // The brief's fixture wrote a raw `fill`; this validator rejects one
+      // without a palette reference, so the paint is declared the way every
+      // other fixture here declares it.
+      globals: {
+        palette: {
+          none: {
+            name: "None",
+            value: { kind: "solid", color: "transparent" },
+          },
+          accent: {
+            name: "Accent",
+            value: { kind: "solid", color: "#00b8d9" },
+          },
+        },
+      },
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Group",
+            id: "grp",
+            left: 40,
+            top: 40,
+            // Without these the group revives 0x0 and its `aCoords` collapse to a
+            // point, so the pointer finds no target at all and entry never starts.
+            width: 30,
+            height: 30,
+            objects: [
+              {
+                type: "Rect",
+                id: "child",
+                left: 0,
+                top: 0,
+                width: 30,
+                height: 30,
+                fill: "#00b8d9",
+                vigiliaPaint: { fill: "palette.accent" },
+                originX: "left",
+                originY: "top",
+              },
+            ],
+          },
+          {
+            type: "Rect",
+            id: "outside",
+            left: 240,
+            top: 40,
+            width: 30,
+            height: 30,
+            fill: "#00b8d9",
+            vigiliaPaint: { fill: "palette.accent" },
+            originX: "left",
+            originY: "top",
+          },
+        ],
+      },
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened grouping.vigilia-theme",
+    );
+
+    // Points are derived from the camera, never from the canvas box: the canvas is
+    // host-sized, so its box says nothing about where the artboard is.
+    const rect = await page.evaluate(() => {
+      const b = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              viewport: {
+                artboardScreenRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                  height: number;
+                };
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      return b.editor.viewport.artboardScreenRect();
+    });
+    // `rect` is canvas-relative, so the canvas box offset is added here. Task 10
+    // assembles this same pair into one `sceneToClient` helper; this test is the
+    // first consumer and the local form is deliberate, not a second owner.
+    const canvasBox = (await page
+      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .boundingBox())!;
+    const at = (x: number, y: number): [number, number] => [
+      canvasBox.x + rect.left + (x / 320) * rect.width,
+      canvasBox.y + rect.top + (y / 180) * rect.height,
+    ];
+
+    const state = (): Promise<{
+      active: string | undefined;
+      childLeft: number | undefined;
+      groupPresent: boolean;
+    }> =>
+      page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getActiveObject(): { id?: string } | undefined;
+                  getObjects(): Array<{
+                    id?: string;
+                    getObjects?(): Array<{ id?: string; left?: number }>;
+                  }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        const canvas = b.editor.canvas;
+        const group = canvas.getObjects().find((object) => object.id === "grp");
+        return {
+          active: canvas.getActiveObject()?.id,
+          childLeft: group
+            ?.getObjects?.()
+            .find((object) => object.id === "child")?.left,
+          groupPresent: group !== undefined,
+        };
+      });
+
+    // Double-click inside the child: the pointer's target resolves to the child,
+    // which becomes the active object while the group stays in the context.
+    const [cx, cy] = at(55, 55);
+    await page.mouse.dblclick(cx, cy);
+    await expect.poll(async () => (await state()).active).toBe("child");
+
+    const before = (await state()).childLeft;
+    // `toBeTypeOf` is Vitest's; Playwright's `expect` has no such matcher.
+    expect(typeof before).toBe("number");
+
+    // Nudge (Task 6's binding), then undo it. The undo must not leave the context
+    // pointing at a destroyed object.
+    await page.keyboard.press("ArrowRight");
+    await expect
+      .poll(async () => (await state()).childLeft)
+      .toBe((before ?? 0) + 1);
+    await page.keyboard.press("Control+z");
+    await expect.poll(async () => (await state()).childLeft).toBe(before);
+
+    // Escape is the assertion that survives the undo — but only if it reads
+    // identity rather than id. Every read above is by `id`, and a revived object
+    // keeps its `id`: a context still holding the *pre-undo* instance satisfies
+    // `active === "grp"` just as well as a re-resolved one, and `groupPresent`
+    // reads the revived canvas either way. Neither can tell the two apart.
+    const inCanvas = (): Promise<boolean> =>
+      page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: { getActiveObject(): unknown; getObjects(): unknown[] };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas
+          .getObjects()
+          .includes(b.editor.canvas.getActiveObject());
+      });
+
+    await page.keyboard.press("Escape");
+    // For a one-object selection Fabric sets `activeObject` to that object, so
+    // `setActiveObject(target)` makes `getActiveObject() === target`. Identity is
+    // therefore readable here, and is the only thing that separates a live group
+    // from the destroyed instance.
+    await expect.poll(inCanvas).toBe(true);
+    await expect.poll(async () => (await state()).active).toBe("grp");
+    expect((await state()).groupPresent).toBe(true);
+  });
+
   test("rehydrates a chart runtime after undo", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "desktop-chromium",

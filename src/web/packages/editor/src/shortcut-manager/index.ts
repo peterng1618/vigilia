@@ -17,7 +17,8 @@ export type ProductShortcutId =
   | "canvas.nudge-down"
   | "canvas.select-all"
   | "canvas.front"
-  | "canvas.back";
+  | "canvas.back"
+  | "view.exit-group";
 
 interface ShortcutBinding {
   readonly key: string;
@@ -52,11 +53,17 @@ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
 ];
 
+/** Context-only bindings: dispatched here but never displayed by a menu or
+ * tooltip, so they stay off `PRODUCT_SHORTCUTS`. */
+const CONTEXT_SHORTCUTS: readonly ShortcutBinding[] = [
+  { key: "escape", modifier: false, action: "view.exit-group" },
+];
+
 /** Shift-qualified bindings precede their plain form, so first match wins. */
 function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
   const key = event.key.toLowerCase();
   const modifier = event.ctrlKey || event.metaKey;
-  return PRODUCT_SHORTCUTS.find(
+  return [...PRODUCT_SHORTCUTS, ...CONTEXT_SHORTCUTS].find(
     (binding) =>
       binding.key === key &&
       binding.modifier === modifier &&

@@ -25,16 +25,18 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- `edit.undo` / `edit.redo` now call `endBurst()` on the canvas nudge before running the history
-  call, so a `Control+z` inside the 300 ms idle window closes the open burst and steps back over it
-  instead of being a silent no-op. `canvas-nudge.ts` itself is unchanged — its comment ("ends on the
-  idle window or on any other action") is now true.
-- The nudge e2e test's `waitForTimeout(400)` and its comment came out: the test asserted an undo
-  after a ~37 ms gap and passes, so the wait documented a defect that no longer exists.
-- Teeth, measured: deleting the `endBurst()` call reddens `editor-session.dom.test.ts`'s new test
-  (`expected 1 to be +0`, the suspension counter) and reddens the e2e at `editor.spec.ts:2224`
-  (`expected 0, received 11` — the object stayed at `before + 11`).
-- `editor-session.ts` is 770 lines — over the 500 signal, under the 800 stop.
+- `grouping-manager` gained `enterGroup`/`exitGroup`/`groupContext` (transient selection state,
+  §67): double-click enters a group and selects the child under the pointer, Escape steps back out.
+- A group is only transparent to a pointer once `subTargetCheck`/`interactive` are on, and they are
+  armed after Fabric's own hit test for the entering gesture has run — so `enterGroup` re-resolves
+  the deepest child from the event's `scenePoint`; the flags are restored on exit and re-applied to
+  the revived group after an undo (`editor:history-state-loaded`).
+- `canvas-nudge` reads `getRelativeCenterPoint()`: `getCenterPoint()` maps a grouped child through
+  its group while `setPositionByOrigin` writes its local `left`/`top`, so a nudge inside a group
+  moved the child by the group's own centre offset (41 instead of 1).
+- Teeth, measured: dropping the post-restore re-apply reddens the new e2e's `inCanvas` identity poll
+  (`Expected: true, Received: false`); removing `ungroup()`'s context-clearing reddens the unit test
+  (`AssertionError: expected [ v{ __eventListeners: {}, …(83) } ] to deeply equal []`).
 
 ## Next
 

@@ -217,3 +217,39 @@ describe("ShortcutManager unmodified keys", () => {
     manager.destroy();
   });
 });
+
+describe("ShortcutManager context bindings", () => {
+  it("dispatches Escape to the group-exit action", () => {
+    const manager = new ShortcutManager();
+    const exit = vi.fn();
+    manager.register("view.exit-group", exit);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(exit).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+    manager.destroy();
+  });
+
+  it("leaves Escape to a focused text field", () => {
+    // Fabric's own editing case is the same contract: its hidden textarea
+    // handles Escape itself and stops propagation, so this binding cannot fire.
+    const manager = new ShortcutManager();
+    const exit = vi.fn();
+    manager.register("view.exit-group", exit);
+    const field = document.createElement("textarea");
+    document.body.append(field);
+
+    field.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+
+    expect(exit).not.toHaveBeenCalled();
+    field.remove();
+    manager.destroy();
+  });
+});

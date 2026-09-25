@@ -30,6 +30,7 @@ import {
   Canvas,
   classRegistry,
   type FabricObject,
+  Point,
   Rect,
 } from "fabric/es";
 import { createClipboardManager } from "./clipboard-manager/index.js";
@@ -208,6 +209,31 @@ function createNativeEditor(input: {
   const images = createImageManager(canvas, save);
   const text = createTextManager(canvas, save);
 
+  const grouping = createGroupingManager({
+    canvas,
+    save,
+    suspend: () => history.suspend(),
+  });
+  /** Double-click enters the group the pointer resolved to. `text-manager` owns
+   * this event too and returns early for a non-`IText` target, so a group
+   * double-click reaches here untouched rather than being taken over. The scene
+   * point goes with it: Fabric resolved the group, and only the manager can
+   * re-resolve the child beneath it. */
+  const enterGroupOnDoubleClick = (event: {
+    readonly target?: unknown;
+    readonly scenePoint?: Point;
+  }): void => {
+    const target = event.target;
+    if (target === undefined || target === null) return;
+    grouping.enterGroup({
+      object: target as FabricObject,
+      ...(event.scenePoint === undefined
+        ? {}
+        : { scenePoint: event.scenePoint }),
+    });
+  };
+  canvas.on("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
+
   return {
     canvas,
     viewport,
@@ -237,14 +263,11 @@ function createNativeEditor(input: {
       deletion,
       importImage: (input) => images.importImage(input),
     }),
-    groupingManager: createGroupingManager({
-      canvas,
-      save,
-      suspend: () => history.suspend(),
-    }),
+    groupingManager: grouping,
     destroy: () => {
-      // The double-click editing listener outlives the canvas otherwise.
+      // Both double-click listeners outlive the canvas otherwise.
       text.destroy();
+      canvas.off("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
       unbindNavigation();
       viewport.destroy();
       // Disposal is asynchronous; a failure here must not be an unhandled
