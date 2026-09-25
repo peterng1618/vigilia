@@ -11,12 +11,11 @@ and interaction layer before snapping fidelity resumes.
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md`.
-  Tasks 1–10 are landed and the Task 11 gate is complete; archive it and promote
-  the plan below.
-- **Queued:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — five of
-  its ten tasks landed before the workflow rewrite folded the plan, so Tasks 2, 7,
-  8, 9 and 10 remain. Promote it once the viewport plan is archived.
+- **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
+  Tasks 1, 3, 4, 5 and 6 are landed; Tasks 2, 7, 8, 9 and 10 remain and carry
+  the unticked boxes.
+- **Archived:** `docs/superpowers/plans/archive/2026-09-25-editor-viewport-and-mechanics.md`
+  closed on its full Task 11 gate.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
   Task 6, after the active plan's browser evidence.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md)
@@ -45,10 +44,8 @@ and interaction layer before snapping fidelity resumes.
 
 ## Next
 
-1. Archive `2026-09-25-editor-viewport-and-mechanics.md` and promote
-   `2026-09-25-snapping-fidelity.md` as the one active plan.
-2. Execute snapping fidelity Tasks 2, 7, 8, 9 and 10.
-3. Close author-journey Task 6 when its pending browser evidence is available.
+1. Execute snapping fidelity Tasks 2, 7, 8, 9 and 10.
+2. Close author-journey Task 6 when its pending browser evidence is available.
 
 ## Blockers / unverified
 

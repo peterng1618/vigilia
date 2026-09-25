@@ -1,9 +1,8 @@
 # Snapping Fidelity Implementation Plan
 
-> **Queued plan.** `STATUS.md` names this plan as queued behind
-> `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md`. Do not
-> execute any part of it until `STATUS.md` promotes it to the active plan.
-> Tasks 1, 3, 4, 5 and 6 are **landed**, each marked below with its commits;
+> **Active plan.** `STATUS.md` names this plan as the one active plan; the
+> viewport-and-mechanics plan that preceded it is archived. Tasks 1, 3, 4, 5 and
+> 6 are **landed**, each marked below with its commits;
 > Tasks 2, 7, 8, 9 and 10 remain. Landed tasks are kept whole as the record of
 > what was built — do not re-dispatch one. The unticked boxes are the resume
 > signal: only Tasks 2, 7, 8, 9 and 10 carry them.
