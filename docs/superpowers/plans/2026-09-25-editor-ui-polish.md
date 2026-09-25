@@ -1679,7 +1679,10 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
   // it, only the media block can produce the 0s below.
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.getByRole("button", { name: "View", exact: true }).click();
-  const popup = page.locator(".editor-shell-menu-popup");
+  // The zoom readout's portal is `keepMounted`, so a second popup is in the DOM
+  // before any menu opens; without `:visible` this locator is a strict-mode
+  // violation. `.toBeVisible()` below still fails loudly if no menu opened.
+  const popup = page.locator(".editor-shell-menu-popup:visible");
   await expect(popup).toBeVisible();
   const popupTransition = () =>
     popup.evaluate((el) => {
@@ -1702,19 +1705,29 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
     const effect = el.getAnimations()[0]?.effect;
     return {
       duration: getComputedStyle(el).animationDuration,
-      properties: getComputedStyle(el).transitionProperty,
       keyframes: effect instanceof KeyframeEffect ? effect.getKeyframes().length : 0,
     };
   });
   expect(reveal.duration).not.toBe("0s");
   expect(reveal.keyframes).toBeGreaterThanOrEqual(2);
+
   // The suppression assertion reads 0s whether or not the shorthand exists, so
   // pin the shorthand itself: five compositor-owned properties, never a layout
   // one. Assert the names, not the count — the count stays 5 if `transform` is
   // swapped for `width`, which is the regression the comment forbids.
-  expect(reveal.properties).toBe(
+  //
+  // A `button`, deliberately: the shorthand's selector list is
+  // `.editor-shell, button, input, select, [role="tab"], [role="menuitem"]`, and
+  // `.editor-shell-panel` is in **none** of them, so reading it here would assert
+  // the UA default rather than this rule.
+  const motion = await page.locator(".editor-shell button").first().evaluate((el) => ({
+    properties: getComputedStyle(el).transitionProperty,
+    duration: getComputedStyle(el).transitionDuration,
+  }));
+  expect(motion.properties).toBe(
     "background-color, border-color, color, transform, opacity",
   );
+  expect(motion.duration).toBe("0.14s, 0.14s, 0.14s, 0.14s, 0.14s");
 });
 ```
 
@@ -1728,7 +1741,7 @@ The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `
 2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
 3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
 4. all six portalled-class selectors from the media block → must fail with `0.2s` where `0s` is expected. **This is the one the plan omitted and the one that matters** — it is the half the guard exists for, and the half the sibling viewport plan's Task 9 will start animating
-5. `transform 140ms ease,` from the shorthand → fails on `reveal.properties`
+5. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
 
 If any of the five passes in its broken state the assertion is still vacuous: report it rather than adjusting the test until it fails.
 

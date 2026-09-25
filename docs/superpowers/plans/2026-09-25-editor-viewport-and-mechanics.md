@@ -1797,9 +1797,16 @@ git commit -m "feat(editor): layer tree reflects the group context"
 - Modify: `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
 - Modify: `src/web/packages/editor/src/ui-copy.ts`
+- Modify: `src/web/tests/e2e/editor.spec.ts` (Step 4 — the menu's capture)
+- Modify: `docs/evidence/screenshots/README.md` (Step 4 — its registry row)
 
 **Interfaces:**
 - Consumes: `OBJECT_ACTIONS`, `actionEnabled` (UI-polish plan Tasks 1–2); `EditorShellBridge`.
+- Consumes: **this plan's Task 10 helpers** — `sceneToClient(page, sceneWidth, x, y)` and
+  `clientOfScene(page, id, sceneWidth)`, added at file scope in `editor.spec.ts`. This task runs **after**
+  Task 10, whose whole deliverable was deleting box-relative scene→client mappings for this spec file. A new
+  capture test that hand-rolls `box.x + (180 / 1280) * box.width` reintroduces exactly that defect, one task
+  after it was removed, and it would land *after* Task 10's grep-derived sweep. Use the helper.
 - Produces: nothing consumed by later tasks. **This task depends on the UI-polish plan.**
 
 `arrangeActions` is deliberately **not** consumed. The UI-polish plan rules that arrange moves to the stage toolbar, which that plan's Task 7 owns, and this menu renders the same `OBJECT_ACTIONS` list the dock renders — that shared list is the property Step 1's test pins. Reaching for `arrangeActions` here would put arrange in two surfaces and make the two lists disagree.
@@ -1891,7 +1898,34 @@ VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
 
 `captureVisualReview` returns immediately unless `VIGILIA_CAPTURE` is set, so an ungated run writes no file and this step becomes "open an image that is not there". Confirm the run reported a non-zero test count — a `--grep` matching nothing exits successfully having run nothing.
 
-That capture is the dock, not the menu: the menu is a new visible surface with no registered name, so open the host (`node packages/host/bin/vigilia.js`, built first), right-click a selected object, and confirm the visible entries match the dock's enabled buttons — same list, same order. Then add the menu's own capture and its `docs/evidence/screenshots/README.md` row in Step 5's commit, since this task is what creates it.
+That capture is the dock, not the menu. **The menu is a new visible surface, and it needs its own capture and
+its own registered name — an earlier revision of this step said to add them without giving this task any way to
+produce one: no `editor.spec.ts` in the Files list, no image in the `git add` below, and no test to generate it.**
+A registry row pointing at a name no test writes is an image nothing regenerates, which is worse than
+`add when changed`.
+
+So add one capture test to `src/web/tests/e2e/editor.spec.ts`, beside `captures the canvas dock over a selected
+object` (`:2049`), following that test's shape exactly — same `desktop-chromium` skip clause, same `await
+page.goto(EDITOR)`, same `captureVisualReview(page, testInfo, "editor-canvas-context-menu")` close. Machine-
+checkable requirements, because a capture test that drifts from these is a failure this step already owns once:
+
+- **Map the gesture through `clientOfScene(page, "<id>")`, not through the canvas box.** It is Task 10's
+  file-scope helper and the only owner of the camera transform. `clientOfScene` returns a client point; the
+  right-click is `await page.mouse.click(point.x, point.y, { button: "right" })`.
+- **Right-click a selected object**, so the menu offers the object actions rather than the creation actions:
+  `await selectStarterChart(page)` first (a file-scope helper with four existing call sites), then right-click
+  the object it selects. `selectStarterChart` asserts `load-gauge` is active, so this cannot silently right-click
+  empty canvas and capture the wrong menu.
+- **Assert the menu opened before capturing**, and assert one entry by name:
+  `await expect(page.getByRole("menuitem", { name: "Duplicate" })).toBeVisible()`. A capture of a menu that never
+  opened is an image of the editor, which is not evidence of this task — and the `--grep` for a capture is not
+  what proves the menu is real, this assertion is.
+- **Title the test** `captures the canvas context menu over a selected object`.
+
+Then register it. `docs/evidence/screenshots/README.md`'s `Editor mechanics` row already lists
+`editor-snap-guides`, `editor-rotation-indicator` and `editor-toolbar`; append
+`` `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` `` to that row rather
+than inventing a domain — it is the same visible action class.
 
 - [ ] **Step 5: Commit**
 
@@ -1901,9 +1935,16 @@ git add src/web/packages/editor/src/editor-shell/canvas-context-menu.tsx \
   src/web/packages/editor/src/editor-shell/shell-layout.tsx \
   src/web/packages/editor/src/editor-shell/editor-shell.css \
   src/web/packages/editor/src/ui-copy.ts \
-  docs/evidence/screenshots/README.md
+  src/web/tests/e2e/editor.spec.ts \
+  docs/evidence/screenshots/README.md \
+  docs/evidence/screenshots/editor-canvas-context-menu-desktop-chromium.png
 git commit -m "feat(editor): canvas context menu from the action registry"
 ```
+
+**Stage the capture by name, never `docs/evidence/screenshots` as a directory** — it holds roughly forty PNGs
+owned by other tasks and another plan, and it currently carries a modified `editor-desktop-chromium.png` that no
+task here owns. If the capture file is absent, the capture step did not run: check `VIGILIA_CAPTURE=1` was set
+and the grep reported a non-zero test count rather than exiting zero having run nothing.
 
 ---
 
@@ -1920,7 +1961,7 @@ git commit -m "feat(editor): canvas context menu from the action registry"
 
 The spec's acceptance item "snapping guides and indicators stay correct at non-1 zoom" is a claim about existing code, so verify it rather than assuming it. `snap-manager/index.ts` divides guide width by zoom and clamps guides to the artboard; `guide-renderer.ts:30` reads `viewportTransform` and applies it to the context. Both look right, and both were only ever exercised at fit zoom.
 
-**This task also owns two e2e tests that Task 2 turned red — they are yours to fix, not Task 2's.** Task 2 made the canvas host-sized instead of artboard-sized; the tests map a fixed artboard coordinate through the **canvas bounding box** (`box.x + (432/1280)*box.width`), an identity that held only while the canvas *was* the artboard. Measured after Task 2: canvas 626×594, zoom 0.4890625, `ty` 120.94 — so `box.height` is now the host's 594 rather than `720 × zoom = 352`, and the mapping also ignores `ty` entirely. The two failing tests are `persists an ordinary drag and restores it through undo` (`editor.spec.ts:1313`) and `rehydrates a chart runtime after undo` (`:1407`). Drag mechanics are **not** broken: a 60px screen drag moves an object 124.5 units, which is `60 / 0.4890625` exactly.
+**This task also owns two e2e tests that Task 2 turned red — they are yours to fix, not Task 2's.** Task 2 made the canvas host-sized instead of artboard-sized; the tests map a fixed artboard coordinate through the **canvas bounding box** (`box.x + (432/1280)*box.width`), an identity that held only while the canvas *was* the artboard. Measured after Task 2: canvas 626×594, zoom 0.4890625, `ty` 120.94 — so `box.height` is now the host's 594 rather than `720 × zoom = 352`, and the mapping also ignores `ty` entirely. The two failing tests are `persists an ordinary drag and restores it through undo` and `rehydrates a chart runtime after undo`. **Find them by name** — `grep -n "persists an ordinary drag\|rehydrates a chart runtime" src/web/tests/e2e/editor.spec.ts`. They were at `:1313` and `:1407` when this paragraph was written and are at `:1390` and `:1695` now; this file has moved under every task in this plan, which is why the step below identifies sites by what they are rather than where they are. Drag mechanics are **not** broken: a 60px screen drag moves an object 124.5 units, which is `60 / 0.4890625` exactly.
 
 Fix the mapping at its owner rather than re-deriving it in the spec. **Task 5 already added `ViewportManager.artboardScreenRect()` for exactly this reason — consume it, do not define a second one.** It returns the artboard's rect **relative to the canvas element**, so the canvas box offset is added once, in one place: the `sceneToClient` helper in Step 1. Have the spec's shared helper call it through `window.vigiliaEditorBridge`; a test file must not carry its own copy of the camera's transform.
 - One shared helper serves every mapping site, and **Step 1's grep derives the set — no line numbers are given here on purpose.** They have been wrong in every revision of this paragraph (`:1903-1918`, `:1806-1821`, `:1727-1730`, `:1369-1370`, `:1577-1578`…), because three different tasks have added e2e cases to this file since the paragraph was written, moving every later site by 45, 138, then 48 lines. The step below identifies each site by what it is.
@@ -2045,7 +2086,13 @@ The grep is the authority for the *set*; anything still listed when you are done
 
 That helper's own location has been cited as `:1903-1918`, `:1806-1821` and `:1727-1730` across revisions of this plan and **all three were wrong** (the last was an unrelated `atLimit` assertion). Find it with `grep -n "async function selectStarterChart"` and edit what you find.
 
-**A `box.x` with no `box.width` beside it is a UI-chrome measurement, not a scene point — do not touch it.** One such pair exists and is legitimately different: it reads `viewportTransform` from the debug handle and maps `box.x + panX + zoom * x`. It is already camera-aware, so it is not part of this repair; if the grep lists it, leave it.
+**Every pair the grep returns is in scope — there is no exception to leave alone.** An earlier revision of this step
+told the implementer to leave one pair untouched as "a UI-chrome measurement, not a scene point", identified as the
+only `box.x` with no `box.width` beside it. That identifies the `panX` pair above, whose own comment reads
+*"Artboard coordinates to page pixels, through the live camera"* — it is a scene mapping, and the paragraph's
+instruction contradicted the one two paragraphs up that says to repoint it. **Delete that instruction, not the
+site: repoint it.** If the inspection genuinely finds a `box` pair that is not mapping a scene point, say so in
+the report rather than silently skipping it.
 
 **Two blocks already call `artboardScreenRect()` and are already correct; do not flatten either.** Both add the canvas box once and carry a comment saying the offset is what stops the gesture landing off-canvas and passing vacuously: one in an interaction-flags test, one in the marquee test (find them with `grep -n "artboardScreenRect"`). An earlier revision of this step told the implementer to flatten the marquee one — that would have folded the box in twice and turned a real vacuity guard into one that passes on a marquee that selected nothing, which is the worst shape a change can take here: green, and wrong. If you want one helper rather than three copies, have both call `sceneToClient` and **keep their comments**, but do not convert either's canvas-relative `rect` into a client point before its guard compares a client coordinate against `rect.top + rect.height`.
 
@@ -2053,7 +2100,7 @@ That helper's own location has been cited as `:1903-1918`, `:1806-1821` and `:17
 active object after the click, before it opens the Data tab, so the near-miss described above cannot
 silently widen into a selection of the parent card. The assertion goes between the `page.mouse.click`
 and the `openInspectorTab(page, "Data")` call, because the tab lookup is what turns a wrong selection
-into a confusing timeout rather than a named failure. `selectStarterChart` has four call sites, so
+into a confusing timeout rather than a named failure. `selectStarterChart` has five call sites, so
 this one assertion covers four tests.
 
 Run: `npx playwright test --project=desktop-chromium --grep "restores it through undo|rehydrates a chart runtime" --workers=1`
@@ -2160,15 +2207,29 @@ this test fails, then restore it.** Do not instead reach for hoisting a single `
 save block — that changes what the primary guide paints, which is the regression this step is here to
 prevent.
 
-Then fill in the registry row this capture satisfies. `docs/evidence/screenshots/README.md` carries `| Viewport | Resize or change zoom | add when changed |` — a capture written to disk but not registered is invisible to the next person, which is the whole point of the table. Replace that row's third cell with `editor-guides-at-2x-zoom` / `keeps guides on the artboard while zoomed`, matching the format of the rows above it.
+**No capture, and nothing to register.** The `Viewport | Resize or change zoom` row already has both a capture
+and a test — `editor-zoom-readout` / `tracks the camera's zoom in the stage readout`, which exists at
+`editor.spec.ts:2169` and owns `editor-zoom-readout-desktop-chromium.png`. **Do not overwrite it.** A name this
+step invents (`editor-guides-at-2x-zoom`) would have no test behind it, so the row would point the next reader at
+an image nothing regenerates, which is worse than the `add when changed` placeholder it replaced.
+
+This task's claim is arithmetic — the hairline stays one screen pixel and the clamp is to the artboard — and
+Steps 2 and 1b pin both as unit tests against the context spy, where a browser test could only assert on pixels.
+Guides are painted straight onto `canvas.getSelectionContext()` and were never Fabric objects, so no capture can
+see them either way. If the inspection in Steps 1–2 *does* find a defect and you fix it, say so in the report;
+the registration question does not reopen.
 
 ```bash
 git add src/web/tests/e2e/editor.spec.ts \
   src/web/packages/editor/src/snap-manager \
-  src/web/packages/editor/src/indicator-manager \
-  docs/evidence/screenshots
+  src/web/packages/editor/src/indicator-manager
 git commit -m "test(editor): verify guides and indicators under camera zoom"
 ```
+
+**Stage named paths, never `docs/evidence/screenshots`.** That directory holds roughly forty PNGs owned by other
+tasks, and it currently carries a modified `editor-desktop-chromium.png` that no task in this plan owns — a
+directory-wide `git add` would sweep an unrelated change into this commit under a message about camera zoom.
+`git add` on an unmodified path is a no-op, so the three paths above are safe to stage unconditionally.
 
 Stage the source directories too, even when the inspection found nothing: if it did find a defect, the fix is worthless unstaged, and a commit that cannot contain its own fix is the failure this step exists to prevent. If nothing changed, `git add` on an unmodified path is a no-op.
 
