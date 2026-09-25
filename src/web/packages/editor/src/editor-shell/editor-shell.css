@@ -191,11 +191,10 @@ body,
 .editor-shell-menubar button[data-popup-open] {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
-/* Base UI portals the popup to `body`; the positioner must establish its own
-   stacking context or the stage (which is a positioned element inside #app,
-   later in paint order) intercepts pointer events over the menu. `relative`
-   would also make it the containing block for the popup's fixed positioning,
-   trapping the popup inside the stage's `overflow: hidden`. */
+/* Base UI portals the popup to `body` and sets `position` inline, so this rule
+   contributes the stacking context the popup needs: without it the stage — a
+   positioned element inside #app, later in paint order — intercepts pointer
+   events over the menu. */
 .editor-shell-positioner {
   z-index: 60;
 }
