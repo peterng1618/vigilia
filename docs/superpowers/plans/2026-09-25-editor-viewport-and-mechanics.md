@@ -2340,14 +2340,14 @@ Stage the source directories too, even when the inspection found nothing: if it 
 
 **Files:** none created; verification only.
 
-- [ ] **Step 1: Run the broad gate**
+- [x] **Step 1: Run the broad gate**
 
 ```bash
 cd src/web
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run size
 ```
 
-- [ ] **Step 2: Run the browser suite**
+- [x] **Step 2: Run the browser suite**
 
 ```bash
 npm run test:e2e
@@ -2369,11 +2369,11 @@ npx playwright test --project=phone-chromium --grep "is byte-stable at a fixed c
 
 The two editor drag tests Task 2 turned red (`persists an ordinary drag and restores it through undo`, `rehydrates a chart runtime after undo`) are Task 10's deliverable and must be **green** by the time this task runs. If any test is red here, report it as a finding with its output — do not classify it as pre-existing without a base-commit run proving it.
 
-- [ ] **Step 3: Confirm the player is untouched**
+- [x] **Step 3: Confirm the player is untouched**
 
 The player consumes `scene-fabric`, never editor UI or the camera. Confirm `npm run size` shows no player bundle growth and that nothing under `packages/player` imports from `viewport-manager` or `editor-shell`.
 
-- [ ] **Step 4: Inspect each acceptance item**
+- [x] **Step 4: Inspect each acceptance item**
 
 Open, in the editor, and record what each shows: the artboard centred with pasteboard visible; a zoomed view with a correct readout; a marquee drag selecting without moving; a context menu matching the dock; a group entered with the tree showing the context. Each is a visible outcome and each needs the rendered check, not an object count.
 
@@ -2391,11 +2391,11 @@ In PowerShell the same call needs the pattern single-quoted — `--grep 'tracks 
 
 The centred artboard-and-pasteboard view, the marquee and the group entry have no registered name; inspect those by hand. Run the host (`node packages/host/bin/vigilia.js`, built first) and perform each gesture rather than inventing a capture title in the last commit — a screenshot the gate did not ask for and the README does not register is not evidence.
 
-- [ ] **Step 5: Update STATUS.md**
+- [x] **Step 5: Update STATUS.md**
 
 Replace "Last completed change" with a 1–5 bullet summary, update "Next" and "Blockers / unverified", then run `npm run status:check`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add STATUS.md
