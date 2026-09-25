@@ -6,14 +6,15 @@ Branch: `claude/superpowers-workflow-cleanup`
 ## Current objective
 
 Make authoring a theme a *good* experience, not merely a possible one. The
-author journey is reachable; the remaining active work closes the editor camera
-and interaction layer before snapping fidelity resumes.
+author journey is reachable; the remaining active work is snapping fidelity —
+resize-time snapping, the behaviour matrix that proves both paths, and the
+requirement close-out.
 
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1, 3, 4, 5 and 6 are landed; Tasks 2, 7, 8, 9 and 10 remain and carry
-  the unticked boxes.
+  Tasks 1–6 are landed; Tasks 7, 8, 9 and 10 remain. Task 2's review is in
+  flight and its commit is `4fcd162`.
 - **Archived:** `docs/superpowers/plans/archive/2026-09-25-editor-viewport-and-mechanics.md`
   closed on its full Task 11 gate.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
@@ -37,8 +38,11 @@ and interaction layer before snapping fidelity resumes.
 
 ## Next
 
-1. Execute snapping fidelity Tasks 2, 7, 8, 9 and 10.
-2. Close author-journey Task 6 when its pending browser evidence is available.
+1. Close snapping-fidelity Task 2's review, then execute Tasks 7, 8, 9 and 10.
+2. Close `2026-09-25-editor-ui-polish.md`: its fix round 2 is in flight (the
+   inspector's Size row wraps, and the paired commit rewrites the sibling), and
+   it still owes the local browser suite.
+3. Close author-journey Task 6 when its pending browser evidence is available.
 
 ## Blockers / unverified
 
