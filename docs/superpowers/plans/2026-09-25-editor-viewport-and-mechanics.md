@@ -1962,10 +1962,14 @@ async function sceneToClient(
 /** The client point at an object's centre, by id. Reads the object's own
  * geometry through the bridge rather than restating fixture coordinates, so a
  * fixture tweak cannot leave this test dragging at a stale point. `left`/`top`
- * are origin-relative (Fabric's default origin is `left`/`top`), so the centre
- * is the origin plus half the scaled size — NOT `getCenterPoint()`, which
- * returns the origin itself under that default and would aim at the top-left
- * corner. */
+ * are origin-relative, so the centre is the origin plus half the scaled size —
+ * NOT `getCenterPoint()`, which returns the origin itself and would aim at the
+ * top-left corner. Every fixture in this file sets `originX`/`originY`
+ * explicitly, which is what makes `left`/`top` the origin here: **Fabric 7's
+ * default origin is CENTER** (`shapes/Object/defaultValues.mjs` holds
+ * `originX: CENTER`), so a fixture that omitted them would put `left` at the
+ * shape's centre and this helper would aim half a width too far right. If you
+ * add a fixture, set the origins. */
 async function clientOfScene(
   page: Page, id: string, sceneWidth = 1280,
 ): Promise<{ x: number; y: number }> {
