@@ -10,6 +10,91 @@ import { strToU8, zipSync } from "fflate";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
+type ArtboardRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+/** The artboard's rect, CANVAS-element relative — `artboardScreenRect()` reads
+ * `viewportTransform`, whose `e`/`f` are offsets inside the canvas element, not
+ * in the page. So this is deliberately not client space: the helper below adds
+ * the canvas box once. The canvas is host-sized and the artboard is
+ * contain-fitted inside it, so the canvas box is NOT the artboard's rendered
+ * extent — `rect.height` is `720 * zoom`, not the canvas height, and the rect
+ * carries the `ty` the old box-relative maths dropped. */
+async function artboardRect(page: Page): Promise<ArtboardRect> {
+  return page.evaluate(() =>
+    (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: { viewport: { artboardScreenRect(): ArtboardRect } };
+        };
+      }
+    ).vigiliaEditorBridge.editor.viewport.artboardScreenRect(),
+  );
+}
+
+/** A scene point in CLIENT coordinates. `sceneWidth` is the fixture's artboard
+ * width; the scale is uniform, so one axis suffices. The canvas box offset is
+ * this helper's whole reason to exist: without it every returned point is a
+ * canvas-space coordinate used as a page coordinate, landing ~357px left and
+ * ~72px above the intended object — off the canvas, where a drag selects
+ * nothing and the test passes without exercising anything. */
+async function sceneToClient(
+  page: Page,
+  sceneWidth: number,
+  x: number,
+  y: number,
+): Promise<{ x: number; y: number }> {
+  const rect = await artboardRect(page);
+  const box = (await page
+    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .boundingBox())!;
+  const scale = rect.width / sceneWidth;
+  return { x: box.x + rect.left + x * scale, y: box.y + rect.top + y * scale };
+}
+
+/** The client point at an object's centre, by id. Reads the object's own
+ * geometry through the bridge rather than restating fixture coordinates, so a
+ * fixture tweak cannot leave this test dragging at a stale point.
+ *
+ * Use `getCenterPoint()`, NOT `left + getScaledWidth() / 2`. The manual form
+ * silently assumes the origin is `left`/`top`, which is false here: the starter
+ * scene's `chart()` helper sets `originX: "center"` / `originY: "center"`, so
+ * the manual form aims at the shape's bottom-right corner instead of its
+ * centre. `getCenterPoint()` converts from whatever origin the object has. */
+async function clientOfScene(
+  page: Page,
+  id: string,
+  sceneWidth = 1280,
+): Promise<{ x: number; y: number }> {
+  const centre = await page.evaluate((objectId) => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getObjects(): Array<{
+                id?: string;
+                getCenterPoint(): { x: number; y: number };
+              }>;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const object = bridge.editor.canvas
+      .getObjects()
+      .find((candidate) => candidate.id === objectId);
+    if (object === undefined) throw new Error(`no object with id ${objectId}`);
+    const point = object.getCenterPoint();
+    return { x: point.x, y: point.y };
+  }, id);
+  return sceneToClient(page, sceneWidth, centre.x, centre.y);
+}
+
 test.describe("Fabric editor route", () => {
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
@@ -1488,15 +1573,9 @@ test.describe("Fabric editor route", () => {
       "Opened movable.vigilia-theme",
     );
 
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    if (box === null) return;
-    const point = (x: number, y: number) => ({
-      x: box.x + (x / 320) * box.width,
-      y: box.y + (y / 180) * box.height,
-    });
-    const center = point(76, 66);
+    // Scene points go through the camera (`artboardScreenRect`), never the canvas
+    // box: the canvas is host-sized, so its box says nothing about the artboard.
+    const center = await sceneToClient(page, 320, 76, 66);
     await page.mouse.dblclick(center.x, center.y);
     expect(await saveEnvelope(page)).toMatchObject({
       scene: {
@@ -1516,8 +1595,8 @@ test.describe("Fabric editor route", () => {
     await page.keyboard.press("Control+z");
     expect(leftFor(await saveEnvelope(page), "panel")).toBeCloseTo(40, 3);
 
-    const start = point(70, 70);
-    const end = point(150, 70);
+    const start = await sceneToClient(page, 320, 70, 70);
+    const end = await sceneToClient(page, 320, 150, 70);
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(end.x, end.y);
@@ -1623,9 +1702,9 @@ test.describe("Fabric editor route", () => {
       ).vigiliaEditorBridge;
       return b.editor.viewport.artboardScreenRect();
     });
-    // `rect` is canvas-relative, so the canvas box offset is added here. Task 10
-    // assembles this same pair into one `sceneToClient` helper; this test is the
-    // first consumer and the local form is deliberate, not a second owner.
+    // `rect` is canvas-relative, so the canvas box offset is added here. The file
+    // now has `sceneToClient` for this; the local form stays because the test
+    // needs a tuple and its own guard compares against `rect` directly.
     const canvasBox = (await page
       .locator("#vigilia-fabric-editor canvas.upper-canvas")
       .boundingBox())!;
@@ -1750,14 +1829,8 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    if (box === null) return;
-    const start = {
-      x: box.x + (432 / 1280) * box.width,
-      y: box.y + (418 / 720) * box.height,
-    };
+    // The grab point comes from the object's own geometry, through the camera.
+    const start = await clientOfScene(page, "load-gauge");
     const left = leftFor(await saveEnvelope(page), "load-gauge");
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
@@ -1818,29 +1891,9 @@ test.describe("Fabric editor route", () => {
     // aimed at the plate would pass even while that rect stayed selectable.
     await page.goto(EDITOR);
 
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    if (box === null) return;
-
     /** Artboard coordinates to page pixels, through the live camera. */
-    const at = async (
-      x: number,
-      y: number,
-    ): Promise<{ x: number; y: number }> => {
-      const [zoom = 1, , , , panX = 0, panY = 0] = await page.evaluate(() => {
-        const editor = Object.entries(
-          window as unknown as Record<string, unknown>,
-        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
-          | { canvas: { viewportTransform: number[] } }
-          | undefined;
-        return editor?.canvas.viewportTransform ?? [];
-      });
-      return {
-        x: box.x + panX + zoom * x,
-        y: box.y + panY + zoom * y,
-      };
-    };
+    const at = (x: number, y: number): Promise<{ x: number; y: number }> =>
+      sceneToClient(page, 1280, x, y);
 
     /** The authored background object, by id, as the page's own instance. */
     const background = async (): Promise<unknown> =>
@@ -2044,17 +2097,12 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
-    const box = (await canvas.boundingBox())!;
 
     // Drag the "SYSTEM STATUS" label (starter scene: left 1074, top 538,
     // originX left) horizontally until its left edge lands on the status
     // card's left edge (1018) — a vertical alignment inside the 5-px threshold.
-    const toCanvas = (x: number, y: number) => ({
-      x: box.x + (x / 1280) * box.width,
-      y: box.y + (y / 720) * box.height,
-    });
-    const grab = toCanvas(1104, 546);
-    const drop = toCanvas(1048, 546);
+    const grab = await sceneToClient(page, 1280, 1104, 546);
+    const drop = await sceneToClient(page, 1280, 1048, 546);
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
     await page.mouse.move(drop.x, drop.y, { steps: 12 });
@@ -2074,20 +2122,15 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
-    const box = (await canvas.boundingBox())!;
 
     // Select the "time" label (scene 78,189, size ~210x70) via the canvas,
     // then sweep its rotation handle above the top edge: the degree readout
     // must appear beside the pointer mid-gesture.
-    const toCanvas = (x: number, y: number) => ({
-      x: box.x + (x / 1280) * box.width,
-      y: box.y + (y / 720) * box.height,
-    });
-    const centre = toCanvas(180, 220);
+    const centre = await sceneToClient(page, 1280, 180, 220);
     await page.mouse.click(centre.x, centre.y);
     // Fabric's mtr sits above the top edge at the object's centre X, roughly
     // 45px above the bounding top plus the handle radius.
-    const handle = toCanvas(180, 132);
+    const handle = await sceneToClient(page, 1280, 180, 132);
     await page.mouse.move(handle.x, handle.y);
     await page.mouse.down();
     await page.mouse.move(handle.x + 30, handle.y + 30, { steps: 12 });
@@ -2107,14 +2150,10 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
-    const box = (await canvas.boundingBox())!;
 
     // Select the "time" label; the dock anchors to the canvas bottom and
     // shows only the actions this selection can run.
-    const centre = {
-      x: box.x + (180 / 1280) * box.width,
-      y: box.y + (220 / 720) * box.height,
-    };
+    const centre = await sceneToClient(page, 1280, 180, 220);
     await page.mouse.click(centre.x, centre.y);
     const dock = page.locator('[aria-label="Selected object actions"]');
     await expect(dock).toHaveAttribute("data-visible", "true");
@@ -2671,15 +2710,31 @@ async function openInspectorTab(page: Page, name: string): Promise<void> {
 }
 
 async function selectStarterChart(page: Page): Promise<void> {
-  const box = await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
-    .boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) throw new Error("The editor canvas has no visible bounds.");
-  await page.mouse.click(
-    box.x + (432 / 1280) * box.width,
-    box.y + (418 / 720) * box.height,
-  );
+  // The chart's own centre, through the camera. A box-relative constant used to
+  // land only 4px inside the object's bottom edge, which is why a drag meant for
+  // the chart grabbed its parent card instead.
+  const centre = await clientOfScene(page, "load-gauge");
+  await page.mouse.click(centre.x, centre.y);
+  // The precondition this helper never had: the tab lookup below turns a wrong
+  // selection into a confusing timeout, so name the failure here instead.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              vigiliaEditorBridge: {
+                editor: {
+                  canvas: {
+                    getActiveObject(): { id?: string } | undefined;
+                  };
+                };
+              };
+            }
+          ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
+      ),
+    )
+    .toBe("load-gauge");
   // A chart selection routes the inspector to its Data tab.
   await openInspectorTab(page, "Data");
   await expect(
