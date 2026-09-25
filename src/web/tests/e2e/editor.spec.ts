@@ -2178,6 +2178,93 @@ test.describe("Fabric editor route", () => {
     expect(await panelOrder()).toEqual(afterPanel);
     expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
   });
+
+  test("nudges the selection and records one history entry", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    await page.goto(EDITOR);
+    // Select through the bridge, not the layer row: a focused panel row is a
+    // different starting state, and this test is about the nudge binding.
+    await page.evaluate(() => {
+      (
+        window as unknown as {
+          vigiliaEditorBridge: { selectLayer(id: string): void };
+        }
+      ).vigiliaEditorBridge.selectLayer("header-wash");
+    });
+    const left = (): Promise<number | undefined> =>
+      page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getObjects(): Array<{ id?: string; left?: number }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas
+          .getObjects()
+          .find((object) => object.id === "header-wash")?.left;
+      });
+    const before = await left();
+    if (typeof before !== "number")
+      throw new Error("header-wash is missing from the canvas");
+    await page.keyboard.press("ArrowRight");
+    expect(await left()).toBe(before + 1);
+    await page.keyboard.press("Shift+ArrowRight");
+    expect(await left()).toBe(before + 11);
+
+    // The burst only becomes a history entry when its idle window closes (300ms),
+    // and Control+z before that finds nothing to undo — measured: the object stays
+    // at `before + 11` and the undo is a silent no-op. Waiting past the window is
+    // what makes the two assertions below measure coalescing rather than timing.
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Control+z");
+    expect(await left()).toBe(before);
+    // Both presses are one entry, so one redo must restore the *whole* burst. A
+    // mechanism that recorded two entries would land at `before + 1` here.
+    await page.keyboard.press("Control+y");
+    expect(await left()).toBe(before + 11);
+
+    const selectedIds = (): Promise<Array<string | undefined>> =>
+      page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: { getActiveObjects(): Array<{ id?: string }> };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas.getActiveObjects().map((object) => object.id);
+      });
+
+    // Ctrl+A inside a text field belongs to the field, not to select-all. Focus
+    // the layer rename input (Plan B Task 5) and confirm the selection is
+    // untouched; without this the binding silently steals the field's own
+    // select-all and the author's typed text is never selected.
+    await page.locator('[data-vigilia-layer="header-wash"]').dblclick();
+    const rename = page.locator('input[aria-label^="Rename"]');
+    await expect(rename).toBeFocused();
+    await rename.press("Control+a");
+    expect(await selectedIds()).toEqual(["header-wash"]);
+
+    // ...and the same key with focus on the document does select everything.
+    // Without this the test only ever proves the binding stays silent.
+    await rename.blur();
+    await page.keyboard.press("Control+a");
+    const ids = await selectedIds();
+    expect(ids.length).toBeGreaterThan(1);
+    // The theme's full-artboard `background` rect is `selectable: false` but IS
+    // returned by `getObjects()`; selecting it would let the next nudge drag the
+    // background off the artboard.
+    expect(ids).not.toContain("background");
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {

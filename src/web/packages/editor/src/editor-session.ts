@@ -7,6 +7,7 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
+import { ActiveSelection, type FabricObject, Point } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
 import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
@@ -291,6 +292,109 @@ export class EditorSession {
     });
     this.#shortcuts.register("edit.ungroup", () => {
       options.shell.editor.groupingManager.ungroup();
+    });
+    this.#shortcuts.register("canvas.front", () => {
+      options.shell.editor.layerManager.bringToFront();
+    });
+    this.#shortcuts.register("canvas.back", () => {
+      options.shell.editor.layerManager.sendToBack();
+    });
+
+    const canvas = options.shell.editor.canvas;
+    // The theme's full-artboard background rect is `selectable: false`, but it
+    // *is* returned by `getObjects()`. Selecting it would let the next nudge or
+    // drag move the background off the artboard, so it is filtered out here.
+    // `selectable === true` also excludes locked objects, which matches
+    // `snap-manager`; a locked object must not join a selection the author can
+    // then drag.
+    const selectableObjects = (): FabricObject[] =>
+      canvas.getObjects().filter((object) => object.selectable === true);
+
+    this.#shortcuts.register("canvas.select-all", () => {
+      const objects = selectableObjects();
+      // An `ActiveSelection` of one object is not a selection.
+      if (objects.length < 2) return;
+      canvas.discardActiveObject();
+      canvas.setActiveObject(new ActiveSelection(objects, { canvas }));
+      canvas.requestRenderAll();
+    });
+
+    const NUDGE_STEP = 1;
+    const NUDGE_STEP_LARGE = 10;
+    const NUDGE_IDLE_MS = 300;
+    const stepFor = (event: KeyboardEvent): number =>
+      event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
+
+    const nudge = (dx: number, dy: number): void => {
+      const active = canvas.getActiveObject();
+      if (active === undefined) return;
+      const targets = (
+        active instanceof ActiveSelection ? active.getObjects() : [active]
+      ).filter((object) => object.get("locked") !== true);
+      if (targets.length === 0) return;
+      for (const object of targets) {
+        // Read and write must name the same origin: `getCenterPoint` is the
+        // origin point under `originX/originY`, not the bounding-box centre.
+        const centre = object.getCenterPoint();
+        object.setPositionByOrigin(
+          new Point(centre.x + dx, centre.y + dy),
+          "center",
+          "center",
+        );
+        object.setCoords();
+      }
+      canvas.requestRenderAll();
+    };
+
+    let release: (() => void) | undefined;
+    let idle: number | undefined;
+
+    /** The burst ends on the idle window or on any other action. Resuming before
+     * saving is what makes the entry exist at all: `save()` is a no-op while the
+     * suspension counter is non-zero. */
+    const endBurst = (): void => {
+      if (idle !== undefined) clearTimeout(idle);
+      idle = undefined;
+      if (release === undefined) return;
+      release();
+      release = undefined;
+      options.shell.editor.historyManager.saveState();
+    };
+
+    const nudgeBy = (dx: number, dy: number): void => {
+      const active = canvas.getActiveObject();
+      // Before suspending: suspending with no selection would open a burst that
+      // never records anything, swallowing the next unrelated `saveState`.
+      if (active === undefined) return;
+      if (release === undefined) {
+        release = options.shell.editor.historyManager.suspend();
+      }
+      if (idle !== undefined) clearTimeout(idle);
+      idle = window.setTimeout(endBurst, NUDGE_IDLE_MS);
+      nudge(dx, dy);
+      // Fired per press and deliberately NOT the thing that records history: it
+      // has three other listeners that need it (`chart-manager`,
+      // `indicator-manager`, `selection-inspector`), and `save` is a no-op for
+      // the whole burst because the suspension counter is still non-zero.
+      // `endBurst` is what records the entry. Do not "simplify" this call away,
+      // and do not delete the explicit `saveState` inside `endBurst`.
+      canvas.fire("object:modified", { target: active });
+    };
+
+    // Four literal registrations, not a loop over a key map: `ProductShortcutId`
+    // is a closed union and a template literal is not assignable to it without a
+    // cast.
+    this.#shortcuts.register("canvas.nudge-left", (event) => {
+      nudgeBy(-stepFor(event), 0);
+    });
+    this.#shortcuts.register("canvas.nudge-right", (event) => {
+      nudgeBy(stepFor(event), 0);
+    });
+    this.#shortcuts.register("canvas.nudge-up", (event) => {
+      nudgeBy(0, -stepFor(event));
+    });
+    this.#shortcuts.register("canvas.nudge-down", (event) => {
+      nudgeBy(0, stepFor(event));
     });
   }
 

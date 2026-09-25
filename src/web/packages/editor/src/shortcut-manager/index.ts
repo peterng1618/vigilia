@@ -1,4 +1,4 @@
-export type ShortcutHandler = () => void;
+export type ShortcutHandler = (event: KeyboardEvent) => void;
 export type ProductShortcutId =
   | "file.new"
   | "file.open"
@@ -10,7 +10,14 @@ export type ProductShortcutId =
   | "edit.cut"
   | "edit.duplicate"
   | "edit.group"
-  | "edit.ungroup";
+  | "edit.ungroup"
+  | "canvas.nudge-left"
+  | "canvas.nudge-right"
+  | "canvas.nudge-up"
+  | "canvas.nudge-down"
+  | "canvas.select-all"
+  | "canvas.front"
+  | "canvas.back";
 
 interface ShortcutBinding {
   readonly key: string;
@@ -31,8 +38,18 @@ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "d", modifier: true, action: "edit.duplicate" },
   { key: "g", modifier: true, shift: true, action: "edit.ungroup" },
   { key: "g", modifier: true, action: "edit.group" },
+  { key: "a", modifier: true, action: "canvas.select-all" },
+  { key: "]", modifier: true, action: "canvas.front" },
+  { key: "[", modifier: true, action: "canvas.back" },
   { key: "delete", modifier: false, action: "edit.delete" },
   { key: "backspace", modifier: false, action: "edit.delete" },
+  // No `shift` field: `bindingFor` matches when `binding.shift === undefined`, so
+  // one binding covers both the plain and the Shift-qualified press. The handler
+  // reads `event.shiftKey` and picks the step.
+  { key: "arrowleft", modifier: false, action: "canvas.nudge-left" },
+  { key: "arrowright", modifier: false, action: "canvas.nudge-right" },
+  { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
+  { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
 ];
 
 /** Shift-qualified bindings precede their plain form, so first match wins. */
@@ -47,12 +64,12 @@ function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
   );
 }
 
-/** Actions that defer to a focused text field's own key handling (e.g. Fabric's hidden textarea while editing). */
-const TEXT_ENTRY_DEFERRED_ACTIONS: ReadonlySet<ProductShortcutId> = new Set([
-  "file.new",
-  "edit.undo",
-  "edit.redo",
-]);
+/** The action ids a *modifier* binding must be in to defer to a focused text
+ * field's own key handling. Unmodified bindings defer unconditionally, so they
+ * need no entry here. `canvas.select-all` is in this set because Ctrl+A inside a
+ * rename field is the field's own select-all, not the canvas's. */
+const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
+  new Set(["file.new", "edit.undo", "edit.redo", "canvas.select-all"]);
 
 /** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
@@ -64,7 +81,8 @@ export class ShortcutManager {
 
     const deferred =
       binding !== undefined &&
-      (!binding.modifier || TEXT_ENTRY_DEFERRED_ACTIONS.has(binding.action)) &&
+      (!binding.modifier ||
+        MODIFIED_KEY_DEFERRED_ACTION_IDS.has(binding.action)) &&
       isTextEntryTarget(event.target);
 
     if (handler === undefined || deferred) {
@@ -72,7 +90,7 @@ export class ShortcutManager {
     }
 
     event.preventDefault();
-    handler();
+    handler(event);
   };
 
   constructor() {

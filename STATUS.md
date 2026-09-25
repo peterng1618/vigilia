@@ -25,20 +25,18 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Fabric's marquee is reachable again: a drag that starts on the pasteboard
-  below the artboard selects instead of moving `header-wash`. The size cause was
-  already gone (Task 2 made the canvas host-sized); no object needed disarming,
-  and the press-inside-an-object guard still moves `time-card` for +40/+30.
-- `ViewportManager.artboardScreenRect()` is now the one owner of "where the
-  artboard draws, in canvas-element coordinates" — the module-local copy in
-  `editor-shell.ts` is deleted and the background-media layer calls the camera.
-- The marquee e2e asserts against `getBoundingRect`, not object `left`: a marquee
-  puts its hits in an `ActiveSelection`, whose `enterGroup` rebases every child's
-  `left`, so the brief's raw-`left` comparison reported a move for objects that
-  never moved and could not tell a marquee from a drag. It also asserts a
-  selection was created, which is what catches a drag that never reached the
-  canvas — and is the defect the brief's own off-canvas ambiguity would have
-  hidden.
+- Keyboard authoring: arrow keys nudge the selection (Shift = 10, plain = 1),
+  `mod+]`/`mod+[` move it to front/back through `layerManager`, and `mod+a`
+  selects every `selectable` object. `ShortcutHandler` now takes the
+  `KeyboardEvent`, which is what lets one arrow binding serve both steps.
+- A nudge burst is ONE history entry: `nudgeBy` suspends history on the first
+  press and `endBurst` resumes *and then* calls `saveState()` explicitly, because
+  `save()` early-returns while the suspension counter is non-zero. The idle window
+  is 300 ms; measured inter-press gap is 37 ms.
+- `mod+a` joined the renamed `MODIFIED_KEY_DEFERRED_ACTION_IDS`, so Ctrl+A inside
+  a rename field stays the field's own select-all. `history-manager/index.test.ts`
+  is the test that pins the burst mechanism — the e2e assertions cannot, because
+  `undo()`'s own `reviveScene` re-fires `object:modified`.
 - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
   `rehydrates a chart runtime…`) fail identically with and without recent
   changes; they are pre-existing and belong to Spec A Task 10.
@@ -46,7 +44,7 @@ unpolished, and the canvas has no camera.
 ## Next
 
 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
-2. Continue Spec A from Task 6, then 7, 8, 9.
+2. Continue Spec A from Task 7, then 8, 9.
 3. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified

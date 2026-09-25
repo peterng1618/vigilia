@@ -175,4 +175,46 @@ describe("ShortcutManager unmodified keys", () => {
     expect(event.defaultPrevented).toBe(false);
     manager.destroy();
   });
+
+  it("nudges on an arrow key and defers to a text field", () => {
+    const manager = new ShortcutManager();
+    const nudge = vi.fn();
+    manager.register("canvas.nudge-left", nudge);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+    expect(nudge).toHaveBeenCalledTimes(1);
+
+    // Dispatched ON the input, not on `window`. `window.dispatchEvent` sets the
+    // event's `target` to `window` itself, so `isTextEntryTarget(event.target)`
+    // reads the window and the nudge fires a second time — the assertion below
+    // could never hold, whatever the binding did. `bubbles: true` is what carries
+    // it up to the window listener; this is the idiom every existing deferral
+    // test in this file already uses (`:42`, `:61`, `:109`, `:139`).
+    const input = document.createElement("input");
+    document.body.append(input);
+    input.focus();
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+    );
+    expect(nudge).toHaveBeenCalledTimes(1);
+    input.remove();
+    manager.destroy();
+  });
+
+  it("routes both plain and shift+arrow to the same action", () => {
+    const manager = new ShortcutManager();
+    const nudge = vi.fn();
+    // One id, one handler: the large step is the handler reading event.shiftKey,
+    // not a second action id. `ShortcutHandler` takes no argument today, so the
+    // shift step is the handler's own concern — Step 5 proves it in the browser.
+    // The Produces union above is the authority on which ids exist.
+    manager.register("canvas.nudge-left", nudge);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true }),
+    );
+    expect(nudge).toHaveBeenCalledTimes(2);
+    manager.destroy();
+  });
 });
