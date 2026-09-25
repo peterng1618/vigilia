@@ -25,21 +25,16 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Snapping Task 1 fixed: the snap-manager's ignored-id list named `"scene"`, a string no
-  product object carries — in `new-fabric-theme.ts` the plate's id is `"background"` and
-  `"scene"` is the ninth argument (`paletteId`). The list is now `["background"]`, so the
-  artboard plate is genuinely excluded rather than admitted as a whole-artboard snap
-  candidate whose 1px-stroke edges (±0.5) beat the artboard's own exact boundary source and
-  whose span emitted spurious equal-spacing guides.
-- The plate test derives its fixture id from `createNewFabricTheme()` instead of hardcoding
-  the constant's string, so the fixture and the ignored-id list cannot drift apart again.
-- `editor-session.ts`'s `selectableObjects` comment no longer claims parity with
-  `snap-manager`: snapping deliberately aligns to locked objects, selection deliberately does not.
-- Teeth, measured: emptying `IGNORED_IDS` reddens only the plate test
-  (`expected 160.5 to be 158`); restoring `selectable === true` in `isSnapTarget` reddens only
-  the locked-neighbour test (`expected 98 to be 100`); pointing the derived fixture at a wrong
-  real id reddens the plate test again. Browser capture: guides against real content, neither
-  against the plate nor a spurious spacing guide.
+- `edit.undo` / `edit.redo` now call `endBurst()` on the canvas nudge before running the history
+  call, so a `Control+z` inside the 300 ms idle window closes the open burst and steps back over it
+  instead of being a silent no-op. `canvas-nudge.ts` itself is unchanged — its comment ("ends on the
+  idle window or on any other action") is now true.
+- The nudge e2e test's `waitForTimeout(400)` and its comment came out: the test asserted an undo
+  after a ~37 ms gap and passes, so the wait documented a defect that no longer exists.
+- Teeth, measured: deleting the `endBurst()` call reddens `editor-session.dom.test.ts`'s new test
+  (`expected 1 to be +0`, the suspension counter) and reddens the e2e at `editor.spec.ts:2224`
+  (`expected 0, received 11` — the object stayed at `before + 11`).
+- `editor-session.ts` is 770 lines — over the 500 signal, under the 800 stop.
 
 ## Next
 

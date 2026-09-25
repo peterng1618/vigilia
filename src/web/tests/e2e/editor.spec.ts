@@ -2218,11 +2218,8 @@ test.describe("Fabric editor route", () => {
     await page.keyboard.press("Shift+ArrowRight");
     expect(await left()).toBe(before + 11);
 
-    // The burst only becomes a history entry when its idle window closes (300ms),
-    // and Control+z before that finds nothing to undo — measured: the object stays
-    // at `before + 11` and the undo is a silent no-op. Waiting past the window is
-    // what makes the two assertions below measure coalescing rather than timing.
-    await page.waitForTimeout(400);
+    // Control+z immediately after the burst's last press: the burst's entry is
+    // not recorded until it closes, so the undo binding must close it first.
     await page.keyboard.press("Control+z");
     expect(await left()).toBe(before);
     // Both presses are one entry, so one redo must restore the *whole* burst. A

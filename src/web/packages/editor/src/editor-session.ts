@@ -276,9 +276,13 @@ export class EditorSession {
       void this.#new(options);
     });
     this.#shortcuts.register("edit.undo", () => {
+      // First: a burst's entry is not recorded until it closes, so an undo
+      // inside the idle window would find nothing to step back to.
+      this.#nudge.endBurst();
       void options.shell.editor.historyManager.undo();
     });
     this.#shortcuts.register("edit.redo", () => {
+      this.#nudge.endBurst();
       void options.shell.editor.historyManager.redo();
     });
     this.#shortcuts.register("edit.delete", () => {
