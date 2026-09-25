@@ -365,12 +365,21 @@ function scene() {
     bounds: () => ({ left: 0, top: 0, right: 1000, bottom: 300, centerX: 500, centerY: 150 }),
     errors: { error: vi.fn(), warn: vi.fn() } as never,
   });
-  // Left ends at 160, right starts at 280: a 120 gap that a 40-wide object
-  // splits evenly at 200.
-  const left = new Rect({ id: "left", left: 100, top: 40, width: 60, height: 100 });
-  const right = new Rect({ id: "right", left: 280, top: 40, width: 60, height: 100 });
-  const active = new Rect({ id: "active", left: 200, top: 180, width: 40, height: 40 });
-  // Both flankers share `top: 40` and `height: 100`; `active` sits well below them.
+  // Both flankers span the active object's band: an equal-spacing chain only
+  // forms between objects overlapping on the perpendicular axis, so flankers
+  // that do not reach `active`'s band are invisible to the spacing calculator
+  // and nothing ever holds.
+  // `originX`/`originY` are explicit: Fabric 7's default origin is CENTER
+  // (`shapes/Object/defaultValues.mjs`, `originX: CENTER`), so a bare `left`
+  // is the shape's centre, not its edge, and every computed edge shifts by
+  // half the width.
+  const rect = (options: Record<string, unknown>): Rect =>
+    new Rect({ originX: "left", originY: "top", ...options });
+  // Left ends at 161, right starts at 280 (each includes a 0.5px stroke per
+  // side): a gap a 41-wide bounded object splits evenly at 200.
+  const left = rect({ id: "left", left: 100, top: 0, width: 60, height: 300 });
+  const right = rect({ id: "right", left: 280, top: 0, width: 60, height: 300 });
+  const active = rect({ id: "active", left: 200, top: 180, width: 40, height: 40 });
   canvas.add(left, right, active);
   canvas.setActiveObject(active);
   return { canvas, snapping, active };
