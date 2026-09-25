@@ -149,6 +149,8 @@ export const uiCopy = {
     releaseVersion: "Release version",
     notSet: "Not set",
     none: "None",
+    /** Shown by a numeric field when an edit is refused. */
+    invalidNumber: "That number is out of range.",
     palette: "Palette",
     paint: "Paint",
     addColour: "Add colour",
@@ -169,6 +171,10 @@ export const uiCopy = {
     description: "Description",
     width: "Width",
     height: "Height",
+    /** A paired width/height row has no room for the full words beside both
+        boxes, so the row keeps its "Size" label and marks them W and H. */
+    widthMark: "W",
+    heightMark: "H",
     background: "Background",
     barColour: "Bar colour",
     family: "Family",

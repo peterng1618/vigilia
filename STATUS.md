@@ -25,16 +25,15 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Ported the fork's scale-snapping geometry into `snap-manager/scaling/` as five vendored
-  modules — `scale-projection`, `scale-snap-candidates`, `scale-snapping-resolver`,
-  `scaling-snap-guard`, `scaling-step-snap-guards` — plus two new unit specs. Algorithms,
-  thresholds and tolerances are byte-comparable with fork `9efdd78a`; divergences are
-  import paths, English comments, `exactOptionalPropertyTypes` omissions and
-  `noUncheckedIndexedAccess` guards. Vendored source is the deliberate exception to the
-  800-line stop.
-- `scale-snap-candidates` imports the candidate types from `scale-snapping-resolver`, as
-  the fork does, so the candidates module does not typecheck until the resolver lands.
-  Nothing imports the new modules yet; a gesture wires them in later tasks.
+- Added `editor-shell/controls/` — framework-free `numberField`/`linkedPair` DOM factories
+  (with a shared `numberInput` core) that parse on `change`, refuse out-of-range values
+  instead of clamping, own the `[role=alert]` message and the rejected-edit rollback, and
+  keep `setValue`/`setValues` free of commits.
+- Regrouped the artboard panel's eleven flat siblings into `.vigilia-field` rows; width and
+  height are now one `linkedPair` ("Size — W 1000 H 720"). `isDimension` stays private there
+  and the control is told `min`/`max`, so the two ranges cannot both fire.
+- Added `docs/evidence/screenshots/editor-artboard-desktop-chromium.png` (re-captured) and
+  `uiCopy.panels.widthMark`/`heightMark`/`invalidNumber`.
 
 ## Next
 

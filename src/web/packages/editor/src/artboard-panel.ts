@@ -5,6 +5,7 @@ import {
   MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
+import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { uiCopy } from "./ui-copy.js";
 
 export interface ArtboardPanel {
@@ -19,7 +20,9 @@ export interface ThemeSettingsOptions {
   readonly onMetadataChange?: (metadata: ThemeMetadata) => void;
 }
 
-/** Product-owned document preview controls; Fabric objects retain their geometry. */
+/** Product-owned document preview controls; Fabric objects retain their geometry.
+    ponytail: the markup is dense rows now, but this stays an imperative panel —
+    a React migration is a later step if it grows. */
 export function createArtboardPanel(
   host: HTMLElement,
   globals: Globals | undefined,
@@ -39,43 +42,43 @@ export function createArtboardPanel(
   versionLabel.textContent = uiCopy.panels.releaseVersion;
   const version = document.createElement("output");
   version.dataset["vigiliaThemeVersion"] = "";
-  const width = dimensionInput(uiCopy.panels.width);
-  const height = dimensionInput(uiCopy.panels.height);
-  const label = document.createElement("label");
-  label.textContent = uiCopy.panels.previewFit;
-  const select = document.createElement("select");
-  select.dataset["vigiliaArtboardFitMode"] = "";
+  const fit = selectInput(uiCopy.panels.previewFit, "vigiliaArtboardFitMode");
   for (const fitMode of ["contain", "cover"] as const) {
     const option = document.createElement("option");
     option.value = fitMode;
     option.textContent = fitMode[0]!.toUpperCase() + fitMode.slice(1);
-    select.append(option);
+    fit.select.append(option);
   }
-  const background = paletteInput(uiCopy.panels.background, "background");
-  const bars = paletteInput(uiCopy.panels.barColour, "barColor");
-  const media = document.createElement("select");
-  media.dataset["vigiliaBackgroundAsset"] = "";
-  const mediaFit = document.createElement("select");
-  mediaFit.dataset["vigiliaBackgroundMediaFit"] = "";
+  const background = selectInput(
+    uiCopy.panels.background,
+    "vigiliaArtboardBackground",
+  );
+  const bars = selectInput(uiCopy.panels.barColour, "vigiliaArtboardBarColor");
+  const media = selectInput(
+    uiCopy.panels.backgroundMedia,
+    "vigiliaBackgroundAsset",
+  );
+  const mediaFit = selectInput(
+    uiCopy.panels.mediaFit,
+    "vigiliaBackgroundMediaFit",
+  );
   for (const fit of ["cover", "contain"] as const)
-    mediaFit.append(new Option(fit, fit));
-  refreshMediaOptions(media, options.assets);
+    mediaFit.select.append(new Option(fit, fit));
+  refreshMediaOptions(media.select, options.assets);
   refreshPaletteOptions(background.select, globals);
   refreshPaletteOptions(bars.select, globals);
   let current: Artboard;
   let currentMetadata: ThemeMetadata | undefined;
-  const submit = (): void => {
-    const nextWidth = Number(width.input.value);
-    const nextHeight = Number(height.input.value);
-    if (!isDimension(nextWidth) || !isDimension(nextHeight)) {
+  const submitArtboard = (width: number, height: number): void => {
+    if (!isDimension(width) || !isDimension(height)) {
       render(current);
       return;
     }
     const next: Artboard = {
       ...current,
-      width: nextWidth,
-      height: nextHeight,
-      fitMode: select.value === "cover" ? "cover" : "contain",
+      width,
+      height,
+      fitMode: fit.select.value === "cover" ? "cover" : "contain",
     };
     setPaletteReference(
       next,
@@ -85,17 +88,41 @@ export function createArtboardPanel(
     );
     setPaletteReference(next, "barColor", bars.select.value, current.barColor);
     onChange(
-      media.value === ""
+      media.select.value === ""
         ? omitBackgroundMedia(next)
         : {
             ...next,
             backgroundMedia: {
-              assetId: media.value,
-              fit: mediaFit.value === "contain" ? "contain" : "cover",
+              assetId: media.select.value,
+              fit: mediaFit.select.value === "contain" ? "contain" : "cover",
             },
           },
     );
   };
+  const size = linkedPair({
+    rowLabel: uiCopy.panels.size,
+    first: {
+      label: uiCopy.panels.widthMark,
+      value: 0,
+      data: "vigiliaArtboardWidth",
+    },
+    second: {
+      label: uiCopy.panels.heightMark,
+      value: 0,
+      data: "vigiliaArtboardHeight",
+    },
+    min: 1,
+    max: MAX_ARTBOARD_DIMENSION,
+    onCommit: (width, height) => submitArtboard(width, height),
+  });
+  const rows = [
+    size.row,
+    fit.row,
+    background.row,
+    bars.row,
+    media.row,
+    mediaFit.row,
+  ];
   const submitMetadata = (): void => {
     const next = compactMetadata({
       ...currentMetadata,
@@ -106,46 +133,30 @@ export function createArtboardPanel(
     currentMetadata = next;
     options.onMetadataChange?.(next);
   };
-  width.input.addEventListener("change", submit);
-  height.input.addEventListener("change", submit);
-  select.addEventListener("change", submit);
-  background.select.addEventListener("change", submit);
-  bars.select.addEventListener("change", submit);
-  media.addEventListener("change", submit);
-  mediaFit.addEventListener("change", submit);
+  fit.select.addEventListener("change", submitFromSelects);
+  background.select.addEventListener("change", submitFromSelects);
+  bars.select.addEventListener("change", submitFromSelects);
+  media.select.addEventListener("change", submitFromSelects);
+  mediaFit.select.addEventListener("change", submitFromSelects);
   name.input.addEventListener("change", submitMetadata);
   author.input.addEventListener("change", submitMetadata);
   description.input.addEventListener("change", submitMetadata);
   root.append(
     heading,
-    name.label,
-    name.input,
-    author.label,
-    author.input,
-    description.label,
-    description.input,
+    fieldRow(name),
+    fieldRow(author),
+    fieldRow(description),
     versionLabel,
     version,
-    width.label,
-    width.input,
-    height.label,
-    height.input,
-    label,
-    select,
-    background.label,
-    background.select,
-    bars.label,
-    bars.select,
-    Object.assign(document.createElement("label"), {
-      textContent: uiCopy.panels.backgroundMedia,
-    }),
-    media,
-    Object.assign(document.createElement("label"), {
-      textContent: uiCopy.panels.mediaFit,
-    }),
-    mediaFit,
+    ...rows,
   );
   host.append(root);
+
+  /** A select change carries no dimensions, so it re-commits the pair's
+      last accepted values. */
+  function submitFromSelects(): void {
+    submitArtboard(Number(size.first.value), Number(size.second.value));
+  }
 
   const render = (
     artboard: Artboard,
@@ -153,13 +164,12 @@ export function createArtboardPanel(
   ): void => {
     current = artboard;
     currentMetadata = metadata;
-    width.input.value = String(artboard.width);
-    height.input.value = String(artboard.height);
-    select.value = artboard.fitMode ?? "contain";
+    size.setValues(artboard.width, artboard.height);
+    fit.select.value = artboard.fitMode ?? "contain";
     background.select.value = paletteReference(artboard.background);
     bars.select.value = paletteReference(artboard.barColor);
-    media.value = artboard.backgroundMedia?.assetId ?? "";
-    mediaFit.value = artboard.backgroundMedia?.fit ?? "cover";
+    media.select.value = artboard.backgroundMedia?.assetId ?? "";
+    mediaFit.select.value = artboard.backgroundMedia?.fit ?? "cover";
     name.input.value = metadata?.name ?? "";
     author.input.value = metadata?.author ?? "";
     description.input.value = metadata?.description ?? "";
@@ -175,12 +185,36 @@ export function createArtboardPanel(
       render(current);
     },
     setAssets(assets) {
-      const selected = media.value;
-      media.replaceChildren();
-      refreshMediaOptions(media, assets);
-      media.value = selected;
+      const selected = media.select.value;
+      media.select.replaceChildren();
+      refreshMediaOptions(media.select, assets);
+      media.select.value = selected;
     },
   };
+}
+
+function fieldRow(field: {
+  readonly label: HTMLLabelElement;
+  readonly input: HTMLElement;
+}): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "vigilia-field";
+  row.append(field.label, field.input);
+  return row;
+}
+
+function selectInput(
+  text: string,
+  data: string,
+): { readonly row: HTMLElement; readonly select: HTMLSelectElement } {
+  const row = document.createElement("div");
+  row.className = "vigilia-field";
+  const label = document.createElement("label");
+  label.textContent = text;
+  const select = document.createElement("select");
+  select.dataset[data] = "";
+  row.append(label, select);
+  return { row, select };
 }
 
 function textInput(
@@ -222,19 +256,6 @@ function refreshMediaOptions(
 function omitBackgroundMedia(artboard: Artboard): Artboard {
   const { backgroundMedia: _backgroundMedia, ...withoutMedia } = artboard;
   return withoutMedia;
-}
-
-function paletteInput(
-  text: string,
-  property: "background" | "barColor",
-): { readonly label: HTMLLabelElement; readonly select: HTMLSelectElement } {
-  const label = document.createElement("label");
-  label.textContent = text;
-  const select = document.createElement("select");
-  select.dataset[
-    `vigiliaArtboard${property[0]!.toUpperCase()}${property.slice(1)}`
-  ] = "";
-  return { label, select };
 }
 
 function refreshPaletteOptions(
@@ -282,21 +303,6 @@ function setPaletteReference(
     return;
   }
   artboard[property] = { ref: value as `palette.${string}` };
-}
-
-function dimensionInput(text: string): {
-  readonly label: HTMLLabelElement;
-  readonly input: HTMLInputElement;
-} {
-  const label = document.createElement("label");
-  label.textContent = text;
-  const input = document.createElement("input");
-  input.type = "number";
-  input.min = "1";
-  input.max = String(MAX_ARTBOARD_DIMENSION);
-  input.step = "1";
-  input.dataset[`vigiliaArtboard${text}`] = "";
-  return { label, input };
 }
 
 function isDimension(value: number): boolean {

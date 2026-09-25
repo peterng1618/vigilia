@@ -373,6 +373,42 @@ body,
   display: inline-block;
   margin: 0;
 }
+/* The shell gives panel labels a line of their own; inside a field the row owns
+   the line. */
+.vigilia-field > label,
+.vigilia-field > span,
+.vigilia-field-row > label,
+.vigilia-field-row > span {
+  display: block;
+  margin-top: 0;
+}
+/* A pair is one flex line, so its label takes the same 72px the grid would have
+   given the label column and the paired fields line up with single ones. */
+.vigilia-field-row {
+  flex-wrap: wrap;
+}
+.vigilia-field-row > .vigilia-pair-label {
+  flex: none;
+  width: 72px;
+}
+/* A numeric box is a fixed measure, never a column-wide one: the artboard pair
+   puts two of them on the same row. */
+.vigilia-field input[type="number"],
+.vigilia-field-row input[type="number"] {
+  width: 4.5em;
+}
+.vigilia-field [role="alert"],
+.vigilia-field-row [role="alert"] {
+  margin: 4px 0 0;
+  color: var(--shell-danger);
+  font-size: 12px;
+}
+.vigilia-field [role="alert"] {
+  grid-column: 1 / -1;
+}
+.vigilia-field-row [role="alert"] {
+  flex-basis: 100%;
+}
 
 /* The layer tree: one dense line per layer, indentation carrying the depth. */
 [data-vigilia-panel="layers"] [role="tree"] {
