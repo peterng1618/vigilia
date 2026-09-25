@@ -11,7 +11,7 @@ unpolished, and the canvas has no camera.
 
 ## Active work
 
-- Three plans written, all awaiting review before execution:
+- Three plans, all under subagent-driven execution:
   - `docs/superpowers/plans/2026-09-25-editor-ui-polish.md` (Spec B) — Figma-baseline
     layer tree, action registry behind dock and layer-panel row, dense inspector,
     Lucide icons, restrained reduced-motion-guarded transitions.
@@ -20,28 +20,30 @@ unpolished, and the canvas has no camera.
   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
     scale/resize snapping, relax the candidate filter, then replace the
     byte-length screenshot check with a move-and-resize behaviour matrix.
-- Specs A and B are both under execution, task by task; snapping has no
-  execution method chosen yet.
 - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
   only outstanding item in that plan.
 
 ## Last completed change
 
-- The layer panel moves objects: rows are HTML5 drag sources, and a drop
-  restacks the layer through the bridge's new `reorderLayer` when both rows
-  share a parent. A cross-group drop is refused and left unmarked.
-- One native drop indicator, positioned by the browser's own dragover target,
-  so the marker cannot outlive the gesture or promise a drop that would refuse.
-- The panel's six-per-row action buttons are gone; a bottom row renders
-  `OBJECT_ACTIONS` through the same `actionEnabled` predicate the dock uses.
-- `layer-panel.dom.test.tsx` and `bridge.dom.test.ts` cover the row filter,
-  the drop slot and `reorderLayer`'s two refusals; `editor.spec.ts` drags a row
-  in a real browser and re-saves the envelope.
+- `serialiseScene` now persists `selectable`, `evented` and `locked`. Fabric's
+  `toObject` omits all three, so any undo revived a scene where every object was
+  selectable again — the starter background became draggable and locked objects
+  unlatched. First open looked correct only because the authored JSON still
+  carried the flags literally.
+- Pinned by a `persist.dom.test.ts` round trip (with teeth: it fails as
+  `selectable: true` with the fix reverted) and by `editor.spec.ts`, which
+  reproduces the reported journey in a browser and asserts the object's flags
+  rather than a hit test — `findTarget` skips `evented: false`, so it cannot
+  witness this bug.
+- The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
+  `rehydrates a chart runtime…`) fail identically with and without this change;
+  they are pre-existing and belong to Spec A Task 10.
 
 ## Next
 
-1. Continue Spec B with Task 6 (bottom action row and drag reorder).
-2. Close author-journey Task 6 once the e2e evidence lands.
+1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+2. Continue Spec A from Task 4 (zoom readout), then Task 6, 7, 8, 9.
+3. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified
 
@@ -49,5 +51,11 @@ unpolished, and the canvas has no camera.
   `test-results/summary.json`. Three spec acceptance items stay unverified —
   browser round-trip of text align/wrap/overflow, in-place edit + undo, and run
   preset/override persistence.
-- Two pre-existing `display-fabric.spec.ts` phone-chromium failures hang at
-  `document.fonts.ready` after `page.clock.runFor()`; not absorbed.
+- The two `display-fabric.spec.ts` phone-chromium tests previously recorded here
+  as pre-existing failures were re-measured and **both pass** on this branch
+  (1 passed, 32.4s and 32.9s, `--workers=1`). They are not known failures; a red
+  suite at the gate is a failure to investigate, not to absorb.
+- The layer panel's row key changed to `id#index` and rows became `draggable`
+  (Spec B Task 6); only `--grep "reorders a layer"` was run in a browser, so
+  other `editor.spec.ts` cases are unverified against that change until the
+  Spec B gate runs the full suite.
