@@ -27,17 +27,18 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- The layer row is focusable and the tree implements the keyboard model its
-  roles promise: F2/Enter begins a rename, Escape cancels it, and the arrow keys
-  move focus and the selection between rows.
-- The rename path is guarded by three tests — commit on Enter, no commit on
-  Escape, and no commit when a cancel unmounts the field and fires `focusout`,
-  which is the race the `cancelled` ref exists for. Removing that guard now fails
-  a test.
-- `layerNamesFrom`'s `Array.isArray` branch is pinned: a whole-array
-  `editorMetadata.layerNames` is rejected without throwing.
-- `ui-copy.ts` lost the dead `panels.arrange` and its comment now states what is
-  true — only the twisty and rename field carry the layer's name.
+- `viewport-manager/navigation.ts` binds the camera's gestures: wheel pans,
+  ctrl/meta-wheel zooms about the pointer, space-drag and middle-drag pan, and
+  `+`/`=`/`-`/`shift+1` zoom. It is wired into `createNativeEditor` and unbound
+  on destroy.
+- A pan claims the canvas through Fabric's own `skipTargetFind`/`selection`, so
+  a drag pans the camera and never moves authored content; `blur` clears the
+  hold so a lost keyup cannot wedge the editor in pan mode.
+- The camera keys defer to a focused text field through the newly exported
+  `isTextEntryTarget`, and Space is left to a focused button, which activates on
+  it. Both guards fail a test when removed.
+- `isTextEntryTarget` is now exported from `shortcut-manager` instead of copied;
+  one concept, one owner.
 
 ## Next
 

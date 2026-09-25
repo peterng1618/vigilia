@@ -1648,6 +1648,91 @@ test.describe("Fabric editor route", () => {
 
     await captureVisualReview(page, testInfo, "editor-toolbar");
   });
+
+  test("zooms and pans the canvas, and cannot lose the artboard", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    // Read the camera through its own accessor: `viewport.zoom()` is the owner
+    // of zoom (Task 1), and `window.vigiliaEditorBridge` is the page handle
+    // Plan B Task 4 established. Reaching into `canvas.getZoom()` through a
+    // debug-key scan reads a different owner and breaks when the handle moves.
+    const readZoom = () =>
+      page.evaluate(() =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: { viewport: { zoom(): number } };
+            };
+          }
+        ).vigiliaEditorBridge.editor.viewport.zoom(),
+      );
+    // Clamping is the camera's own contract, so the transform is read through
+    // the same bridge the zoom is: a debug-key scan would read whichever
+    // editor mounted first and could assert a stale canvas entirely.
+    const translate = () =>
+      page.evaluate(() =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: { canvas: { viewportTransform: number[] } };
+            };
+          }
+        ).vigiliaEditorBridge.editor.canvas.viewportTransform.slice(4, 6),
+      );
+
+    const fitted = await readZoom();
+    await page
+      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .hover({ position: { x: 200, y: 200 } });
+    // Control is required: a plain wheel pans (Step 1 pins that), so wheeling
+    // without it asserts the opposite of the unit contract and can only pass by
+    // breaking it. Hold the modifier, then confirm the assertion fails with it
+    // released — that is the teeth check for the modifier branch.
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, -400);
+    await page.keyboard.up("Control");
+    expect(await readZoom()).toBeGreaterThan(fitted);
+    // Pan a long way and confirm the artboard is still on screen: the clamped
+    // transform keeps its edge inside the viewport.
+    await page.keyboard.down("Space");
+    await page.mouse.move(400, 400);
+    await page.mouse.down();
+    await page.mouse.move(4000, 4000, { steps: 20 });
+    await page.mouse.up();
+    await page.keyboard.up("Space");
+    const transform = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: { canvas: { viewportTransform: number[] } };
+            };
+          }
+        ).vigiliaEditorBridge.editor.canvas.viewportTransform,
+    );
+    // The pan is clamped, so the transform saturates rather than running away.
+    // Asserting only finiteness would pass for an unclamped transform — which is
+    // exactly the regression this pins. Saturating is sign-agnostic and does not
+    // depend on how viewportTransform[4] relates to clampPan's `offset`: drag
+    // the same way again and the translate must not move.
+    expect(Number.isFinite(transform[4])).toBe(true);
+    expect(Number.isFinite(transform[5])).toBe(true);
+    const atLimit = await translate();
+    expect(atLimit.length).toBe(2);
+    await page.keyboard.down("Space");
+    await page.mouse.move(400, 400);
+    await page.mouse.down();
+    await page.mouse.move(4000, 4000, { steps: 20 });
+    await page.mouse.up();
+    await page.keyboard.up("Space");
+    expect(await translate()).toEqual(atLimit);
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {

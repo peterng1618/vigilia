@@ -89,8 +89,9 @@ export class ShortcutManager {
   }
 }
 
-/** Save/Open deliberately override text-entry defaults; New does not. */
-function isTextEntryTarget(target: EventTarget | null): boolean {
+/** Save/Open deliberately override text-entry defaults; New does not.
+ * Bare-key canvas listeners (camera keys) defer through this same predicate. */
+export function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
   if (

@@ -49,6 +49,7 @@ import {
   createViewportManager,
   type ViewportManager,
 } from "./viewport-manager/index.js";
+import { bindViewportNavigation } from "./viewport-manager/navigation.js";
 
 export interface EditorShellOptions {
   readonly host: HTMLElement;
@@ -209,6 +210,7 @@ function createNativeEditor(input: {
     host,
     artboard: () => input.artboard(),
   });
+  const unbindNavigation = bindViewportNavigation({ canvas, viewport });
   const history = new EditorHistory({
     canvas,
     serialize: serialiseScene,
@@ -261,6 +263,7 @@ function createNativeEditor(input: {
     destroy: () => {
       // The double-click editing listener outlives the canvas otherwise.
       text.destroy();
+      unbindNavigation();
       viewport.destroy();
       // Disposal is asynchronous; a failure here must not be an unhandled
       // rejection during teardown.
