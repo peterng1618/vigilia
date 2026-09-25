@@ -1575,6 +1575,9 @@ git commit -m "feat(editor): dense field controls for document panels"
 - [ ] **Step 1: Add the motion rules**
 
 ```css
+/* Restrained motion: only compositor-owned properties, never a layout one. The
+   root is listed because a palette switch restyles its color/background. */
+.editor-shell,
 .editor-shell button,
 .editor-shell input,
 .editor-shell select,
@@ -1584,7 +1587,18 @@ git commit -m "feat(editor): dense field controls for document panels"
               color 140ms ease, transform 140ms ease, opacity 140ms ease;
 }
 .editor-shell button:active { transform: translateY(1px); }
-.editor-shell :is(button, input, select, [role="tab"], [role="menuitem"], [tabindex]):focus-visible {
+/* The popup is portalled outside `.editor-shell`, so this rule misses it — that
+   portal is the only protection, since Base UI marks menu items `tabindex="-1"`
+   and one moved in-shell would match through `[tabindex]`. `:where` drops the
+   tabpanel without raising this rule's specificity. */
+.editor-shell
+:is(
+  button,
+  input,
+  select,
+  [role="tab"],
+  [tabindex]:not(:where([role="tabpanel"]))
+):focus-visible {
   outline: 2px solid var(--shell-accent, #7dd3fc);
   outline-offset: 1px;
 }
@@ -1595,14 +1609,31 @@ git commit -m "feat(editor): dense field controls for document panels"
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
+/* Base UI portals the menu popup, its positioner and the tooltip to `body`, so
+   the descendant selector below cannot reach them; name those classes too. */
 @media (prefers-reduced-motion: reduce) {
-  .editor-shell * { transition: none !important; animation: none !important; }
+  .editor-shell,
+  .editor-shell *,
+  .editor-shell-menu-popup,
+  .editor-shell-menu-popup *,
+  .editor-shell-positioner,
+  .editor-shell-positioner *,
+  .editor-shell-tooltip,
+  .editor-shell-tooltip * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 ```
 
 Only `background-color`, `border-color`, `color`, `transform` and `opacity` are transitioned — never `top`/`left`/`width`/`height`.
 
-**Scope the focus-ring rule away from menu items.** `editor-shell.css:223-228` already sets `outline: none` on `.editor-shell-menu-popup [role="menuitem"]:focus-visible` and `[role="menuitemradio"]:focus-visible`, because a popup menu shows focus through its own highlight background. The rule above matches `[role="menuitem"]` at the same specificity, and `:is()` takes the specificity of its most specific argument — so if it lands **after** the existing rule it wins the tie and paints a ring back onto every menu item. Exclude the popup rather than relying on source order: write it as `:is(button, input, select, [role="tab"], [tabindex]):focus-visible` plus the two popup roles only if the menu is meant to gain a ring, which it is not. Verify by focusing a menu item in the capture and confirming it still reads as a highlight, not a ring.
+**Three things about that block are load-bearing and each is a way to get it subtly wrong:**
+
+- **`.editor-shell` is in the transition list on its own line**, because `.editor-shell *` never matches the root, so without it the root's own transition would survive reduced motion. A palette switch restyles the root's `color` and `background-color` (measured: `rgb(20, 18, 14)` → `rgb(238, 249, 244)` editorial→graphite), so this is a real animated surface, not a defensive extra.
+- **The reduced-motion block names the three portalled classes** — `.editor-shell-menu-popup`, `.editor-shell-positioner`, `.editor-shell-tooltip` — and their descendants. Base UI portals all three to `body` (measured: `popup.closest(".editor-shell") === null`, chain `DIV.editor-shell-menu-popup → DIV.editor-shell-positioner → DIV → BODY`), so `.editor-shell *` **structurally cannot reach them**, and a popup animation would keep running under reduced motion. This is the half of the guard that no test covers by default — see Step 3.
+- **`[role="menuitem"]` must stay out of the focus rule's `:is()` list.** `editor-shell.css:223-228` already sets `outline: none` on `.editor-shell-menu-popup [role="menuitem"]:focus-visible` and `[role="menuitemradio"]:focus-visible`, because a popup menu shows focus through its own highlight background. The old rationale here was that excluding those roles keeps the popup out of this rule — **that is false, do not repeat it.** Base UI marks menu items `tabindex="-1"` (measured on the live portalled item), `[tabindex]` matches `-1`, so an in-shell popup item still matches this rule. The portal is the *only* thing protecting today's behaviour; the role exclusion is belt-and-braces for the case where the popup moves in-shell, and the specificity story is a tie the popup rule loses on source order.
+- **Narrow `[tabindex]` with `:not(:where([role="tabpanel"]))`.** A tabpanel carries `tabindex` and would otherwise take the 2px ring around the whole inspector column (measured: 254×1200) instead of the UA default. `:where()` has zero specificity, so the exclusion does not raise the rule's specificity — measured in Chromium, the `:is()` argument stays (0,1,0) with `:where` and becomes (0,2,0) without it. Verify against the live DOM that `document.querySelectorAll(rule)` excludes the tabpanel and that a keyboard walk never lands a `role="tabpanel"` stop.
 
 - [ ] **Step 2: Verify in the browser**
 
@@ -1613,22 +1644,96 @@ Expected: PASS, and the capture still renders (motion must not leave a panel inv
 
 - [ ] **Step 3: Verify the reduced-motion guard**
 
+**An `animationDuration` assertion alone is not enough, and neither is adding a `transitionDuration` one.** Three separate deletions leave a green suite unless each is pinned by the right probe — all three were measured, not reasoned:
+
+| deletion | the one-line test's result | why |
+|---|---|---|
+| the whole `prefers-reduced-motion` block | FAILS | correct, the one case the short form catches |
+| `transition: none !important;` only | **passes** | the test never reads a transition |
+| `@keyframes vigilia-panel-in { … }`, shorthand kept | **passes** | `animationDuration` stays `0.16s` off the shorthand alone |
+| the `transition:` shorthand block | **passes** | `transition: none !important` sets the duration regardless |
+| all six portalled-class selectors from the media block | **passes** | nothing reads a portalled element |
+
+So the test has to read four things: that motion is suppressed, that the reveal is a *real* animation with keyframes, that the shorthand's five properties exist, and that the suppression reaches portalled chrome. Write it in full:
+
 ```ts
 test("suppresses motion when the user asks for reduced motion", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(EDITOR);
   const duration = await page.locator(".editor-shell-panel").evaluate(
     (el) => getComputedStyle(el).animationDuration,
   );
   expect(duration).toBe("0s");
+
+  // The media block suppresses transitions as well as animations, so read a
+  // control too: the animation assertion alone cannot see that half.
+  const controlTransition = await page.locator(".editor-shell button").first()
+    .evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(controlTransition).toBe("0s");
+
+  // Base UI portals the popup to `body`, where `.editor-shell *` cannot reach
+  // it, so the media block names the popup's own class. Without the injection
+  // this reads 0s either way and would pass with that selector deleted; with
+  // it, only the media block can produce the 0s below.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "View", exact: true }).click();
+  const popup = page.locator(".editor-shell-menu-popup");
+  await expect(popup).toBeVisible();
+  const popupTransition = () =>
+    popup.evaluate((el) => {
+      el.style.transition = "opacity 200ms ease";
+      return getComputedStyle(el).transitionDuration;
+    });
+  await expect.poll(popupTransition).toBe("0.2s");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(popupTransition).toBe("0s");
+
+  // With the guard absent the reveal must be a real animation. Duration alone
+  // stays 0.16s when the @keyframes block is deleted, so read the effect.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const reveal = await page.locator(".editor-shell-panel").evaluate((el) => {
+    // The reveal runs once on mount and leaves getAnimations() when it ends,
+    // so restart it before sampling.
+    el.style.animation = "none";
+    el.getBoundingClientRect();
+    el.style.animation = "";
+    const effect = el.getAnimations()[0]?.effect;
+    return {
+      duration: getComputedStyle(el).animationDuration,
+      properties: getComputedStyle(el).transitionProperty,
+      keyframes: effect instanceof KeyframeEffect ? effect.getKeyframes().length : 0,
+    };
+  });
+  expect(reveal.duration).not.toBe("0s");
+  expect(reveal.keyframes).toBeGreaterThanOrEqual(2);
+  // The suppression assertion reads 0s whether or not the shorthand exists, so
+  // pin the shorthand itself: five compositor-owned properties, never a layout
+  // one. Assert the names, not the count — the count stays 5 if `transform` is
+  // swapped for `width`, which is the regression the comment forbids.
+  expect(reveal.properties).toBe(
+    "background-color, border-color, color, transform, opacity",
+  );
 });
 ```
 
-Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
-Expected: PASS. Then delete the `prefers-reduced-motion` block and confirm the test reads a non-zero duration and fails. Restore.
+`expect.poll` for the popup reads because `emulateMedia` and the inline style both settle asynchronously; a one-shot read there is the flake shape this test cannot afford. The `0.2s` line is not decoration — it is the positive control proving the popup exists and the injection applied, so the `0s` line cannot pass because the element was missing.
 
-The selector is real: the two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — this file has moved three times already and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous, and the `@keyframes` is what sets `animationDuration`. If the assertion reads `"0s"` **before** the reduced-motion rule exists, the animation is not applying at all — check that the keyframes name in Step 1 matches the one the rule references, rather than concluding the guard works.
+The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — that file has moved three times and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous.
+
+**Teeth checks — five, and each must fail in its broken state.** Delete, rebuild (`npx vite build packages/editor`), run the grep, restore:
+
+1. the whole `prefers-reduced-motion` block → fails at `expect(duration).toBe("0s")`
+2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
+3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
+4. all six portalled-class selectors from the media block → must fail with `0.2s` where `0s` is expected. **This is the one the plan omitted and the one that matters** — it is the half the guard exists for, and the half the sibling viewport plan's Task 9 will start animating
+5. `transform 140ms ease,` from the shorthand → fails on `reveal.properties`
+
+If any of the five passes in its broken state the assertion is still vacuous: report it rather than adjusting the test until it fails.
+
+Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
+Expected: PASS. **Confirm the reported count is non-zero** — a `--grep` matching no test exits successfully having run nothing.
 
 - [ ] **Step 4: Commit**
 
