@@ -17,12 +17,6 @@ export type SpacingSelectionContext = {
   distance: number;
 };
 
-//** Both axes' remembered interval choices. */
-export type SpacingContextByAxis = {
-  vertical: SpacingSelectionContext | null;
-  horizontal: SpacingSelectionContext | null;
-};
-
 /** Stable neighbours and reference pattern of one chosen spacing candidate. */
 export type SpacingSelectionIdentity = Readonly<{
   kind: SpacingSelectionContext["kind"];
@@ -1305,67 +1299,3 @@ export const calculateHorizontalSpacing = (
   params: CalculateSpacingParams,
 ): SpacingCalculationResult =>
   calculateAxisSpacing({ ...params, axis: "horizontal" });
-
-/**
- * Computes the equal-spacing snap shift and the set of interval guides.
- */
-export const calculateSpacingSnap = ({
-  activeBounds,
-  candidates,
-  threshold,
-  spacingPatterns,
-  previousContexts,
-  switchDistance = 0,
-}: {
-  activeBounds: Bounds;
-  candidates: Bounds[];
-  threshold: number;
-  spacingPatterns: { vertical: SpacingPattern[]; horizontal: SpacingPattern[] };
-  previousContexts?: SpacingContextByAxis;
-  switchDistance?: number;
-}): {
-  deltaX: number;
-  deltaY: number;
-  guides: SpacingGuide[];
-  contexts: SpacingContextByAxis;
-} => {
-  const {
-    vertical: previousVerticalContext = null,
-    horizontal: previousHorizontalContext = null,
-  } = previousContexts ?? {};
-
-  const verticalResult = calculateVerticalSpacing({
-    activeBounds,
-    candidates,
-    threshold,
-    patterns: spacingPatterns.vertical,
-    previousContext: previousVerticalContext,
-    switchDistance,
-  });
-  const horizontalResult = calculateHorizontalSpacing({
-    activeBounds,
-    candidates,
-    threshold,
-    patterns: spacingPatterns.horizontal,
-    previousContext: previousHorizontalContext,
-    switchDistance,
-  });
-
-  const guides: SpacingGuide[] = [];
-  for (const guide of verticalResult.guides) {
-    guides.push(guide);
-  }
-  for (const guide of horizontalResult.guides) {
-    guides.push(guide);
-  }
-
-  return {
-    deltaX: horizontalResult.delta,
-    deltaY: verticalResult.delta,
-    guides,
-    contexts: {
-      vertical: verticalResult.context,
-      horizontal: horizontalResult.context,
-    },
-  };
-};
