@@ -23,24 +23,19 @@ and interaction layer before snapping fidelity resumes.
 
 ## Last completed change
 
-- The viewport-and-mechanics plan closed on its full gate. Broad gate clean
-  (format, lint, typecheck, 1447 unit tests, build, size); the browser suite ran
-  113 passed / 0 failed in ~88 s across five consecutive parallel runs, and the
-  player bundle is unchanged at 283.9 KB with no `viewport-manager` or
-  `editor-shell` import under `packages/player`.
-- The gate's red suite was one root cause, not a flake: the canvas probe's ink
-  guard waited a fixed *simulated*-time budget (`page.clock.runFor`) for a paint
-  that depends on *real*-time asset fetch and decode, so a slow asset under
-  parallel load lost the race. It now waits a real-time deadline, with a
-  `page.route` regression test that fails against the old guard.
-- Each acceptance item was inspected rendered, not counted: artboard centred with
-  pasteboard visible, zoom readout tracking the camera, marquee selecting without
-  moving (0 → 26 selected, zero world-space rects changed), the context menu
-  matching the dock's entries, and a group entered with the layers tree showing
-  the child's context and `Ungroup` returning on Escape.
-- The layer panel's bottom action row — previously unverified by eye — was checked
-  live: empty with no selection, nine actions for one object, ten for two, with
-  `Group` only for the multi-selection.
+- Applied the editor-ui-polish final review's four fixes. The arrange toolbar now
+  gates each button through `arrangeEligible(count, locked, id)`, which reads the
+  per-action threshold from `arrangeMinimum` — the same owner `canArrange` uses —
+  so the two distribute buttons are disabled at a two-object selection instead of
+  advertising a click that silently does nothing.
+- The selection inspector's geometry is now paired rows (X/Y, W/H, rotation
+  alone) through the existing `linkedPair` primitive, meeting the spec's
+  acceptance line; a committed pair edit still records one history entry.
+- Deleted the two dead class names (`vigilia-selection-grid`,
+  `vigilia-selection-appearance`) that had no CSS rule.
+- Spec amended by ruling: the `LinkedPair` chain toggle and the layer-row context
+  menu are dropped; the group disclosure stays a hand-rolled `aria-expanded`
+  button. Focused suite green (23 files / 111 tests), full unit suite 1455 passed.
 
 ## Next
 

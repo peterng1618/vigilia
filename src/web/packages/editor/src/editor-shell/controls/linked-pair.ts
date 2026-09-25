@@ -4,15 +4,21 @@ export interface LinkedPairField {
   readonly label: string;
   readonly value: number;
   readonly data: string;
+  /** A dataset value, for a keyed selector like `data-vigilia-geometry="left"`.
+      Absent means the bare attribute the panels already query. */
+  readonly dataValue?: string;
 }
 
 export interface LinkedPairOptions {
   readonly rowLabel: string;
   readonly first: LinkedPairField;
   readonly second: LinkedPairField;
+  /** Applied to both fields; a pair whose halves differ is not a pair. */
   readonly min?: number;
   readonly max?: number;
   readonly invalidMessage?: string;
+  /** Runs when either half refuses an edit, for a caller that also reports it. */
+  readonly onReject?: () => void;
   readonly onCommit: (first: number, second: number) => void;
 }
 
@@ -41,6 +47,7 @@ export function linkedPair(options: LinkedPairOptions): LinkedPair {
     ...(options.invalidMessage === undefined
       ? {}
       : { invalidMessage: options.invalidMessage }),
+    ...(options.onReject === undefined ? {} : { onReject: options.onReject }),
   };
 
   let firstValue = options.first.value;
@@ -49,6 +56,9 @@ export function linkedPair(options: LinkedPairOptions): LinkedPair {
     label: options.first.label,
     value: firstValue,
     data: options.first.data,
+    ...(options.first.dataValue === undefined
+      ? {}
+      : { dataValue: options.first.dataValue }),
     host: row,
     ...bounds,
     onCommit: (value) => {
@@ -60,6 +70,9 @@ export function linkedPair(options: LinkedPairOptions): LinkedPair {
     label: options.second.label,
     value: secondValue,
     data: options.second.data,
+    ...(options.second.dataValue === undefined
+      ? {}
+      : { dataValue: options.second.dataValue }),
     host: row,
     ...bounds,
     // A refused edit never reaches a commit, so the sibling still carries the

@@ -130,12 +130,17 @@ rather than being forced into it:
 Field surfaces become React components under `editor-shell/controls/`:
 
 - `NumberField` — label left, control right, tabular figures.
-- `LinkedPair` — X/Y and W/H in one row with a chain toggle.
+- `LinkedPair` — two numbers on one row, committed together (X/Y, W/H). No chain
+  toggle: neither the artboard's W/H nor the inspector's X/Y and W/H have
+  linked-resize semantics, so an aspect lock would gate nothing.
 - `ColorSwatch` — inline swatch opening a Base UI `Popover` of palette tokens.
 - `Slider` — opacity, paired with a numeric readout.
 
-Group disclosure uses Base UI `Collapsible`; the row context menu uses Base UI
-`ContextMenu`. Neither interaction is hand-rolled.
+Group disclosure is a hand-rolled button carrying `aria-expanded` rather than
+Base UI `Collapsible`: the interaction model is already ruled (roles kept, no
+arrow keys), so swapping the component buys nothing visible. No layer-row
+context menu is specified — the canvas context menu already covers object
+actions on the canvas, and a row menu was never requested.
 
 `artboard-panel.ts:119-147` must regroup its eleven flat siblings into field
 wrappers; that is the one consequence outside CSS.

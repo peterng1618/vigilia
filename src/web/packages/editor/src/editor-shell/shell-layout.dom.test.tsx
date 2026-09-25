@@ -171,6 +171,35 @@ it("puts arrange on the canvas toolbar, disabled without a multi-selection", () 
   layout.destroy();
 });
 
+it("enables only the arrange actions a two-object selection can run", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // `canArrange` refuses distribute below three objects, so the toolbar must
+  // grey those two out rather than advertise a click that silently does nothing.
+  const bridge = bridgeStub({
+    snapshot: () => ({ selectedCount: 2, locked: false, activeKind: "group" }),
+    target: () => ({
+      kind: "group",
+      locked: false,
+      memberCount: 2,
+      isGroup: false,
+    }),
+    canArrange: () => true,
+  });
+
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+
+  const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
+  const button = (label: string) =>
+    toolbar?.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
+  expect(button("Align left")?.disabled).toBe(false);
+  expect(button("Distribute horizontally")?.disabled).toBe(true);
+  expect(button("Distribute vertically")?.disabled).toBe(true);
+
+  layout.destroy();
+});
+
 it("keeps arrange off the dock even when a multi-selection is eligible", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);

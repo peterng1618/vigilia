@@ -25,6 +25,9 @@ export const uiCopy = {
     width: "Width",
     height: "Height",
     rotation: "Rotation",
+    /** Row labels for the inspector's paired geometry lines. */
+    position: "Position",
+    size: "Size",
     invalidValue: "That value cannot be applied to the selection.",
     nothingSelected: "Select an object to inspect it.",
     opacity: "Opacity %",

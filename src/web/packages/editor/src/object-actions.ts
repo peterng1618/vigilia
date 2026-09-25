@@ -21,7 +21,7 @@ import {
   Ungroup,
   Unlock,
 } from "lucide-react";
-import { type ArrangeAction, applyArrange } from "./arrange.js";
+import { type ArrangeAction, applyArrange, arrangeMinimum } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -187,22 +187,36 @@ const ARRANGE_ICONS: Readonly<Record<ArrangeAction, LucideIcon>> = {
 /**
  * Arrange's eligibility, as two numbers rather than a target: the toolbar
  * reads it from the shell snapshot's `selectedCount`, not from `target()`,
- * which is undefined until a bridge is set.
+ * which is undefined until a bridge is set. The threshold comes from
+ * `canArrange`'s own owner, so a control cannot advertise an action it refuses.
  */
-export function arrangeEligible(count: number, locked: boolean): boolean {
-  return count > 1 && !locked;
+export function arrangeEligible(
+  count: number,
+  locked: boolean,
+  id: ObjectActionId,
+): boolean {
+  return count >= arrangeMinimum(arrangeVerb(id)) && !locked;
+}
+
+/** The verb behind an `arrange:<verb>` id; this module owns that id format. */
+function arrangeVerb(id: ObjectActionId): ArrangeAction {
+  return id.slice("arrange:".length) as ArrangeAction;
 }
 
 /** Arrange is its own group: it needs two or more objects and its own owner. */
 export function arrangeActions(): readonly ObjectAction[] {
-  return (Object.keys(ARRANGE_ICONS) as ArrangeAction[]).map((action) => ({
-    id: `arrange:${action}` as const,
-    label: uiCopy.arrangeLabels[action],
-    icon: ARRANGE_ICONS[action],
-    // canArrange also refuses a locked member, so eligibility has to agree.
-    eligible: (target) => arrangeEligible(target.memberCount, target.locked),
-    run: (editor) => void applyArrange(editor, action),
-  }));
+  return (Object.keys(ARRANGE_ICONS) as ArrangeAction[]).map((action) => {
+    const id = `arrange:${action}` as const;
+    return {
+      id,
+      label: uiCopy.arrangeLabels[action],
+      icon: ARRANGE_ICONS[action],
+      // canArrange also refuses a locked member, so eligibility has to agree.
+      eligible: (target) =>
+        arrangeEligible(target.memberCount, target.locked, id),
+      run: (editor) => void applyArrange(editor, action),
+    };
+  });
 }
 
 export function objectAction(id: ObjectActionId): ObjectAction {

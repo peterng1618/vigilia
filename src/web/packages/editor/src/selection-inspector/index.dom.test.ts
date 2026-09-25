@@ -79,6 +79,40 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
+  it("pairs X/Y and W/H on one row each, with rotation alone", () => {
+    const { host } = setup(rect);
+    const input = (key: string) =>
+      host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)!;
+    const rowOf = (key: string) => input(key).closest(".vigilia-field-row");
+
+    // Non-vacuous: a pairing assertion on two absent rows would compare null
+    // to null and pass for the stacked layout this replaced.
+    expect(rowOf("left")).not.toBeNull();
+    expect(rowOf("width")).not.toBeNull();
+    // A pair shares its row element; the two pairs are distinct rows.
+    expect(rowOf("left")).toBe(rowOf("top"));
+    expect(rowOf("width")).toBe(rowOf("height"));
+    expect(rowOf("left")).not.toBe(rowOf("width"));
+    // Rotation stands alone, in the single-field row the shell already has.
+    expect(input("angle").closest(".vigilia-field")).not.toBeNull();
+    expect(rowOf("angle")).toBeNull();
+  });
+
+  it("commits a paired edit as one history entry", () => {
+    const { host, history } = setup(rect);
+    const width = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="width"]',
+    )!;
+
+    width.value = "80";
+    width.dispatchEvent(new Event("change"));
+
+    // The sibling's unchanged value is written back too, but that is a no-op
+    // for geometry: one committed edit, one entry.
+    expect(rect.width * rect.scaleX).toBe(80);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a value that would make the object invalid", () => {
     const { host, history, editor } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(

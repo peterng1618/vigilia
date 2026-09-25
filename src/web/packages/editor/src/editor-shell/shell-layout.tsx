@@ -130,7 +130,6 @@ function ArrangeToolbar({
   readonly store: SelectionStore;
 }): React.JSX.Element {
   const selection = useSelection(store);
-  const canArrange = arrangeEligible(selection.selectedCount, selection.locked);
   return (
     <div
       className="editor-shell-arrange editor-glass"
@@ -144,7 +143,9 @@ function ArrangeToolbar({
           type="button"
           aria-label={label}
           title={label}
-          disabled={!canArrange}
+          // Per action: distribute needs three objects where align needs two,
+          // and a button that is enabled but refused is a silent no-op.
+          disabled={!arrangeEligible(selection.selectedCount, selection.locked, id)}
           onClick={() => store.bridge?.run(id)}
         >
           <Icon aria-hidden size={15} strokeWidth={1.75} />

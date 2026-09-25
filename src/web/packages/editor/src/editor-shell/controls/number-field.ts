@@ -4,10 +4,15 @@ export interface NumberFieldOptions {
   readonly label: string;
   readonly value: number;
   readonly data: string;
+  /** A dataset value, for a keyed selector like `data-vigilia-geometry="left"`.
+      Absent means the bare attribute the panels already query. */
+  readonly dataValue?: string;
   readonly step?: number;
   readonly min?: number;
   readonly max?: number;
   readonly invalidMessage?: string;
+  /** Runs when an edit is refused, for a caller that also reports it elsewhere. */
+  readonly onReject?: () => void;
   readonly onCommit: (value: number) => void;
 }
 
@@ -55,7 +60,7 @@ export function numberInput(options: NumberInputOptions): NumberInput {
   if (options.min !== undefined) input.min = String(options.min);
   if (options.max !== undefined) input.max = String(options.max);
   input.className = "vigilia-numeric";
-  input.dataset[options.data] = "";
+  input.dataset[options.data] = options.dataValue ?? "";
   label.htmlFor = input.id = `vigilia-number-${++fieldSeq}`;
   input.value = String(last);
   const alert = document.createElement("p");
@@ -80,6 +85,7 @@ export function numberInput(options: NumberInputOptions): NumberInput {
     if (!accepted(next)) {
       input.value = String(last);
       if (alert.parentElement === null) options.host.append(alert);
+      options.onReject?.();
       return;
     }
     last = next;

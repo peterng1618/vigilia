@@ -1,6 +1,8 @@
 import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
+import { linkedPair } from "../editor-shell/controls/linked-pair.js";
+import { numberField } from "../editor-shell/controls/number-field.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
@@ -38,13 +40,13 @@ interface GeometryField {
   readonly min?: number;
 }
 
-const GEOMETRY_FIELDS: readonly GeometryField[] = [
-  { key: "left", label: uiCopy.inspectorFields.x },
-  { key: "top", label: uiCopy.inspectorFields.y },
-  { key: "width", label: uiCopy.inspectorFields.width, min: 1 },
-  { key: "height", label: uiCopy.inspectorFields.height, min: 1 },
-  { key: "angle", label: uiCopy.inspectorFields.rotation },
-];
+const GEOMETRY_FIELDS: Readonly<Record<GeometryField["key"], GeometryField>> = {
+  left: { key: "left", label: uiCopy.inspectorFields.x },
+  top: { key: "top", label: uiCopy.inspectorFields.y },
+  width: { key: "width", label: uiCopy.inspectorFields.width, min: 1 },
+  height: { key: "height", label: uiCopy.inspectorFields.height, min: 1 },
+  angle: { key: "angle", label: uiCopy.inspectorFields.rotation },
+};
 
 /**
  * Fabric reports geometry in the object's own origin; these read whole artboard
@@ -151,17 +153,9 @@ export function createSelectionInspector(
     return undefined;
   };
 
-  /** Reverts the field to the object's current value, refusing invalid input. */
-  const reject = (
-    input: HTMLInputElement,
-    object: FabricObject,
-    key: GeometryField["key"],
-  ): void => {
-    input.value = String(Math.round(readField(object, key)));
-    editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
-  };
-
-  const apply = (
+  /** Writes one field to the object without rendering or saving history; the
+      caller batches both halves of a pair into one entry. */
+  const write = (
     object: FabricObject,
     key: GeometryField["key"],
     value: number,
@@ -190,8 +184,11 @@ export function createSelectionInspector(
     }
 
     object.setCoords();
+  };
+
+  /** One entry per committed edit, matching the dock's own actions. */
+  const commit = (): void => {
     editor.canvas.requestRenderAll();
-    // One entry per committed edit, matching the dock's own actions.
     editor.historyManager.saveState();
   };
 
@@ -207,49 +204,87 @@ export function createSelectionInspector(
     heading.textContent = uiCopy.inspectorFields.selection;
     root.append(heading);
 
-    const grid = document.createElement("div");
-    grid.className = "vigilia-selection-grid";
+    const geometry = document.createElement("div");
 
-    for (const field of GEOMETRY_FIELDS) {
-      const label = document.createElement("label");
-      label.textContent = field.label;
-      const input = document.createElement("input");
-      input.type = "number";
-      input.step = "1";
-      input.dataset["vigiliaGeometry"] = field.key;
-      if (field.min !== undefined) input.min = String(field.min);
-      input.value = String(Math.round(readField(object, field.key)));
+    /** A refused edit restores the field itself (the primitives own that);
+        the panel only has to report it, as it always has. */
+    const refused = (): void => {
+      editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
+    };
 
-      input.addEventListener("change", () => {
-        // The target may have changed while the field held focus.
-        if (target() !== object) {
-          render();
-          return;
-        }
+    /** The target may have changed while a field held focus; re-render rather
+        than write to an object the panel no longer describes. */
+    const stillTarget = (): boolean => {
+      if (target() === object) return true;
+      render();
+      return false;
+    };
 
-        const value = Number(input.value);
-        if (
-          !Number.isFinite(value) ||
-          (field.min !== undefined && value < field.min)
-        ) {
-          reject(input, object, field.key);
-          return;
-        }
+    // X/Y and W/H are pairs — an author reads and edits them together — while
+    // rotation stands alone. The pair primitive keeps the two boxes on one
+    // `.vigilia-field-row` line, as the artboard panel's Size row does.
+    const pair = (
+      rowLabel: string,
+      first: GeometryField,
+      second: GeometryField,
+    ): HTMLElement =>
+      linkedPair({
+        rowLabel,
+        first: {
+          label: first.label,
+          value: Math.round(readField(object, first.key)),
+          data: "vigiliaGeometry",
+          dataValue: first.key,
+        },
+        second: {
+          label: second.label,
+          value: Math.round(readField(object, second.key)),
+          data: "vigiliaGeometry",
+          dataValue: second.key,
+        },
+        ...(first.min === undefined ? {} : { min: first.min }),
+        onReject: refused,
+        onCommit: (firstValue, secondValue) => {
+          if (!stillTarget()) return;
+          write(object, first.key, firstValue);
+          write(object, second.key, secondValue);
+          // One entry for the pair, matching a single field's edit.
+          commit();
+        },
+      }).row;
 
-        apply(object, field.key, value);
-        // Re-read: the write may have moved the drawn box (e.g. rotation).
-        input.value = String(Math.round(readField(object, field.key)));
-      });
+    geometry.append(
+      pair(
+        uiCopy.inspectorFields.position,
+        GEOMETRY_FIELDS.left,
+        GEOMETRY_FIELDS.top,
+      ),
+      pair(
+        uiCopy.inspectorFields.size,
+        GEOMETRY_FIELDS.width,
+        GEOMETRY_FIELDS.height,
+      ),
+    );
 
-      label.append(input);
-      grid.append(label);
-    }
+    const rotation = numberField({
+      label: GEOMETRY_FIELDS.angle.label,
+      value: Math.round(readField(object, "angle")),
+      data: "vigiliaGeometry",
+      dataValue: "angle",
+      invalidMessage: uiCopy.inspectorFields.invalidValue,
+      onReject: refused,
+      onCommit: (value) => {
+        if (!stillTarget()) return;
+        write(object, "angle", value);
+        commit();
+      },
+    });
+    geometry.append(rotation.row);
 
-    root.append(grid);
+    root.append(geometry);
 
     // Appearance, and what the object's references actually resolve to.
     const appearance = document.createElement("div");
-    appearance.className = "vigilia-selection-appearance";
     appearance.append(createOpacityField(context(), object, render));
 
     const reference = paintReferenceOf(object);
