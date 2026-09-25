@@ -367,3 +367,36 @@ it("refuses an unknown id instead of moving something else", () => {
   expect(bridge.reorderLayer("alpha", "nope")).toBe(false);
   expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
 });
+
+it("reorders inside a group without lifting the child out of it", () => {
+  // The regression this test exists for: `siblings` is the group's array while
+  // the move was issued on the canvas, so the child landed in the canvas root
+  // *and* stayed in the group. `canvas.getObjects()` is the assertion that
+  // catches it — the same-parent test above cannot, because its siblings are
+  // canvas-root and the two arrays happen to be the same one.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const peer = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  peer.set("id", "peer");
+  const group = new Group([child, peer]);
+  group.set("id", "grp");
+  canvas.add(group);
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState },
+  });
+
+  const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
+    objects.map((object) => object.get("id"));
+
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["child", "peer"]);
+  expect(bridge.reorderLayer("child", "peer")).toBe(true);
+  // The group is still the only canvas-root object, and the child is still in it.
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["peer", "child"]);
+  expect(child.group).toBe(group);
+  expect(saveState).toHaveBeenCalledTimes(1);
+});

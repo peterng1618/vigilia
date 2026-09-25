@@ -71,6 +71,9 @@ class LayerStore {
   }
 }
 
+/** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`. */
+const ROW_HEIGHT = 24;
+
 /** One dense row per layer: type icon, name, and the two state icons. */
 export function LayerPanel({
   bridge,
@@ -154,7 +157,10 @@ export function LayerPanel({
                 if (line === null || !moved) return;
                 line.hidden = active.before === undefined;
                 if (active.before === undefined) return;
-                line.style.setProperty("--layer-dropline-top", String(index * 24));
+                line.style.setProperty(
+                  "--layer-dropline-top",
+                  String(index * ROW_HEIGHT),
+                );
                 line.style.setProperty(
                   "--layer-dropline-left",
                   String(6 + row.depth * 13),

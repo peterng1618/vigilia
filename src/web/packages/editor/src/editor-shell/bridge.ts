@@ -214,10 +214,9 @@ export function createEditorShellBridge(input: {
     const siblings = parent === undefined ? root : parent.getObjects();
     const from = siblings.indexOf(moved);
     const anchorAt = siblings.indexOf(anchor);
-    // Load-bearing, not tidiness: `moveObjectTo` splices at `index` even when the
-    // object is absent from the array (`removeFromArray` no-ops, `splice(-1, …)`
-    // then inserts at the end), so a mismatch here would reparent the object
-    // instead of refusing.
+    // Defence in depth, NOT the thing that stops a reparent: with the receiver
+    // below chosen from the same `parent` these indices came from, a mismatch
+    // can no longer cross arrays. Keep it for an inconsistent read.
     if (from < 0 || anchorAt < 0) return false;
     // `beforeId` means directly above that row in the panel, and the panel paints
     // topmost-first, so in Fabric's bottom-first paint order the target is one
@@ -226,11 +225,14 @@ export function createEditorShellBridge(input: {
     // order shifts down by one.
     let target = anchorAt + 1;
     if (from < target) target -= 1;
-    // Fabric is the sole order owner; moveObjectTo reorders the array Fabric paints.
-    // Its boolean return is the move's own verdict — it answers false when the
-    // object already sits at `target`, and discarding that would report success
-    // for a move that did not happen, so the drop line would lie.
-    if (!canvas.moveObjectTo(moved, target)) return false;
+    // The receiver must be the collection `siblings` came from. `moveObjectTo` is
+    // `createCollectionMixin`'s and exists on `Group` too (`index.mjs:1978`,
+    // `:9132`), but it splices `this._objects` — so calling it on the canvas while
+    // indexing the group's array inserts the child into the canvas root and
+    // leaves it inside the group, giving Fabric's paint and serialization arrays
+    // one object each. Its boolean return is the move's own verdict — it answers
+    // false when the object already sits at `target` — so keep checking it.
+    if (!(parent ?? canvas).moveObjectTo(moved, target)) return false;
     canvas.requestRenderAll();
     input.editor.historyManager.saveState();
     notify();

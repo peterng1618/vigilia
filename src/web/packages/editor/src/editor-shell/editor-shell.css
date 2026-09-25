@@ -381,7 +381,8 @@ body,
   align-items: center;
   gap: 4px;
   padding-left: calc(6px + var(--layer-depth, 0) * 13px);
-  min-height: 24px;
+  height: 24px;
+  overflow: hidden;
   border-radius: 5px;
   cursor: default;
 }
