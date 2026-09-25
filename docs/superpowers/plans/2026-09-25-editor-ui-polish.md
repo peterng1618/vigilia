@@ -1673,25 +1673,47 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
     .evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(controlTransition).toBe("0s");
 
-  // Base UI portals the popup to `body`, where `.editor-shell *` cannot reach
-  // it, so the media block names the popup's own class. Without the injection
-  // this reads 0s either way and would pass with that selector deleted; with
-  // it, only the media block can produce the 0s below.
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.getByRole("button", { name: "View", exact: true }).click();
-  // The zoom readout's portal is `keepMounted`, so a second popup is in the DOM
-  // before any menu opens; without `:visible` this locator is a strict-mode
-  // violation. `.toBeVisible()` below still fails loudly if no menu opened.
-  const popup = page.locator(".editor-shell-menu-popup:visible");
-  await expect(popup).toBeVisible();
-  const popupTransition = () =>
-    popup.evaluate((el) => {
+  // Base UI portals the popup, its positioner and the dock tooltip to `body`,
+  // where `.editor-shell *` cannot reach them, so the media block names those
+  // classes too. Without the injection each reads 0s either way and would pass
+  // with its selectors deleted; with it, only the media block can produce the
+  // 0s below.
+  //
+  // Each portalled element gets its own assertion. A single "delete every
+  // portalled selector" teeth check is what let the tooltip go uncovered
+  // through two review rounds — the popup assertion kept passing.
+  const injectedTransition = (locator: Locator) =>
+    locator.evaluate((el) => {
       el.style.transition = "opacity 200ms ease";
       return getComputedStyle(el).transitionDuration;
     });
-  await expect.poll(popupTransition).toBe("0.2s");
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "View", exact: true }).click();
+  // The zoom readout's portal is `keepMounted`, so its popup is in the DOM
+  // before any menu opens; `:visible` selects the open one.
+  const popup = page.locator(".editor-shell-menu-popup:visible");
+  // Anchored to the View popup's own item, not merely to "a visible popup":
+  // the zoom menu also satisfies `:visible`, so a popup-agnostic locator would
+  // let the positive control pass while measuring the wrong menu.
+  await expect(popup.getByRole("menuitem", { name: /Value runs/ })).toBeVisible();
+  await expect.poll(() => injectedTransition(popup)).toBe("0.2s");
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect.poll(popupTransition).toBe("0s");
+  await expect.poll(() => injectedTransition(popup)).toBe("0s");
+
+  // The dock tooltip, portalled under its own class. The dock renders no
+  // triggers until something is selected, so select the starter chart first.
+  await page.keyboard.press("Escape");
+  await expect(popup).toBeHidden();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await selectStarterChart(page);
+  const dock = page.locator('[aria-label="Selected object actions"]');
+  await dock.getByRole("button", { name: "Duplicate" }).hover();
+  const tooltip = page.locator(".editor-shell-tooltip");
+  await expect(tooltip).toBeVisible();
+  await expect.poll(() => injectedTransition(tooltip)).toBe("0.2s");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(() => injectedTransition(tooltip)).toBe("0s");
 
   // With the guard absent the reveal must be a real animation. Duration alone
   // stays 0.16s when the @keyframes block is deleted, so read the effect.
@@ -1731,19 +1753,35 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
 });
 ```
 
-`expect.poll` for the popup reads because `emulateMedia` and the inline style both settle asynchronously; a one-shot read there is the flake shape this test cannot afford. The `0.2s` line is not decoration — it is the positive control proving the popup exists and the injection applied, so the `0s` line cannot pass because the element was missing.
+**The import line needs `type Locator`** — `editor.spec.ts:1` currently reads
+`import { expect, type Page, type TestInfo, test } from "@playwright/test";`. Add it, or inline the helper's
+parameter type and skip the import.
+
+`expect.poll` for both reads because `emulateMedia` and the inline style both settle asynchronously; a one-shot
+read there is the flake shape this test cannot afford. The `0.2s` lines are not decoration — each is the positive
+control proving its element exists and the injection applied, so the `0s` line cannot pass because the element was
+missing.
+
+**Why the tooltip assertion exists at all.** The portalled-chrome guard names three classes, and a teeth check that
+deletes all of them at once cannot tell which one is pinned: the popup assertion keeps passing and the tooltip's
+absence goes unnoticed. That is not hypothetical — it is how the tooltip stayed uncovered through two review
+rounds of this task, and it is a real accessibility gap, since `canvas-dock.tsx:47-53` portals the dock tooltip
+and a future transition or animation on it would run under reduced motion with every test green. The tooltip
+carries no class on its positioner (`Tooltip.Positioner` at `:48` has none), so `.editor-shell-tooltip` is the
+whole of its coverage.
 
 The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — that file has moved three times and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous.
 
-**Teeth checks — five, and each must fail in its broken state.** Delete, rebuild (`npx vite build packages/editor`), run the grep, restore:
+**Teeth checks — six, and each must fail in its broken state.** Delete, rebuild (`npx vite build packages/editor`), run the grep, restore:
 
 1. the whole `prefers-reduced-motion` block → fails at `expect(duration).toBe("0s")`
 2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
 3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
-4. all six portalled-class selectors from the media block → must fail with `0.2s` where `0s` is expected. **This is the one the plan omitted and the one that matters** — it is the half the guard exists for, and the half the sibling viewport plan's Task 9 will start animating
-5. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
+4. the two `.editor-shell-menu-popup` selectors from the media block → must fail with `0.2s` where `0s` is expected
+5. the two `.editor-shell-tooltip` selectors → must fail the same way, **on the tooltip assertion**. Run these two as separate deletions, never as one "delete all six": that coarser check is what hid the tooltip's gap, because the popup assertion kept the suite green while four of the six selectors were gone
+6. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
 
-If any of the five passes in its broken state the assertion is still vacuous: report it rather than adjusting the test until it fails.
+If any of the six passes in its broken state the assertion is still vacuous: report it rather than adjusting the test until it fails.
 
 Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
 Expected: PASS. **Confirm the reported count is non-zero** — a `--grep` matching no test exits successfully having run nothing.
