@@ -24,17 +24,19 @@ and interaction layer before snapping fidelity resumes.
 
 ## Last completed change
 
-- Adjudicated the compaction-recovery review: kept its findings on multi-worker
-  dispatch records, active-plan inference and missing tests; rejected its
-  Git-visibility finding (`.superpowers/sdd/.gitignore` is already `*`).
-- ADR-0010 fixes the definition: a plan is active exactly when it holds a live
-  dispatch record, never by ledger recency — the old 24h window marked four
-  plans active at once, three of them finished or queued.
-- The hook script now resolves plans that way, writes one
-  `dispatch-<agent id>.md` per worker, and no-ops inside a subagent (`agent_id`
-  guard) so a worker cannot receive controller recovery instructions.
-- `--self-check` covers `activePlans` as well as `statusLines`; its teeth were
-  verified by breaking the filter. Wired into CI as `npm run hooks:check`.
+- `STATUS.md` keeps sole ownership of the active plan. A dispatch record under a
+  plan it does not name is now reported as unreconciled rather than promoting
+  that workspace — the previous rule let a stray dispatch against a queued plan
+  become that plan's authority.
+- Expired records past the 7-day TTL are surfaced as expired recovery artifacts
+  instead of dropped, so an abandoned dispatch no longer looks like one that
+  never happened.
+- `--self-check` covers `recoveryState` and expired records as well as
+  `statusLines`, each failing independently when its own rule is broken.
+- The end-to-end snapshot run caught a leftover `activePlans` reference that the
+  script's blanket `catch {}` had turned into a silent no-op; `snapshot` mode had
+  been writing nothing. The self-check missed it because it never calls
+  `snapshot()`.
 
 ## Next
 
@@ -48,8 +50,10 @@ and interaction layer before snapping fidelity resumes.
 - Whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction is
   undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
 - No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
-  audit for unknown agent ids is the only candidate and is not implemented.
-  Concurrent dispatches, stale ledgers and malformed records are also untested.
+  ledger audit for unknown agent ids is the only candidate and is not implemented.
+  Malformed records, root-vs-subagent input and recovery-after-compaction are
+  also untested: the self-check exercises pure helpers, never the hook entry
+  points, which is why the silent `snapshot` no-op got through.
 - The layer panel's bottom action row is still unverified by eye because the
   current capture has no selection.
 - Two `display-fabric.spec.ts` player tests exceed Playwright's 30s default on
