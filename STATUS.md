@@ -15,8 +15,10 @@ and interaction layer before snapping fidelity resumes.
   Camera/viewport, navigation, marquee, keyboard, group context and non-1x
   snapping/indicator work are landed. Phase 1 (canvas context menu, Task 1) is
   complete; Phase 2 is the plan gate.
-- **Queued:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md`. Do not
-  execute until the active plan closes and `STATUS.md` promotes it.
+- **Queued:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — five of
+  its ten tasks landed before the workflow rewrite folded the plan, so Tasks 2, 7,
+  8, 9 and 10 remain. Do not execute until the active plan closes and `STATUS.md`
+  promotes it.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
   Task 6, after the active plan's browser evidence is complete.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md)
