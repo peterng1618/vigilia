@@ -35,7 +35,10 @@ built, so a row naming them corrects the record, not instructions to come.
 | 4–6 | Marked landed with their feature and fix-round commits; step boxes ticked. No body prose changed. |
 | 7 | `readMovementMarker`/`readMovementModifiers` cited at `index.ts:66-79`/`:82-93` (actual `:63-76`/`:79-90`); the artboard-source citations `:133-143`/`:126-131` (actual `:123-140`/`:129-140`); `mouse:up` at `:269` (actual `:266`); `as never` at `:304` (actual `:301`); `scale-projection.ts:11` (actual `:12-16`); `readMovementModifiers` again at `:81-93` (actual `:79-90`); `scale-snapping-resolver.ts:626` (the fork's line, not the port's — replaced by naming the throw). `applyRectangularScalePlan` (`:74`), `setPositionByOrigin` (`:99`) and `readFinalRectangularScaleGeometry` (`:124`) gained their fork line numbers. The e2e anchor `editor.spec.ts:1526` is now `:2089`, and `toCanvas` (which does not exist) is now `sceneToClient(page, 1280, …)`. **`git add …/scaling` was a directory stage of five already-committed files** and is now five explicit paths. Files block gained the two files Step 7 edits. |
 | 8 | The "citation is off by two lines" complaint about `readMovementModifiers` was itself stale — the citation was right. The `scale-snapping-resolver.ts:626` throw now cites the ported `:332` Ctrl short-circuit instead. |
-| 9 | The commit staged `docs/evidence/screenshots/*snap*.png`, which also names Task 1's movement capture; it now names the resize capture. `captureVisualReview` is file-scope and unexported in `editor.spec.ts:2875`, so the step now says to export and import it, and the Files block gained `editor.spec.ts`. |
+| 9 | The commit staged `docs/evidence/screenshots/*snap*.png`, which also names Task 1's movement capture; it now names the resize capture. `captureVisualReview` is file-scope and unexported in `editor.spec.ts`, so the step now says to export and import it, and the Files block gained `editor.spec.ts`. |
+| 8 (again) | Step 6 still staged the `scaling/` directory — the same defect this audit fixed for Task 7 Step 8 and Task 9 Step 5, missed here because Task 8's brief was regenerated after the audit and the fix did not reach it. Now two explicit paths, plus `index.ts` conditionally. |
+| 7, 9 (again) | Every `editor.spec.ts` line citation is stale and cannot be kept fresh: the file has moved three times (`a5f6ba8` → `2929f87` → Task 2's `4fcd162`, which added 262 lines). Both steps now locate their anchors **by test title**, and Task 9's export list grew from one helper to three — `sceneToClient` and `clientOfScene` are as unexported as `captureVisualReview`, and Task 9's own instruction to reuse them is impossible without exporting them. The file contains zero `export` statements today. |
+| 10 Step 3 | Pre-answered: the fallback path is **drop**, and it is measured, not judged — all four fork fallback modules (`line-snapping`, `anchor-buckets`, `pixel-grid`, `snap-target-resolver`) are absent, and `scaling/scaling-step-snap-guards.ts` (1,322 lines) has **zero importers**. The step's drop-branch note claiming `getObjectBounds` "is live again" is therefore false: its only references are inside that unreachable module. The implementer verifies the measurement rather than re-deriving it, and must not write a test asserting the guard family works — a test for unreachable code is green-and-wrong. |
 | 10 | The `display-fabric.spec.ts` title in the gate block is `is byte-stable at a fixed clock on one platform` (`:671`), not the truncated form. Step 3's note that `getObjectBounds` is unreferenced is false once Tasks 4–6 land. Step 4 gained the review doc's line ranges and the note that the vendored-geometry rule is cited by the port markers. Step 6 described a STATUS.md whose blockers list no longer exists. |
 | Self-Review | "reused by both controllers (Tasks 2, 7, 8)" was wrong — Task 2 does not read modifiers. |
 
@@ -1129,7 +1132,7 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts`
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts`
 - Modify: `src/web/packages/editor/src/snap-manager/index.ts` (bindings)
-- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.ts` (only if the fork's scale-guide shape needs it)
+- Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.ts` — **verified unnecessary, listed for completeness.** The ported scale guide carries `axis` (`"x" | "y"`, the same union as the movement guide's) and `position`, which is exactly what `createMovementGuideLines` reads and exactly what `GuideLine` (`types.ts:26-29`) holds. Render scale guides through the existing `lastGuides` channel; do not add a second one and do not modify this file. Edit it only if a real gesture proves a shape the renderer cannot draw, and say so in the report.
 - Modify: `src/web/tests/e2e/editor.spec.ts` (Step 7 — the resize capture test)
 - Modify: `docs/evidence/screenshots/README.md` (Step 7 — its registry row)
 
@@ -1331,7 +1334,7 @@ Replace the event-derived marker with a per-gesture constant and rerun. Expected
 
 - [ ] **Step 7: Inspect the guides on screen**
 
-Add a test to `src/web/tests/e2e/editor.spec.ts` beside `snaps a dragged object to a neighbour and shows a guide` (`editor.spec.ts:2089`) — same skip clause, same `sceneToClient(page, 1280, …)` mapping, same `page.mouse` gesture — that grabs a shape's right resize handle and drags it toward a neighbour's edge. Title it `snaps a resized object to a neighbour and shows a guide`, capture name `editor-snap-resize`, and add it to the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`).
+Add a test to `src/web/tests/e2e/editor.spec.ts` beside `snaps a dragged object to a neighbour and shows a guide` — locate that case by title (`grep -n "snaps a dragged object to a neighbour"`), never by line number: the file has moved under this plan three times and every line citation written for it is stale. Same skip clause, same `sceneToClient(page, 1280, …)` mapping, same `page.mouse` gesture — that grabs a shape's right resize handle and drags it toward a neighbour's edge. Title it `snaps a resized object to a neighbour and shows a guide`, capture name `editor-snap-resize`, and add it to the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (the row listing `editor-snap-guides`; locate it by that name).
 
 Then rebuild and capture:
 
@@ -1347,7 +1350,6 @@ Open the capture and confirm guides appear during the resize, span the artboard,
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/index.ts \
-  src/web/packages/editor/src/snap-manager/guide-renderer.ts \
   src/web/packages/editor/src/snap-manager/scaling/scale-snapping-runtime.ts \
   src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts \
   src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
@@ -1430,9 +1432,12 @@ Ctrl-resize near a neighbour in a real session and confirm in the capture that n
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/web/packages/editor/src/snap-manager/scaling
+git add src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts \
+  src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
 git commit -m "feat(editor): Ctrl escapes snapping during a resize"
 ```
+
+Add `src/web/packages/editor/src/snap-manager/index.ts` to that list only if Step 3's widening of `readMovementModifiers` is what lands it. Never stage the `scaling/` directory: AGENTS.md stages explicit paths, and a directory add sweeps in every file Tasks 4–7 already committed.
 
 ---
 
@@ -1440,7 +1445,7 @@ git commit -m "feat(editor): Ctrl escapes snapping during a resize"
 
 **Files:**
 - Create: `src/web/tests/e2e/snapping.spec.ts`
-- Modify: `src/web/tests/e2e/editor.spec.ts` (Step 5 — export `captureVisualReview`)
+- Modify: `src/web/tests/e2e/editor.spec.ts` (Step 5 — export `captureVisualReview`, `sceneToClient` and `clientOfScene`)
 - Modify: `docs/evidence/screenshots/README.md`
 
 **Interfaces:**
@@ -1488,7 +1493,7 @@ Reintroduce the `83248dc` bug — a per-gesture marker — and rerun. Expected: 
 
 - [ ] **Step 5: Register the evidence and commit**
 
-The matrix's captures belong in the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`), which already lists `editor-snap-guides` / `snaps a dragged object`. Add the resize capture to the same row rather than inventing a domain: it is the same visible action class. Capture titles go through `captureVisualReview(page, testInfo, "<name>")` as the existing tests do — but note that helper is **file-scope and not exported** in `editor.spec.ts` (`:2875`), so a new spec file cannot call it as written. Export it from `editor.spec.ts` and import it (adding `src/web/tests/e2e/editor.spec.ts` to this task's Files list), rather than growing a second capture helper that can drift from the `VIGILIA_CAPTURE` / `-<project>.png` contract. If the export turns out to be undesirable, say so and inline an equivalent — what must not happen is a `page.screenshot` call with no `VIGILIA_CAPTURE` gate, which would write a capture the README never registered.
+The matrix's captures belong in the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (the row listing `editor-snap-guides`; locate it by that name), which already lists `editor-snap-guides` / `snaps a dragged object`. Add the resize capture to the same row rather than inventing a domain: it is the same visible action class. Capture titles go through `captureVisualReview(page, testInfo, "<name>")` as the existing tests do — but note that helper is **file-scope and not exported** in `editor.spec.ts`, so a new spec file cannot call it as written. **Export three helpers, not one:** `captureVisualReview` (the capture contract), plus `sceneToClient` and `clientOfScene`, which this task's own instruction above requires it to reuse and which are equally unexported. The file currently contains **zero** `export` statements, so add all three in one edit and import them. Adding `src/web/tests/e2e/editor.spec.ts` to this task's Files list is part of this step, rather than growing a second capture helper or a second coordinate mapping that can drift from the `VIGILIA_CAPTURE` / `-<project>.png` contract and the artboard-fit arithmetic respectively. If the exports turn out to be undesirable, say so and inline equivalents — what must not happen is a `page.screenshot` call with no `VIGILIA_CAPTURE` gate, which would write a capture the README never registered, or a raw `box.x + (n / W) * box.width` mapping, which drops the artboard's `ty`.
 
 ```bash
 git add src/web/tests/e2e/snapping.spec.ts \
@@ -1555,9 +1560,16 @@ over `line-snapping.ts`, `anchor-buckets.ts`, `snap-target-resolver.ts` and `pix
 
 **Two earlier revisions of this step named symbols that do not exist**, and the second was my own correction producing a fresh one — so take the block above as the measurement and the two names below as landmines. The first read the chain as `_resolveObjectMovementContext` → `_applyMovementObjectSnap` → `_applyMovementVisualGuides`: `_applyMovementObjectSnap` is not a method. The second, written to fix that, listed `_resolveObjectMovementSnapAxes` at `:550` — also not a method; `:550` is `_resolveMovementSnapAxes`. A reader who finds neither name in the file should conclude the plan is wrong, not that they are reading the wrong file.
 
-With the candidate filter relaxed in Task 1 and scaling ported in Tasks 4–8, evaluate whether any case still falls through. Record **port**, **replace** or **drop**, with the reason, in the spec's `## Key decisions to make in planning` §3 — that is the section that asks the question, and the decision belongs where the question is. Do not leave it unstated — that is how the defects this plan fixes survived.
+**The answer is already measured: DROP.** Verify the measurement below rather than re-deriving it — the chain above is context for *why* the fallback existed, not a decision still to be made.
 
-If the decision is drop, note that Task 3 already removed every dead spacing port (`SPACING_CONTEXT_SWITCH_DISTANCE`, `resolveCommonDisplayDistance` with its `CommonDisplayDistance` type, `calculateSpacingSnap`), and that `getObjectBounds` is live again — the scaled modules Tasks 4–6 landed call it (`scaling/scaling-step-snap-guards.ts:5,907,969,1269`), so it is no longer an unreferenced example. Only `getObjectExactBounds` remains the movement path's reader.
+- All four fallback modules are **absent** from Vigilia: `line-snapping.ts`, `anchor-buckets.ts`, `pixel-grid.ts` and `snap-target-resolver.ts` — none exists under `snap-manager/`. The spec already classifies the fallback as absent and names these four modules.
+- `scaling/scaling-step-snap-guards.ts` (1,322 lines, ported in Tasks 4–6) has **zero importers**: `grep -rn "scaling-step-snap-guards" packages/` returns only its own provenance comment. Its sole fork caller was `pixel-grid.ts`, which is absent. The ported guard family is unreachable by design.
+
+Record **drop** in the spec's `## Key decisions to make in planning` §3, with that reason — the fallback's entry point does not exist in Vigilia, and the guard family only it consumed is unreachable code. Vigilia's broader candidate filter is precisely why fewer objects are declined, which is the spec's own argument for why the fallback's justification is weaker. Do not leave it unstated — that is how the defects this plan fixes survived.
+
+**Do not write a test asserting the guard family works.** A test for unreachable code is green-and-wrong: it passes while proving nothing about shipped behaviour.
+
+**A note the earlier draft of this step got wrong.** It said `getObjectBounds` "is live again" because `scaling-step-snap-guards.ts` calls it at `:5,907,969,1269`. Those call sites are real, but they are inside the same unreachable module, so `getObjectBounds` has **no live caller** either — its only references are there. Task 3's precedent applies: it deleted every dead spacing port (`SPACING_CONTEXT_SWITCH_DISTANCE`, `resolveCommonDisplayDistance` with its `CommonDisplayDistance` type, `calculateSpacingSnap`). **Decide explicitly** whether to delete `scaling/scaling-step-snap-guards.ts` (and `getObjectBounds` with it, if nothing else reads it) on that precedent, or keep it — and if you keep it, say what would make it reachable. State the decision either way. Only `getObjectExactBounds` remains the movement path's reader.
 
 - [ ] **Step 4: Close out §64 and §175**
 
