@@ -1701,6 +1701,16 @@ test("suppresses motion when the user asks for reduced motion", async ({ page },
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect.poll(() => injectedTransition(popup)).toBe("0s");
 
+  // The positioner is a separate portalled element, styled in its own right
+  // (`z-index: 60`), and it is NOT covered by the popup's selectors — the popup
+  // nests inside it, not the reverse. A popup-position animation lands here.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const positioner = page.locator(".editor-shell-positioner:visible");
+  await expect(positioner).toBeVisible();
+  await expect.poll(() => injectedTransition(positioner)).toBe("0.2s");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(() => injectedTransition(positioner)).toBe("0s");
+
   // The dock tooltip, portalled under its own class. The dock renders no
   // triggers until something is selected, so select the starter chart first.
   await page.keyboard.press("Escape");
@@ -1762,13 +1772,18 @@ read there is the flake shape this test cannot afford. The `0.2s` lines are not 
 control proving its element exists and the injection applied, so the `0s` line cannot pass because the element was
 missing.
 
-**Why the tooltip assertion exists at all.** The portalled-chrome guard names three classes, and a teeth check that
-deletes all of them at once cannot tell which one is pinned: the popup assertion keeps passing and the tooltip's
-absence goes unnoticed. That is not hypothetical — it is how the tooltip stayed uncovered through two review
-rounds of this task, and it is a real accessibility gap, since `canvas-dock.tsx:47-53` portals the dock tooltip
-and a future transition or animation on it would run under reduced motion with every test green. The tooltip
-carries no class on its positioner (`Tooltip.Positioner` at `:48` has none), so `.editor-shell-tooltip` is the
-whole of its coverage.
+**Why the positioner and tooltip assertions exist at all.** The portalled-chrome guard names three classes, and a
+teeth check that deletes all of them at once cannot tell which one is pinned: the popup assertion keeps passing
+and the others' absence goes unnoticed. That is not hypothetical — it is how the positioner and tooltip stayed
+uncovered through two review rounds of this task, and the tooltip half is a real accessibility gap, since
+`canvas-dock.tsx:47-53` portals the dock tooltip and a future transition or animation on it would run under
+reduced motion with every test green.
+
+**Each class's assertion is justified by a different fact about its markup, and the popup's is the weakest of the
+three.** The popup nests inside the positioner, so it inherits that element's suppression and needs no selector of
+its own; the positioner is a styled element in its own right (`z-index: 60`) and is where a popup-position
+animation would land; the tooltip's `Tooltip.Positioner` (`canvas-dock.tsx:48`) carries no class at all, so
+`.editor-shell-tooltip` is the whole of its coverage.
 
 The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `editor-shell-panel` and `editor-shell-inspector` (cite them by class, not by line — that file has moved three times and Task 9 of the sibling viewport plan moves it again), and exactly one element matches `.editor-shell-panel`, so the locator is not strict-mode ambiguous.
 
@@ -1777,11 +1792,18 @@ The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `
 1. the whole `prefers-reduced-motion` block → fails at `expect(duration).toBe("0s")`
 2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
 3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
-4. the two `.editor-shell-menu-popup` selectors from the media block → must fail with `0.2s` where `0s` is expected
-5. the two `.editor-shell-tooltip` selectors → must fail the same way, **on the tooltip assertion**. Run these two as separate deletions, never as one "delete all six": that coarser check is what hid the tooltip's gap, because the popup assertion kept the suite green while four of the six selectors were gone
+4. **both** `.editor-shell-positioner` selectors → must fail on the popup assertion with `0.2s` where `0s` is expected
+5. the two `.editor-shell-tooltip` selectors → must fail on the tooltip assertion, the same way
 6. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
 
-If any of the six passes in its broken state the assertion is still vacuous: report it rather than adjusting the test until it fails.
+**Delete each class's pair separately, never as one "delete all six" — and expect checks 4 and 5 to be the only two that fail.** Two facts about this block are counter-intuitive enough that a reader will otherwise conclude the test is broken when it is the check that is:
+
+- **The popup is a child of the positioner** (`shell-layout.tsx:175-177`: `Menu.Positioner` wraps `Menu.Popup`), so `.editor-shell-positioner *` already matches the popup. **Deleting the two `.editor-shell-menu-popup` selectors on their own leaves the suite GREEN, and that is correct** — the popup is still suppressed through its parent. Do not read that as a vacuous test and do not add a deletion that "fixes" it. Deleting the positioner pair is what removes the popup's coverage, which is why check 4 is the positioner's and there is no popup-only check.
+- **The tooltip is the reverse case**: `canvas-dock.tsx:48`'s `Tooltip.Positioner` carries **no class at all**, so `.editor-shell-tooltip` is the whole of the tooltip's coverage and check 5 fails as specified.
+
+That is also why the batched "delete all six" check this step originally carried proved nothing: it could not distinguish "the popup is covered by its own selectors" from "the popup is covered by its parent's", and it left the positioner and tooltip unguarded through two review rounds.
+
+If a check passes in its broken state, report it rather than adjusting the test until it fails.
 
 Run: `npx playwright test --project=desktop-chromium --grep "suppresses motion" --workers=1`
 Expected: PASS. **Confirm the reported count is non-zero** — a `--grep` matching no test exits successfully having run nothing.
