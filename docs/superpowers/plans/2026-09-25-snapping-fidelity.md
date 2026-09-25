@@ -452,7 +452,11 @@ Record which branch happened in the commit message, including the measured bound
 
 - [ ] **Step 3: Delete only what is proven dead**
 
-If Step 2 showed the hold works, remove `SPACING_CONTEXT_SWITCH_DISTANCE` from `constants.ts` and `resolveCommonDisplayDistance` from `distance.ts`, plus any now-unused imports. `calculateSpacingSnap` (`spacing.ts:1312`) is also unreferenced: check whether it is the entry point Step 2 exercised through `resolveSpacingNeighbors`; if it is genuinely unreachable, delete it in the same commit, and if it is reachable, leave it.
+If Step 2 showed the hold works, remove `SPACING_CONTEXT_SWITCH_DISTANCE` from `constants.ts` and `resolveCommonDisplayDistance` from `distance.ts`, plus any now-unused imports.
+
+**Deleting `resolveCommonDisplayDistance` orphans the `CommonDisplayDistance` type in the same file**, and a same-file declaration is not an import, so "plus any now-unused imports" does not cover it. The type (`distance.ts:22-27`) is referenced only by the function you are removing — verified: the only other mentions of it anywhere are its declaration and that function's parameter and return annotations. Delete it too, or the task leaves freshly-orphaned dead code behind, which is the opposite of its purpose. **Do not delete `MAX_DISPLAY_DISTANCE_DIFF`** (`distance.ts:19`): it looks like part of the same cluster but is live, imported by `spacing.ts:2` and read at `spacing.ts:561`. `resolveDisplayDistance` (`distance.ts:4`) is live too — imported by `guide-renderer.ts:5`, `spacing-chains.ts:1` and `spacing.ts:3`.
+
+`calculateSpacingSnap` (`spacing.ts:1312`) is also unreferenced: check whether it is the entry point Step 2 exercised through `resolveSpacingNeighbors`; if it is genuinely unreachable, delete it in the same commit, and if it is reachable, leave it.
 
 - [ ] **Step 4: Run the full snapping suite**
 
