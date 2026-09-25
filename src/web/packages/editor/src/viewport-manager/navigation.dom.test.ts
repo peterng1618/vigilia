@@ -137,6 +137,43 @@ describe("viewport navigation", () => {
     expect(viewport.panBy).not.toHaveBeenCalled();
   });
 
+  it("gives back the target-find and selection flags it found, not defaults", () => {
+    const { canvas, unbind } = setup();
+    // The state the claim is supposed to *preserve*, chosen so that each value
+    // differs from what a hardcoded restore would write — `release()` writing
+    // `skipTargetFind = false; selection = true;` must fail here. That is exactly
+    // what the existing space-drag assertions cannot see: there the captured
+    // values happen to equal those literals, so a hardcoded restore passes them.
+    //
+    // `claim()` writes `skipTargetFind = true` and `selection = false`, so these
+    // are also the only pre-set values that leave the claim itself observable at
+    // all: a boolean has no third value to distinguish "preserved" from "written".
+    canvas.skipTargetFind = true;
+    canvas.selection = false;
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+    // Liveness only — the claim really started, so it is `release()` that runs
+    // below. The cursor is the non-vacuous signal here: both flags already hold
+    // the values the claim writes, so re-asserting them would prove nothing.
+    expect(canvas.upperCanvasEl.style.cursor).toBe("grab");
+
+    window.dispatchEvent(
+      new MouseEvent("mousedown", {
+        clientX: 10,
+        clientY: 10,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: " " }));
+
+    // Restored, not reset: a pan must not silently clear a flag something else set.
+    expect(canvas.skipTargetFind).toBe(true);
+    expect(canvas.selection).toBe(false);
+    unbind();
+  });
+
   it("ends the pan when a move reports no button held", () => {
     // A `mouseup` outside the window never reaches `endPan`; without this the
     // claim would outlive the drag and the canvas would never find a target.
@@ -329,6 +366,9 @@ describe("viewport navigation", () => {
     expect(viewport.panBy.mock.calls[0]).toEqual(pixel);
   });
 
+  // Direction only, deliberately: pinning the magnitude would assert a literal
+  // zoom that moves whenever WHEEL_ZOOM_DIVISOR is retuned. A wrong divisor is
+  // uncaught here and would show up as a feel regression, not a failure.
   it("zooms in on a wheel up and out on a wheel down", () => {
     // The modulus is what this observes: with a constant stub zoom, an inverted
     // sign or a wrong divisor would both pass.
