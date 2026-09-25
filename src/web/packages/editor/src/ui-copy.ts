@@ -149,8 +149,9 @@ export const uiCopy = {
     releaseVersion: "Release version",
     notSet: "Not set",
     none: "None",
-    /** Shown by a numeric field when an edit is refused. */
-    invalidNumber: "That number is out of range.",
+    /** Shown by a numeric field when an edit is refused, whether it could not be
+        read as a number or fell outside the field's range. */
+    invalidNumber: "That value cannot be applied. Enter a number in range.",
     palette: "Palette",
     paint: "Paint",
     addColour: "Add colour",
@@ -169,8 +170,6 @@ export const uiCopy = {
     name: "Name",
     author: "Author",
     description: "Description",
-    width: "Width",
-    height: "Height",
     /** A paired width/height row has no room for the full words beside both
         boxes, so the row keeps its "Size" label and marks them W and H. */
     widthMark: "W",

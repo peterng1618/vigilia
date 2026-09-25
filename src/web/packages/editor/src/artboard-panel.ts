@@ -203,6 +203,8 @@ function fieldRow(field: {
   return row;
 }
 
+let selectSeq = 0;
+
 function selectInput(
   text: string,
   data: string,
@@ -213,6 +215,7 @@ function selectInput(
   label.textContent = text;
   const select = document.createElement("select");
   select.dataset[data] = "";
+  label.htmlFor = select.id = `vigilia-select-${++selectSeq}`;
   row.append(label, select);
   return { row, select };
 }

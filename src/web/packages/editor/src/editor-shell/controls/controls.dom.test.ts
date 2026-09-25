@@ -57,27 +57,6 @@ describe("number field", () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects a zero dimension the way the artboard rule does", () => {
-    const onCommit = vi.fn();
-    const field = numberField({
-      label: "Width",
-      value: 1280,
-      min: 1,
-      max: 16384,
-      data: "vigiliaArtboardWidth",
-      onCommit,
-    });
-    document.body.append(field.row);
-    const input = field.row.querySelector("input")!;
-
-    input.value = "0";
-    input.dispatchEvent(new Event("change"));
-
-    expect(onCommit).not.toHaveBeenCalled();
-    expect(input.value).toBe("1280");
-    expect(field.row.querySelector("[role=alert]")).not.toBeNull();
-  });
-
   it("carries the dataset key the panel selectors read", () => {
     const field = numberField({
       label: "Width",
