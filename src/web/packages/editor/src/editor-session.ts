@@ -310,9 +310,10 @@ export class EditorSession {
     // The theme's full-artboard background rect is `selectable: false`, but it
     // *is* returned by `getObjects()`. Selecting it would let the next nudge or
     // drag move the background off the artboard, so it is filtered out here.
-    // `selectable === true` also excludes locked objects, which matches
-    // `snap-manager`; a locked object must not join a selection the author can
-    // then drag.
+    // `selectable === true` also excludes locked objects: a locked object must
+    // not join a selection the author can then drag. Snapping makes the
+    // opposite call — a locked object *is* alignable against — so this filter
+    // is deliberately stricter than `snap-manager`'s.
     const selectableObjects = (): FabricObject[] =>
       canvas.getObjects().filter((object) => object.selectable === true);
 

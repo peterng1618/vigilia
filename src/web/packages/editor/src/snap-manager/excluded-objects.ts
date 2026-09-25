@@ -1,9 +1,13 @@
 import { ActiveSelection, type FabricObject } from "fabric/es";
 
 /** Scene objects that are decoration rather than alignable content. The
- * artboard plate spans the whole artboard, so its centre would otherwise snap
- * every centred object; see new-fabric-theme.ts's `backgroundOnly`. */
-export const IGNORED_IDS: readonly string[] = ["scene"];
+ * artboard plate spans the whole artboard, so it is "aligned" with every object
+ * on the cross axis and its stroke edges sit half a pixel outside the true
+ * artboard bounds, winning boundary snaps over the artboard's own source.
+ * It is excluded by id — `background` is the plate's real id in
+ * new-fabric-theme.ts — not by `selectable`, which would also drop locked
+ * neighbours. */
+export const IGNORED_IDS: readonly string[] = ["background"];
 
 /** Collects the set of objects excluded from processing. */
 export const collectExcludedObjects = ({

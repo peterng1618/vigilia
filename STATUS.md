@@ -25,26 +25,21 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Extracted the nudge/burst machinery into `canvas-nudge.ts` as
-  `createCanvasNudge({ canvas, history })`, which took `editor-session.ts` from
-  815 to 765 lines (the repo's 800 stop) and gave the burst a unit-testable seam.
-  `EditorSession.destroy()` calls `nudge.dispose()`, which clears the pending
-  timer and lifts an open suspension.
-- `canvas-nudge.dom.test.ts` (fake timers) is now the burst's test: one `suspend`
-  and zero `saveState` while a three-press burst is open, exactly one `saveState`
-  after the 300 ms idle window, and two bursts more than 300 ms apart produce two
-  entries. Measured with teeth: deleting `endBurst`'s `saveState()` fails on
-  `0` against `1`; deleting its `release()` fails to `1` against `0` on the
-  suspension depth. This supersedes the round-1 claim that
-  `history-manager/index.test.ts` pinned the wiring — it only pinned the
-  primitive, and disabling `endBurst` left the whole suite green.
-- Keyboard authoring unchanged: arrow keys nudge (Shift = 10, plain = 1),
-  `mod+]`/`mod+[` move to front/back through `layerManager`, `mod+a` selects every
-  `selectable` object, and Ctrl+A inside a rename field stays the field's own
-  select-all via `MODIFIED_KEY_DEFERRED_ACTION_IDS`.
-- The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
-  `rehydrates a chart runtime…`) fail identically with and without these changes;
-  they are pre-existing and belong to Spec A Task 10.
+- Snapping Task 1 fixed: the snap-manager's ignored-id list named `"scene"`, a string no
+  product object carries — in `new-fabric-theme.ts` the plate's id is `"background"` and
+  `"scene"` is the ninth argument (`paletteId`). The list is now `["background"]`, so the
+  artboard plate is genuinely excluded rather than admitted as a whole-artboard snap
+  candidate whose 1px-stroke edges (±0.5) beat the artboard's own exact boundary source and
+  whose span emitted spurious equal-spacing guides.
+- The plate test derives its fixture id from `createNewFabricTheme()` instead of hardcoding
+  the constant's string, so the fixture and the ignored-id list cannot drift apart again.
+- `editor-session.ts`'s `selectableObjects` comment no longer claims parity with
+  `snap-manager`: snapping deliberately aligns to locked objects, selection deliberately does not.
+- Teeth, measured: emptying `IGNORED_IDS` reddens only the plate test
+  (`expected 160.5 to be 158`); restoring `selectable === true` in `isSnapTarget` reddens only
+  the locked-neighbour test (`expected 98 to be 100`); pointing the derived fixture at a wrong
+  real id reddens the plate test again. Browser capture: guides against real content, neither
+  against the plate nor a spurious spacing guide.
 
 ## Next
 

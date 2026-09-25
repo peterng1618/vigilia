@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Canvas, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { createNewFabricTheme } from "../new-fabric-theme.js";
 import { createSnapManager } from "./index.js";
 
 function setup() {
@@ -171,6 +172,16 @@ describe("SnapManager", () => {
 
   it("ignores the artboard plate even though it is large and centrally placed", () => {
     const { canvas, snapping } = setup();
+    // The theme is the authority on which id is the plate: deriving it here
+    // keeps the fixture from drifting back onto a string no product object has.
+    // `scene` is opaque, so the objects array is asserted into shape first.
+    const objects = createNewFabricTheme().scene.objects as readonly Readonly<
+      Record<string, unknown>
+    >[];
+    const plateId = objects.find((object) => object["selectable"] === false)?.[
+      "id"
+    ];
+    expect(plateId).toBeTypeOf("string");
     // The plate spans most of the artboard, so its centre would otherwise be a
     // candidate for anything placed near it. Its geometry is deliberately
     // off-centre from the artboard: a plate centred at the artboard's own centre
@@ -178,7 +189,7 @@ describe("SnapManager", () => {
     // domain-boundary guide. The real plate is also `selectable: false`, which
     // this fixture omits so that the id, not selectability, is what excludes it.
     const plate = new Rect({
-      id: "scene",
+      id: plateId,
       left: 40,
       top: 30,
       width: 240,
