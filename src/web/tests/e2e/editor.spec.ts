@@ -247,6 +247,16 @@ test.describe("Fabric editor route", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect.poll(() => injectedTransition(popup)).toBe("0s");
 
+    // The positioner is a separate portalled element, styled in its own right
+    // (`z-index: 60`), and it is NOT covered by the popup's selectors — the popup
+    // nests inside it, not the reverse. A popup-position animation lands here.
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const positioner = page.locator(".editor-shell-positioner:visible");
+    await expect(positioner).toBeVisible();
+    await expect.poll(() => injectedTransition(positioner)).toBe("0.2s");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect.poll(() => injectedTransition(positioner)).toBe("0s");
+
     // The dock tooltip is portalled under its own class, and its positioner carries
     // no class at all — so `.editor-shell-tooltip` is the whole of its coverage. The
     // dock renders no triggers until something is selected.
