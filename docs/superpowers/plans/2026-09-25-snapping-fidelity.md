@@ -1,5 +1,15 @@
 # Snapping Fidelity Implementation Plan
 
+> **Queued plan.** `STATUS.md` names this plan as queued behind
+> `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md`. Do not
+> execute any part of it until `STATUS.md` promotes it to the active plan.
+> Tasks 1, 3, 4, 5 and 6 are **landed**, each marked below with its commits;
+> Tasks 2, 7, 8, 9 and 10 remain. Landed tasks are kept whole as the record of
+> what was built — do not re-dispatch one. The unticked boxes are the resume
+> signal: only Tasks 2, 7, 8, 9 and 10 carry them.
+> Resume with `superpowers:subagent-driven-development` or
+> `superpowers:executing-plans`, one task at a time.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Bring Vigilia's snapping and smart guides up to the retired fork's practical quality: port the resize/scale snapping subsystem the parity plan deferred, restore the candidate filter and selection guards that were narrowed, and replace the single capture that hid the gap with a behaviour matrix that can actually fail.
@@ -11,6 +21,33 @@
 **Spec:** `docs/superpowers/specs/2026-09-25-snapping-fidelity.md`
 
 **Reference source:** fork `9efdd78a` at `D:\git-repos\fabricjs-image-editor`, branch `codex/fabric-es`. **Read-only.** Retrieve files only with `git -C D:/git-repos/fabricjs-image-editor show 9efdd78a:<path>` and `git ls-tree`; never `checkout`, `switch` or `restore` there, and never mutate that repository.
+
+## Plan audit — 2026-09-26
+
+Each row is a false promise corrected in this file; nothing else was rewritten.
+Tasks 1, 3, 4, 5 and 6 are landed and their bodies are the record of what was
+built, so a row naming them corrects the record, not instructions to come.
+
+| Task | Correction |
+|---|---|
+| — (banner) | Said nothing about task state. Now names this plan as queued behind the viewport plan, states that five tasks are landed and five remain, and marks the unticked boxes as the resume signal. |
+| 1 | The `IGNORED_IDS = ["scene"]` block, the `selectable`-only failure values, and the `new-fabric-theme.ts:320-330 / :328 / :15-19` citation were the pre-landing draft. The landed code holds `["background"]`, derives the fixture's plate id from the theme, and the plate's real id is the eighth `rect()` argument at `new-fabric-theme.ts:323` (`:15-19` is `backgroundOnly`). Step 3's block now shows what landed. |
+| 3 | `calculateSpacingSnap` is described as present-but-unreferenced when it has been deleted; `distance.ts:32` for `resolveCommonDisplayDistance` was already corrected to the pre-deletion `:32`, but the type paragraph also needed the landing recorded. Step 3 now says the deletion happened. |
+| 4–6 | Marked landed with their feature and fix-round commits; step boxes ticked. No body prose changed. |
+| 7 | `readMovementMarker`/`readMovementModifiers` cited at `index.ts:66-79`/`:82-93` (actual `:63-76`/`:79-90`); the artboard-source citations `:133-143`/`:126-131` (actual `:123-140`/`:129-140`); `mouse:up` at `:269` (actual `:266`); `as never` at `:304` (actual `:301`); `scale-projection.ts:11` (actual `:12-16`); `readMovementModifiers` again at `:81-93` (actual `:79-90`); `scale-snapping-resolver.ts:626` (the fork's line, not the port's — replaced by naming the throw). `applyRectangularScalePlan` (`:74`), `setPositionByOrigin` (`:99`) and `readFinalRectangularScaleGeometry` (`:124`) gained their fork line numbers. The e2e anchor `editor.spec.ts:1526` is now `:2089`, and `toCanvas` (which does not exist) is now `sceneToClient(page, 1280, …)`. **`git add …/scaling` was a directory stage of five already-committed files** and is now five explicit paths. Files block gained the two files Step 7 edits. |
+| 8 | The "citation is off by two lines" complaint about `readMovementModifiers` was itself stale — the citation was right. The `scale-snapping-resolver.ts:626` throw now cites the ported `:332` Ctrl short-circuit instead. |
+| 9 | The commit staged `docs/evidence/screenshots/*snap*.png`, which also names Task 1's movement capture; it now names the resize capture. `captureVisualReview` is file-scope and unexported in `editor.spec.ts:2875`, so the step now says to export and import it, and the Files block gained `editor.spec.ts`. |
+| 10 | The `display-fabric.spec.ts` title in the gate block is `is byte-stable at a fixed clock on one platform` (`:671`), not the truncated form. Step 3's note that `getObjectBounds` is unreferenced is false once Tasks 4–6 land. Step 4 gained the review doc's line ranges and the note that the vendored-geometry rule is cited by the port markers. Step 6 described a STATUS.md whose blockers list no longer exists. |
+| Self-Review | "reused by both controllers (Tasks 2, 7, 8)" was wrong — Task 2 does not read modifiers. |
+
+Checked and clean: every fork path and line number in Tasks 2, 4, 5, 6 and 9
+(all 16 named files exist at `9efdd78a` with the stated line counts; every
+`snap-manager/` line number in Tasks 1–6 verified against
+`git show a5f6ba8:…`, the commit the citations were written against), the
+Fabric `EventTypeDefs.d.ts` key list and line numbers, `index.mjs:3193-3199`
+and `:12633-12636`, the fork's `index.ts` fallback chain, and the
+`ScaleProjectionVariable` union. Full audit:
+`.superpowers/sdd/2026-09-25-snapping-fidelity/plan-audit-2026-09-26.md`.
 
 ## Global Constraints
 
@@ -41,6 +78,8 @@ The five failure modes most likely to bite an author, and where each is pinned:
 
 ### Task 1: Candidate-filter parity
 
+> **Landed** - `8be1364 + 69e5121`.
+
 **Files:**
 - Modify: `src/web/packages/editor/src/snap-manager/index.ts:32-42`
 - Modify: `src/web/packages/editor/src/snap-manager/excluded-objects.ts`
@@ -53,7 +92,7 @@ The five failure modes most likely to bite an author, and where each is pinned:
 
 Today `isSnapTarget` requires `object.selectable === true && object.get("locked") !== true`. The fork's `utils/object-filter.ts:28-45` excludes only the active object and its selection children, `visible === false`, and `IGNORED_IDS`. Locking a layer in the fork prevents *moving* it, not *aligning to* it.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `index.dom.test.ts`:
 
@@ -124,14 +163,14 @@ it("still ignores a hidden neighbour", () => {
 
 The existing test `"skips a locked neighbour as a snap target"` now asserts the opposite of the intended behaviour. **Delete it** and let the new first test replace it — do not keep both.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run packages/editor/src/snap-manager/index.dom.test.ts`
 Expected: FAIL on the first two. The third (hidden neighbour) passes both before and after — it is the labelled regression guard. The first fails because the locked object is not a snap candidate at all under the current filter; the second fails because `selectable: false` excludes the plate and nothing yet excludes it by id.
 
 **Both new failing tests must be shown red before Step 3, and red for the stated reason — not because the fixture is out of range.** If either passes at this step, the fixture is wrong (its candidate is not in reach), not the code: fix the fixture's geometry, do not proceed. This matters because a test that is green before the change proves nothing and will still be green after a bad implementation.
 
-- [ ] **Step 3: Relax the filter and name the ignored ids**
+- [x] **Step 3: Relax the filter and name the ignored ids**
 
 In `excluded-objects.ts`:
 
@@ -160,18 +199,18 @@ function isSnapTarget(
 
 The redundant `if (excluded.has(object)) return undefined;` on the line after the `isSnapTarget` call in `toSnapSource` is now covered by the filter. Remove it.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run packages/editor/src/snap-manager`
 Expected: PASS, all tests including the untouched ones.
 
-- [ ] **Step 5: Verify the tests have teeth**
+- [x] **Step 5: Verify the tests have teeth**
 
 Restore `object.selectable === true &&` to the predicate and rerun. Expected: the locked-neighbour test and the plate test both fail, and both fail on their own assertion line — `expected 98 to be 100` and `expected 160 to be 158`. The listed actual values are the check that the failure is alignment-driven; a failure reading `expected 98 to be 98` or any other value means the fixture, not the code, is being measured. Restore the relaxed version.
 
 Then empty `IGNORED_IDS` and rerun. Expected: the plate test fails (`expected 160 to be 158`) and the locked-neighbour test still passes. Restore `["scene"]`.
 
-- [ ] **Step 6: Inspect the starter theme for noise**
+- [x] **Step 6: Inspect the starter theme for noise**
 
 Removing the `selectable` gate makes decorative `selectable: false` objects alignable. The starter theme has exactly one such object — the artboard plate, id `scene`, created at `new-fabric-theme.ts:320-330` (the single `backgroundOnly` use is at `:328`; `:15-19` is the *style constant*, not the object). It is now excluded by id — but confirm that in the browser rather than trusting the grep:
 
@@ -183,7 +222,7 @@ VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
 
 Open the capture. Confirm guides appear against real content (the wordmark, a panel, a chart) and that no guide appears against the artboard plate except at the true artboard edges. If decoration is noisy, add its id to `IGNORED_IDS` with a comment naming why — do not reintroduce the `selectable` gate, which would also block locked objects.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/index.ts \
@@ -329,6 +368,8 @@ git commit -m "feat(editor): refuse a snap gesture for an unsupported selection"
 
 ### Task 3: Spacing hold state — prove it, then delete the dead ports
 
+> **Landed** - `a90bc43`.
+
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/spacing-hold.dom.test.ts`
 - Modify: `src/web/packages/editor/src/snap-manager/constants.ts`
@@ -343,7 +384,7 @@ Two ported exports have no call sites: `SPACING_CONTEXT_SWITCH_DISTANCE` (`const
 
 **What these two exports *were* for matters to Step 3, and copying them back in is not an option.** The resolver replaces both by construction: the live release window is `(SNAP_THRESHOLD + SPACING_SNAP_HOLD_MARGIN) / zoom` (`:1302`) and the live switch distance is `previousContext ? Number.POSITIVE_INFINITY : 0` (`:886`) — a hard hold-or-nothing, strictly stronger than the constant's flat `5`. So if Step 2 shows stickiness is *missing*, wiring `SPACING_CONTEXT_SWITCH_DISTANCE` back in would **weaken** the live rule while claiming to restore it, and Step 2's second branch forbids exactly that.
 
-- [ ] **Step 1: Write the behavioural test**
+- [x] **Step 1: Write the behavioural test**
 
 ```ts
 // src/web/packages/editor/src/snap-manager/spacing-hold.dom.test.ts
@@ -445,7 +486,7 @@ A sweep is a few lines in the test file: loop `offset` from 201 to 220, `move(ca
 
 **Two outcomes are legitimate and both must be reported, not papered over.** If the sweep shows no holding window at all — the object follows the pointer at every offset — then spacing stickiness does not exist on the movement path, and Step 2's first branch applies: **stop and report; do not wire `SPACING_CONTEXT_SWITCH_DISTANCE` in, and do not delete the two exports.** Weakening these assertions to `toBeGreaterThan`/`not.toBe`, or widening the fixture until something holds, is the one thing this step forbids — it would manufacture the evidence Step 3 uses to delete live code.
 
-- [ ] **Step 2: Run it and read the result before changing anything**
+- [x] **Step 2: Run it and read the result before changing anything**
 
 Run: `npx vitest run packages/editor/src/snap-manager/spacing-hold.dom.test.ts`
 
@@ -459,20 +500,20 @@ Record which branch happened in the commit message, including the measured bound
 
 **One thing to confirm before trusting either step:** that the anchor being held is genuinely the *spacing* candidate and not the artboard's centre guide. The fixture's `bounds()` is deliberately off-centre for exactly this reason, but the cheap confirmation is to delete the two flanking rects and re-run: if the object still reads `200` with no neighbours, the fixture is measuring the artboard, not spacing, and the test must be rebuilt rather than adjusted.
 
-- [ ] **Step 3: Delete only what is proven dead**
+- [x] **Step 3: Delete only what is proven dead**
 
 If Step 2 showed the hold works, remove `SPACING_CONTEXT_SWITCH_DISTANCE` from `constants.ts` and `resolveCommonDisplayDistance` from `distance.ts`, plus any now-unused imports.
 
 **Deleting `resolveCommonDisplayDistance` orphans the `CommonDisplayDistance` type in the same file**, and a same-file declaration is not an import, so "plus any now-unused imports" does not cover it. The type (`distance.ts:22-27`) is referenced only by the function you are removing — verified: the only other mentions of it anywhere are its declaration and that function's parameter and return annotations. Delete it too, or the task leaves freshly-orphaned dead code behind, which is the opposite of its purpose. **Do not delete `MAX_DISPLAY_DISTANCE_DIFF`** (`distance.ts:19`): it looks like part of the same cluster but is live, imported by `spacing.ts:2` and read at `spacing.ts:561`. `resolveDisplayDistance` (`distance.ts:4`) is live too — imported by `guide-renderer.ts:5`, `spacing-chains.ts:1` and `spacing.ts:3`.
 
-`calculateSpacingSnap` (`spacing.ts:1312`) is also unreferenced: check whether it is the entry point Step 2 exercised through `resolveSpacingNeighbors`; if it is genuinely unreachable, delete it in the same commit, and if it is reachable, leave it.
+`calculateSpacingSnap` (which sat at `spacing.ts:1312`) is gone: the implementer established it was unreachable and deleted it with the rest.
 
-- [ ] **Step 4: Run the full snapping suite**
+- [x] **Step 4: Run the full snapping suite**
 
 Run: `npx vitest run packages/editor/src/snap-manager`
 Expected: PASS. Deleting an export that something imported will show up here as a compile error, which is the point of running it.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager
@@ -482,6 +523,8 @@ git commit -m "test(editor): pin equal-spacing hold, drop the dead spacing ports
 ---
 
 ### Task 4: Scale snap candidates and projection
+
+> **Landed** - `cf5ec0e`.
 
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scale-snap-candidates.ts` (fork: 130 lines)
@@ -587,7 +630,7 @@ Note the import direction: the fork declares its candidate types (`ScaleSnapCand
 
 **That does not mean collapsing the two into one commit.** Commit Task 4's files when Step 6 says to, *before* writing Task 5's — a fix round on Task 5 that has to reconstruct which of forty ported lines came from which task is a fix round spent on archaeology. The pair is dispatched as one unit because neither compiles alone; it lands as two commits because they are two files' worth of different work.
 
-- [ ] **Step 1: Retrieve the fork sources**
+- [x] **Step 1: Retrieve the fork sources**
 
 ```bash
 git -C D:/git-repos/fabricjs-image-editor show \
@@ -600,7 +643,7 @@ git -C D:/git-repos/fabricjs-image-editor show \
 
 Read both in full before adapting. They are the specification.
 
-- [ ] **Step 2: Adapt them into the new files**
+- [x] **Step 2: Adapt them into the new files**
 
 Changes permitted, and only these:
 
@@ -618,7 +661,7 @@ Add the provenance line at the top of each file:
 
 Do **not** restructure, rename or "improve" the algorithms. A ported file that differs from its source except for these changes loses the byte-comparability that makes a future diff against the fork cheap.
 
-- [ ] **Step 3: Write the test**
+- [x] **Step 3: Write the test**
 
 Port one behaviour per exported function, using the real linear-model API rather than a fabricated façade.
 
@@ -709,16 +752,16 @@ describe("scale projection", () => {
 
 Add the rotated and all-eight-control cases in Task 6, where the gesture projection that produces these coefficients exists. A projection that ignores rotation is Review Focus item 3, so that case is not optional — but it belongs with the code that computes the coefficients.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run packages/editor/src/snap-manager/scaling`
 Expected: PASS.
 
-- [ ] **Step 5: Verify teeth**
+- [x] **Step 5: Verify teeth**
 
 In `projectScaleEdgePositions` and `resolveScaleProjection`, return the input values unchanged instead of projecting them, and rerun. Expected: failures on the projected-position and constraint-solve tests. Restore.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 The ported files are a deliberate exception to the 800-line stop; say so in the message.
 
@@ -733,6 +776,8 @@ stays byte-comparable with fork 9efdd78a apart from import paths."
 ---
 
 ### Task 5: Scale snap resolver
+
+> **Landed** - `d86baac`.
 
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scale-snapping-resolver.ts` (fork: 1,269 lines)
@@ -876,7 +921,7 @@ The key contract: `resolveScaleSnapPlan` produces a plan, and `verifyScaleSnapPl
 
 This task ports the resolver and its two guard modules. `scaling-step-snap-guards.ts` imports only Fabric, geometry helpers and constants on the fork side, so it ports with import rewrites alone.
 
-- [ ] **Step 1: Retrieve the three fork sources**
+- [x] **Step 1: Retrieve the three fork sources**
 
 ```bash
 for f in scale-snapping-resolver scaling-snap-guard scaling-step-snap-guards; do
@@ -885,13 +930,13 @@ for f in scale-snapping-resolver scaling-snap-guard scaling-step-snap-guards; do
 done
 ```
 
-- [ ] **Step 2: Adapt with the same permitted changes as Task 4**
+- [x] **Step 2: Adapt with the same permitted changes as Task 4**
 
 Import paths to Vigilia's `bounds.js` and `constants.ts`, English comments, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` fixes, provenance line. Thresholds and tolerances are copied **verbatim** — a changed tolerance is precisely the "weaker tolerances" failure §175 names.
 
 Cross-check each constant the resolver imports against `snap-manager/constants.ts`. `scaling-step-snap-guards.ts` needs `SNAP_GUARD_POSITION_EPSILON`, `SOURCE_SCALED_GUIDE_HOLD_EPSILON` and `getBoundsSnapGuardDistance`. **These are not in the fork's `constants.ts`** — all three are declared in `scaling-snap-guard.ts` (`:2`, `:5`, `:23`), which this task already creates as a ported file, so they arrive with it and **nothing needs adding to `snap-manager/constants.ts`**. Do not re-declare them there: two homes for one constant is exactly the drift this step exists to prevent. The instruction to port them into `constants.ts` is struck.
 
-- [ ] **Step 3: Write the resolver test from the fork's cases**
+- [x] **Step 3: Write the resolver test from the fork's cases**
 
 **The direct source is the fork's own unit spec for this file** — `specs/src/editor/snapping-manager/scaling/scale-snapping-resolver.spec.ts` (1,109 lines, ~34 cases). It is written against exactly the API this task ports, and its fixture module travels with it:
 
@@ -913,16 +958,16 @@ Select from that spec the cases matching the list below, and where the fork has 
 - Ctrl producing the raw, unrounded geometry (Review Focus item 2);
 - a rotated object's control projecting onto its own axis.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run packages/editor/src/snap-manager/scaling`
 Expected: PASS.
 
-- [ ] **Step 5: Verify teeth**
+- [x] **Step 5: Verify teeth**
 
 Change one acquire tolerance by 1 and confirm the matching test fails. Restore. This is the check that the tests are pinned to the fork's numbers rather than to whatever the port happens to do.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/scaling
@@ -932,6 +977,8 @@ git commit -m "feat(editor): port the scale snap resolver and step guards"
 ---
 
 ### Task 6: Scale gesture projection and interaction
+
+> **Landed** - `abd5713 + dd05235`.
 
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/scaling/rectangular-scale-gesture-projection.ts` (fork: 849 lines)
@@ -989,7 +1036,7 @@ The `u`/`v` unit vectors carried on the projection are what makes rotation work:
 
 `rectangular-scale-gesture-projection.ts` is where all eight controls, rotated and centred, are handled. It imports `ObjectBounds`, `ScaleProjectionModeInput` and geometry helpers — no editor coupling.
 
-- [ ] **Step 1: Retrieve and adapt the three sources** as in Task 4.
+- [x] **Step 1: Retrieve and adapt the three sources** as in Task 4.
 
 ```bash
 for f in rectangular-scale-gesture-projection rectangular-scale-interaction standard-scale-control; do
@@ -998,7 +1045,7 @@ for f in rectangular-scale-gesture-projection rectangular-scale-interaction stan
 done
 ```
 
-- [ ] **Step 2: Identify the control from the Fabric transform**
+- [x] **Step 2: Identify the control from the Fabric transform**
 
 `standard-scale-control.ts` is the fork's own answer and ports **unchanged**: it compares `target.controls[transform.corner]` against `controlsUtils.createObjectDefaultControls()` field by field, and refuses a control whose handlers were replaced. That is what guarantees the snapping only engages over a genuinely standard Fabric resize handle — a custom control that changes resize semantics is declined.
 
@@ -1008,7 +1055,7 @@ Note that the fork does **not** export `STANDARD_RECTANGULAR_SCALE_CONTROLS` —
 
 `didSideScaleSwitchToSkew` is also from this file and is needed: Alt on a side handle switches it from scaling to skewing, and a gesture in that state must not snap.
 
-- [ ] **Step 3: Test every control, rotated and not**
+- [x] **Step 3: Test every control, rotated and not**
 
 ```ts
 describe("rectangular scale gesture projection", () => {
@@ -1062,12 +1109,12 @@ The fixture (546 lines) exports `createRectangularScaleProjectionFixture({ contr
 
 Two traps worth knowing before writing them: `createRectangularScaleGestureProjection` takes the *pointer start* in scene coordinates alongside the transform, and `multipliers` are relative to gesture start (1 means "unchanged"), not absolute scales. A third, from the fork's own spec: `resolveFixtureFreeMode` maps `ml`/`mr` to `horizontal`, `mt`/`mb` to `vertical`, and the four corners to `free` — a mode/resolution mismatch shows up as a multiplier of `1` on the axis you expected to move, not as a thrown error.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run packages/editor/src/snap-manager/scaling`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/scaling
@@ -1084,6 +1131,8 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts`
 - Modify: `src/web/packages/editor/src/snap-manager/index.ts` (bindings)
 - Modify: `src/web/packages/editor/src/snap-manager/guide-renderer.ts` (only if the fork's scale-guide shape needs it)
+- Modify: `src/web/tests/e2e/editor.spec.ts` (Step 7 — the resize capture test)
+- Modify: `docs/evidence/screenshots/README.md` (Step 7 — its registry row)
 
 **Interfaces:**
 - Consumes: Tasks 4–6, `MovementSnappingRuntime`'s two-phase pattern (`resolveMovementPlan` → `verifyMovementPlan`, `movement-snapping-runtime.ts:115,159`).
@@ -1243,16 +1292,16 @@ Port `ScaleSnappingRuntime` from the fork with its mechanics intact — the `Wea
 
 Then write `scale-snapping-controller.ts`, a thin orchestrator over Tasks 4–6 mirroring `movement-snapping-controller.ts`. Per `object:scaling` step:
 
-1. **Marker.** `readMovementMarker({ event })` — the browser event, one per native pointer event. Never a per-gesture constant; that is the `83248dc` bug. **Both `readMovementMarker` and `readMovementModifiers` are module-private to `index.ts` today** (`:66-79` and `:82-93`; `index.ts` exports only three symbols). Export them and import them in the controller — reuse the one reader rather than copying it.
+1. **Marker.** `readMovementMarker({ event })` — the browser event, one per native pointer event. Never a per-gesture constant; that is the `83248dc` bug. **Both `readMovementMarker` and `readMovementModifiers` are module-private to `index.ts` today** (`:63-76` and `:79-90`; `index.ts` exports only `SnapManager`, `SnapManagerOptions` and `createSnapManager`). Export them and import them in the controller — reuse the one reader rather than copying it.
 2. **Gesture start**, on the first step of a session: Fabric's `object:scaling` event is `BasicTransformEvent`, which carries exactly `{ e, transform, pointer }` (`EventTypeDefs.d.ts:69-72`). `transform` has `target`, `corner`, `action`, `original`, `originX`, `originY` — the `RectangularScaleGestureTransform` shape — and `pointer` is the `pointerStart` argument. Pass them straight through; if `createRectangularScaleGestureProjection` returns `null` (unsupported control, or Alt-skew), end the session and do nothing.
 
    Be precise about which point `pointer` is, because it is *not* the canvas scene point. Fabric builds it in `commonEventInfo` (`fabric/dist/index.mjs:3193-3199`) as `new Point(x, y)` from the `x`/`y` handed to the action handler, and `_transformObject` (`:12633-12636`) passes `localPointer` — the scene point sent through `target.group.calcTransformMatrix()` when the target has a group, and the plain scene point otherwise. For an ungrouped target the two coincide; inside a group, `pointer` is already in the group's own plane, which is the plane the projection and the object's own bounds live in. That is the point the fork's own controller uses, so passing it through is correct — but do not "fix" it to the canvas scene point, which would be wrong for a grouped target.
 
    **Confirm this against the real pointer pipeline before Step 7's capture.** jsdom cannot exercise it, and the fork reads `event.scenePoint` rather than `event.pointer` (`image-scale-snapping-controller.ts`), so the two differ in name and possibly in plane. If Task 6's projection tests pass but the browser capture shows guides attached to the wrong edge, this is the cause.
-3. **Baseline**, once: `createScaleGestureBaseline({ bounds: getObjectExactBounds(...), fixedAnchor: projection.fixedAnchor, projectionModes, candidates: createScaleSnapCandidates({ targetEdges: resolveRectangularScaleMovingEdges({ projectionModes }), sources }), zoom })`. Build `sources` the way `startGesture` does in `index.ts:133-143` — that is where the artboard is pushed as a `domain-boundary` source (`:126-131` is the `collectExcludedObjects` + `forEachObject` loop).
-4. **Intent.** `projectionMode` from the modes `createRectangularScaleProjectionModes` returned for this control and mode; `values` from `resolveRectangularScaleMultipliers`; `modifiers` from `readMovementModifiers({ event })` — widen that helper to return `shiftKey` alongside `ctrlKey` (it currently returns `ctrlKey` only, `index.ts:81-93`), since `ScaleSnapModifiers` needs both. One modifier reader, used by both paths.
-5. **Apply.** Call the ported `applyRectangularScalePlan({ plan, projection, target, transform })` from `rectangular-scale-interaction.ts` — do **not** hand-roll the two-line `target.set(...)`. The plan's `effectiveValues` are snap-resolver variables (`scale-x` / `scale-y` / `uniform-scale`, `scale-projection.ts:11`), not rectangular multipliers, so the fork's own applier decodes them through `resolveRectangularScaleMultipliers({ projectionMode, effectiveValues })` first, and then restores the gesture's fixed point with `target.setPositionByOrigin(new Point(projection.fixedAnchor.x, projection.fixedAnchor.y), transform.originX, transform.originY)` before `setCoords()`. Reading `effectiveValues[0]`/`[1]` straight into `scaleX`/`scaleY` is wrong in two ways: a `uniform` step carries a single value and `effectiveValues[1]` is `undefined`, giving `NaN` under `noUncheckedIndexedAccess`; and a `vertical` (`mt`/`mb`) step's one value is the **Y** multiplier, which the positional read would apply to `scaleX`. The missing `setPositionByOrigin` also drops the fixed-point restoration Task 5 Step 3 requires the resolver to prove.
-6. **Verify.** `measuredValues` comes from `createRectangularScaleValues({ mode, multipliers })` in the same file (`rectangular-scale-interaction.ts:147`), not from a raw `target.scaleX / originalScaleX` ratio — the ratio is wrong for the same axis reason as item 5. `readFinalRectangularScaleGeometry` builds the whole `FinalScaleGeometry`, including `protectedStatePreserved` (the fork supplies it from `isProtectedImageScaleStatePreserved`, an image-editor concern; for Vigilia pass the equivalent "did the gesture's protected state survive" answer, and if there is no such state, `true` naming why in a comment). Then `verifyScalePlan({ token, finalGeometry })`, and take guides from `verification.guides` only.
+3. **Baseline**, once: `createScaleGestureBaseline({ bounds: getObjectExactBounds(...), fixedAnchor: projection.fixedAnchor, projectionModes, candidates: createScaleSnapCandidates({ targetEdges: resolveRectangularScaleMovingEdges({ projectionModes }), sources }), zoom })`. Build `sources` the way `startGesture` does in `index.ts:123-140` — that is where the artboard is pushed as a `domain-boundary` source (`:129-140`; `:123-128` is the `collectExcludedObjects` + `forEachObject` loop).
+4. **Intent.** `projectionMode` from the modes `createRectangularScaleProjectionModes` returned for this control and mode; `values` from `resolveRectangularScaleMultipliers`; `modifiers` from `readMovementModifiers({ event })` — widen that helper to return `shiftKey` alongside `ctrlKey` (it currently returns `ctrlKey` only, `index.ts:79-90`), since `ScaleSnapModifiers` needs both. One modifier reader, used by both paths.
+5. **Apply.** Call the ported `applyRectangularScalePlan({ plan, projection, target, transform })` from `rectangular-scale-interaction.ts:74` — do **not** hand-roll the two-line `target.set(...)`. The plan's `effectiveValues` are snap-resolver variables (`scale-x` / `scale-y` / `uniform-scale`, `scale-projection.ts:12-16`), not rectangular multipliers, so the fork's own applier decodes them through `resolveRectangularScaleMultipliers({ projectionMode, effectiveValues })` first, and then restores the gesture's fixed point with `target.setPositionByOrigin(new Point(projection.fixedAnchor.x, projection.fixedAnchor.y), transform.originX, transform.originY)` (`:99`) before `setCoords()`. Reading `effectiveValues[0]`/`[1]` straight into `scaleX`/`scaleY` is wrong in two ways: a `uniform` step carries a single value and `effectiveValues[1]` is `undefined`, giving `NaN` under `noUncheckedIndexedAccess`; and a `vertical` (`mt`/`mb`) step's one value is the **Y** multiplier, which the positional read would apply to `scaleX`. The missing `setPositionByOrigin` also drops the fixed-point restoration Task 5 Step 3 requires the resolver to prove.
+6. **Verify.** `measuredValues` comes from `createRectangularScaleValues({ mode, multipliers })` in the same file (`rectangular-scale-interaction.ts:147`), not from a raw `target.scaleX / originalScaleX` ratio — the ratio is wrong for the same axis reason as item 5. `readFinalRectangularScaleGeometry` (`:124`) builds the whole `FinalScaleGeometry`, including `protectedStatePreserved` (the fork supplies it from `isProtectedImageScaleStatePreserved`, an image-editor concern; for Vigilia pass the equivalent "did the gesture's protected state survive" answer, and if there is no such state, `true` naming why in a comment). Then `verifyScalePlan({ token, finalGeometry })`, and take guides from `verification.guides` only.
 
 Guides must not be published from the plan. The fork publishes after exact-bound verification, and Review Focus item 1 is exactly this mistake.
 
@@ -1266,9 +1315,9 @@ Add to the bindings array in `index.ts`:
     ["object:scaling", scaleRunStep],
 ```
 
-**Do not add an end-of-resize binding.** Fabric 7.4.0 has no `object:scaled` event — the `object:*` keys in `node_modules/fabric/dist/src/EventTypeDefs.d.ts` are `object:moving` (:98), `object:scaling` (:101), `object:rotating` (:104), `object:skewing` (:107), `object:resizing` (:110), `object:modifyPoly` (:113), `object:modifyPath` (:116), `object:modified` (:119), `object:added` (:185) and `object:removed` (:188). Fabric fires `object:modified` after a transform completes. The bindings array casts through `as never` (`index.ts:304`), so the compiler accepts the unknown name and it simply never fires — a silent no-op, not a compile error.
+**Do not add an end-of-resize binding.** Fabric 7.4.0 has no `object:scaled` event — the `object:*` keys in `node_modules/fabric/dist/src/EventTypeDefs.d.ts` are `object:moving` (:98), `object:scaling` (:101), `object:rotating` (:104), `object:skewing` (:107), `object:resizing` (:110), `object:modifyPoly` (:113), `object:modifyPath` (:116), `object:modified` (:119), `object:added` (:185) and `object:removed` (:188). Fabric fires `object:modified` after a transform completes. The bindings array casts through `as never` (`index.ts:301`), so the compiler accepts the unknown name and it simply never fires — a silent no-op, not a compile error.
 
-Nothing is lost: the existing `mouse:up` binding (`index.ts:269`) already ends the gesture and clears guides, which is the same teardown a resize needs.
+Nothing is lost: the existing `mouse:up` binding (`index.ts:266`) already ends the gesture and clears guides, which is the same teardown a resize needs.
 
 Extend that existing `stopGesture` to also call `scaleRuntime.finishSession()` when a scale session is active, and render `verification.guides` through the same `lastGuides` path the movement side uses — do not add a second guide channel. Reuse the existing teardown rather than writing a second one; `stopGesture` already guards on `gestureActive` and `finishSession` returns `didCleanup: false` when there is no session, so a double call is already idempotent. The second test in Step 1 exercises the marker path that would expose a mistake here.
 
@@ -1283,7 +1332,7 @@ Replace the event-derived marker with a per-gesture constant and rerun. Expected
 
 - [ ] **Step 7: Inspect the guides on screen**
 
-Add a test to `src/web/tests/e2e/editor.spec.ts` beside `snaps a dragged object to a neighbour and shows a guide` (`editor.spec.ts:1526`) — same skip clause, same `toCanvas` mapping, same `page.mouse` gesture — that grabs a shape's right resize handle and drags it toward a neighbour's edge. Title it `snaps a resized object to a neighbour and shows a guide`, capture name `editor-snap-resize`, and add it to the `Editor mechanics` row of `docs/evidence/screenshots/README.md`.
+Add a test to `src/web/tests/e2e/editor.spec.ts` beside `snaps a dragged object to a neighbour and shows a guide` (`editor.spec.ts:2089`) — same skip clause, same `sceneToClient(page, 1280, …)` mapping, same `page.mouse` gesture — that grabs a shape's right resize handle and drags it toward a neighbour's edge. Title it `snaps a resized object to a neighbour and shows a guide`, capture name `editor-snap-resize`, and add it to the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`).
 
 Then rebuild and capture:
 
@@ -1300,14 +1349,16 @@ Open the capture and confirm guides appear during the resize, span the artboard,
 ```bash
 git add src/web/packages/editor/src/snap-manager/index.ts \
   src/web/packages/editor/src/snap-manager/guide-renderer.ts \
-  src/web/packages/editor/src/snap-manager/scaling
+  src/web/packages/editor/src/snap-manager/scaling/scale-snapping-runtime.ts \
+  src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts \
+  src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
 git add src/web/tests/e2e/editor.spec.ts \
   docs/evidence/screenshots/editor-snap-resize-desktop-chromium.png \
   docs/evidence/screenshots/README.md
 git commit -m "feat(editor): resize-time snapping with verified guides"
 ```
 
-**Stage `scaling/` as a directory because the task creates that directory and every file in it is this task's; stage the capture by name.** `docs/evidence/screenshots/` holds ~40 PNGs belonging to other tasks and another plan, and it currently carries a modified `editor-desktop-chromium.png` that no task in this plan owns — `git add docs/evidence/screenshots` would sweep that unrelated capture into this commit. Name the one capture this task writes and the `README.md` row it edits.
+**Stage every path by name, including each file under `scaling/`.** Tasks 4–6 have already landed five files in that directory, so a directory-wide `git add` is no longer "this task's files only" — it would sweep any uncommitted edit of theirs into this commit. **Stage the capture by name too.** `docs/evidence/screenshots/` holds ~40 PNGs belonging to other tasks and another plan, so `git add docs/evidence/screenshots` would sweep an unrelated capture into this commit. Name the one capture this task writes and the `README.md` row it edits.
 
 ---
 
@@ -1320,7 +1371,7 @@ git commit -m "feat(editor): resize-time snapping with verified guides"
 **Interfaces:**
 - Consumes: the controller (Task 7); `readMovementModifiers` (`snap-manager/index.ts:79-90`, module-private).
 
-**`readMovementModifiers` is the wrong function to reuse as-is, and the citation is off by two lines.** It returns `{ readonly ctrlKey: boolean }` and reads `event.e.ctrlKey` only — there is no `shiftKey` in it, and it takes `{ event }` where this path has a raw `pointerEvent`. The fork's scale path reads **both** keys (`rectangular-scale-interaction.ts:248-251`: `ctrlKey: 'ctrlKey' in pointerEvent && pointerEvent.ctrlKey === true`, and the same for `shiftKey`), and `ScaleSnapModifiers` requires both (`scale-snapping-resolver.ts:626` throws unless both are boolean).
+**`readMovementModifiers` is the wrong function to reuse as-is.** It returns `{ readonly ctrlKey: boolean }` and reads `event.e.ctrlKey` only — there is no `shiftKey` in it, and it takes `{ event }` where this path has a raw `pointerEvent`. The fork's scale path reads **both** keys (`rectangular-scale-interaction.ts:248-251`: `ctrlKey: 'ctrlKey' in pointerEvent && pointerEvent.ctrlKey === true`, and the same for `shiftKey`), and `ScaleSnapModifiers` requires both (the resolver throws unless both are boolean).
 
 So: **widen the existing reader rather than adding a second one** — the movement path only needs `ctrlKey` today, so an extended reader returning `{ ctrlKey, shiftKey }` keeps one owner and cannot drift from the scale path. If you instead write a second reader, say so in the report; what must not happen is Shift being read from `readMovementModifiers`, because that returns `undefined` for it and a Shift-constrained resize would silently behave as though Shift were not held.
 - Produces: no new exports.
@@ -1364,7 +1415,7 @@ Expected: FAIL — the width snaps to the neighbour's edge instead of holding th
 
 - [ ] **Step 3: Read the modifiers from the event**
 
-`ScaleSnapModifiers` needs both `ctrlKey` and `shiftKey`; Task 7 already widened `readMovementModifiers` to return both, so reuse it here rather than adding a second reader. The resolver already honours Ctrl — `scale-snapping-resolver.ts` short-circuits to the disabled plan the same way `movement-snapping-resolver.ts:316` does. Confirm that in the ported source; if the scale resolver lacks the short-circuit, port it from the fork's `scale-snapping-resolver.ts` rather than adding a check in the controller.
+`ScaleSnapModifiers` needs both `ctrlKey` and `shiftKey`; Task 7 already widened `readMovementModifiers` to return both, so reuse it here rather than adding a second reader. The resolver already honours Ctrl — the ported `scale-snapping-resolver.ts:332` short-circuits to the disabled plan the same way `movement-snapping-resolver.ts:316` does. Confirm that in the ported source; if the scale resolver lacks the short-circuit, port it from the fork's `scale-snapping-resolver.ts` rather than adding a check in the controller.
 
 Shift constrains the resize; check the fork's handling and port it in the same place, then add a Shift case here asserting the constrained result, rather than a separate task. Note that `resolveScaleSnapPlan` may treat a Shift-mismatch as a duplicate step and throw — if so, the controller must classify modifiers into its own step identity before calling the runtime, not pass a changing modifier set through unchanged.
 
@@ -1390,6 +1441,7 @@ git commit -m "feat(editor): Ctrl escapes snapping during a resize"
 
 **Files:**
 - Create: `src/web/tests/e2e/snapping.spec.ts`
+- Modify: `src/web/tests/e2e/editor.spec.ts` (Step 5 — export `captureVisualReview`)
 - Modify: `docs/evidence/screenshots/README.md`
 
 **Interfaces:**
@@ -1437,16 +1489,17 @@ Reintroduce the `83248dc` bug — a per-gesture marker — and rerun. Expected: 
 
 - [ ] **Step 5: Register the evidence and commit**
 
-The matrix's captures belong in the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`), which already lists `editor-snap-guides` / `snaps a dragged object`. Add the resize capture to the same row rather than inventing a domain: it is the same visible action class. Capture titles go through `captureVisualReview(page, testInfo, "<name>")` as the existing tests do.
+The matrix's captures belong in the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (`README.md:34`), which already lists `editor-snap-guides` / `snaps a dragged object`. Add the resize capture to the same row rather than inventing a domain: it is the same visible action class. Capture titles go through `captureVisualReview(page, testInfo, "<name>")` as the existing tests do — but note that helper is **file-scope and not exported** in `editor.spec.ts` (`:2875`), so a new spec file cannot call it as written. Export it from `editor.spec.ts` and import it (adding `src/web/tests/e2e/editor.spec.ts` to this task's Files list), rather than growing a second capture helper that can drift from the `VIGILIA_CAPTURE` / `-<project>.png` contract. If the export turns out to be undesirable, say so and inline an equivalent — what must not happen is a `page.screenshot` call with no `VIGILIA_CAPTURE` gate, which would write a capture the README never registered.
 
 ```bash
 git add src/web/tests/e2e/snapping.spec.ts \
+  src/web/tests/e2e/editor.spec.ts \
   docs/evidence/screenshots/README.md
-git add docs/evidence/screenshots/*snap*.png
+git add docs/evidence/screenshots/editor-snap-resize-desktop-chromium.png
 git commit -m "test(editor): snapping behaviour matrix for move and resize"
 ```
 
-**Name the captures; do not stage the directory.** `docs/evidence/screenshots/` holds ~40 PNGs owned by other tasks and another plan, and it carries a modified `editor-desktop-chromium.png` that no task in this plan owns — a directory-wide `git add` sweeps that unrelated capture into this commit. The `*snap*.png` glob is this matrix's own captures by the naming convention Step 5's capture names establish.
+**Name every capture; do not stage the directory.** `docs/evidence/screenshots/` holds ~40 PNGs owned by other tasks and another plan, and an unrelated capture can be sitting modified in the working tree — a directory-wide `git add` sweeps it into this commit. `*snap*.png` is not narrow enough either: `editor-snap-guides-desktop-chromium.png` also matches the glob and belongs to the movement-snap capture Task 1's browser check rewrote, not to this matrix. Name the captures this task's own capture titles produce — the resize one is `editor-snap-resize-desktop-chromium.png` — and add each name as Step 2 introduces it. `editor.spec.ts` is in the list because Task 2 and Task 7 also touch it; confirm the working tree holds only this task's edit there before staging it.
 
 ---
 
@@ -1482,6 +1535,8 @@ npx playwright test --project=phone-chromium --grep "is byte-stable at a fixed c
   ✓ 1 passed (32.9s)
 ```
 
+(The second title is a prefix match: the case in `display-fabric.spec.ts:671` is `is byte-stable at a fixed clock on one platform`.)
+
 Report any red test with its output and a base-commit run proving when it started. Do not classify a failure as pre-existing without that proof.
 
 - [ ] **Step 3: Decide the legacy fallback path explicitly**
@@ -1503,7 +1558,7 @@ over `line-snapping.ts`, `anchor-buckets.ts`, `snap-target-resolver.ts` and `pix
 
 With the candidate filter relaxed in Task 1 and scaling ported in Tasks 4–8, evaluate whether any case still falls through. Record **port**, **replace** or **drop**, with the reason, in the spec's `## Key decisions to make in planning` §3 — that is the section that asks the question, and the decision belongs where the question is. Do not leave it unstated — that is how the defects this plan fixes survived.
 
-If the decision is drop, note that `calculateSpacingSnap` and `getObjectBounds` were already left unreferenced by that choice, and that Task 3 removed the other dead ports.
+If the decision is drop, note that Task 3 already removed every dead spacing port (`SPACING_CONTEXT_SWITCH_DISTANCE`, `resolveCommonDisplayDistance` with its `CommonDisplayDistance` type, `calculateSpacingSnap`), and that `getObjectBounds` is live again — the scaled modules Tasks 4–6 landed call it (`scaling/scaling-step-snap-guards.ts:5,907,969,1269`), so it is no longer an unreferenced example. Only `getObjectExactBounds` remains the movement path's reader.
 
 - [ ] **Step 4: Close out §64 and §175**
 
@@ -1511,7 +1566,7 @@ If the decision is drop, note that `calculateSpacingSnap` and `getObjectBounds` 
 
 §175's body needs no change — it is the requirement this work satisfies — but it has no design link, unlike its neighbours §172–§174, which each end `Design: [<name>](../superpowers/specs/<file>.md).` Add that line to §175, pointing at `2026-09-25-snapping-fidelity.md`, in the same shape.
 
-In the behaviour review, move the **Resize-time snapping** candidate out of `## Candidates` and add it to the `## Promoted to requirements` bullet list, in the same shape as the existing two entries (name, one clause of history, the requirement it became). Its current text also carries the disproved claim that resize snapping was skipped because the scaling subsystem was "coupled to object types Vigilia does not have" — Tasks 4–6 showed only two modules carry real coupling, so state that instead. Leave `### Rulers, configurable grid/guides and pixel snapping` where it is; this plan does not touch it.
+In the behaviour review, move the **Resize-time snapping** candidate out of `## Candidates` (it is at `:14-21`) and add it to the `## Promoted to requirements` bullet list, in the same shape as the existing two entries (name, one clause of history, the requirement it became). Its current text also carries the disproved claim that resize snapping was skipped because the scaling subsystem was "coupled to object types Vigilia does not have" — Tasks 4–6 showed only two modules carry real coupling, so state that instead. Leave `### Rulers, configurable grid/guides and pixel snapping` where it is; this plan does not touch it. Keep `### Vendored snapping geometry split` (`:48-52`) where it is — that is the rule this plan's ported files are the explicit exception under, and Task 7's `// ported: fork 9efdd78a …` marker is what cites it.
 
 The spec's status line already names this plan (`2026-09-25-snapping-fidelity.md:3` — "planned; see [the snapping fidelity plan]"), so there is nothing to flip there; confirm it still reads that way and move on.
 
@@ -1523,7 +1578,7 @@ Open, in the editor, and record what each shows: guides during a drag, guides du
 
 - [ ] **Step 6: Update STATUS.md**
 
-Replace "Last completed change" with a 1–5 bullet summary of this commit. The line this step previously told you to resolve — "Snapping/smart-guide fidelity is under review; gap list not yet in hand" — **is not in the file**; STATUS.md's "Blockers / unverified" currently carries the unverified e2e count, the two `display-fabric.spec.ts` phone tests (now passing, already recorded as such) and the layer-panel row-key caveat. Step 2 settles the first of those, so update or remove whichever of those lines this work actually resolves and leave the rest. `npm run status:check`.
+Replace "Last completed change" with a 1–5 bullet summary of this commit. The line this step previously told you to resolve — "Snapping/smart-guide fidelity is under review; gap list not yet in hand" — **is not in the file**. STATUS.md's "Blockers / unverified" at the time of writing carried the `display-fabric.spec.ts` slow tests (five cases, `keeps repainting as samples arrive` among them; all pass with a longer explicit timeout, and the `60_000` per-project setting appears not to take effect), untested hook entry points, an unverified layer-panel action row, and unverified browser round-trips of text align/wrap/overflow, in-place edit + undo and run preset/override persistence. **Re-read that section rather than trusting this list**: the entrance-animation speedup landed after this text was written and moved it — `keeps repainting as samples arrive` is back under the 30s default, one case remains over it under `test.slow()`, and there is no `timeout` key in `playwright.config.ts` for a per-project `60_000` to have failed to apply. Step 2 settles the slow-test item, so update or remove whichever of those lines this work actually resolves and leave the rest. `npm run status:check`.
 
 - [ ] **Step 7: Commit**
 
@@ -1560,7 +1615,7 @@ Two places deliberately leave a number to be settled rather than asserting one:
 
 **A note on the ported tasks' expected values.** Tasks 4–6 tell the implementer to take numbers from the fork's specs rather than invent them. That is correct — the fork's numbers are the specification of parity — but it means the plan cannot pin them here without copying ~4,000 lines. If an implementer reports that a fork spec's numbers do not reproduce, that is a real finding about the port, not a test to loosen.
 
-**Type consistency:** `ObjectBounds` and `getObjectExactBounds` come from `../bounds.js` throughout. `readMovementModifiers` is defined once in `index.ts`, widened in Task 7 to return `shiftKey` too, and reused by both controllers (Tasks 2, 7, 8). `stopGesture` is reused by the scaling path rather than duplicated. The marker rule — one per native pointer event from `event.e` — is stated identically in Tasks 7 and 9. Every scaling type and function name in Tasks 5–7 is copied verbatim from the fork, so the ported source and the plan cannot drift apart.
+**Type consistency:** `ObjectBounds` and `getObjectExactBounds` come from `../bounds.js` throughout. `readMovementModifiers` is defined once in `index.ts`, widened in Task 7 to return `shiftKey` too, and reused by both controllers (Tasks 2, 7, 8); Task 2's guard does not read modifiers, so Task 7's widening is what serves Task 8. `stopGesture` is reused by the scaling path rather than duplicated. The marker rule — one per native pointer event from `event.e` — is stated identically in Tasks 7 and 9. Every scaling type and function name in Tasks 5–7 is copied verbatim from the fork, so the ported source and the plan cannot drift apart.
 
 **Review Focus coverage:** item 1 → Task 7 Step 3 and Step 7; item 2 → Task 8 Step 1; item 3 → Task 6 Step 3; item 4 → Task 1 Step 1 and Step 6; item 5 → Task 3 Step 2 (second case) and Task 5 Step 3.
 
