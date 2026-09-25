@@ -25,18 +25,16 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- `serialiseScene` now strips `subTargetCheck` and `interactive` from every object in the
-  serialised tree. Fabric forces both into `Group.toObject`, and group entry arms them — so
-  saving while inside a group leaked transient selection state into the portable document
-  and left the reopened group permanently pointer-transparent (§67).
-- `includeDefaultValues = false` could not do this: an armed `true` differs from Fabric's
-  `false` default, and `SCENE_PERSISTED_PROPERTIES` is an allow-list of extra keys, not a
-  filter. `persist.ts`'s docblock now names these two as the contrast case against the
-  authored `selectable`/`evented`/`locked`.
-- The serialization tripwire in `persist.dom.test.ts` was inverted rather than deleted: it
-  now asserts both keys are absent even when armed, and reddens with
-  `expected [ 'height', 'id', 'interactive', …(7) ] to deeply equal [ … ]` when the strip is
-  disabled.
+- Ported the fork's scale-snapping geometry into `snap-manager/scaling/` as five vendored
+  modules — `scale-projection`, `scale-snap-candidates`, `scale-snapping-resolver`,
+  `scaling-snap-guard`, `scaling-step-snap-guards` — plus two new unit specs. Algorithms,
+  thresholds and tolerances are byte-comparable with fork `9efdd78a`; divergences are
+  import paths, English comments, `exactOptionalPropertyTypes` omissions and
+  `noUncheckedIndexedAccess` guards. Vendored source is the deliberate exception to the
+  800-line stop.
+- `scale-snap-candidates` imports the candidate types from `scale-snapping-resolver`, as
+  the fork does, so the candidates module does not typecheck until the resolver lands.
+  Nothing imports the new modules yet; a gesture wires them in later tasks.
 
 ## Next
 
