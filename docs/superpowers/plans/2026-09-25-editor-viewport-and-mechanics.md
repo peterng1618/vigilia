@@ -1725,7 +1725,7 @@ Two distinct `groupContext` signatures meet here, and the step must not blur the
 
 **What that does mean is that Task 7's ordering is load-bearing here.** `enterGroup` must record the context **before** it changes the active object: `setActiveObject` notifies the panel synchronously, so a context recorded afterwards is one render late, and Task 8's own browser check sees a tree that has not yet marked the group. If Task 7 shipped with the record after the selection change, fix it there — do not compensate in the panel with a second notification, which would make two owners of "when the tree is stale".
 
-Mark `data-context="true"` on **every row inside the current context, not only the group row**: the entered group itself *and* its descendants, since entering a group is precisely what makes its children individually selectable. The step above asserts `"true"` on `group` *and* on `child`, so a rule that marked only the group row would fail the test the same step specifies. Rows outside the context get `data-context="false"` and a muted style.
+Mark `data-context="true"` on **every row inside the current context, not only the group row**: the entered group itself *and* its descendants, since entering a group is precisely what makes its children individually selectable. The step above asserts `"true"` on `group` *and* on `child`, so a rule that marked only the group row would fail the test the same step specifies. Rows outside the context get `data-context="false"` and a muted style — **and with no group entered the attribute is omitted rather than written `"false"`, which the stylesheet section below explains at length because getting it wrong dims the whole tree.**
 
 Because the tree can now select a group's children directly, the old "selection resolves a child through its owning group" behaviour is no longer the only path: keep it for a canvas click, but let a tree click on a child select the child itself when its group is the current context.
 
@@ -1741,19 +1741,33 @@ Because the tree can now select a group's children directly, the old "selection 
 
 `layer-panel.tsx` gets **no** `opacity` in its `style` object. Its existing inline entries (`"--layer-depth"` and the `paddingLeft` that dereferences it) are values *handed to* CSS, with the declaration itself in `editor-shell.css:483`; an `opacity` declaration there would be a second owner of the visual language.
 
-**The `context.size > 0` guard stays, and it is not redundant with the attribute.** With no group entered, `context.has(row.id)` is `false` for every row, so **every** row renders `data-context="false"` — React writes the string `"false"`, it does not drop the attribute, which the assertion at `layer-panel.dom.test.tsx:201` already pins. A bare `[data-context="false"]` rule would therefore dim the entire tree the moment the editor is opened with nothing entered, which is the exact regression the guard prevents: with no group entered every top-level layer *is* selectable on the canvas, and a tree greyed out by default asserts the opposite of the truth. So the guard is what keeps the attribute honest, not a duplicate of the rule.
-
-**Both halves need a test, and the existing one covers only the attribute.** The muted style has no assertion anywhere — deleting the declaration leaves the suite green — so the fix must add one. In jsdom the stylesheet is not applied (vitest does not process the `editor-main.ts` CSS import), so the jsdom half pins the *attribute* that the rule keys on, and the browser half pins the *rendering*. Add both:
+**The guard lives in the attribute expression, not in a helper.** With no group entered `context.has(row.id)` is `false` for every row, and React renders a boolean `data-*` as the **string** `"false"` rather than dropping it. A bare `[data-context="false"]` rule would therefore dim the entire tree the moment the editor opens with nothing entered — and with nothing entered every top-level layer *is* selectable, so that would assert the opposite of the truth. The fix is to omit the attribute when there is no context, which makes the rule match nothing:
 
 ```tsx
-// jsdom: the attribute the stylesheet rule keys on, for both values.
-expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
-expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+data-context={context.size > 0 ? context.has(row.id) : undefined}
 ```
 
-and a second jsdom case with `{ groupContext: () => [] }` asserting no row reads `"true"` — the empty-context reading, which the brief's case above cannot decide because it only ever supplies a non-empty context.
+**This replaces the earlier `dimmed()` helper entirely — do not keep one.** The first revision of this step kept a JS helper (`context.size > 0 && !context.has(id)`) driving an inline `opacity`. Once the declaration moves to the stylesheet, a helper that computes the same predicate is a second owner of "which rows are dimmed", and the only thing it can do is disagree with the rule. Putting the condition in the attribute expression means the rule and the attribute cannot drift: an omitted attribute is the single fact both read.
 
-In `tests/e2e/editor.spec.ts`, extend Task 7's committed "enters a group, steps back out, and survives an undo" case rather than writing a new spec: it already carries the `grouping.vigilia-theme` fixture and the camera-mapped `at(x, y)`. After it enters the group, assert on its existing rows that the entered group's row and its child read `data-context="true"`, an outside row reads `"false"`, and the outside row's computed `opacity` is `"0.45"` while the child's is not — the computed value, not the attribute, is what proves the stylesheet rule actually selects the row. **This file is single-occupancy**: the UI-polish plan's Task 9 (B9) and this plan's Tasks 7 and 10 all edit it, so dispatch this fix only when no other implementer holds it.
+**Both halves need a test, and the existing one covers only the attribute.** The muted style has no assertion anywhere — deleting the declaration leaves the suite green — so the fix must add one. In jsdom the stylesheet is not applied (vitest does not process the `editor-main.ts` CSS import), so the jsdom half pins the *attribute* that the rule keys on, and the browser half pins the *rendering*.
+
+The empty-context case asserts **`null`**, not `"false"`:
+
+```tsx
+it("dims nothing when no group is entered", async () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(
+    <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
+  ));
+  for (const row of host.querySelectorAll(".vigilia-layer-row"))
+    expect(row.getAttribute("data-context")).toBeNull();
+});
+```
+
+**A note for anyone who reads the review instead of this plan:** the task review called the `context.size > 0` guard "redundant once the rule is CSS" and suggested dropping it. That is wrong here — but the reasoning is subtle enough to be worth stating, because the review's own fix is *nearly* right. An absent attribute genuinely matches nothing, so the review is correct that the *rule* needs no guard; what it missed is that a guard must still exist to keep the attribute from being written. Deleting the condition without moving it into the attribute expression produces the dimmed-on-open tree. The condition, not the rule, is what moved.
+
+In `tests/e2e/editor.spec.ts`, extend Task 7's committed "enters a group, steps back out, and survives an undo" case rather than writing a new spec: it already carries the `grouping.vigilia-theme` fixture and the camera-mapped `at(x, y)`. After it enters the group, assert on its existing rows that the entered group's row and its child read `data-context="true"`, an outside row reads `"false"`, and the outside row's computed `opacity` is `"0.45"` while the child's is **`"1"`** — the computed value, not the attribute, is what proves the stylesheet rule actually selects the row, and the child's positive assertion is what stops a rule that dimmed every row from passing. **This file is single-occupancy**: the UI-polish plan's Task 9 (B9) and this plan's Tasks 7 and 10 all edit it, so dispatch this fix only when no other implementer holds it.
 
 **That conditional is a real branch in `selectLayer`, and the existing test already pins the other half.** `bridge.dom.test.ts:212-217` asserts `selectLayer("child")` calls `setActiveObject(group)` — the owning group — and Task 5's `bridgeFor` widened the canvas stub, so that assertion is live. The new branch must therefore be *only* "the child's group is the current context", leaving the group resolution in place for every other case; a bare "select the child" rewrite turns that existing test red for the right reason. Note also that `selectLayer` resolves through `ownerOf(root, id)` (`bridge.ts:150`; this read `:144`, which is `const root = canvas.getObjects();` — the same function, three lines above the call), whose first parameter is root and whose only caller here passes `canvas.getObjects()` — not the object form.
 
