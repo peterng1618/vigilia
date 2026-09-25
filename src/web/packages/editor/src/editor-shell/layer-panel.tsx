@@ -106,6 +106,10 @@ export function LayerPanel({
               role="treeitem"
               aria-selected={row.selected}
               aria-level={row.depth + 1}
+              // Roving tabindex would be the roving-focus ideal, but every row
+              // here is cheap and the shell has no global key handler to own
+              // the roving state, so all rows stay tabbable.
+              tabIndex={0}
               title={row.id}
               style={
                 {
@@ -117,6 +121,20 @@ export function LayerPanel({
               onDoubleClick={() => {
                 cancelled.current = false;
                 setEditing(row.id);
+              }}
+              onKeyDown={(event) => {
+                // Keys raised inside the row's own controls are theirs, not the
+                // row's: without this the rename input's Enter would commit and
+                // then reopen the field as the event bubbles out.
+                if (event.target !== event.currentTarget) return;
+                // No arrow-key focus movement: the window-level nudge handler
+                // owns the arrow keys, and two owners for one key would nudge an
+                // object and move focus on the same press.
+                if (event.key === "F2" || event.key === "Enter") {
+                  event.preventDefault();
+                  cancelled.current = false;
+                  setEditing(row.id);
+                }
               }}
             >
               {row.hasChildren ? (

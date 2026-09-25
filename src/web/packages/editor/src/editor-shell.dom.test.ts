@@ -195,13 +195,18 @@ describe("native editor shell", () => {
     host.remove();
 
     // The key itself is free-form JSON too; a wrong-shaped one must not throw.
-    const wrongShape = await mountEditorShell({
-      host: document.createElement("div"),
-      artboard: { width: 100, height: 100 },
-      envelope: envelopeFor(null),
-    });
-    expect(wrongShape.layerNames()).toEqual({});
-    wrongShape.destroy();
+    // An array is the case a plain `typeof raw === "object"` check lets through,
+    // and it must be rejected as a whole: an array *member* is already covered
+    // by the per-value string filter above.
+    for (const wrong of [null, ["nope"]]) {
+      const wrongShape = await mountEditorShell({
+        host: document.createElement("div"),
+        artboard: { width: 100, height: 100 },
+        envelope: envelopeFor(wrong),
+      });
+      expect(wrongShape.layerNames()).toEqual({});
+      wrongShape.destroy();
+    }
   });
 
   it("exposes a camera over the mounted canvas", async () => {

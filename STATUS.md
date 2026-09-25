@@ -27,19 +27,17 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- The canvas is a viewport onto the workspace, not a surface clamped to the
-  artboard: it takes the host's measured size and `createViewportManager` owns
-  its transform as the single writer. `EditorShell`/`EditorInteraction` expose
-  `viewport`.
-- `fitCanvasViewport` is gone and `fitArtboardViewport`'s resizing role with it;
-  `createNativeEditor` dropped its now-unused `artboard` parameter, and the
-  `ResizeObserver` only calls `viewport.resize()`.
-- The artboard paint moved from `canvas.backgroundColor` to a bounded,
-  non-exported `Rect` in `canvas.backgroundImage`, so the pasteboard stays
-  visible around the board; the plate is rebuilt after undo/redo through
-  `editor:history-state-loaded`.
-- Background media — a DOM sibling of the canvas — is repositioned to the
-  artboard's screen rect on every camera change.
+- The layer row is focusable and the tree implements the keyboard model its
+  roles promise: F2/Enter begins a rename, Escape cancels it, and the arrow keys
+  move focus and the selection between rows.
+- The rename path is guarded by three tests — commit on Enter, no commit on
+  Escape, and no commit when a cancel unmounts the field and fires `focusout`,
+  which is the race the `cancelled` ref exists for. Removing that guard now fails
+  a test.
+- `layerNamesFrom`'s `Array.isArray` branch is pinned: a whole-array
+  `editorMetadata.layerNames` is rejected without throwing.
+- `ui-copy.ts` lost the dead `panels.arrange` and its comment now states what is
+  true — only the twisty and rename field carry the layer's name.
 
 ## Next
 

@@ -44,6 +44,116 @@ it("indents a group child and shows only its state icons", async () => {
   expect(rows[1]?.querySelector('[aria-label="Unlock"]')).not.toBeNull();
 });
 
+/** The rename field is seeded with `defaultValue`, which React tracks on the
+ * DOM node, so assigning `.value` directly is swallowed. Go through the
+ * prototype setter and fire the event React listens for. */
+function typeInto(input: HTMLInputElement, value: string): void {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+    input,
+    value,
+  );
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+const textRow = {
+  id: "wordmark",
+  name: "wordmark",
+  kind: "text",
+  depth: 0,
+  parentId: undefined,
+  hasChildren: false,
+  visible: true,
+  locked: false,
+  selected: false,
+};
+
+async function renderPanel(
+  rows: readonly unknown[],
+  overrides = {},
+): Promise<HTMLElement> {
+  const host = document.createElement("div");
+  await act(async () =>
+    (await Promise.resolve(createRoot(host))).render(
+      <LayerPanel bridge={bridge(rows, overrides)} />,
+    ),
+  );
+  return host;
+}
+
+function renameField(host: HTMLElement): HTMLInputElement {
+  return host.querySelector<HTMLInputElement>('[aria-label="Rename wordmark"]')!;
+}
+
+it("commits a rename typed into the field on Enter", async () => {
+  const renameLayer = vi.fn();
+  const host = await renderPanel([textRow], { renameLayer });
+  await act(async () =>
+    host
+      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  const input = renameField(host);
+  await act(async () => {
+    typeInto(input, "Brand mark");
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+  });
+  expect(renameLayer).toHaveBeenCalledWith("wordmark", "Brand mark");
+});
+
+it("does not commit a rename cancelled with Escape", async () => {
+  const renameLayer = vi.fn();
+  const host = await renderPanel([textRow], { renameLayer });
+  await act(async () =>
+    host
+      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  const input = renameField(host);
+  await act(async () => {
+    typeInto(input, "Discarded");
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  // The field must actually close, or the negative below would pass on a
+  // component that swallowed Escape entirely.
+  expect(host.querySelector('[aria-label="Rename wordmark"]')).toBeNull();
+  expect(renameLayer).not.toHaveBeenCalled();
+});
+
+it("does not commit when the cancelled field unmounts and blurs", async () => {
+  const renameLayer = vi.fn();
+  const host = await renderPanel([textRow], { renameLayer });
+  await act(async () =>
+    host
+      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  const input = renameField(host);
+  // Escape and the focus loss it causes are driven in one act block, because
+  // the guard being tested is exactly the ordering between them. React 19 maps
+  // `onBlur` onto the non-bubbling `focusout`, so that is the event to send.
+  await act(async () => {
+    typeInto(input, "Discarded");
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  });
+  expect(renameLayer).not.toHaveBeenCalled();
+});
+
+it("opens the rename field from the keyboard and keeps the row's role", async () => {
+  const host = await renderPanel([textRow]);
+  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')!;
+  await act(async () => {
+    row.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
+  });
+  expect(renameField(host).closest('[role="treeitem"]')).toBe(row);
+});
+
 it("collapses and expands a group from its twisty", async () => {
   const setCollapsed = vi.fn();
   const rows = [

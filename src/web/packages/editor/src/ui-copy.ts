@@ -120,9 +120,10 @@ export const uiCopy = {
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
-    arrange: "Arrange",
-    /** Layer-tree row controls. The accessible name of a row's own control is
-     * this word plus the layer's name, so two rows never share one. */
+    /** Layer-tree row controls. The twisty and the rename field carry the
+     * layer's name as well, so those two names are unique; the state icons do
+     * not, because "Hide" on every row is the same control repeated and the row
+     * it sits in is what tells them apart. */
     hide: "Hide",
     show: "Show",
     rename: "Rename",
