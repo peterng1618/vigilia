@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { installFixedClock } from "./clock.js";
 
 /**
@@ -26,16 +26,74 @@ type HandleWindow = typeof window & {
   vigilia: { handle: Record<string, unknown> };
 };
 
-/** Opens the player on the default path and advances past entrance animation. */
+/**
+ * Painted pixels on the artboard; 0 means nothing has been drawn yet.
+ *
+ * Anything non-zero counts as painted. The plate is a solid rect covering the
+ * whole artboard, so every pixel that has been touched is opaque and nothing
+ * that has not is transparent — a clean on/off, which is why this needs no
+ * threshold and no notion of what colour the theme happens to use.
+ */
+async function drawnPixels(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
+
+    if (element === null || context === null || context === undefined) {
+      return 0;
+    }
+
+    const data = context.getImageData(0, 0, element.width, element.height).data;
+    let drawn = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (
+        data[i] !== 0 ||
+        data[i + 1] !== 0 ||
+        data[i + 2] !== 0 ||
+        data[i + 3] !== 0
+      ) {
+        drawn += 1;
+      }
+    }
+
+    return drawn;
+  });
+}
+
+/**
+ * Opens the player on the default path, painted and settled.
+ *
+ * ## `static=1`, and how much simulated time this costs
+ *
+ * Entrance animation off means one frame paints the scene, so the wait is 100 ms
+ * instead of 1500. That matters because `clock.runFor` is linear in simulated
+ * time and pays it in browser-protocol round trips — measured on this machine,
+ * ~4.5 ms wall per simulated ms: `runFor(1500)` alone is 8.2 s against a 495 ms
+ * page load, and those waits were ~90% of this suite's wall time.
+ *
+ * `fastForward` is not a substitute: it is a flat ~120 ms but skips the
+ * intermediate frames, and 10 cases need them to mount at all.
+ *
+ * The ink guard is load-bearing rather than decorative: what a shortened wait
+ * can land on is a frame still blank, which would turn every ink assertion in
+ * the file into a vacuous pass. Measured, a blank artboard is a real state —
+ * 0 painted pixels at `runFor(500)` and `runFor(750)`.
+ */
 export async function openCanvasPlayer(
   page: Page,
   query = "/?theme=stress",
 ): Promise<void> {
   await installFixedClock(page);
-  await page.goto(query);
+  await page.goto(
+    query.includes("?") ? `${query}&static=1` : `${query}?static=1`,
+  );
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
   // A chart whose content is entirely animated draws nothing until time advances.
-  await page.clock.runFor(1500);
+  await page.clock.runFor(100);
+  expect(await drawnPixels(page)).toBeGreaterThan(0);
 }
 
 /** Reads the scene through the handle the player already exposes. */
