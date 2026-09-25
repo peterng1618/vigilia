@@ -34,6 +34,12 @@ classRegistry.setClass(Textbox);
  * non-selectable. Fabric omits all three from `toObject`, so without them here a
  * revived scene hands every object Fabric's `selectable: true` — an undo would
  * turn an authored background or a locked object back into an ordinary one.
+ *
+ * `subTargetCheck` and `interactive` are the contrast case: Fabric forces both
+ * into every `Group.toObject`, and the grouping manager arms them only while an
+ * author is inside a group. They are therefore stripped after serialization;
+ * `includeDefaultValues = false` cannot do it, because an armed `true` differs
+ * from Fabric's `false` default and an author never authors either key.
  */
 
 export const SCENE_PERSISTED_PROPERTIES = [
@@ -62,6 +68,7 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
     JSON.stringify(canvas.toObject([...SCENE_PERSISTED_PROPERTIES])),
   ) as SerialisedScene;
   removeRuntimeText(scene.objects);
+  removeGroupEntryFlags(scene.objects);
   return scene;
 }
 
@@ -135,6 +142,19 @@ function removeRuntimeText(
     }
     const children = object["objects"];
     if (Array.isArray(children)) removeRuntimeText(children.filter(isRecord));
+  }
+}
+
+/** Fabric forces both keys into `Group.toObject`; the grouping manager is their only writer. */
+function removeGroupEntryFlags(
+  objects: readonly Readonly<Record<string, unknown>>[],
+): void {
+  for (const object of objects) {
+    delete (object as Record<string, unknown>)["subTargetCheck"];
+    delete (object as Record<string, unknown>)["interactive"];
+    const children = object["objects"];
+    if (Array.isArray(children))
+      removeGroupEntryFlags(children.filter(isRecord));
   }
 }
 

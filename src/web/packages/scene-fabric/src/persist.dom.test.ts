@@ -241,12 +241,12 @@ describe("Fabric’s own keys are held to the same rule", () => {
     expect(keys).not.toContain("layoutManager");
   });
 
-  it("lets them straight back in once the editor enables group entry", () => {
-    // Pinned rather than warned about. Spec 0013 stage 4 adopts
-    // `subTargetCheck` + `interactive` for group entry/exit, which makes them
-    // non-default and therefore persisted — editor state in a portable
-    // document. This test is how that arrives: as a failure naming the keys,
-    // in the commit that causes it, rather than as a surprise in a saved file.
+  it("strips them again when a save happens while the editor has group entry on", () => {
+    // Spec 0013 stage 4 arms `subTargetCheck` + `interactive` on the group an
+    // author entered, which makes them non-default and therefore serialized.
+    // Saving from inside a group is a third path out of that state, beside
+    // exit and history reload, so serialization strips them rather than letting
+    // editor state land in a portable document (§67).
     const group = new Group([new Rect({ width: 4, height: 4 })], {
       subTargetCheck: true,
       interactive: true,
@@ -256,10 +256,8 @@ describe("Fabric’s own keys are held to the same rule", () => {
     expect(keysOf(serialiseScene(canvasOf(group)))).toEqual([
       "height",
       "id",
-      "interactive",
       "left",
       "objects",
-      "subTargetCheck",
       "top",
       "type",
       "version",

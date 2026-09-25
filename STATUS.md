@@ -25,18 +25,18 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- `grouping-manager` gained `enterGroup`/`exitGroup`/`groupContext` (transient selection state,
-  §67): double-click enters a group and selects the child under the pointer, Escape steps back out.
-- A group is only transparent to a pointer once `subTargetCheck`/`interactive` are on, and they are
-  armed after Fabric's own hit test for the entering gesture has run — so `enterGroup` re-resolves
-  the deepest child from the event's `scenePoint`; the flags are restored on exit and re-applied to
-  the revived group after an undo (`editor:history-state-loaded`).
-- `canvas-nudge` reads `getRelativeCenterPoint()`: `getCenterPoint()` maps a grouped child through
-  its group while `setPositionByOrigin` writes its local `left`/`top`, so a nudge inside a group
-  moved the child by the group's own centre offset (41 instead of 1).
-- Teeth, measured: dropping the post-restore re-apply reddens the new e2e's `inCanvas` identity poll
-  (`Expected: true, Received: false`); removing `ungroup()`'s context-clearing reddens the unit test
-  (`AssertionError: expected [ v{ __eventListeners: {}, …(83) } ] to deeply equal []`).
+- `serialiseScene` now strips `subTargetCheck` and `interactive` from every object in the
+  serialised tree. Fabric forces both into `Group.toObject`, and group entry arms them — so
+  saving while inside a group leaked transient selection state into the portable document
+  and left the reopened group permanently pointer-transparent (§67).
+- `includeDefaultValues = false` could not do this: an armed `true` differs from Fabric's
+  `false` default, and `SCENE_PERSISTED_PROPERTIES` is an allow-list of extra keys, not a
+  filter. `persist.ts`'s docblock now names these two as the contrast case against the
+  authored `selectable`/`evented`/`locked`.
+- The serialization tripwire in `persist.dom.test.ts` was inverted rather than deleted: it
+  now asserts both keys are absent even when armed, and reddens with
+  `expected [ 'height', 'id', 'interactive', …(7) ] to deeply equal [ … ]` when the strip is
+  disabled.
 
 ## Next
 
