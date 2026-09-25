@@ -1702,9 +1702,9 @@ test.describe("Fabric editor route", () => {
       ).vigiliaEditorBridge;
       return b.editor.viewport.artboardScreenRect();
     });
-    // `rect` is canvas-relative, so the canvas box offset is added here. The file
-    // now has `sceneToClient` for this; the local form stays because the test
-    // needs a tuple and its own guard compares against `rect` directly.
+    // `rect` is canvas-relative, so the canvas box offset is added here. The
+    // local form stays because the call site destructures a tuple; the poll for
+    // `active === "child"` below is what stops a click on nothing from passing.
     const canvasBox = (await page
       .locator("#vigilia-fabric-editor canvas.upper-canvas")
       .boundingBox())!;
