@@ -7,6 +7,8 @@ import {
 } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
+import { installFixedClock } from "./clock.js";
+import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
@@ -99,10 +101,7 @@ test.describe("Fabric editor route", () => {
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
 
@@ -115,10 +114,7 @@ test.describe("Fabric editor route", () => {
   test("switches chart refresh between 30 and 1 FPS", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     // The View menu owns chart refresh; the panel select is gone.
@@ -139,10 +135,7 @@ test.describe("Fabric editor route", () => {
   test("creates and saves text with derived v2 references", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await openRailPane(page, "Add");
@@ -189,10 +182,7 @@ test.describe("Fabric editor route", () => {
   test("creates a chart with palette-backed settings that save and reopen", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await openRailPane(page, "Add");
@@ -236,10 +226,7 @@ test.describe("Fabric editor route", () => {
   test("captures the mounted editor for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await expect(
@@ -252,10 +239,7 @@ test.describe("Fabric editor route", () => {
   test("suppresses motion when the user asks for reduced motion", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(EDITOR);
@@ -373,10 +357,7 @@ test.describe("Fabric editor route", () => {
   test("captures selected chart binding controls for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
@@ -399,10 +380,7 @@ test.describe("Fabric editor route", () => {
   test("captures the controls that give a text run its reading", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     // The starter theme's clock is authored as a value run, so selecting it
@@ -457,10 +435,7 @@ test.describe("Fabric editor route", () => {
   test("captures semantic layer controls for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const layer = page.locator('[data-vigilia-layer="load-gauge"]');
@@ -477,10 +452,7 @@ test.describe("Fabric editor route", () => {
   test("captures changed artboard controls for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page
@@ -504,10 +476,7 @@ test.describe("Fabric editor route", () => {
   test("rejects literal artboard paint in a v2 document", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setUncheckedThemePackage(page, "literal-bars.vigilia-theme", {
@@ -531,10 +500,7 @@ test.describe("Fabric editor route", () => {
   test("renders palette gradients on the native Fabric artboard", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setThemePackage(page, "gradient-artboard.vigilia-theme", {
@@ -592,10 +558,7 @@ test.describe("Fabric editor route", () => {
   test("edits an artboard palette token through the property surface", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page
@@ -620,10 +583,7 @@ test.describe("Fabric editor route", () => {
   test("reassigns palette references before deleting a token", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page
@@ -649,10 +609,7 @@ test.describe("Fabric editor route", () => {
   test("reassigns chart paint before deleting its palette token", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page
@@ -682,10 +639,7 @@ test.describe("Fabric editor route", () => {
   test("edits a global type preset through the property surface", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.route("https://cdn.jsdelivr.net/fontsource/fonts/**", (route) =>
@@ -741,10 +695,7 @@ test.describe("Fabric editor route", () => {
   test("captures curated font trio controls for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
@@ -760,10 +711,7 @@ test.describe("Fabric editor route", () => {
   test("reassigns text type presets before deleting one", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.locator("[data-vigilia-type-preset]").selectOption("11-400");
@@ -796,10 +744,7 @@ test.describe("Fabric editor route", () => {
   test("captures dirty document replacement confirmation for visual review", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.evaluate(() => {
@@ -827,10 +772,7 @@ test.describe("Fabric editor route", () => {
   test("selects a chart in the starter theme through the visible Fabric canvas", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
@@ -842,10 +784,7 @@ test.describe("Fabric editor route", () => {
   test("persists artboard properties without rescaling Fabric objects", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page
@@ -874,10 +813,7 @@ test.describe("Fabric editor route", () => {
   test("shows the Style tab's resolved appearance for a selection", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setThemePackage(page, "style-tab.vigilia-theme", {
@@ -956,10 +892,7 @@ test.describe("Fabric editor route", () => {
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
@@ -985,10 +918,7 @@ test.describe("Fabric editor route", () => {
   test("persists selected chart paint as a palette reference", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
@@ -1013,10 +943,7 @@ test.describe("Fabric editor route", () => {
   test("refreshes bound text without saving its sampled value", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setThemePackage(page, "live-text.vigilia-theme", {
@@ -1225,10 +1152,7 @@ test.describe("Fabric editor route", () => {
   test("opens a v2 theme and keeps the active editor when its Fabric runtime is incompatible", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const envelope = {
@@ -1263,10 +1187,7 @@ test.describe("Fabric editor route", () => {
   test("keeps a layer's display name across save and reopen", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.locator('[data-vigilia-layer="wordmark"]').click();
@@ -1301,10 +1222,7 @@ test.describe("Fabric editor route", () => {
   test("round-trips an opened v2 Fabric scene through the save path", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const picker = page.locator('input[accept=".vigilia-theme"]');
@@ -1354,10 +1272,7 @@ test.describe("Fabric editor route", () => {
   test("imports and round-trips packaged images", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
     await page.locator("[data-vigilia-asset-import]").setInputFiles({
       name: "logo.png",
@@ -1486,10 +1401,7 @@ test.describe("Fabric editor route", () => {
   test("authors a packaged background image through Theme settings", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
     await openRailPane(page, "Assets");
     await page.locator("[data-vigilia-asset-import]").setInputFiles({
@@ -1525,10 +1437,7 @@ test.describe("Fabric editor route", () => {
   test("persists an ordinary drag and restores it through undo", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setThemePackage(page, "movable.vigilia-theme", {
@@ -1613,7 +1522,7 @@ test.describe("Fabric editor route", () => {
   test("enters a group, steps back out, and survives an undo", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
     await page.goto(EDITOR);
     await setThemePackage(page, "grouping.vigilia-theme", {
       schemaVersion: 2,
@@ -1822,10 +1731,7 @@ test.describe("Fabric editor route", () => {
   });
 
   test("rehydrates a chart runtime after undo", async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
@@ -1875,10 +1781,7 @@ test.describe("Fabric editor route", () => {
   test("keeps the starter background unselectable after an undo", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     // The reported bug: the starter background is authored `selectable: false`,
     // so it resists a click on first open — but undo revives the scene through
@@ -1993,10 +1896,7 @@ test.describe("Fabric editor route", () => {
   test("keeps the active document when Fabric cannot revive a schema-valid scene", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await setUncheckedThemePackage(page, "unrevivable.vigilia-theme", {
@@ -2016,10 +1916,7 @@ test.describe("Fabric editor route", () => {
   test("asks before Open discards a changed Fabric scene", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.evaluate(() => {
@@ -2055,10 +1952,7 @@ test.describe("Fabric editor route", () => {
   test("asks before New discards a changed Fabric scene", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.evaluate(() => {
@@ -2089,10 +1983,7 @@ test.describe("Fabric editor route", () => {
   test("snaps a dragged object to a neighbour and shows a guide", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
@@ -2114,10 +2005,7 @@ test.describe("Fabric editor route", () => {
   test("shows the rotation-angle indicator beside the pointer mid-rotation", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
@@ -2142,10 +2030,7 @@ test.describe("Fabric editor route", () => {
   test("captures the canvas dock over a selected object", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
@@ -2175,10 +2060,7 @@ test.describe("Fabric editor route", () => {
   test("captures the canvas context menu over a selected object", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
@@ -2268,10 +2150,7 @@ test.describe("Fabric editor route", () => {
   test("zooms and pans the canvas, and cannot lose the artboard", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     // Read the camera through its own accessor: `viewport.zoom()` is the owner
@@ -2353,7 +2232,7 @@ test.describe("Fabric editor route", () => {
   test("tracks the camera's zoom in the stage readout", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
 
     await page.goto(EDITOR);
     const readout = page.locator("[data-vigilia-zoom]");
@@ -2401,7 +2280,7 @@ test.describe("Fabric editor route", () => {
   test("a pasteboard drag marquees instead of moving an object", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
     await page.goto(EDITOR);
 
     // Scene-space document geometry, NOT object `left`. A marquee press puts the
@@ -2555,7 +2434,7 @@ test.describe("Fabric editor route", () => {
   test("reorders a layer and refuses a cross-group drop", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
 
     await page.goto(EDITOR);
     // A fixture with both shapes the rule distinguishes: two plain siblings, and a
@@ -2652,7 +2531,13 @@ test.describe("Fabric editor route", () => {
   test("nudges the selection and records one history entry", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
+    // A stopped clock, so the burst's 300 ms idle window (NUDGE_IDLE_MS) can
+    // never fire between two presses. On the wall clock the CDP round trips
+    // around the assertions below are enough to exceed it under worker load,
+    // which split one burst into two entries and made the undo assertion depend
+    // on how fast the machine was.
+    await installFixedClock(page);
     await page.goto(EDITOR);
     // Select through the bridge, not the layer row: a focused panel row is a
     // different starting state, and this test is about the nudge binding.

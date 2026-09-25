@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { installFixedClock } from "./clock.js";
 
 /**
@@ -25,6 +25,11 @@ export interface CanvasProbe {
 type HandleWindow = typeof window & {
   vigilia: { handle: Record<string, unknown> };
 };
+
+/** Simulated ms per ink attempt, and how many before the scene is declared
+ * unpainted. 200 total is the old fixed 100 with one retry of slack. */
+const INK_STEP_MS = 100;
+const INK_ATTEMPTS = 2;
 
 /**
  * Painted pixels on the artboard; 0 means nothing has been drawn yet.
@@ -68,11 +73,12 @@ async function drawnPixels(page: Page): Promise<number> {
  *
  * ## `static=1`, and how much simulated time this costs
  *
- * Entrance animation off means one frame paints the scene, so the wait is 100 ms
- * instead of 1500. That matters because `clock.runFor` is linear in simulated
- * time and pays it in browser-protocol round trips — measured on this machine,
- * ~4.5 ms wall per simulated ms: `runFor(1500)` alone is 8.2 s against a 495 ms
- * page load, and those waits were ~90% of this suite's wall time.
+ * Entrance animation off means one frame paints the scene, so the wait is a
+ * couple of hundred simulated ms instead of 1500. That matters because
+ * `clock.runFor` is linear in simulated time and pays it in browser-protocol
+ * round trips — measured on this machine, ~4.5 ms wall per simulated ms:
+ * `runFor(1500)` alone is 8.2 s against a 495 ms page load, and those waits
+ * were ~90% of this suite's wall time.
  *
  * `fastForward` is not a substitute: it is a flat ~120 ms but skips the
  * intermediate frames, and 10 cases need them to mount at all.
@@ -91,9 +97,18 @@ export async function openCanvasPlayer(
     query.includes("?") ? `${query}&static=1` : `${query}?static=1`,
   );
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
-  // A chart whose content is entirely animated draws nothing until time advances.
-  await page.clock.runFor(100);
-  expect(await drawnPixels(page)).toBeGreaterThan(0);
+  // The artboard element existing is not the scene being in it: the theme
+  // envelope is revived asynchronously after mount, and a chart's clear/redraw
+  // leaves the canvas genuinely blank for a frame. So require ink rather than
+  // assuming one short advance lands on it — a blank frame here would turn every
+  // ink assertion in this file into a vacuous pass. Advancing in steps also
+  // makes the loaded case robust: under worker load the scene can still be in
+  // flight when the clock moves, and the loop simply waits for it.
+  for (let attempt = 0; attempt < INK_ATTEMPTS; attempt += 1) {
+    await page.clock.runFor(INK_STEP_MS);
+    if ((await drawnPixels(page)) > 0) return;
+  }
+  throw new Error("the artboard never painted");
 }
 
 /** Reads the scene through the handle the player already exposes. */

@@ -671,6 +671,12 @@ test.describe("every fixture renders", () => {
   test("is byte-stable at a fixed clock on one platform", async ({
     browser,
   }) => {
+    // Three captures, each advancing 1500 ms of simulated time, and `runFor`
+    // pays simulated milliseconds in browser-protocol round trips (~4.5 ms of
+    // wall each, measured). The wait is deliberately not shortened: the drift
+    // this guards against over 1500 ms is what `clock.ts` measured, so a shorter
+    // window would blunt the very regression. It needs the headroom instead.
+    test.slow();
     const capture = async (): Promise<Buffer> => {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 720 },

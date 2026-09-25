@@ -7,6 +7,7 @@ import {
   HOST_THEME_ID,
   TEMPERATURE_NODE_ID,
 } from "./host-theme.js";
+import { isDesktopSurface } from "./surface.js";
 
 /** Exercises the real Node host: the browser suite's only proof that hosted
  * theme loading, declared package-asset serving and the SSE stream work end to
@@ -68,10 +69,7 @@ test.describe("hosted player over the real host", () => {
   test("round-trips a theme saved from the host-served editor", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "desktop-chromium",
-      "the editor is a desktop surface",
-    );
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     // The editor reaches the host's theme store, and the bytes it writes come
     // back through the host's player route: the author-to-display loop.
@@ -98,7 +96,7 @@ test.describe("hosted player over the real host", () => {
     page,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass is enough for the host path",
     );
 
@@ -133,7 +131,7 @@ test.describe("hosted player over the real host", () => {
     page,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass is enough for the host path",
     );
 
@@ -209,7 +207,7 @@ test.describe("the clock the host reports", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass is enough for the host path",
     );
 
@@ -329,7 +327,7 @@ test.describe("the units this PC reads in", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass is enough for the host path",
     );
 

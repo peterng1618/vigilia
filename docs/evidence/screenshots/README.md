@@ -13,6 +13,10 @@ worker to avoid capture collisions. Select only captures affected by the current
 change and inspect only their generated images. Captures use `?static=1` and a
 controlled clock. After push, prefer the **Visual evidence** Actions artifact.
 
+Pick the project the capture's spec lives in: `desktop-chromium` for the
+preview-server captures (editor and player), `desktop-host` for the ones that
+drive the real host (the settings page).
+
 ## Editor visual-action checklist
 
 Update/add a capture when a change affects a listed domain. Show the action's

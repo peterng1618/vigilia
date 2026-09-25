@@ -12,6 +12,7 @@ import {
   HOST_THEME_ID,
   HOST_THEMES_DIR,
 } from "./host-theme.js";
+import { isDesktopSurface } from "./surface.js";
 
 /** Drives the consumer settings page against the real host. The page is the
  * only surface where global settings and a theme's own questions meet, and the
@@ -91,7 +92,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -118,7 +119,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -148,7 +149,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -204,7 +205,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -248,7 +249,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -295,7 +296,7 @@ test.describe("the settings page a consumer configures", () => {
     page,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -309,7 +310,7 @@ test.describe("the settings page a consumer configures", () => {
 test.describe("the settings page in a screenshot", () => {
   test("captures the question a theme raises", async ({ page }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium" ||
+      !isDesktopSurface(testInfo) ||
         process.env["VIGILIA_CAPTURE"] === undefined,
       "captures run on demand",
     );
