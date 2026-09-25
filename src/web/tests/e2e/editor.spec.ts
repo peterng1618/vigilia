@@ -1928,6 +1928,160 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-zoom-readout");
   });
 
+  test("a pasteboard drag marquees instead of moving an object", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
+    await page.goto(EDITOR);
+
+    // Scene-space document geometry, NOT object `left`. A marquee press puts the
+    // hit objects inside an ActiveSelection, whose `enterGroup` rebases every
+    // child's `left` to be relative to the selection — so comparing raw `left`
+    // across a selection boundary reports a move for an object that never moved,
+    // and cannot tell a marquee from a drag. `getBoundingRect` is the world-space
+    // rect either way. `selected` is read as well because "nothing moved" alone
+    // is satisfied by a drag that reached nothing at all.
+    const read = (): Promise<{
+      selected: number;
+      rects: Array<[string, number, number]>;
+    }> =>
+      page.evaluate(() => {
+        const bridge = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getActiveObject(): { getObjects?(): unknown[] } | undefined;
+                  getObjects(): Array<{
+                    id?: string;
+                    getBoundingRect(): { left: number; top: number };
+                  }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        const active = bridge.editor.canvas.getActiveObject();
+        return {
+          selected:
+            active?.getObjects?.().length ?? (active === undefined ? 0 : 1),
+          rects: bridge.editor.canvas
+            .getObjects()
+            .map((object) => {
+              const bounds = object.getBoundingRect();
+              return [
+                String(object.id),
+                Math.round(bounds.left),
+                Math.round(bounds.top),
+              ] as [string, number, number];
+            })
+            .sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        };
+      });
+
+    // The artboard's rect from the camera, in CANVAS-element coordinates — not the
+    // canvas box (the canvas is host-sized and much larger than the artboard now)
+    // and not client space either. `vpt[4]`/`vpt[5]` are relative to the canvas
+    // element, and the canvas sits at x~357 in the page, so the offset is added
+    // below rather than assumed away.
+    const rect = await page.evaluate(() => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              viewport: {
+                artboardScreenRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                  height: number;
+                };
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      return bridge.editor.viewport.artboardScreenRect();
+    });
+    const canvasBox = (await page
+      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .boundingBox())!;
+    // Artboard point -> client point. The scale is uniform and derived from the
+    // rect, so this mapping is correct whether or not the artboard's aspect
+    // happens to match 1280x720 — which it does NOT: `fitScale()` is
+    // `Math.min(vw/1280, vh/720)` (`viewport-manager/index.ts:97-100`), a
+    // contain-fit, so at the measured 626x594 host the artboard draws 626x352 and
+    // every point below y=720 in artboard space is BELOW the canvas.
+    //
+    // The `canvasBox.x/y` terms are the whole difference between this and a
+    // vacuous test: without them every point below lands ~357px left and ~72px
+    // above where it belongs, off the canvas, where the drag selects nothing and
+    // the assertion passes while proving nothing.
+    const scale = rect.width / 1280;
+    const at = (x: number, y: number): [number, number] => [
+      canvasBox.x + rect.left + x * scale,
+      canvasBox.y + rect.top + y * scale,
+    ];
+
+    const before = await read();
+
+    // The pasteboard is the vertical band BELOW the artboard, and it is the only
+    // one there is. `fitScale()` is a contain-fit, so at the 626x594 host the
+    // scale is `min(626/1280, 594/720) = 0.489` and the artboard draws 626x352 —
+    // full canvas width, centred vertically, leaving 121px bands above and below.
+    // An earlier revision of this step claimed "about 240px of pasteboard below
+    // the artboard and 350px to its right"; there is no pasteboard to its right,
+    // and a pick point that assumed one would land off-canvas and pass vacuously.
+    // So the press is placed by Y only, at the horizontal centre; X inside the
+    // canvas is free because every X is pasteboard in that band.
+    const [sx, sy] = [
+      canvasBox.x + canvasBox.width / 2,
+      canvasBox.y + canvasBox.height - 16,
+    ];
+    // Both sides in client space: `rect` is canvas-relative, so its client
+    // position is `canvasBox` + `rect`. Without the offsets these guards compare a
+    // client point against a canvas-space edge and pass on a drag that is nowhere
+    // near the pasteboard — the vacuity this test exists to remove, reintroduced
+    // in the guard itself. The Y guard is the load-bearing one; the X guard only
+    // records that the canvas is wider than the artboard's left edge, which is
+    // trivially true and kept to document that X is unconstrained here.
+    expect(sy).toBeGreaterThan(canvasBox.y + rect.top + rect.height);
+    expect(sy).toBeLessThan(canvasBox.y + canvasBox.height);
+    expect(sx).toBeGreaterThan(canvasBox.x + rect.left);
+    const [ex, ey] = at(100, 200);
+
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    // Past Fabric's marquee threshold before releasing: a zero-distance drag would
+    // select nothing and pass without exercising the marquee at all.
+    await page.mouse.move(ex, ey, { steps: 15 });
+    await page.mouse.up();
+
+    // A marquee selects, so the assertion is that no object MOVED — compared in
+    // world space, because a selection rebases its members' `left`.
+    expect((await read()).rects).toEqual(before.rects);
+    // ...and that the marquee did reach the canvas at all: a drag whose press
+    // landed off-canvas selects nothing, moves nothing, and would satisfy the
+    // call above while exercising nothing.
+    expect(before.selected).toBe(0);
+    expect((await read()).selected).toBeGreaterThan(0);
+
+    // The vacuity guard: the same gesture started INSIDE an object must move it.
+    // Without this, a canvas that ignores pointer input entirely would pass the
+    // assertions above.
+    // The target is `time-card` (52,150 260x330), deliberately NOT the header band:
+    // Step 3 offers disarming `header-wash` as a fix, and a guard that drags inside
+    // its 0..142 band would stop being interactive the moment that fix is taken,
+    // failing for a reason unrelated to the marquee. (70,450) is inside the card
+    // and outside every child it contains.
+    const [ox, oy] = at(70, 450);
+    await page.mouse.move(ox, oy);
+    await page.mouse.down();
+    await page.mouse.move(ox + 40, oy + 30, { steps: 10 });
+    await page.mouse.up();
+    expect((await read()).rects).not.toEqual(before.rects);
+  });
+
   test("reorders a layer and refuses a cross-group drop", async ({
     page,
   }, testInfo) => {

@@ -115,23 +115,6 @@ class SelectionOrderedActiveSelection extends ActiveSelection {
 
 classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
 
-/** Where the artboard lands on screen, read off the camera's transform. The
- * media layer is a DOM sibling of the canvas, so it only stays aligned with the
- * board if it is told this rect after every camera change. */
-function artboardScreenRect(
-  canvas: Canvas,
-  artboard: Artboard,
-): { left: number; top: number; width: number; height: number } {
-  const vpt = canvas.viewportTransform;
-  const scale = vpt[0];
-  return {
-    left: vpt[4],
-    top: vpt[5],
-    width: artboard.width * scale,
-    height: artboard.height * scale,
-  };
-}
-
 /** The artboard plate: a bounded region of the canvas, so the pasteboard stays
  * visible around it. `canvas.backgroundColor` cannot do this — Fabric fills it
  * as one path and the viewport transform never bounds that fill — and a
@@ -372,7 +355,7 @@ export async function mountEditorShell({
     // The media layer is a DOM sibling of the canvas rather than a Fabric
     // object, so it has to be repositioned by hand whenever the camera moves.
     const placeMedia = (): void => {
-      media?.setBounds(artboardScreenRect(editor.canvas, currentArtboard));
+      media?.setBounds(editor.viewport.artboardScreenRect());
     };
     editor.viewport.onChange(placeMedia);
     placeMedia();

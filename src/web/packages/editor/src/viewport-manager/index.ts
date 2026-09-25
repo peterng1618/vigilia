@@ -16,6 +16,15 @@ export interface ViewportManager {
   zoomToSelection(): void;
   reset(): void;
   panBy(deltaX: number, deltaY: number): void;
+  /** Where the artboard draws inside the canvas element, in canvas coordinates
+   * — the frame `viewportTransform` is in. Add the canvas's own client offset
+   * for page coordinates. */
+  artboardScreenRect(): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
   /** Re-fit after the host element or the artboard changed size. */
   resize(): void;
   /** Subscribes to camera changes; returns the unsubscribe function. */
@@ -68,6 +77,27 @@ export function createViewportManager({
 
   const notify = (): void => {
     for (const listener of listeners) listener();
+  };
+
+  /** The artboard's rect in canvas space, derived from the same transform the
+   * camera writes. The media layer is a DOM sibling of the canvas, so it only
+   * stays aligned with the board if it is told this rect after every camera
+   * change. */
+  const artboardScreenRect = (): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } => {
+    const vpt = canvas.viewportTransform;
+    const scale = vpt[0];
+    const board = artboard();
+    return {
+      left: vpt[4],
+      top: vpt[5],
+      width: board.width * scale,
+      height: board.height * scale,
+    };
   };
 
   /** Writes the canonical transform back, clamped and ordered. */
@@ -182,6 +212,7 @@ export function createViewportManager({
       notify();
     },
     panBy,
+    artboardScreenRect,
     resize,
     onChange(listener) {
       listeners.add(listener);

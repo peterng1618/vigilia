@@ -25,15 +25,20 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- The stage shows a zoom readout — percentage plus a menu offering zoom to fit,
-  zoom to selection and 100 % — subscribed to `ViewportManager.onChange`, so it
-  follows a wheel or a pan rather than rendering once at mount.
-- The brief's guard for it was a production no-op: it read a `let bridge` local
-  that nothing assigned, so Rolldown folded the whole readout out of the built
-  bundle. Now guards on `store.bridge`. Registering the popup needed
-  `Menu.Portal keepMounted` (Base UI portals to `body` and unmounts while
-  closed), and `.editor-shell-positioner` dropped `position: relative` so it
-  stopped trapping the popup inside the stage's `overflow: hidden`.
+- Fabric's marquee is reachable again: a drag that starts on the pasteboard
+  below the artboard selects instead of moving `header-wash`. The size cause was
+  already gone (Task 2 made the canvas host-sized); no object needed disarming,
+  and the press-inside-an-object guard still moves `time-card` for +40/+30.
+- `ViewportManager.artboardScreenRect()` is now the one owner of "where the
+  artboard draws, in canvas-element coordinates" — the module-local copy in
+  `editor-shell.ts` is deleted and the background-media layer calls the camera.
+- The marquee e2e asserts against `getBoundingRect`, not object `left`: a marquee
+  puts its hits in an `ActiveSelection`, whose `enterGroup` rebases every child's
+  `left`, so the brief's raw-`left` comparison reported a move for objects that
+  never moved and could not tell a marquee from a drag. It also asserts a
+  selection was created, which is what catches a drag that never reached the
+  canvas — and is the defect the brief's own off-canvas ambiguity would have
+  hidden.
 - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
   `rehydrates a chart runtime…`) fail identically with and without recent
   changes; they are pre-existing and belong to Spec A Task 10.
@@ -41,7 +46,7 @@ unpolished, and the canvas has no camera.
 ## Next
 
 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
-2. Continue Spec A from Task 5, then Task 6, 7, 8, 9.
+2. Continue Spec A from Task 6, then 7, 8, 9.
 3. Close author-journey Task 6 once the e2e evidence lands.
 
 ## Blockers / unverified

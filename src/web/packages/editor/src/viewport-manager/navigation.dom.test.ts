@@ -21,6 +21,7 @@ function setup() {
     zoomToSelection: vi.fn(),
     reset: vi.fn(),
     panBy: vi.fn(),
+    artboardScreenRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
     resize: vi.fn(),
     // Declared by Task 1's ViewportManager; navigation does not call it, but the
     // stub has to satisfy the interface or this call does not compile.

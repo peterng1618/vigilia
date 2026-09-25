@@ -19,6 +19,7 @@ it("shows the zoom as a percentage and resets to fit", async () => {
     zoomToSelection: vi.fn(),
     reset: vi.fn(),
     panBy: vi.fn(),
+    artboardScreenRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
     resize: vi.fn(),
     onChange: (listener: () => void) => {
       listeners.add(listener);

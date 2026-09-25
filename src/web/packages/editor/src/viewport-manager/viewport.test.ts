@@ -105,4 +105,30 @@ describe("viewport camera", () => {
     camera.panBy(10, 10);
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it("reports the artboard rect in canvas coordinates, not client ones", () => {
+    const { camera } = setup();
+    camera.zoomToFit();
+    // contain-fit of 1280x720 into 1000x800 is 0.78125, so the board draws
+    // 1000x562.5 centred: a 118.75px band above and below.
+    const scale = 1000 / 1280;
+    expect(camera.artboardScreenRect()).toEqual({
+      left: 0,
+      top: (800 - 720 * scale) / 2,
+      width: 1000,
+      height: 720 * scale,
+    });
+  });
+
+  it("moves the artboard rect with the pan", () => {
+    const { camera } = setup();
+    camera.zoomToFit();
+    const before = camera.artboardScreenRect();
+    camera.panBy(40, -25);
+    expect(camera.artboardScreenRect()).toEqual({
+      ...before,
+      left: before.left + 40,
+      top: before.top - 25,
+    });
+  });
 });
