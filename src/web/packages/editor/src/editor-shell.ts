@@ -136,10 +136,7 @@ function artboardScreenRect(
  * visible around it. `canvas.backgroundColor` cannot do this — Fabric fills it
  * as one path and the viewport transform never bounds that fill — and a
  * `clipPath` would hide the objects outside the artboard too. */
-function artboardPlate(
-  artboard: Artboard,
-  background: unknown,
-): Rect {
+function artboardPlate(artboard: Artboard, background: unknown): Rect {
   return new Rect({
     width: artboard.width,
     height: artboard.height,
@@ -147,7 +144,8 @@ function artboardPlate(
     top: 0,
     originX: "left",
     originY: "top",
-    fill: fabricArtboardPaint(background, artboard.width, artboard.height) ?? "",
+    fill:
+      fabricArtboardPaint(background, artboard.width, artboard.height) ?? "",
     selectable: false,
     evented: false,
     hasControls: false,
@@ -174,7 +172,10 @@ function applyArtboardPaint(
   // same memo the player keeps. The plate is rebuilt whenever it is missing,
   // because `loadFromJSON` clears the canvas it lived on.
   const paintKey = `${artboardPaintKey(background)}:${artboard.width}x${artboard.height}`;
-  if (paintKey !== memo.background || !(editor.canvas.backgroundImage instanceof Rect)) {
+  if (
+    paintKey !== memo.background ||
+    !(editor.canvas.backgroundImage instanceof Rect)
+  ) {
     memo.background = paintKey;
     editor.canvas.backgroundImage = artboardPlate(artboard, background);
   }
