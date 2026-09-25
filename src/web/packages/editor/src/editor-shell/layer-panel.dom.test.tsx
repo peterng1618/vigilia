@@ -223,6 +223,18 @@ it("dims nothing when no group is entered", async () => {
     expect(row.getAttribute("data-context")).toBeNull();
 });
 
+it("selects the row that was clicked, not the group it sits under", async () => {
+  const selectLayer = vi.fn();
+  const host = await renderPanel(contextRows, { selectLayer });
+  // An indented child is the plausible mistake: the row carries its group in
+  // `parentId`, and group-context work makes wiring that id to `selectLayer`
+  // look reasonable. The wire must carry the clicked row's own id.
+  await act(async () =>
+    host.querySelector<HTMLElement>('[data-vigilia-layer="child"]')?.click(),
+  );
+  expect(selectLayer.mock.calls).toEqual([["child"]]);
+});
+
 it("renders object actions in a bottom row, not on the selected row", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);

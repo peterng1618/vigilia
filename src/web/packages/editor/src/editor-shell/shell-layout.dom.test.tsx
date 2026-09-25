@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
 import { arrangeActions } from "../object-actions.js";
+import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { createShellLayout } from "./shell-layout.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -57,12 +58,14 @@ function bridgeStub(
     session: facade(),
     // Only the camera is stubbed: the readout subscribes to it, so an empty
     // object here would throw rather than exercise the shell. The shell only
-    // reaches `viewport`, so the double cast is the partial stub's whole point.
+    // reaches `viewport`, so the double cast is the partial stub's whole point;
+    // the `satisfies` is what checks the two members inside it, which the cast
+    // alone would erase.
     editor: {
       viewport: {
         zoom: () => 1,
         onChange: () => () => undefined,
-      },
+      } satisfies Pick<ViewportManager, "zoom" | "onChange">,
     } as unknown as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,

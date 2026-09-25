@@ -1844,10 +1844,16 @@ git commit -m "feat(editor): restrained motion and visible focus rings"
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx` (Step 0 — the held fix from Task 7)
+- Modify: `src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx` (Step 0 — A8's held Minor 1)
+- Modify: `STATUS.md` (Step 4)
 
-- [ ] **Step 0: Land Task 7's held cast fix**
+- [ ] **Step 0: Land the two held fixes**
+
+**Step 0 carries two test-only fixes, batched into one dispatch because they are the same shape and both were held by an earlier review.** The process's batch rule is what puts them together: one dispatch, one review, and this gate covers both.
 
 Task 7's review left one Minor open and held it: a **double cast** in `shell-layout.dom.test.tsx` that bypasses structural checking. It was held rather than run because no task between there and here touches that file — this step is its owner, and it must not outlive the plan silently.
+
+Task 8's review left a second Minor open, the same way: the layer panel's row `onClick` → `selectLayer` wire is unpinned. `layer-panel.dom.test.tsx` renders rows and asserts their attributes and grouping behaviour, and the bridge's branch is already pinned elsewhere (`selectLayer("child")` → `setActiveObject(child)`), but nothing asserts that clicking a row calls `selectLayer` with **that row's own id**. It matters here because this codebase is actively adding group-context work, where passing a parent id instead of the child's is a plausible refactor — so the case to add clicks an **indented child** (one carrying a `parentId`) and expects `selectLayer.mock.calls` to equal `[["child"]]`. Use the file's existing `renderPanel` / `bridge(rows, overrides)` conventions and add no new file.
 
 The cast is at `shell-layout.dom.test.tsx:60-65`: a stub supplying only `viewport: { zoom, onChange }`, closed with `} as unknown as EditorShellBridge["editor"]`, under a comment at `:57-59` claiming "the shell only reaches `viewport`".
 
@@ -1941,11 +1947,14 @@ Replace the "Last completed change" section with a 1–5 bullet summary of this 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add STATUS.md src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx
+git add STATUS.md \
+  src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx \
+  src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx \
+  docs/evidence/screenshots/editor-desktop-chromium.png
 git commit -m "docs(status): record the editor UI polish"
 ```
 
-Step 0's test file is in the `git add` deliberately: a code change that cannot be committed alongside the commit that records it is the failure this step would otherwise have shipped.
+Both Step 0 test files are in the `git add` deliberately, and so is the capture PNG: a code change that cannot be committed alongside the commit that records it is the failure this step would otherwise have shipped. The `layer-panel.dom.test.tsx` entry was added when A8's held Minor was folded into this step — a ruling recorded only in the ledger describes a plan edit that was never made, which is the trap already found once on this plan.
 
 ---
 
