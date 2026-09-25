@@ -25,15 +25,11 @@ unpolished, and the canvas has no camera.
 
 ## Last completed change
 
-- Added `editor-shell/controls/` — framework-free `numberField`/`linkedPair` DOM factories
-  (with a shared `numberInput` core) that parse on `change`, refuse out-of-range values
-  instead of clamping, own the `[role=alert]` message and the rejected-edit rollback, and
-  keep `setValue`/`setValues` free of commits.
-- Regrouped the artboard panel's eleven flat siblings into `.vigilia-field` rows; width and
-  height are now one `linkedPair` ("Size — W 1000 H 720"). `isDimension` stays private there
-  and the control is told `min`/`max`, so the two ranges cannot both fire.
-- Added `docs/evidence/screenshots/editor-artboard-desktop-chromium.png` (re-captured) and
-  `uiCopy.panels.widthMark`/`heightMark`/`invalidNumber`.
+- The layer tree follows the group context: `EditorShellBridge.groupContext()`
+  projects the entered group as ids (never Fabric objects), and the panel marks
+  the group and its descendants `data-context="true"`, dimming the rest.
+- `selectLayer` selects a group's child directly when that group is the entered
+  context, keeping the owning-group resolution everywhere else.
 
 ## Next
 

@@ -60,7 +60,13 @@ function bridgeFor(
     off: vi.fn(),
     ...canvasExtra,
   };
-  const editor = { canvas, ...extra };
+  const editor = {
+    canvas,
+    // Real editors always carry the grouping manager; the empty context is the
+    // default so a test that enters a group overrides only this one member.
+    groupingManager: { groupContext: () => [] as readonly unknown[] },
+    ...extra,
+  };
   const session = { ...facadeStub(), ...sessionExtra };
   return {
     bridge: createEditorShellBridge({ editor, session } as never),
@@ -214,6 +220,35 @@ it("selects a group child through its owning group, not the child", () => {
   // bridgeFor puts the group on the canvas, so its child is reachable by id.
   bridge.selectLayer("child");
   expect(setActiveObject).toHaveBeenCalledWith(group);
+});
+
+it("selects the child itself when its group is the entered context", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const setActiveObject = vi.fn();
+  const { bridge } = bridgeFor(
+    group,
+    { groupingManager: { groupContext: () => [group] } },
+    {},
+    { setActiveObject },
+  );
+  // Entering a group is exactly what makes its children reachable on their own,
+  // so the tree click must reach the child rather than the group.
+  bridge.selectLayer("child");
+  expect(setActiveObject).toHaveBeenCalledWith(child);
+});
+
+it("projects the entered group's context as ids, never Fabric objects", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  // An anonymous object has no row to mark, so it must not appear as an id.
+  const anonymous = new Rect({ width: 10, height: 10 });
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => [group, anonymous] },
+  });
+  expect(bridge.groupContext()).toEqual(["group"]);
 });
 
 it("reveals a hidden ancestor path but hides only the requested object", () => {

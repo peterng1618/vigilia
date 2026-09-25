@@ -74,6 +74,20 @@ class LayerStore {
 /** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`. */
 const ROW_HEIGHT = 24;
 
+/** The entered group and everything under it. The projection emits a parent
+ * before its children, so one forward pass reaches any depth — and a row whose
+ * group is not in the tree (a collapsed ancestor) is simply not marked. */
+function contextRows(
+  rows: readonly LayerRow[],
+  entered: readonly string[],
+): ReadonlySet<string> {
+  const context = new Set(entered);
+  for (const row of rows)
+    if (row.parentId !== undefined && context.has(row.parentId))
+      context.add(row.id);
+  return context;
+}
+
 /** One dense row per layer: type icon, name, and the two state icons. */
 export function LayerPanel({
   bridge,
@@ -85,6 +99,14 @@ export function LayerPanel({
   const store = ref.current;
   const rows = useSyncExternalStore(store.subscribe, store.get, store.get);
   useEffect(() => store.set(bridge), [store, bridge]);
+  // Read at render, not mirrored into state: the store re-reads the projection
+  // and publishes on every selection change, so entering a group re-renders
+  // here with the context the manager has already recorded.
+  const context = contextRows(rows, bridge?.groupContext() ?? []);
+  // Only an entered group dims anything: with no context every row is reachable,
+  // and a tree greyed out by default would say the opposite.
+  const dimmed = (id: string): boolean =>
+    context.size > 0 && !context.has(id);
 
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
@@ -120,6 +142,9 @@ export function LayerPanel({
               className="vigilia-layer-row"
               data-vigilia-layer={row.id}
               data-selected={row.selected}
+              // The entered group and its descendants are what a tree click can
+              // reach on its own; everything else is dimmed to say so.
+              data-context={context.has(row.id)}
               role="treeitem"
               aria-selected={row.selected}
               aria-level={row.depth + 1}
@@ -183,6 +208,9 @@ export function LayerPanel({
                 {
                   "--layer-depth": String(row.depth),
                   paddingLeft: "calc(6px + var(--layer-depth) * 13px)",
+                  // Outside the entered group a row is reachable only through
+                  // its group, so it reads back rather than as a target.
+                  opacity: dimmed(row.id) ? 0.45 : undefined,
                 } as CSSProperties
               }
               onClick={() => store.mutate(() => bridge?.selectLayer(row.id))}

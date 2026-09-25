@@ -13,6 +13,7 @@ function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
     target: () => ({ kind: "object", locked: false, memberCount: 1, isGroup: false }),
     canArrange: () => false,
     layers: () => rows as never,
+    groupContext: () => [],
     selectLayer: vi.fn(),
     setLayerVisible: vi.fn(),
     setLayerLocked: vi.fn(),
@@ -178,6 +179,30 @@ const rows = [
   { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
     hasChildren: false, visible: true, locked: true, selected: true },
 ];
+
+it("marks the group whose children are current and dims the rest", async () => {
+  // Two groups, so the negative half of the assertion has a row to read. The
+  // non-current group is what makes this a test of "dims the rest" rather than
+  // of "sets an attribute somewhere".
+  const contextRows = [
+    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false },
+    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: true },
+    { id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false },
+  ];
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(
+    <LayerPanel bridge={bridge(contextRows, { groupContext: () => ["group"] })} />,
+  ));
+  expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
+  expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+  // The child inside the current context is selectable in its own right — the
+  // half of the branch that Step 3 adds, and the reason the context is marked.
+  expect(host.querySelector('[data-vigilia-layer="child"]')?.getAttribute("data-context")).toBe("true");
+});
 
 it("renders object actions in a bottom row, not on the selected row", async () => {
   const host = document.createElement("div");

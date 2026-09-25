@@ -36,7 +36,12 @@ export interface EditorShellBridge {
   canArrange(action: ArrangeAction): boolean;
   /** The layer tree, projected from Fabric on demand (§172). */
   layers(): readonly LayerRow[];
-  /** Selects a row's object, resolving a group child through its owning group. */
+  /** Ids of the entered group, as the panel reads them — never Fabric objects.
+   * The group's descendants are inside the context too, which the panel derives
+   * from the projection's own parent links. */
+  groupContext(): readonly string[];
+  /** Selects a row's object: directly inside the entered group, else through the
+   * group that owns it. */
   selectLayer(id: string): void;
   /** Hiding leaves the selection alone; showing reveals the whole ancestor path. */
   setLayerVisible(id: string, visible: boolean): void;
@@ -122,6 +127,13 @@ export function createEditorShellBridge(input: {
     activeObject() !== undefined && actionEnabled(gate, action);
   const names = (): Readonly<Record<string, string>> =>
     input.session.layerNames();
+  /** The entered group, as objects — the manager's own transient state (§67). */
+  const enteredContext = (): readonly FabricObject[] =>
+    input.editor.groupingManager.groupContext();
+  const groupContext = (): readonly string[] =>
+    enteredContext()
+      .map((object) => (object as { id?: unknown }).id)
+      .filter((id): id is string => typeof id === "string");
   // View state lives here, not in the panel: the projection reads it, so a
   // remount keeps the groups the author shut.
   const collapsedGroups = new Set<string>();
@@ -144,10 +156,12 @@ export function createEditorShellBridge(input: {
     const root = canvas.getObjects();
     const target = findById(root, id);
     if (target === undefined) return;
-    // A child of a group is selected through its owning group, as the DOM panel
-    // did: selecting the child directly would put a Fabric-only object on the
-    // canvas that no transform control can reach.
-    canvas.setActiveObject(ownerOf(root, id) ?? target);
+    const owner = ownerOf(root, id);
+    // Inside the entered group its children are reachable in their own right, so
+    // a tree click selects one directly; anywhere else a group child is selected
+    // through its owning group, since a bare child has no transform controls.
+    const inContext = owner !== undefined && enteredContext().includes(owner);
+    canvas.setActiveObject(inContext ? target : (owner ?? target));
     canvas.requestRenderAll();
     notify();
   };
@@ -244,6 +258,7 @@ export function createEditorShellBridge(input: {
     can,
     canArrange: canArrangeAction,
     layers,
+    groupContext,
     selectLayer,
     setLayerVisible,
     setLayerLocked,

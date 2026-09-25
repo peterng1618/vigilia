@@ -44,6 +44,7 @@ function bridgeStub(
     can: () => false,
     canArrange: () => false,
     layers: () => [],
+    groupContext: () => [],
     selectLayer: vi.fn(),
     setLayerVisible: vi.fn(),
     setLayerLocked: vi.fn(),
