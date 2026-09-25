@@ -347,6 +347,51 @@ body,
   color: var(--shell-accent);
 }
 
+/* Restrained motion: only compositor-owned properties, never a layout one. */
+.editor-shell button,
+.editor-shell input,
+.editor-shell select,
+.editor-shell [role="tab"],
+.editor-shell [role="menuitem"] {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease,
+    opacity 140ms ease;
+}
+.editor-shell button:active {
+  transform: translateY(1px);
+}
+/* Popup menu items are excluded: the popup shows focus through its own
+   highlight background and sets `outline: none` for them. */
+.editor-shell
+:is(button, input, select, [role="tab"], [tabindex]):focus-visible {
+  outline: 2px solid var(--shell-accent, #7dd3fc);
+  outline-offset: 1px;
+}
+/* Panel reveal: a short slide/fade on mount only — no list stagger. */
+.editor-shell-panel,
+.editor-shell-inspector {
+  animation: vigilia-panel-in 160ms ease-out;
+}
+@keyframes vigilia-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 /* Opt-in density primitives: a panel chooses a dense row rather than the shell
    forcing every control onto its own full-width line. */
 .vigilia-field {

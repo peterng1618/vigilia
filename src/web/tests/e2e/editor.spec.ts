@@ -158,6 +158,22 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor");
   });
 
+  test("suppresses motion when the user asks for reduced motion", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(EDITOR);
+    const duration = await page
+      .locator(".editor-shell-panel")
+      .evaluate((el) => getComputedStyle(el).animationDuration);
+    expect(duration).toBe("0s");
+  });
+
   test("captures selected chart binding controls for visual review", async ({
     page,
   }, testInfo) => {
