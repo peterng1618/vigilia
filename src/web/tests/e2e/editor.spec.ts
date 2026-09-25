@@ -172,6 +172,33 @@ test.describe("Fabric editor route", () => {
       .locator(".editor-shell-panel")
       .evaluate((el) => getComputedStyle(el).animationDuration);
     expect(duration).toBe("0s");
+
+    // The media block suppresses transitions as well as animations, so read a
+    // control too: the animation assertion alone cannot see that half.
+    const controlTransition = await page
+      .locator(".editor-shell button")
+      .first()
+      .evaluate((el) => getComputedStyle(el).transitionDuration);
+    expect(controlTransition).toBe("0s");
+
+    // With the guard absent the reveal must be a real animation. Duration alone
+    // stays 0.16s when the @keyframes block is deleted, so read the effect.
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const reveal = await page.locator(".editor-shell-panel").evaluate((el) => {
+      // The reveal runs once on mount and leaves getAnimations() when it ends,
+      // so restart it before sampling.
+      el.style.animation = "none";
+      el.getBoundingClientRect();
+      el.style.animation = "";
+      const effect = el.getAnimations()[0]?.effect;
+      return {
+        duration: getComputedStyle(el).animationDuration,
+        keyframes:
+          effect instanceof KeyframeEffect ? effect.getKeyframes().length : 0,
+      };
+    });
+    expect(reveal.duration).not.toBe("0s");
+    expect(reveal.keyframes).toBeGreaterThanOrEqual(2);
   });
 
   test("captures selected chart binding controls for visual review", async ({

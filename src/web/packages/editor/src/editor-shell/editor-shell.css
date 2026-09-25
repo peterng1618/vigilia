@@ -347,7 +347,9 @@ body,
   color: var(--shell-accent);
 }
 
-/* Restrained motion: only compositor-owned properties, never a layout one. */
+/* Restrained motion: only compositor-owned properties, never a layout one. The
+   root is listed because a palette switch restyles its color/background. */
+.editor-shell,
 .editor-shell button,
 .editor-shell input,
 .editor-shell select,
@@ -363,14 +365,21 @@ body,
 .editor-shell button:active {
   transform: translateY(1px);
 }
-/* Popup menu items are excluded: the popup shows focus through its own
-   highlight background and sets `outline: none` for them. */
+/* The popup renders in a portal outside `.editor-shell`, so this rule misses
+   it; `[role="menuitem"]` stays absent here to keep that true if it moves in.
+   `:where` drops the tabpanel without raising this rule's specificity. */
 .editor-shell
-:is(button, input, select, [role="tab"], [tabindex]):focus-visible {
+:is(
+  button,
+  input,
+  select,
+  [role="tab"],
+  [tabindex]:not(:where([role="tabpanel"]))
+):focus-visible {
   outline: 2px solid var(--shell-accent, #7dd3fc);
   outline-offset: 1px;
 }
-/* Panel reveal: a short slide/fade on mount only — no list stagger. */
+/* Panel reveal: opacity 0→1 with a 4px rise, on mount only — no list stagger. */
 .editor-shell-panel,
 .editor-shell-inspector {
   animation: vigilia-panel-in 160ms ease-out;
@@ -385,8 +394,17 @@ body,
     transform: none;
   }
 }
+/* Base UI portals the menu popup, its positioner and the tooltip to `body`, so
+   the descendant selector below cannot reach them; name those classes too. */
 @media (prefers-reduced-motion: reduce) {
-  .editor-shell * {
+  .editor-shell,
+  .editor-shell *,
+  .editor-shell-menu-popup,
+  .editor-shell-menu-popup *,
+  .editor-shell-positioner,
+  .editor-shell-positioner *,
+  .editor-shell-tooltip,
+  .editor-shell-tooltip * {
     transition: none !important;
     animation: none !important;
   }
