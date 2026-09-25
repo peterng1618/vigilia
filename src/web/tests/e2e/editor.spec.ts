@@ -2216,11 +2216,11 @@ test.describe("Fabric editor route", () => {
 
     await captureVisualReview(page, testInfo, "editor-canvas-context-menu");
 
-    // Phase 1 adds a second owner of the arrow keys. Read the object's own
-    // origin point — both axes, because `nudge-down` moves `top`: reading `left`
-    // alone would report "did not move" whether or not the nudge ran. A lost
-    // selection throws rather than returning nulls, which would make that same
-    // "did not move" true for the wrong reason.
+    // Phase 1 adds a second owner of the arrow keys. Read both axes of the
+    // object's own origin point: `nudge-down` moves `top` and leaves `left`
+    // alone, so the exact delta below pins the axis as well as the step. A lost
+    // selection throws rather than returning nulls, or "did not move" would be
+    // true for the wrong reason.
     const activePosition = async (): Promise<{
       left: number;
       top: number;
