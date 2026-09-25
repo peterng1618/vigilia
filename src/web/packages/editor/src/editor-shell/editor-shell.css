@@ -273,7 +273,8 @@ body,
 }
 .editor-shell-rail button,
 .editor-shell-inspector button,
-.editor-shell-dock button {
+.editor-shell-dock button,
+.editor-shell-arrange button {
   color: var(--shell-text);
   border: 0;
   background: transparent;
@@ -287,7 +288,8 @@ body,
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);
 }
 .editor-shell-rail button:hover,
-.editor-shell-dock button:hover {
+.editor-shell-dock button:hover,
+.editor-shell-arrange button:hover {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
 .editor-shell-panel {
@@ -491,6 +493,33 @@ body,
 .editor-shell-dock button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+/* Top-centre: the dock owns the bottom-centre and the zoom readout the
+   bottom-right, so this is the only unclaimed edge of the stage. */
+.editor-shell-arrange {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 10px;
+}
+.editor-shell-arrange button {
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-shell-arrange button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.editor-shell-arrange button:disabled:hover {
+  background: transparent;
 }
 .editor-shell-zoom {
   position: absolute;

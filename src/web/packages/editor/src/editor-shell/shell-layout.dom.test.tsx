@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
+import { arrangeActions } from "../object-actions.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { createShellLayout } from "./shell-layout.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -54,13 +55,14 @@ function bridgeStub(
     run: vi.fn(),
     session: facade(),
     // Only the camera is stubbed: the readout subscribes to it, so an empty
-    // object here would throw rather than exercise the shell.
+    // object here would throw rather than exercise the shell. The shell only
+    // reaches `viewport`, so the double cast is the partial stub's whole point.
     editor: {
       viewport: {
         zoom: () => 1,
         onChange: () => () => undefined,
       },
-    } as EditorShellBridge["editor"],
+    } as unknown as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,
   };
@@ -146,6 +148,21 @@ it("shows one rail pane at a time and routes the dock through the bridge", async
 
   duplicate?.click();
   expect(run).toHaveBeenCalledWith("duplicate");
+
+  layout.destroy();
+});
+
+it("puts arrange on the canvas toolbar, disabled without a multi-selection", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
+  expect(toolbar).not.toBeNull();
+  // Derived, not a literal: `ARRANGE_ICONS` holds eight today, and a ninth
+  // added to the registry must fail here rather than be silently dropped by
+  // the toolbar. Same rule as Task 9's context menu.
+  expect(toolbar?.querySelectorAll("button")).toHaveLength(arrangeActions().length);
+  for (const button of toolbar?.querySelectorAll("button") ?? [])
+    expect(button.disabled).toBe(true);
 
   layout.destroy();
 });

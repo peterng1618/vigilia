@@ -184,6 +184,15 @@ const ARRANGE_ICONS: Readonly<Record<ArrangeAction, LucideIcon>> = {
   "distribute-y": AlignVerticalDistributeCenter,
 };
 
+/**
+ * Arrange's eligibility, as two numbers rather than a target: the toolbar
+ * reads it from the shell snapshot's `selectedCount`, not from `target()`,
+ * which is undefined until a bridge is set.
+ */
+export function arrangeEligible(count: number, locked: boolean): boolean {
+  return count > 1 && !locked;
+}
+
 /** Arrange is its own group: it needs two or more objects and its own owner. */
 export function arrangeActions(): readonly ObjectAction[] {
   return (Object.keys(ARRANGE_ICONS) as ArrangeAction[]).map((action) => ({
@@ -191,7 +200,7 @@ export function arrangeActions(): readonly ObjectAction[] {
     label: uiCopy.arrangeLabels[action],
     icon: ARRANGE_ICONS[action],
     // canArrange also refuses a locked member, so eligibility has to agree.
-    eligible: (target) => target.memberCount > 1 && !target.locked,
+    eligible: (target) => arrangeEligible(target.memberCount, target.locked),
     run: (editor) => void applyArrange(editor, action),
   }));
 }

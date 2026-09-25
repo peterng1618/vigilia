@@ -109,6 +109,8 @@ export const uiCopy = {
     "distribute-y": "Distribute vertically",
   },
   dock: { label: "Selected object actions" },
+  /** The stage toolbar's accessible name; the eight buttons carry the labels. */
+  arrangeToolbar: { label: "Arrange the selection" },
   /** The stage camera's readout; `label` is also the control's accessible name. */
   zoom: {
     label: "Zoom level",

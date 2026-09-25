@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
+import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { LayerPanel } from "./layer-panel.js";
@@ -117,6 +118,39 @@ class SelectionStore {
 
 function useSelection(store: SelectionStore): EditorShellSnapshot {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** Arrange sits above the canvas because it needs a multi-selection, not one
+ * object. It stays visible and greyed rather than being filtered out like the
+ * dock's actions, so the controls are discoverable before a selection exists. */
+function ArrangeToolbar({
+  store,
+}: {
+  readonly store: SelectionStore;
+}): React.JSX.Element {
+  const selection = useSelection(store);
+  const canArrange = arrangeEligible(selection.selectedCount, selection.locked);
+  return (
+    <div
+      className="editor-shell-arrange editor-glass"
+      role="toolbar"
+      aria-label={uiCopy.arrangeToolbar.label}
+      data-vigilia-arrange-toolbar=""
+    >
+      {arrangeActions().map(({ id, icon: Icon, label }) => (
+        <button
+          key={id}
+          type="button"
+          aria-label={label}
+          title={label}
+          disabled={!canArrange}
+          onClick={() => store.bridge?.run(id)}
+        >
+          <Icon aria-hidden size={15} strokeWidth={1.75} />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function readStorage(): Storage | undefined {
@@ -342,6 +376,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           </aside>
           <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
             <Host node={hosts.canvas} />
+            <ArrangeToolbar store={store} />
             <nav
               className="editor-shell-dock editor-glass"
               aria-label={uiCopy.dock.label}
@@ -375,7 +410,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   <p className="editor-shell-hint">
                     {kind === "chart"
                       ? "Chart settings are under Data."
-                      : "Move, arrange and lock the selection with the canvas dock."}
+                      : "Move and lock the selection with the canvas dock."}
                   </p>
                 )}
                 <Host node={hosts.document} />

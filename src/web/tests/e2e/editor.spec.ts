@@ -1784,6 +1784,14 @@ test.describe("Fabric editor route", () => {
     // A single object cannot be ungrouped.
     await expect(dock.getByRole("button", { name: "Ungroup" })).toHaveCount(0);
 
+    // The toolbar is the arrange surface: it stays visible for one object, so
+    // the capture shows the discoverable-but-greyed state.
+    const toolbar = page.locator("[data-vigilia-arrange-toolbar]");
+    await expect(toolbar).toBeVisible();
+    await expect(
+      toolbar.getByRole("button", { name: "Align left" }),
+    ).toBeDisabled();
+
     await captureVisualReview(page, testInfo, "editor-toolbar");
   });
 
