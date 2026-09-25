@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
+import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { LayerPanel } from "./layer-panel.js";
 import { ZoomReadout } from "./zoom-readout.js";
@@ -392,6 +393,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {store.bridge === undefined ? null : (
               <ZoomReadout viewport={store.bridge.editor.viewport} />
             )}
+            {/* Renders no DOM of its own: it only binds the canvas's own
+                `contextmenu` listener, so it sits with the stage it listens to. */}
+            <CanvasContextMenu bridge={store.bridge} />
           </main>
           <aside className="editor-shell-inspector editor-glass">
             <Tabs.Root defaultValue="design">

@@ -2172,6 +2172,98 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-toolbar");
   });
 
+  test("captures the canvas context menu over a selected object", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "the editor is a desktop surface",
+    );
+
+    await page.goto(EDITOR);
+    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    await expect(canvas).toBeVisible();
+    await selectStarterChart(page);
+
+    // The dock is the other surface that filters the same registry, so its
+    // buttons are the expected entry set without restating the registry here.
+    const dockNames = (
+      await page
+        .locator('[aria-label="Selected object actions"] button')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.getAttribute("aria-label") ?? ""),
+        )
+    ).sort();
+
+    const centre = await clientOfScene(page, "load-gauge");
+    await page.mouse.click(centre.x, centre.y, { button: "right" });
+
+    const menu = page.locator('[aria-label="Canvas actions"]');
+    await expect(menu).toBeVisible();
+    const itemNames = (
+      await menu
+        .locator('[role="menuitem"]')
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute("aria-label") ?? ""),
+        )
+    ).sort();
+
+    // A menu that rendered nothing would satisfy a containment check.
+    expect(dockNames.length).toBeGreaterThan(0);
+    expect(itemNames).toEqual(dockNames);
+    // Arrange has no `OBJECT_ACTIONS` id, so it cannot leak in from the toolbar.
+    expect(itemNames).not.toContain("Align left");
+
+    await captureVisualReview(page, testInfo, "editor-canvas-context-menu");
+
+    // Phase 1 adds a second owner of the arrow keys. Read the object's own
+    // position rather than asserting, so the recorded outcome is the real one.
+    // Both axes, because `nudge-down` moves `top`: reading `left` alone would
+    // report "did not move" whether or not the nudge ran.
+    const activePosition = async (): Promise<{
+      left: number | null;
+      top: number | null;
+    }> =>
+      page.evaluate(() => {
+        const active = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getActiveObject():
+                    | { left?: number; top?: number }
+                    | undefined;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge.editor.canvas.getActiveObject();
+        return { left: active?.left ?? null, top: active?.top ?? null };
+      });
+    const before = await activePosition();
+    await page.keyboard.press("ArrowDown");
+    await expect(menu.locator('[role="menuitem"]').first()).toBeVisible();
+    const after = await activePosition();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    // The control that makes the line above mean something: the arrow must
+    // nudge when no menu owns the keyboard, so "did not move" is the menu
+    // stopping it and not a nudge that was broken all along.
+    await page.keyboard.press("ArrowDown");
+    await expect.poll(activePosition).not.toEqual(before);
+    // Recorded as evidence, not as a requirement: either arrow outcome is a
+    // finding, and this is what the surface does today.
+    expect({
+      before,
+      after,
+      moved: JSON.stringify(before) !== JSON.stringify(after),
+    }).toEqual({
+      before: { left: expect.any(Number), top: expect.any(Number) },
+      after: before,
+      moved: false,
+    });
+  });
+
   test("zooms and pans the canvas, and cannot lose the artboard", async ({
     page,
   }, testInfo) => {

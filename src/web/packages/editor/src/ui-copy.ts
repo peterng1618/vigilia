@@ -109,6 +109,9 @@ export const uiCopy = {
     "distribute-y": "Distribute vertically",
   },
   dock: { label: "Selected object actions" },
+  /** The canvas context menu's accessible name. Its entries reuse the action
+   * registry's labels and `chartFamilies`, so no entry copy lives here. */
+  canvasMenu: { label: "Canvas actions" },
   /** The stage toolbar's accessible name; the eight buttons carry the labels. */
   arrangeToolbar: { label: "Arrange the selection" },
   /** The stage camera's readout; `label` is also the control's accessible name. */
