@@ -15,6 +15,7 @@ specs.
 | [0007](0007-typed-vigilia-charts-over-echarts.md) | Charts remain typed Vigilia objects over ECharts |
 | [0008](0008-video-is-background-media.md) | Video is an aligned background layer, not a scene object |
 | [0009](0009-capability-driven-sensors.md) | Sensor providers are capability-driven and never fabricate readings |
+| [0010](0010-dispatch-record-owns-recovery-state.md) | A live dispatch record owns subagent recovery state |
 
 When a durable architecture choice changes, add a new ADR that supersedes the
 old one instead of rewriting history. Smaller implementation choices belong in

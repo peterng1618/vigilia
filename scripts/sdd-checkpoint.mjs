@@ -14,13 +14,19 @@
 // rather than requested from the controller. SessionStart is one of the events
 // whose stdout reaches the model's context, so that half is an injection.
 //
-// The durable half is neither: a controller that writes `dispatch.md` at
+// The durable half is neither: a controller that writes a dispatch record at
 // dispatch time never needs recovery. The injected text asks for it.
+//
+// The active plan is the workspace holding a live dispatch record, never the
+// workspace whose ledger moved most recently — see ADR-0010. Ledger mtime marked
+// four plans active at once, three of them finished or queued, and would drop a
+// plan whose dispatch outlived a 24h quiet spell.
 //
 // Usage:
 //   node scripts/sdd-checkpoint.mjs snapshot   # PreCompact hook
 //   node scripts/sdd-checkpoint.mjs resume     # SessionStart hook, matcher compact
 //   node scripts/sdd-checkpoint.mjs start      # SessionStart hook, matcher startup
+//   node scripts/sdd-checkpoint.mjs --self-check
 //
 // Every mode reads the hook payload on stdin and always exits 0. A hook that
 // blocks compaction or shows the user an error is worse than no snapshot.
@@ -37,9 +43,10 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-// Only plans whose ledger moved recently are in flight; the rest are finished
-// and their state cannot help a resumed controller.
-const ACTIVE_PLAN_WINDOW_MS = 24 * 60 * 60 * 1000;
+// A record that has not been touched in a week describes a dispatch nobody is
+// waiting on any more; treating it as live would inject a stale agent id as
+// fact. Nothing in the schema refreshes a record, so mtime is the only signal.
+const DISPATCH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const CHECKPOINT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_LEDGER_LINES = 40;
 // Injected text competes with the context compaction just freed, so it stays
@@ -48,12 +55,14 @@ const MAX_CONTEXT_CHARS = 6000;
 
 const mode = process.argv[2];
 
-// The summary is silent when wrong — a task shown complete that is not causes
-// the controller to skip real work — so the parse gets one runnable check.
+// Both silent-when-wrong behaviours get a runnable check: a task shown complete
+// that is not makes the controller skip real work, and a plan shown active that
+// is not injects a stale agent id as fact.
 // `node scripts/sdd-checkpoint.mjs --self-check`.
 if (mode === "--self-check") {
   const { mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
+
   const dir = mkdtempSync(join(tmpdir(), "sdd-check-"));
   const fixture = join(dir, "progress.md");
   writeFileSync(
@@ -73,8 +82,27 @@ if (mode === "--self-check") {
     "Task 2: CLOSED — re-review clean",
     "Task 3: complete (commits c..d)",
   ];
-  const ok = JSON.stringify(got) === JSON.stringify(want);
-  console.log(ok ? "self-check OK" : `self-check FAILED\n${JSON.stringify(got, null, 2)}`);
+  const statusOk = JSON.stringify(got) === JSON.stringify(want);
+
+  // A plan with a recently-written ledger but no dispatch record is queued or
+  // finished, not active. That is exactly the case the mtime heuristic got
+  // wrong, so it is the case the fixture pins.
+  const fake = mkdtempSync(join(tmpdir(), "sdd-plans-"));
+  const base = join(fake, ".superpowers", "sdd");
+  mkdirSync(join(base, "queued"), { recursive: true });
+  writeFileSync(join(base, "queued", "progress.md"), "# SDD ledger — plan: q\n");
+  mkdirSync(join(base, "running"), { recursive: true });
+  writeFileSync(join(base, "running", "progress.md"), "# SDD ledger — plan: r\n");
+  writeFileSync(join(base, "running", "dispatch-a41b65ed.md"), "Task 4 — agent a41b65ed\n");
+  const active = activePlans(fake).map((plan) => plan.slug);
+  const plansOk = JSON.stringify(active) === JSON.stringify(["running"]);
+
+  const ok = statusOk && plansOk;
+  console.log(
+    ok
+      ? "self-check OK"
+      : `self-check FAILED\n  statusLines: ${statusOk ? "ok" : JSON.stringify(got)}\n  activePlans: ${plansOk ? "ok" : JSON.stringify(active)}`,
+  );
   process.exit(ok ? 0 : 1);
 }
 
@@ -107,21 +135,69 @@ function repoRoot(hint) {
   return "";
 }
 
-const sddRoot = (root) => join(root, ".superpowers", "sdd");
+// Hoisted on purpose: the --self-check block at the top of this file runs before
+// any `const` initializer below it.
+function sddRoot(root) {
+  return join(root, ".superpowers", "sdd");
+}
 
-function activePlans(root) {
+// Plans that exist at all, whatever their state. A workspace with no ledger is
+// not a plan workspace.
+function allPlans(root) {
   const base = sddRoot(root);
   if (!existsSync(base)) return [];
-  const now = Date.now();
   const plans = [];
   for (const entry of readdirSync(base, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const ledger = join(base, entry.name, "progress.md");
+    const dir = join(base, entry.name);
+    const ledger = join(dir, "progress.md");
     if (!existsSync(ledger)) continue;
-    if (now - statSync(ledger).mtimeMs > ACTIVE_PLAN_WINDOW_MS) continue;
-    plans.push({ slug: entry.name, dir: join(base, entry.name), ledger });
+    plans.push({ slug: entry.name, dir, ledger });
   }
   return plans;
+}
+
+// Live records for one plan: `dispatch-<agent id>.md`, plus the singular
+// `dispatch.md` the first version of this convention wrote. Reads are guarded so
+// a record deleted between the readdir and the read cannot fail a hook.
+function dispatchRecords(dir) {
+  const now = Date.now();
+  const live = [];
+  let names = [];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return live;
+  }
+  for (const name of names) {
+    if (!/^dispatch(-[A-Za-z0-9_-]+)?\.md$/.test(name)) continue;
+    const path = join(dir, name);
+    let mtimeMs;
+    try {
+      mtimeMs = statSync(path).mtimeMs;
+    } catch {
+      continue;
+    }
+    if (now - mtimeMs > DISPATCH_TTL_MS) continue;
+    live.push({ name, path, mtimeMs });
+  }
+  return live.sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
+
+function readRecord(path) {
+  try {
+    return readFileSync(path, "utf8").trim();
+  } catch {
+    return "(record disappeared between listing and read)";
+  }
+}
+
+// A plan is active exactly when it holds a live dispatch record. That is the
+// whole definition; there is deliberately no second one.
+function activePlans(root) {
+  return allPlans(root)
+    .map((plan) => ({ ...plan, records: dispatchRecords(plan.dir) }))
+    .filter((plan) => plan.records.length > 0);
 }
 
 // The ledger's own task-status section is the recovery-critical part; its
@@ -185,17 +261,14 @@ function snapshot(root, sessionId) {
     "```",
   ];
   if (plans.length === 0) {
-    parts.push("", "## Active plans", "", "(no ledger modified in the last 24h)");
+    parts.push("", "## Active plans", "", "(no live dispatch record in any workspace)");
   }
   for (const plan of plans) {
-    const dispatch = join(plan.dir, "dispatch.md");
     parts.push(
       "",
       `## In-flight dispatch — ${plan.slug}`,
       "",
-      existsSync(dispatch)
-        ? readFileSync(dispatch, "utf8").trim()
-        : "(no dispatch.md — no in-flight dispatch was recorded for this plan)",
+      ...plan.records.map((record) => readRecord(record.path)),
       "",
       `## Ledger tail — ${plan.slug}`,
       "",
@@ -210,14 +283,30 @@ function snapshot(root, sessionId) {
 // The recovery path only works if the record it reads was being written. This
 // is the only place the convention can be stated without spending the
 // controller's context on it: it costs one line per session, once.
+//
+// Deliberately keyed off *any* workspace, not `activePlans`: a session that has
+// not dispatched yet has no record, and gating the convention on one would mean
+// it is never taught to the session that needs to start writing them. The
+// workspace named here is the most recently touched ledger — a hint for where to
+// write, not a claim about what is active.
 function startContext(root) {
-  const plans = activePlans(root);
+  const plans = allPlans(root);
   if (plans.length === 0) return "";
+  const newest = plans
+    .map((plan) => {
+      let mtimeMs = 0;
+      try {
+        mtimeMs = statSync(plan.ledger).mtimeMs;
+      } catch {
+        // An unreadable ledger only loses the hint, not the convention.
+      }
+      return { ...plan, mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
   return [
     "Subagent-driven development is in flight on this repo. The ledger records rulings and completions; it does NOT record what is running. Context compaction destroys the difference.",
     "",
-    "So: write `<workspace>/dispatch.md` when you dispatch a subagent — plan, task, agent id, base sha, state — and rewrite it when that task completes. Workspaces:",
-    ...plans.map((plan) => `  ${plan.dir}`),
+    `So: write \`<workspace>/dispatch-<agent id>.md\` when you dispatch a subagent — plan, task, agent id, base sha, state — and delete it when that task completes. A plan counts as active only while it holds such a record. Most recently touched workspace: ${newest.dir}`,
     "",
     "A PreCompact hook snapshots git state and every ledger tail to `.superpowers/sdd/checkpoint/<session-id>.md` and re-injects the dispatch state after compaction. An unrecorded dispatch is the one thing that recovery cannot reconstruct.",
   ].join("\n");
@@ -238,14 +327,14 @@ function resumeContext(root, sessionId) {
     "",
     "In-flight dispatch and task status per active plan:",
   ];
+  if (plans.length === 0) {
+    text.push("", "(no live dispatch record in any workspace — nothing is in flight)");
+  }
   for (const plan of plans) {
-    const dispatch = join(plan.dir, "dispatch.md");
     text.push(
       "",
       `### ${plan.slug}`,
-      existsSync(dispatch)
-        ? readFileSync(dispatch, "utf8").trim()
-        : "(no dispatch.md — no in-flight dispatch recorded)",
+      ...plan.records.map((record) => readRecord(record.path)),
       "",
       "Tasks:",
       ...statusLines(plan.ledger).map((line) => `  ${line}`),
@@ -256,7 +345,7 @@ function resumeContext(root, sessionId) {
     "Before your next dispatch:",
     "1. A task listed `complete` is DONE — never re-dispatch it. Resume at the first task with no such line.",
     "2. Reconcile each in-flight dispatch against live agents. An agent id you cannot find is not running: its work is in `git log` or it is lost. Do not assume it finished.",
-    "3. Write each dispatch to `<workspace>/dispatch.md` when you dispatch (task, agent id, base sha, state) and rewrite it on completion. The ledger records rulings; only `dispatch.md` records what is running.",
+    "3. Write each dispatch to `<workspace>/dispatch-<agent id>.md` when you dispatch (task, agent id, base sha, state) and delete it on completion. The ledger records rulings; only the dispatch record says what is running.",
     "",
     `Full pre-compaction snapshot (git log, ledger tails, uncommitted diffstat): ${file}`,
   );
@@ -280,7 +369,12 @@ function prune(dir) {
 try {
   const input = payload();
   const root = repoRoot(input.cwd);
-  if (root) {
+  // Project hooks run inside subagents, and `agent_id` is present only there.
+  // Without this guard a worker that compacts receives controller instructions
+  // about reconciling other agents — and a worker writing the root's dispatch
+  // snapshot would report a state it does not own (ADR-0010).
+  const inSubagent = typeof input.agent_id === "string" && input.agent_id !== "";
+  if (root && !inSubagent) {
     const sessionId = String(input.session_id ?? "unknown").replace(
       /[^A-Za-z0-9_-]/g,
       "",

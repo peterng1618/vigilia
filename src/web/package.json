@@ -25,7 +25,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "size": "npm run size -w @vigilia/player",
-    "status:check": "node ../../scripts/check-status.mjs"
+    "status:check": "node ../../scripts/check-status.mjs",
+    "hooks:check": "node ../../scripts/sdd-checkpoint.mjs --self-check"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

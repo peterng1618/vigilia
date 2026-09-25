@@ -45,9 +45,10 @@ Vigilia process.
   an independent reviewer checks the contract and evidence. Reviews report
   findings back to the root rather than changing process or environment.
 - The ledger records rulings and completions, never what is running. Write
-  `<workspace>/dispatch.md` (plan, task, agent id, base sha, state) when you
-  dispatch and rewrite it on completion — compaction cannot reconstruct an
-  unrecorded dispatch. A PreCompact hook snapshots git state and ledger tails to
+  `<workspace>/dispatch-<agent id>.md` (plan, task, agent id, base sha, state)
+  when you dispatch and delete it on completion — compaction cannot reconstruct
+  an unrecorded dispatch, and a plan counts as active only while it holds such a
+  record (ADR-0010). A PreCompact hook snapshots git state and ledger tails to
   `.superpowers/sdd/checkpoint/` and re-injects the dispatch state after
   compaction.
 - Before each completed task commit, **replace** `STATUS.md`'s "Last completed

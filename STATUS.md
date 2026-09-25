@@ -19,31 +19,37 @@ and interaction layer before snapping fidelity resumes.
   execute until the active plan closes and `STATUS.md` promotes it.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
   Task 6, after the active plan's browser evidence is complete.
-- Compaction recovery review: `docs/superpowers/2026-09-25-compaction-recovery-review.md`.
+- Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md)
+  decides it; the review it answers is
+  `docs/superpowers/2026-09-25-compaction-recovery-review.md`.
 
 ## Last completed change
 
-- Reviewed the controller's compaction-recovery implementation and kept its core
-  premise: durable dispatch state plus post-compaction context restoration.
-- Confirmed the environment edits were explicitly user-authorized and accepted
-  the test-count clarification and orphaned skills-lock removal.
-- Identified remaining robustness gaps: multi-dispatch representation,
-  controller-memory dependence, recency-based active-plan inference,
-  Git-visible runtime files, root/subagent hook separation and limited tests.
-- Recorded a smaller target design using the canonical active plan, an
-  agent-id-keyed runtime registry and mechanical subagent lifecycle updates.
+- Adjudicated the compaction-recovery review: kept its findings on multi-worker
+  dispatch records, active-plan inference and missing tests; rejected its
+  Git-visibility finding (`.superpowers/sdd/.gitignore` is already `*`).
+- ADR-0010 fixes the definition: a plan is active exactly when it holds a live
+  dispatch record, never by ledger recency — the old 24h window marked four
+  plans active at once, three of them finished or queued.
+- The hook script now resolves plans that way, writes one
+  `dispatch-<agent id>.md` per worker, and no-ops inside a subagent (`agent_id`
+  guard) so a worker cannot receive controller recovery instructions.
+- `--self-check` covers `activePlans` as well as `statusLines`; its teeth were
+  verified by breaking the filter. Wired into CI as `npm run hooks:check`.
 
 ## Next
 
-1. Have the Superpowers agent review the compaction-recovery findings.
-2. Finish the active viewport plan's canvas context-menu phase.
-3. Run its broad/browser/visual gate and close the plan.
-4. Promote snapping fidelity only after the viewport plan is closed.
+1. Finish the active viewport plan's canvas context-menu phase.
+2. Run its broad/browser/visual gate and close the plan.
+3. Promote snapping fidelity only after the viewport plan is closed.
+4. Close author-journey Task 6 when its pending browser evidence is available.
 
 ## Blockers / unverified
 
-- Compaction recovery is directionally correct but should not be treated as
-  robust until the review findings are resolved.
+- Whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction is
+  undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
+- No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
+  audit for unknown agent ids is the only candidate and is not implemented.
 - The layer panel's bottom action row is still unverified by eye because the
   current capture has no selection.
 - Two `display-fabric.spec.ts` player tests exceed Playwright's 30s default on
