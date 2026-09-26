@@ -26,7 +26,7 @@ Temporarily removed `refreshLayout(object, segments, authored)` call. Focused te
 
 ## Commit
 
-`16abd83` initial runtime layout fix; follow-up commit updates revived visible alignment, fallback style, and regression coverage.
+`13eab90` follow-up repair; supersedes initial `16abd83` runtime layout fix with revived visible alignment, fallback style, and regression coverage.
 
 ## Concerns
 
