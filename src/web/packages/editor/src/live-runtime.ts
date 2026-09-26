@@ -76,7 +76,6 @@ export class LiveRuntime {
       // depends on a sample arriving to be readable.
       applyAuthoredText(this.#canvas, this.#globals, {
         bindings: this.#bindings,
-        ...(this.#locale === undefined ? {} : { locale: this.#locale }),
         transform: (segments, runs, bindings) =>
           toAuthoringSegments(segments, runs, bindings),
       });
@@ -89,7 +88,6 @@ export class LiveRuntime {
     // `refreshBoundText` only handles objects a sample resolves.
     applyAuthoredText(this.#canvas, this.#globals, {
       bindings: this.#bindings,
-      ...(this.#locale === undefined ? {} : { locale: this.#locale }),
     });
     refreshBoundText(
       this.#canvas,

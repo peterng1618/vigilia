@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { IText, Rect } from "fabric/es";
+import type { Binding } from "@vigilia/renderer-core";
+import { instantIn } from "@vigilia/renderer-core";
+import { IText, Rect, Textbox } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
 
@@ -14,7 +16,16 @@ function canvasWith(active: unknown) {
   };
 }
 
-function setup(active: unknown) {
+function setup(
+  active: unknown,
+  options: {
+    readonly nodeBindings?: (nodeId: string) => readonly Binding[];
+    readonly onNodeBindingsChange?: (
+      nodeId: string,
+      bindings: readonly Binding[],
+    ) => void;
+  } = {},
+) {
   const history = { saveState: vi.fn() };
   const host = document.createElement("div");
   const editor = {
@@ -37,8 +48,21 @@ function setup(active: unknown) {
       },
     } as never,
     revealTypePresets,
+    ...options,
   });
   return { inspector, host, history, editor, revealTypePresets };
+}
+
+/**
+ * The weekday word a language spells for an instant, read straight from `Intl`
+ * rather than from the module under test, so a broken formatter cannot agree
+ * with itself.
+ */
+function weekdayWord(instant: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${instant.slice(0, 10)}T00:00:00Z`));
 }
 
 describe("the selection inspector", () => {
@@ -282,5 +306,44 @@ describe("the selection inspector", () => {
     expect(
       host.querySelector('[data-vigilia-geometry="width"]'),
     ).not.toBeNull();
+  });
+
+  it("previews a run's format in the language setLocale hands it", () => {
+    // The instant is pinned so the expected word is fixed rather than a guess at
+    // which weekday the suite happens to run on.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-26T15:30:00Z"));
+
+    try {
+      const bindings: readonly Binding[] = [
+        { id: "clock-date", semanticKey: "date.today", format: "dddd" },
+      ];
+      const text = new Textbox("", { id: "clock-label" });
+      text.set({
+        vigiliaText: { runs: [{ kind: "value", bindingId: "clock-date" }] },
+      });
+      const { inspector, host } = setup(text, {
+        nodeBindings: () => bindings,
+      });
+      const preview = (): string | null | undefined =>
+        host.querySelector<HTMLElement>("[data-vigilia-run-format-preview]")
+          ?.textContent;
+
+      const instant = instantIn(Date.now());
+
+      // The preview is a reading the paint must agree with, and the inspector is
+      // the only thing that spells one for the author. Before any language is
+      // pushed, it reads the default.
+      expect(preview()).toBe(weekdayWord(instant, "en"));
+
+      inspector.setLocale("ja");
+
+      // `setLocale` re-renders, so the preview the author sees after choosing a
+      // language is the one that language produces — not the one from before.
+      expect(preview()).toBe(weekdayWord(instant, "ja"));
+      expect(preview()).not.toBe(weekdayWord(instant, "en"));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

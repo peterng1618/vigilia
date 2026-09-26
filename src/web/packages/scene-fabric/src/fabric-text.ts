@@ -113,8 +113,6 @@ export interface ApplyAuthoredTextOptions {
     bindings: readonly Binding[],
   ) => readonly PlanTextSegment[];
   readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
-  /** The document's language; absent reads as English. */
-  readonly locale?: string;
 }
 
 export function applyAuthoredText(
@@ -130,17 +128,14 @@ export function applyAuthoredText(
 
         if (typeof id === "string" && isTextContent(authored)) {
           // Literal runs resolve against globals alone; a value run contributes
-          // nothing without a sample, and keeps its authored placeholder.
+          // nothing without a sample, and keeps its authored placeholder. No
+          // language is threaded here because nothing that reaches this path can
+          // consult one: the empty source resolves no reading to spell.
           const resolved = resolveTextSegments(
             id,
             authored.runs,
             options.bindings?.[id] ?? [],
-            {
-              source: emptySampleSource,
-              ...(options.locale === undefined
-                ? {}
-                : { locale: options.locale }),
-            },
+            { source: emptySampleSource },
             globals ?? {},
             [],
           );

@@ -240,13 +240,12 @@ describe("binding a text run to a sensor", () => {
     // format against words that never appear on the dashboard. The weekday varies
     // with the day the suite runs, so the week's shape is asserted rather than a
     // fixed string: `ja` and `en` for the same instant must differ, which a
-    // preview ignoring the language cannot achieve.
-    expect(preview).toBe(
-      formatInstant(instantIn(Date.now()), "dddd", undefined, "ja"),
-    );
-    expect(preview).not.toBe(
-      formatInstant(instantIn(Date.now()), "dddd", undefined, "en"),
-    );
+    // preview ignoring the language cannot achieve. One instant, read once: a
+    // midnight rollover between the assertions must not make them disagree.
+    const instant = instantIn(Date.now());
+
+    expect(preview).toBe(formatInstant(instant, "dddd", undefined, "ja"));
+    expect(preview).not.toBe(formatInstant(instant, "dddd", undefined, "en"));
 
     return editor.dispose();
   });
