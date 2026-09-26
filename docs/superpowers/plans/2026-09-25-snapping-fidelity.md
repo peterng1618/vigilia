@@ -1133,16 +1133,24 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 
 ### Task 7: Bind scaling, with verification-gated guides
 
-> **Landed** - `70b5b36`; review returned spec PASS WITH DEFECTS / quality PASS, 0 Critical, and fix
-> round 1 is in flight. The review confirmed by independent measurement: the port is faithful (18
-> token ops in 7 hunks, all inside a permitted class), the `noUncheckedIndexedAccess: zero sites`
-> claim is byte-identical-true, the marker trap is not reintroduced, and Step 6's red is red for the
-> right reason.
+> **Landed** - `70b5b36`, fix round 1 in `6c603c9` (see the note below on that commit's message).
+> Review: spec PASS WITH DEFECTS / quality PASS, 0 Critical, 3 Important, 4 Minor. All six actionable
+> findings were re-reviewed as ADDRESSED; the re-review found two new Minor items, both fixed.
+>
+> **The fix round's changes share a commit with unrelated `STATUS.md` work.** `6c603c9` is titled
+> `docs(status): record the spec status pass` and contains the three fix paths beside that edit — the
+> controller, `scaling.dom.test.ts` and `editor.spec.ts`. The cause was an index race: the controller's
+> `git add STATUS.md` and the implementer's `git commit` overlapped, so the commit took whatever was
+> staged. Its content is the fix and nothing else — `git diff 70b5b36..HEAD -- src/web` is exactly
+> those three paths, and `-- docs/evidence` is empty — but the message does not describe them, and the
+> fix's red-before evidence lives only in `task-7-report.md`. Recorded because the ledger's job is to
+> say what happened; not amended, since the round's work is already reviewed against this sha.
 >
 > **Corrected deviation enumeration**, replacing the commit message's class 2, which was wrong. The
-> fork has **zero** `//**` markers and 25 `/**`; this port has 5 `//**` and 20 `/**`, so five block
-> comments changed form — a class the commit message omitted, described by a phrase false about the
-> fork. It is not amended because `70b5b36` is pushed. The full list, from a diff against `9efdd78a`:
+> fork has **zero** `//**` markers and 25 `/**`; this port has 5 `//**` and 25 `/**` — the same 25,
+> of which five changed form from `/**` blocks to `//**` line comments (20 unchanged, 5 converted).
+> That is a class the commit message omitted, described by a phrase false about the fork. It is not
+> amended because `70b5b36` is pushed. The full list, from a diff against `9efdd78a`:
 >
 > 1. Import paths.
 > 2. Comment language (Russian → English).
