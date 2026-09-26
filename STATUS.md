@@ -23,16 +23,15 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Last completed change
 
-- Parked Task 9's incomplete browser matrix as known limitations: target-kind coverage,
-  focused-test isolation and layer-footer placement proof remain unverified.
+- Added `docs/bugs-registry.md` for non-critical bugs unresolved after three attempts.
+- Moved Task 9 browser-matrix limitations to [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix).
 - Kept resize equal-spacing out of scope because fork and Vigilia scaling lack that behavior.
-- Stopped uncommitted Task 9 repair work; no production or test changes integrated.
 
 ## Next
 
-1. Repair or explicitly supersede Task 9's executable-spec import; current full browser gate cannot start.
+1. Task 9 browser-matrix work is deferred in [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix); resume only on user request.
 2. Run Task 10's quality gate from workspace without nested agent worktrees; current lint fails on their nested Biome roots.
-3. Then complete Task 10 without claiming Task 9 matrix closure; activate reference-theme only after snapping closes.
+3. Complete Task 10 only after its gates pass; activate reference-theme only after snapping closes.
 
 ## Blockers / unverified
 
@@ -49,5 +48,4 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
   preset/override.
 - The gate's visual checks were made against `vite preview` bundles on desktop
   widths only; the phone surfaces were exercised by the browser suite, not by eye.
-- **Known limitations — Task 9 matrix:** active text/group targets lack complete move/resize browser coverage; `snapping.spec.ts` imports executable `editor.spec.ts`, which now blocks Playwright discovery entirely; layer-action proof checks entry parity, not selected-object linkage or visible footer placement. Do not claim Task 9 matrix closure until repaired. Resize equal-spacing is not a bug: fork and Vigilia scale candidates do not support it, so it is out of scope unless product scope expands.
-- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; remove only after preserving or discarding each worktree under its owner. Browser suite stops at Task 9's prohibited executable-spec import.
+- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; preserve or discard each worktree before removal. Browser suite is deferred by [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix).

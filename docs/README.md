@@ -6,6 +6,7 @@ artifacts and from Git history.
 | Need | Canonical source |
 |---|---|
 | Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
+| Deferred non-critical bugs | [`bugs-registry.md`](bugs-registry.md) |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
