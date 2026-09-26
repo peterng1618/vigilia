@@ -153,8 +153,8 @@ export function createSelectionInspector(
     return undefined;
   };
 
-  /** Writes one field to the object without rendering or saving history; the
-      caller batches both halves of a pair into one entry. */
+  /** Writes one field to the object without rendering or saving history, so a
+      caller can batch several writes into one entry. */
   const write = (
     object: FabricObject,
     key: GeometryField["key"],
@@ -243,12 +243,19 @@ export function createSelectionInspector(
           dataValue: second.key,
         },
         ...(first.min === undefined ? {} : { min: first.min }),
+        invalidMessage: uiCopy.inspectorFields.invalidValue,
         onReject: refused,
-        onCommit: (firstValue, secondValue) => {
+        // Each half writes only its own key: X/Y and W/H are independent, and
+        // writing the sibling would quantise a fractional dimension the author
+        // never touched.
+        onCommitFirst: (value) => {
           if (!stillTarget()) return;
-          write(object, first.key, firstValue);
-          write(object, second.key, secondValue);
-          // One entry for the pair, matching a single field's edit.
+          write(object, first.key, value);
+          commit();
+        },
+        onCommitSecond: (value) => {
+          if (!stillTarget()) return;
+          write(object, second.key, value);
           commit();
         },
       }).row;

@@ -113,6 +113,26 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
+  it("commits only the edited half, leaving a fractional sibling alone", () => {
+    // A drag leaves fractional scale, and the field shows the rounded read of
+    // it. Committing that unchanged display value must not quantise the
+    // dimension the author never touched.
+    rect.set({ width: 520, height: 36.32, scaleX: 1.0009, scaleY: 1.00444 });
+    const { host, history } = setup(rect);
+    const width = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="width"]',
+    )!;
+    expect(width.value).toBe("520");
+
+    width.value = "520";
+    width.dispatchEvent(new Event("change"));
+
+    expect(rect.scaleX).toBeCloseTo(1, 5);
+    expect(rect.scaleY).toBeCloseTo(1.00444, 5);
+    expect(rect.height * rect.scaleY).toBeCloseTo(36.48, 2);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a value that would make the object invalid", () => {
     const { host, history, editor } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(

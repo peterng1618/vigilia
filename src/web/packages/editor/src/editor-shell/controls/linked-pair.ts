@@ -19,7 +19,8 @@ export interface LinkedPairOptions {
   readonly invalidMessage?: string;
   /** Runs when either half refuses an edit, for a caller that also reports it. */
   readonly onReject?: () => void;
-  readonly onCommit: (first: number, second: number) => void;
+  readonly onCommitFirst: (value: number) => void;
+  readonly onCommitSecond: (value: number) => void;
 }
 
 export interface LinkedPair {
@@ -29,8 +30,9 @@ export interface LinkedPair {
   setValues(first: number, second: number): void;
 }
 
-/** Two numbers that commit together — a consumer that resizes on either needs
-    both, so an accepted edit carries the sibling's last accepted value too.
+/** Two numeric fields sharing one row and one set of bounds, each committing
+    its own value. A consumer that needs the sibling reads it from its own
+    state — a pair that committed both would rewrite the half not edited.
 
     A flex line rather than a `.vigilia-field` grid: two labelled numeric boxes
     do not fit beside a 72px label column in a 280px panel. */
@@ -50,37 +52,27 @@ export function linkedPair(options: LinkedPairOptions): LinkedPair {
     ...(options.onReject === undefined ? {} : { onReject: options.onReject }),
   };
 
-  let firstValue = options.first.value;
-  let secondValue = options.second.value;
   const first = numberInput({
     label: options.first.label,
-    value: firstValue,
+    value: options.first.value,
     data: options.first.data,
     ...(options.first.dataValue === undefined
       ? {}
       : { dataValue: options.first.dataValue }),
     host: row,
     ...bounds,
-    onCommit: (value) => {
-      firstValue = value;
-      options.onCommit(firstValue, secondValue);
-    },
+    onCommit: options.onCommitFirst,
   });
   const second = numberInput({
     label: options.second.label,
-    value: secondValue,
+    value: options.second.value,
     data: options.second.data,
     ...(options.second.dataValue === undefined
       ? {}
       : { dataValue: options.second.dataValue }),
     host: row,
     ...bounds,
-    // A refused edit never reaches a commit, so the sibling still carries the
-    // last value it accepted.
-    onCommit: (value) => {
-      secondValue = value;
-      options.onCommit(firstValue, secondValue);
-    },
+    onCommit: options.onCommitSecond,
   });
   row.append(rowLabel, first.label, first.input, second.label, second.input);
   return {
@@ -88,8 +80,6 @@ export function linkedPair(options: LinkedPairOptions): LinkedPair {
     first: first.input,
     second: second.input,
     setValues(nextFirst, nextSecond) {
-      firstValue = nextFirst;
-      secondValue = nextSecond;
       first.setValue(nextFirst);
       second.setValue(nextSecond);
     },

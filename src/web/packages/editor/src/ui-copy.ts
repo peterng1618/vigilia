@@ -22,8 +22,10 @@ export const uiCopy = {
     selection: "Selection",
     x: "X",
     y: "Y",
-    width: "Width",
-    height: "Height",
+    /** The Size pair marks its boxes W and H, as the artboard panel's does: the
+        full words overflow the row and wrap the second input to its own line. */
+    width: "W",
+    height: "H",
     rotation: "Rotation",
     /** Row labels for the inspector's paired geometry lines. */
     position: "Position",

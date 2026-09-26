@@ -99,6 +99,10 @@ export function createArtboardPanel(
           },
     );
   };
+  // The artboard pair is the linked case: it submits one artboard size, so each
+  // half carries the other's last accepted value.
+  let artboardWidth = 0;
+  let artboardHeight = 0;
   const size = linkedPair({
     rowLabel: uiCopy.panels.size,
     first: {
@@ -113,7 +117,14 @@ export function createArtboardPanel(
     },
     min: 1,
     max: MAX_ARTBOARD_DIMENSION,
-    onCommit: (width, height) => submitArtboard(width, height),
+    onCommitFirst: (width) => {
+      artboardWidth = width;
+      submitArtboard(artboardWidth, artboardHeight);
+    },
+    onCommitSecond: (height) => {
+      artboardHeight = height;
+      submitArtboard(artboardWidth, artboardHeight);
+    },
   });
   const rows = [
     size.row,
@@ -155,7 +166,7 @@ export function createArtboardPanel(
   /** A select change carries no dimensions, so it re-commits the pair's
       last accepted values. */
   function submitFromSelects(): void {
-    submitArtboard(Number(size.first.value), Number(size.second.value));
+    submitArtboard(artboardWidth, artboardHeight);
   }
 
   const render = (
@@ -165,6 +176,8 @@ export function createArtboardPanel(
     current = artboard;
     currentMetadata = metadata;
     size.setValues(artboard.width, artboard.height);
+    artboardWidth = artboard.width;
+    artboardHeight = artboard.height;
     fit.select.value = artboard.fitMode ?? "contain";
     background.select.value = paletteReference(artboard.background);
     bars.select.value = paletteReference(artboard.barColor);

@@ -291,7 +291,65 @@ async function dragToLine(
   return { left, raw: startLeft + travelled };
 }
 
+/** The inspector's two geometry pairs, measured from the built bundle. jsdom
+ * cannot lay out, so a wrapped pair and a same-line pair return the identical
+ * row element there; only a browser can tell the two apart.
+ *
+ * The Position pair is the reference: it fits this column at every width the
+ * editor uses, so a Size row taller than it has wrapped. Comparing the two rows
+ * rather than a literal height keeps the check honest if the row's own metrics
+ * ever change. */
+async function geometryPairBoxes(page: Page): Promise<{
+  sizeRowHeight: number;
+  positionRowHeight: number;
+  widthTop: number;
+  heightTop: number;
+}> {
+  return page.evaluate(() => {
+    const input = (key: string): HTMLInputElement => {
+      const field = document.querySelector<HTMLInputElement>(
+        `[data-vigilia-geometry="${key}"]`,
+      );
+      if (field === null) throw new Error(`no ${key} geometry field`);
+      return field;
+    };
+    const rowOf = (element: Element): HTMLElement => {
+      const row = element.closest(".vigilia-field-row");
+      if (row === null) throw new Error("a geometry input has no field row");
+      return row as HTMLElement;
+    };
+    const width = input("width");
+    const height = input("height");
+    return {
+      sizeRowHeight: rowOf(width).getBoundingClientRect().height,
+      positionRowHeight: rowOf(input("left")).getBoundingClientRect().height,
+      widthTop: width.getBoundingClientRect().top,
+      heightTop: height.getBoundingClientRect().top,
+    };
+  });
+}
+
 test.describe("Fabric editor route", () => {
+  test("shows the inspector's Size pair on one line", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    // Selecting through the layer row, not a canvas click: the stage
+    // letterboxes the artboard, so a scene coordinate is not a stable page one.
+    await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
+
+    // "One line" is the two inputs sharing a top, not a row-height threshold:
+    // a row that wrapped and a row that did not both satisfy a loose height.
+    const boxes = await geometryPairBoxes(page);
+    expect(Math.round(boxes.widthTop)).toBe(Math.round(boxes.heightTop));
+    // ...and the wrap shows up as height, so the Size row must be no taller
+    // than the Position row that already fits.
+    expect(boxes.sizeRowHeight).toBeLessThanOrEqual(boxes.positionRowHeight);
+  });
+
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
   }, testInfo) => {

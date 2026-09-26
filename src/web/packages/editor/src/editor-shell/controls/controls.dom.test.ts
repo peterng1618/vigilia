@@ -70,37 +70,43 @@ describe("number field", () => {
 });
 
 describe("linked pair", () => {
-  it("emits a commit carrying both values for a linked pair", () => {
-    const onCommit = vi.fn();
+  it("commits each half to its own handler, never the sibling's", () => {
+    const first = vi.fn();
+    const second = vi.fn();
     const pair = linkedPair({
       rowLabel: "Size",
       first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
       second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
       min: 1,
       max: 4096,
-      onCommit,
+      onCommitFirst: first,
+      onCommitSecond: second,
     });
     document.body.append(pair.row);
 
     pair.first.value = "10";
     pair.first.dispatchEvent(new Event("change"));
-    // The pair commits both current values, so the untouched field still reads
-    // 200.
-    expect(onCommit).toHaveBeenLastCalledWith(10, 200);
+    expect(first).toHaveBeenLastCalledWith(10);
+    // The sibling is not the editor of this edit, so it hears nothing.
+    expect(second).not.toHaveBeenCalled();
+
     pair.second.value = "20";
     pair.second.dispatchEvent(new Event("change"));
-    expect(onCommit).toHaveBeenLastCalledWith(10, 20);
+    expect(second).toHaveBeenLastCalledWith(20);
+    expect(first).toHaveBeenCalledTimes(1);
   });
 
   it("restores only the rejected field and leaves its sibling alone", () => {
-    const onCommit = vi.fn();
+    const first = vi.fn();
+    const second = vi.fn();
     const pair = linkedPair({
       rowLabel: "Size",
       first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
       second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
       min: 1,
       max: 4096,
-      onCommit,
+      onCommitFirst: first,
+      onCommitSecond: second,
     });
     document.body.append(pair.row);
 
@@ -109,7 +115,8 @@ describe("linked pair", () => {
     pair.second.value = "0";
     pair.second.dispatchEvent(new Event("change"));
 
-    expect(onCommit).toHaveBeenLastCalledWith(10, 200);
+    expect(first).toHaveBeenLastCalledWith(10);
+    expect(second).not.toHaveBeenCalled();
     expect(pair.first.value).toBe("10");
     expect(pair.second.value).toBe("200");
 
@@ -118,6 +125,7 @@ describe("linked pair", () => {
     pair.setValues(640, 480);
     expect(pair.first.value).toBe("640");
     expect(pair.second.value).toBe("480");
-    expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).not.toHaveBeenCalled();
   });
 });
