@@ -1,5 +1,8 @@
 # Author Journey — style what you selected
 
+- **Status:** in progress — Tasks 1–5 landed; Task 6 (integration proof) open.
+- **Plan:** [`2026-09-24-author-journey.md`](../plans/2026-09-24-author-journey.md)
+
 ## Why
 
 This continues `2026-09-24-authoring-and-consumer-polish.md`, which recorded four

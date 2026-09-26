@@ -1,5 +1,8 @@
 # Settings scope — global and theme-specific
 
+- **Status:** implemented — Tasks 1–4 landed; Task 5's gate and this spec's acceptance annotation open.
+- **Plan:** [`2026-09-24-settings-scope.md`](../plans/2026-09-24-settings-scope.md)
+
 ## Why
 
 Settings were being treated as one list attached to the active theme. They are

@@ -1,5 +1,8 @@
 # Theme Thumbnails
 
+- **Status:** queued — no task fully landed; each is short one clause. Recon in `.superpowers/sdd/2026-09-24-theme-thumbnails/recon.md`.
+- **Plan:** [`2026-09-24-theme-thumbnails.md`](../plans/2026-09-24-theme-thumbnails.md)
+
 ## Why
 
 The theme library lists themes as text. A consumer choosing between "Unanswerable

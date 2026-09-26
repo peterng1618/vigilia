@@ -1,5 +1,8 @@
 # Editor Shell Modernization Design
 
+- **Status:** implemented — a design doc, not a spec; its product shipped through the
+  UI-polish and viewport plans, and no plan pairs with it.
+
 ## Goal
 
 Replace the editor's vertical panel stack with a responsive authoring shell

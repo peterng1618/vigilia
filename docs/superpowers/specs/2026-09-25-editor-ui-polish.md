@@ -1,5 +1,8 @@
 # Editor UI Polish — a Figma-grade control surface
 
+- **Status:** implemented — plan archived; one acceptance item carried to the snapping plan's Task 9.
+- **Requirement:** §172, §173
+
 ## Why
 
 `2026-09-24-author-journey.md` took the bar to "an author can fully make and edit

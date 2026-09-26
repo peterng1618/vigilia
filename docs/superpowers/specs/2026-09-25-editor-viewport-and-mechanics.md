@@ -1,5 +1,8 @@
 # Editor Viewport & Mechanics — navigating the canvas
 
+- **Status:** implemented — plan archived on its full Task 11 gate.
+- **Requirement:** §174
+
 ## Why
 
 An authoring tool is a camera plus a document. Vigilia's editor has the document

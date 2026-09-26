@@ -1,5 +1,8 @@
 # Consumer Journey — pick, configure, forget
 
+- **Status:** queued — Tasks 1–4 landed, Task 4 deliberately reverted by settings-scope; Tasks 5–6 open.
+- **Plan:** [`2026-09-24-consumer-journey.md`](../plans/2026-09-24-consumer-journey.md)
+
 ## Why
 
 The author and consumer journeys were conflated. The evidence, from driving the

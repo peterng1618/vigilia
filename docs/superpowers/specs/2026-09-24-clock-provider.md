@@ -1,5 +1,8 @@
 # Clock and date as sensors
 
+- **Status:** implemented — landed without a paired plan; no plan file exists for it.
+- **Requirement:** the clock half of the author journey
+
 ## Why
 
 A dashboard without a clock is not a dashboard. Today the starter theme's clock
