@@ -148,13 +148,13 @@ export type { SampleSource } from "./data/source.js";
 export { emptySampleSource } from "./data/source.js";
 export type { SampleStoreOptions } from "./data/store.js";
 export { defaultSampleStoreOptions, SampleStore } from "./data/store.js";
+export { formatInstant } from "./scene/datetime/format.js";
 export {
-  formatInstant,
   instantIn,
   isTimeZoneName,
   knownTimeZones,
   parseInstant,
-} from "./scene/datetime-format.js";
+} from "./scene/datetime/instant.js";
 export {
   GENERIC_FAMILIES,
   isGenericFamily,

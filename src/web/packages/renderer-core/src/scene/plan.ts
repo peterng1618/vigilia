@@ -24,7 +24,7 @@ import type {
   TypePreset,
 } from "../theme/document.js";
 import type { Sample, SensorStatus } from "../types.js";
-import { formatInstant } from "./datetime-format.js";
+import { formatInstant } from "./datetime/format.js";
 import {
   convertForDisplay,
   DEFAULT_MEASUREMENT_SYSTEM,

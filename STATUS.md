@@ -13,9 +13,10 @@ in rather than in two English tables.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md` —
-  9 tasks, none started. A theme declares its language once in `metadata.locale`,
-  required on v2, and the clock spells its names from `Intl` in it.
-- **Next up:** Task 1 (split `datetime-format.ts`). Nothing is in flight.
+  9 tasks. A theme declares its language once in `metadata.locale`, required on v2,
+  and the clock spells its names from `Intl` in it.
+- **Next up:** Task 2 (locale-resolved names in `scene/datetime/names.ts`). Nothing
+  is in flight.
 - **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed
   (Task 7's review: 0 Critical, 3 Important, 4 Minor, all actionable findings
   re-reviewed as addressed); Tasks 8, 9, 10 remain.
@@ -32,11 +33,11 @@ in rather than in two English tables.
 
 ## Last completed change
 
-- Committed the clock/locale implementation plan (9 TDD tasks) and promoted it to
-  the active plan; snapping-fidelity moved to the queued plan slot.
-- Every name, label and day period the plan asserts was probed against `Intl`
-  before being written, and five sketches that would not have compiled or would
-  have passed vacuously were rewritten against the files' real helpers.
+- Split `scene/datetime-format.ts` into `scene/datetime/instant.ts`,
+  `scene/datetime/format.ts` and a placeholder `scene/datetime/names.ts`,
+  move-only with the test moved to `scene/datetime/format.test.ts`.
+- Updated the barrel and the three importers; no reference to the old path
+  remains in `packages/`.
 
 ## Next
 

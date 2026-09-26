@@ -1,4 +1,4 @@
-import { isTimeZoneName } from "../scene/datetime-format.js";
+import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isKnownStyleProperty } from "./capabilities.js";
 import {
   ASSET_PATH_PATTERN,

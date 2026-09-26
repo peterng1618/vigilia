@@ -1,4 +1,4 @@
-import { isTimeZoneName } from "../scene/datetime-format.js";
+import { isTimeZoneName } from "../scene/datetime/instant.js";
 import {
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { formatInstant } from "./format.js";
 import {
-  formatInstant,
   instantIn,
   isTimeZoneName,
   knownTimeZones,
   parseInstant,
-} from "./datetime-format.js";
+} from "./instant.js";
 
 /** A Thursday: 2026-09-24, 14:07:09 at +07:00. */
 const INSTANT = "2026-09-24T14:07:09+07:00";
