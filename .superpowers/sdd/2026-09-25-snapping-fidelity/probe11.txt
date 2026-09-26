@@ -1,7 +1,0 @@
-T1a as-written (locked,gate active) -> 98  [Step2 says FAIL: 98 vs 100]
-T1b simulated-relaxed -> 100  [Step4 expects PASS at 100]
-T2 as-written plate selectable:false -> 158
-T2 plate admitted (relaxed, no IGNORED_IDS) -> 160.5
-T3 step 200 -> 200
-T3 step 208 -> 208
-T3 step 215 -> 215

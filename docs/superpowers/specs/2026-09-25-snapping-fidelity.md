@@ -1,6 +1,6 @@
 # Snapping and guide fidelity
 
-- **Status:** active. Plan: [`2026-09-25-snapping-fidelity.md`](../plans/2026-09-25-snapping-fidelity.md).
+- **Status:** implemented. Plan: [`2026-09-25-snapping-fidelity.md`](../plans/archive/2026-09-25-snapping-fidelity.md).
 - **Requirement:** §175 (ported behaviour keeps its source's quality), §64
 - **Source of truth:** the retired fork at pinned commit `9efdd78a`
   (`D:\git-repos\fabricjs-image-editor`, branch `codex/fabric-es`), read-only.
@@ -140,16 +140,18 @@ Do not leave it unstated — that is how the P0 defects above survived.
 1. Resize snapping: port the scaling subsystem, or build a narrower native one
    and accept a documented fidelity difference? — **Ported.** Tasks 4–8.
 2. Candidate filter: which `IGNORED_IDS` entries, and is `selectable` retained
-   for any object class? — **`selectable` dropped; `IGNORED_IDS = ["scene"]`.**
-   Task 1.
+   for any object class? — **`selectable` dropped; `IGNORED_IDS = ["background"]`**,
+   the plate's real id. Task 1.
 3. Fallback path: port, replace or drop. — **Drop.** All four of the fork's
    fallback modules (`line-snapping`, `anchor-buckets`, `pixel-grid`,
-   `snap-target-resolver`) are absent from Vigilia and nothing references them;
-   the fork's fallback entry point `_applyMovementGuideSnap` runs only when its
-   candidate path yields nothing, and Vigilia's broader candidate filter
+   `snap-target-resolver`) are absent from Vigilia and nothing references them.
+   In the fork the legacy path is reached from `_applyObjectMovementSnap` when
+   the migrated controller declines, and Vigilia's broader candidate filter
    declines fewer objects, so the gap that justified the second engine is
-   narrower here. Its only ported consumer, `scaling/scaling-step-snap-guards.ts`,
-   was unreachable and is deleted.
+   narrower here. The fallback was also the only consumer of the ported guard
+   family — `pixel-grid.ts` imported `scaling-step-snap-guards`, not the other
+   way round — so with the fallback absent, `scaling/scaling-step-snap-guards.ts`
+   and `scaling/scaling-snap-guard.ts` were unreachable and are deleted.
 
 ## Verification
 

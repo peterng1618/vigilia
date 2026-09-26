@@ -229,10 +229,13 @@ that was actually observed; "rendered" means measured in the built bundle in a r
   `npm run typecheck` exit 0 with 0 errors; `npm run build` exit 0; `npm run size` PASS
   (JS 283.9 KB / 400 KB); full browser suite **116 passed, 57 skipped, 0 failed**. One
   `display-fabric.spec.ts` case ("is byte-stable at a fixed clock on one platform") fails
-  intermittently under parallel load in an untouched file and package; it was reproduced
-  with the change stashed and passes alone, so it is classified pre-existing on a
-  differential proof rather than a base-commit run. If it recurs, run it at a base
-  sha before recording it as pre-existing again.
+  intermittently under parallel load in an untouched file and package. The rule that
+  follows was applied when it recurred: **run it at a base sha before recording it as
+  pre-existing again.** Re-measured 2026-09-27 against the snapping plan's base
+  `a0a44ff`, it failed once under full-suite parallel load on the byte comparison, then
+  passed on the immediate re-run, in isolation at HEAD, and in isolation at the base
+  sha. A base-sha *isolated* run cannot reproduce a parallel-load flake, so it is now
+  recorded as **load-induced and not proven pre-existing** — see `STATUS.md`.
 
 **No acceptance item is carried.** The layer panel's bottom action row is now covered in a
 browser, closing the last open item.

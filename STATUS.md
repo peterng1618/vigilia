@@ -10,9 +10,12 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Active work
 
-- **Completed plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  all eleven tasks landed; gate run and documentation closed 2026-09-27.
-- **Next plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md) — review pending.
+- **Completed plan:** `docs/superpowers/plans/archive/2026-09-25-snapping-fidelity.md` —
+  all eleven tasks landed; gate run, documentation close-out and final whole-plan
+  review all closed 2026-09-27. The plan is archived.
+- **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
+  — activated 2026-09-27, subagent-driven. Only Task 1 (the glass feasibility probe)
+  is open; its findings must be reviewed before Tasks 2–12.
 - **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
   whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
@@ -24,9 +27,10 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 ## Last completed change
 
 - Closed the snapping fidelity plan. The fork's legacy fallback engine is
-  **dropped**; its only ported consumer — `scaling-step-snap-guards.ts` and
-  `scaling-snap-guard.ts`, 1,394 lines between them with zero importers — is
-  deleted, taking the equally unreachable `getObjectBounds` with it.
+  **dropped**; the guard family it alone consumed —
+  `scaling-step-snap-guards.ts` and `scaling-snap-guard.ts`, 1,394 lines between
+  them with zero importers — is deleted, taking the equally unreachable
+  `getObjectBounds` with it.
 - §64 rewritten: movement, resize and smart-guide snapping are present, with the
   browser matrix named as the evidence. §175 gained its design link.
   "Resize-time snapping" moved out of the behaviour review's candidates.

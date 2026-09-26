@@ -26,7 +26,7 @@ of scope, including counter acquisition, accounting, persistence and related UI.
 Processes, music and to-do panels are excluded.
 
 This is the next queued milestone after
-[snapping fidelity](../plans/2026-09-25-snapping-fidelity.md), not a second active
+[snapping fidelity](../plans/archive/2026-09-25-snapping-fidelity.md), not a second active
 plan. Finish and verify snapping before activating this work. The user's request
 approved this spec for planning; plan review and glass feasibility still precede
 product implementation. Remaining queued work

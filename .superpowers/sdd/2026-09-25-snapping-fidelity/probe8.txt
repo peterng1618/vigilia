@@ -1,7 +1,0 @@
-A(plan test1, locked+selectable:false) left=98
-B(existing test geom) left=100
-C(locked:true only) left=98 selectable=true
-D(selectable:false only) left=98
-E(plate=true) left=179.5
-E(plate=false) left=179.5
-F(plate selectable, id scene) left=179.5

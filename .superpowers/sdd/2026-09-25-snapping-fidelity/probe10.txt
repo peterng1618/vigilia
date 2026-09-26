@@ -1,8 +1,0 @@
-test3 hidden-neighbour -> 98 (asserts 98)
-plate none (artboard only) -> 179.5
-plate A artboard-identical 0,0,400,300 -> 179.5
-plate B 0,0,360,280 (centreX 180) -> 179.5
-plate C 0,0,240,300 (centreX 120) -> 179.5
-plate D 12,9,376,282 (inset) -> 179.5
-plate E 0,0,200,300 (centreX 100) -> 179.5
-task3 test2: after step200 -> 200; after step250 -> 249.5 (asserts 250)

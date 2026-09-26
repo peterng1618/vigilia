@@ -11,7 +11,7 @@ ledger stays the record of what happened inside it.
 
 | # | Plan | Real state | Notes |
 |---|---|---|---|
-| 1 | `2026-09-25-snapping-fidelity.md` | **Complete** (2026-09-27), archive move pending its final review. | Tasks 1–11 landed; Task 10 closed the gate and the documentation. Gate: `format:check`, `lint`, `typecheck`, 136/136 unit files, `build`, `size`; browser suite 155 passed / 96 skipped / 0 failed. The unreachable scale step-guard family (1,394 lines) deleted in `e248cae`; close-out in `d9ead29`. |
+| 1 | `2026-09-25-snapping-fidelity.md` | **Closed and archived** (2026-09-27). | Tasks 1–11 landed; Task 10 closed the gate and the documentation. Gate: `format:check`, `lint`, `typecheck`, 136/136 unit files, `build`, `size`; browser suite 155 passed / 96 skipped / 0 failed. The unreachable scale step-guard family (1,394 lines) deleted in `e248cae`; close-out in `d9ead29`. |
 | 2 | `2026-09-25-editor-ui-polish.md` | **Closed and archived.** Tasks 1–10 landed (`5b9b386`), fix round 1 `2929f87`, fix round 2 `7ae88e4`, plan reconciled `58d3cf9`, archive move + spec annotation `9800496` / `35918f3`. | Re-review 2: both findings ADDRESSED, no new breakage; it reproduced round 1's 66px/two-top signature by restoring pre-fix labels in the live DOM of the same bundle. Rendered measurement: Size row 239.2 × 30px, input tops equal. Full browser suite 116 passed / 57 skipped / 0 failed. The one acceptance item it carried — browser coverage for the layer panel's bottom action row — is now met by `snapping.spec.ts`. |
 | 3 | `2026-09-24-author-journey.md` | Tasks 1–5 landed. | Open: Task 6 (integration proof) only. |
 | 4 | `2026-09-24-authoring-and-consumer-polish.md` | Tasks 1, 3, 4(partial), 5 landed. | Open: Task 4's tab reset (see below), Task 6 proof. Task 2 largely superseded by author-journey's landed Task 2. |
@@ -267,3 +267,34 @@ skipped — and confirmed the layout by rendered measurement of the built bundle
 ledger previously recorded as owed are both discharged: the browser suite by fix round 2's run, and the
 rendered inspection by its measured row geometry. What remains is the re-review's verdict, then the three
 archive moves. Recorded so the close-out is not re-opened for work already done.
+
+## Final review — snapping fidelity (returned 2026-09-27)
+
+Read-only over `a0a44ff..d9ead29` plus the close-out claims. One Important, five Minor,
+four declined. **Important fixed:** the spec's Key decision 2 recorded
+`IGNORED_IDS = ["scene"]` — the pre-landing draft the plan's own audit had corrected — while
+the code holds `["background"]` and the spec's own body says `["scene"]` excludes nothing.
+Anyone reading the decision record would have concluded the artboard-plate exclusion was
+inert, and "fixed" it by restoring the `selectable` gate Task 1 removed.
+
+Also corrected in the same pass, all accuracy defects in text this close-out wrote: the
+fallback entry point is `_applyObjectMovementSnap` (`_applyMovementGuideSnap` is a leaf in
+it); the guard family was consumed **by** `pixel-grid.ts`, not the reverse, in both the
+spec and STATUS.md; `ui-polish`'s acceptance now carries the re-measured 2026-09-27 result
+rather than the older "pre-existing on a differential proof" wording it contradicted; the
+snapping spec's status line reads `implemented` with an archive-relative plan link.
+
+**Deferred minors, reported not fixed:**
+
+- `isStandardRectangularScaleControl` in `standard-scale-control.ts` is exported with zero
+  importers — the fork's "refuse a custom control" guard is absent. Inert today, because
+  `controls-manager` overrides only render, sizes, offsets and cursor, and the guard
+  compares the five behaviour handlers. This is the class Task 10 Step 3 chartered the
+  close-out to dispose of; wiring it in is the fix, deleting it is the alternative.
+- The promoted entry in the behaviour review points at §175 where its siblings point at the
+  requirement the item became (§64 is where resize snapping is recorded as present). Shape
+  consistency only.
+
+**Declined by the reviewer, not defects:** Review Focus item 4's visible half has a jsdom
+case but no browser assertion (what the plan assigned); the by-hand walkthrough is not
+reproducible from the tree; the gate numbers were taken as given.
