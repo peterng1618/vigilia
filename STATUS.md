@@ -11,7 +11,7 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–7 landed and closed; Task 8 is in flight, then Tasks 9–10.
+  Tasks 1–8 landed and closed; Tasks 9–10 remain.
 - **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
   whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
@@ -22,18 +22,15 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Last completed change
 
-- Added the theme locale from persistence through renderer, editor, player and
-  localized datetime names.
-- Repaired runtime Fabric text reflow so localized bound text preserves authored
-  alignment, ellipsis and clipping after measurement.
-- Fresh focused, unit, typecheck, format, lint and status checks passed before
-  snapping resumed.
+- Added Ctrl resize escape and Shift-constrained resize regression coverage.
+- Added real desktop Ctrl-resize/Ctrl-drag proof: fractional raw geometry and no
+  guide; ordinary resize remains snapped with guide evidence.
+- Task review and scoped re-review closed without open Critical/Important findings.
 
 ## Next
 
-1. Close Task 8 after its implementer, review and browser proof.
-2. Complete snapping Tasks 9–10, including behavior matrix and full gates.
-3. Then queue author-journey Task 6; authoring-and-consumer-polish Task 4;
+1. Complete snapping Tasks 9–10, including behavior matrix and full gates.
+2. Then queue author-journey Task 6; authoring-and-consumer-polish Task 4;
    settings-scope; consumer-journey Tasks 5+6; theme-thumbnails;
    authoring-time-run-placeholders.
 
