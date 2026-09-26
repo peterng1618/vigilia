@@ -2,9 +2,9 @@
 
 ## Change
 
-`refreshBoundText` now reapplies authored text alignment, ellipsis, edge placement, and clip-path geometry after runtime text measurement changes. `buildText` and `updateText` retain non-persisted runtime `PlanBox`, `PlanTextLayout`, and style state on each Fabric text object. Revived objects derive fallback box/layout from existing clip data and authored text metadata. Runtime layout state is not added to `SCENE_PERSISTED_PROPERTIES`, so locale/runtime text remains transient.
+`refreshBoundText` now reapplies authored text alignment, ellipsis, edge placement, and clip-path geometry after runtime text measurement changes. `buildText` and `updateText` retain non-persisted runtime `PlanBox`, `PlanTextLayout`, and style state on each Fabric text object. Revived objects derive fallback box/layout from authored Fabric geometry and text metadata, including visible text with no clip path. Runtime layout state is not added to `SCENE_PERSISTED_PROPERTIES`, so locale/runtime text remains transient. Fallback style derives Fabric font properties instead of using an empty style.
 
-Regression coverage in `src/web/packages/scene-fabric/src/persist.dom.test.ts` proves a bound value that grows from a short placeholder is ellipsised and clip width remains authored.
+Regression coverage in `src/web/packages/scene-fabric/src/persist.dom.test.ts` proves a bound value that grows from a short placeholder is ellipsised and clip width remains authored, plus a serialized/revived visible right/bottom-aligned value preserves its authored edge after refresh.
 
 ## TDD RED/GREEN
 
@@ -17,7 +17,7 @@ Temporarily removed `refreshLayout(object, segments, authored)` call. Focused te
 
 ## Verification
 
-- `npm test -- packages/scene-fabric/src/persist.dom.test.ts` — 32 passed.
+- `npm test -- packages/scene-fabric/src/persist.dom.test.ts` — 33 passed.
 - `npm run typecheck` — all seven workspaces passed.
 - `npm run format:check` — 347 files checked, no fixes.
 - `npm run lint` — 347 files checked, no findings.
@@ -26,7 +26,7 @@ Temporarily removed `refreshLayout(object, segments, authored)` call. Focused te
 
 ## Commit
 
-Pending commit at report creation.
+`16abd83` initial runtime layout fix; follow-up commit updates revived visible alignment, fallback style, and regression coverage.
 
 ## Concerns
 

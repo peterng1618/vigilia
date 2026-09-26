@@ -455,6 +455,47 @@ describe("identity survives a round trip", () => {
     expect((text.clipPath as Rect).width).toBe(40);
   });
 
+  it("repositions a revived visible value at its authored edge", async () => {
+    const text = new FabricText("--", {
+      fontSize: 20,
+      textAlign: "right",
+      left: 100,
+      top: 100,
+    });
+    text.set("id", "readout");
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "value", bindingId: "load" }],
+      overflow: "visible",
+      align: "right",
+      verticalAlign: "bottom",
+    });
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, serialiseScene(canvasOf(text)));
+    const restored = revived.getObjects()[0] as FabricText;
+    const right = restored.left + (restored.width * restored.scaleX) / 2;
+    const bottom = restored.top + (restored.height * restored.scaleY) / 2;
+
+    refreshBoundText(
+      revived,
+      { readout: [{ id: "load", semanticKey: "cpu.load" }] },
+      {
+        latest: () => sample(123456789),
+        history: () => [],
+      },
+      undefined,
+    );
+
+    expect(restored.left + (restored.width * restored.scaleX) / 2).toBeCloseTo(
+      right,
+      6,
+    );
+    expect(restored.top + (restored.height * restored.scaleY) / 2).toBeCloseTo(
+      bottom,
+      6,
+    );
+  });
+
   it("paints a hosted reading in the consumer's units, not the author's", () => {
     const text = new FabricText("--");
     text.set("id", "readout");

@@ -47,7 +47,7 @@ type RuntimeTextLayout = Readonly<{
 function runtimeLayout(
   object: PlanTextObject,
   authored: TextContent,
-): RuntimeTextLayout | undefined {
+): RuntimeTextLayout {
   const saved = object.get(VIGILIA_TEXT_LAYOUT_PROPERTY) as
     | RuntimeTextLayout
     | undefined;
@@ -55,33 +55,66 @@ function runtimeLayout(
     return saved;
   }
 
-  const clip = object.clipPath;
-  if (!(clip instanceof Rect)) {
-    return undefined;
-  }
-
   const scaleX = object.scaleX === 0 ? 1 : object.scaleX;
   const scaleY = object.scaleY === 0 ? 1 : object.scaleY;
-  const width = clip.width * scaleX;
-  const height = clip.height * scaleY;
+  const clip = object.clipPath;
+  const layout = {
+    wrap: authored.wrap ?? object instanceof Textbox,
+    overflow: authored.overflow ?? "clip",
+    align: authored.align ?? "left",
+    verticalAlign: authored.verticalAlign ?? "top",
+  } satisfies PlanTextLayout;
+
+  if (clip instanceof Rect) {
+    const width = clip.width * scaleX;
+    const height = clip.height * scaleY;
+
+    return {
+      box: {
+        x: object.left + clip.left * scaleX - width / 2,
+        y: object.top + clip.top * scaleY - height / 2,
+        width,
+        height,
+        rotation: object.angle,
+        scaleX: object.scaleX,
+        scaleY: object.scaleY,
+      },
+      layout,
+      style: styleFor(object),
+    };
+  }
+
+  // Visible text has no clip carrying its authored box. Its old measured edge
+  // is enough to reconstruct alignment before runtime text changes its width.
+  const width = object.width * scaleX;
+  const height = object.height * scaleY;
+  const left = object.left - width / 2;
+  const top = object.top - height / 2;
+  const x = left;
+  const y = top;
 
   return {
     box: {
-      x: object.left + clip.left * scaleX - width / 2,
-      y: object.top + clip.top * scaleY - height / 2,
+      x,
+      y,
       width,
       height,
       rotation: object.angle,
       scaleX: object.scaleX,
       scaleY: object.scaleY,
     },
-    layout: {
-      wrap: authored.wrap ?? object instanceof Textbox,
-      overflow: authored.overflow ?? "clip",
-      align: authored.align ?? "left",
-      verticalAlign: authored.verticalAlign ?? "top",
-    },
-    style: {},
+    layout,
+    style: styleFor(object),
+  };
+}
+
+function styleFor(object: PlanTextObject): PlanNode["style"] {
+  return {
+    color: object.fill,
+    fontFamily: object.fontFamily,
+    fontSize: object.fontSize,
+    fontWeight: object.fontWeight,
+    lineHeight: object.lineHeight,
   };
 }
 
@@ -262,6 +295,7 @@ export function refreshBoundText(
             globals ?? {},
             [],
           );
+          const layoutState = runtimeLayout(object, authored);
           const shape = textShapeFor(segments, {}, (value) =>
             object.graphemeSplit(value),
           );
@@ -273,7 +307,7 @@ export function refreshBoundText(
               : { textAlign: authored.align }),
           });
           object.initDimensions();
-          refreshLayout(object, segments, authored);
+          refreshLayout(object, segments, layoutState);
         }
       }
       if (object instanceof Group) refresh(object.getObjects());
@@ -288,13 +322,8 @@ export function refreshBoundText(
 function refreshLayout(
   object: PlanTextObject,
   segments: readonly PlanTextSegment[],
-  authored: TextContent,
+  state: RuntimeTextLayout,
 ): void {
-  const state = runtimeLayout(object, authored);
-  if (state === undefined) {
-    return;
-  }
-
   const { box, layout, style } = state;
   if (layout.overflow === "ellipsis" && !fits(object, box, layout)) {
     write(object, ellipsised(object, segments, style, box, layout), style);
