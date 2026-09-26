@@ -1491,6 +1491,16 @@ One test per case, named after the fork's case so the two can be compared. Cover
 
 The resize half needs Task 7, so write it after that task lands.
 
+**Also in this file: the layer panel's bottom action row.** `2026-09-25-editor-ui-polish.md`'s spec
+carries one acceptance item that plan closed without meeting — "Object actions appear in the layer
+panel's bottom row, not per row, and render from the same registry the canvas dock uses" — verified in
+jsdom but never in a browser. It rides here because this is the task that owns `editor.spec.ts` and the
+browser surface. One case: select an object, read the bottom row's action labels, read the canvas
+dock's action labels for the same selection, and assert the two sets are equal. Assert the **entry set**,
+not a hard-coded list — a list duplicated from the registry is a second owner of it and would pass while
+the two surfaces diverged. Record the result in that spec's acceptance section as part of Task 10's
+close-out pass, so the item moves from carried to met or is re-recorded as still open.
+
 - [ ] **Step 3: Run it**
 
 Run: `npx playwright test --project=desktop-chromium tests/e2e/snapping.spec.ts --workers=1`
