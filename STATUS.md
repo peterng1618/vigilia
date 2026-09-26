@@ -5,18 +5,15 @@ Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
 
-Make authoring a theme a *good* experience, not merely a possible one. The author
-journey is reachable; the active work is the theme's own language, so a clock
-reads its month, weekday and day-period names in the language its author wrote it
-in rather than in two English tables.
+Make movement and resize snapping behave predictably: exact geometry, guides that
+match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md` —
-  implemented across all 9 tasks; whole-branch review remains.
-- **Next up:** whole-branch review, then the v1-removal spec recorded below.
-- **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed;
-  Tasks 8, 9, 10 remain.
+- **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
+  Tasks 1–7 landed and closed; Task 8 is in flight, then Tasks 9–10.
+- **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
+  whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents carry
   no metadata, and absent means `en` there.
@@ -25,20 +22,20 @@ in rather than in two English tables.
 
 ## Last completed change
 
-- Wrote and queued the author-first seven-day release spec: blank-canvas creation,
-  persistence/player correctness, trust boundaries and explicit polish deferrals.
-- Defined release usability target: at least four of five fresh authors complete
-  a blank-to-running theme unassisted within 30 minutes.
-- Kept the active implementation plan and existing queue order unchanged;
-  written-spec review remains pending.
+- Added the theme locale from persistence through renderer, editor, player and
+  localized datetime names.
+- Repaired runtime Fabric text reflow so localized bound text preserves authored
+  alignment, ellipsis and clipping after measurement.
+- Fresh focused, unit, typecheck, format, lint and status checks passed before
+  snapping resumed.
 
 ## Next
 
-1. Delete final-fix dispatch record `.superpowers/sdd/2026-09-26-clock-and-theme-locale/dispatch-final-fix.md`.
-2. Finalize ledger: record all fix/review completions.
-3. Then the queue: snapping Tasks 8, 9 and 10; author-journey Task 6;
-   authoring-and-consumer-polish Task 4; settings-scope; consumer-journey Tasks 5+6;
-   theme-thumbnails; authoring-time-run-placeholders.
+1. Close Task 8 after its implementer, review and browser proof.
+2. Complete snapping Tasks 9–10, including behavior matrix and full gates.
+3. Then queue author-journey Task 6; authoring-and-consumer-polish Task 4;
+   settings-scope; consumer-journey Tasks 5+6; theme-thumbnails;
+   authoring-time-run-placeholders.
 
 ## Blockers / unverified
 
