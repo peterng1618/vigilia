@@ -178,6 +178,179 @@ async function worldLeftOf(page: Page, id: string): Promise<number> {
   }, id);
 }
 
+/** A named object's world-space bounding rect, read from the object itself so a
+ * fixture tweak cannot leave a test clicking at a stale point. */
+async function objectRect(page: Page, id: string): Promise<ArtboardRect> {
+  return page.evaluate((objectId) => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getObjects(): Array<{
+                id?: string;
+                getBoundingRect(): ArtboardRect;
+              }>;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const object = bridge.editor.canvas
+      .getObjects()
+      .find((candidate) => candidate.id === objectId);
+    if (object === undefined) throw new Error(`no object with id ${objectId}`);
+    return object.getBoundingRect();
+  }, id);
+}
+
+/** A named object's world-space right edge, the snap line a neighbour offers. */
+async function worldRightOf(page: Page, id: string): Promise<number> {
+  const rect = await objectRect(page, id);
+  return rect.left + rect.width;
+}
+
+/** The scene point of a named object's resize handle, read from the object's own
+ * corner coordinates: Fabric draws and hit-tests `ml`/`mr` at the midpoint of the
+ * two corners on that side. Reading it here rather than restating fixture numbers
+ * keeps the grab on the handle after any fixture tweak, and the corner
+ * coordinates already carry the object's stroke and scale. */
+async function handleScenePoint(
+  page: Page,
+  id: string,
+  key: "ml" | "mr" | "mt" | "mb",
+): Promise<{ x: number; y: number }> {
+  return page.evaluate(
+    ([objectId, controlKey]) => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getObjects(): Array<{
+                  id?: string;
+                  getCoords(): Array<{ x: number; y: number }>;
+                }>;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      const object = bridge.editor.canvas
+        .getObjects()
+        .find((candidate) => candidate.id === objectId);
+      if (object === undefined)
+        throw new Error(`no object with id ${objectId}`);
+      const [topLeft, topRight, bottomRight, bottomLeft] = object.getCoords();
+      if (!topLeft || !topRight || !bottomRight || !bottomLeft)
+        throw new Error(`${objectId} has no corner coordinates`);
+      const midpoint = (
+        first: { x: number; y: number },
+        second: { x: number; y: number },
+      ) => ({ x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 });
+      if (controlKey === "ml") return midpoint(topLeft, bottomLeft);
+      if (controlKey === "mr") return midpoint(topRight, bottomRight);
+      if (controlKey === "mt") return midpoint(topLeft, topRight);
+      return midpoint(bottomLeft, bottomRight);
+    },
+    [id, key],
+  );
+}
+
+/** Drags a named object's `mr` handle so its raw right edge would land at
+ * `toSceneX`, and reports the right edge the resize actually left. The handle is
+ * read from the object's own corners, so a quantised client mapping cannot put
+ * the grab off the handle. */
+async function resizeRightHandleTo(
+  page: Page,
+  id: string,
+  toSceneX: number,
+  testInfo: TestInfo | undefined,
+): Promise<{ right: number; raw: number }> {
+  const handle = await handleScenePoint(page, id, "mr");
+  const from = await sceneToClient(page, 1280, handle.x, handle.y);
+  const to = await sceneToClient(page, 1280, toSceneX, handle.y);
+  const travelled = await page.evaluate(
+    ([fx, fy, tx, ty]) => {
+      const c = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getScenePoint(e: { clientX: number; clientY: number }): {
+                  x: number;
+                };
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge.editor.canvas;
+      return (
+        c.getScenePoint({ clientX: tx!, clientY: ty! }).x -
+        c.getScenePoint({ clientX: fx!, clientY: fy! }).x
+      );
+    },
+    [from.x, from.y, to.x, to.y],
+  );
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+
+  if (testInfo) await captureVisualReview(page, testInfo, "editor-snap-resize");
+  await page.mouse.up();
+
+  return { right: await worldRightOf(page, id), raw: handle.x + travelled };
+}
+
+/** The scene x in `[from, to]` furthest from every x-line the other objects and
+ * the artboard offer, with that distance. A resize aimed at this x is clear of
+ * every snap candidate, so "the raw landing survived" is a real no-snap
+ * assertion — a guide drawn there would be a snap with no line to snap to. */
+async function clearSceneX(
+  page: Page,
+  excludeId: string,
+  from: number,
+  to: number,
+): Promise<{ x: number; distance: number }> {
+  return page.evaluate(
+    ([objectId, start, end]: [string, number, number]) => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getObjects(): Array<{
+                  id?: string;
+                  getBoundingRect(): { left: number; width: number };
+                }>;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      // The artboard is a snap source too; every test in this file treats the
+      // fixture artboard as 1280 wide, so its edges and centre belong here.
+      const lines = [0, 640, 1280];
+      for (const object of bridge.editor.canvas.getObjects()) {
+        if (object.id === objectId) continue;
+        const rect = object.getBoundingRect();
+        lines.push(
+          rect.left,
+          rect.left + rect.width / 2,
+          rect.left + rect.width,
+        );
+      }
+      let best = { x: start, distance: -1 };
+      for (let x = start; x <= end; x += 0.5) {
+        const distance = Math.min(...lines.map((line) => Math.abs(line - x)));
+        if (distance > best.distance) best = { x, distance };
+      }
+      return best;
+    },
+    [excludeId, from, to] as [string, number, number],
+  );
+}
+
 /** Gives the active selection a non-unit scale, which is what the eligibility
  * guard refuses when a `Textbox` child is present. The product cannot reach this
  * state — only a scale gesture leaves one, and that deselects first — so the
@@ -2252,6 +2425,72 @@ test.describe("Fabric editor route", () => {
 
     await captureVisualReview(page, testInfo, "editor-snap-guides");
     await page.mouse.up();
+  });
+
+  test("snaps a resized object to a neighbour and shows a guide", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    // Select the resource card by clicking its top strip, above every child. A
+    // resize handle is only hit-testable on the active object, so this is not
+    // optional: without it the pointerdown below starts a drag, not a scale.
+    // The pair matters: the resource card's right edge (999) has no other
+    // candidate line within the acquire threshold, so the only line the drag can
+    // reach is the status card's left edge — a nearer neighbour would be acquired
+    // first and held, and the edge would land there instead.
+    const card = await objectRect(page, "resource-card");
+    const select = await sceneToClient(
+      page,
+      1280,
+      card.left + (card.width / 2) * 0.6,
+      card.top + 10,
+    );
+    await page.mouse.click(select.x, select.y);
+    expect((await activeGeometry(page)).members).toBe(1);
+
+    // The no-snap control first: drag the `mr` handle to the scene x furthest
+    // from every candidate line the rest of the scene offers. The edge must stay
+    // where the pointer put it — a snap here would be a guide with no line to
+    // snap to, which is exactly the mistake Review Focus item 1 names.
+    const clear = await clearSceneX(
+      page,
+      "resource-card",
+      card.left + card.width + 60,
+      1240,
+    );
+    expect(clear.distance).toBeGreaterThan(5);
+    const raw = await resizeRightHandleTo(
+      page,
+      "resource-card",
+      clear.x,
+      undefined,
+    );
+    expect(Math.abs(raw.right - raw.raw)).toBeLessThan(3);
+
+    // Then the snap, from a fresh page: drag the same handle so the raw right
+    // edge lands 2px short of the status card's left edge. That is inside the
+    // threshold, so a live resize path pulls the edge onto the line and a dead
+    // one leaves it 2px short.
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    await page.mouse.click(select.x, select.y);
+
+    const line = (await objectRect(page, "status-card")).left;
+    const snapped = await resizeRightHandleTo(
+      page,
+      "resource-card",
+      line - 2,
+      testInfo,
+    );
+    expect(Math.abs(snapped.right - line)).toBeLessThan(1.5);
   });
 
   test("snaps a two-object selection as a unit", async ({ page }, testInfo) => {

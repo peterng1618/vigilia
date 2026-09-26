@@ -17,6 +17,10 @@ import {
   type FinalMovementGeometry,
 } from "./movement-snapping-resolver.js";
 import { MovementSnappingRuntime } from "./movement-snapping-runtime.js";
+import {
+  createScaleSnappingController,
+  type ScaleSnappingEvent,
+} from "./scaling/scale-snapping-controller.js";
 import { isSupportedActiveSelection } from "./selection-eligibility.js";
 import type { GuideLine } from "./types.js";
 
@@ -62,7 +66,7 @@ function toSnapSource(
  * reuses one marker per native pointer event, so the runtime can tell a repeat
  * of the same event (a target and its selection both moving) from a new step.
  */
-function readMovementMarker({
+export function readMovementMarker({
   event,
 }: {
   event: { readonly e?: unknown } | undefined;
@@ -77,23 +81,65 @@ function readMovementMarker({
   return event ?? {};
 }
 
-/** Ctrl is the documented escape hatch: the unrounded, unsnapped drag. */
-function readMovementModifiers({
+/** Ctrl escapes snapping on both paths; Shift constrains a resize. One reader
+ * for both so the scale path cannot read Shift from a helper that omits it. */
+export function readMovementModifiers({
   event,
 }: {
   event: { readonly e?: unknown } | undefined;
-}): { readonly ctrlKey: boolean } {
+}): { readonly ctrlKey: boolean; readonly shiftKey: boolean } {
   const browserEvent = event?.e;
-  const ctrlKey =
-    typeof browserEvent === "object" && browserEvent !== null
-      ? (browserEvent as { ctrlKey?: unknown }).ctrlKey
-      : undefined;
-  return { ctrlKey: ctrlKey === true };
+  const isBrowserEvent =
+    typeof browserEvent === "object" && browserEvent !== null;
+  return {
+    ctrlKey:
+      isBrowserEvent &&
+      (browserEvent as { ctrlKey?: unknown }).ctrlKey === true,
+    shiftKey:
+      isBrowserEvent &&
+      (browserEvent as { shiftKey?: unknown }).shiftKey === true,
+  };
+}
+
+/**
+ * Snap sources for one gesture: every eligible neighbour, then the artboard as
+ * a domain-boundary line set. Shared by the movement and resize paths so both
+ * see the same candidates.
+ */
+export function collectSnapSources({
+  canvas,
+  bounds,
+  activeObject,
+}: {
+  canvas: Canvas;
+  bounds: () => ObjectBounds;
+  activeObject: FabricObject;
+}): MovementSnapCandidateSource[] {
+  const excluded = collectExcludedObjects({ activeObject });
+  const sources: MovementSnapCandidateSource[] = [];
+  canvas.forEachObject((object, index) => {
+    const source = toSnapSource(object, index, excluded);
+    if (source !== undefined) sources.push(source);
+  });
+  const artboard = bounds();
+  sources.push({
+    id: "artboard",
+    bounds: {
+      ...artboard,
+      centerX: artboard.left + (artboard.right - artboard.left) / 2,
+      centerY: artboard.top + (artboard.bottom - artboard.top) / 2,
+    },
+    edgeCategory: "domain-boundary",
+    useForSpacing: false,
+  });
+
+  return sources;
 }
 
 export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const { canvas, bounds, errors } = options;
   const runtime = new MovementSnappingRuntime();
+  const scaleController = createScaleSnappingController({ canvas, bounds });
 
   let target: FabricObject | undefined;
   /** The dragged object's exact start bounds, cached at gesture start. */
@@ -107,6 +153,8 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
 
   const stopGesture = (): void => {
     if (gestureActive) runtime.finishSession();
+    // Idempotent: returns without a session when the gesture was a resize.
+    scaleController.finishGesture();
     gestureActive = false;
     target = undefined;
     targetStartBounds = undefined;
@@ -116,7 +164,19 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     canvas.requestRenderAll();
   };
 
-  const startGesture = (): void => {
+  // The resize path owns its own session: `mouse:down` never starts it, because
+  // Fabric fires `object:scaling` for a handle grab the movement path never saw.
+  const scaleRunStep = (event: { readonly e?: unknown } | undefined): void => {
+    lastGuides = scaleController.runStep(
+      event as ScaleSnappingEvent | undefined,
+    );
+    if (lastGuides.length > 0) canvas.requestRenderAll();
+  };
+
+  const startGesture = (event: { readonly e?: unknown } | undefined): void => {
+    // Fabric has already built the transform for this pointerdown; the resize
+    // path needs that start geometry, which `object:scaling` no longer carries.
+    scaleController.startGesture(event as ScaleSnappingEvent | undefined);
     const active = canvas.getActiveObject();
     if (active === undefined) return;
     // A composed selection the fork declined must not join a gesture: a scaled
@@ -130,23 +190,10 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     const startBounds = getObjectExactBounds({ object: active });
     if (startBounds === null) return;
 
-    const excluded = collectExcludedObjects({ activeObject: active });
-    const sources: MovementSnapCandidateSource[] = [];
-    canvas.forEachObject((object, index) => {
-      const source = toSnapSource(object, index, excluded);
-      if (source !== undefined) sources.push(source);
-    });
-    // The artboard extent participates as a domain-boundary snap line set.
-    const artboard = bounds();
-    sources.push({
-      id: "artboard",
-      bounds: {
-        ...artboard,
-        centerX: artboard.left + (artboard.right - artboard.left) / 2,
-        centerY: artboard.top + (artboard.bottom - artboard.top) / 2,
-      },
-      edgeCategory: "domain-boundary",
-      useForSpacing: false,
+    const sources = collectSnapSources({
+      canvas,
+      bounds,
+      activeObject: active,
     });
 
     runtime.startSession({
@@ -273,6 +320,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const bindings = [
     ["mouse:down", startGesture],
     ["object:moving", runStep],
+    ["object:scaling", scaleRunStep],
     ["mouse:up", stopGesture],
     ["selection:created", stopGesture],
     ["selection:updated", stopGesture],
@@ -320,7 +368,9 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
       window.removeEventListener("pointercancel", windowCancel);
       window.removeEventListener("touchcancel", windowCancel);
       window.removeEventListener("blur", windowCancel);
-      if (gestureActive) stopGesture();
+      // Always: a resize session is owned by the scale controller, not by
+      // `gestureActive`, and finishGesture is idempotent when none is active.
+      stopGesture();
     },
   };
 }
