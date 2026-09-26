@@ -113,6 +113,8 @@ export interface ApplyAuthoredTextOptions {
     bindings: readonly Binding[],
   ) => readonly PlanTextSegment[];
   readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
+  /** The document's language; absent reads as English. */
+  readonly locale?: string;
 }
 
 export function applyAuthoredText(
@@ -133,7 +135,12 @@ export function applyAuthoredText(
             id,
             authored.runs,
             options.bindings?.[id] ?? [],
-            { source: emptySampleSource },
+            {
+              source: emptySampleSource,
+              ...(options.locale === undefined
+                ? {}
+                : { locale: options.locale }),
+            },
             globals ?? {},
             [],
           );
@@ -178,6 +185,7 @@ export function refreshBoundText(
   source: SampleSource,
   globals: FabricGlobals | undefined,
   measurement?: MeasurementSystem,
+  locale?: string,
 ): void {
   const refresh = (objects: readonly object[]): void => {
     for (const object of objects) {
@@ -193,7 +201,11 @@ export function refreshBoundText(
             id,
             authored.runs,
             bindings[id],
-            measurement === undefined ? { source } : { source, measurement },
+            {
+              source,
+              ...(measurement === undefined ? {} : { measurement }),
+              ...(locale === undefined ? {} : { locale }),
+            },
             globals ?? {},
             [],
           );

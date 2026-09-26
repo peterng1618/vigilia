@@ -279,6 +279,7 @@ async function startHostedTheme(
       liveHandle.source,
       theme.globals,
       measurement,
+      theme.metadata?.locale,
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has

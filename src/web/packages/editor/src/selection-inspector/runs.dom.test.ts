@@ -10,7 +10,7 @@ import { createRunEditor } from "./runs.js";
  * A text object's runs, plus the binding store a run's reading lives in: the
  * envelope owns that, so the test stands in for the session.
  */
-function harness(runs: readonly TextRun[]) {
+function harness(runs: readonly TextRun[], locale?: string) {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
   object.set(VIGILIA_TEXT_PROPERTY, { runs });
@@ -35,6 +35,7 @@ function harness(runs: readonly TextRun[]) {
             bindings = next;
           },
         },
+        locale,
       ).root,
     );
   };
@@ -218,6 +219,36 @@ describe("binding a text run to a sensor", () => {
     choose(box.pick<HTMLSelectElement>('[data-vigilia-run-zone="0"]'), "");
     expect(box.stored()[0]?.timeZone).toBeUndefined();
     return box.dispose();
+  });
+
+  it("previews a format in the document's own language", () => {
+    const editor = harness([{ kind: "value", bindingId: "clock-date" }], "ja");
+    choose(
+      editor.pick<HTMLSelectElement>("[data-vigilia-run-source]"),
+      "date.today",
+    );
+
+    const format = editor.pick<HTMLInputElement>("[data-vigilia-run-format]");
+    format.value = "dddd";
+    format.dispatchEvent(new Event("input"));
+
+    const preview = editor.pick<HTMLElement>(
+      "[data-vigilia-run-format-preview]",
+    ).textContent;
+
+    // The preview must read the language the paint will, or an author chooses a
+    // format against words that never appear on the dashboard. The weekday varies
+    // with the day the suite runs, so the week's shape is asserted rather than a
+    // fixed string: `ja` and `en` for the same instant must differ, which a
+    // preview ignoring the language cannot achieve.
+    expect(preview).toBe(
+      formatInstant(instantIn(Date.now()), "dddd", undefined, "ja"),
+    );
+    expect(preview).not.toBe(
+      formatInstant(instantIn(Date.now()), "dddd", undefined, "en"),
+    );
+
+    return editor.dispose();
   });
 
   it("writes alignment, wrap and overflow into the object's authored text", () => {

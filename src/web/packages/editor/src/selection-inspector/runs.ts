@@ -124,6 +124,7 @@ export function createRunEditor(
   object: ObjectWithText,
   onChange: () => void,
   bindingPort?: RunBindingPort,
+  locale?: string,
 ): RunEditor {
   const root = document.createElement("div");
   root.dataset["vigiliaRuns"] = "";
@@ -324,8 +325,12 @@ export function createRunEditor(
     // so what is shown here is what the run paints.
     const show = (pattern: string): void => {
       preview.textContent =
-        formatInstant(instantIn(Date.now()), pattern, binding.timeZone) ??
-        uiCopy.inspectorFields.unresolved;
+        formatInstant(
+          instantIn(Date.now()),
+          pattern,
+          binding.timeZone,
+          locale,
+        ) ?? uiCopy.inspectorFields.unresolved;
     };
     const pattern = (): string => (input.value === "" ? fallback : input.value);
     show(pattern());

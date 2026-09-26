@@ -216,6 +216,7 @@ export class EditorSession {
         this.#types.root.scrollIntoView({ block: "start" });
       },
     });
+    this.#selection.setLocale(options.envelope.metadata?.locale);
     this.#style = createStylePanel(options.panelHosts.style, {
       editor: options.shell.editor,
       // Pulled, not held: the panel is mounted for the session and read-only, so
@@ -250,6 +251,9 @@ export class EditorSession {
       ...(options.envelope.globals === undefined
         ? {}
         : { globals: options.envelope.globals }),
+      ...(options.envelope.metadata?.locale === undefined
+        ? {}
+        : { locale: options.envelope.metadata.locale }),
     });
     this.#assetPanel = createAssetPanel(
       options.panelHosts.assets,
@@ -620,6 +624,20 @@ export class EditorSession {
     } else {
       this.#envelope = { ...this.#envelope, metadata };
     }
+    // The language is the one metadata field that changes what is painted, and
+    // `metadata` is the only way to set it, so this is the only push site needed
+    // — unlike the globals fan-out above, which four separate setters repeat.
+    this.#pushLocale();
+  }
+
+  #pushLocale(): void {
+    const locale = this.#envelope.metadata?.locale;
+    // Two receivers, not four: the editor paints bound text only through the
+    // live runtime, and the inspector's run preview is the other place a
+    // formatted reading is written. `runs.ts`'s own `applyAuthoredText` calls
+    // pass no bindings, so they resolve no reading and need no language.
+    this.#runtime.setLocale(locale);
+    this.#selection.setLocale(locale);
   }
 
   #refreshBackgroundMedia(shell: EditorShell): void {

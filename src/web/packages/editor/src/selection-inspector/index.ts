@@ -31,8 +31,9 @@ export interface SelectionInspector {
   render(): void;
   /** Theme globals changed, so a displayed resolution may have too. */
   setGlobals(next: FabricGlobals | undefined): void;
+  /** The document's language changed, so a formatted preview may have too. */
+  setLocale(next: string | undefined): void;
 }
-
 /** A geometry field, in whole artboard units. */
 interface GeometryField {
   readonly key: "left" | "top" | "width" | "height" | "angle";
@@ -89,6 +90,8 @@ export function createSelectionInspector(
 ): SelectionInspector {
   const editor = options.editor;
   let globals = options.globals;
+  /** The document's language; a format preview is spelled in it. */
+  let locale: string | undefined;
   const context = (): AppearanceContext => ({ editor, globals });
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "selection";
@@ -339,7 +342,7 @@ export function createSelectionInspector(
           };
 
     root.append(
-      createRunEditor(editor, globals, inspectable, render, port).root,
+      createRunEditor(editor, globals, inspectable, render, port, locale).root,
     );
   };
 
@@ -360,6 +363,10 @@ export function createSelectionInspector(
     render,
     setGlobals(next) {
       globals = next;
+      render();
+    },
+    setLocale(next) {
+      locale = next;
       render();
     },
   };
