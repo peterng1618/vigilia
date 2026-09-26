@@ -64,4 +64,68 @@ describe("theme package", () => {
 
     expect(readThemePackage(bytes)).toMatchObject({ ok: false });
   });
+
+  it("round-trips an authored glass treatment unchanged", () => {
+    const withGlass = {
+      ...envelope,
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Rect",
+            id: "panel",
+            vigiliaGlass: { blurRadius: 18 },
+          },
+        ],
+      },
+    };
+    const written = writeThemePackage({
+      envelope: withGlass,
+      assets: { "assets/logo.png": new Uint8Array([1, 2, 3]) },
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+
+    const read = readThemePackage(written.bytes);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.envelope.scene["objects"]).toEqual([
+      { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 18 } },
+    ]);
+  });
+
+  it("refuses to write or open a package whose glass treatment is out of bounds", () => {
+    // A theme is validated on the way in and on the way out, so a hand-edited
+    // archive cannot smuggle a radius the renderer never agreed to draw.
+    const badGlass = {
+      ...envelope,
+      scene: {
+        version: "7.4.0",
+        objects: [
+          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 900 } },
+        ],
+      },
+    };
+
+    expect(
+      writeThemePackage({
+        envelope: badGlass,
+        assets: { "assets/logo.png": new Uint8Array([1]) },
+      }),
+    ).toMatchObject({ ok: false });
+
+    const bytes = zipSync({
+      "manifest.json": strToU8(
+        JSON.stringify({
+          format: "vigilia-theme-package",
+          version: 1,
+          theme: "theme.json",
+        }),
+      ),
+      "theme.json": strToU8(JSON.stringify(badGlass)),
+      "assets/logo.png": [new Uint8Array([1]), { level: 0 }],
+    });
+
+    expect(readThemePackage(bytes)).toMatchObject({ ok: false });
+  });
 });

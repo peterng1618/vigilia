@@ -1,6 +1,7 @@
-import type {
-  FabricThemeEnvelope,
-  FabricThemeEnvelopeInput,
+import {
+  type FabricThemeEnvelope,
+  type FabricThemeEnvelopeInput,
+  VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
 import {
   Circle,
@@ -47,6 +48,7 @@ export const SCENE_PERSISTED_PROPERTIES = [
   VIGILIA_TEXT_PROPERTY,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_ASSET_PROPERTY,
+  VIGILIA_GLASS_PROPERTY,
   "selectable",
   "evented",
   "locked",

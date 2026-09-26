@@ -272,6 +272,10 @@ export type {
 export { fabricEnvelopeInputFor } from "./theme/fabric-envelope.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
+export type { GlassTreatment } from "./theme/glass.js";
+// The reader and the property name are the external contract; the guard and
+// the bound stay inside the package, where the validator and its tests live.
+export { glassTreatment, VIGILIA_GLASS_PROPERTY } from "./theme/glass.js";
 export { serializeThemeDocument } from "./theme/serialize.js";
 export type {
   IssueCode,

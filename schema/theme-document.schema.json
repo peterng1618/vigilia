@@ -147,7 +147,16 @@
       },
       "additionalProperties": { "$ref": "#/$defs/jsonValue" }
     },
-    "fabricObject": { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } },
+    "fabricObject": {
+      "type": "object",
+      "properties": { "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" } },
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "glassTreatment": {
+      "description": "Authored backdrop blur. Absence means off; 0 means no blur. Artboard units.",
+      "type": "object", "additionalProperties": false, "required": ["blurRadius"],
+      "properties": { "blurRadius": { "type": "number", "minimum": 0, "maximum": 48 } }
+    },
     "jsonValue": {
       "oneOf": [
         { "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" },

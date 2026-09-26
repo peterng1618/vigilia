@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import {
   buildLineOption,
   defaultLineSettings,
+  glassTreatment,
   type Sample,
+  VIGILIA_GLASS_PROPERTY,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
@@ -16,6 +18,7 @@ import {
   Group,
   Path,
   Rect,
+  Shadow,
   StaticCanvas,
   Textbox,
 } from "fabric/es";
@@ -301,6 +304,148 @@ describe("identity survives a round trip", () => {
       fill: "palette.panel",
     });
     expect(revived.getObjects()[0]!.fill).toBe("#123456");
+  });
+
+  it("retains an authored glass treatment through serialisation and revival", async () => {
+    // The registration that matters here is the persisted-properties
+    // allowlist, not a Fabric subclass: an unlisted property is dropped on
+    // save, so a missing entry fails here rather than at some later render.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    const scene = serialiseScene(canvasOf(panel));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 16,
+    });
+    expect(glassTreatment(revived.getObjects()[0]!)).toEqual({
+      blurRadius: 16,
+    });
+  });
+
+  it("retains a nested glass treatment on a grouped panel", async () => {
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 24 });
+    const group = new Group([panel]);
+    group.set("id", "card");
+    const scene = serialiseScene(canvasOf(group));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    const children = (revived.getObjects()[0] as Group).getObjects();
+    expect(glassTreatment(children[0]!)).toEqual({ blurRadius: 24 });
+  });
+
+  it("never hands a renderer a treatment that revival could not validate", async () => {
+    // `reviveScene` restores Fabric JSON as given; it is not a validator, and
+    // the envelope validator is what refuses a bad radius at import. This
+    // pins the second layer: a scene that reaches revival by another route
+    // still cannot produce a live treatment, because the reader treats a
+    // malformed value as off instead of coercing it to a default.
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, {
+      version: "7.4.0",
+      objects: [
+        { type: "Rect", id: "a", vigiliaGlass: { blurRadius: 9999 } },
+        { type: "Rect", id: "b", vigiliaGlass: { blurRadius: "16" } },
+        { type: "Rect", id: "c", vigiliaGlass: { blurRadius: 16, surface: 1 } },
+        { type: "Rect", id: "d", vigiliaGlass: { blurRadius: 12 } },
+      ],
+    });
+
+    expect(
+      revived.getObjects().map((object) => glassTreatment(object)),
+    ).toEqual([undefined, undefined, undefined, { blurRadius: 12 }]);
+  });
+
+  it("adds no glass key to an object that was never given one", () => {
+    // The allowlist makes a listed property *available*, not mandatory:
+    // Fabric still strips a value equal to the prototype default, so an old
+    // scene with no glass must gain no key and stay byte-identical.
+    const plain = new Rect({ width: 40, height: 24 });
+    plain.set("id", "plain");
+
+    expect(keysOf(serialiseScene(canvasOf(plain)))).not.toContain(
+      VIGILIA_GLASS_PROPERTY,
+    );
+  });
+
+  it("carries a glass treatment through the duplicate a clipboard makes", async () => {
+    // Duplicate is the other author-mutating save path: it clones with the
+    // same allowlist, so a treatment survives it only if the entry exists.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 12 });
+
+    const copy = await panel.clone([...SCENE_PERSISTED_PROPERTIES]);
+    copy.set("id", "panel-copy");
+
+    const scene = serialiseScene(canvasOf(copy as Rect));
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 12,
+    });
+  });
+
+  it("persists no surface, resolved colour, reading or media with the treatment", () => {
+    // The saved document is the product's portable state. Whatever a live
+    // render attaches to the object — a scratch surface, a device-pixel
+    // blur, a sampled reading, a video element — must not ride along, or a
+    // theme package would carry device state between machines.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    panel.set("vigiliaGlassSurface", { width: 1280, height: 720 });
+    panel.set("vigiliaGlassTint", "rgba(10,15,22,0.82)");
+    panel.set("vigiliaGlassSample", 42.7);
+    panel.set("vigiliaGlassMedia", { kind: "video", element: "<video />" });
+
+    const scene = serialiseScene(canvasOf(panel));
+    const json = JSON.stringify(scene);
+
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 16,
+    });
+    for (const leak of [
+      "vigiliaGlassSurface",
+      "vigiliaGlassTint",
+      "vigiliaGlassSample",
+      "vigiliaGlassMedia",
+      "42.7",
+      "<video",
+    ]) {
+      expect(json, leak).not.toContain(leak);
+    }
+  });
+
+  it("resolves a persisted shadow colour through the palette, not a literal", async () => {
+    // `shadow` is a native Fabric object, so its colour is resolved state
+    // exactly like fill and stroke and needs an owner in `vigiliaPaint`.
+    const panel = new Rect({
+      width: 40,
+      height: 24,
+      shadow: new Shadow({ color: "#000000", blur: 18, offsetY: 4 }),
+    });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_PAINT_PROPERTY, { shadowColor: "palette.edge" });
+    const scene = serialiseScene(canvasOf(panel));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+    applyObjectPalettePaints(revived, {
+      palette: { edge: { name: "Edge", value: "#123456" } },
+    });
+
+    const shadow = revived.getObjects()[0]!.shadow as Shadow;
+    expect(shadow.color).toBe("#123456");
+    // The native geometry stays the author's; only the colour is resolved.
+    expect(shadow.blur).toBe(18);
+    expect(shadow.offsetY).toBe(4);
   });
 
   it("reapplies a persisted text run type preset", () => {
@@ -824,6 +969,7 @@ describe("there is exactly one owner of scene serialisation", () => {
       VIGILIA_TEXT_PROPERTY,
       VIGILIA_PAINT_PROPERTY,
       VIGILIA_ASSET_PROPERTY,
+      VIGILIA_GLASS_PROPERTY,
       "selectable",
       "evented",
       "locked",

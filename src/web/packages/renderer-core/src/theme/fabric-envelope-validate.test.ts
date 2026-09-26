@@ -378,6 +378,89 @@ describe("Fabric theme envelope validation", () => {
     });
   });
 
+  it("requires a palette reference for a persisted shadow colour", () => {
+    // Shadow is a native Fabric property, so its colour is resolved state
+    // exactly like fill and stroke: it needs an owner in `vigiliaPaint`.
+    const withPalette = {
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: { kind: "solid", color: "#0a0f16" },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+    };
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+              vigiliaPaint: { shadowColor: "palette.edge" },
+            },
+          ],
+        },
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+              vigiliaPaint: { shadowColor: "palette.gone" },
+            },
+          ],
+        },
+      }).ok,
+    ).toBe(false);
+  });
+
   it("requires palette references for persisted chart paint", () => {
     const base = {
       ...envelope(),
@@ -673,5 +756,125 @@ describe("Fabric theme envelope validation", () => {
         withMetadata(emptyBindings, { name: "Fixture", locale: "ja" }),
       ).ok,
     ).toBe(true);
+  });
+});
+
+describe("authored glass treatment", () => {
+  function withObjects(objects: readonly unknown[]): Record<string, unknown> {
+    // The shared fixture binds a chart; these cases replace the scene, so the
+    // binding would fail for an unrelated reason and hide the real one.
+    return withoutKey(
+      { ...envelope(), scene: { version: "7.4.0", objects } },
+      "bindings",
+    );
+  }
+
+  it("accepts a bounded radius, and treats absence as off", () => {
+    // Absence must stay legal forever: a theme authored before glass existed
+    // is not invalid because it lacks the property.
+    expect(
+      validateFabricThemeEnvelope(withObjects([{ type: "Rect", id: "panel" }]))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 0 } },
+          { type: "Rect", id: "soft", vigiliaGlass: { blurRadius: 48 } },
+        ]),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("refuses a radius that is out of range, non-finite or the wrong type", () => {
+    for (const blurRadius of [
+      -1,
+      48.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      "12",
+      null,
+    ]) {
+      const result = validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius } },
+        ]),
+      );
+      expect(result, `blurRadius ${String(blurRadius)}`).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "invalid-fabric-scene",
+            path: "/scene/objects/0/vigiliaGlass",
+          }),
+        ]),
+      });
+    }
+  });
+
+  it("refuses a treatment that is not an object, or carries extra authored state", () => {
+    for (const vigiliaGlass of [
+      12,
+      "glass",
+      {},
+      { radius: 12 },
+      // A resolved surface or sampled pixel is exactly the derived state a
+      // portable document must not carry.
+      { blurRadius: 12, surface: "data:image/png;base64,AAAA" },
+      { blurRadius: 12, sample: 42.7 },
+    ]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type: "Rect", id: "panel", vigiliaGlass }]),
+        ),
+        JSON.stringify(vigiliaGlass),
+      ).toMatchObject({ ok: false });
+    }
+  });
+
+  it("refuses glass on an object kind with no sampleable clipped area", () => {
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        { type: "Textbox", id: "label", vigiliaGlass: { blurRadius: 12 } },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-enum",
+          path: "/scene/objects/0/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+
+  it("validates a nested treatment at the child's own path", () => {
+    // The scene walk is the only thing that reaches a group child, so a
+    // treatment validated only at the top level would let a bad nested value
+    // through into revival.
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        {
+          type: "Group",
+          id: "card",
+          objects: [
+            { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 12 } },
+            { type: "Rect", id: "inner", vigiliaGlass: { blurRadius: 999 } },
+          ],
+        },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-fabric-scene",
+          path: "/scene/objects/0/objects/1/vigiliaGlass",
+        }),
+      ]),
+    });
   });
 });

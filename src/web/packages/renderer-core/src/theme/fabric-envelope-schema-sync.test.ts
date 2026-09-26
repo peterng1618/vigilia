@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { MAX_GLASS_BLUR_RADIUS } from "./glass.js";
 
 const SCHEMA_PATH = fileURLToPath(
   new URL(
@@ -91,6 +92,34 @@ describe("published Fabric theme schema", () => {
     });
     expect(document.$defs["styleValue"]).toBeUndefined();
     expect(document.$defs["globalGroup"]).toBeUndefined();
+  });
+
+  it("publishes the glass treatment at the bound the runtime enforces", () => {
+    // The measured cap is a renderer budget, so the published maximum is
+    // compared against the same constant the validator refuses against. A
+    // copied literal here would let the two drift silently, and a theme
+    // accepted by one would be rejected by the other.
+    const document = schema();
+    const treatment = document.$defs["glassTreatment"]!;
+    const radius = (
+      treatment["properties"] as Record<string, Record<string, unknown>>
+    )["blurRadius"]!;
+
+    expect(treatment["required"]).toEqual(["blurRadius"]);
+    expect(treatment["additionalProperties"]).toBe(false);
+    expect(radius).toEqual({
+      type: "number",
+      minimum: 0,
+      maximum: MAX_GLASS_BLUR_RADIUS,
+    });
+    expect(
+      (
+        document.$defs["fabricObject"]!["properties"] as Record<
+          string,
+          Record<string, unknown>
+        >
+      )["vigiliaGlass"],
+    ).toEqual({ $ref: "#/$defs/glassTreatment" });
   });
 
   it("discriminates fully declared WOFF2 font assets from other assets", () => {

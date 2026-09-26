@@ -6,6 +6,12 @@ import {
   STABLE_ID_PATTERN,
 } from "./document.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
+import {
+  isGlassTreatment,
+  MAX_GLASS_BLUR_RADIUS,
+  supportsGlass,
+  VIGILIA_GLASS_PROPERTY,
+} from "./glass.js";
 import { type ValidationIssue, validateThemeDocument } from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
@@ -384,13 +390,8 @@ function scenePaintReferences(
     const refs = isRecord(object["vigiliaPaint"])
       ? object["vigiliaPaint"]
       : undefined;
-    for (const property of ["fill", "stroke"] as const) {
-      if (
-        object[property] === undefined ||
-        object[property] === null ||
-        object[property] === ""
-      )
-        continue;
+    for (const property of ["fill", "stroke", "shadowColor"] as const) {
+      if (!hasResolvedPaint(object, property)) continue;
       const ref = refs?.[property];
       if (
         typeof ref !== "string" ||
@@ -413,6 +414,30 @@ function scenePaintReferences(
   };
   scene["objects"].forEach((object, index) =>
     visit(object, `/scene/objects/${index}`),
+  );
+}
+
+/**
+ * A shadow carries its colour inside Fabric's own nested object, so the
+ * presence test differs from the flat fill/stroke properties.
+ */
+function hasResolvedPaint(
+  object: Record<string, unknown>,
+  property: "fill" | "stroke" | "shadowColor",
+): boolean {
+  if (property === "shadowColor") {
+    const shadow = object["shadow"];
+    return (
+      isRecord(shadow) &&
+      shadow["color"] !== undefined &&
+      shadow["color"] !== null &&
+      shadow["color"] !== ""
+    );
+  }
+  return (
+    object[property] !== undefined &&
+    object[property] !== null &&
+    object[property] !== ""
   );
 }
 
@@ -952,6 +977,7 @@ function sceneObject(
       ),
     );
   }
+  objectGlass(value, path, issues);
   if (!jsonSafe(value, path, depth, issues)) return;
   if (value["objects"] !== undefined) {
     if (!Array.isArray(value["objects"])) {
@@ -975,6 +1001,39 @@ function sceneObject(
       }
     }
   }
+}
+
+/**
+ * The authored glass treatment, refused before revival rather than coerced.
+ * An unsupported object kind is a separate refusal: Task 1 measured a clipped
+ * backdrop for rectangles and groups only, so anything else is refused until
+ * it has been measured rather than rendering an unproven treatment.
+ */
+function objectGlass(
+  value: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const treatment = value[VIGILIA_GLASS_PROPERTY];
+  if (treatment === undefined) return;
+  if (typeof value["type"] === "string" && !supportsGlass(value["type"])) {
+    issues.push(
+      issue(
+        "invalid-enum",
+        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `A ${value["type"]} cannot carry a glass treatment.`,
+      ),
+    );
+    return;
+  }
+  if (!isGlassTreatment(treatment))
+    issues.push(
+      issue(
+        "invalid-fabric-scene",
+        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `A glass treatment must be exactly { blurRadius }, a number from 0 to ${MAX_GLASS_BLUR_RADIUS} artboard units.`,
+      ),
+    );
 }
 
 function jsonSafe(
