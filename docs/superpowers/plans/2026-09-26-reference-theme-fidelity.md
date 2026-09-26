@@ -121,10 +121,23 @@ confirming the DOM path cannot reach canvas bitmaps.
   allowed to throw mid-render.
 
 **Unproven, and owned by Task 4 as required regression cases:** the overlapping-panel
-case (the probe's panels did not actually intersect) and grouped-vs-flattened, and
-video-frame invalidation. The technique's ordering is sound by construction — the
-handler samples `ctx.canvas`, which holds everything painted so far — but that is
-inference, not measurement.
+case (the probe's panels did not actually intersect) and grouped-vs-flattened. The
+technique's ordering is sound by construction — the handler samples `ctx.canvas`,
+which holds everything painted so far — but that is inference, not measurement.
+
+**Video-frame invalidation is measured, and it fails.** A follow-up probe
+(2026-07-27) drove a `captureStream(30)` background whose frames rotate hue 5° per
+frame. The video's own pixels moved by **delta 161** over 600 ms; the glass panel
+region over the same 600 ms moved by **delta 0**. One forced `renderAll()` brings
+it level immediately (delta 32.2) and it keeps tracking thereafter. A repaint costs
+**0.51 ms mean / 0.6 ms p95** against a 33.3 ms budget at 30 fps.
+
+The cause is structural: `mountBackgroundMedia` prepends a
+`div[data-vigilia-background-media]` **below** the canvas, so a `<video>` there is
+not a Fabric object. Fabric sees no change, nothing calls `requestRenderAll`, and
+the panel keeps a still frame of a moving background. **Task 5 must invalidate on
+the media element's frame cadence** — `requestVideoFrameCallback` where available —
+and must not regress the zero-idle-repaint property for themes without video media.
 
 **Measurement discipline Task 4 inherits.** Four bugs in the probe produced
 confident, wrong numbers before these results were trustworthy: stale object
@@ -292,8 +305,9 @@ live-runtime/history events, player mount/disposal. Extend existing refresh hook
 rather than invent another global scheduler.
 
 - [ ] Pin stale-backdrop cases: moving/resizing/rotating a panel, changing a lower
-  object, changing z-order/group opacity, video frame updates, palette changes,
-  zoom/DPR/fit and undo/revival replacing object identity.
+  object, changing z-order/group opacity, **video frame updates (measured broken —
+  see the Task 1 result above)**, palette changes, zoom/DPR/fit and
+  undo/revival replacing object identity.
 - [ ] Connect bounded invalidation and shared media lifetime. Dispose listeners,
   video callbacks, surfaces and chart references on delete, replace and unmount.
   Hidden/disconnected rendering follows current policy and resumes accurately.
