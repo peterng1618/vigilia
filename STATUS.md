@@ -11,7 +11,7 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–8 landed and closed; Tasks 9–10 remain.
+  Tasks 1–8 landed and closed; Task 9 is parked with known verification gaps; Task 10 remains.
 - **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
   whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
@@ -23,14 +23,14 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Last completed change
 
-- Recorded latest reference-theme spec and target image with agreed exclusions.
-- Added four-phase implementation plan covering authoring, glass, typography,
-  device captions and progressive default-starter proof.
-- Queued plan immediately after snapping; glass probe and product approval pending.
+- Parked Task 9's incomplete browser matrix as known limitations: target-kind coverage,
+  focused-test isolation and layer-footer placement proof remain unverified.
+- Kept resize equal-spacing out of scope because fork and Vigilia scaling lack that behavior.
+- Stopped uncommitted Task 9 repair work; no production or test changes integrated.
 
 ## Next
 
-1. Complete snapping Tasks 9–10, including behavior matrix and full gates.
+1. Complete snapping Task 10 without claiming Task 9's parked browser evidence.
 2. Review reference-theme plan and select execution method; activate only after
    snapping closes. Approve glass probe, then review findings before product work.
 3. Then resume author-journey Task 6; authoring-and-consumer-polish Task 4;
@@ -52,3 +52,4 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
   preset/override.
 - The gate's visual checks were made against `vite preview` bundles on desktop
   widths only; the phone surfaces were exercised by the browser suite, not by eye.
+- **Known limitations — Task 9 matrix:** active text/group targets lack complete move/resize browser coverage; `snapping.spec.ts` imports executable `editor.spec.ts`, so focused discovery includes unrelated editor cases; layer-action proof checks entry parity, not selected-object linkage or visible footer placement. Do not claim Task 9 matrix closure until repaired. Resize equal-spacing is not a bug: fork and Vigilia scale candidates do not support it, so it is out of scope unless product scope expands.
