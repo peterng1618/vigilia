@@ -37,11 +37,13 @@ function storeWith(entries: Record<string, Sample>): SampleStore {
 function documentWith(
   nodes: readonly ThemeNode[],
   globals?: ThemeDocument["globals"],
+  metadata?: ThemeDocument["metadata"],
 ): ThemeDocument {
   return {
     schemaVersion: 1,
     id: "demo",
     artboard: { width: 800, height: 480, fitMode: "contain" },
+    ...(metadata === undefined ? {} : { metadata }),
     ...(globals === undefined ? {} : { globals }),
     nodes,
   };
@@ -380,6 +382,77 @@ describe("text (§89)", () => {
 
     // 14:07 +07:00 is 16:07 in Tokyo, which is the reading the author asked for.
     expect(result.segments[0]!.text).toBe("16:07");
+  });
+
+  it("takes a theme's language from the document when the context sets none", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = plan(
+      documentWith(
+        [
+          {
+            id: "t",
+            type: "text",
+            bindings: [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+            content: { runs: [{ kind: "value", bindingId: "b" }] },
+          } as unknown as ThemeNode,
+        ],
+        undefined,
+        { locale: "ja" },
+      ),
+      { source },
+    );
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "text") throw new Error("expected a text node");
+
+    // 2026-09-24 is a Thursday, however the language spells it.
+    expect(content.segments[0]!.text).toBe("木曜日");
+  });
+
+  it("takes names from the pinned zone's own date, not from UTC", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T20:00:00Z", "clock:date.today"),
+    });
+    const result = segments(
+      source,
+      [
+        {
+          id: "b",
+          semanticKey: "date.today",
+          format: "dddd",
+          timeZone: "Asia/Tokyo",
+        },
+      ],
+      [{ kind: "value", bindingId: "b" }],
+      { locale: "en" },
+    );
+
+    // 20:00 UTC is already Friday the 25th in Tokyo, so a formatter that read the
+    // instant's UTC day would answer Thursday.
+    expect(result.segments[0]!.text).toBe("Friday");
+  });
+
+  it("leaves every numeric token in ASCII digits in every language", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = segments(
+      source,
+      [
+        {
+          id: "b",
+          semanticKey: "date.today",
+          format: "DD/MM/YYYY HH:mm",
+        },
+      ],
+      [{ kind: "value", bindingId: "b" }],
+      { locale: "ar" },
+    );
+
+    // `ar` is the sharpest case: its own calendar and digits are not Latin, and
+    // the tokens deliberately keep both the padding and the ASCII forms.
+    expect(result.segments[0]!.text).toBe("24/09/2026 14:07");
   });
 
   it("shows a text key that is not a time exactly as it was sent", () => {

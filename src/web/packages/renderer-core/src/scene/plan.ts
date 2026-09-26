@@ -147,6 +147,11 @@ export interface PlanContext {
   readonly longUnits?: Readonly<Record<string, string>>;
   /** The consumer's measurement preference; metric shows what was measured. */
   readonly measurement?: MeasurementSystem;
+  /**
+   * The language the document's text is written in. A runtime input like
+   * `longUnits`, never persisted scene state: the theme's own `metadata` owns it.
+   */
+  readonly locale?: string;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
@@ -156,14 +161,23 @@ export type ChartPlanContext = Pick<
 >;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
-  const issues: PlanIssue[] = [];
-  const globals = context.document.globals ?? {};
+  // The document's own `metadata.locale` is the theme's language; a caller
+  // that sets `context.locale` overrides it for one plan. Normalized once, so
+  // the two `Pick` sites downstream only ever see a string or nothing.
+  const plan: PlanContext =
+    context.locale === undefined &&
+    context.document.metadata?.locale !== undefined
+      ? { ...context, locale: context.document.metadata.locale }
+      : context;
 
-  const nodes = context.document.nodes.map((node) =>
-    planNode(node, context, globals, issues),
+  const issues: PlanIssue[] = [];
+  const globals = plan.document.globals ?? {};
+
+  const nodes = plan.document.nodes.map((node) =>
+    planNode(node, plan, globals, issues),
   );
 
-  const artboard = context.document.artboard;
+  const artboard = plan.document.artboard;
 
   return {
     artboard: {
@@ -396,7 +410,7 @@ export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: Pick<PlanContext, "source" | "longUnits" | "measurement">,
+  context: Pick<PlanContext, "source" | "longUnits" | "measurement" | "locale">,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
@@ -443,7 +457,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, "longUnits" | "measurement">,
+  context: Pick<PlanContext, "longUnits" | "measurement" | "locale">,
 ): PlanTextSegment {
   if (sample.status !== "ok") {
     return {
@@ -474,7 +488,7 @@ function formatValueSegment(
     text = formatNumber(converted.value, precision);
     shown = converted.unit;
   } else if (sample.textValue !== undefined) {
-    text = formatTextReading(binding, sample.textValue);
+    text = formatTextReading(binding, sample.textValue, context.locale);
   } else if (sample.booleanValue !== undefined) {
     text = sample.booleanValue ? "on" : "off";
   } else {
@@ -491,7 +505,11 @@ function formatValueSegment(
  * decide how it reads; any other text is shown exactly as the provider sent it.
  * A value no formatter can read is shown raw rather than blanked.
  */
-function formatTextReading(binding: Binding, value: string): string {
+function formatTextReading(
+  binding: Binding,
+  value: string,
+  locale: string | undefined,
+): string {
   const instant = describeSemanticKey(binding.semanticKey)?.instant;
 
   if (instant === undefined) {
@@ -503,6 +521,7 @@ function formatTextReading(binding: Binding, value: string): string {
       value,
       binding.format ?? instant.defaultFormat,
       binding.timeZone,
+      locale,
     ) ?? value
   );
 }
