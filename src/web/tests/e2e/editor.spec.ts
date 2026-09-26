@@ -326,6 +326,7 @@ async function resizeRightHandleTo(
   id: string,
   toSceneX: number,
   testInfo: TestInfo | undefined,
+  options: { ctrlKey?: boolean; captureName?: string } = {},
 ): Promise<{ right: number; raw: number; guidePixels: number }> {
   const handle = await handleScenePoint(page, id, "mr");
   const from = await sceneToClient(page, 1280, handle.x, handle.y);
@@ -354,15 +355,22 @@ async function resizeRightHandleTo(
   );
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
+  if (options.ctrlKey === true) await page.keyboard.down("Control");
   await page.mouse.move(to.x, to.y, { steps: 12 });
 
-  if (testInfo) await captureVisualReview(page, testInfo, "editor-snap-resize");
+  if (testInfo)
+    await captureVisualReview(
+      page,
+      testInfo,
+      options.captureName ?? "editor-snap-resize",
+    );
   // Sampled while the pointer is still down: a snapped guide is drawn at the
   // edge the resize landed on, so the object's own right edge names the column.
   const guidePixels = await guidePixelsAtSceneX(
     page,
     await worldRightOf(page, id),
   );
+  if (options.ctrlKey === true) await page.keyboard.up("Control");
   await page.mouse.up();
 
   return {
@@ -469,7 +477,8 @@ async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
 async function dragActiveSelection(
   page: Page,
   amount: number,
-): Promise<{ left: number; travelled: number }> {
+  options: { ctrlKey?: boolean } = {},
+): Promise<{ left: number; travelled: number; guidePixels: number }> {
   const current = await activeGeometry(page);
   const from = await sceneToClient(
     page,
@@ -507,10 +516,13 @@ async function dragActiveSelection(
   );
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
+  if (options.ctrlKey === true) await page.keyboard.down("Control");
   await page.mouse.move(to.x, to.y, { steps: 12 });
   const left = (await activeGeometry(page)).rect.left;
+  const guidePixels = await guidePixelsAtSceneX(page, left);
+  if (options.ctrlKey === true) await page.keyboard.up("Control");
   await page.mouse.up();
-  return { left, travelled };
+  return { left, travelled, guidePixels };
 }
 
 /** Drags the active selection so its raw landing is `offset` scene px past
@@ -2504,6 +2516,75 @@ test.describe("Fabric editor route", () => {
 
     await captureVisualReview(page, testInfo, "editor-snap-guides");
     await page.mouse.up();
+  });
+
+  test("Ctrl-resizes near a neighbour without snapping or showing a guide", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    const card = await objectRect(page, "resource-card");
+    const select = await sceneToClient(
+      page,
+      1280,
+      card.left + (card.width / 2) * 0.6,
+      card.top + 10,
+    );
+    await page.mouse.click(select.x, select.y);
+    expect((await activeGeometry(page)).members).toBe(1);
+
+    const line = (await objectRect(page, "status-card")).left;
+    const target = line - 2;
+    const ctrl = await resizeRightHandleTo(
+      page,
+      "resource-card",
+      target,
+      testInfo,
+      {
+        ctrlKey: true,
+        captureName: "editor-snap-resize-ctrl",
+      },
+    );
+
+    // Ctrl-resize must match Ctrl-drag: preserve raw fractional geometry and
+    // suppress guides, even when the raw edge is inside the snap threshold.
+    // Client-pixel quantisation shifts the measured edge by less than 3 scene
+    // pixels; snapping would move it onto `line` instead of preserving target.
+    expect(Math.abs(ctrl.right - ctrl.raw)).toBeLessThan(3);
+    expect(ctrl.right % 1).not.toBe(0);
+    expect(Math.abs(ctrl.right - line)).toBeGreaterThan(0.5);
+    expect(ctrl.guidePixels).toBe(0);
+
+    // Compare same modifier against drag: both gestures must keep raw geometry
+    // inside snap threshold rather than joining the neighbour's line.
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    const dragCard = await objectRect(page, "resource-card");
+    const dragSelect = await sceneToClient(
+      page,
+      1280,
+      dragCard.left + (dragCard.width / 2) * 0.6,
+      dragCard.top + 10,
+    );
+    await page.mouse.click(dragSelect.x, dragSelect.y);
+    const dragBefore = await activeGeometry(page);
+    const dragLine = (await objectRect(page, "status-card")).left;
+    const dragged = await dragActiveSelection(
+      page,
+      dragLine - 2 - dragBefore.rect.left,
+      { ctrlKey: true },
+    );
+    // The dragged object stays off the neighbour line and paints no guide, the
+    // same visible Ctrl escape required from resize.
+    expect(Math.abs(dragged.left - dragLine)).toBeGreaterThan(0.5);
+    expect(dragged.guidePixels).toBe(0);
   });
 
   test("snaps a resized object to a neighbour and shows a guide", async ({
