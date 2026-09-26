@@ -20,20 +20,22 @@ in rather than in two English tables.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents carry
   no metadata, and absent means `en` there.
+- **Queued spec, no plan:** [author-first seven-day release](docs/superpowers/specs/2026-09-26-author-first-release-design.md) — written-spec review pending; blank-to-running theme, ≥80% unassisted completion; existing queue order unchanged.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md).
 
 ## Last completed change
 
-- Recorded `metadata.locale` as render-affecting theme language in architecture,
-  product requirements and ownership docs.
-- Split datetime ownership into instant/zone, format tokens and localized names;
-  recorded editor language-list ownership.
-- Marked clock-and-theme-locale spec implemented and kept status within 70 lines.
+- Wrote and queued the author-first seven-day release spec: blank-canvas creation,
+  persistence/player correctness, trust boundaries and explicit polish deferrals.
+- Defined release usability target: at least four of five fresh authors complete
+  a blank-to-running theme unassisted within 30 minutes.
+- Kept the active implementation plan and existing queue order unchanged;
+  written-spec review remains pending.
 
 ## Next
 
-1. Review the completed clock-and-theme-locale branch.
-2. Draft the v1-removal spec recorded in Active work.
+1. Delete final-fix dispatch record `.superpowers/sdd/2026-09-26-clock-and-theme-locale/dispatch-final-fix.md`.
+2. Finalize ledger: record all fix/review completions.
 3. Then the queue: snapping Tasks 8, 9 and 10; author-journey Task 6;
    authoring-and-consumer-polish Task 4; settings-scope; consumer-journey Tasks 5+6;
    theme-thumbnails; authoring-time-run-placeholders.
