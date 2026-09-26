@@ -24,6 +24,9 @@ export const HOST_THEME_ID = "e2e-hosted";
 export const HOST_DISK_THEME_ID = "e2e-disk";
 /** Binds a temperature, so a display's own unit preference has something to convert. */
 export const HOST_TEMP_THEME_ID = "e2e-temp";
+/** Twin clock themes: language is their only rendering difference. */
+export const HOST_JAPANESE_THEME_ID = "e2e-lang-ja";
+export const HOST_ENGLISH_THEME_ID = "e2e-lang-en";
 export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
 
 /** The node a reading is painted into, by the id a test reads it back by. */
@@ -244,6 +247,17 @@ export async function seedHostTheme(): Promise<void> {
     envelopeFor(HOST_TEMP_THEME_ID, "E2E temperature", TEMPERATURE_NODE_ID, {
       semanticKey: "gpu.temp",
       precision: 0,
+    }),
+    envelopeFor(
+      HOST_JAPANESE_THEME_ID,
+      "E2E language",
+      CLOCK_NODE_ID,
+      { semanticKey: "date.today", format: "[日付 ]MMM ddd" },
+      "ja",
+    ),
+    envelopeFor(HOST_ENGLISH_THEME_ID, "E2E language", CLOCK_NODE_ID, {
+      semanticKey: "date.today",
+      format: "[日付 ]MMM ddd",
     }),
   ];
 

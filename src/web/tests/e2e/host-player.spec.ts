@@ -2,6 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { canvasProp } from "./canvas-probe.js";
 import {
   CLOCK_NODE_ID,
+  HOST_ENGLISH_THEME_ID,
+  HOST_JAPANESE_THEME_ID,
   HOST_PORT,
   HOST_TEMP_THEME_ID,
   HOST_THEME_ID,
@@ -125,6 +127,34 @@ test.describe("hosted player over the real host", () => {
     // A failed font fetch would surface through the player's failure path; the
     // connection banner is absent once live, so assert on the failure panel.
     await expect(page.locator("pre")).toHaveCount(0);
+  });
+
+  test("a theme's language decides the words its clock shows", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_JAPANESE_THEME_ID}&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    const japanese = String(await canvasProp(page, CLOCK_NODE_ID, "text"));
+
+    await page.goto(`${HOST}/?theme=${HOST_ENGLISH_THEME_ID}&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    const english = String(await canvasProp(page, CLOCK_NODE_ID, "text"));
+
+    // Same theme shape, binding, instant and literal. Only declared language differs.
+    expect(japanese).toMatch(/^日付 .*月 /);
+    expect(english).toMatch(/^日付 [A-Z][a-z]{2,3} /);
+    expect(japanese).not.toBe(english);
   });
 
   test("renders a hosted theme in the player and streams live samples", async ({
