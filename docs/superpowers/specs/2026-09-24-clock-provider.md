@@ -1,6 +1,8 @@
 # Clock and date as sensors
 
-- **Status:** implemented (landed without a plan; none was ever written for it).
+- **Status:** superseded by `2026-09-26-clock-and-theme-locale.md`. Its provider,
+  keys, author format tokens and per-binding zone survive there; its "month and
+  weekday names are English" decision does not.
 - **Requirement:** the clock half of the author journey
 
 ## Why
