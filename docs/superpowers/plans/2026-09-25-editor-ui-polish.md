@@ -1411,14 +1411,23 @@ git commit -m "feat(editor): move arrange to the canvas toolbar"
         setValue(value: number): void };
   export function linkedPair(options: {
     rowLabel: string;
-    first: { label: string; value: number; data: string };
-    second: { label: string; value: number; data: string };
+    first: { label: string; value: number; data: string; dataValue?: string };
+    second: { label: string; value: number; data: string; dataValue?: string };
     min?: number; max?: number; invalidMessage?: string;
-    onCommit: (first: number, second: number) => void;
+    onCommitFirst: (value: number) => void;
+    onCommitSecond: (value: number) => void;
   }): { readonly row: HTMLElement;
         readonly first: HTMLInputElement; readonly second: HTMLInputElement;
         setValues(first: number, second: number): void };
   ```
+
+  **The pair contract is one callback per half, not one carrying both.** This sketch originally
+  declared `onCommit: (first, second) => void`; fix round 2 (`7ae88e4`) replaced it, because committing
+  both halves wrote the sibling's rounded render-time value back over a fractional real one — editing
+  Width silently moved Height (`36.32 → 36` on a fractionally-scaled object). The inspector's X/Y and
+  W/H are independent, so a commit-both signature invites that regression from the next consumer. The
+  artboard panel, which genuinely submits one size, keeps the linked behaviour by holding the sibling
+  in its own closure.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1469,23 +1478,28 @@ it("rejects an out-of-range number instead of coercing it to zero", () => {
   expect(onCommit).toHaveBeenCalledTimes(1);
 });
 
-it("emits a commit carrying both values for a linked pair", () => {
-  const onCommit = vi.fn();
+it("commits each half independently, leaving the untouched one alone", () => {
+  const first = vi.fn();
+  const second = vi.fn();
   const pair = linkedPair({
     rowLabel: "Size",
     first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
     second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
-    min: 1, max: 4096, onCommit,
+    min: 1, max: 4096, onCommitFirst: first, onCommitSecond: second,
   });
   document.body.append(pair.row);
 
   pair.first.value = "10";
   pair.first.dispatchEvent(new Event("change"));
-  // The pair commits both current values, so the untouched field still reads 200.
-  expect(onCommit).toHaveBeenLastCalledWith(10, 200);
+  // Only the edited half commits. Asserting the sibling was NOT called is the
+  // point: a pair that carried both values is what let a rounded sibling
+  // overwrite a fractional one.
+  expect(first).toHaveBeenLastCalledWith(10);
+  expect(second).not.toHaveBeenCalled();
   pair.second.value = "20";
   pair.second.dispatchEvent(new Event("change"));
-  expect(onCommit).toHaveBeenLastCalledWith(10, 20);
+  expect(second).toHaveBeenLastCalledWith(20);
+  expect(first).toHaveBeenCalledTimes(1);
 });
 ```
 
@@ -1514,7 +1528,7 @@ Commit on `change`, as the panel does today — not on every keystroke. A half-t
 
 **Which of the two then reports an out-of-range value is not a free choice, and the brief must not leave it to the implementer.** `isDimension` is exactly `Number.isInteger(value) && value > 0 && value <= MAX_ARTBOARD_DIMENSION` (`artboard-panel.ts:302-306`) and `numberField`'s check is the same predicate with `min`/`max` supplied — so the two **cannot both fire**, and the factory's is always the one that fires first. That has a visible consequence: the `[role=alert]` message is the factory's `invalidMessage`, and `isDimension` in `submit` becomes unreachable for anything the control accepted. Keep it as the panel's own guard on values arriving from anywhere else, and **do not write an artboard-specific regression test for it** — a test asserting "a dimension of 0 is refused" exercises the factory's range check and passes whether or not `isDimension` exists, which is the green-and-wrong shape AGENTS.md's teeth rule exists to prevent. The factory's range-rejection case in Step 1 is what covers this behaviour.
 
-**The factory also owns the rejected-edit rollback, and each factory holds its last accepted value.** On rejection the row shows `[role=alert]` with `invalidMessage` and the input is restored to the last value it accepted; on acceptance that value is updated. `setValue(v)` / `setValues(a, b)` overwrite the displayed value *and* that last-accepted value without calling `onCommit`. This is what lets the panel drop its `render(current)` rollback (`artboard-panel.ts:70-73`) without breaking `artboard-panel.dom.test.ts:44-52` — the requirement lives in the control now, and it is asserted in Step 1. A `linkedPair` rejection restores **that** field and leaves the other alone.
+**The factory also owns the rejected-edit rollback, and each factory holds its last accepted value.** On rejection the row shows `[role=alert]` with `invalidMessage` and the input is restored to the last value it accepted; on acceptance that value is updated. `setValue(v)` / `setValues(a, b)` overwrite the displayed value *and* that last-accepted value without firing a commit. This is what lets the panel drop its `render(current)` rollback (`artboard-panel.ts:70-73`) without breaking `artboard-panel.dom.test.ts:44-52` — the requirement lives in the control now, and it is asserted in Step 1. A `linkedPair` rejection restores **that** field and leaves the other alone.
 
 - [ ] **Step 4: Regroup the artboard panel**
 
@@ -1530,7 +1544,7 @@ into field rows.** If you need the count, derive it — do not trust any figure 
 
 It stays an imperative DOM panel — a `ponytail:` comment records that only the markup changed, with React migration as a later step if that panel grows.
 
-`submit()` reads `Number(width.input.value)` and then rejects with `isDimension`. Once the inputs come from `linkedPair`, that raw read is gone: `numberField`/`linkedPair` own parsing and pass the **already-validated** numbers to `onCommit`, so `submit` keeps only the artboard-shaped half — `isDimension` over each value it is handed. `isDimension` stays private here and compares against `MAX_ARTBOARD_DIMENSION`; the factory is told `min={1} max={MAX_ARTBOARD_DIMENSION}` and does not know why. `render()` calls `setValue`/`setValues` rather than writing `.value`, so the displayed value and the factory's last committed value cannot disagree.
+`submit()` reads `Number(width.input.value)` and then rejects with `isDimension`. Once the inputs come from `linkedPair`, that raw read is gone: `numberField`/`linkedPair` own parsing and pass the **already-validated** numbers to their commit callbacks, so `submit` keeps only the artboard-shaped half — `isDimension` over each value it is handed. `isDimension` stays private here and compares against `MAX_ARTBOARD_DIMENSION`; the factory is told `min={1} max={MAX_ARTBOARD_DIMENSION}` and does not know why. `render()` calls `setValue`/`setValues` rather than writing `.value`, so the displayed value and the factory's last committed value cannot disagree.
 
 **`render()` does not only get called on refresh, and the refactor must keep that true.** It is the rejection path *and* the `setGlobals` repaint: `submit` calls `render(current)` on a refused edit (`artboard-panel.ts:71`) and `setGlobals` calls `render(current)` after refreshing the palette options (`:175`). So `setValue`/`setValues` is written on every globals change — the "does not fire `onCommit`" rule in Step 1 is what stops a palette refresh from looking like a dimension edit and dirtying the document. The two call sites are the reason that assertion exists; keep both.
 
