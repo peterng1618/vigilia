@@ -1133,6 +1133,31 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 
 ### Task 7: Bind scaling, with verification-gated guides
 
+> **Landed** - `70b5b36`; review returned spec PASS WITH DEFECTS / quality PASS, 0 Critical, and fix
+> round 1 is in flight. The review confirmed by independent measurement: the port is faithful (18
+> token ops in 7 hunks, all inside a permitted class), the `noUncheckedIndexedAccess: zero sites`
+> claim is byte-identical-true, the marker trap is not reintroduced, and Step 6's red is red for the
+> right reason.
+>
+> **Corrected deviation enumeration**, replacing the commit message's class 2, which was wrong. The
+> fork has **zero** `//**` markers and 25 `/**`; this port has 5 `//**` and 20 `/**`, so five block
+> comments changed form — a class the commit message omitted, described by a phrase false about the
+> fork. It is not amended because `70b5b36` is pushed. The full list, from a diff against `9efdd78a`:
+>
+> 1. Import paths.
+> 2. Comment language (Russian → English).
+> 3. Comment **form**: five fork `/**` blocks became `//**` line comments, matching the existing
+>    Vigilia convention in `movement-snapping-runtime.ts`, `movement-spacing-correction.ts`,
+>    `spacing-chains.ts` and `spacing-patterns.ts`.
+> 4. `exactOptionalPropertyTypes` widenings.
+> 5. Biome formatting (five trailing commas; the `ScaleRuntimeStep` union split with a leading `|`).
+>
+> `noUncheckedIndexedAccess` has **zero** sites in this port: `first.length === second.length &&
+> first.every((value, index) => value === second[index])` is byte-identical to the fork's.
+>
+> `scale-snapping-runtime.ts` is 380 lines (fork 372) — under the repo's 500-line signal, so no
+> vendored-source size exception is needed.
+
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scale-snapping-runtime.ts` (fork: 372 lines)
 - Create: `src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts`
