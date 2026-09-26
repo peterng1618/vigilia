@@ -5,18 +5,23 @@ Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
 
-Make authoring a theme a *good* experience, not merely a possible one. The
-author journey is reachable; the remaining active work is snapping fidelity —
-resize-time snapping, the behaviour matrix that proves both paths, and the
-requirement close-out.
+Make authoring a theme a *good* experience, not merely a possible one. The author
+journey is reachable; the active work is the theme's own language, so a clock
+reads its month, weekday and day-period names in the language its author wrote it
+in rather than in two English tables.
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–7 landed, reviewed and closed; Tasks 8, 9, 10 remain. Task 7's review
-  passed with 0 Critical, 3 Important, 4 Minor, and all six actionable findings
-  re-reviewed as addressed.
-- **Next up:** Task 8 (Ctrl and Shift during a resize). Nothing is in flight.
+- **Active plan:** `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md` —
+  9 tasks, none started. A theme declares its language once in `metadata.locale`,
+  required on v2, and the clock spells its names from `Intl` in it.
+- **Next up:** Task 1 (split `datetime-format.ts`). Nothing is in flight.
+- **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed
+  (Task 7's review: 0 Critical, 3 Important, 4 Minor, all actionable findings
+  re-reviewed as addressed); Tasks 8, 9, 10 remain.
+- **Queued spec, no plan:** removing the v1 document format and the fixture
+  node-tree render path. It must account for `metadata.locale`: v1 documents carry
+  no metadata, and absent means `en` there.
 - **Archived:** `archive/2026-09-25-editor-viewport-and-mechanics.md` on its full
   Task 11 gate; `archive/2026-09-25-editor-ui-polish.md` on its fix round 2
   re-review, with one item carried (browser coverage for the layer panel's bottom
@@ -27,28 +32,19 @@ requirement close-out.
 
 ## Last completed change
 
-- Closed snapping-fidelity Task 7 (resize-time snapping with verification-gated
-  guides). Its fix round added the `ponytail:` note naming the skipped refinement,
-  and replaced the guide's uncommitted one-off capture with an assertion that
-  samples the rendered `GUIDE_COLOR` pixels — the re-review confirmed the control
-  is a live 0, not a vacuous one.
-- Corrected the plan's comment-count arithmetic: the port's `/**` count is the
-  same 25 as the fork's (20 unchanged + 5 converted to `//**`), not 20.
-- Recorded a commit-hygiene defect: the fix's three source paths share `6c603c9`
-  with unrelated `STATUS.md` work, because a `git add` raced a `git commit` on one
-  index. Content verified exact; message wrong; not amended since the round's
-  evidence is bound to that sha.
-- Before that: gave every spec a `- **Status:**` line holding the state and nothing
-  else, and corrected the specs README's delete rule.
+- Committed the clock/locale implementation plan (9 TDD tasks) and promoted it to
+  the active plan; snapping-fidelity moved to the queued plan slot.
+- Every name, label and day period the plan asserts was probed against `Intl`
+  before being written, and five sketches that would not have compiled or would
+  have passed vacuously were rewritten against the files' real helpers.
 
 ## Next
 
-1. Close snapping Task 7's fix round, then land Tasks 8, 9 (which also carries the
-   item in Active work) and 10, then its final review and close-out.
-2. Close author-journey Task 6 when its pending browser evidence is available.
-3. Then the queue: authoring-and-consumer-polish Task 4 (the tab reset is real,
-   unimplemented work), settings-scope (gate and spec acceptance only),
-   consumer-journey Tasks 5+6, theme-thumbnails, authoring-time-run-placeholders.
+1. Execute the active plan's 9 tasks, then its whole-branch review.
+2. Draft the v1-removal spec recorded in Active work.
+3. Then the queue: snapping Tasks 8, 9 and 10 with its close-out; author-journey
+   Task 6; authoring-and-consumer-polish Task 4; settings-scope; consumer-journey
+   Tasks 5+6; theme-thumbnails; authoring-time-run-placeholders.
 
 ## Blockers / unverified
 

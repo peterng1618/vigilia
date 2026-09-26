@@ -1,10 +1,9 @@
 # Clock, and the theme's language
 
-- **Status:** design — approved, not yet planned.
+- **Status:** active — `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md`.
 - **Supersedes:** `2026-09-24-clock-provider.md`, whose "month and weekday names
   are English and the consumer's locale is an unanswered question" is the
-  decision this reverses. That spec's Status should read **superseded** once this
-  one is committed.
+  decision this reverses.
 - **Requirement:** the clock half of the author journey, plus the theme-language
   fact a theme library and store will need to filter on.
 
