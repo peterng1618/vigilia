@@ -237,6 +237,12 @@ git commit -m "fix(editor): align to locked objects, ignore the artboard plate"
 
 ### Task 2: ActiveSelection eligibility
 
+> **Landed** - `4fcd162`. Task review: spec compliant, quality approved, 0 Critical, 0 Important.
+> Six Minor findings dispositioned in the ledger; one (a claimed unreachable clause) was **rejected**
+> against Fabric's source. One out-of-scope observation — the fork's `isSupportedTarget` clause
+> (`!target || target.group`) has no Vigilia equivalent — is carried to Task 7's ledger as a
+> `ponytail:` note on the delta-application path, not as new work here.
+
 **Files:**
 - Create: `src/web/packages/editor/src/snap-manager/selection-eligibility.ts`
 - Create: `src/web/packages/editor/src/snap-manager/selection-eligibility.test.ts`
@@ -255,7 +261,7 @@ git commit -m "fix(editor): align to locked objects, ignore the artboard plate"
 
 The fork refused a multi-selection when any child was parented, when the selection scale was not unit and a child was text, or when the children were of an unsupported kind. Vigilia's comment claims "Vigilia has no composite type to allow-list" — true for the *kind* clause, since every Vigilia object is text, shape, chart, group or image, but not for the other two clauses.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/web/packages/editor/src/snap-manager/selection-eligibility.test.ts
@@ -307,12 +313,12 @@ describe("active selection eligibility", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run packages/editor/src/snap-manager/selection-eligibility.test.ts`
 Expected: FAIL — module does not resolve.
 
-- [ ] **Step 3: Port the guard**
+- [x] **Step 3: Port the guard**
 
 Adapt the fork's `_isSupportedActiveSelection`. Keep the member-count, no-parented-child and unit-scale-with-text clauses; drop the kind allow-list clause (every Vigilia object is supported) and record that decision in the file's header comment, since §175 requires the dropped clause to be accounted for rather than silently missing:
 
@@ -324,7 +330,7 @@ Adapt the fork's `_isSupportedActiveSelection`. Keep the member-count, no-parent
 // movement snapping.
 ```
 
-- [ ] **Step 4: Apply it in `startGesture`**
+- [x] **Step 4: Apply it in `startGesture`**
 
 After `const active = canvas.getActiveObject()` and before the bounds read:
 
@@ -347,16 +353,16 @@ Getting this wrong does not fail to compile and does not fail any test: the `Typ
 
 **Also import `isSupportedActiveSelection`** into `index.ts` from `./selection-eligibility.js` in the same edit — the guard calls it, and no step otherwise says where it comes from. This one *is* caught by the compiler.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `npx vitest run packages/editor/src/snap-manager`
 Expected: PASS.
 
-- [ ] **Step 6: Verify in the browser**
+- [x] **Step 6: Verify in the browser**
 
 Rebuild and check that dragging a two-object marquee selection still snaps to a neighbour, and that a deliberately scaled text selection does not join a snap gesture. Record both as browser tests in `tests/e2e/editor.spec.ts`; a jsdom test cannot show that Fabric never fires `object:moving` for the refused case.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/selection-eligibility.ts \
