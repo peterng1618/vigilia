@@ -1495,7 +1495,7 @@ Add `src/web/packages/editor/src/snap-manager/index.ts` to that list only if Ste
 
 The gap shipped green because the only verification was one capture whose sole assertion is `screenshot.byteLength > 1000`. The fork carried ~65 snapping e2e specs across `shape/`, `text/`, `image/`, `group/` and `selection/`, each covering moving-geometry, moving-hold, moving-lifecycle, moving-spacing and the five scaling behaviours. Those fixtures are fork-specific (`editorModel`, `shapes`, `snapping`, `SNAPPING_TOLERANCE`) and cannot be reused, but the **cases** port directly.
 
-- [ ] **Step 1: Read the fork's matrix**
+- [x] **Step 1: Read the fork's matrix**
 
 ```bash
 git -C D:/git-repos/fabricjs-image-editor ls-tree -r --name-only 9efdd78a \
@@ -1504,7 +1504,7 @@ git -C D:/git-repos/fabricjs-image-editor ls-tree -r --name-only 9efdd78a \
 
 Group them by behaviour class. Moving cases cover geometry (does the position land where the guide says), hold (does it stick and then release), lifecycle (does it start and end cleanly), and spacing (equal-spacing detection). Scaling follows the fork's actual matrix: geometry, hold, lifecycle, no-guide, Ctrl, minimum-size, round-trip and modes; it has no equal-spacing candidate or guide path.
 
-- [ ] **Step 2: Write the Vigilia matrix**
+- [x] **Step 2: Write the Vigilia matrix**
 
 New file `src/web/tests/e2e/snapping.spec.ts`, skipping every test on non-desktop projects the way `editor.spec.ts` does: `import { isDesktopSurface } from "./surface.js"` and `test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface")`. **Do not write a project-name comparison.** `isDesktopSurface` is the shared owner of the desktop surface set (`tests/e2e/surface.ts:13`, exported) and every editor case calls it; a second skip expression would be a second place for that set to be defined, and the two would drift. Follow the existing conventions:
 
@@ -1526,16 +1526,16 @@ not inside any layer row, and is below the rendered tree/last row within panel b
 and dock **entry sets**, not a hard-coded list. Record result in that spec's acceptance section during
 Task 10 close-out.
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `npx playwright test --project=desktop-chromium tests/e2e/snapping.spec.ts --workers=1`
 Expected: PASS. Report the count.
 
-- [ ] **Step 4: Prove the matrix can fail**
+- [x] **Step 4: Prove the matrix can fail**
 
 Reintroduce the `83248dc` bug — a per-gesture marker — and rerun. Expected: the multi-step cases fail for both moving and resizing. Restore. If any case survives that break, its assertion is too weak and must be tightened, because those are the cases meant to prevent the regression that already shipped once.
 
-- [ ] **Step 5: Register the evidence and commit**
+- [x] **Step 5: Register the evidence and commit**
 
 The matrix's cases assert on rendered pixels and read geometry, so most need no capture. **The resize capture is already registered and committed by Task 7** — do not add it again. If Step 2 introduces capture titles, register each under `Editor mechanics` in `docs/evidence/screenshots/README.md`. Capture titles use shared `captureVisualReview(page, testInfo, "<name>")`; it remains gated by `VIGILIA_CAPTURE`. Move `captureVisualReview`, `artboardScreenRect`, `sceneToClient` and `clientOfScene` from `editor.spec.ts` to the one non-`.spec.ts` helper module, then import it from both specs. This preserves one coordinate/capture owner without importing executable test declarations. No raw `box.x + …` mapping or ungated `page.screenshot` is permitted.
 

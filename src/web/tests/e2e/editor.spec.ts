@@ -8,94 +8,16 @@ import {
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import { installFixedClock } from "./clock.js";
+import {
+  type ArtboardRect,
+  captureVisualReview,
+  clientOfScene,
+  objectHandleScenePoint,
+  sceneToClient,
+} from "./editor-canvas.js";
 import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
-
-type ArtboardRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
-
-/** The artboard's rect, CANVAS-element relative — `artboardScreenRect()` reads
- * `viewportTransform`, whose `e`/`f` are offsets inside the canvas element, not
- * in the page. So this is deliberately not client space: the helper below adds
- * the canvas box once. The canvas is host-sized and the artboard is
- * contain-fitted inside it, so the canvas box is NOT the artboard's rendered
- * extent — `rect.height` is `720 * zoom`, not the canvas height, and the rect
- * carries the `ty` the old box-relative maths dropped. */
-async function artboardRect(page: Page): Promise<ArtboardRect> {
-  return page.evaluate(() =>
-    (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: { viewport: { artboardScreenRect(): ArtboardRect } };
-        };
-      }
-    ).vigiliaEditorBridge.editor.viewport.artboardScreenRect(),
-  );
-}
-
-/** A scene point in CLIENT coordinates. `sceneWidth` is the fixture's artboard
- * width; the scale is uniform, so one axis suffices. The canvas box offset is
- * this helper's whole reason to exist: without it every returned point is a
- * canvas-space coordinate used as a page coordinate, landing ~357px left and
- * ~72px above the intended object — off the canvas, where a drag selects
- * nothing and the test passes without exercising anything. */
-export async function sceneToClient(
-  page: Page,
-  sceneWidth: number,
-  x: number,
-  y: number,
-): Promise<{ x: number; y: number }> {
-  const rect = await artboardRect(page);
-  const box = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
-    .boundingBox())!;
-  const scale = rect.width / sceneWidth;
-  return { x: box.x + rect.left + x * scale, y: box.y + rect.top + y * scale };
-}
-
-/** The client point at an object's centre, by id. Reads the object's own
- * geometry through the bridge rather than restating fixture coordinates, so a
- * fixture tweak cannot leave this test dragging at a stale point.
- *
- * Use `getCenterPoint()`, NOT `left + getScaledWidth() / 2`. The manual form
- * silently assumes the origin is `left`/`top`, which is false here: the starter
- * scene's `chart()` helper sets `originX: "center"` / `originY: "center"`, so
- * the manual form aims at the shape's bottom-right corner instead of its
- * centre. `getCenterPoint()` converts from whatever origin the object has. */
-export async function clientOfScene(
-  page: Page,
-  id: string,
-  sceneWidth = 1280,
-): Promise<{ x: number; y: number }> {
-  const centre = await page.evaluate((objectId) => {
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            canvas: {
-              getObjects(): Array<{
-                id?: string;
-                getCenterPoint(): { x: number; y: number };
-              }>;
-            };
-          };
-        };
-      }
-    ).vigiliaEditorBridge;
-    const object = bridge.editor.canvas
-      .getObjects()
-      .find((candidate) => candidate.id === objectId);
-    if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    const point = object.getCenterPoint();
-    return { x: point.x, y: point.y };
-  }, id);
-  return sceneToClient(page, sceneWidth, centre.x, centre.y);
-}
 
 /** Shift-clicks two starter labels into an `ActiveSelection`, the product's own
  * multi-selection path. Both centres sit inside their label and outside every
@@ -210,53 +132,6 @@ async function worldRightOf(page: Page, id: string): Promise<number> {
   return rect.left + rect.width;
 }
 
-/** The scene point of a named object's resize handle, read from the object's own
- * corner coordinates: Fabric draws and hit-tests `ml`/`mr` at the midpoint of the
- * two corners on that side. Reading it here rather than restating fixture numbers
- * keeps the grab on the handle after any fixture tweak, and the corner
- * coordinates already carry the object's stroke and scale. */
-async function handleScenePoint(
-  page: Page,
-  id: string,
-  key: "ml" | "mr" | "mt" | "mb",
-): Promise<{ x: number; y: number }> {
-  return page.evaluate(
-    ([objectId, controlKey]) => {
-      const bridge = (
-        window as unknown as {
-          vigiliaEditorBridge: {
-            editor: {
-              canvas: {
-                getObjects(): Array<{
-                  id?: string;
-                  getCoords(): Array<{ x: number; y: number }>;
-                }>;
-              };
-            };
-          };
-        }
-      ).vigiliaEditorBridge;
-      const object = bridge.editor.canvas
-        .getObjects()
-        .find((candidate) => candidate.id === objectId);
-      if (object === undefined)
-        throw new Error(`no object with id ${objectId}`);
-      const [topLeft, topRight, bottomRight, bottomLeft] = object.getCoords();
-      if (!topLeft || !topRight || !bottomRight || !bottomLeft)
-        throw new Error(`${objectId} has no corner coordinates`);
-      const midpoint = (
-        first: { x: number; y: number },
-        second: { x: number; y: number },
-      ) => ({ x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 });
-      if (controlKey === "ml") return midpoint(topLeft, bottomLeft);
-      if (controlKey === "mr") return midpoint(topRight, bottomRight);
-      if (controlKey === "mt") return midpoint(topLeft, topRight);
-      return midpoint(bottomLeft, bottomRight);
-    },
-    [id, key],
-  );
-}
-
 /** Counts the guide-coloured pixels in the upper canvas' backing store along the
  * vertical scene line `sceneX`, over the artboard's full height plus a small
  * column band (the line is ~1 device px wide and dashed, so a single column
@@ -328,7 +203,7 @@ async function resizeRightHandleTo(
   testInfo: TestInfo | undefined,
   options: { ctrlKey?: boolean; captureName?: string } = {},
 ): Promise<{ right: number; raw: number; guidePixels: number }> {
-  const handle = await handleScenePoint(page, id, "mr");
+  const handle = await objectHandleScenePoint(page, id, "mr");
   const from = await sceneToClient(page, 1280, handle.x, handle.y);
   const to = await sceneToClient(page, 1280, toSceneX, handle.y);
   const travelled = await page.evaluate(
@@ -3485,29 +3360,6 @@ async function layerNamesInPage(page: Page): Promise<unknown> {
       (bridge?.layers() ?? []).map((row) => [row.id, row.name]),
     );
   });
-}
-
-export async function captureVisualReview(
-  page: Page,
-  testInfo: TestInfo,
-  name: string,
-): Promise<void> {
-  if (process.env["VIGILIA_CAPTURE"] === undefined) return;
-  const directory =
-    process.env["VIGILIA_CAPTURE_DIR"] ??
-    (process.env["VIGILIA_CAPTURE"] === undefined
-      ? "test-results/screenshots"
-      : "../../docs/evidence/screenshots");
-  const filename = `${name}-${testInfo.project.name}.png`;
-  const screenshot = await page.screenshot({
-    path: `${directory}/${filename}`,
-  });
-
-  await testInfo.attach(filename, {
-    body: screenshot,
-    contentType: "image/png",
-  });
-  expect(screenshot.byteLength).toBeGreaterThan(1000);
 }
 
 async function assetReferences(page: Page): Promise<unknown[]> {

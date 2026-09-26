@@ -8,7 +8,7 @@ relevant bugs.
 
 ## Open
 
-- [BR-001 — Task 9 browser matrix](open/BR-001-task-9-browser-matrix.md)
+- [BR-002 — A text box's side handle gets no edge snapping](open/BR-002-text-side-handle-no-edge-snapping.md)
 
 ## Closed
 
