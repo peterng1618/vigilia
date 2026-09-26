@@ -653,4 +653,25 @@ describe("Fabric theme envelope validation", () => {
 
     expect(result.ok).toBe(true);
   });
+
+  it("accepts a theme that declares a language but binds nothing at all", () => {
+    // The factory's own binding is `cpu.load`, so the case above only proves the
+    // absence of a clock key. A theme with no bindings whatsoever must also
+    // validate: a language is a fact about the document, not a promise that any
+    // reading is bound. Both spellings of "no bindings" are pinned, since the
+    // validator only skips the bag entirely when the key is absent.
+    const noBindingsKey = withoutKey(envelope(), "bindings");
+    expect(
+      validateFabricThemeEnvelope(
+        withMetadata(noBindingsKey, { name: "Fixture", locale: "ja" }),
+      ).ok,
+    ).toBe(true);
+
+    const emptyBindings = { ...envelope(), bindings: {} };
+    expect(
+      validateFabricThemeEnvelope(
+        withMetadata(emptyBindings, { name: "Fixture", locale: "ja" }),
+      ).ok,
+    ).toBe(true);
+  });
 });
