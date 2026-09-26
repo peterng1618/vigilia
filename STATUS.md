@@ -16,11 +16,12 @@ requirement close-out.
   Tasks 1–6 are landed and reviewed; Tasks 7, 8, 9 and 10 remain. Task 2's
   review closed clean (spec compliant, quality approved, 0 Critical/0 Important)
   and its commit is `4fcd162`.
-- **In flight:** `2026-09-25-editor-ui-polish.md` fix round 2, which fixes the
-  inspector's wrapping Size row and a pair-commit regression the previous round
-  introduced. Task 7 is held until it commits: both edit `editor.spec.ts`.
+- **In flight:** snapping-fidelity Task 7 (resize-time snapping), dispatched.
 - **Archived:** `docs/superpowers/plans/archive/2026-09-25-editor-viewport-and-mechanics.md`
-  closed on its full Task 11 gate.
+  closed on its full Task 11 gate, and
+  `docs/superpowers/plans/archive/2026-09-25-editor-ui-polish.md` closed on its
+  fix round 2 re-review, with one acceptance item carried (browser coverage for
+  the layer panel's bottom action row — it rides in snapping Task 9).
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
   Task 6, after the active plan's browser evidence.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md)
@@ -28,25 +29,24 @@ requirement close-out.
 
 ## Last completed change
 
-- Landed snapping-fidelity Task 2: `isSupportedActiveSelection` decides whether a
-  composed selection may snap as a unit, ported from the fork with its per-child
-  kind allow-list dropped — Vigilia's snap path is type-agnostic
-  (`getObjectExactBounds` takes any `FabricObject`), unlike the fork's
-  type-specific movement/scale path.
-- `startGesture` now refuses a gesture for an unsupported `ActiveSelection`, so a
-  scaled text selection cannot let movement be reinterpreted as unfinished
-  scaling.
-- Five jsdom unit cases and two browser cases cover it; both browser cases were
-  shown to fail with the guard disabled before being trusted.
-- Full unit suite 1455 passed; `format:check`, `lint` and `typecheck` clean.
+- Closed `2026-09-25-editor-ui-polish.md`: moved to `archive/`, workspace deleted,
+  and its spec's acceptance section annotated with the evidence each item actually
+  observed rather than the evidence it was assumed to have.
+- The paired-rows item is recorded as having been met once before on jsdom evidence
+  and **not** met — jsdom performs no layout, so a wrapped row and a one-line row
+  return the same element. The rendered measurement found the Size row 66px tall
+  with its inputs at two tops; `W`/`H` labels fixed it (239.2 × 30px, tops equal).
+- One item is named as carried, not met: browser coverage for the layer panel's
+  bottom action row. It rides in snapping-fidelity Task 9.
 
 ## Next
 
-1. Close snapping-fidelity Task 2's review, then execute Tasks 7, 8, 9 and 10.
-2. Close `2026-09-25-editor-ui-polish.md`: its fix round 2 is in flight (the
-   inspector's Size row wraps, and the paired commit rewrites the sibling), and
-   it still owes the local browser suite.
-3. Close author-journey Task 6 when its pending browser evidence is available.
+1. Land snapping-fidelity Tasks 7, 8, 9 (which also carries the carried item above)
+   and 10, then its final whole-branch review and close-out.
+2. Close author-journey Task 6 when its pending browser evidence is available.
+3. Work the queue behind it: authoring-and-consumer-polish Task 4 (the tab reset is
+   real, unimplemented work), settings-scope (gate and spec acceptance only),
+   consumer-journey Tasks 5+6, theme-thumbnails, authoring-time-run-placeholders.
 
 ## Blockers / unverified
 
