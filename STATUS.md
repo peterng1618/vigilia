@@ -13,11 +13,10 @@ requirement close-out.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–7 landed and reviewed; Tasks 8, 9, 10 remain. Task 7's review passed
-  with 0 Critical, 3 Important, 4 Minor.
-- **In flight:** Task 7's fix round — a missing `ponytail:` note, a guide
-  assertion with a red-before proof, and two unit cases. Task 8 is held until it
-  commits: both edit `snap-manager/`.
+  Tasks 1–7 landed, reviewed and closed; Tasks 8, 9, 10 remain. Task 7's review
+  passed with 0 Critical, 3 Important, 4 Minor, and all six actionable findings
+  re-reviewed as addressed.
+- **Next up:** Task 8 (Ctrl and Shift during a resize). Nothing is in flight.
 - **Archived:** `archive/2026-09-25-editor-viewport-and-mechanics.md` on its full
   Task 11 gate; `archive/2026-09-25-editor-ui-polish.md` on its fix round 2
   re-review, with one item carried (browser coverage for the layer panel's bottom
@@ -28,15 +27,19 @@ requirement close-out.
 
 ## Last completed change
 
-- Gave every spec a `- **Status:**` line (active / in progress / queued /
-  implemented / backlog / design), so the specs directory reads without opening
-  twelve files.
-- Corrected `docs/superpowers/specs/README.md`: it said to delete a spec no longer
-  a current contract, but `requirements.md` and `ownership.md` link into that
-  directory on their `Design:` lines, so deleting one orphans the requirement it
-  produced. Archiving now means promote the requirement, archive the plan and
-  update the inbound links together — and nothing qualifies yet.
-- Before that: closed editor-ui-polish — archived, acceptance annotated per item.
+- Closed snapping-fidelity Task 7 (resize-time snapping with verification-gated
+  guides). Its fix round added the `ponytail:` note naming the skipped refinement,
+  and replaced the guide's uncommitted one-off capture with an assertion that
+  samples the rendered `GUIDE_COLOR` pixels — the re-review confirmed the control
+  is a live 0, not a vacuous one.
+- Corrected the plan's comment-count arithmetic: the port's `/**` count is the
+  same 25 as the fork's (20 unchanged + 5 converted to `//**`), not 20.
+- Recorded a commit-hygiene defect: the fix's three source paths share `6c603c9`
+  with unrelated `STATUS.md` work, because a `git add` raced a `git commit` on one
+  index. Content verified exact; message wrong; not amended since the round's
+  evidence is bound to that sha.
+- Before that: gave every spec a `- **Status:**` line holding the state and nothing
+  else, and corrected the specs README's delete rule.
 
 ## Next
 
