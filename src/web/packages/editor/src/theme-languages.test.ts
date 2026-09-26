@@ -19,4 +19,9 @@ describe("the languages an author may pick", () => {
     expect(languageLabel("ko")).toBe("Korean");
     expect(languageLabel("vi")).toBe("Vietnamese");
   });
+
+  it("keeps validator-accepted extension tags usable as labels", () => {
+    expect(isLocaleName("en-x-foo")).toBe(true);
+    expect(languageLabel("en-x-foo")).toBe("en-x-foo");
+  });
 });

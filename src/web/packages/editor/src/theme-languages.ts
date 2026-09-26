@@ -26,7 +26,11 @@ export const THEME_LANGUAGES: readonly string[] = [
 
 /** What a language is called, in the editor's own language. */
 export function languageLabel(tag: string): string {
-  return displayNames().of(tag) ?? tag;
+  try {
+    return displayNames().of(tag) ?? tag;
+  } catch {
+    return tag;
+  }
 }
 
 // Built once: `Intl.DisplayNames` construction is not free and this runs per

@@ -73,8 +73,6 @@ export function createArtboardPanel(
   refreshMediaOptions(media.select, options.assets);
   refreshPaletteOptions(background.select, globals);
   refreshPaletteOptions(bars.select, globals);
-  refreshLanguageOptions(language.select);
-  language.select.value = "en";
   let current: Artboard;
   let currentMetadata: ThemeMetadata | undefined;
   const submitArtboard = (width: number, height: number): void => {
@@ -177,7 +175,7 @@ export function createArtboardPanel(
     version,
     ...rows,
   );
-  // The sample belongs to the language row, not beside it.
+  languageSample.style.gridColumn = "1 / -1";
   language.row.append(languageSample);
   host.append(root);
 
