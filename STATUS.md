@@ -23,13 +23,13 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Last completed change
 
-- Added `docs/bugs-registry.md` for non-critical bugs unresolved after three attempts.
-- Moved Task 9 browser-matrix limitations to [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix).
+- Added `docs/bugs/` index with one file per non-critical deferred bug.
+- Moved Task 9 browser-matrix limitations to [BR-001](docs/bugs/open/BR-001-task-9-browser-matrix.md).
 - Kept resize equal-spacing out of scope because fork and Vigilia scaling lack that behavior.
 
 ## Next
 
-1. Task 9 browser-matrix work is deferred in [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix); resume only on user request.
+1. Task 9 browser-matrix work is deferred in [BR-001](docs/bugs/open/BR-001-task-9-browser-matrix.md); resume only on user request.
 2. Run Task 10's quality gate from workspace without nested agent worktrees; current lint fails on their nested Biome roots.
 3. Complete Task 10 only after its gates pass; activate reference-theme only after snapping closes.
 
@@ -48,4 +48,4 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
   preset/override.
 - The gate's visual checks were made against `vite preview` bundles on desktop
   widths only; the phone surfaces were exercised by the browser suite, not by eye.
-- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; preserve or discard each worktree before removal. Browser suite is deferred by [BR-001](docs/bugs-registry.md#br-001--task-9-browser-matrix).
+- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; preserve or discard each worktree before removal. Browser suite is deferred by [BR-001](docs/bugs/open/BR-001-task-9-browser-matrix.md).

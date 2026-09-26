@@ -58,9 +58,11 @@ Vigilia process.
 - Keep `STATUS.md` to current objective, active work, latest completed change,
   next steps and blockers/unverified only. Maximum 70 lines; run
   `npm run status:check` from `src/web/`.
-- After three unsuccessful repair attempts, record a non-critical bug in
-  `docs/bugs-registry.md` with evidence and its next pickup action. Resume only
-  when a user asks; do not duplicate it outside plan-relevant references.
+- After three unsuccessful repair attempts, record a non-critical bug in its
+  own `docs/bugs/open/` file, index it in `docs/bugs/README.md`, and include
+  evidence plus its next pickup action. Resume only when a user asks; move
+  resolved bugs to `docs/bugs/closed/`; do not duplicate them outside
+  plan-relevant references.
 - Let Superpowers own the workflow and its artifacts.
 - Designs/specs live in `docs/superpowers/specs/`.
 - Executable plans live in `docs/superpowers/plans/`; completed/superseded
