@@ -38,6 +38,11 @@ export const uiCopy = {
     unresolved: "no longer resolves",
     runs: "Runs",
     runPreset: "Type preset",
+    /** Shown when a run after the first asks for tracking the object cannot
+        carry: Fabric measures spacing once, from the object. The interpolation
+        is the run's own preset reference, as the run list above names it. */
+    runTrackingNotSeparate: (preset: string) =>
+      `Tracking on "${preset}" is not shown separately — a text object carries one tracking value, from its first run.`,
     editTypePresets: "Edit type presets",
     documentStyle: "This document",
     runColour: "Colour",

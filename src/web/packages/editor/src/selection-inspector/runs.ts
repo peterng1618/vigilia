@@ -68,23 +68,32 @@ function presetIds(globals: FabricGlobals | undefined): readonly string[] {
   );
 }
 
-/** What a preset asks for that a whole text object cannot carry. */
+/**
+ * The runs whose tracking the object cannot carry separately.
+ *
+ * Fabric measures spacing once, from the object, so only the first run's
+ * preset reaches the screen. A later run asking for the *same* value loses
+ * nothing, so it is not a gap — which is also the condition `textShapeFor`
+ * reports on. Matching the model rather than "any letterSpacing" is what keeps
+ * this from warning about a run that is already painted as asked.
+ */
 function presetGaps(
   globals: FabricGlobals | undefined,
   runs: readonly TextRun[],
 ): readonly string[] {
-  const gaps = new Set<string>();
-  for (const run of runs) {
-    // Fabric measures tracking once from the object, so a second run asking for
-    // its own value is a request the canvas cannot honour. The first run's
-    // preset is the one that reaches the object.
-    if (run === runs[0]) continue;
-    if (letterSpacingOf(globals, run.typePreset) === undefined) continue;
-    gaps.add(
-      `Tracking on "${run.typePreset}" is not shown separately — a text object carries one tracking value, from its first run.`,
+  // Undefined for an untracked preset, which is also what the object paints
+  // when its first run is untracked — so a later tracked run is a real gap.
+  const painted = letterSpacingOf(globals, runs[0]?.typePreset);
+
+  const gaps: string[] = [];
+  for (const run of runs.slice(1)) {
+    const spacing = letterSpacingOf(globals, run.typePreset);
+    if (spacing === undefined || spacing === painted) continue;
+    gaps.push(
+      uiCopy.inspectorFields.runTrackingNotSeparate(run.typePreset ?? ""),
     );
   }
-  return [...gaps];
+  return gaps;
 }
 
 /** A preset's authored tracking, or undefined when it asks for none. */

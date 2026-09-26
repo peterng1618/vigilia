@@ -354,6 +354,49 @@ describe("what a run cannot carry", () => {
     return box.dispose();
   });
 
+  it("says nothing when a later run tracks the same as the first", () => {
+    // The panel has to match the model, which reports on *inequality*. A second
+    // run asking for the value the object already carries loses nothing, and
+    // warning about it would teach the author to ignore the note.
+    const same = {
+      typePresets: {
+        tracked: {
+          name: "Tracked",
+          value: { family: "Inter", size: 32, letterSpacing: 4 },
+        },
+      },
+    } as unknown as FabricGlobals;
+    const box = harness(
+      [
+        { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
+        { kind: "literal", text: "42%", typePreset: "typePresets.tracked" },
+      ],
+      undefined,
+      same,
+    );
+
+    expect(box.notes()).toEqual([]);
+    return box.dispose();
+  });
+
+  it("says nothing when the first run is untracked and a later one tracks", () => {
+    // The object takes the first run's value, which here is none. A later run
+    // asking for tracking is then a gap, but the note names the run whose
+    // preset is *not* what is painted — so it is still reported.
+    const box = harness(
+      [
+        { kind: "literal", text: "CPU ", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "42%", typePreset: "typePresets.tracked" },
+      ],
+      undefined,
+      tracking,
+    );
+
+    expect(box.notes()).toHaveLength(1);
+    expect(box.notes()[0]).toContain("typePresets.tracked");
+    return box.dispose();
+  });
+
   it("says nothing when no run tracks", () => {
     const box = harness(
       [

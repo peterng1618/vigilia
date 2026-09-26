@@ -328,30 +328,14 @@ describe("fixed boxes survive a changing reading", () => {
 });
 
 describe("the mixed-run limit", () => {
-  it("carries the first run's tracking across the whole object", () => {
-    // Fabric's charSpacing is a whole-object property in 1/1000 em, and
-    // per-character spacing is not something Fabric measures, so a second run
-    // whose preset tracks differently cannot show its own value. What must be
-    // true is that the object takes the first run's, deterministically.
-    const object = textbox("mixed", [
-      { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
-      { kind: "literal", text: "42%", typePreset: "typePresets.other" },
-    ]);
-    const canvas = canvasOf([object]);
-
-    applyObjectTypePresets(canvas, globalsWith({ letterSpacing: 0.8 }));
-
-    expect(object.charSpacing).toBeCloseTo(25, 6);
-  });
-
-  it("resolves both runs' tracking, so the difference is detectable", () => {
-    // Characterisation, not a regression test: this passes with or without the
-    // tracking fix, because `resolveTextSegments` and `textShapeFor` already
-    // reported the mixed-run case. It is here because the author-facing
-    // disclosure (`runs.dom.test.ts`, "says a second run's tracking is not
-    // shown separately") reads these two values to decide whether to warn, and
-    // that warning is worthless if the resolution underneath it stops
-    // distinguishing them.
+  it("shows one run's tracking, and can still tell the runs apart", () => {
+    // Two halves of one claim, because they are one behaviour. Fabric's
+    // `charSpacing` is a whole-object property in 1/1000 em and per-character
+    // spacing is not something it measures, so a second run's value cannot
+    // reach the screen — the object keeps the first run's. But the *difference*
+    // has to stay detectable, or an author who tracks a second run has no way
+    // to learn their choice did nothing: the run editor's disclosure reads
+    // exactly these two values to decide whether to warn.
     const globals: Globals = {
       typePresets: {
         tracked: {
@@ -364,40 +348,34 @@ describe("the mixed-run limit", () => {
         },
       },
     };
+    const runs = [
+      { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
+      { kind: "literal", text: "42%", typePreset: "typePresets.other" },
+    ] as const;
+
+    // Detectable: both values resolve, and the difference is reported.
     const segments = resolveTextSegments(
       "mixed",
-      [
-        { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
-        { kind: "literal", text: "42%", typePreset: "typePresets.other" },
-      ],
+      runs,
       [],
       { source: emptySampleSource },
       globals,
       [],
     );
-
     expect(segments[0]?.style["letterSpacing"]).toBe(0.8);
     expect(segments[1]?.style["letterSpacing"]).toBe(4);
     expect(
       textShapeFor(segments, {}, (value) => [...value]).unsupported,
     ).toContain("letterSpacing");
-  });
 
-  it("carries one run's tracking across the whole object", () => {
-    // The counterpart to the reporting above, and the regression this file's
-    // first case also covers: what actually reaches Fabric when two runs
-    // disagree. Asserted here too so the pair reads as one claim — the
-    // difference is detected *and* the object still shows one value.
-    const object = textbox("mixed", [
-      { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
-      { kind: "literal", text: "42%", typePreset: "typePresets.other" },
-    ]);
-    const canvas = canvasOf([object]);
+    // And only one reaches Fabric: the first run's. The `other` preset is
+    // deliberately absent from the globals the object is applied with, so this
+    // is exactly the case where the object cannot honour the second run.
+    const object = textbox("mixed", [...runs]);
     applyObjectTypePresets(
-      canvas,
-      globalsWith({ letterSpacing: 0.8 }) as Globals,
+      canvasOf([object]),
+      globalsWith({ letterSpacing: 0.8 }),
     );
-
     expect(object.charSpacing).toBeCloseTo(25, 6);
   });
 });

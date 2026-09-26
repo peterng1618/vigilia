@@ -84,13 +84,18 @@ describe("the new Fabric document", () => {
     expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
   });
 
-  it("tracks its wordmark and section labels, and leaves its readings alone", () => {
+  it("tracks only what the reference measures, and fits its boxes", async () => {
     // Typography, not a value dump. Two things an untracked starter gets wrong:
-    // a wordmark and a set of all-caps section labels read as one grey run, and
-    // a tracked clock or reading does not — a numeral's advance is a grid cell
-    // and opening it up breaks the column it sits in. So tracking is asserted
-    // for the display and label presets and refused for the reading ones.
-    const presets = createNewFabricTheme().globals?.typePresets as Record<
+    // a wordmark reads as one grey run, and a tracked clock or reading does not
+    // — a numeral's advance is a grid cell and opening it up breaks the column
+    // it sits in.
+    //
+    // The section labels are untracked on purpose: the reference has no
+    // all-caps section label, so there is nothing to measure a value against,
+    // and at a measured ratio they overflow every box they are applied to. The
+    // fit assertion below is what keeps that from coming back.
+    const theme = createNewFabricTheme();
+    const presets = theme.globals?.typePresets as Record<
       string,
       { value: Readonly<Record<string, unknown>> }
     >;
@@ -99,15 +104,14 @@ describe("the new Fabric document", () => {
       return typeof value === "number" ? value : undefined;
     };
 
-    // Tracked: the wordmark, the strapline and the all-caps section labels.
-    // The wordmark's value is measured off the reference image, not judged by
-    // eye — see the note on the preset itself.
+    // Tracked: the wordmark and the strapline. The wordmark's value is measured
+    // off the reference image, not judged by eye — see the note on the preset.
     expect(spacingOf("32-500")).toBeGreaterThan(0);
     expect(spacingOf("12-400")).toBeGreaterThan(0);
-    expect(spacingOf("13-600")).toBeGreaterThan(0);
 
-    // Untracked: the clock, the metric, the date and the period.
-    for (const id of ["70-300", "36-600", "16-400", "17-500"]) {
+    // Untracked: the section labels (an unmeasured role, in boxes sized for one
+    // line), and the readings.
+    for (const id of ["13-600", "70-300", "36-600", "16-400", "17-500"]) {
       expect(spacingOf(id) ?? 0, id).toBe(0);
     }
 
@@ -118,9 +122,41 @@ describe("the new Fabric document", () => {
       if (spacing === undefined) continue;
       expect(Number.isFinite(spacing)).toBe(true);
     }
+
+    // Tracking widens a line, and a `Textbox` wraps rather than spills. A
+    // tracked label that no longer fits its authored box silently becomes two
+    // lines — invisible in the preset panel, and only on the canvas.
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+    // Keyed off each object's own run reference, not its id: an object id is
+    // `gauge-title`, and the preset it uses is `13-600`. Keying by id matches
+    // nothing, and the loop would pass on an empty set.
+    const tracked = canvas.getObjects().filter((object) => {
+      const authored = object.get("vigiliaText") as
+        | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
+        | undefined;
+      const ref = authored?.runs?.[0]?.typePreset;
+      const preset = ref?.slice("typePresets.".length);
+      return preset !== undefined && spacingOf(preset) !== undefined;
+    });
+    // The two tracked presets, so the loop below cannot pass by finding nothing.
+    expect(tracked.map((object) => object.get("id"))).toEqual([
+      "wordmark",
+      "strapline",
+    ]);
+    for (const object of tracked) {
+      const id = String(object.get("id"));
+      const lines = (object as { textLines?: string[] }).textLines;
+      expect(lines, id).toBeDefined();
+      expect(lines?.length, id).toBe(1);
+    }
+    await canvas.dispose();
   });
 
-  it("writes the resolved tracking into each object's own JSON", async () => {
+  it("writes the resolved tracking into every tracked object's own JSON", async () => {
     // Every other preset-derived Fabric field is written into the object, so
     // the starter declares five of a preset's six and omits the one this task
     // is about. Not a live bug — the editor applies presets at mount — but the
@@ -128,22 +164,49 @@ describe("the new Fabric document", () => {
     // comparing an object against its preset would conclude the sixth field
     // does not exist.
     const theme = createNewFabricTheme();
+    const presets = theme.globals?.typePresets as Record<
+      string,
+      { value: Readonly<Record<string, unknown>> }
+    >;
     const canvas = new StaticCanvas(undefined, {
       width: theme.artboard.width,
       height: theme.artboard.height,
     });
     await reviveThemeEnvelope(canvas, theme);
 
-    const object = canvas
-      .getObjects()
-      .find((it) => it.get("id") === "wordmark");
-    // 28px at 32px is Fabric's 1/1000 em: 875.
-    expect(object?.get("charSpacing")).toBe(875);
+    // Every text object, keyed off its own run reference: an object id is
+    // `gauge-title` and the preset it uses is `13-600`, so id-keying matches
+    // nothing and the loop would pass on an empty set.
+    const written: Array<[string, number]> = [];
+    const absent: string[] = [];
+    for (const object of canvas.getObjects()) {
+      const authored = object.get("vigiliaText") as
+        | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
+        | undefined;
+      const presetId = authored?.runs?.[0]?.typePreset?.slice(
+        "typePresets.".length,
+      );
+      if (presetId === undefined) continue;
+      const authored0 = presets[presetId]?.value["letterSpacing"];
+      if (typeof authored0 !== "number") continue;
+      const id = String(object.get("id"));
+      // 28px at 32px is Fabric's 1/1000 em: 875.
+      const writtenValue = object.get("charSpacing") as number;
+      if (typeof writtenValue === "number" && writtenValue !== 0) {
+        written.push([id, writtenValue]);
+      } else {
+        absent.push(id);
+      }
+    }
 
-    // An untracked object writes nothing rather than a zero Fabric would then
-    // have to be told to ignore.
-    const clock = canvas.getObjects().find((it) => it.get("id") === "time");
-    expect(clock?.get("charSpacing")).toBe(0);
+    // Every tracked object carries its preset's converted value.
+    expect(written).toEqual([
+      ["wordmark", 875],
+      ["strapline", (6.5 / 12) * 1000],
+    ]);
+    // So a preset that tracks and an object that does not is caught here, not
+    // discovered by a reader.
+    expect(absent).toEqual([]);
     await canvas.dispose();
   });
 

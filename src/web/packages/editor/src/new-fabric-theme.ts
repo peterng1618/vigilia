@@ -182,9 +182,12 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 13,
       weight: "600",
-      // The overline's 0.75 ink-gap-to-cap ratio, at this size. All-caps, so it
-      // wants the same treatment rather than a value of its own.
-      letterSpacing: 7,
+      // Untracked, and deliberately so. The reference theme has no all-caps
+      // section label — its card titles are sentence case — so there is nothing
+      // there to measure a value against, and any number here would be invented.
+      // Tracked, it also overflows: 7px wraps all five of these labels onto a
+      // second line inside boxes sized for one. Task 7 recomposes these titles
+      // to the reference's sentence case.
       lineHeight: 1.18,
       trioRole: "body",
     },

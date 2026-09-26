@@ -125,33 +125,41 @@ describe("object-level tracking", () => {
 });
 
 describe("font readiness", () => {
-  it("applies tracking from the preset's own size, not a loaded face's metrics", () => {
-    // The point is that the conversion is arithmetic on the *preset's* size, so
-    // nothing about glyph measurement can enter it. Both objects here are
-    // measured in the same fallback face (this environment has no Inter), which
-    // is the situation a device hits before its packaged font arrives — so the
-    // equal ratios are the claim, not an artefact of the two objects being
-    // identical.
+  it("derives tracking from the preset's size alone, and reapplying is stable", () => {
+    // **What this does not cover:** whether a face that has not loaded measures
+    // differently. That is not unit-testable here — jsdom measures every family
+    // with the same fallback, and `applyObjectTypePresets` overwrites
+    // `fontFamily` from the preset, so a deliberately-missing family would be
+    // replaced before anything read it. The rendered guarantee is the value
+    // being em-relative, which is arithmetic rather than measurement: Fabric
+    // multiplies `charSpacing` by the object's own `fontSize`, so a face
+    // arriving late cannot rescale it. `adapter.ts` remeasures text on
+    // `loadingdone` for the widths that *do* depend on the face.
     //
-    // Note the family is *not* set to a missing face here: `applyObjectTypePresets`
-    // overwrites `fontFamily` from the preset, so doing that would test nothing.
+    // So what is asserted here is the half that is testable: the ratio comes
+    // from the preset's declared size, and reapplying it — which is what a font
+    // load, a preset edit and an undo each cause — does not drift it.
     const globals = globalsWith({
       family: "Inter",
       size: 32,
       letterSpacing: 0.8,
     });
-    const first = textbox("metric", [literal("typePresets.tracked")]);
-    const second = textbox("metric", [literal("typePresets.tracked")]);
+    const object = textbox("metric", [literal("typePresets.tracked")]);
+    const canvas = canvasOf([object]);
 
-    applyObjectTypePresets(canvasOf([first]), globals);
-    applyObjectTypePresets(canvasOf([second]), globals);
+    applyObjectTypePresets(canvas, globals);
+    expect(object.charSpacing).toBeCloseTo(25, 6);
 
-    expect(first.charSpacing).toBeCloseTo(25, 6);
-    expect(second.charSpacing).toBe(first.charSpacing);
-    // Reapplying after any font work must not move it: the value is a pure
-    // function of the preset, so a late-arriving face cannot rescale it.
-    applyObjectTypePresets(canvasOf([second]), globals);
-    expect(second.charSpacing).toBeCloseTo(25, 6);
+    // The preset's size is the denominator, not the object's current one: an
+    // object sitting at another size must not keep a stale ratio.
+    object.set({ fontSize: 12 });
+    applyObjectTypePresets(canvas, globals);
+    expect(object.fontSize).toBe(32);
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+
+    // Idempotent, so a second application cannot drift the value.
+    applyObjectTypePresets(canvas, globals);
+    expect(object.charSpacing).toBeCloseTo(25, 6);
   });
 });
 
