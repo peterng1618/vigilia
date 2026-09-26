@@ -13,8 +13,12 @@ requirement close-out.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–6 are landed; Tasks 7, 8, 9 and 10 remain. Task 2's review is in
-  flight and its commit is `4fcd162`.
+  Tasks 1–6 are landed and reviewed; Tasks 7, 8, 9 and 10 remain. Task 2's
+  review closed clean (spec compliant, quality approved, 0 Critical/0 Important)
+  and its commit is `4fcd162`.
+- **In flight:** `2026-09-25-editor-ui-polish.md` fix round 2, which fixes the
+  inspector's wrapping Size row and a pair-commit regression the previous round
+  introduced. Task 7 is held until it commits: both edit `editor.spec.ts`.
 - **Archived:** `docs/superpowers/plans/archive/2026-09-25-editor-viewport-and-mechanics.md`
   closed on its full Task 11 gate.
 - **Queued verification:** `docs/superpowers/plans/2026-09-24-author-journey.md`
