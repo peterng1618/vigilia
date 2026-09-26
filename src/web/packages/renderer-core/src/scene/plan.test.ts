@@ -391,12 +391,10 @@ describe("text (§89)", () => {
     const result = plan(
       documentWith(
         [
-          {
-            id: "t",
-            type: "text",
-            bindings: [{ id: "b", semanticKey: "date.today", format: "dddd" }],
-            content: { runs: [{ kind: "value", bindingId: "b" }] },
-          } as unknown as ThemeNode,
+          node(
+            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+            [{ kind: "value", bindingId: "b" }],
+          ),
         ],
         undefined,
         { locale: "ja" },
@@ -408,6 +406,33 @@ describe("text (§89)", () => {
 
     // 2026-09-24 is a Thursday, however the language spells it.
     expect(content.segments[0]!.text).toBe("木曜日");
+  });
+
+  it("lets a caller's language override the document's", () => {
+    // Both are declared, and the caller's wins: `context.locale` is how a
+    // consumer renders one plan in a language that is not the theme's own.
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = plan(
+      documentWith(
+        [
+          node(
+            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+            [{ kind: "value", bindingId: "b" }],
+          ),
+        ],
+        undefined,
+        { locale: "ja" },
+      ),
+      { source, locale: "en" },
+    );
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "text") throw new Error("expected a text node");
+
+    // The document says `ja`, and the caller still gets English: the theme's
+    // language did not win.
+    expect(content.segments[0]!.text).toBe("Thursday");
   });
 
   it("takes names from the pinned zone's own date, not from UTC", () => {
