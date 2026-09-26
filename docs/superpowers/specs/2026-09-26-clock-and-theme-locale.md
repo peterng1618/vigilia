@@ -284,6 +284,34 @@ vocabulary.
 - Changing a theme's language changes what the dashboard shows without editing a
   binding.
 
+Annotated 2026-09-27 from the code, not from the plan's boxes:
+
+- A v2 theme without `metadata.locale`, and one with a malformed or unsupported
+  tag, is refused naming the value — `theme/fabric-envelope-validate.ts` and its
+  test.
+- Long and short name forms come from the platform, not a truncation of the long
+  form; a month is spelled in the chosen language — `scene/datetime/names.test.ts`.
+- A language whose CLDR data has no AM/PM renders its own day period, and one
+  that keeps AM/PM keeps it — `names.test.ts`, "reads a day period the language
+  actually has".
+- A language the runtime can render is accepted and one it cannot is refused; an
+  unusable language reads as English rather than throwing — `names.test.ts`.
+- Authored tokens still render, including day of week, 12-hour form, literals,
+  an unclosed bracket's text, and an unknown token shown literally rather than
+  blanking — `scene/datetime/format.test.ts`. A value that is not an instant is
+  refused rather than turned into a date.
+- A pinned zone reads as that zone's wall clock, offset included, and an
+  unresolvable zone falls back to this machine rather than losing the clock —
+  `format.test.ts`.
+- **Browser:** a theme's language decides the words its clock shows, against the
+  real host — `host-player.spec.ts`. It passed in the 2026-09-27 full browser
+  suite (155 passed / 96 skipped / 0 failed).
+
+**Not separately proven:** that the Theme settings language control is a curated
+list whose every offered tag the validator accepts is not pinned by a case, and
+the editor-side round trip of changing a language and watching the dashboard
+update is covered by the host case above rather than a dedicated editor capture.
+
 ## Verification
 
 Focused proof during implementation; the broad gate at the milestone boundary.

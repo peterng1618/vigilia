@@ -114,6 +114,32 @@ and an unconfigured theme behaves exactly as it does today.
 - Rendered inspection of: no theme chosen, a theme needing nothing, a theme
   needing one slot, and a theme overridden from the global choice.
 
+Landed in `eacaea2` (per-theme answers, the global invariant, the asking) and
+`fd5cbf8` (the theme→global→provider resolution). Annotated 2026-09-27 from the
+code and from `tests/e2e/host-settings.spec.ts`, which drives the real host:
+
+- Global section unchanged by the active theme — `keeps this PC's devices on
+  screen whatever theme is shown`.
+- Setting devices with no theme chosen — `saves this PC's device choice with no
+  theme chosen`, and `keeps both display preferences whichever one is saved`.
+- A theme's question asked once and remembered — `asks a theme's disk question
+  once, and remembers the answer`.
+- A theme that reads nothing asks nothing — `shows no questions for a theme that
+  reads nothing`.
+- Theme-specific override beats the global answer for that theme only — proven by
+  the two-direction host unit test (`server.test.ts`), **not** by a browser case.
+- The named device is the edited one, not the first — `names the device the
+  consumer edited, not the first one`.
+
+**Not met in full: the four-state rendered inspection.** One capture is
+registered, `settings-theme-question-desktop-chromium.png`, covering the
+one-slot theme question. The no-theme, needs-nothing and override states are
+covered behaviourally by the cases above but have no registered capture.
+
+Broad gate and full browser suite, run 2026-09-27 against this state:
+`format:check`, `lint`, `typecheck`, 136/136 unit test files, `build` and `size`
+clean; browser suite 155 passed / 96 skipped / 0 failed.
+
 ## Verification
 
 Each line is driven in a browser against the real host, with the stored state
