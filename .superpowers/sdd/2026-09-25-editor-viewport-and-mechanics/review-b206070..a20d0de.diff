@@ -1,0 +1,41 @@
+# Review package: b206070..a20d0de
+
+## Commits
+a20d0de docs(editor): correct the retained local mapping's stated reason
+
+## Files changed
+ src/web/tests/e2e/editor.spec.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+## Diff
+diff --git a/src/web/tests/e2e/editor.spec.ts b/src/web/tests/e2e/editor.spec.ts
+index 091eac1..9251a98 100644
+--- a/src/web/tests/e2e/editor.spec.ts
++++ b/src/web/tests/e2e/editor.spec.ts
+@@ -1695,23 +1695,23 @@ test.describe("Fabric editor route", () => {
+                   width: number;
+                   height: number;
+                 };
+               };
+             };
+           };
+         }
+       ).vigiliaEditorBridge;
+       return b.editor.viewport.artboardScreenRect();
+     });
+-    // `rect` is canvas-relative, so the canvas box offset is added here. The file
+-    // now has `sceneToClient` for this; the local form stays because the test
+-    // needs a tuple and its own guard compares against `rect` directly.
++    // `rect` is canvas-relative, so the canvas box offset is added here. The
++    // local form stays because the call site destructures a tuple; the poll for
++    // `active === "child"` below is what stops a click on nothing from passing.
+     const canvasBox = (await page
+       .locator("#vigilia-fabric-editor canvas.upper-canvas")
+       .boundingBox())!;
+     const at = (x: number, y: number): [number, number] => [
+       canvasBox.x + rect.left + (x / 320) * rect.width,
+       canvasBox.y + rect.top + (y / 180) * rect.height,
+     ];
+ 
+     const state = (): Promise<{
+       active: string | undefined;

@@ -1,0 +1,603 @@
+# Review package: 8184472..093b3ec
+
+## Commits
+093b3ec refactor(editor): the canvas becomes a viewport onto the workspace
+
+## Files changed
+ STATUS.md                                          |  25 +--
+ src/web/packages/editor/src/editor-interaction.ts  |   3 +
+ .../packages/editor/src/editor-shell.dom.test.ts   |  22 +++
+ src/web/packages/editor/src/editor-shell.ts        | 205 ++++++++++++---------
+ 4 files changed, 154 insertions(+), 101 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 7d346d4..db2c3f3 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -20,32 +20,33 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - Specs A and B are both under execution, task by task; snapping has no
+   execution method chosen yet.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- The imperative `layer-panel.ts` is deleted; `editor-shell/layer-panel.tsx`
+-  renders a Figma-style tree from `bridge.layers()` — one dense row per layer
+-  with a depth indent, a kind icon, the name and exactly two state icons.
+-- `EditorShellBridge` gained `selectLayer`, `setLayerVisible`, `setLayerLocked`
+-  and `setCollapsed`; the first two and lock resolve a group child through
+-  `ownerOf`, revealed from the tree because Fabric repoints `object.group` at an
+-  active selection.
+-- `layer-tree.ts` owns `findById`/`ownerOf`/`pathTo`, and `LayerRow` carries
+-  `collapsed`, so a shut group drops its children from the projection. Collapse
+-  is bridge-local view state, never authored history (§67).
+-- `ShellHosts` and `EditorPanelHosts` lost their `layers` node; the pane renders
+-  React-side, and the rail entry survives.
++- The canvas is a viewport onto the workspace, not a surface clamped to the
++  artboard: it takes the host's measured size and `createViewportManager` owns
++  its transform as the single writer. `EditorShell`/`EditorInteraction` expose
++  `viewport`.
++- `fitCanvasViewport` is gone and `fitArtboardViewport`'s resizing role with it;
++  `createNativeEditor` dropped its now-unused `artboard` parameter, and the
++  `ResizeObserver` only calls `viewport.resize()`.
++- The artboard paint moved from `canvas.backgroundColor` to a bounded,
++  non-exported `Rect` in `canvas.backgroundImage`, so the pasteboard stays
++  visible around the board; the plate is rebuilt after undo/redo through
++  `editor:history-state-loaded`.
++- Background media — a DOM sibling of the canvas — is repositioned to the
++  artboard's screen rect on every camera change.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 6 (bottom action row and drag reorder).
+ 2. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+   `test-results/summary.json`. Three spec acceptance items stay unverified —
+diff --git a/src/web/packages/editor/src/editor-interaction.ts b/src/web/packages/editor/src/editor-interaction.ts
+index e3bc8cf..c4015bc 100644
+--- a/src/web/packages/editor/src/editor-interaction.ts
++++ b/src/web/packages/editor/src/editor-interaction.ts
+@@ -1,20 +1,23 @@
+ import type { Canvas, FabricObject } from "fabric/es";
+ import type { ClipboardManager } from "./clipboard-manager/index.js";
+ import type { CropManager } from "./crop-manager/index.js";
+ import type { DeletionManager } from "./deletion-manager/index.js";
+ import type { ErrorManager } from "./error-manager/index.js";
+ import type { GroupingManager } from "./grouping-manager/index.js";
++import type { ViewportManager } from "./viewport-manager/index.js";
+ 
+ /** Product panels depend only on the editor mechanics they exercise. */
+ export interface EditorInteraction {
+   readonly canvas: Canvas;
++  /** The camera over the canvas: the single writer of its viewport transform. */
++  readonly viewport: ViewportManager;
+   readonly imageManager: {
+     importImage(options: {
+       readonly source: File;
+       readonly scale?: "image-contain" | "image-cover" | "scale-montage";
+       readonly withoutAdding?: boolean;
+       readonly withoutSave?: boolean;
+     }): Promise<{ readonly image: FabricObject } | null>;
+   };
+   readonly textManager: {
+     addText(options?: Readonly<Record<string, unknown>>): FabricObject;
+diff --git a/src/web/packages/editor/src/editor-shell.dom.test.ts b/src/web/packages/editor/src/editor-shell.dom.test.ts
+index 953491a..d285954 100644
+--- a/src/web/packages/editor/src/editor-shell.dom.test.ts
++++ b/src/web/packages/editor/src/editor-shell.dom.test.ts
+@@ -196,11 +196,33 @@ describe("native editor shell", () => {
+ 
+     // The key itself is free-form JSON too; a wrong-shaped one must not throw.
+     const wrongShape = await mountEditorShell({
+       host: document.createElement("div"),
+       artboard: { width: 100, height: 100 },
+       envelope: envelopeFor(null),
+     });
+     expect(wrongShape.layerNames()).toEqual({});
+     wrongShape.destroy();
+   });
++
++  it("exposes a camera over the mounted canvas", async () => {
++    const host = document.createElement("div");
++    Object.defineProperty(host, "clientWidth", { value: 1000 });
++    Object.defineProperty(host, "clientHeight", { value: 800 });
++    document.body.append(host);
++    const shell = await mountEditorShell({
++      host,
++      artboard: {
++        width: 1280,
++        height: 720,
++        background: { kind: "solid", color: "#000" },
++        barColor: { kind: "solid", color: "#000" },
++      } as never,
++    });
++    expect(shell.editor.viewport.zoom()).toBeGreaterThan(0);
++    // The canvas fills the host, not the artboard: 1280x720 fitted into 1000x800
++    // would be a 1000px-wide canvas, and it must no longer be.
++    expect(shell.editor.canvas.getWidth()).toBe(1000);
++    expect(shell.editor.canvas.getHeight()).toBe(800);
++    shell.destroy();
++  });
+ });
+diff --git a/src/web/packages/editor/src/editor-shell.ts b/src/web/packages/editor/src/editor-shell.ts
+index 2b2d807..fb2311e 100644
+--- a/src/web/packages/editor/src/editor-shell.ts
++++ b/src/web/packages/editor/src/editor-shell.ts
+@@ -24,48 +24,55 @@ import {
+   type SceneAdapter,
+   serialiseScene,
+   serialiseThemeEnvelope,
+ } from "@vigilia/scene-fabric";
+ import {
+   ActiveSelection,
+   type ActiveSelectionOptions,
+   Canvas,
+   classRegistry,
+   type FabricObject,
++  Rect,
+ } from "fabric/es";
+ import { createClipboardManager } from "./clipboard-manager/index.js";
+ import { applyEditorControls } from "./controls-manager/index.js";
+ import { createCropManager } from "./crop-manager/index.js";
+ import { createDeletionManager } from "./deletion-manager/index.js";
+ import type { EditorInteraction } from "./editor-interaction.js";
+ import { createErrorManager } from "./error-manager/index.js";
+ import { createGroupingManager } from "./grouping-manager/index.js";
+ import { EditorHistory } from "./history-manager/index.js";
+ import { createImageManager } from "./image-manager/index.js";
+ import { createLayerManager } from "./layer-manager/index.js";
+ import { createObjectLockManager } from "./object-lock-manager/index.js";
+ import { createTextManager } from "./text-manager/index.js";
++import {
++  createViewportManager,
++  type ViewportManager,
++} from "./viewport-manager/index.js";
+ 
+ export interface EditorShellOptions {
+   readonly host: HTMLElement;
+   readonly artboard: Artboard;
+   readonly plan?: ScenePlan;
+   /** A validated v2 document revives directly into the interactive canvas. */
+   readonly envelope?: FabricThemeEnvelope;
+   readonly assets?: readonly AssetReference[];
+   readonly resolveAsset?: (
+     assetId: string,
+   ) => BackgroundMediaSource | undefined;
+ }
+ 
+ export interface EditorShell {
+   readonly editor: EditorInteraction;
++  /** The camera over the mounted canvas, for readouts and view controls. */
++  readonly viewport: ViewportManager;
+   readonly scene?: SceneAdapter;
+   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
+   setArtboard(artboard: Artboard): void;
+   setBackgroundMedia(
+     assets: readonly AssetReference[],
+     resolveAsset: (assetId: string) => BackgroundMediaSource | undefined,
+   ): void;
+   setGlobals(globals: Globals | undefined): void;
+   setFitMode(fitMode: FitMode): void;
+   /** Layer display names: editor metadata, not authored document content (§172). */
+@@ -84,142 +91,148 @@ function layerNamesFrom(
+ ): Readonly<Record<string, string>> {
+   const raw = editorMetadata?.["layerNames"];
+   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+   return Object.fromEntries(
+     Object.entries(raw).filter(
+       (entry): entry is [string, string] => typeof entry[1] === "string",
+     ),
+   );
+ }
+ 
+-/** Last resolved artboard paint per mounted shell; a Gradient is only rebuilt
+- * when its key changes. */
++/** Last resolved artboard paint per mounted shell; the plate is only rebuilt
++ * when its paint or its size changes. */
+ interface PaintMemo {
+   background: string | undefined;
+ }
+ 
+ class SelectionOrderedActiveSelection extends ActiveSelection {
+   constructor(
+     objects: FabricObject[] = [],
+     options: Partial<ActiveSelectionOptions> = {},
+   ) {
+     super(objects, { ...options, multiSelectionStacking: "selection-order" });
+   }
+ }
+ 
+ classRegistry.setClass(SelectionOrderedActiveSelection, "ActiveSelection");
+ 
+-function fitArtboardViewport(
+-  container: HTMLElement,
+-  host: HTMLElement,
+-  artboard: EditorShellOptions["artboard"],
+-  fitMode: FitMode,
+-): number | undefined {
+-  const scale =
+-    fitMode === "contain"
+-      ? Math.min(
+-          host.clientWidth / artboard.width,
+-          host.clientHeight / artboard.height,
+-        )
+-      : Math.max(
+-          host.clientWidth / artboard.width,
+-          host.clientHeight / artboard.height,
+-        );
+-
+-  if (!Number.isFinite(scale) || scale <= 0) return undefined;
+-
+-  container.style.width = `${artboard.width * scale}px`;
+-  container.style.height = `${artboard.height * scale}px`;
+-  return scale;
++/** Where the artboard lands on screen, read off the camera's transform. The
++ * media layer is a DOM sibling of the canvas, so it only stays aligned with the
++ * board if it is told this rect after every camera change. */
++function artboardScreenRect(
++  canvas: Canvas,
++  artboard: Artboard,
++): { left: number; top: number; width: number; height: number } {
++  const vpt = canvas.viewportTransform;
++  const scale = vpt[0];
++  return {
++    left: vpt[4],
++    top: vpt[5],
++    width: artboard.width * scale,
++    height: artboard.height * scale,
++  };
+ }
+ 
+-function fitCanvasViewport(
+-  editor: EditorInteraction,
+-  container: HTMLElement,
+-  host: HTMLElement,
+-  artboard: EditorShellOptions["artboard"],
+-  fitMode: FitMode,
+-): void {
+-  const scale = fitArtboardViewport(container, host, artboard, fitMode);
+-
+-  if (scale === undefined) return;
+-
+-  const width = artboard.width * scale;
+-  const height = artboard.height * scale;
+-  editor.canvas.setDimensions({ width, height });
+-  editor.canvas.setViewportTransform([
+-    scale,
+-    0,
+-    0,
+-    scale,
+-    (width - artboard.width * scale) / 2,
+-    (height - artboard.height * scale) / 2,
+-  ]);
+-  editor.canvas.requestRenderAll();
++/** The artboard plate: a bounded region of the canvas, so the pasteboard stays
++ * visible around it. `canvas.backgroundColor` cannot do this — Fabric fills it
++ * as one path and the viewport transform never bounds that fill — and a
++ * `clipPath` would hide the objects outside the artboard too. */
++function artboardPlate(
++  artboard: Artboard,
++  background: unknown,
++): Rect {
++  return new Rect({
++    width: artboard.width,
++    height: artboard.height,
++    left: 0,
++    top: 0,
++    originX: "left",
++    originY: "top",
++    fill: fabricArtboardPaint(background, artboard.width, artboard.height) ?? "",
++    selectable: false,
++    evented: false,
++    hasControls: false,
++    hasBorders: false,
++    // The authored paint belongs to the envelope's artboard, so the scene must
++    // not carry a second copy of it.
++    excludeFromExport: true,
++  });
+ }
+ 
+ function applyArtboardPaint(
+   editor: EditorInteraction,
+   host: HTMLElement,
+   artboard: Artboard,
+   globals: Globals | undefined,
+   memo: PaintMemo,
+ ): void {
+   const issues: Parameters<typeof resolveStyleValue>[3] = [];
+   const resolve = (value: Artboard["background"]): unknown => {
+     return resolveStyleValue(value, globals ?? {}, "artboard", issues);
+   };
+   const background = resolve(artboard.background);
+-  const paintKey = artboardPaintKey(background);
+-
+-  // Same memo as the player: any repaint that does not change the resolved
+-  // paint (selection, drag, artboard resize) reuses the existing Gradient.
+-  if (paintKey !== memo.background) {
++  // A gradient is rebuilt only when the paint or the board's size changes, the
++  // same memo the player keeps. The plate is rebuilt whenever it is missing,
++  // because `loadFromJSON` clears the canvas it lived on.
++  const paintKey = `${artboardPaintKey(background)}:${artboard.width}x${artboard.height}`;
++  if (paintKey !== memo.background || !(editor.canvas.backgroundImage instanceof Rect)) {
+     memo.background = paintKey;
+-    editor.canvas.backgroundColor =
+-      fabricArtboardPaint(background, artboard.width, artboard.height) ?? "";
++    editor.canvas.backgroundImage = artboardPlate(artboard, background);
+   }
++  // A revived envelope from before the camera carried the artboard paint here;
++  // left set it would cover the pasteboard again.
++  editor.canvas.backgroundColor = "";
+   host.style.background =
+     cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
+   applyObjectPalettePaints(editor.canvas, globals);
+   applyObjectTypePresets(editor.canvas, globals);
+   editor.canvas.requestRenderAll();
+ }
+ 
+-function createNativeEditor(
+-  container: HTMLElement,
+-  artboard: Artboard,
+-): EditorInteraction {
++function createNativeEditor(input: {
++  readonly container: HTMLElement;
++  readonly host: HTMLElement;
++  readonly artboard: () => Artboard;
++}): EditorInteraction {
++  const { container, host } = input;
+   applyEditorControls();
+   const element = document.createElement("canvas");
+   container.append(element);
++  // The canvas takes the host's size, not the artboard's: it is a viewport onto
++  // the workspace now, and the camera chooses what part of it the artboard fills.
+   const canvas = new Canvas(element, {
+-    width: artboard.width,
+-    height: artboard.height,
++    width: Math.max(1, host.clientWidth),
++    height: Math.max(1, host.clientHeight),
++  });
++  const viewport = createViewportManager({
++    canvas,
++    host,
++    artboard: () => input.artboard(),
+   });
+   const history = new EditorHistory({
+     canvas,
+     serialize: serialiseScene,
+     revive: reviveScene,
+   });
+   history.reset();
+   const save = (): void => history.save();
+   /** A completed mouse-driven move/scale/rotate needs the same history entry
+    * explicit actions get; Fabric only reports it after the gesture ends. */
+   canvas.on("object:modified", save);
+   const errors = createErrorManager(canvas);
+   const deletion = createDeletionManager(canvas, save);
+   const images = createImageManager(canvas, save);
+   const text = createTextManager(canvas, save);
+ 
+   return {
+     canvas,
++    viewport,
+     historyManager: {
+       saveState: save,
+       resetHistory: () => history.reset(),
+       undo: () => history.undo(),
+       redo: () => history.redo(),
+       suspend: () => history.suspend(),
+     },
+     textManager: text,
+     imageManager: images,
+     layerManager: createLayerManager(canvas, save),
+@@ -240,20 +253,21 @@ function createNativeEditor(
+       importImage: (input) => images.importImage(input),
+     }),
+     groupingManager: createGroupingManager({
+       canvas,
+       save,
+       suspend: () => history.suspend(),
+     }),
+     destroy: () => {
+       // The double-click editing listener outlives the canvas otherwise.
+       text.destroy();
++      viewport.destroy();
+       // Disposal is asynchronous; a failure here must not be an unhandled
+       // rejection during teardown.
+       void canvas.dispose().catch(() => undefined);
+     },
+   };
+ }
+ 
+ /** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
+ export async function mountEditorShell({
+   host,
+@@ -278,89 +292,98 @@ export async function mountEditorShell({
+   }
+   const container = document.createElement("div");
+   container.id = `${EDITOR_CONTAINER_ID}-${nextEditorContainer}`;
+   nextEditorContainer += 1;
+   /** The retired image-editor package exposed its instance as `window[containerId]`
+    * for devtools/e2e access; keep that contract on the numbered id, which stays
+    * stable even after the container's own `id` attribute is reset below. */
+   const debugKey = container.id;
+   container.style.position = "absolute";
+   container.style.inset = "0";
+-  container.style.margin = "auto";
+   container.style.visibility = "hidden";
+   let currentArtboard = artboard;
+   let globals: Globals | undefined = envelope?.globals;
+   let layerNames = layerNamesFrom(envelope?.editorMetadata);
+-  let fitMode: FitMode = currentArtboard.fitMode ?? "contain";
+-  // The returned scale is irrelevant here; sizing the container is the point,
+-  // and the editor is fitted explicitly once mounted below.
+-  fitArtboardViewport(container, host, currentArtboard, fitMode);
+   host.append(container);
+-  let mounted: EditorInteraction | undefined;
+-  const resize =
+-    typeof ResizeObserver === "undefined"
+-      ? undefined
+-      : new ResizeObserver(() => {
+-          if (mounted !== undefined)
+-            fitCanvasViewport(
+-              mounted,
+-              container,
+-              host,
+-              currentArtboard,
+-              fitMode,
+-            );
+-        });
+-  resize?.observe(host);
+   const paintMemo: PaintMemo = { background: undefined };
++  let resize: ResizeObserver | undefined;
+ 
+   try {
+-    const editor = createNativeEditor(container, artboard);
+-    mounted = editor;
++    const editor = createNativeEditor({
++      container,
++      host,
++      artboard: () => currentArtboard,
++    });
+     (window as unknown as Record<string, unknown>)[debugKey] = editor;
+-    fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
++    // The host drives the camera, so a host resize only needs the camera told.
++    resize =
++      typeof ResizeObserver === "undefined"
++        ? undefined
++        : new ResizeObserver(() => editor.viewport.resize());
++    resize?.observe(host);
++
++    // Undo and redo revive the scene through `loadFromJSON`, which drops the
++    // plate; the history manager's own post-revive signal is the point at which
++    // the canvas is settled again. `canvas:cleared` fires too early — Fabric
++    // re-applies the serialized background after it.
++    const restorePlate = (): void => {
++      applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
++    };
++    editor.canvas.on("editor:history-state-loaded" as never, restorePlate);
+ 
+     if (envelope !== undefined) {
+       await reviveThemeEnvelope(editor.canvas, envelope);
+       editor.historyManager.resetHistory();
+     }
+-    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+ 
+     const scene =
+       plan === undefined && envelope === undefined
+         ? undefined
+         : createSceneAdapter({ canvas: editor.canvas });
+ 
++    // After the plan, because the adapter's own artboard paint is a canvas
++    // background and this shell owns the artboard region instead.
+     if (plan !== undefined) {
+       scene?.apply(plan);
+     }
++    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
++    editor.viewport.zoomToFit();
+ 
+     host.replaceChildren(container);
+     container.id = EDITOR_CONTAINER_ID;
+     container.style.visibility = "";
+     let mediaAssets = assets ?? envelope?.assets;
+     let mediaResolve = resolveAsset;
+     const reportMediaError = (message: string): void => {
+       editor.errorManager.warn("background-media", message);
+     };
+     let media =
+       mediaResolve === undefined
+         ? undefined
+         : mountBackgroundMedia({
+             host: container,
+             artboard: currentArtboard,
+             assets: mediaAssets,
+             resolveAsset: mediaResolve,
+             onMediaError: reportMediaError,
+           });
++    // The media layer is a DOM sibling of the canvas rather than a Fabric
++    // object, so it has to be repositioned by hand whenever the camera moves.
++    const placeMedia = (): void => {
++      media?.setBounds(artboardScreenRect(editor.canvas, currentArtboard));
++    };
++    editor.viewport.onChange(placeMedia);
++    placeMedia();
+ 
+     return {
+       editor,
++      viewport: editor.viewport,
+       ...(scene === undefined ? {} : { scene }),
+       layerNames: () => layerNames,
+       setLayerNames(names) {
+         layerNames = names;
+       },
+       snapshot(input) {
+         const next = serialiseThemeEnvelope(editor.canvas, {
+           ...input,
+           // The envelope carries editor-only state; the editor owns this key.
+           // An empty map is dropped rather than persisted as dead payload.
+@@ -371,50 +394,54 @@ export async function mountEditorShell({
+         const validation = validateFabricThemeEnvelope(next);
+         if (!validation.ok) {
+           throw new Error(
+             `Invalid Fabric theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
+           );
+         }
+         return validation.envelope;
+       },
+       setArtboard(nextArtboard) {
+         currentArtboard = nextArtboard;
+-        fitMode = currentArtboard.fitMode ?? "contain";
+-        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
++        // The camera frames the board; the authored fit mode belongs to the
++        // player's letterbox, which the editor no longer draws.
++        editor.viewport.zoomToFit();
+         applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+         if (media !== undefined && mediaResolve !== undefined) {
+           media.update({
+             artboard: currentArtboard,
+             assets: mediaAssets,
+             resolveAsset: mediaResolve,
+           });
++          placeMedia();
+         }
+       },
+       setBackgroundMedia(nextAssets, nextResolveAsset) {
+         media?.destroy();
+         mediaAssets = nextAssets;
+         mediaResolve = nextResolveAsset;
+         media = mountBackgroundMedia({
+           host: container,
+           artboard: currentArtboard,
+           assets: mediaAssets,
+           resolveAsset: mediaResolve,
+           onMediaError: reportMediaError,
+         });
++        placeMedia();
+       },
+       setGlobals(nextGlobals) {
+         globals = nextGlobals;
+         applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+       },
+-      setFitMode(nextFitMode) {
+-        fitMode = nextFitMode;
+-        fitCanvasViewport(editor, container, host, currentArtboard, fitMode);
++      setFitMode() {
++        // The authoring view always frames the whole board; `cover` is the
++        // player's crop of it, which the stage does not draw.
++        editor.viewport.zoomToFit();
+       },
+       destroy() {
+         resize?.disconnect();
+         media?.destroy();
+         scene?.dispose();
+         disposeScene(editor.canvas);
+         editor.clipboardManager.destroy();
+         editor.destroy();
+         delete (window as unknown as Record<string, unknown>)[debugKey];
+       },

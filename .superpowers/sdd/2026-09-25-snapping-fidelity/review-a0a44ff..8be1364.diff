@@ -1,0 +1,207 @@
+# Review package: a0a44ff..8be1364
+
+## Commits
+8be1364 fix(editor): align to locked objects, ignore the artboard plate
+
+## Files changed
+ .../editor/src/snap-manager/excluded-objects.ts    |  6 +-
+ .../editor/src/snap-manager/index.dom.test.ts      | 77 +++++++++++++++++++++-
+ src/web/packages/editor/src/snap-manager/index.ts  | 11 ++--
+ 3 files changed, 83 insertions(+), 11 deletions(-)
+
+## Diff
+diff --git a/src/web/packages/editor/src/snap-manager/excluded-objects.ts b/src/web/packages/editor/src/snap-manager/excluded-objects.ts
+index 66d4457..362b77e 100644
+--- a/src/web/packages/editor/src/snap-manager/excluded-objects.ts
++++ b/src/web/packages/editor/src/snap-manager/excluded-objects.ts
+@@ -1,14 +1,16 @@
+ import { ActiveSelection, type FabricObject } from "fabric/es";
+ 
+-/** No Vigilia object type is excluded by id. */
+-export const IGNORED_IDS: readonly string[] = [];
++/** Scene objects that are decoration rather than alignable content. The
++ * artboard plate spans the whole artboard, so its centre would otherwise snap
++ * every centred object; see new-fabric-theme.ts's `backgroundOnly`. */
++export const IGNORED_IDS: readonly string[] = ["scene"];
+ 
+ /** Collects the set of objects excluded from processing. */
+ export const collectExcludedObjects = ({
+   activeObject,
+ }: {
+   activeObject?: FabricObject | null;
+ }): Set<FabricObject> => {
+   const excluded = new Set<FabricObject>();
+ 
+   if (!activeObject) return excluded;
+diff --git a/src/web/packages/editor/src/snap-manager/index.dom.test.ts b/src/web/packages/editor/src/snap-manager/index.dom.test.ts
+index f43648a..29a29a2 100644
+--- a/src/web/packages/editor/src/snap-manager/index.dom.test.ts
++++ b/src/web/packages/editor/src/snap-manager/index.dom.test.ts
+@@ -129,43 +129,116 @@ describe("SnapManager", () => {
+     canvas.add(anchor, dragged);
+     canvas.setActiveObject(dragged);
+ 
+     canvas.fire("mouse:down" as never, { target: dragged } as never);
+     move(canvas, dragged);
+ 
+     expect(dragged.left).toBe(250);
+     snapping.destroy();
+   });
+ 
+-  it("skips a locked neighbour as a snap target", () => {
++  it("aligns to a locked neighbour, which lock must not prevent", () => {
+     const { canvas, snapping } = setup();
+     const locked = new Rect({
+       id: "a",
+       left: 100,
+       top: 20,
+       width: 40,
+       height: 40,
+       locked: true,
++      selectable: false,
++      evented: false,
+     });
++    // Deliberately narrow: the dragged rect's right edge (110) must stay far from
++    // the neighbour's right edge (140), or that 30-wide gap competes with the
++    // 2-wide left-edge gap and the drag resolves to the wrong anchor.
+     const dragged = new Rect({
+       id: "b",
+       left: 98,
+       top: 150,
+-      width: 40,
++      width: 12,
+       height: 40,
+     });
+     canvas.add(locked, dragged);
+     canvas.setActiveObject(dragged);
+ 
+     canvas.fire("mouse:down" as never, { target: dragged } as never);
+     move(canvas, dragged);
+ 
++    // Only the neighbour's left edge is in range: 100 - 98 = 2 <= SNAP_THRESHOLD.
++    expect(dragged.left).toBe(100);
++    snapping.destroy();
++  });
++
++  it("ignores the artboard plate even though it is large and centrally placed", () => {
++    const { canvas, snapping } = setup();
++    // The plate spans most of the artboard, so its centre would otherwise be a
++    // candidate for anything placed near it. Its geometry is deliberately
++    // off-centre from the artboard: a plate centred at the artboard's own centre
++    // (200, 150) would be indistinguishable from the artboard's
++    // domain-boundary guide. The real plate is also `selectable: false`, which
++    // this fixture omits so that the id, not selectability, is what excludes it.
++    const plate = new Rect({
++      id: "scene",
++      left: 40,
++      top: 30,
++      width: 240,
++      height: 180,
++      evented: false,
++    });
++    const dragged = new Rect({
++      id: "b",
++      left: 158,
++      top: 40,
++      width: 20,
++      height: 20,
++    });
++    canvas.add(plate, dragged);
++    canvas.setActiveObject(dragged);
++
++    canvas.fire("mouse:down" as never, { target: dragged } as never);
++    move(canvas, dragged);
++
++    // The plate's centreX is 160, so the dragged rect's left bounds edge (157.5,
++    // stroke included) is 2.5 away — inside SNAP_THRESHOLD. Without the id
++    // exclusion the drag would resolve to left 160.5. Ignored ids never
++    // contribute a candidate, so it stays put.
++    expect(dragged.left).toBe(158);
++    snapping.destroy();
++  });
++
++  it("still ignores a hidden neighbour", () => {
++    // A regression guard, not a new behaviour: `visible === false` is already
++    // handled by `shouldIgnoreObject` and this step does not change it. It passes
++    // before this task's change and after it, which is the point.
++    const { canvas, snapping } = setup();
++    const hidden = new Rect({
++      id: "a",
++      left: 100,
++      top: 20,
++      width: 40,
++      height: 40,
++      visible: false,
++    });
++    const dragged = new Rect({
++      id: "b",
++      left: 98,
++      top: 150,
++      width: 40,
++      height: 40,
++    });
++    canvas.add(hidden, dragged);
++    canvas.setActiveObject(dragged);
++
++    canvas.fire("mouse:down" as never, { target: dragged } as never);
++    move(canvas, dragged);
++
+     expect(dragged.left).toBe(98);
+     snapping.destroy();
+   });
+ 
+   it("detaches every listener on destroy", () => {
+     const { canvas, snapping } = setup();
+     const dragged = new Rect({
+       id: "b",
+       left: 98,
+       top: 150,
+diff --git a/src/web/packages/editor/src/snap-manager/index.ts b/src/web/packages/editor/src/snap-manager/index.ts
+index 02aae35..993c45f 100644
+--- a/src/web/packages/editor/src/snap-manager/index.ts
++++ b/src/web/packages/editor/src/snap-manager/index.ts
+@@ -22,40 +22,37 @@ export interface SnapManager {
+   destroy(): void;
+ }
+ 
+ export interface SnapManagerOptions {
+   readonly canvas: Canvas;
+   /** Artboard extent; replaces the fork's montage area. */
+   readonly bounds: () => ObjectBounds;
+   readonly errors: ErrorManager;
+ }
+ 
+-/** Any movable object snaps; Vigilia has no composite type to allow-list. */
++/** Alignable content, following the fork's object filter: visibility and
++ * explicit exclusion decide, not lock. Locking prevents moving an object, not
++ * aligning to it. */
+ function isSnapTarget(
+   object: FabricObject,
+   excluded: Set<FabricObject>,
+ ): boolean {
+-  return (
+-    object.selectable === true &&
+-    object.get("locked") !== true &&
+-    !shouldIgnoreObject({ object, excluded })
+-  );
++  return !shouldIgnoreObject({ object, excluded });
+ }
+ 
+ /** Builds one candidate source from an eligible neighbour object. */
+ function toSnapSource(
+   object: FabricObject,
+   index: number,
+   excluded: Set<FabricObject>,
+ ): MovementSnapCandidateSource | undefined {
+   if (!isSnapTarget(object, excluded)) return undefined;
+-  if (excluded.has(object)) return undefined;
+   const bounds = getObjectExactBounds({ object });
+   if (bounds === null) return undefined;
+   return {
+     id: object.get("id") ?? `snap-source-${index}`,
+     bounds,
+     useForSpacing: true,
+   };
+ }
+ 
+ /**

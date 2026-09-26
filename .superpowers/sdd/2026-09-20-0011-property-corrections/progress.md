@@ -1,0 +1,5 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-09-20-0011-property-corrections.md
+Task 1: complete (commits 32ca7e9..a48e8e8, tests: cmd.exe /d /s /c 'cd /d D:\git-repos\vigilia\src\web && npm test -- --run packages/editor/src/type-preset-panel.dom.test.ts' →    Duration  1.38s (environment 92%, transform 3%, tests 3%, import 1%))
+Task 2: complete (commits a48e8e8..8988ea0, tests: cmd.exe /d /s /c 'cd /d D:\git-repos\vigilia\src\web && npm test -- --run packages/editor/src/artboard-panel.dom.test.ts packages/editor/src/fork-extensions/index.dom.test.ts' →    Duration  3.55s (environment 47%, import 40%, transform 11%, tests 1%))
+Task 3: complete (commits 8988ea0..53005fb, tests: cmd.exe /d /s /c 'cd /d D:\git-repos\vigilia\src\web && node node_modules/@playwright/test/cli.js test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep global.*preset' →   1 passed (8.3s))
+Final review: self-review (fresh reviewer unavailable: provider returned 404 No active credentials); no Critical, Important, or Minor findings.

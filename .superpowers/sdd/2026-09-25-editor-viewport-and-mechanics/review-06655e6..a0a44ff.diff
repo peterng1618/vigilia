@@ -1,0 +1,554 @@
+# Review package: 06655e6..a0a44ff
+
+## Commits
+a0a44ff feat(editor): keyboard nudge, z-order and select-all
+
+## Files changed
+ STATUS.md                                          |  28 +++---
+ src/web/packages/editor/src/editor-session.ts      | 104 +++++++++++++++++++++
+ .../editor/src/history-manager/index.test.ts       |  26 ++++++
+ .../editor/src/shortcut-manager/index.dom.test.ts  |  42 +++++++++
+ .../packages/editor/src/shortcut-manager/index.ts  |  38 ++++++--
+ src/web/tests/e2e/editor.spec.ts                   |  87 +++++++++++++++++
+ 6 files changed, 300 insertions(+), 25 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 4618a2e..69bac29 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -18,42 +18,40 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md` (Spec A)
+     — zoom/pan camera, group entry, reachable marquee, keyboard, context menu.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- Fabric's marquee is reachable again: a drag that starts on the pasteboard
+-  below the artboard selects instead of moving `header-wash`. The size cause was
+-  already gone (Task 2 made the canvas host-sized); no object needed disarming,
+-  and the press-inside-an-object guard still moves `time-card` for +40/+30.
+-- `ViewportManager.artboardScreenRect()` is now the one owner of "where the
+-  artboard draws, in canvas-element coordinates" — the module-local copy in
+-  `editor-shell.ts` is deleted and the background-media layer calls the camera.
+-- The marquee e2e asserts against `getBoundingRect`, not object `left`: a marquee
+-  puts its hits in an `ActiveSelection`, whose `enterGroup` rebases every child's
+-  `left`, so the brief's raw-`left` comparison reported a move for objects that
+-  never moved and could not tell a marquee from a drag. It also asserts a
+-  selection was created, which is what catches a drag that never reached the
+-  canvas — and is the defect the brief's own off-canvas ambiguity would have
+-  hidden.
++- Keyboard authoring: arrow keys nudge the selection (Shift = 10, plain = 1),
++  `mod+]`/`mod+[` move it to front/back through `layerManager`, and `mod+a`
++  selects every `selectable` object. `ShortcutHandler` now takes the
++  `KeyboardEvent`, which is what lets one arrow binding serve both steps.
++- A nudge burst is ONE history entry: `nudgeBy` suspends history on the first
++  press and `endBurst` resumes *and then* calls `saveState()` explicitly, because
++  `save()` early-returns while the suspension counter is non-zero. The idle window
++  is 300 ms; measured inter-press gap is 37 ms.
++- `mod+a` joined the renamed `MODIFIED_KEY_DEFERRED_ACTION_IDS`, so Ctrl+A inside
++  a rename field stays the field's own select-all. `history-manager/index.test.ts`
++  is the test that pins the burst mechanism — the e2e assertions cannot, because
++  `undo()`'s own `reviveScene` re-fires `object:modified`.
+ - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
+   `rehydrates a chart runtime…`) fail identically with and without recent
+   changes; they are pre-existing and belong to Spec A Task 10.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+-2. Continue Spec A from Task 6, then 7, 8, 9.
++2. Continue Spec A from Task 7, then 8, 9.
+ 3. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+   `test-results/summary.json`. Three spec acceptance items stay unverified —
+   browser round-trip of text align/wrap/overflow, in-place edit + undo, and run
+   preset/override persistence.
+ - The two `display-fabric.spec.ts` phone-chromium tests previously recorded here
+   as pre-existing failures were re-measured and **both pass** on this branch
+diff --git a/src/web/packages/editor/src/editor-session.ts b/src/web/packages/editor/src/editor-session.ts
+index 10e35cd..ed4ec70 100644
+--- a/src/web/packages/editor/src/editor-session.ts
++++ b/src/web/packages/editor/src/editor-session.ts
+@@ -1,19 +1,20 @@
+ import {
+   type Artboard,
+   type Binding,
+   bumpSemanticVersion,
+   type FabricPalette,
+   type FabricThemeEnvelope,
+   type FabricThemeEnvelopeInput,
+   type SampleSource,
+ } from "@vigilia/renderer-core";
++import { ActiveSelection, type FabricObject, Point } from "fabric/es";
+ import { applyArrange, canArrange } from "./arrange.js";
+ import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+ import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
+ import { ChartManager } from "./chart-manager/index.js";
+ import type { EditorActionFacade } from "./editor-shell/session-facade.js";
+ import { type EditorShell } from "./editor-shell.js";
+ import {
+   applyFontTrio,
+   type CuratedFontFace,
+   fontTrio,
+@@ -285,20 +286,123 @@ export class EditorSession {
+     });
+     this.#shortcuts.register("edit.duplicate", () => {
+       void options.shell.editor.clipboardManager.duplicate();
+     });
+     this.#shortcuts.register("edit.group", () => {
+       options.shell.editor.groupingManager.group();
+     });
+     this.#shortcuts.register("edit.ungroup", () => {
+       options.shell.editor.groupingManager.ungroup();
+     });
++    this.#shortcuts.register("canvas.front", () => {
++      options.shell.editor.layerManager.bringToFront();
++    });
++    this.#shortcuts.register("canvas.back", () => {
++      options.shell.editor.layerManager.sendToBack();
++    });
++
++    const canvas = options.shell.editor.canvas;
++    // The theme's full-artboard background rect is `selectable: false`, but it
++    // *is* returned by `getObjects()`. Selecting it would let the next nudge or
++    // drag move the background off the artboard, so it is filtered out here.
++    // `selectable === true` also excludes locked objects, which matches
++    // `snap-manager`; a locked object must not join a selection the author can
++    // then drag.
++    const selectableObjects = (): FabricObject[] =>
++      canvas.getObjects().filter((object) => object.selectable === true);
++
++    this.#shortcuts.register("canvas.select-all", () => {
++      const objects = selectableObjects();
++      // An `ActiveSelection` of one object is not a selection.
++      if (objects.length < 2) return;
++      canvas.discardActiveObject();
++      canvas.setActiveObject(new ActiveSelection(objects, { canvas }));
++      canvas.requestRenderAll();
++    });
++
++    const NUDGE_STEP = 1;
++    const NUDGE_STEP_LARGE = 10;
++    const NUDGE_IDLE_MS = 300;
++    const stepFor = (event: KeyboardEvent): number =>
++      event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
++
++    const nudge = (dx: number, dy: number): void => {
++      const active = canvas.getActiveObject();
++      if (active === undefined) return;
++      const targets = (
++        active instanceof ActiveSelection ? active.getObjects() : [active]
++      ).filter((object) => object.get("locked") !== true);
++      if (targets.length === 0) return;
++      for (const object of targets) {
++        // Read and write must name the same origin: `getCenterPoint` is the
++        // origin point under `originX/originY`, not the bounding-box centre.
++        const centre = object.getCenterPoint();
++        object.setPositionByOrigin(
++          new Point(centre.x + dx, centre.y + dy),
++          "center",
++          "center",
++        );
++        object.setCoords();
++      }
++      canvas.requestRenderAll();
++    };
++
++    let release: (() => void) | undefined;
++    let idle: number | undefined;
++
++    /** The burst ends on the idle window or on any other action. Resuming before
++     * saving is what makes the entry exist at all: `save()` is a no-op while the
++     * suspension counter is non-zero. */
++    const endBurst = (): void => {
++      if (idle !== undefined) clearTimeout(idle);
++      idle = undefined;
++      if (release === undefined) return;
++      release();
++      release = undefined;
++      options.shell.editor.historyManager.saveState();
++    };
++
++    const nudgeBy = (dx: number, dy: number): void => {
++      const active = canvas.getActiveObject();
++      // Before suspending: suspending with no selection would open a burst that
++      // never records anything, swallowing the next unrelated `saveState`.
++      if (active === undefined) return;
++      if (release === undefined) {
++        release = options.shell.editor.historyManager.suspend();
++      }
++      if (idle !== undefined) clearTimeout(idle);
++      idle = window.setTimeout(endBurst, NUDGE_IDLE_MS);
++      nudge(dx, dy);
++      // Fired per press and deliberately NOT the thing that records history: it
++      // has three other listeners that need it (`chart-manager`,
++      // `indicator-manager`, `selection-inspector`), and `save` is a no-op for
++      // the whole burst because the suspension counter is still non-zero.
++      // `endBurst` is what records the entry. Do not "simplify" this call away,
++      // and do not delete the explicit `saveState` inside `endBurst`.
++      canvas.fire("object:modified", { target: active });
++    };
++
++    // Four literal registrations, not a loop over a key map: `ProductShortcutId`
++    // is a closed union and a template literal is not assignable to it without a
++    // cast.
++    this.#shortcuts.register("canvas.nudge-left", (event) => {
++      nudgeBy(-stepFor(event), 0);
++    });
++    this.#shortcuts.register("canvas.nudge-right", (event) => {
++      nudgeBy(stepFor(event), 0);
++    });
++    this.#shortcuts.register("canvas.nudge-up", (event) => {
++      nudgeBy(0, -stepFor(event));
++    });
++    this.#shortcuts.register("canvas.nudge-down", (event) => {
++      nudgeBy(0, stepFor(event));
++    });
+   }
+ 
+   get envelope(): FabricThemeEnvelopeInput {
+     return this.#envelope;
+   }
+ 
+   /** Reachability only: the shell menus dispatch through the existing owners,
+    * including the private document actions the panel section used to call. */
+   actionFacade(): EditorActionFacade {
+     const options = this.#options;
+diff --git a/src/web/packages/editor/src/history-manager/index.test.ts b/src/web/packages/editor/src/history-manager/index.test.ts
+index e2eb12d..edcb96b 100644
+--- a/src/web/packages/editor/src/history-manager/index.test.ts
++++ b/src/web/packages/editor/src/history-manager/index.test.ts
+@@ -20,11 +20,37 @@ describe("EditorHistory", () => {
+     history.save();
+     await history.undo();
+ 
+     expect(revive).toHaveBeenCalledWith(canvas, {
+       version: "7.4.0",
+       objects: [],
+     });
+     expect(serialize).toHaveBeenCalledTimes(2);
+     expect(canvas.fire).toHaveBeenCalledWith("editor:history-state-loaded");
+   });
++
++  it("records one entry for a suspended burst, and none while suspended", async () => {
++    let value = 0;
++    const history = new EditorHistory({
++      canvas: { fire: () => undefined } as never,
++      serialize: () => ({ value }) as never,
++      revive: async (_canvas, scene) => {
++        value = (scene as unknown as { value: number }).value;
++      },
++    });
++    history.reset();
++
++    const release = history.suspend();
++    value = 1;
++    history.save(); // suppressed: the counter is non-zero
++    release();
++    history.save(); // the entry `endBurst` must produce
++
++    value = 2;
++    history.save();
++
++    await history.undo();
++    expect(value).toBe(1);
++    await history.undo();
++    expect(value).toBe(0); // straight past the burst: it is ONE entry
++  });
+ });
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+index 0e24dac..a892e6b 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+@@ -168,11 +168,53 @@ describe("ShortcutManager unmodified keys", () => {
+     const event = new KeyboardEvent("keydown", {
+       key: "Delete",
+       cancelable: true,
+     });
+ 
+     window.dispatchEvent(event);
+ 
+     expect(event.defaultPrevented).toBe(false);
+     manager.destroy();
+   });
++
++  it("nudges on an arrow key and defers to a text field", () => {
++    const manager = new ShortcutManager();
++    const nudge = vi.fn();
++    manager.register("canvas.nudge-left", nudge);
++
++    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
++    expect(nudge).toHaveBeenCalledTimes(1);
++
++    // Dispatched ON the input, not on `window`. `window.dispatchEvent` sets the
++    // event's `target` to `window` itself, so `isTextEntryTarget(event.target)`
++    // reads the window and the nudge fires a second time — the assertion below
++    // could never hold, whatever the binding did. `bubbles: true` is what carries
++    // it up to the window listener; this is the idiom every existing deferral
++    // test in this file already uses (`:42`, `:61`, `:109`, `:139`).
++    const input = document.createElement("input");
++    document.body.append(input);
++    input.focus();
++    input.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
++    );
++    expect(nudge).toHaveBeenCalledTimes(1);
++    input.remove();
++    manager.destroy();
++  });
++
++  it("routes both plain and shift+arrow to the same action", () => {
++    const manager = new ShortcutManager();
++    const nudge = vi.fn();
++    // One id, one handler: the large step is the handler reading event.shiftKey,
++    // not a second action id. `ShortcutHandler` takes no argument today, so the
++    // shift step is the handler's own concern — Step 5 proves it in the browser.
++    // The Produces union above is the authority on which ids exist.
++    manager.register("canvas.nudge-left", nudge);
++
++    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
++    window.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true }),
++    );
++    expect(nudge).toHaveBeenCalledTimes(2);
++    manager.destroy();
++  });
+ });
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.ts b/src/web/packages/editor/src/shortcut-manager/index.ts
+index dc3d24a..a202891 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.ts
+@@ -1,85 +1,103 @@
+-export type ShortcutHandler = () => void;
++export type ShortcutHandler = (event: KeyboardEvent) => void;
+ export type ProductShortcutId =
+   | "file.new"
+   | "file.open"
+   | "file.save"
+   | "edit.undo"
+   | "edit.redo"
+   | "edit.delete"
+   | "edit.copy"
+   | "edit.cut"
+   | "edit.duplicate"
+   | "edit.group"
+-  | "edit.ungroup";
++  | "edit.ungroup"
++  | "canvas.nudge-left"
++  | "canvas.nudge-right"
++  | "canvas.nudge-up"
++  | "canvas.nudge-down"
++  | "canvas.select-all"
++  | "canvas.front"
++  | "canvas.back";
+ 
+ interface ShortcutBinding {
+   readonly key: string;
+   /** A binding with no modifier always defers to a focused text field. */
+   readonly modifier: boolean;
+   readonly shift?: boolean;
+   readonly action: ProductShortcutId;
+ }
+ 
+ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
+   { key: "n", modifier: true, action: "file.new" },
+   { key: "o", modifier: true, action: "file.open" },
+   { key: "s", modifier: true, action: "file.save" },
+   { key: "z", modifier: true, action: "edit.undo" },
+   { key: "y", modifier: true, action: "edit.redo" },
+   { key: "c", modifier: true, action: "edit.copy" },
+   { key: "x", modifier: true, action: "edit.cut" },
+   { key: "d", modifier: true, action: "edit.duplicate" },
+   { key: "g", modifier: true, shift: true, action: "edit.ungroup" },
+   { key: "g", modifier: true, action: "edit.group" },
++  { key: "a", modifier: true, action: "canvas.select-all" },
++  { key: "]", modifier: true, action: "canvas.front" },
++  { key: "[", modifier: true, action: "canvas.back" },
+   { key: "delete", modifier: false, action: "edit.delete" },
+   { key: "backspace", modifier: false, action: "edit.delete" },
++  // No `shift` field: `bindingFor` matches when `binding.shift === undefined`, so
++  // one binding covers both the plain and the Shift-qualified press. The handler
++  // reads `event.shiftKey` and picks the step.
++  { key: "arrowleft", modifier: false, action: "canvas.nudge-left" },
++  { key: "arrowright", modifier: false, action: "canvas.nudge-right" },
++  { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
++  { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
+ ];
+ 
+ /** Shift-qualified bindings precede their plain form, so first match wins. */
+ function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
+   const key = event.key.toLowerCase();
+   const modifier = event.ctrlKey || event.metaKey;
+   return PRODUCT_SHORTCUTS.find(
+     (binding) =>
+       binding.key === key &&
+       binding.modifier === modifier &&
+       (binding.shift === undefined || binding.shift === event.shiftKey),
+   );
+ }
+ 
+-/** Actions that defer to a focused text field's own key handling (e.g. Fabric's hidden textarea while editing). */
+-const TEXT_ENTRY_DEFERRED_ACTIONS: ReadonlySet<ProductShortcutId> = new Set([
+-  "file.new",
+-  "edit.undo",
+-  "edit.redo",
+-]);
++/** The action ids a *modifier* binding must be in to defer to a focused text
++ * field's own key handling. Unmodified bindings defer unconditionally, so they
++ * need no entry here. `canvas.select-all` is in this set because Ctrl+A inside a
++ * rename field is the field's own select-all, not the canvas's. */
++const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
++  new Set(["file.new", "edit.undo", "edit.redo", "canvas.select-all"]);
+ 
+ /** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
+ export class ShortcutManager {
+   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
+   readonly #onKeyDown = (event: KeyboardEvent): void => {
+     const binding = bindingFor(event);
+     const handler =
+       binding === undefined ? undefined : this.#handlers.get(binding.action);
+ 
+     const deferred =
+       binding !== undefined &&
+-      (!binding.modifier || TEXT_ENTRY_DEFERRED_ACTIONS.has(binding.action)) &&
++      (!binding.modifier ||
++        MODIFIED_KEY_DEFERRED_ACTION_IDS.has(binding.action)) &&
+       isTextEntryTarget(event.target);
+ 
+     if (handler === undefined || deferred) {
+       return;
+     }
+ 
+     event.preventDefault();
+-    handler();
++    handler(event);
+   };
+ 
+   constructor() {
+     window.addEventListener("keydown", this.#onKeyDown);
+   }
+ 
+   register(action: ProductShortcutId, handler: ShortcutHandler): void {
+     this.#handlers.set(action, handler);
+   }
+ 
+diff --git a/src/web/tests/e2e/editor.spec.ts b/src/web/tests/e2e/editor.spec.ts
+index 38f0d27..36cdfc9 100644
+--- a/src/web/tests/e2e/editor.spec.ts
++++ b/src/web/tests/e2e/editor.spec.ts
+@@ -2171,20 +2171,107 @@ test.describe("Fabric editor route", () => {
+     expect(pairRelativeTo(afterIds)).toBe(!pairRelativeTo(beforeIds));
+ 
+     // Cross-group: a child dropped on a top-level sibling changes membership,
+     // which this operation must refuse outright.
+     await page
+       .locator('[data-vigilia-layer="child"]')
+       .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
+     expect(await panelOrder()).toEqual(afterPanel);
+     expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
+   });
++
++  test("nudges the selection and records one history entry", async ({
++    page,
++  }, testInfo) => {
++    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
++    await page.goto(EDITOR);
++    // Select through the bridge, not the layer row: a focused panel row is a
++    // different starting state, and this test is about the nudge binding.
++    await page.evaluate(() => {
++      (
++        window as unknown as {
++          vigiliaEditorBridge: { selectLayer(id: string): void };
++        }
++      ).vigiliaEditorBridge.selectLayer("header-wash");
++    });
++    const left = (): Promise<number | undefined> =>
++      page.evaluate(() => {
++        const b = (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: {
++                canvas: {
++                  getObjects(): Array<{ id?: string; left?: number }>;
++                };
++              };
++            };
++          }
++        ).vigiliaEditorBridge;
++        return b.editor.canvas
++          .getObjects()
++          .find((object) => object.id === "header-wash")?.left;
++      });
++    const before = await left();
++    if (typeof before !== "number")
++      throw new Error("header-wash is missing from the canvas");
++    await page.keyboard.press("ArrowRight");
++    expect(await left()).toBe(before + 1);
++    await page.keyboard.press("Shift+ArrowRight");
++    expect(await left()).toBe(before + 11);
++
++    // The burst only becomes a history entry when its idle window closes (300ms),
++    // and Control+z before that finds nothing to undo — measured: the object stays
++    // at `before + 11` and the undo is a silent no-op. Waiting past the window is
++    // what makes the two assertions below measure coalescing rather than timing.
++    await page.waitForTimeout(400);
++    await page.keyboard.press("Control+z");
++    expect(await left()).toBe(before);
++    // Both presses are one entry, so one redo must restore the *whole* burst. A
++    // mechanism that recorded two entries would land at `before + 1` here.
++    await page.keyboard.press("Control+y");
++    expect(await left()).toBe(before + 11);
++
++    const selectedIds = (): Promise<Array<string | undefined>> =>
++      page.evaluate(() => {
++        const b = (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: {
++                canvas: { getActiveObjects(): Array<{ id?: string }> };
++              };
++            };
++          }
++        ).vigiliaEditorBridge;
++        return b.editor.canvas.getActiveObjects().map((object) => object.id);
++      });
++
++    // Ctrl+A inside a text field belongs to the field, not to select-all. Focus
++    // the layer rename input (Plan B Task 5) and confirm the selection is
++    // untouched; without this the binding silently steals the field's own
++    // select-all and the author's typed text is never selected.
++    await page.locator('[data-vigilia-layer="header-wash"]').dblclick();
++    const rename = page.locator('input[aria-label^="Rename"]');
++    await expect(rename).toBeFocused();
++    await rename.press("Control+a");
++    expect(await selectedIds()).toEqual(["header-wash"]);
++
++    // ...and the same key with focus on the document does select everything.
++    // Without this the test only ever proves the binding stays silent.
++    await rename.blur();
++    await page.keyboard.press("Control+a");
++    const ids = await selectedIds();
++    expect(ids.length).toBeGreaterThan(1);
++    // The theme's full-artboard `background` rect is `selectable: false` but IS
++    // returned by `getObjects()`; selecting it would let the next nudge drag the
++    // background off the artboard.
++    expect(ids).not.toContain("background");
++  });
+ });
+ 
+ async function saveEnvelope(page: Page): Promise<unknown> {
+   const { parsed } = await savePackage(page);
+   expect(parsed.ok).toBe(true);
+   if (!parsed.ok) throw new Error(parsed.message);
+   return parsed.envelope;
+ }
+ 
+ async function savePackage(page: Page): Promise<{

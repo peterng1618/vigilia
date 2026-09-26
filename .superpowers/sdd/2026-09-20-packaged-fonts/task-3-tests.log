@@ -1,0 +1,13 @@
+
+> vigilia-web@0.0.0 test
+> vitest run --run packages/editor/src/font-catalog.test.ts packages/editor/src/font-preview.dom.test.ts
+
+
+ RUN  v5.0.0 D:/git-repos/vigilia/src/web
+
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  09:49:05
+   Duration  1.33s (environment 93%, transform 3%, import 2%, tests 1%, worker 1%)
+

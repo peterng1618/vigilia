@@ -1,0 +1,295 @@
+# Review package: 857804e..f5109c9 (A8 fix round 1)
+
+## Commits
+f5109c9 test(editor): give the muted layer style an owner and teeth
+
+## Stat
+ STATUS.md                                          | 12 ++++---
+ .../editor/src/editor-shell/editor-shell.css       |  6 ++++
+ .../src/editor-shell/layer-panel.dom.test.tsx      | 41 ++++++++++++++++------
+ .../editor/src/editor-shell/layer-panel.tsx        | 16 ++++-----
+ src/web/tests/e2e/editor.spec.ts                   | 26 ++++++++++++++
+ 5 files changed, 76 insertions(+), 25 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index ce99f03..23150d1 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -18,25 +18,27 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md` (Spec A)
+     — zoom/pan camera, group entry, reachable marquee, keyboard, context menu.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- The layer tree follows the group context: `EditorShellBridge.groupContext()`
+-  projects the entered group as ids (never Fabric objects), and the panel marks
+-  the group and its descendants `data-context="true"`, dimming the rest.
+-- `selectLayer` selects a group's child directly when that group is the entered
+-  context, keeping the owning-group resolution everywhere else.
++- The muted layer style moved into `editor-shell.css` next to `.vigilia-layer-row`,
++  and `layer-panel.tsx` no longer carries an inline `opacity` declaration.
++- The empty-context guard now gates the `data-context` attribute itself, so a bare
++  `[data-context="false"]` rule cannot dim the whole tree on open.
++- The muted half has teeth on both legs: a jsdom case for the empty context, and
++  the committed `enters a group` e2e case asserting computed opacity `0.45` outside
++  the context and `1` inside it.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+ 2. Continue Spec A from Task 7, then 8, 9.
+ 3. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+diff --git a/src/web/packages/editor/src/editor-shell/editor-shell.css b/src/web/packages/editor/src/editor-shell/editor-shell.css
+index b63984d..f45c200 100644
+--- a/src/web/packages/editor/src/editor-shell/editor-shell.css
++++ b/src/web/packages/editor/src/editor-shell/editor-shell.css
+@@ -480,20 +480,26 @@ body,
+ .vigilia-layer-row {
+   display: flex;
+   align-items: center;
+   gap: 4px;
+   padding-left: calc(6px + var(--layer-depth, 0) * 13px);
+   height: 24px;
+   overflow: hidden;
+   border-radius: 5px;
+   cursor: default;
+ }
++/* Only an entered group dims anything: with no group entered every top-level
++   layer is selectable on the canvas, and a tree greyed out by default would
++   say the opposite. */
++.vigilia-layer-row[data-context="false"] {
++  opacity: 0.45;
++}
+ /* One line for the whole tree, positioned at the slot the drop would land on,
+    so a moved row can never leave a second marker behind. */
+ .vigilia-layer-dropline {
+   position: absolute;
+   top: var(--layer-dropline-top, 0);
+   left: var(--layer-dropline-left, 6px);
+   right: 6px;
+   height: 2px;
+   border-radius: 1px;
+   background: var(--shell-accent);
+diff --git a/src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx b/src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx
+index 28a6559..18ed827 100644
+--- a/src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx
++++ b/src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx
+@@ -173,44 +173,63 @@ it("collapses and expands a group from its twisty", async () => {
+   expect(setCollapsed).toHaveBeenCalledWith("group", true);
+ });
+ 
+ const rows = [
+   { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+     hasChildren: true, visible: true, locked: false, selected: false },
+   { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+     hasChildren: false, visible: true, locked: true, selected: true },
+ ];
+ 
++/** Two groups, so the negative half of the assertion has a row to read. The
++ * non-current group is what makes this a test of "dims the rest" rather than
++ * of "sets an attribute somewhere". */
++const contextRows = [
++  { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
++    hasChildren: true, visible: true, locked: false, selected: false },
++  { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
++    hasChildren: false, visible: true, locked: false, selected: true },
++  { id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined,
++    hasChildren: true, visible: true, locked: false, selected: false },
++];
++
+ it("marks the group whose children are current and dims the rest", async () => {
+-  // Two groups, so the negative half of the assertion has a row to read. The
+-  // non-current group is what makes this a test of "dims the rest" rather than
+-  // of "sets an attribute somewhere".
+-  const contextRows = [
+-    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+-      hasChildren: true, visible: true, locked: false, selected: false },
+-    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+-      hasChildren: false, visible: true, locked: false, selected: true },
+-    { id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined,
+-      hasChildren: true, visible: true, locked: false, selected: false },
+-  ];
+   const host = document.createElement("div");
+   const root = createRoot(host);
+   await act(async () => root.render(
+     <LayerPanel bridge={bridge(contextRows, { groupContext: () => ["group"] })} />,
+   ));
+   expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
+   expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+   // The child inside the current context is selectable in its own right — the
+   // half of the branch that Step 3 adds, and the reason the context is marked.
+   expect(host.querySelector('[data-vigilia-layer="child"]')?.getAttribute("data-context")).toBe("true");
+ });
+ 
++it("dims nothing when no group is entered", async () => {
++  // With no group entered the context is empty, so the guard must keep the
++  // attribute off the rows entirely. React writes a boolean `false` as the
++  // *string* "false", which is exactly what the stylesheet rule dims on, and
++  // with nothing entered every top-level layer is selectable on the canvas — a
++  // tree greyed out on open would say the opposite. jsdom applies no stylesheet
++  // (nothing imports `editor-main.ts` here), so what this pins is the guard that
++  // makes the attribute honest: an attribute reading "false" on every row is the
++  // state that rule turns into a fully dimmed tree.
++  const host = document.createElement("div");
++  const root = createRoot(host);
++  await act(async () => root.render(
++    <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
++  ));
++  for (const row of host.querySelectorAll(".vigilia-layer-row"))
++    expect(row.getAttribute("data-context")).toBeNull();
++});
++
+ it("renders object actions in a bottom row, not on the selected row", async () => {
+   const host = document.createElement("div");
+   const root = createRoot(host);
+   await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
+   const row = host.querySelector('[data-vigilia-layer="child"]');
+   expect(row?.querySelector('[aria-label="Duplicate"]')).toBeNull();
+   expect(host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]')).not.toBeNull();
+ });
+ 
+ it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
+diff --git a/src/web/packages/editor/src/editor-shell/layer-panel.tsx b/src/web/packages/editor/src/editor-shell/layer-panel.tsx
+index a34dde7..5fab78f 100644
+--- a/src/web/packages/editor/src/editor-shell/layer-panel.tsx
++++ b/src/web/packages/editor/src/editor-shell/layer-panel.tsx
+@@ -96,24 +96,20 @@ export function LayerPanel({
+ }): React.JSX.Element {
+   const ref = useRef<LayerStore | null>(null);
+   if (ref.current === null) ref.current = new LayerStore();
+   const store = ref.current;
+   const rows = useSyncExternalStore(store.subscribe, store.get, store.get);
+   useEffect(() => store.set(bridge), [store, bridge]);
+   // Read at render, not mirrored into state: the store re-reads the projection
+   // and publishes on every selection change, so entering a group re-renders
+   // here with the context the manager has already recorded.
+   const context = contextRows(rows, bridge?.groupContext() ?? []);
+-  // Only an entered group dims anything: with no context every row is reachable,
+-  // and a tree greyed out by default would say the opposite.
+-  const dimmed = (id: string): boolean =>
+-    context.size > 0 && !context.has(id);
+ 
+   const [editing, setEditing] = useState<string | undefined>(undefined);
+   const cancelled = useRef(false);
+ 
+   // The drag's own state, not React's: a ref set mid-gesture lands without a
+   // re-render, so a drop that follows within the same frame cannot see the
+   // stale value a state update would leave behind.
+   const drag = useRef<{ from: string; before: string | undefined } | undefined>(
+     undefined,
+   );
+@@ -136,22 +132,27 @@ export function LayerPanel({
+           return (
+             <div
+               // The row's own id is not unique once an object moves: a stale
+               // projection can hold one id twice, and a duplicate key makes
+               // React reuse the wrong row. Slot identity is what re-renders.
+               key={`${row.id}#${index}`}
+               className="vigilia-layer-row"
+               data-vigilia-layer={row.id}
+               data-selected={row.selected}
+               // The entered group and its descendants are what a tree click can
+-              // reach on its own; everything else is dimmed to say so.
+-              data-context={context.has(row.id)}
++              // reach on its own; everything else is dimmed to say so. With no
++              // group entered there is no context to be outside of, so the
++              // attribute is omitted rather than written false: React renders a
++              // boolean `data-*` as the string "false", which is the value the
++              // stylesheet rule dims on, and a tree greyed out on open would
++              // claim every selectable top-level layer is unreachable.
++              data-context={context.size > 0 ? context.has(row.id) : undefined}
+               role="treeitem"
+               aria-selected={row.selected}
+               aria-level={row.depth + 1}
+               // Roving tabindex would be the roving-focus ideal, but every row
+               // here is cheap and the shell has no global key handler to own
+               // the roving state, so all rows stay tabbable.
+               tabIndex={0}
+               title={row.id}
+               // A row being renamed is a text field: its own drag gesture is
+               // selecting text, not restacking the layer.
+@@ -201,23 +202,20 @@ export function LayerPanel({
+                 store.mutate(() => bridge?.reorderLayer(active.from, before));
+               }}
+               onDragEnd={() => {
+                 drag.current = undefined;
+                 if (indicator.current !== null) indicator.current.hidden = true;
+               }}
+               style={
+                 {
+                   "--layer-depth": String(row.depth),
+                   paddingLeft: "calc(6px + var(--layer-depth) * 13px)",
+-                  // Outside the entered group a row is reachable only through
+-                  // its group, so it reads back rather than as a target.
+-                  opacity: dimmed(row.id) ? 0.45 : undefined,
+                 } as CSSProperties
+               }
+               onClick={() => store.mutate(() => bridge?.selectLayer(row.id))}
+               onDoubleClick={() => {
+                 cancelled.current = false;
+                 setEditing(row.id);
+               }}
+               onKeyDown={(event) => {
+                 // Keys raised inside the row's own controls are theirs, not the
+                 // row's: without this the rename input's Enter would commit and
+diff --git a/src/web/tests/e2e/editor.spec.ts b/src/web/tests/e2e/editor.spec.ts
+index a7e4fa7..681de65 100644
+--- a/src/web/tests/e2e/editor.spec.ts
++++ b/src/web/tests/e2e/editor.spec.ts
+@@ -1581,20 +1581,46 @@ test.describe("Fabric editor route", () => {
+           groupPresent: group !== undefined,
+         };
+       });
+ 
+     // Double-click inside the child: the pointer's target resolves to the child,
+     // which becomes the active object while the group stays in the context.
+     const [cx, cy] = at(55, 55);
+     await page.mouse.dblclick(cx, cy);
+     await expect.poll(async () => (await state()).active).toBe("child");
+ 
++    // The entered group and its child are reachable; the row outside the context is
++    // not. `data-context` is the attribute the stylesheet keys on, and the computed
++    // opacity is the only thing that shows the rule matches the row it should.
++    const rowStyle = (id: string) =>
++      page.locator(`[data-vigilia-layer="${id}"]`).evaluate((node) => {
++        const style = getComputedStyle(node);
++        return {
++          context: node.getAttribute("data-context"),
++          opacity: style.opacity,
++        };
++      });
++
++    await expect.poll(async () => (await rowStyle("grp")).context).toBe("true");
++    await expect
++      .poll(async () => (await rowStyle("child")).context)
++      .toBe("true");
++    await expect
++      .poll(async () => (await rowStyle("outside")).context)
++      .toBe("false");
++    await expect
++      .poll(async () => (await rowStyle("outside")).opacity)
++      .toBe("0.45");
++    // The positive half of the same rule: the child is inside the context and must
++    // not be dimmed. Without this, a rule that dimmed every row would pass.
++    await expect.poll(async () => (await rowStyle("child")).opacity).toBe("1");
++
+     const before = (await state()).childLeft;
+     // `toBeTypeOf` is Vitest's; Playwright's `expect` has no such matcher.
+     expect(typeof before).toBe("number");
+ 
+     // Nudge (Task 6's binding), then undo it. The undo must not leave the context
+     // pointing at a destroyed object.
+     await page.keyboard.press("ArrowRight");
+     await expect
+       .poll(async () => (await state()).childLeft)
+       .toBe((before ?? 0) + 1);

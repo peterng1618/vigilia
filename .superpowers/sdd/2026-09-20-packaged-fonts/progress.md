@@ -1,0 +1,5 @@
+# SDD ledger — plan: .agents/plans/2026-09-20-packaged-fonts.md
+
+Pre-flight: Task 2 produces `TypePreset.face` and `trioRole`; Task 3 produces `CuratedFontFace` and `faceForRole`; Task 4 consumes both. Found compatible shapes. Ruling: resume Task 4 from `6b5d1cd`, which already implements package font loading and asset adoption but lacks the task's integration behaviours — cost if wrong: duplicate work or a missed prior change.
+Task 4: Ruling: player hosted-theme loading has only the document endpoint while package bytes remain behind the raw package endpoint; the architecture forbids importing theme-package into player — keep editor package registration and defer player registration until a host asset-byte boundary is designed — cost if wrong: hosted player themes with font assets use browser fallback.
+Task 4: Ruling: Task 2 adds `requireTrioRoles` but New/Save still validate permissively, and fresh starter presets have no adopted face bytes — do not make New/Save strict until New has an atomic default-face adoption flow — cost if wrong: a new theme can be saved without packaged faces.

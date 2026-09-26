@@ -1,0 +1,198 @@
+# Review package: 7f51e20..8292477
+
+## Commits
+8292477 fix(scene-fabric): strip group-entry flags from a saved scene
+
+## Files changed
+ STATUS.md                                          | 24 +++++++++++-----------
+ .../packages/scene-fabric/src/persist.dom.test.ts  | 14 ++++++-------
+ src/web/packages/scene-fabric/src/persist.ts       | 20 ++++++++++++++++++
+ 3 files changed, 38 insertions(+), 20 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 565207a..c448837 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -18,32 +18,32 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md` (Spec A)
+     — zoom/pan camera, group entry, reachable marquee, keyboard, context menu.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- `grouping-manager` gained `enterGroup`/`exitGroup`/`groupContext` (transient selection state,
+-  §67): double-click enters a group and selects the child under the pointer, Escape steps back out.
+-- A group is only transparent to a pointer once `subTargetCheck`/`interactive` are on, and they are
+-  armed after Fabric's own hit test for the entering gesture has run — so `enterGroup` re-resolves
+-  the deepest child from the event's `scenePoint`; the flags are restored on exit and re-applied to
+-  the revived group after an undo (`editor:history-state-loaded`).
+-- `canvas-nudge` reads `getRelativeCenterPoint()`: `getCenterPoint()` maps a grouped child through
+-  its group while `setPositionByOrigin` writes its local `left`/`top`, so a nudge inside a group
+-  moved the child by the group's own centre offset (41 instead of 1).
+-- Teeth, measured: dropping the post-restore re-apply reddens the new e2e's `inCanvas` identity poll
+-  (`Expected: true, Received: false`); removing `ungroup()`'s context-clearing reddens the unit test
+-  (`AssertionError: expected [ v{ __eventListeners: {}, …(83) } ] to deeply equal []`).
++- `serialiseScene` now strips `subTargetCheck` and `interactive` from every object in the
++  serialised tree. Fabric forces both into `Group.toObject`, and group entry arms them — so
++  saving while inside a group leaked transient selection state into the portable document
++  and left the reopened group permanently pointer-transparent (§67).
++- `includeDefaultValues = false` could not do this: an armed `true` differs from Fabric's
++  `false` default, and `SCENE_PERSISTED_PROPERTIES` is an allow-list of extra keys, not a
++  filter. `persist.ts`'s docblock now names these two as the contrast case against the
++  authored `selectable`/`evented`/`locked`.
++- The serialization tripwire in `persist.dom.test.ts` was inverted rather than deleted: it
++  now asserts both keys are absent even when armed, and reddens with
++  `expected [ 'height', 'id', 'interactive', …(7) ] to deeply equal [ … ]` when the strip is
++  disabled.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+ 2. Continue Spec A from Task 7, then 8, 9.
+ 3. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+diff --git a/src/web/packages/scene-fabric/src/persist.dom.test.ts b/src/web/packages/scene-fabric/src/persist.dom.test.ts
+index bc84d33..6a3efd4 100644
+--- a/src/web/packages/scene-fabric/src/persist.dom.test.ts
++++ b/src/web/packages/scene-fabric/src/persist.dom.test.ts
+@@ -234,39 +234,37 @@ describe("Fabric’s own keys are held to the same rule", () => {
+     const group = new Group([new Rect({ width: 4, height: 4 })]);
+     group.set("id", "group-1");
+ 
+     const keys = keysOf(serialiseScene(canvasOf(group)));
+ 
+     expect(keys).not.toContain("subTargetCheck");
+     expect(keys).not.toContain("interactive");
+     expect(keys).not.toContain("layoutManager");
+   });
+ 
+-  it("lets them straight back in once the editor enables group entry", () => {
+-    // Pinned rather than warned about. Spec 0013 stage 4 adopts
+-    // `subTargetCheck` + `interactive` for group entry/exit, which makes them
+-    // non-default and therefore persisted — editor state in a portable
+-    // document. This test is how that arrives: as a failure naming the keys,
+-    // in the commit that causes it, rather than as a surprise in a saved file.
++  it("strips them again when a save happens while the editor has group entry on", () => {
++    // Spec 0013 stage 4 arms `subTargetCheck` + `interactive` on the group an
++    // author entered, which makes them non-default and therefore serialized.
++    // Saving from inside a group is a third path out of that state, beside
++    // exit and history reload, so serialization strips them rather than letting
++    // editor state land in a portable document (§67).
+     const group = new Group([new Rect({ width: 4, height: 4 })], {
+       subTargetCheck: true,
+       interactive: true,
+     });
+     group.set("id", "group-1");
+ 
+     expect(keysOf(serialiseScene(canvasOf(group)))).toEqual([
+       "height",
+       "id",
+-      "interactive",
+       "left",
+       "objects",
+-      "subTargetCheck",
+       "top",
+       "type",
+       "version",
+       "width",
+     ]);
+   });
+ });
+ 
+ describe("identity survives a round trip", () => {
+   it("retains an image asset reference without serialising its preview URL", async () => {
+diff --git a/src/web/packages/scene-fabric/src/persist.ts b/src/web/packages/scene-fabric/src/persist.ts
+index 6b0621c..7cb9e13 100644
+--- a/src/web/packages/scene-fabric/src/persist.ts
++++ b/src/web/packages/scene-fabric/src/persist.ts
+@@ -27,20 +27,26 @@ classRegistry.setClass(Textbox);
+ 
+ /**
+  * Single owner of Fabric scene serialization. Defaults are stripped so persisted
+  * keys are authored deviations; `id` is explicitly included because Fabric omits it.
+  *
+  * The three interaction flags are authored state, not runtime state: the lock
+  * manager writes them and saves, and a theme's own background is authored
+  * non-selectable. Fabric omits all three from `toObject`, so without them here a
+  * revived scene hands every object Fabric's `selectable: true` — an undo would
+  * turn an authored background or a locked object back into an ordinary one.
++ *
++ * `subTargetCheck` and `interactive` are the contrast case: Fabric forces both
++ * into every `Group.toObject`, and the grouping manager arms them only while an
++ * author is inside a group. They are therefore stripped after serialization;
++ * `includeDefaultValues = false` cannot do it, because an armed `true` differs
++ * from Fabric's `false` default and an author never authors either key.
+  */
+ 
+ export const SCENE_PERSISTED_PROPERTIES = [
+   "id",
+   VIGILIA_TEXT_PROPERTY,
+   VIGILIA_PAINT_PROPERTY,
+   VIGILIA_ASSET_PROPERTY,
+   "selectable",
+   "evented",
+   "locked",
+@@ -55,20 +61,21 @@ export interface SerialisedScene {
+ /** Serialize all objects with identity and without Fabric defaults. */
+ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
+   // Keep the canvas in the same mode so stray serialization cannot emit a different shape.
+   canvas.includeDefaultValues = false;
+   // Fabric gradients retain undefined transform entries in memory; JSON export
+   // is canonical persisted state, so normalize through JSON before validation.
+   const scene = JSON.parse(
+     JSON.stringify(canvas.toObject([...SCENE_PERSISTED_PROPERTIES])),
+   ) as SerialisedScene;
+   removeRuntimeText(scene.objects);
++  removeGroupEntryFlags(scene.objects);
+   return scene;
+ }
+ 
+ /** Save the product envelope and Fabric object tree through their single owners. */
+ export function serialiseThemeEnvelope(
+   canvas: StaticCanvas,
+   input: FabricThemeEnvelopeInput,
+ ): FabricThemeEnvelope {
+   return {
+     schemaVersion: 2,
+@@ -131,20 +138,33 @@ function removeRuntimeText(
+     if (runs !== undefined) {
+       (object as Record<string, unknown>)["text"] = runs
+         .map((run) => (run.kind === "literal" ? run.text : "—"))
+         .join("");
+     }
+     const children = object["objects"];
+     if (Array.isArray(children)) removeRuntimeText(children.filter(isRecord));
+   }
+ }
+ 
++/** Fabric forces both keys into `Group.toObject`; the grouping manager is their only writer. */
++function removeGroupEntryFlags(
++  objects: readonly Readonly<Record<string, unknown>>[],
++): void {
++  for (const object of objects) {
++    delete (object as Record<string, unknown>)["subTargetCheck"];
++    delete (object as Record<string, unknown>)["interactive"];
++    const children = object["objects"];
++    if (Array.isArray(children))
++      removeGroupEntryFlags(children.filter(isRecord));
++  }
++}
++
+ function valueRuns(
+   value: unknown,
+ ):
+   | readonly (
+       | { readonly kind: "literal"; readonly text: string }
+       | { readonly kind: "value" }
+     )[]
+   | undefined {
+   if (!isRecord(value) || !Array.isArray(value["runs"])) return undefined;
+   const runs = value["runs"];

@@ -1,0 +1,198 @@
+# Review package: 9b32830..33b24a9
+
+## Commits
+33b24a9 feat(editor): Ctrl escapes snapping during a resize
+
+## Files changed
+ .../scaling/scale-snapping-controller.ts           |  2 +
+ .../src/snap-manager/scaling/scaling.dom.test.ts   | 71 ++++++++++++++++++----
+ 2 files changed, 60 insertions(+), 13 deletions(-)
+
+## Diff
+diff --git a/src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts b/src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts
+index 1b0cf3f..6b61b54 100644
+--- a/src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts
++++ b/src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts
+@@ -180,20 +180,22 @@ export function createScaleSnappingController(
+ 
+     const stepInput = resolveRectangularScaleStepInput({
+       canvas,
+       event: { e: pointerEvent },
+       intentSource: "fabric-preview",
+       projection: active.projection,
+       target: active.target,
+     });
+     if (stepInput === null) return [];
+ 
++    // One shared reader supplies both Ctrl's snap escape and Shift's scale mode;
++    // reading only the Fabric pointer event here would let the two paths drift.
+     const intent: ScaleRawIntent = Object.freeze({
+       projectionMode: stepInput.intent.projectionMode,
+       values: stepInput.intent.values,
+       modifiers: readMovementModifiers({ event }),
+     });
+     const step = active.runtime.resolveScalePlan({ marker, intent });
+     if (step.kind === "duplicate") {
+       return createScaleGuideLines({ guides: step.verification?.guides ?? [] });
+     }
+ 
+diff --git a/src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts b/src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
+index cfee2b1..f5bdf02 100644
+--- a/src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
++++ b/src/web/packages/editor/src/snap-manager/scaling/scaling.dom.test.ts
+@@ -1,21 +1,33 @@
+ // @vitest-environment jsdom
+ import { Canvas, Group, Rect } from "fabric/es";
+ import { describe, expect, it, vi } from "vitest";
+ import { createSnapManager } from "../index.js";
+ 
+ /** The raw width multiplier whose moved right edge lands inside SNAP_THRESHOLD
+  * of the anchor's left edge. Task 8 imports it, so it lives here, defined once. */
+ export const SNAPPING_MULTIPLIER = 1.53;
+ 
+-function setup({ grouped = false }: { grouped?: boolean } = {}) {
++function setup({
++  controlKey = "mr",
++  grouped = false,
++  uniformScaling,
++}: {
++  controlKey?: "br" | "mr";
++  grouped?: boolean;
++  uniformScaling?: boolean;
++} = {}) {
+   const canvas = new Canvas(document.createElement("canvas"));
++  if (uniformScaling !== undefined) {
++    canvas.uniformScaling = uniformScaling;
++    canvas.uniScaleKey = "shiftKey";
++  }
+   const snapped = createSnapManager({
+     canvas,
+     bounds: () => ({
+       left: 0,
+       top: 0,
+       right: 800,
+       bottom: 600,
+       centerX: 400,
+       centerY: 300,
+     }),
+@@ -49,54 +61,53 @@ function setup({ grouped = false }: { grouped?: boolean } = {}) {
+       anchor,
+       new Group([resized], { subTargetCheck: true, interactive: true }),
+     );
+   } else {
+     canvas.add(anchor, resized);
+     canvas.setActiveObject(resized);
+   }
+ 
+   const transform = {
+     target: resized,
+-    action: "scaleX",
+-    corner: "mr",
++    action: controlKey === "mr" ? "scaleX" : "scale",
++    corner: controlKey,
+     // Fabric's own _getOriginFromCorner forces "left"/"center" for `mr`.
+-    originX: "left",
+-    originY: "center",
++    originX: controlKey === "mr" ? "left" : "left",
++    originY: controlKey === "mr" ? "center" : "top",
+     original: { scaleX: 1, scaleY: 1, originX: "left", originY: "center" },
+   };
+   // Fabric fires `object:scaling` only after it has already resized the object,
+   // so the gesture's start geometry comes from `mouse:down`, which carries the
+   // transform Fabric built there. One pointerdown, then the resize steps.
+   // `scenePoint`, not `pointer`: Fabric's `_handleEvent` builds the payload
+   // from `getEventPoints` (scenePoint/viewportPoint), and only `object:scaling`
+   // gets a `pointer`. Sending `pointer` here would test a payload Fabric never
+   // sends, and a controller reading only `pointer` would never start a session.
+   const down = (): void => {
+     canvas.fire(
+       "mouse:down" as never,
+       {
+         e: {},
+         target: resized,
+         scenePoint: { x: 160, y: 300 },
+         transform,
+       } as never,
+     );
+   };
+-  /** One mr-handle step. Returns the width Fabric itself would have produced, so
+-   * a test can compare "what the raw drag gives" against "what the controller
+-   * gives" — the controller may legitimately change the scale. */
++  /** One handle step. Returns raw width Fabric would have produced. */
+   const resize = (e: object, widthScale: number): number => {
+-    // Mirror Fabric's pre-transform result so the controller sees the state it
+-    // would really see. This is setup, not the behaviour under test: asserting
+-    // that getScaledWidth() equals 200 * widthScale after this call proves
+-    // nothing, because this line produced it.
+-    resized.set({ scaleX: widthScale, scaleY: 1 });
++    // Mirror Fabric's pre-transform result so controller sees state it would
++    // really see. This is setup, not behaviour under test.
++    resized.set({
++      scaleX: widthScale,
++      scaleY: controlKey === "mr" ? 1 : widthScale,
++    });
+     resized.setCoords();
+     canvas.fire(
+       "object:scaling" as never,
+       {
+         e,
+         target: resized,
+         pointer: { x: 160, y: 300 },
+         transform,
+       } as never,
+     );
+@@ -126,20 +137,54 @@ describe("scale snapping", () => {
+     // value stands — this is the assertion that would catch a controller that
+     // snapped unconditionally.
+     expect(resize({}, 0.6)).toBe(120);
+     expect(resized.getScaledWidth()).toBe(120);
+     // The second step must be planned, not rejected as a duplicate.
+     resize({}, SNAPPING_MULTIPLIER);
+     expect(resized.getScaledWidth()).toBe(310);
+     snapped.destroy();
+   });
+ 
++  it("leaves the raw size alone while Ctrl is held", () => {
++    const { resized, snapped, down, resize } = setup();
++    down();
++
++    const raw = resize({ ctrlKey: true }, SNAPPING_MULTIPLIER);
++    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
++    expect(resized.getScaledWidth()).toBe(raw);
++    snapped.destroy();
++  });
++
++  it("snaps the same step when Ctrl is not held", () => {
++    const { resized, snapped, down, resize } = setup();
++    down();
++
++    const raw = resize({}, SNAPPING_MULTIPLIER);
++    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
++    expect(resized.getScaledWidth()).not.toBe(raw);
++    snapped.destroy();
++  });
++
++  it("uses Shift to constrain a corner resize", () => {
++    const { resized, snapped, down, resize } = setup({
++      controlKey: "br",
++      uniformScaling: false,
++    });
++    down();
++
++    const raw = resize({ shiftKey: true }, SNAPPING_MULTIPLIER);
++    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
++    expect(resized.getScaledWidth()).toBe(310);
++    expect(resized.getScaledHeight()).toBe(124);
++    snapped.destroy();
++  });
++
+   it("refuses a group child, whose bounds plane is the group's", () => {
+     const { snapped, resized, down, resize } = setup({ grouped: true });
+     down();
+ 
+     // The step that snaps above must leave the raw width here: the child's
+     // bounds are read in the canvas plane while the plan would be applied in the
+     // child's own plane, so the two disagree as soon as the group is rotated or
+     // scaled. Guarded, so no session starts and nothing re-plans.
+     expect(resize({}, SNAPPING_MULTIPLIER)).toBe(306);
+     expect(resized.getScaledWidth()).toBe(306);

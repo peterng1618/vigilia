@@ -1,0 +1,64 @@
+# Review package: da5f0b21d66a6c34a4faa3edeb219fd98aa02213..dd05235
+
+## Commits
+dd05235 refactor(editor): restore the fork's inline coordinates in the scale projection
+
+## Files changed
+ .../scaling/rectangular-scale-gesture-projection.ts         | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/src/web/packages/editor/src/snap-manager/scaling/rectangular-scale-gesture-projection.ts b/src/web/packages/editor/src/snap-manager/scaling/rectangular-scale-gesture-projection.ts
+index 875683f..2e76b19 100644
+--- a/src/web/packages/editor/src/snap-manager/scaling/rectangular-scale-gesture-projection.ts
++++ b/src/web/packages/editor/src/snap-manager/scaling/rectangular-scale-gesture-projection.ts
+@@ -695,45 +695,40 @@ function createProjectedBounds({
+ export function projectRectangularScaleBounds({
+   projection,
+   multipliers,
+ }: {
+   projection: RectangularScaleGestureProjection;
+   multipliers: RectangularScaleMultipliers;
+ }): Readonly<ObjectBounds> | null {
+   if (!Number.isFinite(multipliers.x) || !Number.isFinite(multipliers.y))
+     return null;
+ 
+-  const topLeft = RECTANGULAR_SCALE_CONTROL_COORDINATES.tl;
+-  const topRight = RECTANGULAR_SCALE_CONTROL_COORDINATES.tr;
+-  const bottomRight = RECTANGULAR_SCALE_CONTROL_COORDINATES.br;
+-  const bottomLeft = RECTANGULAR_SCALE_CONTROL_COORDINATES.bl;
+-
+   return createProjectedBounds({
+     topLeft: projectScaledPoint({
+       projection,
+       multipliers,
+-      coordinates: topLeft,
++      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.tl,
+     }),
+     topRight: projectScaledPoint({
+       projection,
+       multipliers,
+-      coordinates: topRight,
++      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.tr,
+     }),
+     bottomRight: projectScaledPoint({
+       projection,
+       multipliers,
+-      coordinates: bottomRight,
++      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.br,
+     }),
+     bottomLeft: projectScaledPoint({
+       projection,
+       multipliers,
+-      coordinates: bottomLeft,
++      coordinates: RECTANGULAR_SCALE_CONTROL_COORDINATES.bl,
+     }),
+   });
+ }
+ 
+ /** Returns the baseline position of the given edge. */
+ function getBaselineEdgePosition({
+   bounds,
+   edge,
+ }: {
+   bounds: Readonly<ObjectBounds>;

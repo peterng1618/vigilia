@@ -1,0 +1,858 @@
+# Review package: aad9d5f..fb3aa92
+
+## Commits
+fb3aa92 feat(editor): enter and exit a group from the canvas
+
+## Files changed
+ STATUS.md                                          |  22 +--
+ .../packages/editor/src/canvas-nudge.dom.test.ts   |   2 +-
+ src/web/packages/editor/src/canvas-nudge.ts        |   9 +-
+ .../packages/editor/src/editor-session.dom.test.ts |   2 +-
+ src/web/packages/editor/src/editor-session.ts      |   5 +
+ src/web/packages/editor/src/editor-shell.ts        |  35 +++-
+ .../src/grouping-manager/group-entry.dom.test.ts   |  75 +++++++++
+ .../packages/editor/src/grouping-manager/index.ts  | 109 ++++++++++++
+ .../editor/src/shortcut-manager/index.dom.test.ts  |  36 ++++
+ .../packages/editor/src/shortcut-manager/index.ts  |  11 +-
+ src/web/tests/e2e/editor.spec.ts                   | 185 +++++++++++++++++++++
+ 11 files changed, 468 insertions(+), 23 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 6dc3627..565207a 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -18,30 +18,32 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md` (Spec A)
+     — zoom/pan camera, group entry, reachable marquee, keyboard, context menu.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- `edit.undo` / `edit.redo` now call `endBurst()` on the canvas nudge before running the history
+-  call, so a `Control+z` inside the 300 ms idle window closes the open burst and steps back over it
+-  instead of being a silent no-op. `canvas-nudge.ts` itself is unchanged — its comment ("ends on the
+-  idle window or on any other action") is now true.
+-- The nudge e2e test's `waitForTimeout(400)` and its comment came out: the test asserted an undo
+-  after a ~37 ms gap and passes, so the wait documented a defect that no longer exists.
+-- Teeth, measured: deleting the `endBurst()` call reddens `editor-session.dom.test.ts`'s new test
+-  (`expected 1 to be +0`, the suspension counter) and reddens the e2e at `editor.spec.ts:2224`
+-  (`expected 0, received 11` — the object stayed at `before + 11`).
+-- `editor-session.ts` is 770 lines — over the 500 signal, under the 800 stop.
++- `grouping-manager` gained `enterGroup`/`exitGroup`/`groupContext` (transient selection state,
++  §67): double-click enters a group and selects the child under the pointer, Escape steps back out.
++- A group is only transparent to a pointer once `subTargetCheck`/`interactive` are on, and they are
++  armed after Fabric's own hit test for the entering gesture has run — so `enterGroup` re-resolves
++  the deepest child from the event's `scenePoint`; the flags are restored on exit and re-applied to
++  the revived group after an undo (`editor:history-state-loaded`).
++- `canvas-nudge` reads `getRelativeCenterPoint()`: `getCenterPoint()` maps a grouped child through
++  its group while `setPositionByOrigin` writes its local `left`/`top`, so a nudge inside a group
++  moved the child by the group's own centre offset (41 instead of 1).
++- Teeth, measured: dropping the post-restore re-apply reddens the new e2e's `inCanvas` identity poll
++  (`Expected: true, Received: false`); removing `ungroup()`'s context-clearing reddens the unit test
++  (`AssertionError: expected [ v{ __eventListeners: {}, …(83) } ] to deeply equal []`).
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+ 2. Continue Spec A from Task 7, then 8, 9.
+ 3. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+diff --git a/src/web/packages/editor/src/canvas-nudge.dom.test.ts b/src/web/packages/editor/src/canvas-nudge.dom.test.ts
+index 8dbb9ac..444931f 100644
+--- a/src/web/packages/editor/src/canvas-nudge.dom.test.ts
++++ b/src/web/packages/editor/src/canvas-nudge.dom.test.ts
+@@ -90,21 +90,21 @@ function fakeHistory() {
+   const saveState = vi.fn();
+   return { history: { suspend, saveState }, saveState, depth: () => depth };
+ }
+ 
+ /** One unlocked, selectable object: enough for `nudge` to have a target. */
+ function canvasWith(start: { readonly x: number; readonly y: number }) {
+   let x = start.x;
+   let y = start.y;
+   const object = {
+     locked: false,
+-    getCenterPoint: () => ({ x, y }),
++    getRelativeCenterPoint: () => ({ x, y }),
+     setPositionByOrigin: (point: {
+       readonly x: number;
+       readonly y: number;
+     }) => {
+       x = point.x;
+       y = point.y;
+     },
+     setCoords: vi.fn(),
+   };
+   const canvas = {
+diff --git a/src/web/packages/editor/src/canvas-nudge.ts b/src/web/packages/editor/src/canvas-nudge.ts
+index edc98f5..647a203 100644
+--- a/src/web/packages/editor/src/canvas-nudge.ts
++++ b/src/web/packages/editor/src/canvas-nudge.ts
+@@ -40,23 +40,26 @@ export function createCanvasNudge(options: CanvasNudgeOptions): CanvasNudge {
+   const { canvas, history } = options;
+ 
+   const nudge = (dx: number, dy: number): void => {
+     const active = canvas.getActiveObject();
+     if (active === undefined) return;
+     const targets = (
+       active instanceof ActiveSelection ? active.getObjects() : [active]
+     ).filter((object) => (object as NudgeObject).locked !== true);
+     if (targets.length === 0) return;
+     for (const object of targets) {
+-      // Read and write must name the same origin: `getCenterPoint` is the
+-      // origin point under `originX/originY`, not the bounding-box centre.
+-      const centre = object.getCenterPoint();
++      // Read and write must name the same origin: this is the origin point under
++      // `originX/originY`, not the bounding-box centre. It must also be the same
++      // *plane*: `getCenterPoint` maps a grouped child through its group, while
++      // `setPositionByOrigin` writes that child's local `left`/`top`, so a
++      // grouped child would move by the offset of the group's own centre.
++      const centre = object.getRelativeCenterPoint();
+       object.setPositionByOrigin(
+         new Point(centre.x + dx, centre.y + dy),
+         "center",
+         "center",
+       );
+       object.setCoords();
+     }
+     canvas.requestRenderAll();
+   };
+ 
+diff --git a/src/web/packages/editor/src/editor-session.dom.test.ts b/src/web/packages/editor/src/editor-session.dom.test.ts
+index 262adce..792f8c9 100644
+--- a/src/web/packages/editor/src/editor-session.dom.test.ts
++++ b/src/web/packages/editor/src/editor-session.dom.test.ts
+@@ -342,21 +342,21 @@ describe("EditorSession", () => {
+       return () => {
+         if (released) return;
+         released = true;
+         suspended -= 1;
+       };
+     });
+     const saveState = vi.fn();
+     const undo = vi.fn();
+     const object = {
+       locked: false,
+-      getCenterPoint: () => ({ x: 10, y: 20 }),
++      getRelativeCenterPoint: () => ({ x: 10, y: 20 }),
+       setPositionByOrigin: vi.fn(),
+       setCoords: vi.fn(),
+     };
+     // The inspector renders whatever is selectable at construction, so the
+     // selection is armed only once the session exists.
+     const selection = { active: undefined as unknown };
+     const shell = {
+       editor: {
+         canvas: {
+           on: vi.fn(),
+diff --git a/src/web/packages/editor/src/editor-session.ts b/src/web/packages/editor/src/editor-session.ts
+index a589665..7548950 100644
+--- a/src/web/packages/editor/src/editor-session.ts
++++ b/src/web/packages/editor/src/editor-session.ts
+@@ -296,20 +296,25 @@ export class EditorSession {
+     });
+     this.#shortcuts.register("edit.duplicate", () => {
+       void options.shell.editor.clipboardManager.duplicate();
+     });
+     this.#shortcuts.register("edit.group", () => {
+       options.shell.editor.groupingManager.group();
+     });
+     this.#shortcuts.register("edit.ungroup", () => {
+       options.shell.editor.groupingManager.ungroup();
+     });
++    // Context-only, so it is registered here rather than in `PRODUCT_SHORTCUTS`:
++    // no menu or tooltip displays "Escape".
++    this.#shortcuts.register("view.exit-group", () => {
++      options.shell.editor.groupingManager.exitGroup();
++    });
+     this.#shortcuts.register("canvas.front", () => {
+       options.shell.editor.layerManager.bringToFront();
+     });
+     this.#shortcuts.register("canvas.back", () => {
+       options.shell.editor.layerManager.sendToBack();
+     });
+ 
+     const canvas = options.shell.editor.canvas;
+     // The theme's full-artboard background rect is `selectable: false`, but it
+     // *is* returned by `getObjects()`. Selecting it would let the next nudge or
+diff --git a/src/web/packages/editor/src/editor-shell.ts b/src/web/packages/editor/src/editor-shell.ts
+index 366b249..aa63e13 100644
+--- a/src/web/packages/editor/src/editor-shell.ts
++++ b/src/web/packages/editor/src/editor-shell.ts
+@@ -23,20 +23,21 @@ import {
+   type SceneAdapter,
+   serialiseScene,
+   serialiseThemeEnvelope,
+ } from "@vigilia/scene-fabric";
+ import {
+   ActiveSelection,
+   type ActiveSelectionOptions,
+   Canvas,
+   classRegistry,
+   type FabricObject,
++  Point,
+   Rect,
+ } from "fabric/es";
+ import { createClipboardManager } from "./clipboard-manager/index.js";
+ import { applyEditorControls } from "./controls-manager/index.js";
+ import { createCropManager } from "./crop-manager/index.js";
+ import { createDeletionManager } from "./deletion-manager/index.js";
+ import type { EditorInteraction } from "./editor-interaction.js";
+ import { createErrorManager } from "./error-manager/index.js";
+ import { createGroupingManager } from "./grouping-manager/index.js";
+ import { EditorHistory } from "./history-manager/index.js";
+@@ -201,20 +202,45 @@ function createNativeEditor(input: {
+   history.reset();
+   const save = (): void => history.save();
+   /** A completed mouse-driven move/scale/rotate needs the same history entry
+    * explicit actions get; Fabric only reports it after the gesture ends. */
+   canvas.on("object:modified", save);
+   const errors = createErrorManager(canvas);
+   const deletion = createDeletionManager(canvas, save);
+   const images = createImageManager(canvas, save);
+   const text = createTextManager(canvas, save);
+ 
++  const grouping = createGroupingManager({
++    canvas,
++    save,
++    suspend: () => history.suspend(),
++  });
++  /** Double-click enters the group the pointer resolved to. `text-manager` owns
++   * this event too and returns early for a non-`IText` target, so a group
++   * double-click reaches here untouched rather than being taken over. The scene
++   * point goes with it: Fabric resolved the group, and only the manager can
++   * re-resolve the child beneath it. */
++  const enterGroupOnDoubleClick = (event: {
++    readonly target?: unknown;
++    readonly scenePoint?: Point;
++  }): void => {
++    const target = event.target;
++    if (target === undefined || target === null) return;
++    grouping.enterGroup({
++      object: target as FabricObject,
++      ...(event.scenePoint === undefined
++        ? {}
++        : { scenePoint: event.scenePoint }),
++    });
++  };
++  canvas.on("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
++
+   return {
+     canvas,
+     viewport,
+     historyManager: {
+       saveState: save,
+       resetHistory: () => history.reset(),
+       undo: () => history.undo(),
+       redo: () => history.redo(),
+       suspend: () => history.suspend(),
+     },
+@@ -230,28 +256,25 @@ function createNativeEditor(input: {
+       errors,
+     }),
+     deletionManager: deletion,
+     clipboardManager: createClipboardManager({
+       canvas,
+       save,
+       errors,
+       deletion,
+       importImage: (input) => images.importImage(input),
+     }),
+-    groupingManager: createGroupingManager({
+-      canvas,
+-      save,
+-      suspend: () => history.suspend(),
+-    }),
++    groupingManager: grouping,
+     destroy: () => {
+-      // The double-click editing listener outlives the canvas otherwise.
++      // Both double-click listeners outlive the canvas otherwise.
+       text.destroy();
++      canvas.off("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
+       unbindNavigation();
+       viewport.destroy();
+       // Disposal is asynchronous; a failure here must not be an unhandled
+       // rejection during teardown.
+       void canvas.dispose().catch(() => undefined);
+     },
+   };
+ }
+ 
+ /** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
+diff --git a/src/web/packages/editor/src/grouping-manager/group-entry.dom.test.ts b/src/web/packages/editor/src/grouping-manager/group-entry.dom.test.ts
+new file mode 100644
+index 0000000..e4d0cfe
+--- /dev/null
++++ b/src/web/packages/editor/src/grouping-manager/group-entry.dom.test.ts
+@@ -0,0 +1,75 @@
++// @vitest-environment jsdom
++import { Canvas, Group, Rect } from "fabric/es";
++import { describe, expect, it, vi } from "vitest";
++import { createGroupingManager } from "./index.js";
++
++describe("group entry", () => {
++  it("enters a group and selects the child under the object", () => {
++    const canvas = new Canvas(document.createElement("canvas"));
++    const child = new Rect({ id: "child", width: 10, height: 10 });
++    const group = new Group([child]);
++    group.set("id", "group");
++    canvas.add(group);
++    const manager = createGroupingManager({
++      canvas,
++      save: vi.fn(),
++      suspend: () => () => undefined,
++    });
++
++    expect(manager.enterGroup({ object: group })).toBe(group);
++    expect(manager.groupContext()).toEqual([group]);
++
++    // A child's pointer target resolves to the child, not the group.
++    const target = manager.enterGroup({ object: child });
++    expect(target).toBe(child);
++    expect(canvas.getActiveObject()).toBe(child);
++    // Asserted on the flags themselves, so a failure names the mechanism rather
++    // than only the symptom: Fabric retargets only when both are true.
++    expect(group.subTargetCheck).toBe(true);
++    expect(group.interactive).toBe(true);
++
++    expect(manager.exitGroup()).toEqual([group]);
++    expect(canvas.getActiveObject()).toBe(group);
++    expect(manager.groupContext()).toEqual([]);
++    expect(group.subTargetCheck).toBe(false);
++    expect(group.interactive).toBe(false);
++  });
++
++  it("clears the context when the group is ungrouped", () => {
++    // Step 3 says this guard "is asserted below" — it was not, in either this
++    // test or Step 6, so the guard could be deleted with the suite green. This is
++    // Review Focus item 4: a stale context re-selects a destroyed group.
++    const canvas = new Canvas(document.createElement("canvas"));
++    const child = new Rect({ id: "child", width: 10, height: 10 });
++    const group = new Group([child]);
++    group.set("id", "group");
++    canvas.add(group);
++    canvas.setActiveObject(group);
++    const manager = createGroupingManager({
++      canvas,
++      save: vi.fn(),
++      suspend: () => () => undefined,
++    });
++
++    // `ungroup()` requires a Group to be active, so activate it before entering —
++    // entering a group does not make it the canvas's active object.
++    expect(manager.enterGroup({ object: child })).toBe(child);
++    expect(manager.groupContext()).toEqual([group]);
++
++    // The brief's fixture stops here, but `enterGroup` has just made the *child*
++    // the canvas's active object, and `ungroup()` requires a Group to be active —
++    // the precondition this test's own comment states. Re-activating the group is
++    // that missing line, not a change to the guard under test.
++    canvas.setActiveObject(group);
++
++    // `removeAll` normally bakes the transform into the children; this fixture's
++    // child is plain geometry, so the members it returns are what matters.
++    expect(manager.ungroup()).toEqual([child]);
++
++    expect(manager.groupContext()).toEqual([]);
++    // The real failure the guard prevents: an exit now would re-select a group
++    // that is no longer on the canvas.
++    expect(canvas.getObjects()).not.toContain(group);
++    expect(manager.exitGroup()).toBeUndefined();
++  });
++});
+diff --git a/src/web/packages/editor/src/grouping-manager/index.ts b/src/web/packages/editor/src/grouping-manager/index.ts
+index b0d72f6..7f8d736 100644
+--- a/src/web/packages/editor/src/grouping-manager/index.ts
++++ b/src/web/packages/editor/src/grouping-manager/index.ts
+@@ -1,33 +1,97 @@
+ import {
+   ActiveSelection,
+   type Canvas,
+   type FabricObject,
+   Group,
++  type Point,
+ } from "fabric/es";
++import { findById } from "../editor-shell/layer-tree.js";
+ 
+ export interface GroupingManager {
+   group(): Group | undefined;
+   ungroup(): readonly FabricObject[] | undefined;
++  /** Enters the group that owns `object`, or `object` itself, and selects it.
++   * `scenePoint` picks the deepest child under the pointer instead: the flags
++   * that make a group transparent to a pointer are only set here, so Fabric's
++   * own hit test for the entering gesture still resolves to the group. */
++  enterGroup(options?: {
++    readonly object?: FabricObject;
++    readonly scenePoint?: Point;
++  }): FabricObject | undefined;
++  /** Steps back out one level, clearing the through-selection flags. */
++  exitGroup(): readonly FabricObject[] | undefined;
++  readonly groupContext: () => readonly FabricObject[];
+ }
+ 
+ export interface GroupingManagerOptions {
+   readonly canvas: Canvas;
+   readonly save: () => void;
+   readonly suspend: () => () => void;
+ }
+ 
++const idOf = (object: FabricObject): string | undefined => {
++  const id = (object as { id?: unknown }).id;
++  return typeof id === "string" ? id : undefined;
++};
++
++/** The nearest `Group` ancestor. Fabric keeps the owning group on `parent` even
++ * while an `ActiveSelection` has taken the object off it, so one hop is the
++ * whole walk. */
++const ownerGroup = (object: FabricObject): Group | undefined => object.parent;
++
+ export function createGroupingManager(
+   options: GroupingManagerOptions,
+ ): GroupingManager {
+   const { canvas, save } = options;
+ 
++  /** Selection state, not authored content (§67): never persisted, never history. */
++  let context: FabricObject[] = [];
++  /** Which of the two through-selection flags this manager set, so `exitGroup`
++   * restores only those and leaves an author's own flags alone. */
++  const flagsSet = new Set<Group>();
++
++  const makeSelectableThrough = (group: Group): void => {
++    if (group.subTargetCheck && group.interactive) return;
++    flagsSet.add(group);
++    group.subTargetCheck = true;
++    group.interactive = true;
++  };
++
++  const clearThroughFlags = (): void => {
++    for (const group of flagsSet) {
++      group.subTargetCheck = false;
++      group.interactive = false;
++    }
++    flagsSet.clear();
++  };
++
++  /** Restoring history rebuilds the scene (`loadFromJSON`), so the entered
++   * group is a *new* instance with the through-selection flags back at their
++   * defaults, and the recorded context points at objects no longer on the
++   * canvas. Re-resolve by id and re-apply, or `exitGroup` restores nothing. */
++  const onHistoryLoaded = (): void => {
++    const id = context.map(idOf).find((candidate) => candidate !== undefined);
++    const found =
++      id === undefined ? undefined : findById(canvas.getObjects(), id);
++    if (!(found instanceof Group)) {
++      context = [];
++      flagsSet.clear();
++      return;
++    }
++    context = [found];
++    flagsSet.clear();
++    makeSelectableThrough(found);
++    canvas.requestRenderAll();
++  };
++  canvas.on("editor:history-state-loaded" as never, onHistoryLoaded);
++
+   return {
+     group(): Group | undefined {
+       const active = canvas.getActiveObject();
+       if (!(active instanceof ActiveSelection)) return undefined;
+       const members = [...active.getObjects()];
+       if (members.length < 2) return undefined;
+ 
+       const release = options.suspend();
+       try {
+         canvas.discardActiveObject();
+@@ -53,18 +117,63 @@ export function createGroupingManager(
+       try {
+         // `removeAll` bakes the group transform into each child.
+         const members = active.removeAll();
+         canvas.remove(active);
+         for (const member of members) {
+           member.setCoords();
+           canvas.add(member);
+         }
+         canvas.setActiveObject(new ActiveSelection(members, { canvas }));
+         canvas.requestRenderAll();
++        // The entered group is gone, so a later `exitGroup` would otherwise
++        // re-select a destroyed object.
++        context = [];
++        flagsSet.delete(active);
++        active.subTargetCheck = false;
++        active.interactive = false;
+         return members;
+       } finally {
+         release();
+         save();
+       }
+     },
++
++    enterGroup(input): FabricObject | undefined {
++      const object = input?.object ?? canvas.getActiveObject();
++      if (object === undefined || object === null) return undefined;
++      // The double-click that enters a group resolves to the *group*, because a
++      // group is only transparent to a pointer once the flags below are set — and
++      // they are set here, after Fabric's own hit test has already run. So the
++      // deepest child under the pointer is re-resolved once they are on, or the
++      // gesture selects the group it was meant to enter.
++      const entry = ownerGroup(object) ?? object;
++      if (entry instanceof Group) makeSelectableThrough(entry);
++      const point = input?.scenePoint;
++      const deepest =
++        entry instanceof Group && point !== undefined
++          ? canvas.searchPossibleTargets([entry], point).target
++          : undefined;
++      const selected = deepest ?? object;
++      // Recorded before `setActiveObject`: that call fires `selection:created`
++      // synchronously, and the bridge re-reads the layer tree on it, so the
++      // context must already be right when the panel renders.
++      context = [entry];
++      canvas.setActiveObject(selected);
++      canvas.requestRenderAll();
++      return selected;
++    },
++
++    exitGroup(): readonly FabricObject[] | undefined {
++      const before = [...context];
++      const target = context.pop();
++      if (target === undefined) return undefined;
++      clearThroughFlags();
++      // An entry can only have been destroyed by an operation that also clears
++      // the context (`ungroup`), so `target` is still on the canvas here.
++      canvas.setActiveObject(target);
++      canvas.requestRenderAll();
++      return before;
++    },
++
++    groupContext: () => context,
+   };
+ }
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+index fdf79a7..f75ac57 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+@@ -210,10 +210,46 @@ describe("ShortcutManager unmodified keys", () => {
+     manager.register("canvas.nudge-left", nudge);
+ 
+     window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+     window.dispatchEvent(
+       new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true }),
+     );
+     expect(nudge).toHaveBeenCalledTimes(2);
+     manager.destroy();
+   });
+ });
++
++describe("ShortcutManager context bindings", () => {
++  it("dispatches Escape to the group-exit action", () => {
++    const manager = new ShortcutManager();
++    const exit = vi.fn();
++    manager.register("view.exit-group", exit);
++
++    const event = new KeyboardEvent("keydown", {
++      key: "Escape",
++      cancelable: true,
++    });
++    window.dispatchEvent(event);
++
++    expect(exit).toHaveBeenCalledOnce();
++    expect(event.defaultPrevented).toBe(true);
++    manager.destroy();
++  });
++
++  it("leaves Escape to a focused text field", () => {
++    // Fabric's own editing case is the same contract: its hidden textarea
++    // handles Escape itself and stops propagation, so this binding cannot fire.
++    const manager = new ShortcutManager();
++    const exit = vi.fn();
++    manager.register("view.exit-group", exit);
++    const field = document.createElement("textarea");
++    document.body.append(field);
++
++    field.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
++    );
++
++    expect(exit).not.toHaveBeenCalled();
++    field.remove();
++    manager.destroy();
++  });
++});
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.ts b/src/web/packages/editor/src/shortcut-manager/index.ts
+index a202891..d6d1677 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.ts
+@@ -10,21 +10,22 @@ export type ProductShortcutId =
+   | "edit.cut"
+   | "edit.duplicate"
+   | "edit.group"
+   | "edit.ungroup"
+   | "canvas.nudge-left"
+   | "canvas.nudge-right"
+   | "canvas.nudge-up"
+   | "canvas.nudge-down"
+   | "canvas.select-all"
+   | "canvas.front"
+-  | "canvas.back";
++  | "canvas.back"
++  | "view.exit-group";
+ 
+ interface ShortcutBinding {
+   readonly key: string;
+   /** A binding with no modifier always defers to a focused text field. */
+   readonly modifier: boolean;
+   readonly shift?: boolean;
+   readonly action: ProductShortcutId;
+ }
+ 
+ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
+@@ -45,25 +46,31 @@ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
+   { key: "backspace", modifier: false, action: "edit.delete" },
+   // No `shift` field: `bindingFor` matches when `binding.shift === undefined`, so
+   // one binding covers both the plain and the Shift-qualified press. The handler
+   // reads `event.shiftKey` and picks the step.
+   { key: "arrowleft", modifier: false, action: "canvas.nudge-left" },
+   { key: "arrowright", modifier: false, action: "canvas.nudge-right" },
+   { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
+   { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
+ ];
+ 
++/** Context-only bindings: dispatched here but never displayed by a menu or
++ * tooltip, so they stay off `PRODUCT_SHORTCUTS`. */
++const CONTEXT_SHORTCUTS: readonly ShortcutBinding[] = [
++  { key: "escape", modifier: false, action: "view.exit-group" },
++];
++
+ /** Shift-qualified bindings precede their plain form, so first match wins. */
+ function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
+   const key = event.key.toLowerCase();
+   const modifier = event.ctrlKey || event.metaKey;
+-  return PRODUCT_SHORTCUTS.find(
++  return [...PRODUCT_SHORTCUTS, ...CONTEXT_SHORTCUTS].find(
+     (binding) =>
+       binding.key === key &&
+       binding.modifier === modifier &&
+       (binding.shift === undefined || binding.shift === event.shiftKey),
+   );
+ }
+ 
+ /** The action ids a *modifier* binding must be in to defer to a focused text
+  * field's own key handling. Unmodified bindings defer unconditionally, so they
+  * need no entry here. `canvas.select-all` is in this set because Ctrl+A inside a
+diff --git a/src/web/tests/e2e/editor.spec.ts b/src/web/tests/e2e/editor.spec.ts
+index 13cd1db..938f0a7 100644
+--- a/src/web/tests/e2e/editor.spec.ts
++++ b/src/web/tests/e2e/editor.spec.ts
+@@ -1397,20 +1397,205 @@ test.describe("Fabric editor route", () => {
+     await page.mouse.up();
+ 
+     const savedAfterDrag = await saveEnvelope(page);
+     expect(leftFor(savedAfterDrag, "panel")).toBeGreaterThan(100);
+ 
+     await page.keyboard.press("Control+z");
+     const savedAfterUndo = await saveEnvelope(page);
+     expect(leftFor(savedAfterUndo, "panel")).toBeCloseTo(40, 3);
+   });
+ 
++  test("enters a group, steps back out, and survives an undo", async ({
++    page,
++  }, testInfo) => {
++    test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
++    await page.goto(EDITOR);
++    await setThemePackage(page, "grouping.vigilia-theme", {
++      schemaVersion: 2,
++      fabricVersion: "7.4.0",
++      id: "grouping",
++      artboard: { width: 320, height: 180 },
++      // The brief's fixture wrote a raw `fill`; this validator rejects one
++      // without a palette reference, so the paint is declared the way every
++      // other fixture here declares it.
++      globals: {
++        palette: {
++          none: {
++            name: "None",
++            value: { kind: "solid", color: "transparent" },
++          },
++          accent: {
++            name: "Accent",
++            value: { kind: "solid", color: "#00b8d9" },
++          },
++        },
++      },
++      scene: {
++        version: "7.4.0",
++        objects: [
++          {
++            type: "Group",
++            id: "grp",
++            left: 40,
++            top: 40,
++            // Without these the group revives 0x0 and its `aCoords` collapse to a
++            // point, so the pointer finds no target at all and entry never starts.
++            width: 30,
++            height: 30,
++            objects: [
++              {
++                type: "Rect",
++                id: "child",
++                left: 0,
++                top: 0,
++                width: 30,
++                height: 30,
++                fill: "#00b8d9",
++                vigiliaPaint: { fill: "palette.accent" },
++                originX: "left",
++                originY: "top",
++              },
++            ],
++          },
++          {
++            type: "Rect",
++            id: "outside",
++            left: 240,
++            top: 40,
++            width: 30,
++            height: 30,
++            fill: "#00b8d9",
++            vigiliaPaint: { fill: "palette.accent" },
++            originX: "left",
++            originY: "top",
++          },
++        ],
++      },
++    });
++    await expect(page.locator("#status")).toHaveText(
++      "Opened grouping.vigilia-theme",
++    );
++
++    // Points are derived from the camera, never from the canvas box: the canvas is
++    // host-sized, so its box says nothing about where the artboard is.
++    const rect = await page.evaluate(() => {
++      const b = (
++        window as unknown as {
++          vigiliaEditorBridge: {
++            editor: {
++              viewport: {
++                artboardScreenRect(): {
++                  left: number;
++                  top: number;
++                  width: number;
++                  height: number;
++                };
++              };
++            };
++          };
++        }
++      ).vigiliaEditorBridge;
++      return b.editor.viewport.artboardScreenRect();
++    });
++    // `rect` is canvas-relative, so the canvas box offset is added here. Task 10
++    // assembles this same pair into one `sceneToClient` helper; this test is the
++    // first consumer and the local form is deliberate, not a second owner.
++    const canvasBox = (await page
++      .locator("#vigilia-fabric-editor canvas.upper-canvas")
++      .boundingBox())!;
++    const at = (x: number, y: number): [number, number] => [
++      canvasBox.x + rect.left + (x / 320) * rect.width,
++      canvasBox.y + rect.top + (y / 180) * rect.height,
++    ];
++
++    const state = (): Promise<{
++      active: string | undefined;
++      childLeft: number | undefined;
++      groupPresent: boolean;
++    }> =>
++      page.evaluate(() => {
++        const b = (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: {
++                canvas: {
++                  getActiveObject(): { id?: string } | undefined;
++                  getObjects(): Array<{
++                    id?: string;
++                    getObjects?(): Array<{ id?: string; left?: number }>;
++                  }>;
++                };
++              };
++            };
++          }
++        ).vigiliaEditorBridge;
++        const canvas = b.editor.canvas;
++        const group = canvas.getObjects().find((object) => object.id === "grp");
++        return {
++          active: canvas.getActiveObject()?.id,
++          childLeft: group
++            ?.getObjects?.()
++            .find((object) => object.id === "child")?.left,
++          groupPresent: group !== undefined,
++        };
++      });
++
++    // Double-click inside the child: the pointer's target resolves to the child,
++    // which becomes the active object while the group stays in the context.
++    const [cx, cy] = at(55, 55);
++    await page.mouse.dblclick(cx, cy);
++    await expect.poll(async () => (await state()).active).toBe("child");
++
++    const before = (await state()).childLeft;
++    // `toBeTypeOf` is Vitest's; Playwright's `expect` has no such matcher.
++    expect(typeof before).toBe("number");
++
++    // Nudge (Task 6's binding), then undo it. The undo must not leave the context
++    // pointing at a destroyed object.
++    await page.keyboard.press("ArrowRight");
++    await expect
++      .poll(async () => (await state()).childLeft)
++      .toBe((before ?? 0) + 1);
++    await page.keyboard.press("Control+z");
++    await expect.poll(async () => (await state()).childLeft).toBe(before);
++
++    // Escape is the assertion that survives the undo — but only if it reads
++    // identity rather than id. Every read above is by `id`, and a revived object
++    // keeps its `id`: a context still holding the *pre-undo* instance satisfies
++    // `active === "grp"` just as well as a re-resolved one, and `groupPresent`
++    // reads the revived canvas either way. Neither can tell the two apart.
++    const inCanvas = (): Promise<boolean> =>
++      page.evaluate(() => {
++        const b = (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: {
++                canvas: { getActiveObject(): unknown; getObjects(): unknown[] };
++              };
++            };
++          }
++        ).vigiliaEditorBridge;
++        return b.editor.canvas
++          .getObjects()
++          .includes(b.editor.canvas.getActiveObject());
++      });
++
++    await page.keyboard.press("Escape");
++    // For a one-object selection Fabric sets `activeObject` to that object, so
++    // `setActiveObject(target)` makes `getActiveObject() === target`. Identity is
++    // therefore readable here, and is the only thing that separates a live group
++    // from the destroyed instance.
++    await expect.poll(inCanvas).toBe(true);
++    await expect.poll(async () => (await state()).active).toBe("grp");
++    expect((await state()).groupPresent).toBe(true);
++  });
++
+   test("rehydrates a chart runtime after undo", async ({ page }, testInfo) => {
+     test.skip(
+       testInfo.project.name !== "desktop-chromium",
+       "the editor is a desktop surface",
+     );
+ 
+     await page.goto(EDITOR);
+     await selectStarterChart(page);
+     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+     const box = await canvas.boundingBox();

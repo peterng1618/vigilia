@@ -1,0 +1,724 @@
+# Review package: 7c427ee..8d43499
+
+## Commits
+8d43499 feat(editor): zoom and pan gestures for the canvas camera
+
+## Files changed
+ STATUS.md                                          |  23 +-
+ src/web/packages/editor/src/editor-shell.ts        |   3 +
+ .../packages/editor/src/shortcut-manager/index.ts  |   5 +-
+ .../src/viewport-manager/navigation.dom.test.ts    | 232 +++++++++++++++++++++
+ .../editor/src/viewport-manager/navigation.ts      | 207 ++++++++++++++++++
+ src/web/tests/e2e/editor.spec.ts                   |  85 ++++++++
+ 6 files changed, 542 insertions(+), 13 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 320d35e..413bfd1 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -20,31 +20,32 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - Specs A and B are both under execution, task by task; snapping has no
+   execution method chosen yet.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- The layer row is focusable and the tree implements the keyboard model its
+-  roles promise: F2/Enter begins a rename, Escape cancels it, and the arrow keys
+-  move focus and the selection between rows.
+-- The rename path is guarded by three tests — commit on Enter, no commit on
+-  Escape, and no commit when a cancel unmounts the field and fires `focusout`,
+-  which is the race the `cancelled` ref exists for. Removing that guard now fails
+-  a test.
+-- `layerNamesFrom`'s `Array.isArray` branch is pinned: a whole-array
+-  `editorMetadata.layerNames` is rejected without throwing.
+-- `ui-copy.ts` lost the dead `panels.arrange` and its comment now states what is
+-  true — only the twisty and rename field carry the layer's name.
++- `viewport-manager/navigation.ts` binds the camera's gestures: wheel pans,
++  ctrl/meta-wheel zooms about the pointer, space-drag and middle-drag pan, and
++  `+`/`=`/`-`/`shift+1` zoom. It is wired into `createNativeEditor` and unbound
++  on destroy.
++- A pan claims the canvas through Fabric's own `skipTargetFind`/`selection`, so
++  a drag pans the camera and never moves authored content; `blur` clears the
++  hold so a lost keyup cannot wedge the editor in pan mode.
++- The camera keys defer to a focused text field through the newly exported
++  `isTextEntryTarget`, and Space is left to a focused button, which activates on
++  it. Both guards fail a test when removed.
++- `isTextEntryTarget` is now exported from `shortcut-manager` instead of copied;
++  one concept, one owner.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 6 (bottom action row and drag reorder).
+ 2. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+   `test-results/summary.json`. Three spec acceptance items stay unverified —
+diff --git a/src/web/packages/editor/src/editor-shell.ts b/src/web/packages/editor/src/editor-shell.ts
+index 3b8274b..0a0f367 100644
+--- a/src/web/packages/editor/src/editor-shell.ts
++++ b/src/web/packages/editor/src/editor-shell.ts
+@@ -42,20 +42,21 @@ import { createErrorManager } from "./error-manager/index.js";
+ import { createGroupingManager } from "./grouping-manager/index.js";
+ import { EditorHistory } from "./history-manager/index.js";
+ import { createImageManager } from "./image-manager/index.js";
+ import { createLayerManager } from "./layer-manager/index.js";
+ import { createObjectLockManager } from "./object-lock-manager/index.js";
+ import { createTextManager } from "./text-manager/index.js";
+ import {
+   createViewportManager,
+   type ViewportManager,
+ } from "./viewport-manager/index.js";
++import { bindViewportNavigation } from "./viewport-manager/navigation.js";
+ 
+ export interface EditorShellOptions {
+   readonly host: HTMLElement;
+   readonly artboard: Artboard;
+   readonly plan?: ScenePlan;
+   /** A validated v2 document revives directly into the interactive canvas. */
+   readonly envelope?: FabricThemeEnvelope;
+   readonly assets?: readonly AssetReference[];
+   readonly resolveAsset?: (
+     assetId: string,
+@@ -202,20 +203,21 @@ function createNativeEditor(input: {
+   // the workspace now, and the camera chooses what part of it the artboard fills.
+   const canvas = new Canvas(element, {
+     width: Math.max(1, host.clientWidth),
+     height: Math.max(1, host.clientHeight),
+   });
+   const viewport = createViewportManager({
+     canvas,
+     host,
+     artboard: () => input.artboard(),
+   });
++  const unbindNavigation = bindViewportNavigation({ canvas, viewport });
+   const history = new EditorHistory({
+     canvas,
+     serialize: serialiseScene,
+     revive: reviveScene,
+   });
+   history.reset();
+   const save = (): void => history.save();
+   /** A completed mouse-driven move/scale/rotate needs the same history entry
+    * explicit actions get; Fabric only reports it after the gesture ends. */
+   canvas.on("object:modified", save);
+@@ -254,20 +256,21 @@ function createNativeEditor(input: {
+       importImage: (input) => images.importImage(input),
+     }),
+     groupingManager: createGroupingManager({
+       canvas,
+       save,
+       suspend: () => history.suspend(),
+     }),
+     destroy: () => {
+       // The double-click editing listener outlives the canvas otherwise.
+       text.destroy();
++      unbindNavigation();
+       viewport.destroy();
+       // Disposal is asynchronous; a failure here must not be an unhandled
+       // rejection during teardown.
+       void canvas.dispose().catch(() => undefined);
+     },
+   };
+ }
+ 
+ /** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
+ export async function mountEditorShell({
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.ts b/src/web/packages/editor/src/shortcut-manager/index.ts
+index 94a2e36..dc3d24a 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.ts
+@@ -82,22 +82,23 @@ export class ShortcutManager {
+   register(action: ProductShortcutId, handler: ShortcutHandler): void {
+     this.#handlers.set(action, handler);
+   }
+ 
+   destroy(): void {
+     window.removeEventListener("keydown", this.#onKeyDown);
+     this.#handlers.clear();
+   }
+ }
+ 
+-/** Save/Open deliberately override text-entry defaults; New does not. */
+-function isTextEntryTarget(target: EventTarget | null): boolean {
++/** Save/Open deliberately override text-entry defaults; New does not.
++ * Bare-key canvas listeners (camera keys) defer through this same predicate. */
++export function isTextEntryTarget(target: EventTarget | null): boolean {
+   if (!(target instanceof HTMLElement)) return false;
+   if (target.isContentEditable) return true;
+   if (
+     target instanceof HTMLTextAreaElement ||
+     target instanceof HTMLSelectElement
+   )
+     return true;
+   return (
+     target instanceof HTMLInputElement &&
+     !new Set([
+diff --git a/src/web/packages/editor/src/viewport-manager/navigation.dom.test.ts b/src/web/packages/editor/src/viewport-manager/navigation.dom.test.ts
+new file mode 100644
+index 0000000..0c24a53
+--- /dev/null
++++ b/src/web/packages/editor/src/viewport-manager/navigation.dom.test.ts
+@@ -0,0 +1,232 @@
++// @vitest-environment jsdom
++import { Canvas } from "fabric/es";
++import { describe, expect, it, vi } from "vitest";
++import { bindViewportNavigation } from "./navigation.js";
++
++function setup() {
++  const host = document.createElement("div");
++  Object.defineProperties(host, {
++    clientWidth: { value: 1000 },
++    clientHeight: { value: 800 },
++  });
++  const canvas = new Canvas(document.createElement("canvas"));
++  const viewport = {
++    zoom: () => 1,
++    zoomToPoint: vi.fn(),
++    zoomBy: vi.fn(),
++    zoomToFit: vi.fn(),
++    zoomToSelection: vi.fn(),
++    reset: vi.fn(),
++    panBy: vi.fn(),
++    resize: vi.fn(),
++    // Declared by Task 1's ViewportManager; navigation does not call it, but the
++    // stub has to satisfy the interface or this call does not compile.
++    onChange: vi.fn(() => (): void => undefined),
++    destroy: vi.fn(),
++  };
++  const unbind = bindViewportNavigation({ canvas, viewport });
++  return { canvas, viewport, unbind };
++}
++
++describe("viewport navigation", () => {
++  it("pans vertically on a wheel", () => {
++    const { canvas, viewport } = setup();
++    canvas.upperCanvasEl.dispatchEvent(
++      new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true }),
++    );
++    expect(viewport.panBy).toHaveBeenCalledWith(0, -100);
++    expect(viewport.zoomToPoint).not.toHaveBeenCalled();
++  });
++
++  it("pans horizontally on a shifted wheel", () => {
++    const { canvas, viewport } = setup();
++    canvas.upperCanvasEl.dispatchEvent(
++      new WheelEvent("wheel", {
++        deltaY: 100,
++        shiftKey: true,
++        bubbles: true,
++        cancelable: true,
++      }),
++    );
++    expect(viewport.panBy).toHaveBeenCalledWith(-100, 0);
++  });
++
++  it("zooms about the pointer on a ctrl-wheel", () => {
++    const { canvas, viewport } = setup();
++    canvas.upperCanvasEl.dispatchEvent(
++      new WheelEvent("wheel", {
++        deltaY: -100,
++        ctrlKey: true,
++        clientX: 40,
++        clientY: 50,
++        bubbles: true,
++        cancelable: true,
++      }),
++    );
++    expect(viewport.zoomToPoint).toHaveBeenCalled();
++    expect(viewport.panBy).not.toHaveBeenCalled();
++  });
++
++  it("pans on a space-drag and stops on release", () => {
++    const { canvas, viewport } = setup();
++    // The brief requires the grab affordance, and a pan must not select: with
++    // target find still on, the same press would drag the object underneath.
++    expect(canvas.skipTargetFind).toBe(false);
++    window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
++    expect(canvas.upperCanvasEl.style.cursor).toBe("grab");
++    expect(canvas.skipTargetFind).toBe(true);
++    canvas.upperCanvasEl.dispatchEvent(
++      new MouseEvent("mousedown", {
++        clientX: 10,
++        clientY: 10,
++        bubbles: true,
++        cancelable: true,
++      }),
++    );
++    // Fabric re-applies `defaultCursor` on hover, so a cursor written straight
++    // to the element is overwritten mid-drag; during the drag the dragging
++    // cursor has to be the one Fabric re-applies.
++    expect(canvas.defaultCursor).toBe("grabbing");
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 40, clientY: 25, bubbles: true }),
++    );
++    expect(viewport.panBy).toHaveBeenCalledWith(30, 15);
++    // A second move pins the anchor update: a handler that kept the first
++    // press position as its origin would still satisfy the single-move
++    // assertion above.
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 55, clientY: 40, bubbles: true }),
++    );
++    expect(viewport.panBy).toHaveBeenNthCalledWith(2, 15, 15);
++    window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
++    window.dispatchEvent(new KeyboardEvent("keyup", { key: " " }));
++    viewport.panBy.mockClear();
++    // Releasing the key gives target find back: a stuck claim would make the
++    // canvas permanently unselectable at the end of a pan. The cursor goes
++    // back to the pre-gesture value too, not to the pan cursor.
++    expect(canvas.skipTargetFind).toBe(false);
++    expect(canvas.defaultCursor).toBe("default");
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 80, clientY: 80, bubbles: true }),
++    );
++    expect(viewport.panBy).not.toHaveBeenCalled();
++  });
++
++  it("pans on a middle-drag", () => {
++    // Step 3 specifies middle-drag panning; without this test the button
++    // number and the release handling are both unverified.
++    const { canvas, viewport } = setup();
++    canvas.upperCanvasEl.dispatchEvent(
++      new MouseEvent("mousedown", {
++        button: 1,
++        clientX: 10,
++        clientY: 10,
++        bubbles: true,
++        cancelable: true,
++      }),
++    );
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 25, clientY: 40, bubbles: true }),
++    );
++    expect(viewport.panBy).toHaveBeenCalledWith(15, 30);
++    // The anchor update again: a middle-drag that measured every move from the
++    // press point would pass the first assertion and pan twice as fast.
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 40, clientY: 55, bubbles: true }),
++    );
++    expect(viewport.panBy).toHaveBeenNthCalledWith(2, 15, 15);
++    window.dispatchEvent(
++      new MouseEvent("mouseup", { button: 1, bubbles: true }),
++    );
++    viewport.panBy.mockClear();
++    window.dispatchEvent(
++      new MouseEvent("mousemove", { clientX: 90, clientY: 90, bubbles: true }),
++    );
++    expect(viewport.panBy).not.toHaveBeenCalled();
++  });
++
++  it("leaves Space to the control that activates on it", () => {
++    // Space activates a focused button; claiming it for panning would silently
++    // break every toolbar control for keyboard users, and the default is not
++    // prevented so the control still sees the key.
++    const { canvas } = setup();
++    const button = document.createElement("button");
++    document.body.append(button);
++    button.focus();
++    const event = new KeyboardEvent("keydown", {
++      key: " ",
++      bubbles: true,
++      cancelable: true,
++    });
++    button.dispatchEvent(event);
++
++    expect(event.defaultPrevented).toBe(false);
++    expect(canvas.skipTargetFind).toBe(false);
++    button.remove();
++  });
++
++  it("unbinds every listener", () => {
++    const { canvas, viewport, unbind } = setup();
++    unbind();
++    canvas.upperCanvasEl.dispatchEvent(
++      new WheelEvent("wheel", { deltaY: 100, bubbles: true }),
++    );
++    expect(viewport.panBy).not.toHaveBeenCalled();
++  });
++
++  it("defers the camera keys to a focused text field", () => {
++    // `-`, `=` and `shift+1` are all ordinary text characters, so an unguarded
++    // window listener would zoom while the author types a layer name.
++    const { viewport } = setup();
++    const input = document.createElement("input");
++    document.body.append(input);
++    input.focus();
++    const eventFor = (key: string, shiftKey = false) =>
++      new KeyboardEvent("keydown", { key, shiftKey, bubbles: true });
++    const keys = ["-", "=", "+"];
++    // Both delivery paths are covered: a real keystroke inside the field
++    // retargets to the field, while a listener that saw the window instead
++    // still has to consult what is focused.
++    const fieldEvents = keys.map((key) => eventFor(key));
++    const windowEvents = [
++      ...keys.map((key) => eventFor(key)),
++      eventFor("!", true),
++    ];
++
++    for (const event of fieldEvents) input.dispatchEvent(event);
++    expect(viewport.zoomBy).not.toHaveBeenCalled();
++
++    for (const event of windowEvents) window.dispatchEvent(event);
++    expect(viewport.zoomToPoint).not.toHaveBeenCalled();
++    expect(viewport.zoomBy).not.toHaveBeenCalled();
++    expect(viewport.zoomToFit).not.toHaveBeenCalled();
++    // A guard that swallowed the key would also stop a hyphen reaching the
++    // field: the event has to stay uncancelled for the character to be typed.
++    for (const event of [...fieldEvents, ...windowEvents]) {
++      expect(event.defaultPrevented).toBe(false);
++    }
++    input.remove();
++  });
++
++  it("zooms in on =, out on -, and fits on shift+1", () => {
++    // The direction is the substance: `zoomBy(any number)` would pass with the
++    // sign inverted, which is the difference between zooming in and out.
++    const { viewport } = setup();
++    window.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "=", bubbles: true }),
++    );
++    expect(viewport.zoomBy).toHaveBeenCalledOnce();
++    expect(viewport.zoomBy.mock.calls[0]?.[0]).toBeGreaterThan(1);
++
++    viewport.zoomBy.mockClear();
++    window.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "-", bubbles: true }),
++    );
++    expect(viewport.zoomBy.mock.calls[0]?.[0]).toBeLessThan(1);
++
++    window.dispatchEvent(
++      new KeyboardEvent("keydown", { key: "!", shiftKey: true, bubbles: true }),
++    );
++    expect(viewport.zoomToFit).toHaveBeenCalled();
++  });
++});
+diff --git a/src/web/packages/editor/src/viewport-manager/navigation.ts b/src/web/packages/editor/src/viewport-manager/navigation.ts
+new file mode 100644
+index 0000000..5d48538
+--- /dev/null
++++ b/src/web/packages/editor/src/viewport-manager/navigation.ts
+@@ -0,0 +1,207 @@
++import type { Canvas } from "fabric/es";
++import { isTextEntryTarget } from "../shortcut-manager/index.js";
++import type { ViewportManager } from "./index.js";
++
++/** One camera-key press; ~10% per press reads as a step without feeling slow. */
++const ZOOM_STEP = 1.1;
++
++/** Wheel pixels per e-fold of zoom, so the same gesture feels the same on a
++ * notched mouse and a trackpad, whose deltas differ by an order of magnitude. */
++const WHEEL_ZOOM_DIVISOR = 1000;
++
++const PAN_CURSOR = "grab";
++const PAN_ACTIVE_CURSOR = "grabbing";
++
++/** Bare keys only: ctrl/meta +/=/- belong to the browser's own page zoom. */
++const ZOOM_IN_KEYS: ReadonlySet<string> = new Set(["+", "="]);
++const ZOOM_OUT_KEYS: ReadonlySet<string> = new Set(["-", "_"]);
++
++/** Space activates the focused control, so the camera keys must not claim it
++ * there: without this, Space on a focused toolbar button would pan instead. */
++function activatesOnSpace(target: EventTarget | null): boolean {
++  if (!(target instanceof HTMLElement)) return false;
++  if (target instanceof HTMLButtonElement) return true;
++  return new Set([
++    "button",
++    "checkbox",
++    "menuitem",
++    "radio",
++    "switch",
++    "tab",
++  ]).has(target.getAttribute("role") ?? "");
++}
++
++export interface ViewportNavigationInput {
++  readonly canvas: Canvas;
++  readonly viewport: ViewportManager;
++}
++
++/**
++ * Binds the camera's gestures: wheel pans, ctrl/meta-wheel zooms about the
++ * pointer, space-drag and middle-drag pan, and `+`/`=`/`-`/`shift+1` zoom.
++ * Returns the unbind function.
++ *
++ * Camera state is not authored content (§57), so nothing here touches history.
++ * The camera is the only writer of the viewport transform, so no gesture writes
++ * it directly.
++ */
++export function bindViewportNavigation({
++  canvas,
++  viewport,
++}: ViewportNavigationInput): () => void {
++  const element = canvas.upperCanvasEl;
++  let spaceHeld = false;
++  let panning = false;
++  let claimed = false;
++  let lastX = 0;
++  let lastY = 0;
++  let resumeCursor = "";
++  let resumeDefaultCursor: string | undefined;
++
++  /** Fabric re-applies `defaultCursor` on every hover, so writing the canvas
++   * element's cursor directly is overwritten at the next mouse move. Fabric's
++   * hover state is the owner: set the value it re-applies. */
++  const showCursor = (value: string): void => {
++    canvas.defaultCursor = value;
++    canvas.setCursor(value);
++  };
++
++  /** While the gesture is claimed a press must not select or drag an object, so
++   * Fabric is told to find no target: panning must never move authored content. */
++  const claim = (): void => {
++    if (claimed) return;
++    claimed = true;
++    resumeCursor = element.style.cursor;
++    resumeDefaultCursor = canvas.defaultCursor;
++    canvas.skipTargetFind = true;
++    canvas.selection = false;
++    showCursor(PAN_CURSOR);
++  };
++
++  const release = (): void => {
++    if (!claimed) return;
++    claimed = false;
++    canvas.skipTargetFind = false;
++    canvas.selection = true;
++    if (resumeDefaultCursor !== undefined) {
++      canvas.defaultCursor = resumeDefaultCursor;
++    }
++    // Fabric re-applies the hover cursor on the next mouse move, so the value
++    // captured at claim time is the honest one to restore.
++    canvas.setCursor(resumeCursor);
++  };
++
++  const onWheel = (event: WheelEvent): void => {
++    // The editor owns the wheel over the canvas; the page behind it must not
++    // scroll under the gesture.
++    event.preventDefault();
++    if (event.ctrlKey || event.metaKey) {
++      viewport.zoomToPoint(
++        canvas.getViewportPoint(event),
++        viewport.zoom() * Math.exp(-event.deltaY / WHEEL_ZOOM_DIVISOR),
++      );
++      return;
++    }
++    // Shift swaps the wheel's axis, as every other canvas app does.
++    if (event.shiftKey) viewport.panBy(-event.deltaY, 0);
++    else viewport.panBy(0, -event.deltaY);
++  };
++
++  const onMouseDown = (event: MouseEvent): void => {
++    if (!spaceHeld && event.button !== 1) return;
++    panning = true;
++    claim();
++    showCursor(PAN_ACTIVE_CURSOR);
++    lastX = event.clientX;
++    lastY = event.clientY;
++    // Middle-click autoscroll and focus stealing are the browser's defaults.
++    event.preventDefault();
++  };
++
++  const onMouseMove = (event: MouseEvent): void => {
++    if (!panning) return;
++    viewport.panBy(event.clientX - lastX, event.clientY - lastY);
++    lastX = event.clientX;
++    lastY = event.clientY;
++  };
++
++  const endPan = (): void => {
++    if (!panning) return;
++    panning = false;
++    // The claim survives a release while space is still held, so a second drag
++    // in the same hold does not have to re-claim.
++    if (spaceHeld) showCursor(PAN_CURSOR);
++    else release();
++  };
++
++  const onKeyDown = (event: KeyboardEvent): void => {
++    // These are text characters: while a rename field or any input has focus
++    // they must reach it, not the camera. A window-level listener sees the
++    // focused field as the target, but a synthetic or retargeted event does
++    // not, so the focused element is consulted as well.
++    if (
++      isTextEntryTarget(event.target) ||
++      isTextEntryTarget(document.activeElement)
++    )
++      return;
++    if (event.key === " ") {
++      // Space also activates the focused control, which owns the key there.
++      if (activatesOnSpace(event.target)) return;
++      // A focused button would otherwise also re-activate on the space keyup.
++      event.preventDefault();
++      // Repeated keydowns while space is held must not re-claim and re-capture
++      // the cursor, or the restore value becomes the pan cursor itself.
++      if (spaceHeld) return;
++      spaceHeld = true;
++      claim();
++      showCursor(PAN_CURSOR);
++      return;
++    }
++    if (event.ctrlKey || event.metaKey || event.altKey) return;
++    if (ZOOM_IN_KEYS.has(event.key)) {
++      viewport.zoomBy(ZOOM_STEP);
++      return;
++    }
++    if (ZOOM_OUT_KEYS.has(event.key)) {
++      viewport.zoomBy(1 / ZOOM_STEP);
++      return;
++    }
++    if (event.shiftKey && (event.key === "!" || event.key === "1")) {
++      viewport.zoomToFit();
++    }
++  };
++
++  const onKeyUp = (event: KeyboardEvent): void => {
++    if (event.key !== " ") return;
++    spaceHeld = false;
++    // A live drag keeps the claim until the pointer is released.
++    if (!panning) release();
++  };
++
++  /** A lost keyup, e.g. a window switch mid-gesture, would otherwise leave the
++   * editor in pan mode with target find disabled for good. */
++  const onBlur = (): void => {
++    spaceHeld = false;
++    panning = false;
++    release();
++  };
++
++  element.addEventListener("wheel", onWheel, { passive: false });
++  element.addEventListener("mousedown", onMouseDown);
++  window.addEventListener("mousemove", onMouseMove);
++  window.addEventListener("mouseup", endPan);
++  window.addEventListener("keydown", onKeyDown);
++  window.addEventListener("keyup", onKeyUp);
++  window.addEventListener("blur", onBlur);
++
++  return (): void => {
++    element.removeEventListener("wheel", onWheel);
++    element.removeEventListener("mousedown", onMouseDown);
++    window.removeEventListener("mousemove", onMouseMove);
++    window.removeEventListener("mouseup", endPan);
++    window.removeEventListener("keydown", onKeyDown);
++    window.removeEventListener("keyup", onKeyUp);
++    window.removeEventListener("blur", onBlur);
++    release();
++  };
++}
+diff --git a/src/web/tests/e2e/editor.spec.ts b/src/web/tests/e2e/editor.spec.ts
+index 3a0a821..9619e7e 100644
+--- a/src/web/tests/e2e/editor.spec.ts
++++ b/src/web/tests/e2e/editor.spec.ts
+@@ -1641,20 +1641,105 @@ test.describe("Fabric editor route", () => {
+     };
+     await page.mouse.click(centre.x, centre.y);
+     const dock = page.locator('[aria-label="Selected object actions"]');
+     await expect(dock).toHaveAttribute("data-visible", "true");
+     await expect(dock.getByRole("button", { name: "Duplicate" })).toBeVisible();
+     // A single object cannot be ungrouped.
+     await expect(dock.getByRole("button", { name: "Ungroup" })).toHaveCount(0);
+ 
+     await captureVisualReview(page, testInfo, "editor-toolbar");
+   });
++
++  test("zooms and pans the canvas, and cannot lose the artboard", async ({
++    page,
++  }, testInfo) => {
++    test.skip(
++      testInfo.project.name !== "desktop-chromium",
++      "the editor is a desktop surface",
++    );
++
++    await page.goto(EDITOR);
++    // Read the camera through its own accessor: `viewport.zoom()` is the owner
++    // of zoom (Task 1), and `window.vigiliaEditorBridge` is the page handle
++    // Plan B Task 4 established. Reaching into `canvas.getZoom()` through a
++    // debug-key scan reads a different owner and breaks when the handle moves.
++    const readZoom = () =>
++      page.evaluate(() =>
++        (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: { viewport: { zoom(): number } };
++            };
++          }
++        ).vigiliaEditorBridge.editor.viewport.zoom(),
++      );
++    // Clamping is the camera's own contract, so the transform is read through
++    // the same bridge the zoom is: a debug-key scan would read whichever
++    // editor mounted first and could assert a stale canvas entirely.
++    const translate = () =>
++      page.evaluate(() =>
++        (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: { canvas: { viewportTransform: number[] } };
++            };
++          }
++        ).vigiliaEditorBridge.editor.canvas.viewportTransform.slice(4, 6),
++      );
++
++    const fitted = await readZoom();
++    await page
++      .locator("#vigilia-fabric-editor canvas.upper-canvas")
++      .hover({ position: { x: 200, y: 200 } });
++    // Control is required: a plain wheel pans (Step 1 pins that), so wheeling
++    // without it asserts the opposite of the unit contract and can only pass by
++    // breaking it. Hold the modifier, then confirm the assertion fails with it
++    // released — that is the teeth check for the modifier branch.
++    await page.keyboard.down("Control");
++    await page.mouse.wheel(0, -400);
++    await page.keyboard.up("Control");
++    expect(await readZoom()).toBeGreaterThan(fitted);
++    // Pan a long way and confirm the artboard is still on screen: the clamped
++    // transform keeps its edge inside the viewport.
++    await page.keyboard.down("Space");
++    await page.mouse.move(400, 400);
++    await page.mouse.down();
++    await page.mouse.move(4000, 4000, { steps: 20 });
++    await page.mouse.up();
++    await page.keyboard.up("Space");
++    const transform = await page.evaluate(
++      () =>
++        (
++          window as unknown as {
++            vigiliaEditorBridge: {
++              editor: { canvas: { viewportTransform: number[] } };
++            };
++          }
++        ).vigiliaEditorBridge.editor.canvas.viewportTransform,
++    );
++    // The pan is clamped, so the transform saturates rather than running away.
++    // Asserting only finiteness would pass for an unclamped transform — which is
++    // exactly the regression this pins. Saturating is sign-agnostic and does not
++    // depend on how viewportTransform[4] relates to clampPan's `offset`: drag
++    // the same way again and the translate must not move.
++    expect(Number.isFinite(transform[4])).toBe(true);
++    expect(Number.isFinite(transform[5])).toBe(true);
++    const atLimit = await translate();
++    expect(atLimit.length).toBe(2);
++    await page.keyboard.down("Space");
++    await page.mouse.move(400, 400);
++    await page.mouse.down();
++    await page.mouse.move(4000, 4000, { steps: 20 });
++    await page.mouse.up();
++    await page.keyboard.up("Space");
++    expect(await translate()).toEqual(atLimit);
++  });
+ });
+ 
+ async function saveEnvelope(page: Page): Promise<unknown> {
+   const { parsed } = await savePackage(page);
+   expect(parsed.ok).toBe(true);
+   if (!parsed.ok) throw new Error(parsed.message);
+   return parsed.envelope;
+ }
+ 
+ async function savePackage(page: Page): Promise<{

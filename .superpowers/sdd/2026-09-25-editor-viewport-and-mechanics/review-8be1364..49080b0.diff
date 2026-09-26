@@ -1,0 +1,516 @@
+# Review package: 8be1364..49080b0
+
+## Commits
+49080b0 refactor(editor): extract the nudge burst, and test its wiring
+
+## Files changed
+ STATUS.md                                          |  33 +++---
+ .../packages/editor/src/canvas-nudge.dom.test.ts   | 116 +++++++++++++++++++++
+ src/web/packages/editor/src/canvas-nudge.ts        | 104 ++++++++++++++++++
+ src/web/packages/editor/src/editor-session.ts      |  82 +++------------
+ .../editor/src/shortcut-manager/index.dom.test.ts  |   3 +-
+ 5 files changed, 256 insertions(+), 82 deletions(-)
+
+## Diff
+diff --git a/STATUS.md b/STATUS.md
+index 69bac29..1a3772f 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -18,35 +18,40 @@ unpolished, and the canvas has no camera.
+   - `docs/superpowers/plans/2026-09-25-editor-viewport-and-mechanics.md` (Spec A)
+     — zoom/pan camera, group entry, reachable marquee, keyboard, context menu.
+   - `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` — port the fork's
+     scale/resize snapping, relax the candidate filter, then replace the
+     byte-length screenshot check with a move-and-resize behaviour matrix.
+ - SDD ledger: `docs/superpowers/plans/2026-09-24-author-journey.md` Task 6 is the
+   only outstanding item in that plan.
+ 
+ ## Last completed change
+ 
+-- Keyboard authoring: arrow keys nudge the selection (Shift = 10, plain = 1),
+-  `mod+]`/`mod+[` move it to front/back through `layerManager`, and `mod+a`
+-  selects every `selectable` object. `ShortcutHandler` now takes the
+-  `KeyboardEvent`, which is what lets one arrow binding serve both steps.
+-- A nudge burst is ONE history entry: `nudgeBy` suspends history on the first
+-  press and `endBurst` resumes *and then* calls `saveState()` explicitly, because
+-  `save()` early-returns while the suspension counter is non-zero. The idle window
+-  is 300 ms; measured inter-press gap is 37 ms.
+-- `mod+a` joined the renamed `MODIFIED_KEY_DEFERRED_ACTION_IDS`, so Ctrl+A inside
+-  a rename field stays the field's own select-all. `history-manager/index.test.ts`
+-  is the test that pins the burst mechanism — the e2e assertions cannot, because
+-  `undo()`'s own `reviveScene` re-fires `object:modified`.
++- Extracted the nudge/burst machinery into `canvas-nudge.ts` as
++  `createCanvasNudge({ canvas, history })`, which took `editor-session.ts` from
++  815 to 765 lines (the repo's 800 stop) and gave the burst a unit-testable seam.
++  `EditorSession.destroy()` calls `nudge.dispose()`, which clears the pending
++  timer and lifts an open suspension.
++- `canvas-nudge.dom.test.ts` (fake timers) is now the burst's test: one `suspend`
++  and zero `saveState` while a three-press burst is open, exactly one `saveState`
++  after the 300 ms idle window, and two bursts more than 300 ms apart produce two
++  entries. Measured with teeth: deleting `endBurst`'s `saveState()` fails on
++  `0` against `1`; deleting its `release()` fails to `1` against `0` on the
++  suspension depth. This supersedes the round-1 claim that
++  `history-manager/index.test.ts` pinned the wiring — it only pinned the
++  primitive, and disabling `endBurst` left the whole suite green.
++- Keyboard authoring unchanged: arrow keys nudge (Shift = 10, plain = 1),
++  `mod+]`/`mod+[` move to front/back through `layerManager`, `mod+a` selects every
++  `selectable` object, and Ctrl+A inside a rename field stays the field's own
++  select-all via `MODIFIED_KEY_DEFERRED_ACTION_IDS`.
+ - The two `editor.spec.ts` drag tests (`persists an ordinary drag…`,
+-  `rehydrates a chart runtime…`) fail identically with and without recent
+-  changes; they are pre-existing and belong to Spec A Task 10.
++  `rehydrates a chart runtime…`) fail identically with and without these changes;
++  they are pre-existing and belong to Spec A Task 10.
+ 
+ ## Next
+ 
+ 1. Continue Spec B with Task 7 (arrange moves to the canvas toolbar).
+ 2. Continue Spec A from Task 7, then 8, 9.
+ 3. Close author-journey Task 6 once the e2e evidence lands.
+ 
+ ## Blockers / unverified
+ 
+ - No verified full `npm run test:e2e` count yet: the earlier run never produced
+diff --git a/src/web/packages/editor/src/canvas-nudge.dom.test.ts b/src/web/packages/editor/src/canvas-nudge.dom.test.ts
+new file mode 100644
+index 0000000..8dbb9ac
+--- /dev/null
++++ b/src/web/packages/editor/src/canvas-nudge.dom.test.ts
+@@ -0,0 +1,116 @@
++// @vitest-environment jsdom
++import type { Canvas } from "fabric/es";
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { createCanvasNudge, NUDGE_IDLE_MS } from "./canvas-nudge.js";
++
++afterEach(() => {
++  vi.useRealTimers();
++});
++
++describe("canvas nudge burst coalescing", () => {
++  it("records exactly one history entry per burst, and none while it is open", () => {
++    vi.useFakeTimers();
++    const { history, saveState, depth } = fakeHistory();
++    const { canvas } = canvasWith({ x: 10, y: 20 });
++    const nudge = createCanvasNudge({ canvas, history });
++
++    nudge.nudgeBy(1, 0);
++    nudge.nudgeBy(1, 0);
++    nudge.nudgeBy(10, 0);
++
++    // Open burst: suspended once, nothing recorded yet.
++    expect(history.suspend).toHaveBeenCalledTimes(1);
++    expect(saveState).not.toHaveBeenCalled();
++
++    vi.advanceTimersByTime(NUDGE_IDLE_MS);
++
++    // Closed burst: released, exactly one entry — not three.
++    expect(depth()).toBe(0);
++    expect(saveState).toHaveBeenCalledTimes(1);
++  });
++
++  it("starts a second burst when the presses are further apart than the idle window", () => {
++    vi.useFakeTimers();
++    const { history, saveState, depth } = fakeHistory();
++    const { canvas } = canvasWith({ x: 10, y: 20 });
++    const nudge = createCanvasNudge({ canvas, history });
++
++    nudge.nudgeBy(1, 0);
++    vi.advanceTimersByTime(NUDGE_IDLE_MS);
++    nudge.nudgeBy(1, 0);
++    vi.advanceTimersByTime(NUDGE_IDLE_MS);
++
++    // Two bursts, two entries: the first burst's `release` must not still be
++    // open, or the second `suspend` would nest over it and never unwind.
++    expect(history.suspend).toHaveBeenCalledTimes(2);
++    expect(depth()).toBe(0);
++    expect(saveState).toHaveBeenCalledTimes(2);
++  });
++
++  it("moves the selected object by the nudge step", () => {
++    vi.useFakeTimers();
++    const { canvas, position } = canvasWith({ x: 10, y: 20 });
++    const nudge = createCanvasNudge({ canvas, history: fakeHistory().history });
++
++    nudge.nudgeBy(1, 0);
++    nudge.nudgeBy(0, -10);
++
++    expect(position()).toEqual({ x: 11, y: 10 });
++  });
++
++  it("releases the open burst on dispose without leaving a timer behind", () => {
++    vi.useFakeTimers();
++    const { history, saveState, depth } = fakeHistory();
++    const { canvas } = canvasWith({ x: 10, y: 20 });
++    const nudge = createCanvasNudge({ canvas, history });
++
++    nudge.nudgeBy(1, 0);
++    nudge.dispose();
++    vi.advanceTimersByTime(NUDGE_IDLE_MS);
++
++    // The timer is owned by the session, which is gone: nothing may fire after,
++    // and the suspension it opened must still be lifted.
++    expect(depth()).toBe(0);
++    expect(saveState).not.toHaveBeenCalled();
++  });
++});
++
++/** Mirrors `EditorHistory`'s suspend counter, so a released burst is observable. */
++function fakeHistory() {
++  let depth = 0;
++  const suspend = vi.fn(() => {
++    depth += 1;
++    let released = false;
++    return () => {
++      if (released) return;
++      released = true;
++      depth -= 1;
++    };
++  });
++  const saveState = vi.fn();
++  return { history: { suspend, saveState }, saveState, depth: () => depth };
++}
++
++/** One unlocked, selectable object: enough for `nudge` to have a target. */
++function canvasWith(start: { readonly x: number; readonly y: number }) {
++  let x = start.x;
++  let y = start.y;
++  const object = {
++    locked: false,
++    getCenterPoint: () => ({ x, y }),
++    setPositionByOrigin: (point: {
++      readonly x: number;
++      readonly y: number;
++    }) => {
++      x = point.x;
++      y = point.y;
++    },
++    setCoords: vi.fn(),
++  };
++  const canvas = {
++    getActiveObject: vi.fn(() => object),
++    requestRenderAll: vi.fn(),
++    fire: vi.fn(),
++  } as unknown as Canvas;
++  return { canvas, position: () => ({ x, y }) };
++}
+diff --git a/src/web/packages/editor/src/canvas-nudge.ts b/src/web/packages/editor/src/canvas-nudge.ts
+new file mode 100644
+index 0000000..edc98f5
+--- /dev/null
++++ b/src/web/packages/editor/src/canvas-nudge.ts
+@@ -0,0 +1,104 @@
++import {
++  ActiveSelection,
++  type Canvas,
++  type FabricObject,
++  Point,
++} from "fabric/es";
++
++const NUDGE_STEP = 1;
++const NUDGE_STEP_LARGE = 10;
++/** A burst of nudges closes this long after the last press. */
++export const NUDGE_IDLE_MS = 300;
++
++export const stepFor = (event: KeyboardEvent): number =>
++  event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
++
++interface NudgeObject extends FabricObject {
++  readonly locked?: boolean;
++}
++
++export interface CanvasNudgeOptions {
++  readonly canvas: Canvas;
++  /** Only the two history calls a burst needs, so a test can pass a double. */
++  readonly history: {
++    suspend(): () => void;
++    saveState(): void;
++  };
++}
++
++export interface CanvasNudge {
++  nudgeBy(dx: number, dy: number): void;
++  /** Ends an open burst early, rather than at the idle window. */
++  endBurst(): void;
++  /** Clears the pending idle timer and releases an open burst, without
++   * recording: the session is going away, so there is nothing left to undo. */
++  dispose(): void;
++}
++
++/** Moves the selection by whole steps, coalescing a burst into one history entry. */
++export function createCanvasNudge(options: CanvasNudgeOptions): CanvasNudge {
++  const { canvas, history } = options;
++
++  const nudge = (dx: number, dy: number): void => {
++    const active = canvas.getActiveObject();
++    if (active === undefined) return;
++    const targets = (
++      active instanceof ActiveSelection ? active.getObjects() : [active]
++    ).filter((object) => (object as NudgeObject).locked !== true);
++    if (targets.length === 0) return;
++    for (const object of targets) {
++      // Read and write must name the same origin: `getCenterPoint` is the
++      // origin point under `originX/originY`, not the bounding-box centre.
++      const centre = object.getCenterPoint();
++      object.setPositionByOrigin(
++        new Point(centre.x + dx, centre.y + dy),
++        "center",
++        "center",
++      );
++      object.setCoords();
++    }
++    canvas.requestRenderAll();
++  };
++
++  let release: (() => void) | undefined;
++  let idle: number | undefined;
++
++  /** The burst ends on the idle window or on any other action. Resuming before
++   * saving is what makes the entry exist at all: `save()` is a no-op while the
++   * suspension counter is non-zero. */
++  const endBurst = (): void => {
++    if (idle !== undefined) clearTimeout(idle);
++    idle = undefined;
++    if (release === undefined) return;
++    release();
++    release = undefined;
++    history.saveState();
++  };
++
++  return {
++    nudgeBy: (dx, dy) => {
++      const active = canvas.getActiveObject();
++      // Before suspending: suspending with no selection would open a burst that
++      // never records anything, swallowing the next unrelated `saveState`.
++      if (active === undefined) return;
++      if (release === undefined) release = history.suspend();
++      if (idle !== undefined) clearTimeout(idle);
++      idle = window.setTimeout(endBurst, NUDGE_IDLE_MS);
++      nudge(dx, dy);
++      // Fired per press and deliberately NOT the thing that records history: it
++      // has three other listeners that need it (`chart-manager`,
++      // `indicator-manager`, `selection-inspector`), and `save` is a no-op for
++      // the whole burst because the suspension counter is still non-zero.
++      // `endBurst` is what records the entry. Do not "simplify" this call away,
++      // and do not delete the explicit `saveState` inside `endBurst`.
++      canvas.fire("object:modified", { target: active });
++    },
++    endBurst,
++    dispose: () => {
++      if (idle !== undefined) clearTimeout(idle);
++      idle = undefined;
++      release?.();
++      release = undefined;
++    },
++  };
++}
+diff --git a/src/web/packages/editor/src/editor-session.ts b/src/web/packages/editor/src/editor-session.ts
+index ed4ec70..e8694e3 100644
+--- a/src/web/packages/editor/src/editor-session.ts
++++ b/src/web/packages/editor/src/editor-session.ts
+@@ -1,23 +1,28 @@
+ import {
+   type Artboard,
+   type Binding,
+   bumpSemanticVersion,
+   type FabricPalette,
+   type FabricThemeEnvelope,
+   type FabricThemeEnvelopeInput,
+   type SampleSource,
+ } from "@vigilia/renderer-core";
+-import { ActiveSelection, type FabricObject, Point } from "fabric/es";
++import { ActiveSelection, type FabricObject } from "fabric/es";
+ import { applyArrange, canArrange } from "./arrange.js";
+ import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+ import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
++import {
++  type CanvasNudge,
++  createCanvasNudge,
++  stepFor,
++} from "./canvas-nudge.js";
+ import { ChartManager } from "./chart-manager/index.js";
+ import type { EditorActionFacade } from "./editor-shell/session-facade.js";
+ import { type EditorShell } from "./editor-shell.js";
+ import {
+   applyFontTrio,
+   type CuratedFontFace,
+   fontTrio,
+ } from "./font-catalog.js";
+ import { previewFontFace, releaseFontPreview } from "./font-preview.js";
+ import {
+@@ -107,20 +112,21 @@ export class EditorSession {
+   readonly #types: TypePresetPanel;
+   readonly #newObjects: NewObjectPanel;
+   readonly #selection: SelectionInspector;
+   readonly #style: StylePanel;
+   readonly #snapping: SnapManager;
+   readonly #indicators: IndicatorManager;
+   readonly #persistence: PersistenceManager;
+   readonly #assets = new AssetManager();
+   readonly #assetPanel: HTMLElement;
+   readonly #shortcuts = new ShortcutManager();
++  readonly #nudge: CanvasNudge;
+   readonly #panelHosts: EditorPanelHosts;
+   readonly #options: EditorSessionOptions;
+   readonly #shell: EditorShell;
+   #envelope: FabricThemeEnvelopeInput;
+   readonly #onBindingsChange: (() => void) | undefined;
+ 
+   constructor(options: EditorSessionOptions) {
+     if (options.shell.scene === undefined) {
+       throw new Error(
+         "The editor shell needs a scene adapter for Vigilia extensions.",
+@@ -312,96 +318,39 @@ export class EditorSession {
+ 
+     this.#shortcuts.register("canvas.select-all", () => {
+       const objects = selectableObjects();
+       // An `ActiveSelection` of one object is not a selection.
+       if (objects.length < 2) return;
+       canvas.discardActiveObject();
+       canvas.setActiveObject(new ActiveSelection(objects, { canvas }));
+       canvas.requestRenderAll();
+     });
+ 
+-    const NUDGE_STEP = 1;
+-    const NUDGE_STEP_LARGE = 10;
+-    const NUDGE_IDLE_MS = 300;
+-    const stepFor = (event: KeyboardEvent): number =>
+-      event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
+-
+-    const nudge = (dx: number, dy: number): void => {
+-      const active = canvas.getActiveObject();
+-      if (active === undefined) return;
+-      const targets = (
+-        active instanceof ActiveSelection ? active.getObjects() : [active]
+-      ).filter((object) => object.get("locked") !== true);
+-      if (targets.length === 0) return;
+-      for (const object of targets) {
+-        // Read and write must name the same origin: `getCenterPoint` is the
+-        // origin point under `originX/originY`, not the bounding-box centre.
+-        const centre = object.getCenterPoint();
+-        object.setPositionByOrigin(
+-          new Point(centre.x + dx, centre.y + dy),
+-          "center",
+-          "center",
+-        );
+-        object.setCoords();
+-      }
+-      canvas.requestRenderAll();
+-    };
+-
+-    let release: (() => void) | undefined;
+-    let idle: number | undefined;
+-
+-    /** The burst ends on the idle window or on any other action. Resuming before
+-     * saving is what makes the entry exist at all: `save()` is a no-op while the
+-     * suspension counter is non-zero. */
+-    const endBurst = (): void => {
+-      if (idle !== undefined) clearTimeout(idle);
+-      idle = undefined;
+-      if (release === undefined) return;
+-      release();
+-      release = undefined;
+-      options.shell.editor.historyManager.saveState();
+-    };
+-
+-    const nudgeBy = (dx: number, dy: number): void => {
+-      const active = canvas.getActiveObject();
+-      // Before suspending: suspending with no selection would open a burst that
+-      // never records anything, swallowing the next unrelated `saveState`.
+-      if (active === undefined) return;
+-      if (release === undefined) {
+-        release = options.shell.editor.historyManager.suspend();
+-      }
+-      if (idle !== undefined) clearTimeout(idle);
+-      idle = window.setTimeout(endBurst, NUDGE_IDLE_MS);
+-      nudge(dx, dy);
+-      // Fired per press and deliberately NOT the thing that records history: it
+-      // has three other listeners that need it (`chart-manager`,
+-      // `indicator-manager`, `selection-inspector`), and `save` is a no-op for
+-      // the whole burst because the suspension counter is still non-zero.
+-      // `endBurst` is what records the entry. Do not "simplify" this call away,
+-      // and do not delete the explicit `saveState` inside `endBurst`.
+-      canvas.fire("object:modified", { target: active });
+-    };
++    this.#nudge = createCanvasNudge({
++      canvas,
++      history: options.shell.editor.historyManager,
++    });
+ 
+     // Four literal registrations, not a loop over a key map: `ProductShortcutId`
+     // is a closed union and a template literal is not assignable to it without a
+     // cast.
+     this.#shortcuts.register("canvas.nudge-left", (event) => {
+-      nudgeBy(-stepFor(event), 0);
++      this.#nudge.nudgeBy(-stepFor(event), 0);
+     });
+     this.#shortcuts.register("canvas.nudge-right", (event) => {
+-      nudgeBy(stepFor(event), 0);
++      this.#nudge.nudgeBy(stepFor(event), 0);
+     });
+     this.#shortcuts.register("canvas.nudge-up", (event) => {
+-      nudgeBy(0, -stepFor(event));
++      this.#nudge.nudgeBy(0, -stepFor(event));
+     });
+     this.#shortcuts.register("canvas.nudge-down", (event) => {
+-      nudgeBy(0, stepFor(event));
++      this.#nudge.nudgeBy(0, stepFor(event));
+     });
+   }
+ 
+   get envelope(): FabricThemeEnvelopeInput {
+     return this.#envelope;
+   }
+ 
+   /** Reachability only: the shell menus dispatch through the existing owners,
+    * including the private document actions the panel section used to call. */
+   actionFacade(): EditorActionFacade {
+@@ -502,20 +451,21 @@ export class EditorSession {
+           face: { assetId: face.id },
+         },
+       },
+     });
+     this.#shell.editor.historyManager.saveState();
+     return this.#snapshot(this.#shell);
+   }
+ 
+   destroy(): void {
+     this.#shortcuts.destroy();
++    this.#nudge.dispose();
+     this.#persistence.destroy();
+     this.#assets.destroy();
+     releaseFontPreview();
+     this.#assetPanel.remove();
+     this.charts.destroy();
+     this.#selection.root.remove();
+     this.#style.destroy();
+     this.#artboard.root.remove();
+     this.#palette.root.remove();
+     this.#types.root.remove();
+diff --git a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+index a892e6b..fdf79a7 100644
+--- a/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
++++ b/src/web/packages/editor/src/shortcut-manager/index.dom.test.ts
+@@ -198,22 +198,21 @@ describe("ShortcutManager unmodified keys", () => {
+     );
+     expect(nudge).toHaveBeenCalledTimes(1);
+     input.remove();
+     manager.destroy();
+   });
+ 
+   it("routes both plain and shift+arrow to the same action", () => {
+     const manager = new ShortcutManager();
+     const nudge = vi.fn();
+     // One id, one handler: the large step is the handler reading event.shiftKey,
+-    // not a second action id. `ShortcutHandler` takes no argument today, so the
+-    // shift step is the handler's own concern — Step 5 proves it in the browser.
++    // not a second action id. A bare `vi.fn()` accepts and ignores that argument.
+     // The Produces union above is the authority on which ids exist.
+     manager.register("canvas.nudge-left", nudge);
+ 
+     window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+     window.dispatchEvent(
+       new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true }),
+     );
+     expect(nudge).toHaveBeenCalledTimes(2);
+     manager.destroy();
+   });
