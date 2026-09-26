@@ -61,8 +61,8 @@ Vigilia process.
 - After three unsuccessful repair attempts, record a non-critical bug in its
   own `docs/bugs/open/` file, index it in `docs/bugs/README.md`, and include
   evidence plus its next pickup action. Resume only when a user asks; move
-  resolved bugs to `docs/bugs/closed/`; do not duplicate them outside
-  plan-relevant references.
+  resolved bugs to `docs/bugs/closed/` without indexing them; do not duplicate
+  them outside plan-relevant references.
 - Let Superpowers own the workflow and its artifacts.
 - Designs/specs live in `docs/superpowers/specs/`.
 - Executable plans live in `docs/superpowers/plans/`; completed/superseded
