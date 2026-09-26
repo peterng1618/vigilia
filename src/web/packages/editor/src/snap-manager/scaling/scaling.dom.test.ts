@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Canvas, Rect } from "fabric/es";
+import { Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSnapManager } from "../index.js";
 
@@ -7,7 +7,7 @@ import { createSnapManager } from "../index.js";
  * of the anchor's left edge. Task 8 imports it, so it lives here, defined once. */
 export const SNAPPING_MULTIPLIER = 1.53;
 
-function setup() {
+function setup({ grouped = false }: { grouped?: boolean } = {}) {
   const canvas = new Canvas(document.createElement("canvas"));
   const snapped = createSnapManager({
     canvas,
@@ -41,8 +41,18 @@ function setup() {
     height: 80,
     strokeWidth: 0,
   });
-  canvas.add(anchor, resized);
-  canvas.setActiveObject(resized);
+  if (grouped) {
+    // `_enterGroup` sets both `group` and `parent` on the child, which is what
+    // the guard reads. The group is unrotated, so only the guard can stop this
+    // child from snapping — a removal of the guard turns the test red.
+    canvas.add(
+      anchor,
+      new Group([resized], { subTargetCheck: true, interactive: true }),
+    );
+  } else {
+    canvas.add(anchor, resized);
+    canvas.setActiveObject(resized);
+  }
 
   const transform = {
     target: resized,
@@ -120,6 +130,32 @@ describe("scale snapping", () => {
     // The second step must be planned, not rejected as a duplicate.
     resize({}, SNAPPING_MULTIPLIER);
     expect(resized.getScaledWidth()).toBe(310);
+    snapped.destroy();
+  });
+
+  it("refuses a group child, whose bounds plane is the group's", () => {
+    const { snapped, resized, down, resize } = setup({ grouped: true });
+    down();
+
+    // The step that snaps above must leave the raw width here: the child's
+    // bounds are read in the canvas plane while the plan would be applied in the
+    // child's own plane, so the two disagree as soon as the group is rotated or
+    // scaled. Guarded, so no session starts and nothing re-plans.
+    expect(resize({}, SNAPPING_MULTIPLIER)).toBe(306);
+    expect(resized.getScaledWidth()).toBe(306);
+    snapped.destroy();
+  });
+
+  it("abandons the plan when the side handle becomes a skew", () => {
+    const { snapped, resized, down, resize } = setup();
+    down();
+
+    // Shift is Fabric's alt-action key (`altActionKey` defaults to "shiftKey"),
+    // and holding it turns a side handle from a resize into a skew inside
+    // Fabric's own action handler. The plan no longer describes the gesture, so
+    // the step must leave the raw width rather than apply a stale scale plan.
+    expect(resize({ shiftKey: true }, SNAPPING_MULTIPLIER)).toBe(306);
+    expect(resized.getScaledWidth()).toBe(306);
     snapped.destroy();
   });
 });

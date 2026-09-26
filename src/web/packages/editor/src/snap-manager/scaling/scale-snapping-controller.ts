@@ -164,8 +164,9 @@ export function createScaleSnappingController(
     const pointerEvent = event.e;
     if (!pointerEvent) return [];
 
-    // A side handle with Fabric's alt action held becomes a skew; the resize
-    // plan no longer describes the gesture, so hand it back untouched.
+    // Fabric's alt-action key is Shift (its value, not its name): held on a side
+    // handle it turns the resize into a skew, so the plan no longer describes
+    // the gesture. Hand it back untouched rather than apply a stale plan.
     if (
       didSideScaleSwitchToSkew({
         controlKey: active.projection.controlKey,
@@ -196,6 +197,12 @@ export function createScaleSnappingController(
       return createScaleGuideLines({ guides: step.verification?.guides ?? [] });
     }
 
+    // ponytail: `refineScalePlan` is never called, so a plan Fabric's own scale
+    // constraints block (minScaleLimit, uniform scaling, flipping) is left
+    // blocked: `verifyScalePlan` reports it through `blockedAxes` and no guide
+    // is published. Fails closed, which is the right first behaviour. Upgrade
+    // path: re-solve here from the geometry Fabric actually applied, which is
+    // what the fork's selection-scale path does.
     applyRectangularScalePlan({
       plan: step.plan,
       projection: active.projection,

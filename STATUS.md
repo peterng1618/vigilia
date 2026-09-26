@@ -29,15 +29,19 @@ requirement close-out.
 
 ## Last completed change
 
-- Closed `2026-09-25-editor-ui-polish.md`: moved to `archive/`, workspace deleted,
-  and its spec's acceptance section annotated with the evidence each item actually
-  observed rather than the evidence it was assumed to have.
-- The paired-rows item is recorded as having been met once before on jsdom evidence
-  and **not** met — jsdom performs no layout, so a wrapped row and a one-line row
-  return the same element. The rendered measurement found the Size row 66px tall
-  with its inputs at two tops; `W`/`H` labels fixed it (239.2 × 30px, tops equal).
-- One item is named as carried, not met: browser coverage for the layer panel's
-  bottom action row. It rides in snapping-fidelity Task 9.
+- Gave every spec a `- **Status:**` line (one of active / in progress / queued /
+  implemented / backlog / design), so `docs/superpowers/specs/` reads without
+  opening twelve files — the convention two specs already used, now uniform.
+- Corrected `docs/superpowers/specs/README.md`: it said to delete a spec that is no
+  longer a current contract, but `docs/product/requirements.md` and
+  `docs/architecture/ownership.md` link into that directory on their `Design:`
+  lines, so deleting one orphans the requirement it produced. Archiving now means
+  promote the requirement, archive the plan, update the inbound links together.
+- Nothing currently qualifies: §172–§174 still cite their specs as design, and
+  §175's design link lands with the snapping plan's Task 10.
+- Before that: closed `2026-09-25-editor-ui-polish.md` — archived, workspace
+  deleted, acceptance annotated per item. Its carried item (browser coverage for
+  the layer panel's bottom action row) rides in snapping-fidelity Task 9.
 
 ## Next
 

@@ -257,16 +257,76 @@ async function handleScenePoint(
   );
 }
 
+/** Counts the guide-coloured pixels in the upper canvas' backing store along the
+ * vertical scene line `sceneX`, over the artboard's full height plus a small
+ * column band (the line is ~1 device px wide and dashed, so a single column
+ * misses it on a rounding). Reads the rendered pixels rather than the guide
+ * list because the applied guides are not exposed through the bridge — which is
+ * exactly why a regression that stops painting them would otherwise pass: the
+ * geometry assertions cannot see a missing guide, and captures only run under
+ * `VIGILIA_CAPTURE`. The colour is `GUIDE_COLOR` (#3D8BF4). */
+async function guidePixelsAtSceneX(
+  page: Page,
+  sceneX: number,
+  sceneWidth = 1280,
+): Promise<number> {
+  return page.evaluate(
+    async ([x, width]) => {
+      // The guide is painted in `after:render`, which `requestRenderAll`
+      // schedules on an animation frame; sampling before it runs reads a canvas
+      // the guide has not reached yet.
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: { viewport: { artboardScreenRect(): ArtboardRect } };
+          };
+        }
+      ).vigiliaEditorBridge;
+      const rect = bridge.editor.viewport.artboardScreenRect();
+      const element = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.upper-canvas",
+      );
+      const context = element?.getContext("2d");
+      if (element === null || context === null || context === undefined)
+        return -1;
+
+      const ratio = element.width / element.getBoundingClientRect().width;
+      const centre = (rect.left + x * (rect.width / width)) * ratio;
+      const top = Math.max(0, Math.round(rect.top * ratio));
+      const height = Math.max(1, Math.round(rect.height * ratio));
+      const band = Math.max(1, Math.round(4 * ratio));
+      const left = Math.max(0, Math.round(centre) - band);
+      const pixels = context.getImageData(left, top, band * 2 + 1, height).data;
+      let matching = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (
+          (pixels[index + 3] ?? 0) > 0 &&
+          Math.abs((pixels[index] ?? 0) - 61) <= 12 &&
+          Math.abs((pixels[index + 1] ?? 0) - 139) <= 12 &&
+          Math.abs((pixels[index + 2] ?? 0) - 244) <= 12
+        )
+          matching += 1;
+      }
+      return matching;
+    },
+    [sceneX, sceneWidth] as const,
+  );
+}
+
 /** Drags a named object's `mr` handle so its raw right edge would land at
- * `toSceneX`, and reports the right edge the resize actually left. The handle is
- * read from the object's own corners, so a quantised client mapping cannot put
- * the grab off the handle. */
+ * `toSceneX`, and reports the right edge the resize actually left, plus the
+ * guide pixels drawn along that edge while the pointer was still down. The
+ * handle is read from the object's own corners, so a quantised client mapping
+ * cannot put the grab off the handle. */
 async function resizeRightHandleTo(
   page: Page,
   id: string,
   toSceneX: number,
   testInfo: TestInfo | undefined,
-): Promise<{ right: number; raw: number }> {
+): Promise<{ right: number; raw: number; guidePixels: number }> {
   const handle = await handleScenePoint(page, id, "mr");
   const from = await sceneToClient(page, 1280, handle.x, handle.y);
   const to = await sceneToClient(page, 1280, toSceneX, handle.y);
@@ -297,9 +357,19 @@ async function resizeRightHandleTo(
   await page.mouse.move(to.x, to.y, { steps: 12 });
 
   if (testInfo) await captureVisualReview(page, testInfo, "editor-snap-resize");
+  // Sampled while the pointer is still down: a snapped guide is drawn at the
+  // edge the resize landed on, so the object's own right edge names the column.
+  const guidePixels = await guidePixelsAtSceneX(
+    page,
+    await worldRightOf(page, id),
+  );
   await page.mouse.up();
 
-  return { right: await worldRightOf(page, id), raw: handle.x + travelled };
+  return {
+    right: await worldRightOf(page, id),
+    raw: handle.x + travelled,
+    guidePixels,
+  };
 }
 
 /** The scene x in `[from, to]` furthest from every x-line the other objects and
@@ -2472,6 +2542,12 @@ test.describe("Fabric editor route", () => {
       undefined,
     );
     expect(Math.abs(raw.right - raw.raw)).toBeLessThan(3);
+    // The user-visible half of "a guide with no snap": nothing was applied, so
+    // no guide may be painted. Asserted on the pixels, because the geometry
+    // assertions above cannot see a guide and a capture only exists under
+    // VIGILIA_CAPTURE — a regression that painted unconditionally would pass
+    // them all.
+    expect(raw.guidePixels).toBe(0);
 
     // Then the snap, from a fresh page: drag the same handle so the raw right
     // edge lands 2px short of the status card's left edge. That is inside the
@@ -2491,6 +2567,10 @@ test.describe("Fabric editor route", () => {
       testInfo,
     );
     expect(Math.abs(snapped.right - line)).toBeLessThan(1.5);
+    // The applied guide, asserted where it is drawn: the whole row is sampled
+    // for the guide colour along the snapped edge, so "verified guides" is
+    // re-checkable by CI rather than only by a regenerated capture.
+    expect(snapped.guidePixels).toBeGreaterThan(100);
   });
 
   test("snaps a two-object selection as a unit", async ({ page }, testInfo) => {
