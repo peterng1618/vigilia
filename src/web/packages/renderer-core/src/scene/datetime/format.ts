@@ -13,47 +13,28 @@
  * token unambiguous — `[Today is ]dddd`. An unrecognised token renders
  * literally rather than blanking the value, so a typo is visible.
  *
- * Month and weekday names are English, like the rest of the product's copy; the
- * consumer's locale is a separate question the settings page has not answered.
+ * Only the tokens that spell a word — `MMMM`, `MMM`, `dddd`, `ddd`, `A`, `a` —
+ * consult the language. Every numeric token is ASCII in every language.
  */
 
 import { type Parts, parseInstant, partsInZone } from "./instant.js";
+import { DEFAULT_LOCALE, dayPeriod, monthName, weekdayName } from "./names.js";
 
-const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
-
-/** Longest first so `HH` is read before `H` and `MMMM` before `MMM`. */
-const TOKENS: readonly (readonly [string, (parts: Parts) => string])[] = [
+/**
+ * Longest first so `HH` is read before `H` and `MMMM` before `MMM`. Built per
+ * call so the table cannot capture a stale language.
+ */
+const tokensFor = (
+  locale: string,
+): readonly (readonly [string, (parts: Parts) => string])[] => [
   ["YYYY", (p) => String(p.year).padStart(4, "0")],
   ["YY", (p) => String(p.year % 100).padStart(2, "0")],
-  ["MMMM", (p) => MONTHS[p.month - 1] ?? ""],
-  ["MMM", (p) => (MONTHS[p.month - 1] ?? "").slice(0, 3)],
+  ["MMMM", (p) => monthName(p, locale, "long")],
+  ["MMM", (p) => monthName(p, locale, "short")],
   ["MM", (p) => String(p.month).padStart(2, "0")],
   ["M", (p) => String(p.month)],
-  ["dddd", (p) => WEEKDAYS[p.weekday] ?? ""],
-  ["ddd", (p) => (WEEKDAYS[p.weekday] ?? "").slice(0, 3)],
+  ["dddd", (p) => weekdayName(p, locale, "long")],
+  ["ddd", (p) => weekdayName(p, locale, "short")],
   ["DD", (p) => String(p.day).padStart(2, "0")],
   ["D", (p) => String(p.day)],
   ["HH", (p) => String(p.hour).padStart(2, "0")],
@@ -68,8 +49,9 @@ const TOKENS: readonly (readonly [string, (parts: Parts) => string])[] = [
   ["h", (p) => String(p.hour % 12 === 0 ? 12 : p.hour % 12)],
   ["mm", (p) => String(p.minute).padStart(2, "0")],
   ["ss", (p) => String(p.second).padStart(2, "0")],
-  ["A", (p) => (p.hour < 12 ? "AM" : "PM")],
-  ["a", (p) => (p.hour < 12 ? "am" : "pm")],
+  ["A", (p) => dayPeriod(p, locale)],
+  // `a` is `A` lowered, so the two agree in every language.
+  ["a", (p) => dayPeriod(p, locale).toLowerCase()],
 ];
 
 /** Renders an instant with the author's tokens; literals pass through. */
@@ -77,6 +59,7 @@ export function formatInstant(
   value: string,
   format: string,
   timeZone?: string,
+  locale: string = DEFAULT_LOCALE,
 ): string | undefined {
   const parts =
     timeZone === undefined
@@ -86,6 +69,7 @@ export function formatInstant(
 
   let out = "";
   let index = 0;
+  const tokens = tokensFor(locale);
 
   while (index < format.length) {
     // Bracketed text is the author's literal, verbatim.
@@ -97,7 +81,7 @@ export function formatInstant(
       continue;
     }
 
-    const token = TOKENS.find(([name]) => format.startsWith(name, index));
+    const token = tokens.find(([name]) => format.startsWith(name, index));
 
     if (token === undefined) {
       out += format[index];

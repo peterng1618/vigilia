@@ -15,8 +15,8 @@ in rather than in two English tables.
 - **Active plan:** `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md` —
   9 tasks. A theme declares its language once in `metadata.locale`, required on v2,
   and the clock spells its names from `Intl` in it.
-- **Next up:** Task 2 (locale-resolved names in `scene/datetime/names.ts`). Nothing
-  is in flight.
+- **Next up:** Task 3 (declare `metadata.locale` on the theme). Nothing is in
+  flight.
 - **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed
   (Task 7's review: 0 Critical, 3 Important, 4 Minor, all actionable findings
   re-reviewed as addressed); Tasks 8, 9, 10 remain.
@@ -33,11 +33,16 @@ in rather than in two English tables.
 
 ## Last completed change
 
-- Split `scene/datetime-format.ts` into `scene/datetime/instant.ts`,
-  `scene/datetime/format.ts` and a placeholder `scene/datetime/names.ts`,
-  move-only with the test moved to `scene/datetime/format.test.ts`.
-- Updated the barrel and the three importers; no reference to the old path
-  remains in `packages/`.
+- Month, weekday and day-period names now come from `Intl.DateTimeFormat` in a
+  declared language, replacing the `WEEKDAYS`, `MONTHS` and `WEEKDAY_INDEX`
+  English tables.
+- `scene/datetime/names.ts` exports `isLocaleName`, `DEFAULT_LOCALE`,
+  `monthName`, `weekdayName` and `dayPeriod`, caching one formatter per language
+  and kind; `formatInstant` takes a trailing `locale` defaulting to `en`.
+- Only `MMMM`, `MMM`, `dddd`, `ddd`, `A` and `a` consult the language; every
+  numeric token stays ASCII.
+- `partsInZone` derives the weekday from the calendar date instead of requesting
+  it from `Intl`.
 
 ## Next
 

@@ -118,19 +118,22 @@ export function partsInZone(at: number, timeZone: string): Parts | undefined {
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
-      weekday: "short",
     }).formatToParts(new Date(at));
     const get = (type: string): string =>
       parts.find((part) => part.type === type)?.value ?? "";
 
+    const year = Number(get("year"));
+    const month = Number(get("month"));
+    const day = Number(get("day"));
+
     return {
-      year: Number(get("year")),
-      month: Number(get("month")),
-      day: Number(get("day")),
+      year,
+      month,
+      day,
       hour: Number(get("hour")),
       minute: Number(get("minute")),
       second: Number(get("second")),
-      weekday: WEEKDAY_INDEX[get("weekday")] ?? 0,
+      weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
     };
   } catch {
     // An unknown zone falls back to the instant's own offset rather than
@@ -138,16 +141,6 @@ export function partsInZone(at: number, timeZone: string): Parts | undefined {
     return undefined;
   }
 }
-
-const WEEKDAY_INDEX: Readonly<Record<string, number>> = {
-  Sun: 0,
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
 
 /**
  * Whether `Intl` can read this zone name, which is the only thing that decides
