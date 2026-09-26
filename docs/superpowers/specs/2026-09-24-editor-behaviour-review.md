@@ -1,6 +1,6 @@
 # Editor behaviour review
 
-- **Status:** backlog — review notes; not accepted requirements, and deliberately not a spec.
+- **Status:** backlog (review notes, not accepted requirements).
 - **Purpose:** retain only legacy/editor QoL ideas worth reconsidering against
   the current native Fabric editor.
 - **Requirement:** none yet — items are promoted into `docs/product/requirements.md`

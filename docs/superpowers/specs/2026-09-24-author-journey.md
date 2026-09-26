@@ -1,6 +1,6 @@
 # Author Journey — style what you selected
 
-- **Status:** in progress — Tasks 1–5 landed; Task 6 (integration proof) open.
+- **Status:** in progress. Plan: [`2026-09-24-author-journey.md`](../plans/2026-09-24-author-journey.md).
 - **Plan:** [`2026-09-24-author-journey.md`](../plans/2026-09-24-author-journey.md)
 
 ## Why

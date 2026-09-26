@@ -1,7 +1,6 @@
 # Editor Shell Modernization Design
 
-- **Status:** implemented — a design doc, not a spec; its product shipped through the
-  UI-polish and viewport plans, and no plan pairs with it.
+- **Status:** implemented (a design document, not a spec — its product shipped through other plans).
 
 ## Goal
 

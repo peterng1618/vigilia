@@ -1,6 +1,6 @@
 # Consumer Journey — pick, configure, forget
 
-- **Status:** queued — Tasks 1–4 landed, Task 4 deliberately reverted by settings-scope; Tasks 5–6 open.
+- **Status:** in progress. Plan: [`2026-09-24-consumer-journey.md`](../plans/2026-09-24-consumer-journey.md).
 - **Plan:** [`2026-09-24-consumer-journey.md`](../plans/2026-09-24-consumer-journey.md)
 
 ## Why

@@ -1,6 +1,6 @@
 # Clock and date as sensors
 
-- **Status:** implemented — landed without a paired plan; no plan file exists for it.
+- **Status:** implemented (landed without a plan; none was ever written for it).
 - **Requirement:** the clock half of the author journey
 
 ## Why

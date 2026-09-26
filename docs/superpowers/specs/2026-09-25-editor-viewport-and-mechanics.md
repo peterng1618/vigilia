@@ -1,6 +1,6 @@
 # Editor Viewport & Mechanics — navigating the canvas
 
-- **Status:** implemented — plan archived on its full Task 11 gate.
+- **Status:** implemented. Plan: [`archive/2026-09-25-editor-viewport-and-mechanics.md`](../plans/archive/2026-09-25-editor-viewport-and-mechanics.md).
 - **Requirement:** §174
 
 ## Why

@@ -1,6 +1,6 @@
 # Settings scope — global and theme-specific
 
-- **Status:** implemented — Tasks 1–4 landed; Task 5's gate and this spec's acceptance annotation open.
+- **Status:** in progress. Plan: [`2026-09-24-settings-scope.md`](../plans/2026-09-24-settings-scope.md).
 - **Plan:** [`2026-09-24-settings-scope.md`](../plans/2026-09-24-settings-scope.md)
 
 ## Why

@@ -1,6 +1,6 @@
 # Authoring and Consumer Polish — Critique and Design
 
-- **Status:** queued — plan partly landed; Task 4's tab reset and Task 6's proof open.
+- **Status:** in progress. Plan: [`2026-09-24-authoring-and-consumer-polish.md`](../plans/2026-09-24-authoring-and-consumer-polish.md).
 - **Plan:** [`2026-09-24-authoring-and-consumer-polish.md`](../plans/2026-09-24-authoring-and-consumer-polish.md)
 
 ## Why

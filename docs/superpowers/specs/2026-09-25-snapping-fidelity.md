@@ -1,6 +1,6 @@
 # Snapping and guide fidelity
 
-- **Status:** active — Tasks 1–7 landed; 8–10 open. Plan: [snapping fidelity](../plans/2026-09-25-snapping-fidelity.md)
+- **Status:** active. Plan: [`2026-09-25-snapping-fidelity.md`](../plans/2026-09-25-snapping-fidelity.md).
 - **Requirement:** §175 (ported behaviour keeps its source's quality), §64
 - **Source of truth:** the retired fork at pinned commit `9efdd78a`
   (`D:\git-repos\fabricjs-image-editor`, branch `codex/fabric-es`), read-only.

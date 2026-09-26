@@ -1,6 +1,6 @@
 # Authoring-time run placeholders
 
-- **Status:** queued — Tasks 1–3 landed at `51023c2`; Task 4 and the gate open.
+- **Status:** in progress. Plan: [`2026-09-24-authoring-time-run-placeholders.md`](../plans/2026-09-24-authoring-time-run-placeholders.md).
 - **Plan:** [`2026-09-24-authoring-time-run-placeholders.md`](../plans/2026-09-24-authoring-time-run-placeholders.md)
 
 ## Why
