@@ -142,17 +142,24 @@ describe("the new Fabric document", () => {
       const preset = ref?.slice("typePresets.".length);
       return preset !== undefined && spacingOf(preset) !== undefined;
     });
-    // The two tracked presets, so the loop below cannot pass by finding nothing.
-    expect(tracked.map((object) => object.get("id"))).toEqual([
-      "wordmark",
-      "strapline",
-    ]);
+    // The fit check first, so an overflow is reported as an overflow. A tracked
+    // preset that outgrows its box must not be reported as "the tracked set
+    // changed" — that is the wrong thing, and it is what a maintainer
+    // re-tracking a label would be told.
     for (const object of tracked) {
       const id = String(object.get("id"));
       const lines = (object as { textLines?: string[] }).textLines;
       expect(lines, id).toBeDefined();
       expect(lines?.length, id).toBe(1);
     }
+    // Then a floor against the empty set, which is the loop's one vacuous
+    // mode. Which presets are tracked is not asserted here: that belongs to the
+    // object-JSON test below, and pinning it here would put a set mismatch
+    // between a maintainer and the failure they actually caused.
+    expect(
+      tracked.map((object) => object.get("id")),
+      "no tracked object was found, so nothing was checked",
+    ).not.toHaveLength(0);
     await canvas.dispose();
   });
 

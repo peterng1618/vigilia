@@ -85,15 +85,18 @@ function presetGaps(
   // when its first run is untracked — so a later tracked run is a real gap.
   const painted = letterSpacingOf(globals, runs[0]?.typePreset);
 
-  const gaps: string[] = [];
+  // A `Set` because the note names a preset, not a run: three runs sharing one
+  // mismatching preset are one thing the canvas cannot do, and saying it three
+  // times reads as three problems.
+  const gaps = new Set<string>();
   for (const run of runs.slice(1)) {
     const spacing = letterSpacingOf(globals, run.typePreset);
     if (spacing === undefined || spacing === painted) continue;
-    gaps.push(
+    gaps.add(
       uiCopy.inspectorFields.runTrackingNotSeparate(run.typePreset ?? ""),
     );
   }
-  return gaps;
+  return [...gaps];
 }
 
 /** A preset's authored tracking, or undefined when it asks for none. */

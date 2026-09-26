@@ -379,21 +379,33 @@ describe("what a run cannot carry", () => {
     return box.dispose();
   });
 
-  it("says nothing when the first run is untracked and a later one tracks", () => {
-    // The object takes the first run's value, which here is none. A later run
-    // asking for tracking is then a gap, but the note names the run whose
-    // preset is *not* what is painted — so it is still reported.
+  it("still reports when the first run is untracked and a later one tracks", () => {
+    // The object takes the first run's value, which here is none, so a later
+    // run asking for tracking is a gap like any other. Distinct from the first
+    // case above only in what the object ends up painting, and the note is the
+    // same one.
+    const box = harness(mixedRuns, undefined, tracking);
+
+    expect(box.notes()).toHaveLength(1);
+    expect(box.notes()[0]).toContain("typePresets.tracked");
+    return box.dispose();
+  });
+
+  it("reports a mismatching preset once however many runs share it", () => {
+    // The round that removed a duplicate in scene-fabric added one here, so the
+    // three-run shape is now covered once, in the place that renders it.
     const box = harness(
       [
         { kind: "literal", text: "CPU ", typePreset: "typePresets.plain" },
-        { kind: "literal", text: "42%", typePreset: "typePresets.tracked" },
+        { kind: "literal", text: "48", typePreset: "typePresets.tracked" },
+        { kind: "literal", text: " %", typePreset: "typePresets.tracked" },
       ],
       undefined,
       tracking,
     );
 
+    // Two runs name the same mismatching preset, so one note says it once.
     expect(box.notes()).toHaveLength(1);
-    expect(box.notes()[0]).toContain("typePresets.tracked");
     return box.dispose();
   });
 
