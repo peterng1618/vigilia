@@ -90,10 +90,10 @@ type Preset = {
  * Fabric's `charSpacing` as 1/1000 em, or nothing when the preset cannot say
  * what the spacing is.
  *
- * Per-character tracking is not expressible, so one run's spacing is the whole
- * object's — the first run's, which is the run whose preset the object already
- * takes its type from. A mixed-run object is reported, not silently narrowed;
- * see `textShapeFor`'s `unsupported`.
+ * Per-character tracking is not expressible — Fabric measures spacing once from
+ * the object — so one run's spacing is the whole object's: the first run's,
+ * which is the run whose preset the object already takes its type from. The run
+ * editor says so where an author picks the preset.
  */
 function charSpacingOf(
   value: Preset,

@@ -344,12 +344,14 @@ describe("the mixed-run limit", () => {
     expect(object.charSpacing).toBeCloseTo(25, 6);
   });
 
-  it("reports the second run's different tracking instead of dropping it", () => {
-    // The object is one value, so the difference has to be *said* somewhere or
-    // an author who tracked a label run watches the control do nothing. The
-    // report is the existing `textShapeFor` channel — this pins that the v2
-    // resolution actually reaches it, since a preset that resolved without
-    // `letterSpacing` would leave the gap silently unreported.
+  it("resolves both runs' tracking, so the difference is detectable", () => {
+    // Characterisation, not a regression test: this passes with or without the
+    // tracking fix, because `resolveTextSegments` and `textShapeFor` already
+    // reported the mixed-run case. It is here because the author-facing
+    // disclosure (`runs.dom.test.ts`, "says a second run's tracking is not
+    // shown separately") reads these two values to decide whether to warn, and
+    // that warning is worthless if the resolution underneath it stops
+    // distinguishing them.
     const globals: Globals = {
       typePresets: {
         tracked: {
@@ -379,5 +381,23 @@ describe("the mixed-run limit", () => {
     expect(
       textShapeFor(segments, {}, (value) => [...value]).unsupported,
     ).toContain("letterSpacing");
+  });
+
+  it("carries one run's tracking across the whole object", () => {
+    // The counterpart to the reporting above, and the regression this file's
+    // first case also covers: what actually reaches Fabric when two runs
+    // disagree. Asserted here too so the pair reads as one claim — the
+    // difference is detected *and* the object still shows one value.
+    const object = textbox("mixed", [
+      { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
+      { kind: "literal", text: "42%", typePreset: "typePresets.other" },
+    ]);
+    const canvas = canvasOf([object]);
+    applyObjectTypePresets(
+      canvas,
+      globalsWith({ letterSpacing: 0.8 }) as Globals,
+    );
+
+    expect(object.charSpacing).toBeCloseTo(25, 6);
   });
 });

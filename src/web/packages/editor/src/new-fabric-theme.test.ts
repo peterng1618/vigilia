@@ -100,6 +100,8 @@ describe("the new Fabric document", () => {
     };
 
     // Tracked: the wordmark, the strapline and the all-caps section labels.
+    // The wordmark's value is measured off the reference image, not judged by
+    // eye — see the note on the preset itself.
     expect(spacingOf("32-500")).toBeGreaterThan(0);
     expect(spacingOf("12-400")).toBeGreaterThan(0);
     expect(spacingOf("13-600")).toBeGreaterThan(0);
@@ -116,6 +118,33 @@ describe("the new Fabric document", () => {
       if (spacing === undefined) continue;
       expect(Number.isFinite(spacing)).toBe(true);
     }
+  });
+
+  it("writes the resolved tracking into each object's own JSON", async () => {
+    // Every other preset-derived Fabric field is written into the object, so
+    // the starter declares five of a preset's six and omits the one this task
+    // is about. Not a live bug — the editor applies presets at mount — but the
+    // starter is the document every other task copies from, and a reader
+    // comparing an object against its preset would conclude the sixth field
+    // does not exist.
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+
+    const object = canvas
+      .getObjects()
+      .find((it) => it.get("id") === "wordmark");
+    // 28px at 32px is Fabric's 1/1000 em: 875.
+    expect(object?.get("charSpacing")).toBe(875);
+
+    // An untracked object writes nothing rather than a zero Fabric would then
+    // have to be told to ignore.
+    const clock = canvas.getObjects().find((it) => it.get("id") === "time");
+    expect(clock?.get("charSpacing")).toBe(0);
+    await canvas.dispose();
   });
 
   it("revives the gradient, SVG-derived paths, and all four chart families", async () => {

@@ -68,6 +68,41 @@ function presetIds(globals: FabricGlobals | undefined): readonly string[] {
   );
 }
 
+/** What a preset asks for that a whole text object cannot carry. */
+function presetGaps(
+  globals: FabricGlobals | undefined,
+  runs: readonly TextRun[],
+): readonly string[] {
+  const gaps = new Set<string>();
+  for (const run of runs) {
+    // Fabric measures tracking once from the object, so a second run asking for
+    // its own value is a request the canvas cannot honour. The first run's
+    // preset is the one that reaches the object.
+    if (run === runs[0]) continue;
+    if (letterSpacingOf(globals, run.typePreset) === undefined) continue;
+    gaps.add(
+      `Tracking on "${run.typePreset}" is not shown separately — a text object carries one tracking value, from its first run.`,
+    );
+  }
+  return [...gaps];
+}
+
+/** A preset's authored tracking, or undefined when it asks for none. */
+function letterSpacingOf(
+  globals: FabricGlobals | undefined,
+  ref: `typePresets.${string}` | undefined,
+): number | undefined {
+  const id = ref?.slice("typePresets.".length);
+  // `GlobalEntry.value` is `unknown` on purpose — the panel is a second reader
+  // of a document shape it does not own — so this narrows to the one field.
+  const value: unknown = (
+    globals?.typePresets?.[id ?? ""]?.value as
+      | { readonly letterSpacing?: unknown }
+      | undefined
+  )?.letterSpacing;
+  return typeof value === "number" ? value : undefined;
+}
+
 export interface RunEditor {
   readonly root: HTMLElement;
 }
@@ -484,6 +519,14 @@ export function createRunEditor(
 
     root.append(row);
   });
+
+  for (const gap of presetGaps(globals, runs)) {
+    const note = document.createElement("p");
+    note.className = "vigilia-run-note";
+    note.dataset["vigiliaRunNote"] = "";
+    note.textContent = gap;
+    root.append(note);
+  }
 
   return { root };
 }

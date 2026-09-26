@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { Binding, TextRun } from "@vigilia/renderer-core";
+import type { Binding, FabricGlobals, TextRun } from "@vigilia/renderer-core";
 import { formatInstant, instantIn } from "@vigilia/renderer-core";
 import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 import { Canvas, Textbox } from "fabric/es";
@@ -10,7 +10,11 @@ import { createRunEditor } from "./runs.js";
  * A text object's runs, plus the binding store a run's reading lives in: the
  * envelope owns that, so the test stands in for the session.
  */
-function harness(runs: readonly TextRun[], locale?: string) {
+function harness(
+  runs: readonly TextRun[],
+  locale?: string,
+  globals?: FabricGlobals,
+) {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
   object.set(VIGILIA_TEXT_PROPERTY, { runs });
@@ -26,7 +30,7 @@ function harness(runs: readonly TextRun[], locale?: string) {
           canvas,
           historyManager: { saveState: vi.fn() },
         } as never,
-        undefined,
+        globals,
         object as never,
         render,
         {
@@ -52,6 +56,10 @@ function harness(runs: readonly TextRun[], locale?: string) {
     runs: (): readonly TextRun[] =>
       (object.get(VIGILIA_TEXT_PROPERTY) as { runs: readonly TextRun[] }).runs,
     stored: (): readonly Binding[] => bindings,
+    notes: (): readonly string[] =>
+      [...host.querySelectorAll<HTMLElement>("[data-vigilia-run-note]")].map(
+        (note) => note.textContent ?? "",
+      ),
     dispose: () => canvas.dispose(),
   };
 }
@@ -298,6 +306,65 @@ describe("binding a text run to a sensor", () => {
       kind: "literal",
       typePreset: "typePresets.70-300",
     });
+    return box.dispose();
+  });
+});
+
+describe("what a run cannot carry", () => {
+  const tracking = {
+    typePresets: {
+      tracked: {
+        name: "Tracked",
+        value: { family: "Inter", size: 32, letterSpacing: 4 },
+      },
+      plain: {
+        name: "Plain",
+        value: { family: "Inter", size: 32 },
+      },
+    },
+  } as unknown as FabricGlobals;
+
+  const mixedRuns: readonly TextRun[] = [
+    { kind: "literal", text: "CPU ", typePreset: "typePresets.plain" },
+    { kind: "literal", text: "42%", typePreset: "typePresets.tracked" },
+  ];
+
+  it("says a second run's tracking is not shown separately", () => {
+    // The defect this covers is a control that does nothing: the author picks a
+    // tracked preset for the value run, and the object keeps the first run's
+    // tracking with nothing on screen to say so.
+    const box = harness(mixedRuns, undefined, tracking);
+
+    expect(box.notes()).toHaveLength(1);
+    expect(box.notes()[0]).toContain("typePresets.tracked");
+    expect(box.notes()[0]).toContain("one tracking value");
+    return box.dispose();
+  });
+
+  it("says nothing when only the first run tracks", () => {
+    // The counter-case: a single-run object carries its preset's tracking, so a
+    // note here would train the author to ignore the ones that matter.
+    const box = harness(
+      [{ kind: "literal", text: "VIGILIA", typePreset: "typePresets.tracked" }],
+      undefined,
+      tracking,
+    );
+
+    expect(box.notes()).toEqual([]);
+    return box.dispose();
+  });
+
+  it("says nothing when no run tracks", () => {
+    const box = harness(
+      [
+        { kind: "literal", text: "CPU ", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "42%", typePreset: "typePresets.plain" },
+      ],
+      undefined,
+      tracking,
+    );
+
+    expect(box.notes()).toEqual([]);
     return box.dispose();
   });
 });

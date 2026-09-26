@@ -191,6 +191,85 @@ async function guidePixelsAtSceneX(
   );
 }
 
+/**
+ * The rightmost column of a named object's box that carries light ink, in
+ * canvas pixels. `-1` when the object or the canvas cannot be read.
+ *
+ * Samples `lower-canvas`, where Fabric paints objects; `upper-canvas` carries
+ * only the selection overlay. Waits two animation frames first, for the reason
+ * `guidePixelsAtSceneX` gives: a render scheduled by `requestRenderAll` has not
+ * reached the canvas when the `fill` resolves, so reading immediately samples a
+ * canvas from before the edit.
+ *
+ * Brightness rather than alpha, because text over an opaque panel is covered
+ * everywhere and only the glyphs are light.
+ */
+async function inkReachOf(page: Page, id: string): Promise<number> {
+  return page.evaluate(async (objectId) => {
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            viewport: {
+              artboardScreenRect(): {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+            };
+            canvas: {
+              getObjects(): Array<{
+                id?: string;
+                getBoundingRect(): ArtboardRect;
+              }>;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const object = bridge.editor.canvas
+      .getObjects()
+      .find((candidate) => candidate.id === objectId);
+    if (object === undefined) return -1;
+    const view = bridge.editor.viewport.artboardScreenRect();
+    const element = document.querySelector<HTMLCanvasElement>(
+      "#vigilia-fabric-editor canvas.lower-canvas",
+    );
+    const context = element?.getContext("2d");
+    if (element === null || context === null || context === undefined)
+      return -1;
+
+    const rect = object.getBoundingRect();
+    const ratio = element.width / element.getBoundingClientRect().width;
+    const scale = view.width / 1280;
+    const left = Math.round((view.left + rect.left * scale) * ratio);
+    const top = Math.round((view.top + rect.top * scale) * ratio);
+    const width = Math.max(1, Math.round(rect.width * scale * ratio));
+    const height = Math.max(1, Math.round(rect.height * scale * ratio));
+    const pixels = context.getImageData(left, top, width, height).data;
+
+    let rightmost = -1;
+    for (let column = 0; column < width; column += 1) {
+      for (let row = 0; row < height; row += 1) {
+        const at = (row * width + column) * 4;
+        const luminance =
+          0.2126 * (pixels[at] ?? 0) +
+          0.7152 * (pixels[at + 1] ?? 0) +
+          0.0722 * (pixels[at + 2] ?? 0);
+        if (luminance > 140) {
+          rightmost = column;
+          break;
+        }
+      }
+    }
+    return rightmost;
+  }, id);
+}
+
 /** Drags a named object's `mr` handle so its raw right edge would land at
  * `toSceneX`, and reports the right edge the resize actually left, plus the
  * guide pixels drawn along that edge while the pointer was still down. The
@@ -1089,93 +1168,20 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-
-    /** How far right the wordmark's ink reaches, in canvas pixels. */
-    const inkReach = (): Promise<number> =>
-      page.evaluate(() => {
-        const bridge = (
-          window as unknown as {
-            vigiliaEditorBridge: {
-              editor: {
-                viewport: {
-                  artboardScreenRect(): {
-                    left: number;
-                    top: number;
-                    width: number;
-                    height: number;
-                  };
-                };
-                canvas: {
-                  getObjects(): Array<{
-                    id?: string;
-                    getBoundingRect(): {
-                      left: number;
-                      top: number;
-                      width: number;
-                      height: number;
-                    };
-                  }>;
-                };
-              };
-            };
-          }
-        ).vigiliaEditorBridge;
-        const object = bridge.editor.canvas
-          .getObjects()
-          .find((candidate) => candidate.id === "wordmark");
-        if (object === undefined) return -1;
-        const rect = object.getBoundingRect();
-        const view = bridge.editor.viewport.artboardScreenRect();
-        const element = document.querySelector<HTMLCanvasElement>(
-          // The lower canvas is where Fabric paints objects; the upper one
-          // carries only the selection overlay and reads as empty.
-          "#vigilia-fabric-editor canvas.lower-canvas",
-        );
-        const context = element?.getContext("2d");
-        if (element === null || context === null || context === undefined)
-          return -1;
-
-        const ratio = element.width / element.getBoundingClientRect().width;
-        const scale = view.width / 1280;
-        const left = Math.round((view.left + rect.left * scale) * ratio);
-        const top = Math.round((view.top + rect.top * scale) * ratio);
-        const width = Math.max(1, Math.round(rect.width * scale * ratio));
-        const height = Math.max(1, Math.round(rect.height * scale * ratio));
-        const pixels = context.getImageData(left, top, width, height).data;
-
-        // Brightness, not alpha: the wordmark sits on an opaque header wash, so
-        // every pixel in the band is fully covered and only the glyphs are
-        // light. The wordmark is near-white on a near-black plate.
-        let rightmost = -1;
-        for (let column = 0; column < width; column += 1) {
-          for (let row = 0; row < height; row += 1) {
-            const at = (row * width + column) * 4;
-            const luminance =
-              0.2126 * (pixels[at] ?? 0) +
-              0.7152 * (pixels[at + 1] ?? 0) +
-              0.0722 * (pixels[at + 2] ?? 0);
-            if (luminance > 140) {
-              rightmost = column;
-              break;
-            }
-          }
-        }
-        return rightmost;
-      });
-
     await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
     const tracking = page.locator("[data-vigilia-type-letter-spacing]");
 
     await tracking.fill("0");
     await tracking.press("Tab");
-    const untracked = await inkReach();
+    const untracked = await inkReachOf(page, "wordmark");
 
     await tracking.fill("6");
     await tracking.press("Tab");
-    const tracked = await inkReach();
+    const tracked = await inkReachOf(page, "wordmark");
 
-    // Seven characters at 32px is 18px of extra tracking at 6px each; the
-    // difference has to be real ink rather than a resampling artefact.
+    // Six gaps at 6px each is 36px of extra tracking at 32px. The bar is
+    // below that, so a resampling artefact cannot produce it — but it has to be
+    // real ink, and ink only reaches that far if the tracking propagated.
     expect(untracked).toBeGreaterThan(0);
     expect(tracked - untracked).toBeGreaterThan(8);
   });

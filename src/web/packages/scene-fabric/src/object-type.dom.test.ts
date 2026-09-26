@@ -125,25 +125,33 @@ describe("object-level tracking", () => {
 });
 
 describe("font readiness", () => {
-  it("measures the same tracking whether or not the face has loaded", () => {
-    // Tracking is 1/1000 em of the object's own font size, so it never consults
-    // glyph metrics: a face that has not arrived cannot change it. What the
-    // fallback changes is the width, which is why this asserts the ratio and
-    // the object separately.
-    const pending = textbox("metric", [literal("typePresets.tracked")]);
-    pending.set({ fontFamily: "Vigilia Face That Never Loads" });
-    const available = textbox("metric", [literal("typePresets.tracked")]);
-
+  it("applies tracking from the preset's own size, not a loaded face's metrics", () => {
+    // The point is that the conversion is arithmetic on the *preset's* size, so
+    // nothing about glyph measurement can enter it. Both objects here are
+    // measured in the same fallback face (this environment has no Inter), which
+    // is the situation a device hits before its packaged font arrives — so the
+    // equal ratios are the claim, not an artefact of the two objects being
+    // identical.
+    //
+    // Note the family is *not* set to a missing face here: `applyObjectTypePresets`
+    // overwrites `fontFamily` from the preset, so doing that would test nothing.
     const globals = globalsWith({
       family: "Inter",
       size: 32,
       letterSpacing: 0.8,
     });
-    applyObjectTypePresets(canvasOf([pending]), globals);
-    applyObjectTypePresets(canvasOf([available]), globals);
+    const first = textbox("metric", [literal("typePresets.tracked")]);
+    const second = textbox("metric", [literal("typePresets.tracked")]);
 
-    expect(pending.charSpacing).toBe(available.charSpacing);
-    expect(pending.charSpacing).toBeCloseTo(25, 6);
+    applyObjectTypePresets(canvasOf([first]), globals);
+    applyObjectTypePresets(canvasOf([second]), globals);
+
+    expect(first.charSpacing).toBeCloseTo(25, 6);
+    expect(second.charSpacing).toBe(first.charSpacing);
+    // Reapplying after any font work must not move it: the value is a pure
+    // function of the preset, so a late-arriving face cannot rescale it.
+    applyObjectTypePresets(canvasOf([second]), globals);
+    expect(second.charSpacing).toBeCloseTo(25, 6);
   });
 });
 

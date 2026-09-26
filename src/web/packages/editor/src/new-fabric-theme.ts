@@ -159,9 +159,9 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 12,
       weight: "400",
-      // The strapline is set all caps; without tracking its letters run
-      // together into a grey bar.
-      letterSpacing: 0.55,
+      // Measured off the reference: 6.5px at 12px is 0.54 em, and the ink gap
+      // between letters divided by cap height came out at 0.75 there.
+      letterSpacing: 6.5,
       lineHeight: 1.18,
       trioRole: "body",
     },
@@ -182,8 +182,9 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 13,
       weight: "600",
-      // All-caps, for the same reason as the overline.
-      letterSpacing: 0.5,
+      // The overline's 0.75 ink-gap-to-cap ratio, at this size. All-caps, so it
+      // wants the same treatment rather than a value of its own.
+      letterSpacing: 7,
       lineHeight: 1.18,
       trioRole: "body",
     },
@@ -234,10 +235,11 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 32,
       weight: "500",
-      // Display type: the tracking is the wordmark's character. The clock,
-      // metric, date and period below deliberately carry none — a numeral's
-      // advance is a grid cell, and tracking it breaks the column it sits in.
-      letterSpacing: 1.4,
+      // Measured off the reference, not judged by eye: the six inter-letter
+      // gaps average 94px against a 78px cap height — a ratio of 1.205, and
+      // uniform across every pair, which is tracking rather than side bearings.
+      // At a 0.72 em cap height that is 0.87 em, so 28px here.
+      letterSpacing: 28,
       lineHeight: 1.18,
       trioRole: "heading",
     },
@@ -258,6 +260,8 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 70,
       weight: "300",
+      // Untracked, and so are the metric, date and period above: a numeral's
+      // advance is a grid cell, and opening it up breaks the column.
       lineHeight: 1.18,
       trioRole: "heading",
     },
@@ -624,7 +628,9 @@ function label(
   fill: string,
   fontWeight: string,
 ): ObjectJson {
-  const typePreset = `typePresets.${fontSize}-${fontWeight}` as const;
+  const presetId = `${fontSize}-${fontWeight}`;
+  const typePreset = `typePresets.${presetId}` as const;
+  const spacing = charSpacingPx(presetId, fontSize);
   return {
     type: "Textbox",
     id,
@@ -637,6 +643,11 @@ function label(
     fontWeight,
     fill,
     lineHeight: 1.18,
+    // The resolved cache the editor applies from the preset. Every other
+    // preset-derived field is written here, so this one has to be too: a scene
+    // that declares five of a preset's six Fabric fields is the same shape of
+    // bug as the one that declared none of them.
+    ...(spacing === undefined ? {} : { charSpacing: spacing }),
     vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` },
     vigiliaText: {
       runs: [
@@ -650,6 +661,18 @@ function label(
     },
     ...positioned,
   };
+}
+
+/** Fabric's `charSpacing` in 1/1000 em, for the presets that track. */
+function charSpacingPx(presetId: string, fontSize: number): number | undefined {
+  // `as const` gives each preset its own literal type, and the untracked ones
+  // have no `letterSpacing` key at all, so the lookup is widened to read one.
+  const value = (
+    starterTypePresets[presetId as keyof typeof starterTypePresets]?.value as
+      | { readonly letterSpacing?: number }
+      | undefined
+  )?.letterSpacing;
+  return typeof value === "number" ? (value / fontSize) * 1000 : undefined;
 }
 
 /**
