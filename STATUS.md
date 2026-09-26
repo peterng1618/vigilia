@@ -16,6 +16,10 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
   — activated 2026-09-27, subagent-driven. Only Task 1 (the glass feasibility probe)
   is open; its findings must be reviewed before Tasks 2–12.
+- **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
+  — written behind reference-theme fidelity; not activated. Replaces the one-entry
+  hand-written trio with 380 generated pairings over 238 faces, and the two-option
+  dropdown with one searchable picker. See its spec for the measured constraints.
 - **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
   whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
@@ -26,26 +30,19 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Last completed change
 
-- Closed the snapping fidelity plan. The fork's legacy fallback engine is
-  **dropped**; the guard family it alone consumed —
-  `scaling-step-snap-guards.ts` and `scaling-snap-guard.ts`, 1,394 lines between
-  them with zero importers — is deleted, taking the equally unreachable
-  `getObjectBounds` with it.
-- §64 rewritten: movement, resize and smart-guide snapping are present, with the
-  browser matrix named as the evidence. §175 gained its design link.
-  "Resize-time snapping" moved out of the behaviour review's candidates.
-- The layer panel's bottom action row is now covered in a browser, closing the
-  last open acceptance item in `2026-09-25-editor-ui-polish.md`.
-- Gate: `format:check`, `lint`, `typecheck`, 136/136 unit test files, `build` and
-  `size` clean; browser suite 155 passed / 96 skipped / 0 failed.
-- All five visible behaviours inspected by hand against the preview build: drag
-  and resize guides, equal-spacing distance labels, and clean artboards under
-  Ctrl for both gestures.
+- Reviewed the font system: the curated-font slice never finished. The
+  catalogue holds one hand-written trio whose `minimal` id claims Fonttrio
+  provenance its Inter/JetBrains Mono faces lack, in a bare `<select>`.
+- Measured upstream: 380 pairings, 174 families, 238 faces, all resolvable to
+  version-pinned Fontsource WOFF2 over a CORS-open CDN.
+- Wrote the design and its plan, queued behind reference-theme fidelity. All
+  380 ship; facets derived from data; favourites in the host; a trio declares
+  its role weights; a bound preset unbinds explicitly.
 
 ## Next
 
 1. Activate reference-theme fidelity.
-2. Work the queued specs above it.
+2. Then the queued font catalogue plan, then the queued specs.
 
 ## Blockers / unverified
 
