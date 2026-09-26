@@ -7,8 +7,20 @@ import { createSnapManager } from "../index.js";
  * of the anchor's left edge. Task 8 imports it, so it lives here, defined once. */
 export const SNAPPING_MULTIPLIER = 1.53;
 
-function setup({ grouped = false }: { grouped?: boolean } = {}) {
+function setup({
+  controlKey = "mr",
+  grouped = false,
+  uniformScaling,
+}: {
+  controlKey?: "br" | "mr";
+  grouped?: boolean;
+  uniformScaling?: boolean;
+} = {}) {
   const canvas = new Canvas(document.createElement("canvas"));
+  if (uniformScaling !== undefined) {
+    canvas.uniformScaling = uniformScaling;
+    canvas.uniScaleKey = "shiftKey";
+  }
   const snapped = createSnapManager({
     canvas,
     bounds: () => ({
@@ -56,11 +68,11 @@ function setup({ grouped = false }: { grouped?: boolean } = {}) {
 
   const transform = {
     target: resized,
-    action: "scaleX",
-    corner: "mr",
+    action: controlKey === "mr" ? "scaleX" : "scale",
+    corner: controlKey,
     // Fabric's own _getOriginFromCorner forces "left"/"center" for `mr`.
-    originX: "left",
-    originY: "center",
+    originX: controlKey === "mr" ? "left" : "left",
+    originY: controlKey === "mr" ? "center" : "top",
     original: { scaleX: 1, scaleY: 1, originX: "left", originY: "center" },
   };
   // Fabric fires `object:scaling` only after it has already resized the object,
@@ -81,15 +93,14 @@ function setup({ grouped = false }: { grouped?: boolean } = {}) {
       } as never,
     );
   };
-  /** One mr-handle step. Returns the width Fabric itself would have produced, so
-   * a test can compare "what the raw drag gives" against "what the controller
-   * gives" — the controller may legitimately change the scale. */
+  /** One handle step. Returns raw width Fabric would have produced. */
   const resize = (e: object, widthScale: number): number => {
-    // Mirror Fabric's pre-transform result so the controller sees the state it
-    // would really see. This is setup, not the behaviour under test: asserting
-    // that getScaledWidth() equals 200 * widthScale after this call proves
-    // nothing, because this line produced it.
-    resized.set({ scaleX: widthScale, scaleY: 1 });
+    // Mirror Fabric's pre-transform result so controller sees state it would
+    // really see. This is setup, not behaviour under test.
+    resized.set({
+      scaleX: widthScale,
+      scaleY: controlKey === "mr" ? 1 : widthScale,
+    });
     resized.setCoords();
     canvas.fire(
       "object:scaling" as never,
@@ -130,6 +141,40 @@ describe("scale snapping", () => {
     // The second step must be planned, not rejected as a duplicate.
     resize({}, SNAPPING_MULTIPLIER);
     expect(resized.getScaledWidth()).toBe(310);
+    snapped.destroy();
+  });
+
+  it("leaves the raw size alone while Ctrl is held", () => {
+    const { resized, snapped, down, resize } = setup();
+    down();
+
+    const raw = resize({ ctrlKey: true }, SNAPPING_MULTIPLIER);
+    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
+    expect(resized.getScaledWidth()).toBe(raw);
+    snapped.destroy();
+  });
+
+  it("snaps the same step when Ctrl is not held", () => {
+    const { resized, snapped, down, resize } = setup();
+    down();
+
+    const raw = resize({}, SNAPPING_MULTIPLIER);
+    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
+    expect(resized.getScaledWidth()).not.toBe(raw);
+    snapped.destroy();
+  });
+
+  it("uses Shift to constrain a corner resize", () => {
+    const { resized, snapped, down, resize } = setup({
+      controlKey: "br",
+      uniformScaling: false,
+    });
+    down();
+
+    const raw = resize({ shiftKey: true }, SNAPPING_MULTIPLIER);
+    expect(raw).toBe(200 * SNAPPING_MULTIPLIER);
+    expect(resized.getScaledWidth()).toBe(310);
+    expect(resized.getScaledHeight()).toBe(124);
     snapped.destroy();
   });
 

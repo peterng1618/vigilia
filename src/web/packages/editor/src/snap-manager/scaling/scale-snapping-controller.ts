@@ -187,6 +187,8 @@ export function createScaleSnappingController(
     });
     if (stepInput === null) return [];
 
+    // One shared reader supplies both Ctrl's snap escape and Shift's scale mode;
+    // reading only the Fabric pointer event here would let the two paths drift.
     const intent: ScaleRawIntent = Object.freeze({
       projectionMode: stepInput.intent.projectionMode,
       values: stepInput.intent.values,
