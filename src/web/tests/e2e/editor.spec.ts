@@ -44,7 +44,7 @@ async function artboardRect(page: Page): Promise<ArtboardRect> {
  * canvas-space coordinate used as a page coordinate, landing ~357px left and
  * ~72px above the intended object — off the canvas, where a drag selects
  * nothing and the test passes without exercising anything. */
-async function sceneToClient(
+export async function sceneToClient(
   page: Page,
   sceneWidth: number,
   x: number,
@@ -67,7 +67,7 @@ async function sceneToClient(
  * scene's `chart()` helper sets `originX: "center"` / `originY: "center"`, so
  * the manual form aims at the shape's bottom-right corner instead of its
  * centre. `getCenterPoint()` converts from whatever origin the object has. */
-async function clientOfScene(
+export async function clientOfScene(
   page: Page,
   id: string,
   sceneWidth = 1280,
@@ -3487,7 +3487,7 @@ async function layerNamesInPage(page: Page): Promise<unknown> {
   });
 }
 
-async function captureVisualReview(
+export async function captureVisualReview(
   page: Page,
   testInfo: TestInfo,
   name: string,
