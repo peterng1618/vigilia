@@ -17,20 +17,23 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents carry
   no metadata, and absent means `en` there.
-- **Queued spec, no plan:** [author-first seven-day release](docs/superpowers/specs/2026-09-26-author-first-release-design.md) — written-spec review pending; blank-to-running theme, ≥80% unassisted completion; existing queue order unchanged.
+- **Queued spec, no plan:** [author-first seven-day release](docs/superpowers/specs/2026-09-26-author-first-release-design.md) — written-spec review pending; blank-to-running theme, ≥80% unassisted completion; not activated by the reference-theme priority change.
+- **Next queued plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md) — immediately after snapping; review pending. Progressive default starter, mandatory glass, RAM/VRAM gauges; existing charts accepted, glow optional; weather/daily totals excluded.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md).
 
 ## Last completed change
 
-- Added Ctrl resize escape and Shift-constrained resize regression coverage.
-- Added real desktop Ctrl-resize/Ctrl-drag proof: fractional raw geometry and no
-  guide; ordinary resize remains snapped with guide evidence.
-- Task review and scoped re-review closed without open Critical/Important findings.
+- Recorded latest reference-theme spec and target image with agreed exclusions.
+- Added four-phase implementation plan covering authoring, glass, typography,
+  device captions and progressive default-starter proof.
+- Queued plan immediately after snapping; glass probe and product approval pending.
 
 ## Next
 
 1. Complete snapping Tasks 9–10, including behavior matrix and full gates.
-2. Then queue author-journey Task 6; authoring-and-consumer-polish Task 4;
+2. Review reference-theme plan and select execution method; activate only after
+   snapping closes. Approve glass probe, then review findings before product work.
+3. Then resume author-journey Task 6; authoring-and-consumer-polish Task 4;
    settings-scope; consumer-journey Tasks 5+6; theme-thumbnails;
    authoring-time-run-placeholders.
 
