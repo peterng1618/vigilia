@@ -14,8 +14,9 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
   all eleven tasks landed; gate run, documentation close-out and final whole-plan
   review all closed 2026-09-27. The plan is archived.
 - **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
-  — activated 2026-09-27, subagent-driven. Only Task 1 (the glass feasibility probe)
-  is open; its findings must be reviewed before Tasks 2–12.
+  — activated 2026-09-27, subagent-driven. Task 1 (the glass probe) is complete and
+  unblocks Tasks 2–12; Task 2 (the authored `vigiliaGlass` contract) is in flight.
+  Ledger: `.superpowers/sdd/2026-09-26-reference-theme-fidelity/progress.md`.
 - **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
   — written behind reference-theme fidelity; not activated. Replaces the one-entry
   hand-written trio with 380 generated pairings over 238 faces, and the two-option
@@ -30,33 +31,38 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Last completed change
 
-- Reviewed the font system: the curated-font slice never finished. The
-  catalogue holds one hand-written trio whose `minimal` id claims Fonttrio
-  provenance its Inter/JetBrains Mono faces lack, in a bare `<select>`.
-- Measured upstream: 380 pairings, 174 families, 238 faces, all resolvable to
-  version-pinned Fontsource WOFF2 over a CORS-open CDN.
-- Wrote the design and its plan, queued behind reference-theme fidelity. All
-  380 ship; facets derived from data; favourites in the host; a trio declares
-  its role weights; a bound preset unbinds explicitly.
+- Task 1's glass probe is complete and recorded in the plan. Real clipped
+  backdrop blur works via Fabric's per-object `before:render` plus native
+  `ctx.filter` — no new dependency, no DOM overlay.
+- Measured: **48 artboard-unit radius cap**, **+0.61 ms** StaticCanvas /
+  **+0.69 ms** interactive at 1672×941, **zero idle repaints**, live canvas and
+  `toCanvasElement` in agreement so thumbnails inherit it.
+- Sharp foreground is **bit-for-bit unchanged** (peak 537 with glass off,
+  detached and on); `sampledInsideCache: 0` throughout, so no self-sampling.
+- Two obligations recorded for Tasks 4–5: scratch surfaces **must** be released
+  explicitly (56 survived 10 mount cycles otherwise), and cross-origin media
+  taints the canvas, so failure must be caught and reported.
+- Unproven and owned by Task 4 as regression cases: overlapping panels,
+  grouped-vs-flattened, and video-frame invalidation.
 
 ## Next
 
-1. Activate reference-theme fidelity.
+1. Continue reference-theme fidelity, Task 2 onward.
 2. Then the queued font catalogue plan, then the queued specs.
 
 ## Blockers / unverified
 
 - `display-fabric.spec.ts` "is byte-stable at a fixed clock on one platform" is
-  load-induced: it failed once under full-suite parallel load on the byte
-  comparison, then passed on re-run and in isolation at HEAD and at this plan's
-  base sha `a0a44ff`. The test's own comment records the mechanism — `runFor`
-  advances simulated time while the first paint waits on real-time asset decode.
-  Not reproduced at base, so it is not recorded as proven pre-existing.
+  load-induced: it failed once under full-suite parallel load, then passed on
+  re-run and in isolation. Not reproduced at base, so not proven pre-existing.
 - Whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction is
   undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
 - No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
   ledger audit for unknown agent ids is the only candidate and is not implemented.
 - Unverified: browser round-trip of text align/wrap/overflow, in-place edit +
-  undo, run preset/override.
-- The walkthrough ran against `vite preview` bundles at desktop width; the phone
-  surfaces were exercised by the browser suite, not by eye.
+  undo, run preset/override; phone surfaces exercised by suite, not by eye.
+- Pre-existing, not from this plan: `format:check` fails on
+  `snap-manager/scaling/scaling.dom.test.ts` (`01aa7dc`); the starter binds the
+  unowned `memory.used`, so its donut renormalises to a false 100%; and the
+  baseline GPU provider returns the **maximum** across controllers, so a caption
+  naming one GPU could sit over another's readings.
