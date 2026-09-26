@@ -138,10 +138,18 @@ Do not leave it unstated — that is how the P0 defects above survived.
 ## Key decisions to make in planning
 
 1. Resize snapping: port the scaling subsystem, or build a narrower native one
-   and accept a documented fidelity difference?
+   and accept a documented fidelity difference? — **Ported.** Tasks 4–8.
 2. Candidate filter: which `IGNORED_IDS` entries, and is `selectable` retained
-   for any object class?
-3. Fallback path: port, replace or drop.
+   for any object class? — **`selectable` dropped; `IGNORED_IDS = ["scene"]`.**
+   Task 1.
+3. Fallback path: port, replace or drop. — **Drop.** All four of the fork's
+   fallback modules (`line-snapping`, `anchor-buckets`, `pixel-grid`,
+   `snap-target-resolver`) are absent from Vigilia and nothing references them;
+   the fork's fallback entry point `_applyMovementGuideSnap` runs only when its
+   candidate path yields nothing, and Vigilia's broader candidate filter
+   declines fewer objects, so the gap that justified the second engine is
+   narrower here. Its only ported consumer, `scaling/scaling-step-snap-guards.ts`,
+   was unreachable and is deleted.
 
 ## Verification
 

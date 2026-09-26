@@ -200,9 +200,12 @@ that was actually observed; "rendered" means measured in the built bundle in a r
   `aria-expanded` button (see the ruling above).
 - Lock and visibility icons appear on every row and reflect effective state. — jsdom.
 - Object actions appear in the layer panel's bottom row, not per row, and render
-  from the same registry the canvas dock uses. — jsdom. **Browser coverage for the row's
-  entry set is still open**; it was deferred behind `editor.spec.ts` and is carried by the
-  snapping plan's behaviour matrix.
+  from the same registry the canvas dock uses. — **rendered.** `snapping.spec.ts`'s
+  "layer-panel object actions match canvas dock" selects an object, then asserts the
+  visible `[data-vigilia-layer-actions]` sits inside the visible layers panel, inside no
+  layer row, below both the rendered tree and the last row, and within the panel's box —
+  and that its button labels equal the canvas dock's, so the two surfaces are compared as
+  entry sets rather than against a hard-coded list.
 - Changing registry eligibility changes both surfaces identically. — jsdom, and the
   per-action arrange gate was verified rendered (`arrangeEligible` at the owner,
   `shell-layout.tsx` per action) after the final review found the toolbar advertising an
@@ -231,5 +234,5 @@ that was actually observed; "rendered" means measured in the built bundle in a r
   differential proof rather than a base-commit run. If it recurs, run it at a base
   sha before recording it as pre-existing again.
 
-**One acceptance item is carried, not met:** browser coverage for the layer panel's bottom
-action row. It is not claimed as verified here.
+**No acceptance item is carried.** The layer panel's bottom action row is now covered in a
+browser, closing the last open item.

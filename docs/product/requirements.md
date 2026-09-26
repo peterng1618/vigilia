@@ -102,12 +102,15 @@ related behaviour are reviewed in [editor behaviour review](../superpowers/specs
 
 ## §64 — Rulers, grid, guides and snapping (review)
 
-Movement (drag) snapping and smart guides shipped in the fork-parity work
-(2026-09-24), but their fidelity against the source they were ported from is
-**under review**: the port reportedly guides worse than the fork's original in
-practice. Treat the current behaviour as unverified until that comparison lands;
-see §175. Pixel rulers, configurable grid/guides, additional snapping modes
-and resize-time snapping are not present; treat those as review candidates in
+Movement (drag) snapping, resize snapping and smart guides are present, and
+their fidelity against the source they were ported from has been reviewed
+(see §175 and
+[snapping and guide fidelity](../superpowers/specs/2026-09-25-snapping-fidelity.md)).
+A browser behaviour matrix asserts geometry, per-step re-planning, release,
+no-guide and Ctrl for both gestures across shape, text and group active
+targets, plus equal-spacing for movement. Pixel rulers, configurable
+grid/guides and additional snapping modes are not present; treat those as
+review candidates in
 [editor behaviour review](../superpowers/specs/2026-09-24-editor-behaviour-review.md), not migration acceptance, until revalidated against the current
 editor workflow.
 
@@ -395,6 +398,8 @@ observed to be worse than the fork's original, comparing against the pinned
 fork source (`9efdd78a`) is the required first step.
 
 This applies to snapping and smart guides as shipped (§64) and to any later port.
+
+Design: [snapping and guide fidelity](../superpowers/specs/2026-09-25-snapping-fidelity.md).
 
 ## Later
 

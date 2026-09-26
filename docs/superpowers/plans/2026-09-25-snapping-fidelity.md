@@ -1,12 +1,9 @@
 # Snapping Fidelity Implementation Plan
 
-> **Active plan.** `STATUS.md` names this plan as the one active plan; the
-> viewport-and-mechanics plan that preceded it is archived. Tasks 1–9 and 11 are
-> **landed**, each marked below with its commits; Task 10 remains. Landed tasks
-> are kept whole as the record of what was built — do not re-dispatch one. The
-> unticked boxes are the resume signal: only Task 10 carries them.
-> Resume with `superpowers:subagent-driven-development` or
-> `superpowers:executing-plans`, one task at a time.
+> **Completed plan.** Every task is landed and the gate is closed. The
+> viewport-and-mechanics plan that preceded it is archived. Landed tasks are kept
+> whole as the record of what was built — do not re-dispatch one. The next plan is
+> [reference theme fidelity](2026-09-26-reference-theme-fidelity.md).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1221,7 +1218,7 @@ The fork's `image-scale-snapping-controller.ts` imports `ImageEditor` and is vig
 
 The fork's `movement-snapping-controller.ts:127` marker pattern applies here identically: **one marker per native pointer event**, taken from the browser event (`event.e`), never a per-gesture constant. `83248dc` fixed that exact bug on the movement path; do not reintroduce it here.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 jsdom has no pointer input, so drive the controller the way Fabric does: fire `object:scaling` with the real event payload (`{ e, transform, pointer }`) and pre-set the object's scales to what Fabric would have produced. Keep a running "what Fabric would do" transform so the gesture has a coherent `original`.
 
@@ -1318,12 +1315,12 @@ export const SNAPPING_MULTIPLIER = 1.19;
 
 Set it to whatever the re-derived geometry above actually requires, but keep the name and the export: Task 8 depends on both.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/editor/src/snap-manager/scaling/scaling.dom.test.ts`
 Expected: FAIL — nothing resizes the object.
 
-- [ ] **Step 3: Implement the runtime and controller**
+- [x] **Step 3: Implement the runtime and controller**
 
 Port `ScaleSnappingRuntime` from the fork with its mechanics intact — the `WeakMap` keyed on marker identity, `pendingStep`, token issuance and consumption, and `finishSession` returning the guides to hide. It has no `ImageEditor` import to drop: the runtime is already coupling-free, and the explicit inputs it takes are exactly the movement runtime's shape. The coupling lives in `image-scale-snapping-controller.ts`, which is not ported.
 
@@ -1350,7 +1347,7 @@ Guides must not be published from the plan. The fork publishes after exact-bound
 
 Because `resolveScalePlan` throws when a previous token is unverified, step 6 must run on **every** planned step, including one whose plan changes nothing — same rule as the movement path's zero-delta case (`runStep`, where it returns early when `step.kind !== "planned"`).
 
-- [ ] **Step 4: Bind it**
+- [x] **Step 4: Bind it**
 
 Add to the bindings array in `index.ts`:
 
@@ -1364,16 +1361,16 @@ Nothing is lost: the existing `mouse:up` binding (the `stopGesture` entry in the
 
 Extend that existing `stopGesture` to also call `scaleRuntime.finishSession()` when a scale session is active, and render `verification.guides` through the same `lastGuides` path the movement side uses — do not add a second guide channel. Reuse the existing teardown rather than writing a second one; `stopGesture` already guards on `gestureActive` and `finishSession` returns `didCleanup: false` when there is no session, so a double call is already idempotent. The second test in Step 1 exercises the marker path that would expose a mistake here.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `npx vitest run packages/editor/src/snap-manager`
 Expected: PASS.
 
-- [ ] **Step 6: Verify the re-plan test has teeth**
+- [x] **Step 6: Verify the re-plan test has teeth**
 
 Replace the event-derived marker with a per-gesture constant and rerun. Expected: the second test fails. This is the `83248dc` bug being guarded on the new path. Restore.
 
-- [ ] **Step 7: Inspect the guides on screen**
+- [x] **Step 7: Inspect the guides on screen**
 
 Add a test to `src/web/tests/e2e/editor.spec.ts` beside `snaps a dragged object to a neighbour and shows a guide` — locate that case by title (`grep -n "snaps a dragged object to a neighbour"`), never by line number: the file has moved under this plan three times and every line citation written for it is stale. Same skip clause, same `sceneToClient(page, 1280, …)` mapping, same `page.mouse` gesture — that grabs a shape's right resize handle and drags it toward a neighbour's edge. Title it `snaps a resized object to a neighbour and shows a guide`, capture name `editor-snap-resize`, and add it to the `Editor mechanics` row of `docs/evidence/screenshots/README.md` (the row listing `editor-snap-guides`; locate it by that name).
 
@@ -1387,7 +1384,7 @@ VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
 
 Open the capture and confirm guides appear during the resize, span the artboard, and line up with the neighbour's actual edge. Then confirm no guide is drawn when the resize is nowhere near a neighbour — a guide with no snap is Review Focus item 1.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/index.ts \
@@ -1420,7 +1417,7 @@ So: **widen the existing reader rather than adding a second one** — the moveme
 
 The fork documents Ctrl as the escape hatch returning the unrounded raw geometry, and Shift as constraining the resize. The movement path regained Ctrl in `83248dc`; scale must match, or an author can place an edge off-grid while moving but not while resizing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it("leaves the raw size alone while Ctrl is held", () => {
@@ -1450,27 +1447,27 @@ it("snaps the same step when Ctrl is not held", () => {
 
 `SNAPPING_MULTIPLIER` is exported from Task 7's `scaling.dom.test.ts` (defined once, there, as the value that lands inside `SNAP_THRESHOLD`). Import it; do not redefine it here.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/editor/src/snap-manager/scaling/scaling.dom.test.ts`
 Expected: FAIL — the width snaps to the neighbour's edge instead of holding the raw multiplier.
 
-- [ ] **Step 3: Read the modifiers from the event**
+- [x] **Step 3: Read the modifiers from the event**
 
 `ScaleSnapModifiers` needs both `ctrlKey` and `shiftKey`; Task 7 already widened `readMovementModifiers` to return both, so reuse it here rather than adding a second reader. The resolver already honours Ctrl — the ported `scale-snapping-resolver.ts:332` short-circuits to the disabled plan the same way `movement-snapping-resolver.ts:316` does. Confirm that in the ported source; if the scale resolver lacks the short-circuit, port it from the fork's `scale-snapping-resolver.ts` rather than adding a check in the controller.
 
 Shift constrains the resize; check the fork's handling and port it in the same place, then add a Shift case here asserting the constrained result, rather than a separate task. Note that `resolveScaleSnapPlan` may treat a Shift-mismatch as a duplicate step and throw — if so, the controller must classify modifiers into its own step identity before calling the runtime, not pass a changing modifier set through unchanged.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `npx vitest run packages/editor/src/snap-manager`
 Expected: PASS.
 
-- [ ] **Step 5: Verify in the browser**
+- [x] **Step 5: Verify in the browser**
 
 Ctrl-resize near a neighbour in a real session and confirm in the capture that no guide appears and the object keeps its fractional size. Ctrl-drag and Ctrl-resize must behave identically; if they do not, one of the two paths is reading the event differently.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts \
@@ -1555,6 +1552,32 @@ git commit -m "test(editor): snapping behaviour matrix for move and resize"
 
 ### Task 10: Full gate and requirement close-out
 
+> **Complete** — 2026-09-27.
+> Gate: `format:check`, `lint`, `typecheck`, 136/136 unit test files, `build` and
+> `size` clean. Browser suite **155 passed / 96 skipped / 0 failed**.
+> `display-fabric.spec.ts` "is byte-stable at a fixed clock on one platform"
+> failed once on the byte comparison under full-suite parallel load, then passed
+> on re-run and in isolation at HEAD and at this plan's base sha `a0a44ff`; it is
+> recorded in `STATUS.md` as load-induced and **not** as proven pre-existing,
+> because a base-sha isolated run cannot reproduce a parallel-load flake.
+> Step 3: the fallback path is **dropped**, the measurement confirmed — all four
+> fork fallback modules are absent and `scaling-step-snap-guards.ts` had zero
+> importers. The guard family and its orphaned `getObjectBounds` reader were
+> deleted in `e248cae`. Re-measurement corrected Step 3's note about
+> `standard-scale-control.ts`: the fresh controller does consume it.
+> Step 5: all five visible behaviours were inspected by hand against the preview
+> build — drag guide, resize guide, equal-spacing distance labels, and clean
+> artboards under Ctrl for both gestures. Screenshots were taken outside the
+> evidence registry, which is this step's rule, not Task 9's.
+>
+> **Correction to Step 4.** It directed that §64 retain three Task 9 limitations
+> as open: the shape/text/group cross-product, focused-test isolation and
+> layer-footer placement. All three are closed in the current tree, so writing
+> them into `requirements.md` would have recorded a falsehood. Measured instead:
+> the focused run reports 36 cases with zero `editor.spec.ts` mentions, and the
+> layer-footer case asserts placement, containment and entry-set parity and
+> passes. §64 states what the matrix covers.
+
 **Files:**
 - Modify: `docs/product/requirements.md`
 - Modify: `docs/superpowers/specs/2026-09-24-editor-behaviour-review.md`
@@ -1563,14 +1586,14 @@ git commit -m "test(editor): snapping behaviour matrix for move and resize"
 **Interfaces:**
 - Consumes: everything above. Produces: nothing.
 
-- [ ] **Step 1: Run the broad gate**
+- [x] **Step 1: Run the broad gate**
 
 ```bash
 cd src/web
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run size
 ```
 
-- [ ] **Step 2: Run the browser suite in full**
+- [x] **Step 2: Run the browser suite in full**
 
 ```bash
 npm run test:e2e
@@ -1589,7 +1612,7 @@ npx playwright test --project=phone-chromium --grep "is byte-stable at a fixed c
 
 Report any red test with its output and a base-commit run proving when it started. Do not classify a failure as pre-existing without that proof.
 
-- [ ] **Step 3: Decide the legacy fallback path explicitly**
+- [x] **Step 3: Decide the legacy fallback path explicitly**
 
 The spec's Key decisions item 3 requires a stated decision on the fork's second engine — the line/pixel snapping the fork runs when its candidate path yields nothing. Read the chain in fork `index.ts` before deciding anything, because three of its five names are easy to mis-transcribe. The real one, with the call sites:
 
@@ -1618,7 +1641,7 @@ Record **drop** in the spec's `## Key decisions to make in planning` §3, with t
 
 **A note the earlier draft of this step got wrong.** It said `getObjectBounds` "is live again" because `scaling-step-snap-guards.ts` calls it at `:5,907,969,1269`. Those call sites are real, but they are inside the same unreachable module, so `getObjectBounds` has **no live caller** either — its only references are there. Task 3's precedent applies: it deleted every dead spacing port (`SPACING_CONTEXT_SWITCH_DISTANCE`, `resolveCommonDisplayDistance` with its `CommonDisplayDistance` type, `calculateSpacingSnap`). **Decide explicitly** whether to delete `scaling/scaling-step-snap-guards.ts` (and `getObjectBounds` with it, if nothing else reads it) on that precedent, or keep it — and if you keep it, say what would make it reachable. State the decision either way. Only `getObjectExactBounds` remains the movement path's reader.
 
-- [ ] **Step 4: Close out §64 and §175**
+- [x] **Step 4: Close out §64 and §175**
 
 §64 currently reads "Pixel rulers, configurable grid/guides, additional snapping modes and resize-time snapping are not present". Resize-time snapping now is. Rewrite that paragraph to say movement and resize snapping are present; retain Task 9's known browser-verification limitations (active text/group coverage, focused-test isolation and layer-footer placement) rather than claiming matrix closure. Pixel rulers, configurable grid/guides and additional snapping modes remain review candidates.
 
@@ -1628,17 +1651,17 @@ In the behaviour review, move the **Resize-time snapping** candidate out of `## 
 
 The spec's status line already names this plan (`2026-09-25-snapping-fidelity.md:3` — "planned; see [the snapping fidelity plan]"), so there is nothing to flip there; confirm it still reads that way and move on.
 
-- [ ] **Step 5: Inspect the visible outcome**
+- [x] **Step 5: Inspect the visible outcome**
 
 Open, in the editor, and record what each shows: guides during a drag, guides during a resize, an equal-spacing guide with its distance label, Ctrl-drag and Ctrl-resize with no guides. Each is a visible behaviour; none is proven by a unit test asserting a guide array.
 
 `captureVisualReview` is gated on `VIGILIA_CAPTURE`, so a plain `--grep` run produces no file — four of these five also have no registered capture name. Run the interactive walkthrough rather than inventing names: `node packages/host/bin/vigilia.js` (build the host first), then perform each gesture by hand. A screenshot the capture gate did not ask for and the README does not register is not evidence, and adding a name for it is Task 9's job, not this one's.
 
-- [ ] **Step 6: Update STATUS.md**
+- [x] **Step 6: Update STATUS.md**
 
 Replace "Last completed change" with a 1–5 bullet summary of this commit. The line this step previously told you to resolve — "Snapping/smart-guide fidelity is under review; gap list not yet in hand" — **is not in the file**. STATUS.md's "Blockers / unverified" at the time of writing carried the `display-fabric.spec.ts` slow tests (five cases, `keeps repainting as samples arrive` among them; all pass with a longer explicit timeout, and the `60_000` per-project setting appears not to take effect), untested hook entry points, an unverified layer-panel action row, and unverified browser round-trips of text align/wrap/overflow, in-place edit + undo and run preset/override persistence. **Re-read that section rather than trusting this list**: the entrance-animation speedup landed after this text was written and moved it — `keeps repainting as samples arrive` is back under the 30s default, one case remains over it under `test.slow()`, and there is no `timeout` key in `playwright.config.ts` for a per-project `60_000` to have failed to apply. Step 2 settles the slow-test item, so update or remove whichever of those lines this work actually resolves and leave the rest. `npm run status:check`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/product/requirements.md \
@@ -1713,7 +1736,7 @@ leaking onto the canvas.
    restore.
 - [x] 4. Add the `mr` case to the resize half of the e2e matrix for a text target, so the
    browser evidence covers the handle the gap was found on.
-- [ ] 5. Task 10's gate then covers it; no separate milestone needed.
+- [x] 5. Task 10's gate then covers it; no separate milestone needed.
 
 **Landed.** Six dom cases in `text-width-resize.dom.test.ts` assert the resolved
 width; commenting out the binding turns three of them red. Two browser cases drive

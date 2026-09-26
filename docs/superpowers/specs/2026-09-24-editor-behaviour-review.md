@@ -13,15 +13,6 @@ implementation.
 
 ## Candidates
 
-### Resize-time snapping
-
-Movement snapping and smart guides are implemented, but their fidelity against
-the fork's original is under review (§64, §175): the port reportedly guides worse
-than the source in practice. Resize-time line/equal-space snapping was
-intentionally not ported because the old fork's scaling subsystem was large and
-coupled to object types Vigilia does not have. Revisit only if actual use shows
-the gap matters.
-
 ### Rulers, configurable grid/guides and pixel snapping
 
 No active requirement. Evaluate the authoring need and Fabric-native options
@@ -77,6 +68,9 @@ becomes a problem.
 - **Layer panel shape and action ownership** — decided as §172: a tree with
   per-row lock/visibility state, and one action registry behind the dock, the
   layer-panel action row and the canvas context menu.
+- **Resize-time snapping** — skipped because the fork's scaling subsystem was
+  large; only two of its modules carried real coupling to object types Vigilia
+  lacks, and those seams are strippable. Ported and verified as part of §175.
 
 ## Dropped unless a new product need appears
 
