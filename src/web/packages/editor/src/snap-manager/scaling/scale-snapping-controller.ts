@@ -29,7 +29,10 @@ import {
   type VerifiedScaleGuide,
 } from "./scale-snapping-resolver.js";
 import { ScaleSnappingRuntime } from "./scale-snapping-runtime.js";
-import { didSideScaleSwitchToSkew } from "./standard-scale-control.js";
+import {
+  didSideScaleSwitchToSkew,
+  isStandardRectangularScaleControl,
+} from "./standard-scale-control.js";
 
 /**
  * The `object:scaling` and `mouse:down` payloads, plus the fields Fabric adds.
@@ -97,6 +100,13 @@ export function createScaleSnappingController(
     if (!isScaleAction({ action: transform.action })) return null;
     if (!isSupportedScaleTarget({ target })) return null;
     if (transform.target !== target) return null;
+    // The plan is derived from Fabric's own resize handle. A control that
+    // replaced a behaviour handler or moved its own anchor is not that
+    // gesture, and snapping it would put the object somewhere the author never
+    // dragged it. Vigilia's controls manager currently leaves the handlers at
+    // Fabric's values, so this refuses nothing today; it is here so that
+    // customising a handle cannot silently defeat resize snapping.
+    if (!isStandardRectangularScaleControl({ target, transform })) return null;
 
     // The projection reads `getCoords()`, which is the cached `aCoords`. Refresh
     // it first, as the fork's session start does, so a stale cache cannot become

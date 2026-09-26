@@ -10,10 +10,12 @@ export const SNAPPING_MULTIPLIER = 1.53;
 function setup({
   controlKey = "mr",
   grouped = false,
+  replacedControl = false,
   uniformScaling,
 }: {
   controlKey?: "br" | "mr";
   grouped?: boolean;
+  replacedControl?: boolean;
   uniformScaling?: boolean;
 } = {}) {
   const canvas = new Canvas(document.createElement("canvas"));
@@ -64,6 +66,17 @@ function setup({
   } else {
     canvas.add(anchor, resized);
     canvas.setActiveObject(resized);
+  }
+  if (replacedControl) {
+    // Swapping the action handler is the smallest edit that makes a control
+    // non-standard, and it is the one the fork's guard tests for by reference.
+    // The geometry is left alone on purpose: only the behaviour differs, so a
+    // controller that only looked at numbers would still snap this one.
+    // Mutated in place — replacing the control would drop Fabric's `Control`
+    // prototype and break rendering rather than model a custom handle.
+    const control = resized.controls[controlKey];
+    if (control === undefined) throw new Error(`no ${controlKey} control`);
+    control.actionHandler = () => false;
   }
 
   const transform = {
@@ -191,8 +204,20 @@ describe("scale snapping", () => {
     snapped.destroy();
   });
 
-  it("abandons the plan when the side handle becomes a skew", () => {
-    const { snapped, resized, down, resize } = setup();
+  it("refuses a handle whose behaviour was replaced", () => {
+    const { snapped, resized, down, resize } = setup({ replacedControl: true });
+    down();
+
+    // Identical to the first case but for the control's action handler. A
+    // control that resizes its own way is not the gesture the plan was derived
+    // from, so applying the plan would move the object somewhere the author
+    // never dragged it. The step that snaps at 310 must stay at the raw 306.
+    expect(resize({}, SNAPPING_MULTIPLIER)).toBe(306);
+    expect(resized.getScaledWidth()).toBe(306);
+    snapped.destroy();
+  });
+
+  it("abandons the plan when the side handle becomes a skew", () => {    const { snapped, resized, down, resize } = setup();
     down();
 
     // Shift is Fabric's alt-action key (`altActionKey` defaults to "shiftKey"),

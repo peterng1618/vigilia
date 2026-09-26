@@ -298,3 +298,27 @@ snapping spec's status line reads `implemented` with an archive-relative plan li
 **Declined by the reviewer, not defects:** Review Focus item 4's visible half has a jsdom
 case but no browser assertion (what the plan assigned); the by-hand walkthrough is not
 reproducible from the tree; the gate numbers were taken as given.
+
+## Deferred minor closed: the standard-control guard is wired (2026-09-27)
+
+`isStandardRectangularScaleControl` was exported with zero importers, so the fork's
+"refuse a non-standard resize handle" protection was absent. Wired into
+`beginGesture` in `scale-snapping-controller.ts`, beside the other refusals — the gate
+belongs at gesture start, where `target` and `transform` are both available and a
+refused gesture never plans.
+
+TDD: a new dom case replaces the control's `actionHandler` in place and drives the
+same step that snaps at 310. RED at `expected 310 to be 306` before the guard; GREEN
+after. In-place mutation rather than a replaced control object — spreading Fabric's
+`Control` drops its prototype and the test broke rendering instead of modelling a
+custom handle.
+
+Behaviour-neutral today, and now measured rather than assumed: the 36-case browser
+matrix's resize half drives real `br` and `mr` handles and still passes, so the guard
+does not fire on a stock handle. That matters more than the controls-manager read —
+the guard compares five behaviour handlers by reference, and `controls-manager`
+overrides only render, sizes, offsets and cursor.
+
+The second deferred minor is closed too: the promoted entry now names §64 (where
+resize snapping is recorded present) and cites §175 as the constraint, matching the
+shape of its two siblings.

@@ -70,7 +70,8 @@ becomes a problem.
   layer-panel action row and the canvas context menu.
 - **Resize-time snapping** — skipped because the fork's scaling subsystem was
   large; only two of its modules carried real coupling to object types Vigilia
-  lacks, and those seams are strippable. Ported and verified as part of §175.
+  lacks, and those seams are strippable. Ported and recorded as present in §64,
+  under the fidelity constraint §175 sets.
 
 ## Dropped unless a new product need appears
 
