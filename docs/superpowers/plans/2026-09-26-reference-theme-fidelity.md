@@ -20,10 +20,10 @@ shell, Vitest, Playwright and Biome. No new dependency assumed.
 — 1672 × 941; RAM partial gauge, VRAM full ring. Documentation reference only,
 not a licensed asset to bundle in the product.
 
-**State:** Queued immediately after snapping fidelity. Spec approved for planning
-by the user's 2026-09-26 request. Plan/execution method still require review.
-Glass feasibility has not been demonstrated; Task 1 is a blocking probe, not
-permission to assume a renderer implementation. No task has started.
+**State:** Active. Task 1's probe is complete and its findings are recorded below
+and in `.superpowers/sdd/2026-09-26-reference-theme-fidelity/task-1-report.md`.
+Real clipped backdrop blur is proven achievable and cheap; Tasks 2–12 are
+unblocked. Glass is not a gate on any other task.
 
 ## Global Constraints
 
@@ -69,11 +69,78 @@ permission to assume a renderer implementation. No task has started.
 
 ---
 
+## Task 1 result — proven glass approach, bounds and budget
+
+Recorded 2026-09-27 from the probe's own measurements. Headless Chromium 153,
+20 cores, DPR 1, artboard 1672×941. **Chromium only: this repository has no WebKit
+or Firefox project, so no cross-browser claim is made.**
+
+**Approach (no new dependency).** Per panel, on Fabric's `before:render`:
+
+1. Disable `objectCaching` on the panel **and every ancestor** — a cached object
+   paints into its own cache, which has no real backdrop.
+2. Bail when any ancestor's `_cacheContext === ctx`; that is a group cache, and
+   sampling it would sample the panel's own pixels.
+3. Read `ctx.canvas` generically so one path serves the live canvas, the player's
+   StaticCanvas and `toCanvasElement` capture.
+4. Compute the device-space AABB from the sampler matrix, clamp to the painted
+   surface, skip regions ≤2px, and refuse allocations over **4,194,304 px**.
+5. Fill a bounded, reused scratch canvas with the resolved background media first
+   — it is a DOM sibling below the canvas, so canvas pixels alone miss the
+   wallpaper — then the already-composited scene pixels.
+6. Clip to the transformed rounded path, `ctx.filter = blur(rDev px)`, draw, reset.
+
+`renderer-core` still owns only the authored property and its validation; the
+lifecycle lives in `scene-fabric` and is shared by both mounts.
+
+**Bounds and budget.**
+
+- **`blurRadius` ≤ 48 artboard units.** Flat 2.5–3.7 ms from 0–48 px; 128 px costs
+  6.44 ms and 142,096 surface pixels, so the cap buys the worst case cheaply.
+- **Frame cost: +0.61 ms StaticCanvas, +0.69 ms interactive** at 1672×941.
+- Peak surface 871,200 px at 4× zoom, bounded by the painted surface.
+- **0 renders in 1000 ms idle** — no permanent repaint loop.
+
+**Correctness.** Panel detail collapses (peak 264→3, 608→60), grouped and rotated
+panels blur (563→9), pixels outside every panel are unchanged, and
+`sampledInsideCache: 0` throughout. **Sharp foreground is untouched: the text
+region is bit-for-bit identical with glass off, detached and on (peak 537 in all
+three).** Live canvas and `toCanvasElement` agree, so thumbnails and screenshots
+inherit it. A DOM `backdrop-filter` overlay leaves `toDataURL` byte-identical,
+confirming the DOM path cannot reach canvas bitmaps.
+
+**Two obligations this creates for Tasks 4 and 5.**
+
+- **Disposal is the owner's job.** After 10 mount/unmount cycles, 56 scratch
+  surfaces survived because Fabric's `dispose()` drops objects but not a
+  listener-owned canvas. The count does not grow when the owner releases, and
+  `liveSurfacePx` returns to 0 — the lifecycle is sound *only* with explicit
+  disposal.
+- **Cross-origin media taints the context**, so `getImageData` throws. Packaged
+  same-origin assets are unaffected; the failure must be caught and reported, not
+  allowed to throw mid-render.
+
+**Unproven, and owned by Task 4 as required regression cases:** the overlapping-panel
+case (the probe's panels did not actually intersect) and grouped-vs-flattened, and
+video-frame invalidation. The technique's ordering is sound by construction — the
+handler samples `ctx.canvas`, which holds everything painted so far — but that is
+inference, not measurement.
+
+**Measurement discipline Task 4 inherits.** Four bugs in the probe produced
+confident, wrong numbers before these results were trustworthy: stale object
+references after revival, a fractional inset of a `Textbox` AABB that missed the
+glyphs entirely, a mean-gradient statistic that cannot detect a surviving glyph in
+a mostly-background box, and a negative extent reported as a reading. A rendered
+measurement is evidence only when the pixels it read are provably the pixels of
+interest.
+
+---
+
 ## File/ownership map
 
 Paths below are relative to `src/web/packages/` unless rooted in `docs/`,
-`schema/` or `src/web/tests/`. Recheck at activation because snapping is still
-active. Names for new files describe responsibilities, not speculative interfaces.
+`schema/` or `src/web/tests/`. Verified at activation. Names for new files
+describe responsibilities, not speculative interfaces.
 
 | Responsibility | Owning files / proposed addition | Evidence |
 |---|---|---|
