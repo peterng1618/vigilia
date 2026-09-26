@@ -1076,6 +1076,110 @@ test.describe("Fabric editor route", () => {
     await captureVisualReview(page, testInfo, "editor-type-preset");
   });
 
+  test("paints a preset's tracking into the rendered wordmark", async ({
+    page,
+  }, testInfo) => {
+    // The one assertion the unit tests cannot make: that ink actually moves.
+    // `applyObjectTypePresets` could set `charSpacing` correctly and the canvas
+    // could still not show it.
+    //
+    // Measured as pixels rather than as the object's `width`, because the
+    // wordmark is a `Textbox` — its width is the authored box, which tracking
+    // does not change. What tracking changes is where the ink lands inside it.
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+
+    /** How far right the wordmark's ink reaches, in canvas pixels. */
+    const inkReach = (): Promise<number> =>
+      page.evaluate(() => {
+        const bridge = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                viewport: {
+                  artboardScreenRect(): {
+                    left: number;
+                    top: number;
+                    width: number;
+                    height: number;
+                  };
+                };
+                canvas: {
+                  getObjects(): Array<{
+                    id?: string;
+                    getBoundingRect(): {
+                      left: number;
+                      top: number;
+                      width: number;
+                      height: number;
+                    };
+                  }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        const object = bridge.editor.canvas
+          .getObjects()
+          .find((candidate) => candidate.id === "wordmark");
+        if (object === undefined) return -1;
+        const rect = object.getBoundingRect();
+        const view = bridge.editor.viewport.artboardScreenRect();
+        const element = document.querySelector<HTMLCanvasElement>(
+          // The lower canvas is where Fabric paints objects; the upper one
+          // carries only the selection overlay and reads as empty.
+          "#vigilia-fabric-editor canvas.lower-canvas",
+        );
+        const context = element?.getContext("2d");
+        if (element === null || context === null || context === undefined)
+          return -1;
+
+        const ratio = element.width / element.getBoundingClientRect().width;
+        const scale = view.width / 1280;
+        const left = Math.round((view.left + rect.left * scale) * ratio);
+        const top = Math.round((view.top + rect.top * scale) * ratio);
+        const width = Math.max(1, Math.round(rect.width * scale * ratio));
+        const height = Math.max(1, Math.round(rect.height * scale * ratio));
+        const pixels = context.getImageData(left, top, width, height).data;
+
+        // Brightness, not alpha: the wordmark sits on an opaque header wash, so
+        // every pixel in the band is fully covered and only the glyphs are
+        // light. The wordmark is near-white on a near-black plate.
+        let rightmost = -1;
+        for (let column = 0; column < width; column += 1) {
+          for (let row = 0; row < height; row += 1) {
+            const at = (row * width + column) * 4;
+            const luminance =
+              0.2126 * (pixels[at] ?? 0) +
+              0.7152 * (pixels[at + 1] ?? 0) +
+              0.0722 * (pixels[at + 2] ?? 0);
+            if (luminance > 140) {
+              rightmost = column;
+              break;
+            }
+          }
+        }
+        return rightmost;
+      });
+
+    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    const tracking = page.locator("[data-vigilia-type-letter-spacing]");
+
+    await tracking.fill("0");
+    await tracking.press("Tab");
+    const untracked = await inkReach();
+
+    await tracking.fill("6");
+    await tracking.press("Tab");
+    const tracked = await inkReach();
+
+    // Seven characters at 32px is 18px of extra tracking at 6px each; the
+    // difference has to be real ink rather than a resampling artefact.
+    expect(untracked).toBeGreaterThan(0);
+    expect(tracked - untracked).toBeGreaterThan(8);
+  });
+
   test("captures curated font trio controls for visual review", async ({
     page,
   }, testInfo) => {

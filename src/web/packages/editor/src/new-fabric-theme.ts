@@ -159,6 +159,9 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 12,
       weight: "400",
+      // The strapline is set all caps; without tracking its letters run
+      // together into a grey bar.
+      letterSpacing: 0.55,
       lineHeight: 1.18,
       trioRole: "body",
     },
@@ -179,6 +182,8 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 13,
       weight: "600",
+      // All-caps, for the same reason as the overline.
+      letterSpacing: 0.5,
       lineHeight: 1.18,
       trioRole: "body",
     },
@@ -229,6 +234,10 @@ const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 32,
       weight: "500",
+      // Display type: the tracking is the wordmark's character. The clock,
+      // metric, date and period below deliberately carry none — a numeral's
+      // advance is a grid cell, and tracking it breaks the column it sits in.
+      letterSpacing: 1.4,
       lineHeight: 1.18,
       trioRole: "heading",
     },
@@ -332,7 +341,10 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
           "scene",
         ),
         rect("header-wash", 0, 0, 1280, 142, "#06101a70", 0),
-        label("wordmark", 54, 38, 520, "V I G I L I A", 32, text, "500"),
+        // The wordmark is tracked by its preset, not by spaces between the
+        // letters: a space is a fixed width the font chooses, and it survives
+        // into the text the author edits and the reading a screen reader gets.
+        label("wordmark", 54, 38, 520, "VIGILIA", 32, text, "500"),
         label(
           "strapline",
           58,

@@ -2,7 +2,15 @@ import type { Globals } from "@vigilia/renderer-core";
 import { Group, type StaticCanvas } from "fabric/es";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 
-/** Reapply the first authored run's type preset to its Fabric text-object cache. */
+/**
+ * Reapply the first authored run's type preset to its Fabric text-object cache.
+ *
+ * This is the v2 path's owner of object-level type: a v2 document stores a
+ * preset *reference* per run and Fabric's own resolved text properties on the
+ * object, and the display revives the object without resolving anything. A
+ * preset field that never reaches the object here is authored, editable and
+ * invisible everywhere except the editor.
+ */
 export function applyObjectTypePresets(
   canvas: StaticCanvas,
   globals: Globals | undefined,
@@ -60,10 +68,41 @@ function applyTypes(
         ...(value.lineHeight === undefined
           ? {}
           : { lineHeight: value.lineHeight }),
+        // Fabric measures spacing in 1/1000 em, so the ratio needs the size it
+        // is being applied with. A size or spacing that cannot convert leaves
+        // the last honest value rather than becoming a plausible-looking one.
+        ...charSpacingOf(value),
       });
     }
     if (object instanceof Group) applyTypes(object.getObjects(), globals);
   }
+}
+
+type Preset = {
+  family: string;
+  size: number;
+  weight?: string | number;
+  letterSpacing?: number;
+  lineHeight?: number;
+};
+
+/**
+ * Fabric's `charSpacing` as 1/1000 em, or nothing when the preset cannot say
+ * what the spacing is.
+ *
+ * Per-character tracking is not expressible, so one run's spacing is the whole
+ * object's — the first run's, which is the run whose preset the object already
+ * takes its type from. A mixed-run object is reported, not silently narrowed;
+ * see `textShapeFor`'s `unsupported`.
+ */
+function charSpacingOf(
+  value: Preset,
+): { charSpacing: number } | Record<string, never> {
+  const { letterSpacing, size } = value;
+  if (letterSpacing === undefined) return { charSpacing: 0 };
+  if (!Number.isFinite(letterSpacing) || !Number.isFinite(size) || size <= 0)
+    return {};
+  return { charSpacing: (letterSpacing / size) * 1000 };
 }
 
 type PaintableObject = {
@@ -105,13 +144,7 @@ function isAuthoredText(value: unknown): value is AuthoredText {
   );
 }
 
-function isPreset(value: unknown): value is {
-  family: string;
-  size: number;
-  weight?: string | number;
-  letterSpacing?: number;
-  lineHeight?: number;
-} {
+function isPreset(value: unknown): value is Preset {
   return (
     typeof value === "object" &&
     value !== null &&

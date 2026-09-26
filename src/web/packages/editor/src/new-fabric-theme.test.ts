@@ -84,6 +84,40 @@ describe("the new Fabric document", () => {
     expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
   });
 
+  it("tracks its wordmark and section labels, and leaves its readings alone", () => {
+    // Typography, not a value dump. Two things an untracked starter gets wrong:
+    // a wordmark and a set of all-caps section labels read as one grey run, and
+    // a tracked clock or reading does not — a numeral's advance is a grid cell
+    // and opening it up breaks the column it sits in. So tracking is asserted
+    // for the display and label presets and refused for the reading ones.
+    const presets = createNewFabricTheme().globals?.typePresets as Record<
+      string,
+      { value: Readonly<Record<string, unknown>> }
+    >;
+    const spacingOf = (id: string): number | undefined => {
+      const value = presets[id]?.value["letterSpacing"];
+      return typeof value === "number" ? value : undefined;
+    };
+
+    // Tracked: the wordmark, the strapline and the all-caps section labels.
+    expect(spacingOf("32-500")).toBeGreaterThan(0);
+    expect(spacingOf("12-400")).toBeGreaterThan(0);
+    expect(spacingOf("13-600")).toBeGreaterThan(0);
+
+    // Untracked: the clock, the metric, the date and the period.
+    for (const id of ["70-300", "36-600", "16-400", "17-500"]) {
+      expect(spacingOf(id) ?? 0, id).toBe(0);
+    }
+
+    // And every value is a real number the converter can use, not a string
+    // that would silently become no tracking at all.
+    for (const value of Object.values(presets)) {
+      const spacing = value.value["letterSpacing"];
+      if (spacing === undefined) continue;
+      expect(Number.isFinite(spacing)).toBe(true);
+    }
+  });
+
   it("revives the gradient, SVG-derived paths, and all four chart families", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {
