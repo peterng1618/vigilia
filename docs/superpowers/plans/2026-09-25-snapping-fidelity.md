@@ -1621,7 +1621,7 @@ Record **drop** in the spec's `## Key decisions to make in planning` §3, with t
 
 - [ ] **Step 4: Close out §64 and §175**
 
-§64 currently reads "Pixel rulers, configurable grid/guides, additional snapping modes and resize-time snapping are not present". Resize-time snapping now is, and the "under review / treat as unverified" sentence is discharged. Rewrite that paragraph to say movement and resize snapping are both present and verified by the behaviour matrix, and that pixel rulers, configurable grid/guides and additional snapping modes remain review candidates.
+§64 currently reads "Pixel rulers, configurable grid/guides, additional snapping modes and resize-time snapping are not present". Resize-time snapping now is. Rewrite that paragraph to say movement and resize snapping are present; retain Task 9's known browser-verification limitations (active text/group coverage, focused-test isolation and layer-footer placement) rather than claiming matrix closure. Pixel rulers, configurable grid/guides and additional snapping modes remain review candidates.
 
 §175's body needs no change — it is the requirement this work satisfies — but it has no design link, unlike its neighbours §172–§174, which each end `Design: [<name>](../superpowers/specs/<file>.md).` Add that line to §175, pointing at `2026-09-25-snapping-fidelity.md`, in the same shape.
 
@@ -1662,7 +1662,7 @@ git commit -m "docs(product): close the snapping fidelity review"
 | 5. Fallback path decision | 10 Step 3 |
 | Ctrl / axis locks during resize | 8 |
 | Guides gated on verification | 7 |
-| Verification: multi-step, values not counts, rendered capture | 4–9, 9 Step 4 |
+| Verification: multi-step, values not counts, rendered capture | 4–8; Task 9 limitations remain recorded |
 | Non-goals (rulers, angle, size-indicator pass) | not tasked, deliberately |
 
 **Placeholder scan:** no "TBD"/"handle edge cases"/"similar to Task N". Tasks 4–6 give the fork path and the exact permitted diff instead of inlining 4,000 lines — the source is the specification there, and transcription by hand would be the riskier act. Every step that can carry code does.
