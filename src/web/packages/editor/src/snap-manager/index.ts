@@ -21,6 +21,10 @@ import {
   createScaleSnappingController,
   type ScaleSnappingEvent,
 } from "./scaling/scale-snapping-controller.js";
+import {
+  createTextWidthResizeController,
+  type TextWidthResizeEvent,
+} from "./scaling/text-width-resize-controller.js";
 import { isSupportedActiveSelection } from "./selection-eligibility.js";
 import type { GuideLine } from "./types.js";
 
@@ -140,6 +144,12 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const { canvas, bounds, errors } = options;
   const runtime = new MovementSnappingRuntime();
   const scaleController = createScaleSnappingController({ canvas, bounds });
+  // A Textbox's `ml`/`mr` are Fabric `changeWidth` controls, so that gesture
+  // arrives as `object:resizing` and never reaches the scale path's binding.
+  const textWidthController = createTextWidthResizeController({
+    canvas,
+    bounds,
+  });
 
   let target: FabricObject | undefined;
   /** The dragged object's exact start bounds, cached at gesture start. */
@@ -153,8 +163,9 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
 
   const stopGesture = (): void => {
     if (gestureActive) runtime.finishSession();
-    // Idempotent: returns without a session when the gesture was a resize.
+    // Idempotent: both return without a session when the gesture was a resize.
     scaleController.finishGesture();
+    textWidthController.finishGesture();
     gestureActive = false;
     target = undefined;
     targetStartBounds = undefined;
@@ -173,10 +184,20 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     if (lastGuides.length > 0) canvas.requestRenderAll();
   };
 
+  const textWidthRunStep = (
+    event: { readonly e?: unknown } | undefined,
+  ): void => {
+    lastGuides = textWidthController.runStep(
+      event as TextWidthResizeEvent | undefined,
+    );
+    if (lastGuides.length > 0) canvas.requestRenderAll();
+  };
+
   const startGesture = (event: { readonly e?: unknown } | undefined): void => {
     // Fabric has already built the transform for this pointerdown; the resize
     // path needs that start geometry, which `object:scaling` no longer carries.
     scaleController.startGesture(event as ScaleSnappingEvent | undefined);
+    textWidthController.startGesture(event as TextWidthResizeEvent | undefined);
     const active = canvas.getActiveObject();
     if (active === undefined) return;
     // A composed selection the fork declined must not join a gesture: a scaled
@@ -321,6 +342,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     ["mouse:down", startGesture],
     ["object:moving", runStep],
     ["object:scaling", scaleRunStep],
+    ["object:resizing", textWidthRunStep],
     ["mouse:up", stopGesture],
     ["selection:created", stopGesture],
     ["selection:updated", stopGesture],

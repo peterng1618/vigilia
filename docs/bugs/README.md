@@ -8,8 +8,4 @@ relevant bugs.
 
 ## Open
 
-- [BR-002 — A text box's side handle gets no edge snapping](open/BR-002-text-side-handle-no-edge-snapping.md)
-
-## Closed
-
 None.

@@ -586,3 +586,59 @@ for (const kind of ["shape", "text", "group"] as const) {
     });
   });
 }
+
+/**
+ * Drags a Textbox's `mr` handle. Fabric gives a text box `changeWidth` side
+ * controls, so this gesture arrives as `object:resizing` on a canonical width
+ * rather than as a scale — which is why it needs no Shift to defeat
+ * `uniformScaling`, and why the `br` cases above never exercised it.
+ */
+async function resizeTextSideTo(
+  page: Page,
+  rawRight: number,
+  options: { ctrl?: boolean } = {},
+): Promise<{ right: number; guideRows: number }> {
+  const select = await clientOfScene(page, "mover", ARTBOARD_WIDTH);
+  await page.mouse.click(select.x, select.y);
+  const handle = await objectHandleScenePoint(page, "mover", "mr");
+  const from = await sceneToClient(page, ARTBOARD_WIDTH, handle.x, handle.y);
+  const target = await sceneToClient(page, ARTBOARD_WIDTH, rawRight, handle.y);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  if (options.ctrl) await page.keyboard.down("Control");
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+  const rect = await objectRect(page, "mover");
+  const right = rect.left + rect.width;
+  const guideRows = await guideRowsAtSceneX(page, right);
+  if (options.ctrl) await page.keyboard.up("Control");
+  await page.mouse.up();
+  return { right, guideRows };
+}
+
+test.describe("text side handle", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  });
+
+  test("resizing geometry snaps a side handle onto a guide", async ({
+    page,
+  }) => {
+    await openFixture(page, "text");
+    const line = (await objectRect(page, "source")).left;
+    const result = await resizeTextSideTo(page, line - 3);
+    await expectActiveTarget(page);
+    expect(Math.abs(result.right - line)).toBeLessThan(SNAPPED_TOLERANCE);
+    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+  });
+
+  test("resizing a side handle keeps raw geometry under Ctrl", async ({
+    page,
+  }) => {
+    await openFixture(page, "text");
+    const line = (await objectRect(page, "source")).left;
+    const result = await resizeTextSideTo(page, line - 3, { ctrl: true });
+    await expectActiveTarget(page);
+    expect(Math.abs(result.right - line)).toBeGreaterThan(SNAPPED_TOLERANCE);
+    expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT);
+  });
+});

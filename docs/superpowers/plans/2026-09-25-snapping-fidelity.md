@@ -1,11 +1,10 @@
 # Snapping Fidelity Implementation Plan
 
 > **Active plan.** `STATUS.md` names this plan as the one active plan; the
-> viewport-and-mechanics plan that preceded it is archived. Tasks 1, 3, 4, 5 and
-> 6 are **landed**, each marked below with its commits;
-> Tasks 2, 7, 8, 9 and 10 remain. Landed tasks are kept whole as the record of
-> what was built — do not re-dispatch one. The unticked boxes are the resume
-> signal: only Tasks 2, 7, 8, 9 and 10 carry them.
+> viewport-and-mechanics plan that preceded it is archived. Tasks 1–9 and 11 are
+> **landed**, each marked below with its commits; Task 10 remains. Landed tasks
+> are kept whole as the record of what was built — do not re-dispatch one. The
+> unticked boxes are the resume signal: only Task 10 carries them.
 > Resume with `superpowers:subagent-driven-development` or
 > `superpowers:executing-plans`, one task at a time.
 
@@ -1646,6 +1645,84 @@ git add docs/product/requirements.md \
   docs/superpowers/specs/2026-09-24-editor-behaviour-review.md STATUS.md
 git commit -m "docs(product): close the snapping fidelity review"
 ```
+
+---
+
+### Task 11: A text box's side handle snaps
+
+**Files:**
+- Create: `src/web/packages/editor/src/snap-manager/scaling/text-width-resize-projection.ts`
+- Create: `src/web/packages/editor/src/snap-manager/scaling/text-width-resize-measurer.ts`
+- Create: `src/web/packages/editor/src/snap-manager/scaling/text-width-resize-step.ts`
+- Create: `src/web/packages/editor/src/snap-manager/scaling/text-width-resize-controller.ts`
+- Modify: `src/web/packages/editor/src/snap-manager/index.ts`
+- Create: `src/web/packages/editor/src/snap-manager/text-width-resize.dom.test.ts`
+- Modify: `src/web/tests/e2e/snapping.spec.ts`
+- Modify: `docs/bugs/README.md`, `docs/bugs/closed/BR-002-text-side-handle-no-edge-snapping.md`
+
+**Interfaces:**
+- Consumes: `ScaleSnappingRuntime` (`resolveScalePlan`/`refineScalePlan`/`verifyScalePlan`),
+  `createScaleGestureBaseline`, `createScaleSnapCandidates`, `createScaleProjection`/
+  `resolveScaleProjection`, `getObjectExactBounds`, `collectSnapSources` — all already
+  landed. Produces: verified guides for the `object:resizing` gesture.
+
+**Outcome.** Resizing a Textbox by `ml`/`mr` snaps the same way a shape or group
+resizes by the same handle. This closes [BR-002](../../bugs/closed/BR-002-text-side-handle-no-edge-snapping.md).
+
+**Why the gap exists.** Fabric gives a Textbox `changeWidth` side controls
+(`createResizeControls`, `actionName: RESIZING`) instead of the `scaleX` controls a
+shape gets, because a text box must re-wrap rather than stretch. So the gesture fires
+`object:resizing` with `transform.action === "resizing"`, mutates canonical `width`,
+and never reaches `object:scaling` — where `isScaleAction` in
+`scale-snapping-controller.ts` is the only gate. `applyEditorControls` hides `mt`/`mb`
+(vertical text resize would fight Textbox's height derivation), so `ml`/`mr` are the
+whole of the gap.
+
+**Constraints.**
+
+- The canonical variable is the Textbox's **width**, not a scale multiplier. Do not
+  convert the gesture to `scaleX`: that would change the persisted scene and lose
+  re-wrap.
+- The fork's four `text-width-resize-*` modules are **not** a transcription. They read
+  `EditorTextbox`/`BackgroundTextbox` (`autoExpand`, `dynamicMinWidth`, padding and
+  corner radii) and publish guides through `editor.snappingManager`. Vigilia has plain
+  `fabric/es` `Textbox` and returns guides. Strip that coupling; keep the algorithm
+  and thresholds. The fork stays read-only.
+- Fabric applies the resize before `object:resizing` fires, so the raw step value is
+  `textbox.width` as Fabric left it — the same `fabric-preview` contract the
+  rectangular path uses. Do not re-derive the pointer width with `getLocalPoint`.
+- Top/bottom stay moving edges: a width change re-wraps the text, so the vertical
+  edges genuinely move and the fork snaps them. Reaching a chosen vertical guide needs
+  a width, and width→height is a step function of line wrapping, so refine through
+  `refineScalePlan` against an off-canvas measurement rather than dropping the axis.
+- Decline, do not guess: flipped, skewed or `path`-bound text, a non-`Textbox` target,
+  a grouped or `ActiveSelection` target, and a non-side control. Same guards the
+  rectangular path applies, so a refused gesture simply does not snap.
+
+**Failure modes.** Guides published for a width that was not applied (verification
+must read the live object's exact bounds, never the plan's). A held guide that never
+releases (the shared `ScaleSnapThresholds` already carries this). A measurement clone
+leaking onto the canvas.
+
+**Verification.**
+
+- [x] 1. A dom test that drives a real `object:resizing` step and fails when the `resizing`
+   binding is removed — assert the final width **and** the verified guides, not counts.
+- [x] 2. A dom test that a `path`-bound or grouped Textbox is refused rather than snapped.
+- [x] 3. Prove it can fail: drop the `object:resizing` binding, rerun, watch the test go red,
+   restore.
+- [x] 4. Add the `mr` case to the resize half of the e2e matrix for a text target, so the
+   browser evidence covers the handle the gap was found on.
+- [ ] 5. Task 10's gate then covers it; no separate milestone needed.
+
+**Landed.** Six dom cases in `text-width-resize.dom.test.ts` assert the resolved
+width; commenting out the binding turns three of them red. Two browser cases drive
+the `mr` handle (geometry, Ctrl), and the file's 36 cases pass; with the binding
+removed and the editor rebuilt, the geometry case fails. The guides themselves are
+asserted as rendered pixels by those browser cases, not by a guide array — the dom
+layer proves the width, the browser proves the line. The fork's rotation
+coupling is carried over rather than dropped: `calcTransformMatrix()`'s Y column
+makes the vertical edges real moving edges on a rotated text box.
 
 ---
 

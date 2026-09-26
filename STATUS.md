@@ -11,7 +11,7 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-25-snapping-fidelity.md` —
-  Tasks 1–9 landed; Task 10 remains.
+  Tasks 1–9 and 11 landed; Task 10 remains.
 - **Completed plan:** `2026-09-26-clock-and-theme-locale.md` — all tasks,
   whole-branch review, and runtime-text-layout repair closed.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
@@ -23,23 +23,31 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Last completed change
 
-- Moved the shared editor helpers to `tests/e2e/editor-canvas.ts`; a filtered
-  snapping run now collects 34 cases from one file instead of stopping discovery.
-- Ran the active-target matrix: moving and resizing geometry, multi-step re-plan,
-  release, no-guide and Ctrl against a shape, a text object and a group, plus
-  moving equal-spacing. The resize gesture is a Shift-held `br` corner drag,
-  because the editor leaves Fabric's `uniformScaling` on and a Textbox's side
-  handle is not a scale action.
-- Strengthened the layer-action case: active bridge object, dock visibility,
-  footer below the tree and inside the panel, footer entry set equal to the dock's.
-- Reintroduced the `83248dc` per-gesture marker: 20 of 21 cases fail, so the
-  matrix catches the regression that shipped once. Restored and green.
-- Recorded the text side-handle gap as [BR-002](docs/bugs/open/BR-002-text-side-handle-no-edge-snapping.md).
+- Closed [BR-002](docs/bugs/closed/BR-002-text-side-handle-no-edge-snapping.md): a
+  text box's `ml`/`mr` handle now snaps. Fabric gives a text box `changeWidth`
+  side controls, so that gesture fires `object:resizing` on a canonical `width`
+  and never reached the scale path's `object:scaling` binding.
+- Added the text width path under `snap-manager/scaling/`. It runs on the shared
+  `ScaleSnappingRuntime`, so hold, release and the Ctrl escape hatch are the same
+  code the scale path uses. The fork's fork-specific coupling is stripped; the
+  algorithm and thresholds are not.
+- The port is the fork's own: `text-width-resize-projection.ts` and
+  `text-width-resize-interaction-controller.ts` already modelled exactly `ml`/`mr`.
+  Ruling the handle out would have been a documented regression against §175.
+- Six dom cases assert the resolved width; removing the `object:resizing` binding
+  turns three of them red. Two browser cases drive `mr` (geometry, Ctrl) and the
+  matrix's 36 cases pass; with the binding removed and the editor rebuilt, the
+  geometry case fails.
+- Removed the ten leftover `.claude/worktrees/agent-*` directories from earlier
+  subagents — six registered worktrees and four that were never registered. Each
+  one's uncommitted state was saved to
+  `%TEMP%/vigilia-worktree-salvage/` first; all of it was a deliberate mutation
+  break, a superseded helper-extraction variant, or a completed investigation
+  note, and every branch survived.
 
 ## Next
 
-1. Run Task 10's quality gate from a workspace without nested agent worktrees;
-   current lint fails on their nested Biome roots.
+1. Run Task 10's quality gate; the nested-worktree blocker is gone.
 2. Record the layer-action acceptance result in
    `2026-09-25-editor-ui-polish.md` during Task 10 close-out.
 3. Tick the landed Tasks 6–8 plan steps during Task 10 close-out.
@@ -47,7 +55,6 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Blockers / unverified
 
-- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; preserve or discard each worktree before removal.
 - Whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction is
   undocumented. The `agent_id` guard is defense-in-depth, not a demonstrated fix.
 - No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
