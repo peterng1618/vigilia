@@ -36,6 +36,7 @@ If implementation moves an owner, update this map in the same change.
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | The Style tab (resolved references, document globals) | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
+| The languages an author may pick | `editor/src/theme-languages.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
 | The consumer's clock zone | `host/src/settings/display.ts` |
 | Theme thumbnails (store and route) | `host/src/themes/thumbnails.ts` |
@@ -107,7 +108,9 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
 | Device-assignment resolution handed to providers | `host/src/server.ts` (`publishAssignment`) |
 | Clock/date provider | `host/src/providers/clock.ts` |
-| Instant reading, author format tokens and the zone list | `renderer-core/src/scene/datetime-format.ts` |
+| Instant reading, offsets and the zone list | `renderer-core/src/scene/datetime/instant.ts` |
+| The author's date/time format tokens | `renderer-core/src/scene/datetime/format.ts` |
+| Locale-spelled month, weekday and day-period names | `renderer-core/src/scene/datetime/names.ts` |
 | Measurement conversion for display, and which families convert | `renderer-core/src/scene/measurement.ts` |
 | The preference a display reads at load | `player/src/theme-loader.ts` (`loadDisplayPreferences`) |
 | Consumer device-selection page | `host/public/settings.html` |

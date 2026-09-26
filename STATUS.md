@@ -13,44 +13,30 @@ in rather than in two English tables.
 ## Active work
 
 - **Active plan:** `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md` —
-  9 tasks. A theme declares its language once in `metadata.locale`, required on v2,
-  and the clock spells its names from `Intl` in it.
-- **Next up:** Task 3 (declare `metadata.locale` on the theme). Nothing is in
-  flight.
-- **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed
-  (Task 7's review: 0 Critical, 3 Important, 4 Minor, all actionable findings
-  re-reviewed as addressed); Tasks 8, 9, 10 remain.
+  implemented across all 9 tasks; whole-branch review remains.
+- **Next up:** whole-branch review, then the v1-removal spec recorded below.
+- **Queued plan:** `2026-09-25-snapping-fidelity.md` — Tasks 1–7 landed and closed;
+  Tasks 8, 9, 10 remain.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents carry
   no metadata, and absent means `en` there.
-- **Archived:** `archive/2026-09-25-editor-viewport-and-mechanics.md` on its full
-  Task 11 gate; `archive/2026-09-25-editor-ui-polish.md` on its fix round 2
-  re-review, with one item carried (browser coverage for the layer panel's bottom
-  action row — it rides in snapping Task 9).
-- **Queued verification:** `2026-09-24-author-journey.md` Task 6, after the active
-  plan's browser evidence.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md).
 
 ## Last completed change
 
-- Month, weekday and day-period names now come from `Intl.DateTimeFormat` in a
-  declared language, replacing the `WEEKDAYS`, `MONTHS` and `WEEKDAY_INDEX`
-  English tables.
-- `scene/datetime/names.ts` exports `isLocaleName`, `DEFAULT_LOCALE`,
-  `monthName`, `weekdayName` and `dayPeriod`, caching one formatter per language
-  and kind; `formatInstant` takes a trailing `locale` defaulting to `en`.
-- Only `MMMM`, `MMM`, `dddd`, `ddd`, `A` and `a` consult the language; every
-  numeric token stays ASCII.
-- `partsInZone` derives the weekday from the calendar date instead of requesting
-  it from `Intl`.
+- Recorded `metadata.locale` as render-affecting theme language in architecture,
+  product requirements and ownership docs.
+- Split datetime ownership into instant/zone, format tokens and localized names;
+  recorded editor language-list ownership.
+- Marked clock-and-theme-locale spec implemented and kept status within 70 lines.
 
 ## Next
 
-1. Execute the active plan's 9 tasks, then its whole-branch review.
+1. Review the completed clock-and-theme-locale branch.
 2. Draft the v1-removal spec recorded in Active work.
-3. Then the queue: snapping Tasks 8, 9 and 10 with its close-out; author-journey
-   Task 6; authoring-and-consumer-polish Task 4; settings-scope; consumer-journey
-   Tasks 5+6; theme-thumbnails; authoring-time-run-placeholders.
+3. Then the queue: snapping Tasks 8, 9 and 10; author-journey Task 6;
+   authoring-and-consumer-polish Task 4; settings-scope; consumer-journey Tasks 5+6;
+   theme-thumbnails; authoring-time-run-placeholders.
 
 ## Blockers / unverified
 

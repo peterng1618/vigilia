@@ -1,6 +1,6 @@
 # Clock, and the theme's language
 
-- **Status:** active — `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md`.
+- **Status:** implemented — `docs/superpowers/plans/2026-09-26-clock-and-theme-locale.md`.
 - **Supersedes:** `2026-09-24-clock-provider.md`, whose "month and weekday names
   are English and the consumer's locale is an unanswered question" is the
   decision this reverses.

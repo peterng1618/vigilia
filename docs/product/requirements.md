@@ -55,7 +55,7 @@ dashboard theme globals.
 Each frontend package keeps its visible copy in a typed `ui-copy.ts`: labels,
 dialogs, notices and user-facing errors, excluding authored theme text,
 telemetry values and developer errors. The editor and player are migrated;
-host/player shell styling is not. Multiple locales are not in scope.
+host/player shell styling is not. Multiple locales are not in scope for product UI copy; a theme declares the language its own text is written in.
 
 ## §43 — Feasibility
 
