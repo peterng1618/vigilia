@@ -60,4 +60,8 @@ Result: `2 passed (7.5s)`.
 
 Existing movement fixture commit: `e8c136d` — `test(editor): strengthen movement snapping mutation fixture`.
 
-`be9ab21` — report and movement fixture evidence; follow-up commit records resize fixture correction and final matrix proof.
+`e8c136d` — `test(editor): strengthen movement snapping mutation fixture`.
+
+`be9ab21` — `docs(editor): record snapping mutation evidence`.
+
+`af3c29f` — `test(editor): complete snapping mutation proof` (resize fixture correction, final report, full matrix evidence).
