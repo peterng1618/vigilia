@@ -189,18 +189,44 @@ Recorded so they are not re-raised:
 
 ## Acceptance
 
+Landed by `5b9b386`, with fix rounds `2929f87` and `7ae88e4`. Each item below carries the evidence
+that was actually observed; "rendered" means measured in the built bundle in a real browser.
+
 - A group's children are indented and collapsible, and selection still resolves a
-  child through its owning group.
-- Lock and visibility icons appear on every row and reflect effective state.
+  child through its owning group. — jsdom plus browser; the disclosure is a hand-rolled
+  `aria-expanded` button (see the ruling above).
+- Lock and visibility icons appear on every row and reflect effective state. — jsdom.
 - Object actions appear in the layer panel's bottom row, not per row, and render
-  from the same registry the canvas dock uses.
-- Changing registry eligibility changes both surfaces identically.
+  from the same registry the canvas dock uses. — jsdom. **Browser coverage for the row's
+  entry set is still open**; it was deferred behind `editor.spec.ts` and is carried by the
+  snapping plan's behaviour matrix.
+- Changing registry eligibility changes both surfaces identically. — jsdom, and the
+  per-action arrange gate was verified rendered (`arrangeEligible` at the owner,
+  `shell-layout.tsx` per action) after the final review found the toolbar advertising an
+  action the owner refused.
 - Dragging a row restacks it and the new order survives save/reopen; a
-  cross-group drop is refused without changing order.
-- Renaming a layer survives save/reopen through `editorMetadata`.
+  cross-group drop is refused without changing order. — jsdom.
+- Renaming a layer survives save/reopen through `editorMetadata`. — jsdom.
 - The inspector shows geometry as paired rows, and document panels no longer
-  place one full-width control per row.
+  place one full-width control per row. — **rendered.** Position and Size are both
+  254 × 30px with each pair's inputs sharing a top. This item was recorded as met once
+  before on jsdom evidence and was **not** met: jsdom performs no layout, so a wrapped row
+  and a one-line row return the same element. The rendered measurement found the Size row
+  66px tall with its inputs at two tops; narrowing the labels to `W`/`H` (the artboard
+  panel's existing idiom) fixed it. A browser case now asserts the two inputs' bounding-box
+  tops are equal, and was shown failing with the pre-fix labels restored.
 - Every interactive control has a visible focus ring, and no motion runs under
-  `prefers-reduced-motion: reduce`.
+  `prefers-reduced-motion: reduce`. — browser.
 - Full gate: `format:check`, `lint`, `typecheck`, `test`, `build`, `size`, and the
-  local browser suite; visible behaviour confirmed by rendered inspection.
+  local browser suite; visible behaviour confirmed by rendered inspection. — **run.**
+  `npx vitest run` 1456 passed / 405 files; `format:check` and `lint` clean (339 files);
+  `npm run typecheck` exit 0 with 0 errors; `npm run build` exit 0; `npm run size` PASS
+  (JS 283.9 KB / 400 KB); full browser suite **116 passed, 57 skipped, 0 failed**. One
+  `display-fabric.spec.ts` case ("is byte-stable at a fixed clock on one platform") fails
+  intermittently under parallel load in an untouched file and package; it was reproduced
+  with the change stashed and passes alone, so it is classified pre-existing on a
+  differential proof rather than a base-commit run. If it recurs, run it at a base
+  sha before recording it as pre-existing again.
+
+**One acceptance item is carried, not met:** browser coverage for the layer panel's bottom
+action row. It is not claimed as verified here.
