@@ -272,6 +272,12 @@ export interface ThemeMetadata {
   readonly version?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
+  /**
+   * The language this theme's text is written in, as a BCP 47 tag. Required on
+   * v2 envelopes: text a theme shows belongs to the theme's language, and a
+   * theme library filters on it. Absent means English when a v1 document is read.
+   */
+  readonly locale?: string;
 }
 
 export interface ThemeDocument {

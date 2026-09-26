@@ -91,6 +91,7 @@ const KNOWN_KEYS = {
     "version",
     "createdAt",
     "updatedAt",
+    "locale",
   ],
   artboard: [
     "width",

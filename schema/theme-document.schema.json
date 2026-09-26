@@ -32,7 +32,8 @@
         "description": { "type": "string", "maxLength": 2000 },
         "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "locale": { "type": "string", "maxLength": 64 }
       }
     },
     "paletteReference": {

@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { validateFabricThemeEnvelope } from "./fabric-envelope-validate.js";
+import {
+  type FabricEnvelopeValidationResult,
+  validateFabricThemeEnvelope,
+} from "./fabric-envelope-validate.js";
+import type { ValidationIssue } from "./validate.js";
+
+function withMetadata(
+  base: Record<string, unknown>,
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  return { ...base, metadata };
+}
+
+function withoutKey(
+  base: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const copy = { ...base };
+  delete copy[key];
+  return copy;
+}
+
+function issuesOf(
+  result: FabricEnvelopeValidationResult,
+): readonly ValidationIssue[] {
+  return result.ok ? [] : result.issues;
+}
 
 function envelope(): Record<string, unknown> {
   return {
@@ -579,5 +605,51 @@ describe("Fabric theme envelope validation", () => {
         }),
       ]),
     });
+  });
+
+  it("requires the theme to declare the language its text is written in", () => {
+    // The realistic case: every v2 theme already has a metadata bag with a name
+    // and author, so the refusal that matters is a bag without `locale` in it —
+    // not a document missing metadata entirely. Both paths are pinned, since the
+    // validator handles them separately.
+    const withoutLocale = withMetadata(envelope(), {
+      name: "Fixture",
+      author: "Vigilia",
+    });
+
+    const missing = validateFabricThemeEnvelope(withoutLocale);
+    expect(missing.ok).toBe(false);
+    // A refusal that names the field, not a crash: a theme saved before this
+    // change must fail legibly.
+    expect(issuesOf(missing)).toContainEqual(
+      expect.objectContaining({ path: "/metadata/locale" }),
+    );
+
+    const withoutMetadata = withoutKey(envelope(), "metadata");
+    expect(issuesOf(validateFabricThemeEnvelope(withoutMetadata))).toContainEqual(
+      expect.objectContaining({ path: "/metadata/locale" }),
+    );
+  });
+
+  it("refuses a language this runtime cannot render", () => {
+    for (const locale of ["en_US", "xx-YY"]) {
+      const result = validateFabricThemeEnvelope(
+        withMetadata(envelope(), { name: "Fixture", locale }),
+      );
+
+      expect(result.ok).toBe(false);
+      expect(issuesOf(result)).toContainEqual(
+        expect.objectContaining({ path: "/metadata/locale" }),
+      );
+    }
+  });
+
+  it("accepts a theme that declares a language but binds no clock", () => {
+    // The language is a fact about the document, not a demand that it show a clock.
+    const result = validateFabricThemeEnvelope(
+      withMetadata(envelope(), { name: "Fixture", locale: "ja" }),
+    );
+
+    expect(result.ok).toBe(true);
   });
 });

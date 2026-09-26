@@ -1,4 +1,5 @@
 import { isTimeZoneName } from "../scene/datetime/instant.js";
+import { isLocaleName } from "../scene/datetime/names.js";
 import {
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
@@ -79,6 +80,7 @@ export function validateFabricThemeEnvelope(
     );
   }
   issues.push(...sharedSemanticIssues(input));
+  themeLanguage(input["metadata"], issues);
   v2Globals(input["globals"], issues);
   artboardPaintReferences(input["artboard"], input["globals"], issues);
   paletteNone(input["globals"], issues);
@@ -100,6 +102,48 @@ export function validateFabricThemeEnvelope(
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+/**
+ * A v2 theme states the language its text is written in, so its clock reads in
+ * the language its author wrote it in and a library can filter on the fact. A
+ * tag that is malformed, or well formed and unsupported, is refused here rather
+ * than rendered as English behind the author's back.
+ */
+function themeLanguage(metadata: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(metadata)) {
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/locale",
+        "A theme must declare its language, so its text reads in the language it was written in.",
+      ),
+    );
+    return;
+  }
+
+  const locale = metadata["locale"];
+
+  if (locale === undefined) {
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/locale",
+        "A theme must declare its language, so its text reads in the language it was written in.",
+      ),
+    );
+    return;
+  }
+
+  if (typeof locale !== "string" || !isLocaleName(locale)) {
+    issues.push(
+      issue(
+        "invalid-enum",
+        "/metadata/locale",
+        `locale "${String(locale)}" is not a language this runtime can render.`,
+      ),
+    );
+  }
 }
 
 function fontPresetFaces(
