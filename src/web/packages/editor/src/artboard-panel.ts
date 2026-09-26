@@ -1,11 +1,14 @@
 import {
   type Artboard,
   type AssetReference,
+  formatInstant,
   type Globals,
+  instantIn,
   MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
 import { linkedPair } from "./editor-shell/controls/linked-pair.js";
+import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
 import { uiCopy } from "./ui-copy.js";
 
 export interface ArtboardPanel {
@@ -42,6 +45,9 @@ export function createArtboardPanel(
   versionLabel.textContent = uiCopy.panels.releaseVersion;
   const version = document.createElement("output");
   version.dataset["vigiliaThemeVersion"] = "";
+  const languageSample = document.createElement("output");
+  languageSample.dataset["vigiliaThemeLanguageSample"] = "";
+  const language = selectInput(uiCopy.panels.language, "vigiliaThemeLanguage");
   const fit = selectInput(uiCopy.panels.previewFit, "vigiliaArtboardFitMode");
   for (const fitMode of ["contain", "cover"] as const) {
     const option = document.createElement("option");
@@ -67,6 +73,8 @@ export function createArtboardPanel(
   refreshMediaOptions(media.select, options.assets);
   refreshPaletteOptions(background.select, globals);
   refreshPaletteOptions(bars.select, globals);
+  refreshLanguageOptions(language.select);
+  language.select.value = "en";
   let current: Artboard;
   let currentMetadata: ThemeMetadata | undefined;
   const submitArtboard = (width: number, height: number): void => {
@@ -140,6 +148,7 @@ export function createArtboardPanel(
       name: name.input.value,
       author: author.input.value,
       description: description.input.value,
+      locale: language.select.value,
     });
     currentMetadata = next;
     options.onMetadataChange?.(next);
@@ -152,15 +161,24 @@ export function createArtboardPanel(
   name.input.addEventListener("change", submitMetadata);
   author.input.addEventListener("change", submitMetadata);
   description.input.addEventListener("change", submitMetadata);
+  // Registered before submitMetadata so the sample shows the new words in the
+  // same turn the metadata is submitted.
+  language.select.addEventListener("change", () => {
+    refreshLanguageSample(languageSample, language.select.value);
+  });
+  language.select.addEventListener("change", submitMetadata);
   root.append(
     heading,
     fieldRow(name),
     fieldRow(author),
     fieldRow(description),
+    language.row,
     versionLabel,
     version,
     ...rows,
   );
+  // The sample belongs to the language row, not beside it.
+  language.row.append(languageSample);
   host.append(root);
 
   /** A select change carries no dimensions, so it re-commits the pair's
@@ -187,6 +205,9 @@ export function createArtboardPanel(
     author.input.value = metadata?.author ?? "";
     description.input.value = metadata?.description ?? "";
     version.value = metadata?.version ?? "";
+    refreshLanguageOptions(language.select, metadata?.locale);
+    language.select.value = metadata?.locale ?? "en";
+    refreshLanguageSample(languageSample, language.select.value);
   };
 
   return {
@@ -272,6 +293,35 @@ function refreshMediaOptions(
 function omitBackgroundMedia(artboard: Artboard): Artboard {
   const { backgroundMedia: _backgroundMedia, ...withoutMedia } = artboard;
   return withoutMedia;
+}
+
+/**
+ * The fifteen curated languages, plus the document's own when it declares one
+ * outside them: a hand-edited or store-downloaded theme must not be silently
+ * rewritten to English by the panel that displays it.
+ */
+function refreshLanguageOptions(
+  select: HTMLSelectElement,
+  declared?: string,
+): void {
+  select.replaceChildren();
+  const tags =
+    declared === undefined || THEME_LANGUAGES.includes(declared)
+      ? THEME_LANGUAGES
+      : [...THEME_LANGUAGES, declared];
+
+  for (const tag of tags) {
+    select.append(new Option(languageLabel(tag), tag));
+  }
+}
+
+/** The words this language actually spells, for the instant a clock would read. */
+function refreshLanguageSample(
+  sample: HTMLOutputElement,
+  locale: string,
+): void {
+  sample.textContent =
+    formatInstant(instantIn(Date.now()), "MMMM dddd", undefined, locale) ?? "";
 }
 
 function refreshPaletteOptions(

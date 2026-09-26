@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
+import { instantIn, parseInstant } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
+
+/** The platform's own spelling of a date's month and weekday, at UTC — the
+    convention `names.ts` formats at, derived here without importing it, so a
+    broken name function cannot make both sides of an assertion wrong together. */
+function spelledAt(parts: NonNullable<ReturnType<typeof parseInstant>>) {
+  const at = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  return (locale: string, options: Intl.DateTimeFormatOptions): string =>
+    new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(at);
+}
 
 describe("artboard panel", () => {
   it("shows and returns valid artboard properties", () => {
@@ -132,7 +142,10 @@ describe("artboard panel", () => {
     )!;
     name.value = "Living Room";
     name.dispatchEvent(new Event("change"));
-    expect(metadataChange).toHaveBeenLastCalledWith({ name: "Living Room" });
+    expect(metadataChange).toHaveBeenLastCalledWith({
+      name: "Living Room",
+      locale: "en",
+    });
 
     const source = panel.root.querySelector<HTMLSelectElement>(
       "[data-vigilia-background-asset]",
@@ -168,8 +181,65 @@ describe("artboard panel", () => {
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "After",
       version: "1.2.3",
+      locale: "en",
     });
     expect(version.tagName).toBe("OUTPUT");
     expect(version.value).toBe("1.2.3");
+  });
+
+  it("writes the chosen language into the theme's metadata", () => {
+    const metadataChange = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
+      onMetadataChange: metadataChange,
+    });
+    panel.render(
+      { width: 1280, height: 720 },
+      { name: "Before", locale: "en" },
+    );
+
+    const language = panel.root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-theme-language]",
+    )!;
+    expect(language.value).toBe("en");
+
+    const vietnamese = Array.from(language.options).find(
+      (option) => option.value === "vi",
+    );
+    // The list must actually offer it; a `select.value = "vi"` with no matching
+    // option silently reads back as "" and the test would pass vacuously.
+    expect(vietnamese).toBeDefined();
+    language.value = "vi";
+    language.dispatchEvent(new Event("change"));
+
+    expect(metadataChange).toHaveBeenLastCalledWith({
+      name: "Before",
+      locale: "vi",
+    });
+
+    // The spec's "resolved names shown live": the author sees the words the
+    // language actually spells, not only its English label.
+    const sample = panel.root.querySelector<HTMLOutputElement>(
+      "[data-vigilia-theme-language-sample]",
+    )!.textContent!;
+    const spell = spelledAt(parseInstant(instantIn(Date.now()))!);
+    expect(sample).toContain(spell("vi", { month: "long" }));
+    expect(sample).toContain(spell("vi", { weekday: "long" }));
+    expect(sample).not.toContain(spell("en", { month: "long" }));
+  });
+
+  it("keeps a declared language that is outside the list", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render(
+      { width: 1280, height: 720 },
+      { name: "Hand-edited", locale: "cy" },
+    );
+
+    const language = panel.root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-theme-language]",
+    )!;
+
+    // Welsh is not one of the fifteen, but a document declaring it must not be
+    // silently rewritten to English by the panel that displays it.
+    expect(language.value).toBe("cy");
   });
 });

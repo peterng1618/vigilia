@@ -151,6 +151,7 @@ export const uiCopy = {
     assets: "Assets",
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
+    language: "Language",
     previewFit: "Preview fit",
     backgroundMedia: "Background media",
     mediaFit: "Media fit",

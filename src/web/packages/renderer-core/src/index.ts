@@ -155,6 +155,7 @@ export {
   knownTimeZones,
   parseInstant,
 } from "./scene/datetime/instant.js";
+export { isLocaleName } from "./scene/datetime/names.js";
 export {
   GENERIC_FAMILIES,
   isGenericFamily,
