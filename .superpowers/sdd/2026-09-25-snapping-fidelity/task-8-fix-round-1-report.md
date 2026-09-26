@@ -57,7 +57,9 @@ Proof checks:
 
 ## Commit
 
-`c69d740` — `test(editor): prove Ctrl resize escapes snapping`
+`6ee37be` — `test(editor): prove Ctrl resize escapes snapping` (cherry-pick of isolated-worktree `c69d740`).
+
+`6d8d9ac` — `docs(editor): record Ctrl resize proof` (cherry-pick of isolated-worktree `e1f0a05`).
 
 ## Concerns
 
