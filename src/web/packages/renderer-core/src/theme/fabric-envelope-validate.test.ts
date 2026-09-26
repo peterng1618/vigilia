@@ -32,6 +32,7 @@ function envelope(): Record<string, unknown> {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "theme",
+    metadata: { locale: "en" },
     artboard: { width: 400, height: 300 },
     bindings: { chart: [{ id: "cpu", semanticKey: "cpu.load", precision: 0 }] },
     scene: {
@@ -127,7 +128,7 @@ describe("Fabric theme envelope validation", () => {
     expect(
       validateFabricThemeEnvelope({
         ...envelope(),
-        metadata: { version: "1.2.3" },
+        metadata: { version: "1.2.3", locale: "en" },
         artboard: {
           width: 400,
           height: 300,
@@ -141,7 +142,7 @@ describe("Fabric theme envelope validation", () => {
   it("rejects malformed versions and invalid background-media references", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { version: "v1.2.3" },
+      metadata: { version: "v1.2.3", locale: "en" },
       artboard: {
         width: 400,
         height: 300,
@@ -248,7 +249,7 @@ describe("Fabric theme envelope validation", () => {
   it("keeps shared semantics valid while refusing obsolete GIF assets", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { name: "Valid", unexpected: true },
+      metadata: { name: "Valid", locale: "en", unexpected: true },
       assets: [{ id: "animated", kind: "gif", path: "assets/animated.gif" }],
       editorMetadata: ["not-an-object"],
     });
@@ -626,9 +627,9 @@ describe("Fabric theme envelope validation", () => {
     );
 
     const withoutMetadata = withoutKey(envelope(), "metadata");
-    expect(issuesOf(validateFabricThemeEnvelope(withoutMetadata))).toContainEqual(
-      expect.objectContaining({ path: "/metadata/locale" }),
-    );
+    expect(
+      issuesOf(validateFabricThemeEnvelope(withoutMetadata)),
+    ).toContainEqual(expect.objectContaining({ path: "/metadata/locale" }));
   });
 
   it("refuses a language this runtime cannot render", () => {

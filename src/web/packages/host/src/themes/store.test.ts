@@ -15,7 +15,7 @@ function createValidEmptyPackage(
     fabricVersion: "7.4.0",
     id,
     artboard: { width: 1920, height: 1080 },
-    metadata: { name },
+    metadata: { name, locale: "en" },
     scene: { version: "7.4.0", objects: [] },
   };
   const result = writeThemePackage({ envelope, assets: {} });

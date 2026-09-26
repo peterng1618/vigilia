@@ -276,6 +276,9 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       author: "Vigilia",
       description:
         "A v2 scene exercising supported Fabric primitives and every chart family.",
+      // The editor's own copy is English, so a new theme starts where its
+      // author does rather than guessing from the browser.
+      locale: "en",
     },
     artboard: {
       width: 1280,

@@ -38,11 +38,12 @@ const envelopeFor = (
   name: string,
   nodeId: string,
   binding: { semanticKey: string; format?: string; precision?: number },
+  locale = "en",
 ) => ({
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
   id,
-  metadata: { name },
+  metadata: { name, locale },
   artboard: {
     width: 640,
     height: 360,

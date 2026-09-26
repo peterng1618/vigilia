@@ -26,7 +26,7 @@ function createValidPackage(
     fabricVersion: "7.4.0",
     id,
     artboard: { width: 1920, height: 1080 },
-    metadata: { name },
+    metadata: { name, locale: "en" },
     ...(semanticKey === undefined
       ? {}
       : {
@@ -102,6 +102,7 @@ function createPackageWithAsset(
     fabricVersion: "7.4.0",
     id: "living-room",
     artboard: { width: 1920, height: 1080 },
+    metadata: { locale: "en" },
     scene: { version: "7.4.0", objects: [] },
     assets: [
       {

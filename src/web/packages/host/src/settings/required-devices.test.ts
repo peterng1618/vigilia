@@ -8,6 +8,7 @@ function themeWith(keys: readonly string[]): FabricThemeEnvelope {
     fabricVersion: "7.4.0",
     id: "t",
     artboard: { width: 100, height: 100 },
+    metadata: { locale: "en" },
     scene: {},
     bindings: Object.fromEntries(
       keys.map((key, index) => [

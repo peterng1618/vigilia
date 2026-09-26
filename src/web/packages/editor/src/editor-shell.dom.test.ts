@@ -135,7 +135,11 @@ describe("native editor shell", () => {
       host,
       artboard: { width: 100, height: 100 },
     });
-    const input = { id: "theme", artboard: { width: 100, height: 100 } };
+    const input = {
+      id: "theme",
+      artboard: { width: 100, height: 100 },
+      metadata: { locale: "en" },
+    };
 
     // Nothing renamed yet: the key is absent rather than an empty object, so a
     // document that never renamed a layer does not grow dead payload.
@@ -175,6 +179,7 @@ describe("native editor shell", () => {
       schemaVersion: 2 as const,
       fabricVersion: "7.4.0",
       id: "theme",
+      metadata: { locale: "en" } as const,
       artboard: { width: 100, height: 100 },
       scene: { version: "7.4.0", objects: [] },
       // Seeded literally: `setLayerNames` only ever writes the shape the editor

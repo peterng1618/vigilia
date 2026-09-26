@@ -77,6 +77,13 @@ describe("the new Fabric document", () => {
     });
   });
 
+  it("starts a new theme in English, so it validates", () => {
+    const theme = createNewFabricTheme();
+
+    expect(theme.metadata?.locale).toBe("en");
+    expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
+  });
+
   it("revives the gradient, SVG-derived paths, and all four chart families", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {

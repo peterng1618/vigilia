@@ -7,6 +7,7 @@ const envelope = {
   fabricVersion: "7.4.0",
   id: "demo",
   artboard: { width: 400, height: 300 },
+  metadata: { locale: "en" },
   assets: [{ id: "logo", kind: "image" as const, path: "assets/logo.png" }],
   scene: { version: "7.4.0", objects: [] },
 };
