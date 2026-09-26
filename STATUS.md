@@ -30,12 +30,9 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
 
 ## Next
 
-1. Complete snapping Task 10 without claiming Task 9's parked browser evidence.
-2. Review reference-theme plan and select execution method; activate only after
-   snapping closes. Approve glass probe, then review findings before product work.
-3. Then resume author-journey Task 6; authoring-and-consumer-polish Task 4;
-   settings-scope; consumer-journey Tasks 5+6; theme-thumbnails;
-   authoring-time-run-placeholders.
+1. Repair or explicitly supersede Task 9's executable-spec import; current full browser gate cannot start.
+2. Run Task 10's quality gate from workspace without nested agent worktrees; current lint fails on their nested Biome roots.
+3. Then complete Task 10 without claiming Task 9 matrix closure; activate reference-theme only after snapping closes.
 
 ## Blockers / unverified
 
@@ -52,4 +49,5 @@ match the snapped result, and Ctrl/Shift controls consistent across gestures.
   preset/override.
 - The gate's visual checks were made against `vite preview` bundles on desktop
   widths only; the phone surfaces were exercised by the browser suite, not by eye.
-- **Known limitations — Task 9 matrix:** active text/group targets lack complete move/resize browser coverage; `snapping.spec.ts` imports executable `editor.spec.ts`, so focused discovery includes unrelated editor cases; layer-action proof checks entry parity, not selected-object linkage or visible footer placement. Do not claim Task 9 matrix closure until repaired. Resize equal-spacing is not a bug: fork and Vigilia scale candidates do not support it, so it is out of scope unless product scope expands.
+- **Known limitations — Task 9 matrix:** active text/group targets lack complete move/resize browser coverage; `snapping.spec.ts` imports executable `editor.spec.ts`, which now blocks Playwright discovery entirely; layer-action proof checks entry parity, not selected-object linkage or visible footer placement. Do not claim Task 9 matrix closure until repaired. Resize equal-spacing is not a bug: fork and Vigilia scale candidates do not support it, so it is out of scope unless product scope expands.
+- Task 10 gate blocked: nested `.claude/worktrees/agent-*` Biome configs make lint fail; remove only after preserving or discarding each worktree under its owner. Browser suite stops at Task 9's prohibited executable-spec import.
