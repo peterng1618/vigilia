@@ -423,6 +423,38 @@ describe("identity survives a round trip", () => {
     expect(serialiseScene(canvas).objects[0]!.text).toBe("CPU —");
   });
 
+  it("reapplies ellipsis when a bound value grows at runtime", () => {
+    const text = new Textbox("--", {
+      width: 40,
+      fontSize: 20,
+      textAlign: "right",
+      left: 100,
+    });
+    text.set("id", "readout");
+    text.clipPath = new Rect({ width: 40, height: 30 });
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "value", bindingId: "load" }],
+      wrap: false,
+      overflow: "ellipsis",
+      align: "right",
+      verticalAlign: "bottom",
+    });
+
+    refreshBoundText(
+      canvasOf(text),
+      { readout: [{ id: "load", semanticKey: "cpu.load" }] },
+      {
+        latest: () => sample(123456789),
+        history: () => [],
+      },
+      undefined,
+    );
+
+    expect(text.text).toContain("…");
+    expect(text.text).not.toBe("123456789");
+    expect((text.clipPath as Rect).width).toBe(40);
+  });
+
   it("paints a hosted reading in the consumer's units, not the author's", () => {
     const text = new FabricText("--");
     text.set("id", "readout");

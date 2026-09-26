@@ -35,7 +35,55 @@ export type PlanTextObject = FabricText | Textbox;
 /** Fabric property that preserves authored text semantics without a parallel scene tree. */
 export const VIGILIA_TEXT_PROPERTY = "vigiliaText";
 
+const VIGILIA_TEXT_LAYOUT_PROPERTY = "vigiliaTextLayout";
 const ELLIPSIS = "…";
+
+type RuntimeTextLayout = Readonly<{
+  readonly box: PlanBox;
+  readonly layout: PlanTextLayout;
+  readonly style: PlanNode["style"];
+}>;
+
+function runtimeLayout(
+  object: PlanTextObject,
+  authored: TextContent,
+): RuntimeTextLayout | undefined {
+  const saved = object.get(VIGILIA_TEXT_LAYOUT_PROPERTY) as
+    | RuntimeTextLayout
+    | undefined;
+  if (saved !== undefined) {
+    return saved;
+  }
+
+  const clip = object.clipPath;
+  if (!(clip instanceof Rect)) {
+    return undefined;
+  }
+
+  const scaleX = object.scaleX === 0 ? 1 : object.scaleX;
+  const scaleY = object.scaleY === 0 ? 1 : object.scaleY;
+  const width = clip.width * scaleX;
+  const height = clip.height * scaleY;
+
+  return {
+    box: {
+      x: object.left + clip.left * scaleX - width / 2,
+      y: object.top + clip.top * scaleY - height / 2,
+      width,
+      height,
+      rotation: object.angle,
+      scaleX: object.scaleX,
+      scaleY: object.scaleY,
+    },
+    layout: {
+      wrap: authored.wrap ?? object instanceof Textbox,
+      overflow: authored.overflow ?? "clip",
+      align: authored.align ?? "left",
+      verticalAlign: authored.verticalAlign ?? "top",
+    },
+    style: {},
+  };
+}
 
 export function isTextObject(object: object): object is PlanTextObject {
   return object instanceof FabricText;
@@ -64,6 +112,11 @@ export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
 
   applyText(object, node, box);
   object.set(VIGILIA_TEXT_PROPERTY, node.content.authored);
+  object.set(VIGILIA_TEXT_LAYOUT_PROPERTY, {
+    box,
+    layout: node.content.layout,
+    style: node.style,
+  } satisfies RuntimeTextLayout);
 
   return object;
 }
@@ -91,6 +144,11 @@ export function updateText(
   });
 
   applyText(object, node, box);
+  object.set(VIGILIA_TEXT_LAYOUT_PROPERTY, {
+    box,
+    layout: node.content.layout,
+    style: node.style,
+  } satisfies RuntimeTextLayout);
 }
 
 /** Apply sampled values while retaining the authored runs used for persistence. */
@@ -207,8 +265,15 @@ export function refreshBoundText(
           const shape = textShapeFor(segments, {}, (value) =>
             object.graphemeSplit(value),
           );
-          object.set({ text: shape.text, styles: shape.styles });
+          object.set({
+            text: shape.text,
+            styles: shape.styles,
+            ...(authored.align === undefined
+              ? {}
+              : { textAlign: authored.align }),
+          });
           object.initDimensions();
+          refreshLayout(object, segments, authored);
         }
       }
       if (object instanceof Group) refresh(object.getObjects());
@@ -217,6 +282,44 @@ export function refreshBoundText(
 
   refresh(canvas.getObjects());
   canvas.requestRenderAll();
+}
+
+/** Reapply stored authored layout after runtime text changes. */
+function refreshLayout(
+  object: PlanTextObject,
+  segments: readonly PlanTextSegment[],
+  authored: TextContent,
+): void {
+  const state = runtimeLayout(object, authored);
+  if (state === undefined) {
+    return;
+  }
+
+  const { box, layout, style } = state;
+  if (layout.overflow === "ellipsis" && !fits(object, box, layout)) {
+    write(object, ellipsised(object, segments, style, box, layout), style);
+  }
+
+  const width = object.width * object.scaleX;
+  const height = object.height * object.scaleY;
+  const placement = placementFor(box);
+
+  object.set({
+    left:
+      layout.align === "left"
+        ? box.x + width / 2
+        : layout.align === "right"
+          ? box.x + box.width - width / 2
+          : placement.left,
+    top:
+      layout.verticalAlign === "top"
+        ? box.y + height / 2
+        : layout.verticalAlign === "bottom"
+          ? box.y + box.height - height / 2
+          : placement.top,
+  });
+
+  applyClip(object, layout, box);
 }
 
 /** Write, measure, overflow-adjust and position text inside its authored box. */
