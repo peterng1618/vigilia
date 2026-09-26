@@ -6,46 +6,58 @@ DONE
 
 ## Scope
 
-Correct weak movement multi-step fixture only. No production behavior change.
+Correct weak movement and resize multi-step fixtures only. No production behavior change.
 
 ## Root cause
 
-Original movement case first moved to `first-source.left - 160`, then passed `first-source.left - 6` as second target, but helper call reversed arguments: first step used near-guide target and second step used raw target. Under per-gesture marker mutation, cached first snapped plan remained observationally equivalent to expected second geometry, so movement survived deliberate regression.
+Original movement case passed near-guide target as first helper step and raw target as second helper step. Cached first snapped plan could therefore look like correct second geometry under marker mutation. Movement fixture now uses raw first step and near-guide second step.
 
-## Fix
-
-`src/web/tests/e2e/snapping.spec.ts` movement case now reads `line`, moves first to `line - 160`, then second to `line - 6`, asserts first remains near `line - 160`, second reaches `line`, and retains rendered guide-pixel assertion. Resize case unchanged.
+Resize mutation diagnosis found first attempted mutation was wrong: `Object.freeze({ gesture: "scaling" })` created fresh object per callback, so scale still re-planned.
 
 ## RED mutation evidence
 
-Temporary mutation in `src/web/packages/editor/src/snap-manager/index.ts` replaced event marker with one frozen per-gesture marker:
+Movement mutation in `src/web/packages/editor/src/snap-manager/index.ts`:
 
 ```ts
 const MUTATION_MOVEMENT_MARKER = Object.freeze({ gesture: "moving" });
 return MUTATION_MOVEMENT_MARKER;
 ```
 
-Command:
+Resize mutation in `src/web/packages/editor/src/snap-manager/scaling/scale-snapping-controller.ts` first used fresh marker per callback and incorrectly passed. Corrected temporary per-gesture mutation cached one marker through scale gesture:
+
+```ts
+let mutationMarker: object | undefined;
+const marker = mutationMarker ?? (mutationMarker = readMovementMarker({ event }));
+```
+
+Both used:
 
 ```text
 npx playwright test --project=desktop-chromium tests/e2e/snapping.spec.ts --workers=1 --grep 'moving hold re-plans|resizing hold re-plans'
 ```
 
-Result: movement failed with `Expected: < 3`, `Received: 153` at first-step assertion. Resize passed in same run. This proves corrected movement fixture fails under movement-marker mutation. Separate resize marker mutation run also unexpectedly passed: resize path reads its own `event.e` marker through `readMovementMarker`, but its effective two-step fixture currently remains observationally equivalent under deliberate mutation. Existing Task 9 investigation records resize failure under the original mutation run; this fix round changed movement fixture only per instruction.
+Movement result: failed with `Expected: < 3`, `Received: 153` at first-step assertion.
 
-## Resize mutation evidence`r`n`rnA second mutation replaced scale controller marker with frozen `{ gesture: "scaling" }`. Same focused command result: `2 passed (6.2s)`. Production scale marker handling was restored immediately after. This run does not replace prior recorded resize RED evidence from Task 9 investigation.`r`n`r`n## Green proof
+Resize result under true per-gesture mutation: failed at second-step assertion with `Expected: < 3`, `Received: 6.006389776357821`.
 
-Restored production event marker handling. Built editor and reran same command.
+First resize mutation result (`Object.freeze({ gesture: "scaling" })` allocated inside `runStep`): `2 passed`; root cause was fresh marker allocation, not a fixture weakness. Smallest correction was caching marker for whole scale gesture and clearing it in `finishGesture`.
 
-Result: `2 passed (5.5s)`.
+## Green proof
+
+Restored production event marker handling in movement and scale paths. Built editor and reran same focused command.
+
+Result: `2 passed (7.5s)`.
 
 ## Verification
 
 - `npx vite build packages/editor` — passed; existing chunk-size warning only.
-- Focused browser matrix — `2 passed (5.5s)` restored.
+- Focused browser matrix with restored production marker handling — `2 passed (7.5s)`.
+- Full Task 9 desktop matrix — `64 passed (1.4m)` after editor build.
 - `git diff --check` — passed.
 - Full matrix and broad workspace gates not run.
 
-## Commit
+## Commits
 
-Pending.
+Existing movement fixture commit: `e8c136d` — `test(editor): strengthen movement snapping mutation fixture`.
+
+`be9ab21` — report and movement fixture evidence; follow-up commit records resize fixture correction and final matrix proof.

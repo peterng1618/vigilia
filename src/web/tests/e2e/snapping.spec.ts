@@ -484,7 +484,7 @@ test("resizing hold re-plans every pointer step against text", async ({
   await openFixture(page, "text", "steps");
   const first = (await objectRect(page, "first-source")).left;
   const second = first - 160;
-  const result = await resizeSteps(page, second, first - 2);
+  const result = await resizeSteps(page, second, first - 6);
   expect(Math.abs(result.first - second)).toBeLessThan(3);
   expect(Math.abs(result.second - first)).toBeLessThan(3);
   expect(result.pixels).toBeGreaterThan(8);
