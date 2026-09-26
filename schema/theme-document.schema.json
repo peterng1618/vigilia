@@ -150,6 +150,12 @@
     "fabricObject": {
       "type": "object",
       "properties": { "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" } },
+      "allOf": [
+        {
+          "if": { "required": ["vigiliaGlass"] },
+          "then": { "properties": { "type": { "enum": ["Rect", "Group"] } } }
+        }
+      ],
       "additionalProperties": { "$ref": "#/$defs/jsonValue" }
     },
     "glassTreatment": {

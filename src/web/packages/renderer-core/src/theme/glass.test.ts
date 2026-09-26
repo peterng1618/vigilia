@@ -62,6 +62,21 @@ describe("the glass treatment contract", () => {
     expect(glassTreatment(objectWith({ blurRadius: 999 }))).toBeUndefined();
   });
 
+  it("hands back a copy, so a renderer cannot corrupt the revived object", () => {
+    // The treatment on a revived object is the object's own state. Returning
+    // it by reference would let a renderer that mutates what it read rewrite
+    // the scene behind the validator's back; `readonly` is a compile-time
+    // promise that a `ScenePlan` update or a `set()` would quietly break.
+    const stored = { blurRadius: 16 };
+    const read = glassTreatment(objectWith(stored));
+
+    expect(read).toEqual({ blurRadius: 16 });
+    expect(read).not.toBe(stored);
+
+    (read as { blurRadius: number }).blurRadius = 999;
+    expect(stored).toEqual({ blurRadius: 16 });
+  });
+
   it("allows glass only on the kinds whose backdrop Task 1 measured", () => {
     expect(supportsGlass("Rect")).toBe(true);
     expect(supportsGlass("Group")).toBe(true);

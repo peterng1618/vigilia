@@ -8,8 +8,9 @@
 export const VIGILIA_GLASS_PROPERTY = "vigiliaGlass";
 
 /**
- * Measured bound, not a preference: the Task 1 radius sweep was flat from
- * 0–48 artboard units and rose sharply above it.
+ * Measured bound, not a preference. Task 1's radius sweep held 2.5–3.7 ms per
+ * frame across 0–64 px, with the cost first clearly rising at 128 px (6.44 ms),
+ * so 48 sits inside the measured-flat band while still bounding the worst case.
  */
 export const MAX_GLASS_BLUR_RADIUS = 48;
 
@@ -29,6 +30,13 @@ export interface GlassTreatment {
  */
 const GLASS_OBJECT_TYPES: ReadonlySet<string> = new Set(["Rect", "Group"]);
 
+/**
+ * The kinds a published theme may carry the treatment on, in a stable order.
+ * The schema drift guard compares against this list, so widening the vocabulary
+ * without widening the published schema fails a test.
+ */
+export const GLASS_TYPES: readonly string[] = [...GLASS_OBJECT_TYPES];
+
 /** Whether an object kind may carry the treatment at all. */
 export function supportsGlass(type: string): boolean {
   return GLASS_OBJECT_TYPES.has(type);
@@ -39,12 +47,17 @@ export function supportsGlass(type: string): boolean {
  * property is absent or malformed. Trust boundary, not a repair path: a value
  * that fails here was already refused at import, and is treated as off here
  * rather than coerced to a default.
+ *
+ * Returns a copy: the property on a revived object is that object's own state,
+ * and handing out the reference would let a caller that mutates what it read
+ * rewrite the scene behind the validator's back.
  */
 export function glassTreatment(object: {
   get(name: string): unknown;
 }): GlassTreatment | undefined {
   const value = object.get(VIGILIA_GLASS_PROPERTY);
-  return isGlassTreatment(value) ? value : undefined;
+  if (!isGlassTreatment(value)) return undefined;
+  return { blurRadius: value.blurRadius };
 }
 
 /** Accepts only the exact authored shape: one finite radius inside the bound. */

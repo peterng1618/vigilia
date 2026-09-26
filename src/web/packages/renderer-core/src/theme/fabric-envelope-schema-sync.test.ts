@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MAX_GLASS_BLUR_RADIUS } from "./glass.js";
+import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
 
 const SCHEMA_PATH = fileURLToPath(
   new URL(
@@ -120,6 +120,26 @@ describe("published Fabric theme schema", () => {
         >
       )["vigiliaGlass"],
     ).toEqual({ $ref: "#/$defs/glassTreatment" });
+  });
+
+  it("publishes the same object-kind restriction the validator refuses", () => {
+    // The kind rule is the part most likely to drift: the validator refuses
+    // glass on anything but a measured kind, and a schema that stayed silent
+    // would let a tool author a treatment the editor then refuses to open.
+    // Compared against the exported set, not a copied list, so widening one
+    // side without the other fails here.
+    const published = (
+      schema().$defs["fabricObject"]!["allOf"] as Record<string, unknown>[]
+    )[0] as Record<string, Record<string, unknown>>;
+    const types = (
+      published["then"]!["properties"] as Record<
+        string,
+        Record<string, unknown>
+      >
+    )["type"]!;
+
+    expect(published["if"]).toEqual({ required: ["vigiliaGlass"] });
+    expect(types["enum"]).toEqual(GLASS_TYPES);
   });
 
   it("discriminates fully declared WOFF2 font assets from other assets", () => {

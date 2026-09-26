@@ -378,6 +378,102 @@ describe("Fabric theme envelope validation", () => {
     });
   });
 
+  it("requires a palette reference for the string form of a shadow", () => {
+    // Fabric accepts a shadow as a CSS string and parses it into a real Shadow
+    // with a real colour, so the unowned-literal hole is the same one the
+    // object form has. A hand-edited theme would otherwise smuggle a resolved
+    // colour past the check that exists precisely to prevent that.
+    const result = validateFabricThemeEnvelope({
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: { kind: "solid", color: "#0a0f16" },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+      scene: {
+        version: "7.4.0",
+        objects: [{ type: "Rect", id: "panel", shadow: "0 0 18 #123456" }],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+  });
+
+  it("refuses a shadow colour reference the renderer cannot apply", () => {
+    // A gradient token resolves fine, but Fabric's `Shadow.color` is a string;
+    // applyingPaints drops it. A reference that cannot be applied must be an
+    // issue, matching how an unresolvable palette ref is already reported,
+    // rather than a silent no-op that leaves the shadow unowned in practice.
+    const result = validateFabricThemeEnvelope({
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: {
+                  kind: "gradient",
+                  angle: 90,
+                  stops: [
+                    { offset: 0, color: "#0a0f16" },
+                    { offset: 1, color: "#0d1b2a" },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Rect",
+            id: "panel",
+            shadow: { color: "#0a0f16", blur: 18 },
+            vigiliaPaint: { shadowColor: "palette.edge" },
+          },
+        ],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+  });
+
   it("requires a palette reference for a persisted shadow colour", () => {
     // Shadow is a native Fabric property, so its colour is resolved state
     // exactly like fill and stroke: it needs an owner in `vigiliaPaint`.

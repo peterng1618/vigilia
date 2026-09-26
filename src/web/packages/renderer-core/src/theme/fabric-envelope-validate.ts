@@ -393,16 +393,27 @@ function scenePaintReferences(
     for (const property of ["fill", "stroke", "shadowColor"] as const) {
       if (!hasResolvedPaint(object, property)) continue;
       const ref = refs?.[property];
-      if (
-        typeof ref !== "string" ||
-        !ref.startsWith("palette.") ||
-        palette?.[ref.slice("palette.".length)] === undefined
-      ) {
+      const token = paletteToken(ref, palette);
+      if (token === undefined) {
         issues.push(
           issue(
             "unresolved-global-ref",
             `${path}/${property}`,
             `${property} must reference an existing palette token through vigiliaPaint.`,
+          ),
+        );
+        continue;
+      }
+      // Fabric's Shadow.color is a string, so a gradient token cannot paint
+      // one. Refusing it here matches how every other unappliable reference is
+      // reported, instead of leaving a ref that resolves on paper and is
+      // silently dropped at paint time.
+      if (property === "shadowColor" && !isSolidPaint(token)) {
+        issues.push(
+          issue(
+            "unresolved-global-ref",
+            `${path}/${property}`,
+            "shadowColor must reference a solid palette token.",
           ),
         );
       }
@@ -417,9 +428,31 @@ function scenePaintReferences(
   );
 }
 
+/** The palette entry a `palette.` reference names, or `undefined` if none. */
+function paletteToken(
+  ref: unknown,
+  palette: Record<string, unknown> | undefined,
+): unknown {
+  if (typeof ref !== "string" || !ref.startsWith("palette.")) return undefined;
+  return palette?.[ref.slice("palette.".length)];
+}
+
+/** A palette value that can become a single Fabric colour. */
+function isSolidPaint(entry: unknown): boolean {
+  // Older fixtures and `applyPaints` both accept a bare string; the published
+  // shape nests it under `value`.
+  if (typeof entry === "string") return entry.length > 0;
+  if (!isRecord(entry)) return false;
+  const value = entry["value"];
+  if (typeof value === "string") return value.length > 0;
+  return isRecord(value) && value["kind"] === "solid";
+}
+
 /**
  * A shadow carries its colour inside Fabric's own nested object, so the
- * presence test differs from the flat fill/stroke properties.
+ * presence test differs from the flat fill/stroke properties. Fabric also
+ * accepts the CSS string form and parses it into a real Shadow, so a string is
+ * a resolved colour too and must be checked the same way.
  */
 function hasResolvedPaint(
   object: Record<string, unknown>,
@@ -427,6 +460,7 @@ function hasResolvedPaint(
 ): boolean {
   if (property === "shadowColor") {
     const shadow = object["shadow"];
+    if (typeof shadow === "string") return shadow.trim().length > 0;
     return (
       isRecord(shadow) &&
       shadow["color"] !== undefined &&

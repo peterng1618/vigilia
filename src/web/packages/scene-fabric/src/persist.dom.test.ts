@@ -130,6 +130,9 @@ describe("the persisted key set, per class", () => {
       [
         "Rect",
         () => new Rect({ width: 10, height: 10 }),
+        // No `vigiliaGlass`: the allowlist makes a property *available*, not
+        // mandatory, so an old scene gains no key. This exact-key assertion is
+        // what proves that, for every listed class.
         ["height", "id", "left", "top", "type", "version", "width"],
       ],
       [
@@ -364,18 +367,6 @@ describe("identity survives a round trip", () => {
     ).toEqual([undefined, undefined, undefined, { blurRadius: 12 }]);
   });
 
-  it("adds no glass key to an object that was never given one", () => {
-    // The allowlist makes a listed property *available*, not mandatory:
-    // Fabric still strips a value equal to the prototype default, so an old
-    // scene with no glass must gain no key and stay byte-identical.
-    const plain = new Rect({ width: 40, height: 24 });
-    plain.set("id", "plain");
-
-    expect(keysOf(serialiseScene(canvasOf(plain)))).not.toContain(
-      VIGILIA_GLASS_PROPERTY,
-    );
-  });
-
   it("carries a glass treatment through the duplicate a clipboard makes", async () => {
     // Duplicate is the other author-mutating save path: it clones with the
     // same allowlist, so a treatment survives it only if the entry exists.
@@ -424,8 +415,11 @@ describe("identity survives a round trip", () => {
   });
 
   it("resolves a persisted shadow colour through the palette, not a literal", async () => {
-    // `shadow` is a native Fabric object, so its colour is resolved state
-    // exactly like fill and stroke and needs an owner in `vigiliaPaint`.
+    // The assertion has to end on serialised output: reading the live object
+    // after `applyObjectPalettePaints` would pass even if the palette never
+    // reached the save path, because the same in-memory object is inspected.
+    // Re-serialising proves the reference survived the round trip *and* that
+    // the resolved colour is what the document now carries.
     const panel = new Rect({
       width: 40,
       height: 24,
@@ -441,11 +435,16 @@ describe("identity survives a round trip", () => {
       palette: { edge: { name: "Edge", value: "#123456" } },
     });
 
-    const shadow = revived.getObjects()[0]!.shadow as Shadow;
-    expect(shadow.color).toBe("#123456");
+    const saved = serialiseScene(revived).objects[0]!;
+    const shadow = saved["shadow"] as Record<string, unknown>;
+
+    expect(saved[VIGILIA_PAINT_PROPERTY]).toEqual({
+      shadowColor: "palette.edge",
+    });
+    expect(shadow["color"]).toBe("#123456");
     // The native geometry stays the author's; only the colour is resolved.
-    expect(shadow.blur).toBe(18);
-    expect(shadow.offsetY).toBe(4);
+    expect(shadow["blur"]).toBe(18);
+    expect(shadow["offsetY"]).toBe(4);
   });
 
   it("reapplies a persisted text run type preset", () => {
