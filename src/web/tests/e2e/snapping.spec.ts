@@ -405,11 +405,10 @@ test("moving hold re-plans every pointer step against text", async ({
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
   await openFixture(page, "text", "steps");
-  const first = (await objectRect(page, "first-source")).left;
-  const second = first - 160;
-  const result = await moveSteps(page, second, first - 6);
-  expect(Math.abs(result.first - second)).toBeLessThan(3);
-  expect(Math.abs(result.second - first)).toBeLessThan(3);
+  const line = (await objectRect(page, "first-source")).left;
+  const result = await moveSteps(page, line - 160, line - 6);
+  expect(Math.abs(result.first - (line - 160))).toBeLessThan(3);
+  expect(Math.abs(result.second - line)).toBeLessThan(3);
   expect(result.pixels).toBeGreaterThan(8);
 });
 
