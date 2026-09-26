@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import {
   createNewChartDefaults,
   createNewPaintDefaults,
+  createNewPanelDefaults,
   createNewTextDefaults,
+  NEW_OBJECT_INSET,
 } from "./new-object-defaults.js";
 
 const globals = {
@@ -14,6 +16,10 @@ const globals = {
     none: {
       name: "None",
       value: { kind: "solid" as const, color: "transparent" },
+    },
+    background: {
+      name: "Background",
+      value: { kind: "solid" as const, color: "#0c0e13" },
     },
     ink: { name: "Ink", value: { kind: "solid" as const, color: "#102030" } },
   },
@@ -76,5 +82,35 @@ describe("new object defaults", () => {
     expect(() => createNewChartDefaults(undefined, "gauge")).toThrow(
       "palette token",
     );
+  });
+
+  it("derives a new panel from a surface token, not a content one", () => {
+    const defaults = createNewPanelDefaults(globals);
+
+    // A panel is a surface. `ink` is the token a new *text* object takes, and
+    // painting a whole card in it would hide every label the author puts on it.
+    expect(defaults.fill).toBe("#0c0e13");
+    expect(defaults[VIGILIA_PAINT_PROPERTY]).toEqual({
+      fill: "palette.background",
+    });
+  });
+
+  it("places a new panel inset, at artboard coordinates, sized and rounded", () => {
+    const defaults = createNewPanelDefaults(globals);
+
+    expect(defaults.left).toBe(NEW_OBJECT_INSET);
+    expect(defaults.top).toBe(NEW_OBJECT_INSET);
+    // Fabric's own origin is the centre, which would put a new panel half off
+    // the corner the author cannot easily click.
+    expect(defaults.originX).toBe("left");
+    expect(defaults.originY).toBe("top");
+    expect(defaults.width).toBeGreaterThan(0);
+    expect(defaults.height).toBeGreaterThan(0);
+    expect(defaults.rx).toBe(defaults.ry);
+    expect(defaults.rx).toBeGreaterThan(0);
+  });
+
+  it("refuses a new panel without a palette token", () => {
+    expect(() => createNewPanelDefaults(undefined)).toThrow("palette token");
   });
 });

@@ -1,6 +1,10 @@
 import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
+import { Rect } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
-import { createNewTextDefaults } from "./new-object-defaults.js";
+import {
+  createNewPanelDefaults,
+  createNewTextDefaults,
+} from "./new-object-defaults.js";
 import { uiCopy } from "./ui-copy.js";
 
 export interface NewObjectPanel {
@@ -34,6 +38,23 @@ export function createNewObjectPanel(
       ...createNewTextDefaults(currentGlobals, content),
     });
   });
+  const panel = document.createElement("button");
+  panel.type = "button";
+  panel.textContent = uiCopy.panels.panel;
+  panel.dataset["vigiliaPanelAdd"] = "";
+  // One construction, not a shape factory: the defaults module owns what a
+  // new panel is, and the canvas and history the editor already exposes own
+  // where it lands and how it is recorded.
+  panel.addEventListener("click", () => {
+    const inserted = new Rect({
+      id: `panel-${crypto.randomUUID()}`,
+      ...createNewPanelDefaults(currentGlobals),
+    });
+    editor.canvas.add(inserted);
+    editor.canvas.setActiveObject(inserted);
+    editor.historyManager.saveState();
+    editor.canvas.requestRenderAll();
+  });
   const charts = (
     [
       [uiCopy.chartFamilies.gauge, "gauge"],
@@ -48,7 +69,7 @@ export function createNewObjectPanel(
     button.addEventListener("click", () => actions?.addChart(family));
     return button;
   });
-  root.append(heading, text, ...charts);
+  root.append(heading, text, panel, ...charts);
   host.append(root);
   return {
     root,

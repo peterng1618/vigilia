@@ -22,6 +22,9 @@ If implementation moves an owner, update this map in the same change.
 | Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
 | Semantic layer projection and arrange actions | `editor/src/editor-shell/layer-tree.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
+| New-object defaults (text, charts, panels) | `editor/src/new-object-defaults.ts` |
+| The Add panel's construction actions | `editor/src/new-object-panel.ts` |
+| Panel material fields (fill, border, radius, shadow) | `editor/src/selection-inspector/panel.ts` |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
@@ -123,8 +126,6 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 
 Establish one owner when these become active work:
 
-- new-object defaults, when insertion is implemented: an editor-side pure
-  factory, not persisted document state;
 - shared colour parsing;
 - asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.

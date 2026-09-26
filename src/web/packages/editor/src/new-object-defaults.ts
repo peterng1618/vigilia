@@ -14,6 +14,7 @@ import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
+import type { Gradient } from "fabric/es";
 
 /** Semantic defaults for a new object; generic construction remains editor-owned. */
 export interface NewPaintDefaults {
@@ -45,6 +46,59 @@ export interface NewTextDefaults extends NewPaintDefaults {
 
 /** Where a new object is placed, inset from the artboard corner. */
 export const NEW_OBJECT_INSET = 40;
+
+/** A new panel's size in whole artboard units: a card, not a full artboard. */
+export const NEW_PANEL_SIZE = { width: 360, height: 200 } as const;
+
+/**
+ * A new panel's corner radius, measured off the reference theme rather than
+ * chosen: its card border first appears 10px in from the top-left corner on
+ * both axes.
+ */
+export const NEW_PANEL_RADIUS = 10;
+
+export interface NewPanelDefaults extends NewPaintDefaults {
+  /** Narrowed from `NewPaintDefaults`, so a panel goes straight into Fabric's
+      own `Rect` constructor without a cast at the call site. */
+  readonly fill: string | Gradient<"linear">;
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly rx: number;
+  readonly ry: number;
+  /** Artboard coordinates, so the inspector's X and Y are the panel's edges. */
+  readonly originX: "left";
+  readonly originY: "top";
+}
+
+/** Supplies a surface-backed, sized, rounded placement for a new panel. */
+export function createNewPanelDefaults(
+  globals: FabricGlobals | undefined,
+): NewPanelDefaults {
+  const [id, entry] = surfacePalette(globals);
+  const fill = fabricArtboardPaint(
+    entry.value,
+    NEW_PANEL_SIZE.width,
+    NEW_PANEL_SIZE.height,
+  );
+
+  if (fill === undefined)
+    throw new Error(`Palette token "palette.${id}" cannot paint a new panel.`);
+
+  return {
+    left: NEW_OBJECT_INSET,
+    top: NEW_OBJECT_INSET,
+    width: NEW_PANEL_SIZE.width,
+    height: NEW_PANEL_SIZE.height,
+    rx: NEW_PANEL_RADIUS,
+    ry: NEW_PANEL_RADIUS,
+    originX: "left",
+    originY: "top",
+    fill,
+    [VIGILIA_PAINT_PROPERTY]: { fill: `palette.${id}` },
+  };
+}
 
 /** Supplies valid authored references without making defaults document state. */
 export function createNewPaintDefaults(

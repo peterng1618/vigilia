@@ -595,9 +595,14 @@ function card(
   height: number,
 ): ObjectJson {
   return {
-    ...rect(id, left, top, width, height, panel, 18),
+    // Measured off the reference theme, not chosen: its card border occupies
+    // two pixels, and first appears ten pixels in from the top-left corner on
+    // both axes. The outline token is already the right value — a translucent
+    // cool line of that alpha composites to about the border the reference
+    // shows over its own panel fill.
+    ...rect(id, left, top, width, height, panel, 10),
     stroke: "#9fc7e52b",
-    strokeWidth: 1,
+    strokeWidth: 2,
     vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
   };
 }

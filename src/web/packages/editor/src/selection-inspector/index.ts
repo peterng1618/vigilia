@@ -14,6 +14,7 @@ import {
   resolveTypePreset,
   typePresetOf,
 } from "./appearance.js";
+import { createPanelFields } from "./panel.js";
 import { createRunEditor, type RunBindingPort } from "./runs.js";
 
 /**
@@ -195,6 +196,18 @@ export function createSelectionInspector(
     editor.historyManager.saveState();
   };
 
+  /**
+   * The target may have changed while a field held focus; re-render rather
+   * than write to an object the panel no longer describes. Every committing
+   * field asks this first, so a stale event cannot mutate the selection that
+   * has since been replaced.
+   */
+  const stillTarget = (object: FabricObject): boolean => {
+    if (target() === object) return true;
+    render();
+    return false;
+  };
+
   const render = (): void => {
     root.replaceChildren();
     const object = target();
@@ -207,20 +220,23 @@ export function createSelectionInspector(
     heading.textContent = uiCopy.inspectorFields.selection;
     root.append(heading);
 
+    // A locked object is not editable anywhere else either: the actions dock
+    // offers only Unlock, and nudge and arrange both skip it. Describing its
+    // fields here would advertise edits the rest of the editor refuses.
+    if (object.get("locked") === true) {
+      const locked = document.createElement("p");
+      locked.className = "vigilia-resolution";
+      locked.textContent = uiCopy.inspectorFields.locked;
+      root.append(locked);
+      return;
+    }
+
     const geometry = document.createElement("div");
 
     /** A refused edit restores the field itself (the primitives own that);
         the panel only has to report it, as it always has. */
     const refused = (): void => {
       editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
-    };
-
-    /** The target may have changed while a field held focus; re-render rather
-        than write to an object the panel no longer describes. */
-    const stillTarget = (): boolean => {
-      if (target() === object) return true;
-      render();
-      return false;
     };
 
     // X/Y and W/H are pairs — an author reads and edits them together — while
@@ -252,12 +268,12 @@ export function createSelectionInspector(
         // writing the sibling would quantise a fractional dimension the author
         // never touched.
         onCommitFirst: (value) => {
-          if (!stillTarget()) return;
+          if (!stillTarget(object)) return;
           write(object, first.key, value);
           commit();
         },
         onCommitSecond: (value) => {
-          if (!stillTarget()) return;
+          if (!stillTarget(object)) return;
           write(object, second.key, value);
           commit();
         },
@@ -284,7 +300,7 @@ export function createSelectionInspector(
       invalidMessage: uiCopy.inspectorFields.invalidValue,
       onReject: refused,
       onCommit: (value) => {
-        if (!stillTarget()) return;
+        if (!stillTarget(object)) return;
         write(object, "angle", value);
         commit();
       },
@@ -295,7 +311,18 @@ export function createSelectionInspector(
 
     // Appearance, and what the object's references actually resolve to.
     const appearance = document.createElement("div");
-    appearance.append(createOpacityField(context(), object, render));
+    appearance.append(
+      createOpacityField(context(), object, (candidate) =>
+        stillTarget(candidate),
+      ),
+    );
+    // Panel material, for a selection whose kind can carry it.
+    const panelFields = createPanelFields(context(), object, {
+      stillTarget: () => stillTarget(object),
+      commit,
+      onChange: render,
+    });
+    if (panelFields !== undefined) appearance.append(panelFields);
 
     const reference = paintReferenceOf(object);
     appearance.append(

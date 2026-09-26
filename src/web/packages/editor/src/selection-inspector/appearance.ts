@@ -140,11 +140,15 @@ export function createTypePresetReveal(onReveal: () => void): HTMLElement {
 /**
  * Opacity, shown as a percentage and stored as Fabric's 0–1, saving history once
  * per committed edit.
+ *
+ * `stillTarget` is asked before the write: a field that held focus across a
+ * selection change belongs to the object it was built for, not to the one now
+ * selected.
  */
 export function createOpacityField(
   context: AppearanceContext,
   object: FabricObject,
-  onChange: () => void,
+  stillTarget: (object: FabricObject) => boolean,
 ): HTMLElement {
   const label = document.createElement("label");
   label.textContent = uiCopy.inspectorFields.opacity;
@@ -170,11 +174,11 @@ export function createOpacityField(
       return;
     }
 
+    if (!stillTarget(object)) return;
     object.set({ opacity: percent / 100 });
     object.setCoords();
     context.editor.canvas.requestRenderAll();
     context.editor.historyManager.saveState();
-    onChange();
   });
 
   label.append(input);

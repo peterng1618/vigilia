@@ -308,6 +308,40 @@ describe("the selection inspector", () => {
     ).not.toBeNull();
   });
 
+  it("refuses a stale opacity event rather than mutating the old selection", () => {
+    rect.set({ opacity: 0.5 });
+    const { host, history, editor } = setup(rect);
+    const opacity = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
+    const other = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+    (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
+      () => other;
+
+    opacity.value = "10";
+    opacity.dispatchEvent(new Event("change"));
+
+    // The panel describes `other` now; the field the author was holding was
+    // bound to `rect`, and an event from it must not reach back.
+    expect(rect.opacity).toBe(0.5);
+    expect(history.saveState).not.toHaveBeenCalled();
+  });
+
+  it("offers a locked selection no editable fields at all", () => {
+    rect.set({ locked: true, selectable: false, evented: false });
+    const { host } = setup(rect);
+
+    // The object actions dock offers nothing but Unlock for a locked object,
+    // so the inspector must not advertise edits it would let through anyway.
+    for (const selector of [
+      "[data-vigilia-opacity]",
+      '[data-vigilia-geometry="left"]',
+    ]) {
+      expect(host.querySelector(selector), selector).toBeNull();
+    }
+    expect(host.textContent).toContain("locked");
+  });
+
   it("previews a run's format in the language setLocale hands it", () => {
     // The instant is pinned so the expected word is fixed rather than a guess at
     // which weekday the suite happens to run on.

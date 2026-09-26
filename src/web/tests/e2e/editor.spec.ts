@@ -32,6 +32,37 @@ async function selectTwoLabels(page: Page): Promise<void> {
   await page.keyboard.up("Shift");
 }
 
+/** The active object's authored id. A newly inserted object is given a uuid the
+ * test cannot know, so it is read from the object the insertion selected. */
+async function activeId(page: Page): Promise<string | undefined> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: { getActiveObject(): { id?: string } | undefined };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    return bridge.editor.canvas.getActiveObject()?.id;
+  });
+}
+
+/** Replaces a numeric field's value from the keyboard alone: focus, select the
+ * contents, type, then Tab to commit. Clicking alone would append to whatever
+ * the field already showed. */
+async function typeInto(
+  page: Page,
+  field: Locator,
+  value: string,
+): Promise<void> {
+  await field.click();
+  await page.keyboard.press("Control+a");
+  await page.keyboard.type(value);
+  await page.keyboard.press("Tab");
+}
+
 /** The active object's scene geometry through the bridge. `members` counts an
  * `ActiveSelection`'s children and a single object as one, so a test can tell a
  * composed selection from a lone object — the guard's whole subject. */
@@ -682,6 +713,159 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toHaveText(
       "Opened created-chart.vigilia-theme",
     );
+  });
+
+  test("authors a panel from the Add panel, styles it by keyboard and pointer, and reopens it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await openRailPane(page, "Add");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Panel", exact: true })
+      .click();
+    await openInspectorTab(page, "Design");
+
+    // Insertion selects what it inserted, so the controls belong to the new
+    // panel without a second click.
+    const fill = page.locator("[data-vigilia-panel-fill]");
+    const stroke = page.locator("[data-vigilia-panel-stroke]");
+    const border = page.locator("[data-vigilia-panel-border]");
+    const radius = page.locator("[data-vigilia-panel-radius]");
+    const shadow = page.locator("[data-vigilia-panel-shadow]");
+    await expect(fill).toBeVisible();
+    await expect(stroke).toBeVisible();
+    await expect(border).toBeVisible();
+    await expect(radius).toBeVisible();
+    await expect(shadow).toBeVisible();
+
+    // Pointer: the canvas, not the panel. Clicking the new panel's own centre
+    // must leave the same controls bound to the same object.
+    const inserted = await clientOfScene(page, (await activeId(page)) ?? "");
+    await page.mouse.click(inserted.x, inserted.y);
+    await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
+
+    // Keyboard: one arrow step on the fill token. The inserted panel starts on
+    // the surface token, so a step is a real change the envelope can show.
+    await fill.focus();
+    const fillBefore = await fill.inputValue();
+    await page.keyboard.press("ArrowDown");
+    await expect(fill).not.toHaveValue(fillBefore);
+
+    // Pointer: the border token.
+    await stroke.selectOption("palette.panelStroke");
+
+    // Keyboard: type a radius, committing with Tab.
+    await typeInto(page, radius, "24");
+
+    // A gradient cannot be a shadow colour, so none is offered there. The
+    // starter's `scene` token is one.
+    const shadowValues = await shadow
+      .locator("option")
+      .evaluateAll((options) => options.map((option) => option.value));
+    expect(shadowValues).not.toContain("palette.scene");
+    await shadow.selectOption("palette.panelStroke");
+    await expect(
+      page.locator("[data-vigilia-panel-shadow-blur]"),
+    ).toBeVisible();
+
+    // Keyboard: the last edit, so the undo below is that edit and not the panel.
+    await typeInto(page, border, "3");
+
+    await captureVisualReview(page, testInfo, "editor-panel-authoring");
+
+    // Undo steps back one committed edit, not the whole panel.
+    await page.keyboard.press("Control+z");
+    await expect(border).toHaveValue("1");
+    await expect(fill).toBeVisible();
+
+    await typeInto(page, border, "3");
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) return;
+    const panel = saved.parsed.envelope.scene.objects.find(
+      (object) => object["vigiliaPaint"] !== undefined && object["rx"] === 24,
+    );
+    // Every field the author touched survives the save as authored state: the
+    // tokens stay references, and the geometry is plain Fabric.
+    expect(panel).toMatchObject({
+      type: "Rect",
+      rx: 24,
+      ry: 24,
+      strokeWidth: 3,
+      vigiliaPaint: {
+        fill: expect.stringMatching(/^palette\./),
+        stroke: "palette.panelStroke",
+        shadowColor: "palette.panelStroke",
+      },
+    });
+    expect(
+      (panel as { shadow?: { blur: number } }).shadow?.blur,
+    ).toBeGreaterThan(0);
+
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "authored-panel.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened authored-panel.vigilia-theme",
+    );
+    // Reopened, the panel is still there with the same authored material.
+    const reopened = (await saveEnvelope(page)) as {
+      scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
+    };
+    expect(
+      reopened.scene.objects.filter((object) => object["rx"] === 24),
+    ).toHaveLength(1);
+  });
+
+  test("reassigns an authored panel's fill, stroke and shadow before deleting a token", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await openRailPane(page, "Add");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Panel", exact: true })
+      .click();
+    await openInspectorTab(page, "Design");
+    const panelId = (await activeId(page)) ?? "";
+    await page
+      .locator("[data-vigilia-panel-stroke]")
+      .selectOption("palette.text");
+    await page
+      .locator("[data-vigilia-panel-shadow]")
+      .selectOption("palette.text");
+
+    // `text` is the token the new panel's border and shadow now point at.
+    await page.locator("[data-vigilia-palette-token]").selectOption("text");
+    await page
+      .locator("[data-vigilia-palette-replacement]")
+      .selectOption("dim");
+    await page.locator("[data-vigilia-palette-delete]").click();
+
+    const envelope = (await saveEnvelope(page)) as {
+      globals: { palette: Record<string, unknown> };
+      scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
+    };
+    expect(envelope.globals.palette.text).toBeUndefined();
+    // A deleted token that reached only the fill would leave a border and a
+    // shadow pointing at a token the palette no longer has — and the save
+    // would refuse the document rather than persist it.
+    const panel = envelope.scene.objects.find(
+      (object) => object["id"] === panelId,
+    );
+    expect(panel).toBeDefined();
+    expect(panel?.["vigiliaPaint"]).toEqual({
+      fill: "palette.background",
+      stroke: "palette.dim",
+      shadowColor: "palette.dim",
+    });
   });
 
   test("captures the mounted editor for visual review", async ({

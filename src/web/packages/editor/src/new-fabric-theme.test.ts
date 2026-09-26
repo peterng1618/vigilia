@@ -217,6 +217,37 @@ describe("the new Fabric document", () => {
     await canvas.dispose();
   });
 
+  it("gives every card the radius and border width measured off the reference", () => {
+    const theme = createNewFabricTheme();
+    // A card is a stroked Rect; the background and the header wash are Rects
+    // too, so the match set is named rather than assumed.
+    const cards = (
+      theme.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
+    ).filter(
+      (object) => object["type"] === "Rect" && object["stroke"] !== undefined,
+    );
+    expect(cards.map((card) => card["id"])).toEqual([
+      "time-card",
+      "weather-card",
+      "gauge-card",
+      "trend-card",
+      "thermal-card",
+      "resource-card",
+      "status-card",
+    ]);
+
+    // Measured off docs/superpowers/specs/2026-09-26-reference-theme-target.png,
+    // not judged by eye: the card's top border occupies rows 186-187 and its
+    // left border columns 39-40 of the 1672-wide reference, so the border is
+    // 2px; and the border first appears 10px in from the top-left corner on
+    // both axes, so the corner radius is 10.
+    for (const card of cards) {
+      expect(card["strokeWidth"], String(card["id"])).toBe(2);
+      expect(card["rx"], String(card["id"])).toBe(10);
+      expect(card["ry"], String(card["id"])).toBe(10);
+    }
+  });
+
   it("revives the gradient, SVG-derived paths, and all four chart families", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {
