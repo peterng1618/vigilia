@@ -59,8 +59,14 @@ Vigilia process.
 - Before each completed task commit, **replace** `STATUS.md`'s "Last completed
   change" with a 1–5 bullet summary of that commit; never append older ones.
   Keep the file to current objective, active work, latest completed change, next
-  steps and blockers/unverified only, maximum 70 lines; run
-  `npm run status:check` from `src/web/`.
+  steps and blockers/unverified only; run `npm run status:check` from `src/web/`.
+  **The limit is bullet count, not line count** — 6/5/5/5 across active work,
+  last completed change, next and blockers — and **one item per line, never
+  wrapped**. A line cap was being gamed: each pass kept every fact and only
+  re-wrapped the prose, so the file grew into a diary while every edit wasted
+  tokens compressing it. Bullets bound how much there is to say; the one-line
+  rule bounds each item, and forces the choice of what to drop at the moment of
+  writing rather than in a rewrite pass.
 - Judge a defect's size when you observe it. **File a bug issue** when any of
   these holds: the cause is not established; more than one owner could fix it;
   the fix needs a design decision; it spans subsystems; it blocks the active
@@ -105,6 +111,23 @@ Vigilia process.
 
 ## Reuse before build
 
+**Vigilia is a product, not a framework to rebuild the platform under.** The
+default failure is not a hard bug — it is judging a problem "simple", writing it
+from scratch, and discovering three tasks later that it was a rabbit hole that
+someone else had already mapped. That is the expensive kind of wrong: it looks
+like progress while it compounds, and the refactor to undo it costs more than the
+search would have. **Explore first, always.** A capability that *exists* has
+still not been discharged by existing.
+
+**The gate is about integration, not existence.** "A native feature exists" is
+not an answer, and neither is "we could write it ourselves". The question is
+whether anyone has solved *this shape* of problem — in this renderer, against
+this host, under these constraints — and what they learned doing it. A capability
+that still needs sampling, ordering, invalidation, disposal and ownership
+decisions is exactly the undischarged case, because **that is where the work is**.
+Native APIs usually work, which is precisely why checking one is not the end of
+the search.
+
 A **mechanism boundary** is an owner where a wrong decision is expensive and
 invisible — nothing fails, it just renders wrong or leaks. Watchlist:
 `scripts/reuse-gate.mjs`.
@@ -116,7 +139,9 @@ that conditional is what made the rule skippable.
 
 Land a note at `docs/decisions/NNNN-<slug>.md` before the first write; the hook
 refuses until one claims the path. Template, and what needs no note:
-[`docs/decisions/README.md`](docs/decisions/README.md).
+[`docs/decisions/README.md`](docs/decisions/README.md). **The searches are the
+evidence** — a note listing three libraries without saying what was searched, or
+that nobody solved this shape, is worth nothing.
 
 ## Code and files
 

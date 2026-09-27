@@ -21,10 +21,6 @@ const fail = (message) => {
   process.exitCode = 1;
 };
 
-if (lines.length > 70) {
-  fail(`keep the handoff at 70 lines or fewer (found ${lines.length})`);
-}
-
 const headings = lines.filter((line) => line.startsWith("## "));
 for (const heading of required) {
   if (headings.filter((value) => value === heading).length !== 1) {
@@ -49,14 +45,41 @@ const section = (heading) => {
 const bulletCount = (heading) =>
   section(heading).filter((line) => /^\s*(?:[-*]|\d+\.)\s+/.test(line)).length;
 
-if (bulletCount("## Last completed change") > 5) {
-  fail("Last completed change is limited to 5 bullets");
+/**
+ * The limit is bullet count, not line count. A line cap was being gamed: each
+ * pass preserved every fact and only re-wrapped the prose, so the file read
+ * like a diary and every edit wasted tokens compressing it. Bullet count bounds
+ * how much there is to say; the single-line rule bounds how long each item may
+ * be, and pushes the work of choosing what to drop to the point of writing.
+ */
+const LIMITS = [
+  ["## Active work", 6],
+  ["## Last completed change", 5],
+  ["## Next", 5],
+  ["## Blockers / unverified", 5],
+];
+
+for (const [heading, max] of LIMITS) {
+  const count = bulletCount(heading);
+  if (count > max) {
+    fail(`${heading} is limited to ${max} bullets (found ${count}); drop the oldest or least actionable`);
+  }
 }
-if (bulletCount("## Next") > 5) {
-  fail("Next is limited to 5 items");
-}
-if (bulletCount("## Blockers / unverified") > 5) {
-  fail("Blockers / unverified is limited to 5 bullets");
+
+/**
+ * A wrapped bullet's continuation line is indented but does not itself start
+ * with a marker, so the test is "indented and not a bullet" — not "indented and
+ * a bullet". The first version required a marker and therefore never fired.
+ */
+const isBullet = (line) => /^\s*(?:[-*]|\d+\.)\s+/.test(line);
+
+for (const [heading] of LIMITS) {
+  const wrapped = section(heading).filter(
+    (line) => /^\s+\S/.test(line) && !isBullet(line),
+  );
+  if (wrapped.length > 0) {
+    fail(`${heading} has ${wrapped.length} wrapped line(s); keep one item per line`);
+  }
 }
 
 if (process.exitCode) process.exit(process.exitCode);
