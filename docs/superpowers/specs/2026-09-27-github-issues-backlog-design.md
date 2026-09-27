@@ -108,13 +108,21 @@ author journey proof are bugs, not feedback.
 ## Sequencing: the active plan
 
 **Do not delete `docs/bugs/` while a plan is running.** The active
-reference-theme fidelity plan cites
-`docs/bugs/open/host-cannot-serve-packaged-assets.md`, and two e2e files
+reference-theme fidelity plan cites the hosted-asset defect — now
+[#3](https://github.com/peterng1618/vigilia/issues/3) — and two e2e files
 comment on the same record, one of which a subagent is editing right now.
 Deleting under it breaks a pointer a running task depends on.
 
 Migration runs after the active plan closes. It is a few minutes of work when
 that is true and a broken reference when it is not.
+
+**Overridden on 2026-09-27.** The user authorised migration while
+reference-theme fidelity is still active, with the risk managed rather than
+waited out: the plan's citation is repointed at the issue, a note goes to the
+Task 5 subagent in its execution workspace, and the two e2e comments are
+deliberately left stale rather than edited under a subagent that is writing
+them — one of them untracked, so an edit could lose work that exists nowhere
+else. The follow-up repoint is recorded as a checkbox on that plan's Task 5.
 
 ## Repo changes
 

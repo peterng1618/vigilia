@@ -1681,7 +1681,8 @@ git commit -m "docs(product): close the snapping fidelity review"
 - Modify: `src/web/packages/editor/src/snap-manager/index.ts`
 - Create: `src/web/packages/editor/src/snap-manager/text-width-resize.dom.test.ts`
 - Modify: `src/web/tests/e2e/snapping.spec.ts`
-- Modify: `docs/bugs/README.md`, `docs/bugs/closed/BR-002-text-side-handle-no-edge-snapping.md`
+- Modify: the bug index and the BR-002 record, which later became
+  [issues #5](https://github.com/peterng1618/vigilia/issues/5)
 
 **Interfaces:**
 - Consumes: `ScaleSnappingRuntime` (`resolveScalePlan`/`refineScalePlan`/`verifyScalePlan`),
@@ -1690,7 +1691,7 @@ git commit -m "docs(product): close the snapping fidelity review"
   landed. Produces: verified guides for the `object:resizing` gesture.
 
 **Outcome.** Resizing a Textbox by `ml`/`mr` snaps the same way a shape or group
-resizes by the same handle. This closes [BR-002](../../bugs/closed/BR-002-text-side-handle-no-edge-snapping.md).
+resizes by the same handle. This closes [BR-002](https://github.com/peterng1618/vigilia/issues/5).
 
 **Why the gap exists.** Fabric gives a Textbox `changeWidth` side controls
 (`createResizeControls`, `actionName: RESIZING`) instead of the `scaleX` controls a

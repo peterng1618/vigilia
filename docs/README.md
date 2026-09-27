@@ -6,7 +6,7 @@ artifacts and from Git history.
 | Need | Canonical source |
 |---|---|
 | Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
-| Deferred and closed non-critical bugs | [`bugs/README.md`](bugs/README.md) |
+| Deferred and closed non-critical bugs | [GitHub issues](https://github.com/peterng1618/vigilia/issues) |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
