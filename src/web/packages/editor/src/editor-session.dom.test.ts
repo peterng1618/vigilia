@@ -70,6 +70,7 @@ describe("EditorSession", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
     };
     const onOpenPackage = vi.fn();
     const onSaved = vi.fn();
@@ -135,6 +136,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
       },
       scene: {},
       snapshot: vi.fn((input) => ({ ...envelope, ...input })),
@@ -187,6 +189,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -278,6 +281,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -371,6 +375,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
         historyManager: { suspend, saveState, undo, redo: vi.fn() },
       },
       scene: {},
@@ -435,6 +440,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
         historyManager: { saveState: vi.fn() },
       },
       scene: {},

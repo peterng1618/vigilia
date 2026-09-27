@@ -1,6 +1,7 @@
 import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isLocaleName } from "../scene/datetime/names.js";
 import {
+  MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   STABLE_ID_PATTERN,
@@ -238,10 +239,13 @@ function sceneTypeReferences(
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
     if (isTextObject(object)) {
+      const authored = isRecord(object["vigiliaText"])
+        ? object["vigiliaText"]
+        : undefined;
+      textBox(authored?.["box"], `${path}/vigiliaText/box`, issues);
       const runs =
-        isRecord(object["vigiliaText"]) &&
-        Array.isArray(object["vigiliaText"]["runs"])
-          ? object["vigiliaText"]["runs"]
+        authored !== undefined && Array.isArray(authored["runs"])
+          ? authored["runs"]
           : undefined;
       if (runs === undefined || runs.length === 0) {
         issues.push(
@@ -323,6 +327,46 @@ function isTextObject(object: Record<string, unknown>): boolean {
     object["type"] === "IText" ||
     object["type"] === "FabricText"
   );
+}
+
+/**
+ * A fixed text box, on the v2 scene's own copy of the authored content.
+ *
+ * Fabric keeps `width` on the object too, but that is a cache the renderer
+ * re-asserts: this is the copy the author's size survives in, so a malformed
+ * one is refused before anything measures text into it.
+ */
+function textBox(
+  value: unknown,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  if (value === undefined) return;
+
+  const sized = (dimension: "width" | "height"): boolean => {
+    const size = isRecord(value) ? value[dimension] : undefined;
+    return (
+      typeof size === "number" &&
+      Number.isFinite(size) &&
+      size > 0 &&
+      size <= MAX_ARTBOARD_DIMENSION
+    );
+  };
+
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== "width" && key !== "height") ||
+    !sized("width") ||
+    !sized("height")
+  ) {
+    issues.push(
+      issue(
+        "invalid-fabric-scene",
+        path,
+        `A text box must be exactly { width, height }, each a number from 0 to ${MAX_ARTBOARD_DIMENSION} scene units.`,
+      ),
+    );
+  }
 }
 
 /** v2 removes legacy global groups; palette and type presets own authored style. */

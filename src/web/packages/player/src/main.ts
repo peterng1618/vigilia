@@ -20,6 +20,7 @@ import {
   validateThemeDocument,
 } from "@vigilia/renderer-core";
 import {
+  applyAuthoredText,
   loadFontAssets,
   mountFabricScene,
   refreshBoundText,
@@ -298,6 +299,13 @@ async function startHostedTheme(
     onError: (message) => showFailure(host, message),
   });
   await reviveThemeEnvelope(handle.canvas, theme);
+  // Every text object, bound or not, takes its box, its alignment and its
+  // clip from the authored content once after revival. `refreshBoundText`
+  // only visits objects a binding resolves, so without this an unbound label
+  // would keep whatever geometry the save happened to carry.
+  applyAuthoredText(handle.canvas, theme.globals, {
+    ...(theme.bindings === undefined ? {} : { bindings: theme.bindings }),
+  });
   const refresh = (): void => {
     hydrateCharts(
       handle.canvas.getObjects(),

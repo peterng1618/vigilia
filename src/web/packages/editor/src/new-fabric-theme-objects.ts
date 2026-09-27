@@ -84,21 +84,35 @@ export interface Run {
  * is the run whose preset Fabric measures: the same rule
  * `applyObjectTypePresets` follows, and the reason a mixed-size label still
  * opens at the right size.
+ *
+ * `left`, `top`, `width` and `height` are the author's box, not a measurement:
+ * a value run is a different length every frame, and a box that followed it
+ * would move everything beside it. Each height is the single line Fabric
+ * measures for that object's own type, so the fixed box holds exactly the text
+ * the reference shows.
  */
 export function text(
   id: string,
   left: number,
   top: number,
   width: number,
+  height: number,
   runs: readonly Run[],
   options?: {
     readonly align?: "left" | "center" | "right";
     readonly verticalAlign?: "top" | "middle" | "bottom";
+    readonly overflow?: "clip" | "ellipsis" | "visible";
   },
 ): ObjectJson {
   const first = runs[0] as Run;
   const presetId = `${first.size}-${first.weight}`;
   const spacing = charSpacingPx(presetId, first.size);
+  // A reading that outgrows its box is truncated rather than clipped to
+  // nothing, so an author can see that it did not fit. A prose label has no
+  // reading to truncate and keeps the default clip.
+  const overflow =
+    options?.overflow ??
+    (runs.some((run) => run.kind === "value") ? "ellipsis" : undefined);
   return {
     type: "Textbox",
     id,
@@ -128,10 +142,17 @@ export function text(
       // whole difference between a centred reading landing in its card and
       // rendering flush-left and overflowing out of it.
       wrap: true,
+      // The author's box, and the copy that survives a save. See
+      // `docs/decisions/0003`.
+      box: { width, height },
       ...(options?.align === undefined ? {} : { align: options.align }),
       ...(options?.verticalAlign === undefined
         ? {}
         : { verticalAlign: options.verticalAlign }),
+      // A reading that outgrows its box is truncated, not clipped to nothing:
+      // an author has to be able to see that it did not fit. A prose label has
+      // no reading to truncate and keeps the default clip.
+      ...(overflow === undefined ? {} : { overflow }),
       runs: runs.map((run) =>
         run.kind === "literal"
           ? {
@@ -175,12 +196,13 @@ export function label(
   left: number,
   top: number,
   width: number,
+  height: number,
   value: string,
   size: number,
   token: StarterPaletteId,
   weight = "400",
 ): ObjectJson {
-  return text(id, left, top, width, [
+  return text(id, left, top, width, height, [
     { kind: "literal", text: value, token, size, weight },
   ]);
 }
@@ -191,12 +213,13 @@ export function valueLabel(
   left: number,
   top: number,
   width: number,
+  height: number,
   size: number,
   token: StarterPaletteId,
   weight: string,
   bindingId: string,
 ): ObjectJson {
-  return text(id, left, top, width, [
+  return text(id, left, top, width, height, [
     { kind: "value", bindingId, token, size, weight },
   ]);
 }

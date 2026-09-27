@@ -116,7 +116,8 @@ const KNOWN_KEYS = {
     "children",
   ],
   binding: ["id", "semanticKey", "precision", "unitDisplay", "scale", "offset"],
-  textContent: ["runs", "wrap", "overflow", "align", "verticalAlign"],
+  textContent: ["runs", "box", "wrap", "overflow", "align", "verticalAlign"],
+  textBox: ["width", "height"],
   literalRun: ["kind", "text", "typePreset", "style"],
   valueRun: [
     "kind",
@@ -1353,6 +1354,8 @@ function validateTextContent(
 
   issues.unknownKeys(value, path, "textContent", "A text node's content");
 
+  validateTextBox(issues, value["box"], `${path}/box`);
+
   const runs = value["runs"];
 
   if (!Array.isArray(runs)) {
@@ -1423,6 +1426,44 @@ function validateTextContent(
       `${runPath}/typePreset`,
       globalKeys,
     );
+  }
+}
+
+/**
+ * A fixed text box.
+ *
+ * The two dimensions are the whole box, so a half-written one is refused
+ * rather than completed from a measurement: a default would put the author
+ * somewhere they did not choose, and the clip would then hide text against a
+ * boundary nobody drew.
+ */
+function validateTextBox(issues: Issues, value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (!issues.object(value, path, "A text node's fixed box")) return;
+
+  issues.unknownKeys(value, path, "textBox", "A text node's fixed box");
+
+  for (const dimension of ["width", "height"] as const) {
+    const size = (value as Record<string, unknown>)[dimension];
+    if (typeof size !== "number" || !Number.isFinite(size)) {
+      issues.add(
+        "missing-field",
+        `${path}/${dimension}`,
+        `A text box needs a finite ${dimension}.`,
+      );
+    } else if (size <= 0) {
+      issues.add(
+        "out-of-range",
+        `${path}/${dimension}`,
+        `A text box ${dimension} must be greater than zero.`,
+      );
+    } else if (size > MAX_ARTBOARD_DIMENSION) {
+      issues.add(
+        "out-of-range",
+        `${path}/${dimension}`,
+        `A text box ${dimension} must not exceed ${MAX_ARTBOARD_DIMENSION} scene units.`,
+      );
+    }
   }
 }
 

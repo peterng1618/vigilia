@@ -20,6 +20,7 @@ import "./editor-shell/editor-shell.css";
 import { createEditorSource } from "./live-source.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
+import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
@@ -67,7 +68,8 @@ async function start(): Promise<void> {
       mode = next;
       replaceSource();
     },
-    runDisplay: () => active?.extensions.runDisplay() ?? "tokens",
+    runDisplay: () =>
+      active?.extensions.runDisplay() ?? DEFAULT_RUN_DISPLAY_MODE,
     setRunDisplay: (runMode) => active?.extensions.setRunDisplay(runMode),
     chartRefreshRate: () => chartRefreshRate,
     setChartRefreshRate: (rate) => {

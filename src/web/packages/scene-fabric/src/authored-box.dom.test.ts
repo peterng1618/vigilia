@@ -1,0 +1,408 @@
+// @vitest-environment jsdom
+
+import type { PlanTextSegment, TextRun } from "@vigilia/renderer-core";
+import { Rect, StaticCanvas, Textbox } from "fabric/es";
+import { describe, expect, it } from "vitest";
+import {
+  applyAuthoredText,
+  refreshBoundText,
+  VIGILIA_TEXT_PROPERTY,
+} from "./fabric-text.js";
+import { reviveScene, serialiseScene } from "./persist.js";
+
+/**
+ * The author's box, measured.
+ *
+ * `Textbox.initDimensions` widens to its longest unbreakable run and never
+ * narrows (`fabric/dist/index.mjs:18453`), and `width` is one of its
+ * `textLayoutProperties` (`:18760`), so every width write re-enters it. The
+ * starter's `ram-value` is authored 180 wide and its authoring token
+ * `@ram.used.percent%` measures 566.9, which is the width that survives a save.
+ *
+ * What is asserted is the property — the box stays the box, and the clip and
+ * both alignments follow it — never a pixel count a different font stack would
+ * change. The token is chosen to be unambiguously wider than the box at this
+ * size, so the assertions below cannot pass for free.
+ */
+
+const BOX = { x: 40, y: 30, width: 180, height: 72 };
+const TOKEN = "@ram.used.percent%";
+
+/**
+ * How wide the token is, measured off its own object.
+ *
+ * The premise every assertion here rests on. It cannot be read off the object
+ * under test, because a restored box is exactly what the fix produces.
+ */
+function tokenWidth(): number {
+  return new Textbox(TOKEN, { fontSize: 32 }).calcTextWidth();
+}
+
+/** Wider than `BOX` at this size, and unbreakable, so `dynamicMinWidth` wins. */
+function tokenOverflowsBox(): boolean {
+  return tokenWidth() > BOX.width;
+}
+
+function runs(): readonly TextRun[] {
+  return [
+    { kind: "literal", text: "MEM " },
+    { kind: "value", bindingId: "m", precision: 0, unitDisplay: "none" },
+    { kind: "literal", text: " %" },
+  ];
+}
+
+/** The token for every value run, as the editor's authoring view paints it. */
+function asTokens(
+  segments: readonly PlanTextSegment[],
+): readonly PlanTextSegment[] {
+  return segments.map((segment, index) =>
+    runs()[index]?.kind === "value" ? { ...segment, text: TOKEN } : segment,
+  );
+}
+
+function reading(
+  layout: Readonly<Record<string, unknown>> = {},
+  box: { width: number; height: number } = {
+    width: BOX.width,
+    height: BOX.height,
+  },
+): Textbox {
+  const object = new Textbox("MEM 61 %", {
+    id: "ram-value",
+    left: BOX.x,
+    top: BOX.y,
+    width: box.width,
+    fontSize: 32,
+    originX: "left",
+    originY: "top",
+  });
+  object.set(VIGILIA_TEXT_PROPERTY, {
+    wrap: true,
+    overflow: "ellipsis",
+    ...layout,
+    box,
+    runs: runs(),
+  });
+  return object;
+}
+
+function canvasOf(object: Textbox): StaticCanvas {
+  const canvas = new StaticCanvas(undefined, { width: 600, height: 400 });
+  canvas.add(object);
+  return canvas;
+}
+
+function paint(canvas: StaticCanvas): void {
+  applyAuthoredText(canvas, undefined, {
+    bindings: { "ram-value": [{ id: "m", semanticKey: "ram.used.percent" }] },
+    transform: asTokens,
+  });
+}
+
+describe("the authored box outlives a token wider than it", () => {
+  it("keeps the box width the author wrote, after the token is painted", () => {
+    const object = reading();
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    // The premise, so a pass that cannot fail is not reported as a pass.
+    expect(tokenOverflowsBox()).toBe(true);
+    expect(object.text).toContain(TOKEN);
+    expect(object.width).toBe(BOX.width);
+  });
+
+  it("holds the box across every refresh rather than only the first", () => {
+    const object = reading();
+    const canvas = canvasOf(object);
+
+    for (let pass = 0; pass < 25; pass += 1) paint(canvas);
+
+    expect(object.width).toBe(BOX.width);
+  });
+
+  it("clips to the box, so the token cannot paint over the next card", () => {
+    const object = reading();
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.clipPath).toBeInstanceOf(Rect);
+    expect(object.clipPath?.width).toBe(BOX.width);
+    expect(object.clipPath?.height).toBe(BOX.height);
+  });
+
+  it("keeps the box through a save and a reload", async () => {
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    const saved = serialiseScene(canvas);
+    expect(JSON.stringify(saved)).toContain('"box"');
+
+    const reloaded = new StaticCanvas(undefined, { width: 600, height: 400 });
+    await reviveScene(reloaded, saved);
+    const revived = reloaded
+      .getObjects()
+      .find((candidate) => candidate.get("id") === "ram-value");
+    paint(reloaded);
+
+    expect(revived).toBeDefined();
+    expect((revived as Textbox).width).toBe(BOX.width);
+    expect((revived as Textbox).clipPath?.width).toBe(BOX.width);
+  });
+
+  it("leaves a document with no authored box on the measured behaviour", () => {
+    // The migration: a theme saved before this change carries no box, and must
+    // not be repaired by a guess.
+    const object = reading();
+    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(tokenOverflowsBox()).toBe(true);
+  });
+});
+
+describe("a width the author dragged stays dragged", () => {
+  it("keeps a width set through Fabric's own `set`", () => {
+    // The same statement `changeWidth` executes at `index.mjs:6737`:
+    // `target.set(dimension, Math.max(newWidth, 1))`.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    object.set("width", 90);
+
+    expect(object.width).toBe(90);
+  });
+
+  it("keeps a width set below the longest run, which Fabric would widen", () => {
+    // 90 is narrower than the token, so `dynamicMinWidth` is the larger of the
+    // two and Fabric's own contract says the box becomes that. The authored box
+    // outranks it, and the clip is what tells the author the text does not fit.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    object.set("width", 90);
+
+    expect(object.width).toBe(90);
+
+    // And once the box records it — which the editor's resize capture does, and
+    // which this stands in for — every later refresh holds it, rather than the
+    // pass restoring the box the author just left.
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+      box: { width: 90, height: BOX.height },
+    });
+    paint(canvas);
+
+    expect(object.width).toBe(90);
+    expect(object.clipPath?.width).toBe(90);
+  });
+
+  it("keeps a width the editor's own resize helper applies", () => {
+    // `applyTextboxWidth` in `snap-manager/scaling/text-width-resize-measurer.ts`
+    // is a second statement of the same thing.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    object.set({ width: 140 });
+
+    expect(object.width).toBe(140);
+  });
+});
+
+describe("alignment acts inside the authored box", () => {
+  /** The painted ink's edges, in parent space. */
+  function edgesOf(object: Textbox): { left: number; right: number } {
+    return { left: object.left, right: object.left + object.width };
+  }
+
+  it("holds a centre-aligned run on the box centre", () => {
+    const object = reading({ align: "center" });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    const { left, right } = edgesOf(object);
+    expect((left + right) / 2).toBeCloseTo(BOX.x + BOX.width / 2, 6);
+  });
+
+  it("holds a right-aligned run on the authored right edge", () => {
+    const object = reading({ align: "right" });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(edgesOf(object).right).toBeCloseTo(BOX.x + BOX.width, 6);
+  });
+
+  it("puts a bottom-aligned run against the authored bottom edge", () => {
+    // The run is one line and the box is taller, so bottom alignment has real
+    // work to do — this cannot pass by accident.
+    const object = reading({ verticalAlign: "bottom", overflow: "visible" });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.top + object.height).toBeCloseTo(BOX.y + BOX.height, 6);
+  });
+
+  it("puts a middle-aligned run on the authored vertical centre", () => {
+    const object = reading({ verticalAlign: "middle", overflow: "visible" });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.top + object.height / 2).toBeCloseTo(
+      BOX.y + BOX.height / 2,
+      6,
+    );
+  });
+
+  it("keeps both edges when a reading grows a digit", () => {
+    // The §89 requirement: a sensor box does not move when its reading
+    // changes. The reading really does get wider, and the box is the clip, so
+    // a fixed box and a growing reading are what has to hold.
+    const object = reading({ align: "center", overflow: "ellipsis" });
+    const canvas = canvasOf(object);
+    const source = (value: number) => ({
+      latest: (key: string) =>
+        key === "ram.used.percent"
+          ? {
+              sensorId: key,
+              timestamp: "2026-09-20T00:00:00.000Z",
+              status: "ok" as const,
+              value,
+            }
+          : undefined,
+      history: () => [],
+    });
+    const bindings = {
+      "ram-value": [{ id: "m", semanticKey: "ram.used.percent" }],
+    };
+
+    // The production sequence: the editor paints the reading first, and a
+    // sample arrives afterwards.
+    paint(canvas);
+    expect(tokenOverflowsBox()).toBe(true);
+
+    refreshBoundText(canvas, bindings, source(9), undefined);
+    const one = { ...edgesOf(object), width: object.width, clip: 0 };
+    one.clip = object.clipPath?.width ?? -1;
+    refreshBoundText(canvas, bindings, source(100), undefined);
+    const two = { ...edgesOf(object), width: object.width, clip: 0 };
+    two.clip = object.clipPath?.width ?? -1;
+
+    // The clip is the box, not the run: without the authored box the clip is
+    // rebuilt from whatever the reading happens to measure, so it moves.
+    expect(one.clip).toBe(BOX.width);
+    expect(two).toEqual(one);
+    expect(one.width).toBe(BOX.width);
+    expect(one.left).toBe(BOX.x);
+    expect(one.right).toBe(BOX.x + BOX.width);
+  });
+});
+
+describe("the clip lands on the box whatever origin the object uses", () => {
+  it("puts a left/top-origin object's clip on its own box", () => {
+    // The starter authors every text object at a corner with
+    // `originX: "left"`, `originY: "top"`, so `object.left` is the box's left
+    // edge rather than its centre. A clip placed as though it were a centre
+    // origin lands half a box away and cuts the text in half.
+    const object = reading({ overflow: "clip" });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    const clip = object.clipPath as Rect;
+    expect(clip.width).toBe(BOX.width);
+    // The clip's centre in parent space is the box's centre.
+    const centreX = object.left + object.width / 2 + clip.left * object.scaleX;
+    const centreY = object.top + object.height / 2 + clip.top * object.scaleY;
+    expect(centreX).toBeCloseTo(BOX.x + BOX.width / 2, 6);
+    expect(centreY).toBeCloseTo(BOX.y + BOX.height / 2, 6);
+  });
+
+  it("puts a centred-origin object's clip on the same box", () => {
+    // The counter-case: the plan path's objects are centred, and the two must
+    // agree or the same authored box would clip in two different places.
+    const object = reading({ overflow: "clip" });
+    object.set({ originX: "center", originY: "center" });
+    object.left += BOX.width / 2;
+    object.top += BOX.height / 2;
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    const clip = object.clipPath as Rect;
+    const centreX = object.left + clip.left * object.scaleX;
+    const centreY = object.top + clip.top * object.scaleY;
+    expect(centreX).toBeCloseTo(BOX.x + BOX.width / 2, 6);
+    expect(centreY).toBeCloseTo(BOX.y + BOX.height / 2, 6);
+  });
+});
+
+describe("the clip is a cache, not saved state", () => {
+  it("keeps a stale clip out of the save", () => {
+    // An unbound label is never re-resolved by a refresh, so a clip carried in
+    // the file is the only thing clipping it — and it would be a rect computed
+    // against an older layout, not against `vigiliaText.box`.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+    expect(object.clipPath).toBeInstanceOf(Rect);
+
+    const saved = serialiseScene(canvas);
+    const entry = saved.objects.find(
+      (candidate) => candidate["id"] === "ram-value",
+    ) as Record<string, unknown>;
+
+    expect(entry["clipPath"]).toBeUndefined();
+    expect((entry[VIGILIA_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
+      width: BOX.width,
+      height: BOX.height,
+    });
+  });
+});
+
+describe("an object with no authored box", () => {
+  it("stays where its author put it", () => {
+    // A theme written before fixed boxes, or an object an author placed by
+    // hand: the fallback measures the object's own edges, and reading those
+    // through a centre origin moves a corner-anchored object off its corner by
+    // half its own size.
+    const object = reading();
+    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    const canvas = canvasOf(object);
+    const left = object.left;
+    const top = object.top;
+
+    paint(canvas);
+
+    expect(object.left).toBe(left);
+    expect(object.top).toBe(top);
+  });
+
+  it("still holds its own edges when it is centred-origin", () => {
+    // The counter-case, so the test above cannot pass by leaving the fallback
+    // alone.
+    const object = reading();
+    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    object.set({ originX: "center", originY: "center" });
+    object.left += BOX.width / 2;
+    object.top += BOX.height / 2;
+    const canvas = canvasOf(object);
+    const left = object.left;
+    const top = object.top;
+
+    paint(canvas);
+
+    expect(object.left).toBeCloseTo(left, 6);
+    expect(object.top).toBeCloseTo(top, 6);
+  });
+});

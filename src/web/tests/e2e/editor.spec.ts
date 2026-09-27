@@ -916,67 +916,47 @@ test.describe("Fabric editor route", () => {
     await expect(enabled).toBeChecked();
     await expect(blur).toHaveValue("16");
 
-    // The reading is a **value** run, not authored text: the editor's
-    // authoring view paints the key each value run reads, and the em-dash
-    // placeholder it replaces is gone. The number itself is the player's, and
-    // `host-player.spec.ts` is where it is asserted. Read through the editor
-    // bridge, because `canvasProp` addresses the player's handle.
-    const reading = await page.evaluate(() => {
-      const bridge = (
-        window as unknown as {
-          vigiliaEditorBridge: {
-            editor: {
-              canvas: {
-                getObjects(): Array<{ get(name: string): unknown }>;
+    // The reading is a **value** run, not authored text. The editor paints
+    // the reading by default — a dashboard showing `@cpu.load` where the reader
+    // expects a number is not a preview of the thing — and the em-dash
+    // placeholder it replaces is gone. Read through the editor bridge, because
+    // `canvasProp` addresses the player's handle.
+    const painted = () =>
+      page.evaluate(() => {
+        const bridge = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getObjects(): Array<{ get(name: string): unknown }>;
+                };
               };
             };
-          };
-        }
-      ).vigiliaEditorBridge;
-      return String(
-        bridge.editor.canvas
-          .getObjects()
-          .find((object) => object.get("id") === "cpu-card-value")
-          ?.get("text"),
-      );
-    });
-    expect(reading).toContain("cpu.load");
-    expect(reading).toMatch(/%$/);
+          }
+        ).vigiliaEditorBridge;
+        return String(
+          bridge.editor.canvas
+            .getObjects()
+            .find((object) => object.get("id") === "cpu-card-value")
+            ?.get("text"),
+        );
+      });
 
-    // Switched to live values through the View menu, the same run paints a real
-    // reading. This is where "current data" is proved: the player cannot be
-    // used for it, because a chart in this starter throws inside ECharts there
-    // — the throw itself, not the frame loop, which now survives it. The
-    // remaining cause is tracked against `host-player.spec.ts`.
+    await expect.poll(painted, { timeout: 15_000 }).toMatch(/^\d+%$/);
+
+    // The token view is the deliberate override, and it is what an author needs
+    // to see which binding a run names. Nothing else proves it survives the
+    // canvas default moving away from it, so it is switched on and off here.
+    await page.getByRole("button", { name: "View", exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "Value runs: values", exact: true })
+      .click();
+    await expect.poll(painted, { timeout: 15_000 }).toContain("cpu.load");
     await page.getByRole("button", { name: "View", exact: true }).click();
     await page
       .getByRole("menuitem", { name: "Value runs: tokens", exact: true })
       .click();
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() => {
-            const bridge = (
-              window as unknown as {
-                vigiliaEditorBridge: {
-                  editor: {
-                    canvas: {
-                      getObjects(): Array<{ get(name: string): unknown }>;
-                    };
-                  };
-                };
-              }
-            ).vigiliaEditorBridge;
-            return String(
-              bridge.editor.canvas
-                .getObjects()
-                .find((object) => object.get("id") === "cpu-card-value")
-                ?.get("text"),
-            );
-          }),
-        { timeout: 15_000 },
-      )
-      .toMatch(/^\d+%$/);
+    await expect.poll(painted, { timeout: 15_000 }).toMatch(/^\d+%$/);
 
     await captureVisualReview(page, testInfo, "editor-starter-cpu-card");
 
@@ -1830,12 +1810,8 @@ test.describe("Fabric editor route", () => {
         ],
       },
     });
-    // Value runs read as tokens while authoring, which is the default, and
-    // loading a package remounts the editor. This test is about a sampled value
-    // reaching the canvas, so ask for values after the theme is loaded.
-    await page.getByRole("button", { name: "View", exact: true }).click();
-    await page.getByRole("menuitem", { name: /Value runs/ }).click();
-
+    // Values are the editor's default, so nothing has to be switched to prove
+    // a sampled value reaches the canvas.
     await expect
       .poll(() =>
         page.evaluate(() => {

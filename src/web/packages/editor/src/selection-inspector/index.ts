@@ -1,4 +1,8 @@
-import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
+import type {
+  Binding,
+  FabricGlobals,
+  SampleSource,
+} from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
@@ -79,6 +83,13 @@ export interface SelectionInspectorOptions {
     nodeId: string,
     bindings: readonly Binding[],
   ) => void;
+  /**
+   * The live sample source, so a value run can say whether a reading has
+   * arrived for it. A getter rather than a source: the session replaces its
+   * source when the author switches between preview and live, and the panel is
+   * mounted for the session rather than rebuilt.
+   */
+  readonly sampleSource?: () => SampleSource;
   /**
    * Brings the existing type-preset panel into view. The panel owns a preset's
    * fields, so a text selection links there instead of duplicating them.
@@ -400,7 +411,15 @@ export function createSelectionInspector(
           };
 
     root.append(
-      createRunEditor(editor, globals, inspectable, render, port, locale).root,
+      createRunEditor(
+        editor,
+        globals,
+        inspectable,
+        render,
+        port,
+        locale,
+        options.sampleSource,
+      ).root,
     );
   };
 

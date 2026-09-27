@@ -2,6 +2,7 @@ import type {
   Binding,
   FabricGlobals,
   FabricPalette,
+  SampleSource,
   TextRun,
 } from "@vigilia/renderer-core";
 import {
@@ -162,8 +163,47 @@ function rebound(binding: Binding, key: string): Binding {
 }
 
 /**
+ * What a value run is bound to, and whether anything is arriving.
+ *
+ * The canvas paints the reading, so a run that names nothing and a run whose
+ * sensor is missing look the same on it — both show the em dash. Three states
+ * have to stay apart here, because two of them need a different fix: a run that
+ * names a binding this object does not declare, a run that is declared and has
+ * no reading yet, and a run that is simply working.
+ */
+function bindingState(
+  run: Extract<TextRun, { kind: "value" }>,
+  bound: Binding | undefined,
+  source: (() => SampleSource) | undefined,
+): HTMLElement {
+  const note = document.createElement("p");
+  note.className = "vigilia-run-note";
+  note.dataset["vigiliaRunBinding"] = run.bindingId;
+
+  if (bound === undefined) {
+    note.dataset["vigiliaRunProblem"] = "undeclared";
+    note.textContent = uiCopy.inspectorFields.runUndeclared(run.bindingId);
+    return note;
+  }
+
+  note.textContent = uiCopy.inspectorFields.runBinding(bound.semanticKey);
+  // No reading is not the same as no binding: one needs a sensor, the other an
+  // edit here. Asked of the source rather than guessed from the run.
+  if (source?.().latest(bound.semanticKey) === undefined) {
+    note.dataset["vigiliaRunProblem"] = "unmapped";
+    note.textContent = uiCopy.inspectorFields.runUnmapped(bound.semanticKey);
+  }
+
+  return note;
+}
+
+/**
  * One row per run: its text, its preset and its colour. A run's overrides live
  * in the same `style` map the renderer already reads.
+ *
+ * `source` is what keeps the binding visible now the canvas paints readings
+ * rather than tokens: which key a run names, and whether a reading has arrived
+ * for it, are both things the author can only be told here.
  */
 export function createRunEditor(
   editor: EditorInteraction,
@@ -172,6 +212,7 @@ export function createRunEditor(
   onChange: () => void,
   bindingPort?: RunBindingPort,
   locale?: string,
+  source?: () => SampleSource,
 ): RunEditor {
   const root = document.createElement("div");
   root.dataset["vigiliaRuns"] = "";
@@ -518,6 +559,7 @@ export function createRunEditor(
         run.kind === "value"
           ? port.bindings().find((binding) => binding.id === run.bindingId)
           : undefined;
+      if (run.kind === "value") row.append(bindingState(run, bound, source));
       if (
         bound !== undefined &&
         describeSemanticKey(bound.semanticKey)?.instant !== undefined

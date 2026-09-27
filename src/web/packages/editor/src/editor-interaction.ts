@@ -1,4 +1,4 @@
-import type { Canvas, FabricObject } from "fabric/es";
+import type { Canvas, FabricObject, IText } from "fabric/es";
 import type { ClipboardManager } from "./clipboard-manager/index.js";
 import type { CropManager } from "./crop-manager/index.js";
 import type { DeletionManager } from "./deletion-manager/index.js";
@@ -21,6 +21,12 @@ export interface EditorInteraction {
   };
   readonly textManager: {
     addText(options?: Readonly<Record<string, unknown>>): FabricObject;
+    /**
+     * Installs who paints an object's authoring view when the author starts
+     * editing it. The session owns the run display that comes from, and the
+     * shell that creates the manager has no session yet.
+     */
+    setAuthoringView(paint: (object: IText) => void): void;
   };
   readonly layerManager: {
     bringToFront(object?: FabricObject): void;

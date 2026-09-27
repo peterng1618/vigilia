@@ -974,3 +974,49 @@ describe("authored glass treatment", () => {
     });
   });
 });
+
+describe("a text object's fixed box", () => {
+  const withBox = (box: unknown): Record<string, unknown> => {
+    const base = envelope();
+    return {
+      ...base,
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Textbox",
+            id: "label",
+            fill: "#fff",
+            vigiliaText: {
+              box,
+              runs: [{ kind: "literal", text: "CPU" }],
+            },
+          },
+        ],
+      },
+    };
+  };
+
+  /** Whether anything complained about the box, whatever else it did. */
+  const boxIssues = (box: unknown): readonly ValidationIssue[] =>
+    issuesOf(validateFabricThemeEnvelope(withBox(box))).filter(
+      (issue) => issue.path === "/scene/objects/0/vigiliaText/box",
+    );
+
+  it("accepts the two dimensions an author wrote", () => {
+    expect(boxIssues({ width: 180, height: 72 })).toEqual([]);
+  });
+
+  it("refuses a box it cannot lay text into", () => {
+    // Fabric re-measures the width on every refresh, so a box that is missing a
+    // dimension is not a box the renderer can honour — it is a silent fallback.
+    for (const box of [
+      { width: 180 },
+      { width: 0, height: 72 },
+      { width: 180, height: Number.NaN },
+      { width: 180, height: 72, top: 30 },
+    ]) {
+      expect(boxIssues(box), JSON.stringify(box)).toHaveLength(1);
+    }
+  });
+});

@@ -71,6 +71,7 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   ) as SerialisedScene;
   removeRuntimeText(scene.objects);
   removeGroupEntryFlags(scene.objects);
+  removeDerivedTextClips(scene.objects);
   return scene;
 }
 
@@ -144,6 +145,27 @@ function removeRuntimeText(
     }
     const children = object["objects"];
     if (Array.isArray(children)) removeRuntimeText(children.filter(isRecord));
+  }
+}
+
+/**
+ * A text object's clip rect is a cache of its authored box, not authored state.
+ *
+ * Fabric serialises it, and it is the only thing clipping a text object no
+ * refresh pass visits — an unbound label is never re-resolved, so a stale rect
+ * from an earlier layout would be what a reader sees. `vigiliaText.box` is the
+ * owner; `applyClip` rebuilds this from it on the first refresh after revival.
+ */
+function removeDerivedTextClips(
+  objects: readonly Readonly<Record<string, unknown>>[],
+): void {
+  for (const object of objects) {
+    if (isRecord(object[VIGILIA_TEXT_PROPERTY])) {
+      delete (object as Record<string, unknown>)["clipPath"];
+    }
+    const children = object["objects"];
+    if (Array.isArray(children))
+      removeDerivedTextClips(children.filter(isRecord));
   }
 }
 

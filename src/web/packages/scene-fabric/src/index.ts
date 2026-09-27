@@ -38,6 +38,7 @@ export {
 export type { UnsupportedReporter } from "./fabric-nodes.js";
 export {
   applyAuthoredText,
+  type PlanTextObject,
   refreshBoundText,
   VIGILIA_TEXT_PROPERTY,
 } from "./fabric-text.js";

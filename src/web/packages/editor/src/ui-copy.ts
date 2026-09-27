@@ -66,6 +66,16 @@ export const uiCopy = {
     runZoneFollows: "Follow the display",
     valueRun: "Value",
     emptyRun: "(empty)",
+    /** Which binding a run names. The canvas paints the reading, so this is
+        where the author sees the name a run reads from. */
+    runBinding: (key: string) => `Reads ${key}`,
+    /** A run names a binding this object does not declare, so nothing can
+        resolve it. The author can only fix this by declaring the binding. */
+    runUndeclared: (id: string) =>
+      `No binding "${id}" is declared here, so this run resolves to nothing.`,
+    /** Declared, but no reading has arrived for it — a missing sensor, not a
+        mistake in the theme. Distinct from undeclared because it needs no edit. */
+    runUnmapped: (key: string) => `No reading has arrived for ${key} yet.`,
     align: "Align",
     left: "Left",
     centre: "Centre",

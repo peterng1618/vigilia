@@ -129,87 +129,77 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("pre")).toHaveCount(0);
   });
 
-  // Where the defect becomes visible, and where the witness belongs. It is
-  // **produced in the editor** — the editor measures 566.9365234375 for the same
+  // Where the defect became visible, and where the witness belongs. It was
+  // **produced in the editor** — the editor measured 566.9365234375 for the same
   // object — but the editor revives from `createNewFabricTheme()` on every load, so
-  // only a document that has been *saved* carries the inflated width. The player
+  // only a document that has been *saved* carried the inflated width. The player
   // is where a saved document is read back, so that is where the assertion lives.
   //
-  // Round 1 claimed the editor could not produce this, on the strength of a
-  // Fabric doc comment. In the installed 7.4.0 `Textbox.initDimensions` (fabric/dist/
-  // index.mjs:18446) does not narrow but **does** widen, to `dynamicMinWidth` — and
-  // the editor's unbreakable authoring token is what sets it.
-  //
-  // A `test.fail`, because the fix may or may not have landed. The starter
-  // now authors `wrap: true`, which is what makes the player revive a
-  // `Textbox` too; until that is verified in a real player run the marker
-  // stays, and the day the widths hold this goes red rather than silent.
+  // The number in the comment used to be the failing value. It is now the
+  // authored one: `vigiliaText.box` is the owner, and Fabric's own width is a
+  // cache it re-asserts. See `docs/decisions/0003`.
   //
   // The starter is saved through the host's own store rather than a fixture,
   // because the three objects are the starter's own and no fixture has them.
-  test.fail(
-    "holds each aligned reading inside its authored box in the player",
-    async ({ page }, testInfo) => {
-      test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
+  test("holds each aligned reading inside its authored box in the player", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
 
-      await page.goto(`${HOST}/editor/`);
-      await expect(
-        page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
-      ).toBeVisible({ timeout: 20_000 });
-      await page.getByRole("button", { name: "File", exact: true }).click();
-      await page.getByRole("menuitem", { name: "Save to library" }).click();
-      await expect(page.locator("#status")).toContainText("Saved to library", {
-        timeout: 20_000,
-      });
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 20_000,
+    });
 
-      await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
-      await page.waitForSelector('canvas[data-vigilia="artboard"]');
-      await page.waitForTimeout(8000);
-      const measured = await page.evaluate(() => {
-        const canvas = (
-          window as unknown as {
-            vigilia?: {
-              handle: {
-                canvas: {
-                  getObjects(): Array<{ get(name: string): unknown }>;
-                };
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
+    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForTimeout(8000);
+    const measured = await page.evaluate(() => {
+      const canvas = (
+        window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: {
+                getObjects(): Array<{ get(name: string): unknown }>;
               };
             };
-          }
-        ).vigilia?.handle.canvas;
-        return ["ram-value", "vram-value", "storage-card-value"].map((id) => {
-          const object = canvas
-            ?.getObjects()
-            .find((candidate) => candidate.get("id") === id);
-          const rect = (
-            object as { getBoundingRect?: () => { right: number } } | undefined
-          )?.getBoundingRect?.();
-          return {
-            id,
-            width: Number(object?.get("width") ?? 0),
-            right: Number(rect?.right ?? 0),
           };
-        });
+        }
+      ).vigilia?.handle.canvas;
+      return ["ram-value", "vram-value", "storage-card-value"].map((id) => {
+        const object = canvas
+          ?.getObjects()
+          .find((candidate) => candidate.get("id") === id);
+        const rect = (
+          object as { getBoundingRect?: () => { right: number } } | undefined
+        )?.getBoundingRect?.();
+        return {
+          id,
+          width: Number(object?.get("width") ?? 0),
+          right: Number(rect?.right ?? 0),
+        };
       });
-      // The authored boxes, per object. The two ring readings are 180 wide and
-      // the storage share is 200; asserting one number for all three is a test
-      // that can never pass, which is what round one's witness did.
-      const authored: Readonly<Record<string, number>> = {
-        "ram-value": 180,
-        "vram-value": 180,
-        "storage-card-value": 200,
-      };
-      for (const object of measured) {
-        expect(object.width, object.id).toBeCloseTo(
-          authored[object.id] ?? 0,
-          3,
-        );
-        // And the ink lands inside the artboard, which is where the reviewer
-        // measured 1640-1667 for a card that ends at 1632.
-        expect(object.right, object.id).toBeLessThanOrEqual(1672);
-      }
-    },
-  );
+    });
+    // The authored boxes, per object. The two ring readings are 180 wide and
+    // the storage share is 200; asserting one number for all three is a test
+    // that can never pass, which is what round one's witness did.
+    const authored: Readonly<Record<string, number>> = {
+      "ram-value": 180,
+      "vram-value": 180,
+      "storage-card-value": 200,
+    };
+    for (const object of measured) {
+      expect(object.width, object.id).toBeCloseTo(authored[object.id] ?? 0, 3);
+      // And the ink lands inside the artboard: the RAM reading used to end at
+      // 1645.9, which is 327.9 units into the VRAM card beside it.
+      expect(object.right, object.id).toBeLessThanOrEqual(1672);
+    }
+  });
 
   test("a theme's language decides the words its clock shows", async ({
     page,

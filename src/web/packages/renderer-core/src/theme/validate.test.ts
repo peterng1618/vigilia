@@ -5,6 +5,7 @@ import { defaultPieSettings } from "../charts/pie.js";
 import { defaultGaugeSettings } from "../types.js";
 import { STYLE_PROPERTIES } from "./capabilities.js";
 import {
+  MAX_ARTBOARD_DIMENSION,
   MAX_NODE_DEPTH,
   requiredSemanticKeys,
   SUPPORTED_SCHEMA_VERSION,
@@ -600,6 +601,49 @@ describe("chart content (§87)", () => {
       },
     };
     expect(codes({ ...baseDocument(), nodes: [node] })).toEqual(["wrong-type"]);
+  });
+});
+
+describe("a fixed text box", () => {
+  const node = (box: unknown): Record<string, unknown> => ({
+    ...baseDocument(),
+    nodes: [
+      {
+        id: "t",
+        type: "text",
+        content: { runs: [{ kind: "literal", text: "x" }], box },
+      },
+    ],
+  });
+
+  it("accepts the two dimensions an author wrote", () => {
+    expect(codes(node({ width: 180, height: 72 }))).toEqual([]);
+  });
+
+  it("rejects a box with no height, rather than completing it from the text", () => {
+    // A default would put the author inside a box they did not choose, and the
+    // clip would then hide text against a boundary nobody drew.
+    expect(codes(node({ width: 180 }))).toEqual(["missing-field"]);
+  });
+
+  it("rejects a dimension that is not a positive number", () => {
+    expect(codes(node({ width: 0, height: 72 }))).toEqual(["out-of-range"]);
+    expect(codes(node({ width: 180, height: -1 }))).toEqual(["out-of-range"]);
+    expect(codes(node({ width: Number.NaN, height: 72 }))).toEqual([
+      "missing-field",
+    ]);
+  });
+
+  it("rejects a box larger than the artboard it sits on", () => {
+    expect(
+      codes(node({ width: 180, height: MAX_ARTBOARD_DIMENSION + 1 })),
+    ).toEqual(["out-of-range"]);
+  });
+
+  it("rejects a box carrying anything but its two dimensions", () => {
+    expect(codes(node({ width: 180, height: 72, top: 30 }))).toEqual([
+      "unknown-field",
+    ]);
   });
 });
 

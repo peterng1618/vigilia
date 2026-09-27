@@ -217,7 +217,8 @@ describe("scale snapping", () => {
     snapped.destroy();
   });
 
-  it("abandons the plan when the side handle becomes a skew", () => {    const { snapped, resized, down, resize } = setup();
+  it("abandons the plan when the side handle becomes a skew", () => {
+    const { snapped, resized, down, resize } = setup();
     down();
 
     // Shift is Fabric's alt-action key (`altActionKey` defaults to "shiftKey"),

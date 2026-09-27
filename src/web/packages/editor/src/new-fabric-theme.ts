@@ -162,8 +162,18 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         // The wordmark is tracked by its preset, not by spaces between the
         // letters: a space is a fixed width the font chooses, and it survives
         // into the text the author edits and the reading a screen reader gets.
-        label("wordmark", 118, 56, 460, "VIGILIA", 36, "text", "500"),
-        label("strapline", 120, 100, 460, "SYSTEM INSIGHTS", 17, "dim", "400"),
+        label("wordmark", 118, 56, 460, 40.68, "VIGILIA", 36, "text", "500"),
+        label(
+          "strapline",
+          120,
+          100,
+          460,
+          19.21,
+          "SYSTEM INSIGHTS",
+          17,
+          "dim",
+          "400",
+        ),
         ...clockCard(),
         ...cpuCard(),
         ...gpuCard(),

@@ -124,6 +124,8 @@ export class EditorSession {
   readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
+  /** The source the runtime reads, which a new source replaces. */
+  #source: SampleSource;
   readonly #onBindingsChange: (() => void) | undefined;
 
   constructor(options: EditorSessionOptions) {
@@ -210,6 +212,9 @@ export class EditorSession {
       // through the session rather than holding a second copy of them.
       nodeBindings: (id) => this.#envelope.bindings?.[id] ?? [],
       onNodeBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
+      // Pulled, not held: the inspector must see the source the runtime is
+      // using, not the one the session was constructed with.
+      sampleSource: () => this.#source,
       // The panel already owns a preset's fields and sits in the same tab, so
       // revealing it is bringing the author to it, not drawing a second copy.
       revealTypePresets: () => {
@@ -220,6 +225,12 @@ export class EditorSession {
       refreshGlass: () => options.shell.refreshGlass(),
     });
     this.#selection.setLocale(options.envelope.metadata?.locale);
+    // Entering inline editing asks the runtime for the authoring view: the
+    // shell built the text manager before this session existed, so the
+    // dependency is installed here rather than passed in.
+    options.shell.editor.textManager.setAuthoringView((object) =>
+      this.#runtime.showAuthoringView(object),
+    );
     this.#style = createStylePanel(options.panelHosts.style, {
       editor: options.shell.editor,
       // Pulled, not held: the panel is mounted for the session and read-only, so
@@ -245,6 +256,7 @@ export class EditorSession {
       this.#envelope.globals,
       { addChart: (family) => this.charts.addChart(family) },
     );
+    this.#source = options.source;
     this.#runtime = new LiveRuntime({
       canvas: options.shell.editor.canvas,
       source: options.source,
@@ -406,6 +418,7 @@ export class EditorSession {
   }
 
   setSource(source: SampleSource): void {
+    this.#source = source;
     this.#runtime.setSource(source);
     this.charts.setSource(source);
   }

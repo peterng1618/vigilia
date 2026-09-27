@@ -99,8 +99,18 @@ export function clockCard(): ObjectJson[] {
     // `hh:mm` with the meridiem on its own object: the reference sets it at a
     // quarter of the digits' size, and one tracking value is measured once per
     // object, so two sizes cannot share a text object anyway.
-    valueLabel("time", 76, 214, 264, 108, "text", "300", "clock-time"),
-    valueLabel("time-period", 350, 294, 60, 24, "dim", "500", "clock-period"),
+    valueLabel("time", 76, 214, 264, 122.04, 108, "text", "300", "clock-time"),
+    valueLabel(
+      "time-period",
+      350,
+      294,
+      60,
+      27.12,
+      24,
+      "dim",
+      "500",
+      "clock-period",
+    ),
     path(
       "time-rule",
       84,
@@ -112,7 +122,7 @@ export function clockCard(): ObjectJson[] {
       "rule",
       2,
     ),
-    valueLabel("date", 80, 370, 290, 32, "text", "400", "clock-date"),
+    valueLabel("date", 80, 370, 290, 36.16, 32, "text", "400", "clock-date"),
   ];
 }
 
@@ -133,8 +143,15 @@ export function cpuCard(): ObjectJson[] {
       vigiliaGlass: { blurRadius: 16 },
     },
     path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
-    label("cpu-card-title", 528, 212, 140, "CPU", 24, "text"),
-    text("cpu-card-value", 456, 258, 246, percent(90, 60, "cpu-card-load")),
+    label("cpu-card-title", 528, 212, 140, 27.12, "CPU", 24, "text"),
+    text(
+      "cpu-card-value",
+      456,
+      258,
+      246,
+      101.7,
+      percent(90, 60, "cpu-card-load"),
+    ),
     // `chart` is the one helper that takes Fabric's centre origin, so these are
     // the box's middle, not its corner.
     chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
@@ -142,7 +159,14 @@ export function cpuCard(): ObjectJson[] {
       stroke: { ref: "palette.cpu" },
       palette: [{ ref: "palette.cpu" }],
     }),
-    text("cpu-card-freq", 456, 452, 220, valued("cpu-card-clock", " GHz")),
+    text(
+      "cpu-card-freq",
+      456,
+      452,
+      220,
+      22.6,
+      valued("cpu-card-clock", " GHz"),
+    ),
   ];
 }
 
@@ -150,15 +174,29 @@ export function gpuCard(): ObjectJson[] {
   return [
     card("gpu-card", 715, 187, 290, 307),
     path("gpu-card-icon", 748, 213, starterIcons.gpu(48), "gpu", 3.9),
-    label("gpu-card-title", 824, 212, 140, "GPU", 24, "text"),
-    text("gpu-card-value", 748, 258, 246, percent(90, 60, "gpu-card-load")),
+    label("gpu-card-title", 824, 212, 140, 27.12, "GPU", 24, "text"),
+    text(
+      "gpu-card-value",
+      748,
+      258,
+      246,
+      101.7,
+      percent(90, 60, "gpu-card-load"),
+    ),
     chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
       ...sparkSettings,
       stroke: { ref: "palette.gpu" },
       palette: [{ ref: "palette.gpu" }],
     }),
-    text("gpu-card-freq", 748, 452, 132, valued("gpu-card-clock", " GHz")),
-    text("gpu-card-temp", 892, 452, 110, [
+    text(
+      "gpu-card-freq",
+      748,
+      452,
+      132,
+      22.6,
+      valued("gpu-card-clock", " GHz"),
+    ),
+    text("gpu-card-temp", 892, 452, 110, 22.6, [
       { kind: "literal", text: "| ", token: "dim", size: 20, weight: "400" },
       {
         kind: "value",
@@ -206,6 +244,7 @@ function memoryCard(options: {
       options.titleLeft,
       212,
       160,
+      27.12,
       options.title,
       24,
       "text",
@@ -229,6 +268,7 @@ function memoryCard(options: {
       options.ringCentreX - 90,
       337,
       180,
+      67.8,
       percent(60, 46, `${prefix}-percent`),
       { align: "center", verticalAlign: "middle" },
     ),
@@ -237,6 +277,7 @@ function memoryCard(options: {
       options.ringCentreX - 100,
       406,
       200,
+      22.6,
       [
         {
           kind: "value",
@@ -311,10 +352,19 @@ export function trendsCard(): ObjectJson[] {
   return [
     card("trends-card", 40, 507, 1084, 335),
     path("trends-card-icon", 74, 530, starterIcons.trends(34), "cpu", 2.8),
-    label("trends-card-title", 134, 528, 420, "Performance Trends", 24, "text"),
+    label(
+      "trends-card-title",
+      134,
+      528,
+      420,
+      27.12,
+      "Performance Trends",
+      24,
+      "text",
+    ),
     // The legend is a text object, not a chart setting: `LineSettings` has no
     // legend property and the settings panel exposes no legend field.
-    text("trends-legend", 680, 528, 390, legend, { align: "center" }),
+    text("trends-legend", 680, 528, 390, 22.6, legend, { align: "center" }),
     chart("trends-chart", 616, 695, 963, 215, "line", {
       ...plainLine,
       // Area fill is first-series only, so three filled series are not
@@ -338,13 +388,14 @@ export function storageCard(): ObjectJson[] {
   return [
     card("storage-card", 1138, 507, 494, 165),
     path("storage-card-icon", 1170, 528, starterIcons.storage(40), "cpu", 3.3),
-    label("storage-card-title", 1234, 528, 240, "Storage", 24, "text"),
+    label("storage-card-title", 1234, 528, 240, 27.12, "Storage", 24, "text"),
     // The reference writes the share against the card's right edge.
     text(
       "storage-card-value",
       1460,
       526,
       200,
+      49.72,
       [
         {
           kind: "value",
@@ -380,11 +431,11 @@ export function networkCard(): ObjectJson[] {
   return [
     card("network-card", 1138, 687, 494, 155),
     path("network-card-icon", 1170, 706, starterIcons.network(40), "down", 3.3),
-    label("network-card-title", 1230, 704, 240, "Network", 24, "text"),
+    label("network-card-title", 1230, 704, 240, 27.12, "Network", 24, "text"),
     // The arrows are typographic marks rather than icon objects: they sit inside
     // a label whose width changes with the reading, and a separate Path would
     // not follow it.
-    text("network-down", 1355, 702, 135, [
+    text("network-down", 1355, 702, 135, 22.6, [
       { kind: "literal", text: "↓ ", token: "down", size: 20, weight: "500" },
       {
         kind: "value",
@@ -395,7 +446,7 @@ export function networkCard(): ObjectJson[] {
         precision: 1,
       },
     ]),
-    text("network-up", 1505, 702, 135, [
+    text("network-up", 1505, 702, 135, 22.6, [
       { kind: "literal", text: "↑ ", token: "gpu", size: 20, weight: "500" },
       {
         kind: "value",

@@ -34,6 +34,27 @@ export class LiveRuntime {
     this.#locale = options.locale;
   }
 
+  /**
+   * One object's authoring view — its value runs as tokens.
+   *
+   * Fabric enters inline editing on the first click's mouse-up, not on the
+   * double-click, so the object is already editing by the time an author asks
+   * for this. Both refresh passes skip an editing object — that is what keeps a
+   * keystroke from being repainted away — so the flag is taken down for the one
+   * call that paints it and put straight back. Nothing is rendered between them.
+   */
+  showAuthoringView(object: { isEditing: boolean }): void {
+    const editing = object.isEditing;
+    object.isEditing = false;
+    applyAuthoredText(this.#canvas, this.#globals, {
+      bindings: this.#bindings,
+      transform: toAuthoringSegments,
+      only: (candidate) => candidate === object,
+    });
+    object.isEditing = editing;
+    this.#canvas.requestRenderAll();
+  }
+
   setSource(source: SampleSource): void {
     this.#source = source;
     this.refresh();
@@ -70,33 +91,26 @@ export class LiveRuntime {
   }
 
   refresh(): void {
-    if (this.#runDisplay === "tokens") {
-      // Authoring view: each value run shows its token, so the structure of the
-      // text is visible. Painting this way also means a bound run no longer
-      // depends on a sample arriving to be readable.
-      applyAuthoredText(this.#canvas, this.#globals, {
-        bindings: this.#bindings,
-        transform: (segments, runs, bindings) =>
-          toAuthoringSegments(segments, runs, bindings),
-      });
-      this.#canvas.requestRenderAll();
-      return;
-    }
-
-    // Both paths must repaint every text object: tokens mode overwrites an
+    // Both passes must repaint every text object: a token pass overwrites an
     // unbound object's text, so switching back has to restore it even though
-    // `refreshBoundText` only handles objects a sample resolves.
+    // `refreshBoundText` only handles objects a sample resolves. The object
+    // being edited inline is the one exception, and both passes make it.
     applyAuthoredText(this.#canvas, this.#globals, {
       bindings: this.#bindings,
+      ...(this.#runDisplay === "tokens"
+        ? { transform: toAuthoringSegments }
+        : {}),
     });
-    refreshBoundText(
-      this.#canvas,
-      this.#bindings,
-      this.#source,
-      this.#globals,
-      undefined,
-      this.#locale,
-    );
+    if (this.#runDisplay !== "tokens") {
+      refreshBoundText(
+        this.#canvas,
+        this.#bindings,
+        this.#source,
+        this.#globals,
+        undefined,
+        this.#locale,
+      );
+    }
     this.#canvas.requestRenderAll();
   }
 }

@@ -14,13 +14,16 @@ function harness(
   runs: readonly TextRun[],
   locale?: string,
   globals?: FabricGlobals,
+  /** Keys a reading has arrived for; absent means nothing has. */
+  arrived: readonly string[] = [],
+  declared: readonly Binding[] = [],
 ) {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
   object.set(VIGILIA_TEXT_PROPERTY, { runs });
   canvas.add(object);
 
-  let bindings: readonly Binding[] = [];
+  let bindings: readonly Binding[] = [...declared];
   const host = document.createElement("div");
   const render = (): void => {
     host.replaceChildren();
@@ -40,6 +43,18 @@ function harness(
           },
         },
         locale,
+        () => ({
+          latest: (key: string) =>
+            arrived.includes(key)
+              ? {
+                  sensorId: key,
+                  timestamp: "2026-09-20T00:00:00.000Z",
+                  status: "ok" as const,
+                  value: 1,
+                }
+              : undefined,
+          history: () => [],
+        }),
       ).root,
     );
   };
@@ -60,6 +75,15 @@ function harness(
       [...host.querySelectorAll<HTMLElement>("[data-vigilia-run-note]")].map(
         (note) => note.textContent ?? "",
       ),
+    binding: (): Readonly<Record<string, string | undefined>> => {
+      const note = host.querySelector<HTMLElement>(
+        "[data-vigilia-run-binding]",
+      );
+      return {
+        text: note?.textContent ?? undefined,
+        problem: note?.dataset["vigiliaRunProblem"],
+      };
+    },
     dispose: () => canvas.dispose(),
   };
 }
@@ -421,5 +445,48 @@ describe("what a run cannot carry", () => {
 
     expect(box.notes()).toEqual([]);
     return box.dispose();
+  });
+});
+
+describe("which binding a value run carries", () => {
+  const bound: readonly TextRun[] = [
+    { kind: "value", bindingId: "load", typePreset: "typePresets.60-600" },
+  ];
+
+  it("names the key, and says nothing is missing, when a reading has arrived", () => {
+    const { binding, dispose } = harness(
+      bound,
+      undefined,
+      undefined,
+      ["ram.used.percent"],
+      [{ id: "load", semanticKey: "ram.used.percent" }],
+    );
+
+    // The canvas paints the reading, so the key is only visible here.
+    expect(binding().text).toContain("ram.used.percent");
+    expect(binding().problem).toBeUndefined();
+    void dispose();
+  });
+
+  it("marks a declared binding with no reading, which needs a sensor not an edit", () => {
+    const { binding, dispose } = harness(
+      bound,
+      undefined,
+      undefined,
+      [],
+      [{ id: "load", semanticKey: "ram.used.percent" }],
+    );
+
+    expect(binding().problem).toBe("unmapped");
+    void dispose();
+  });
+
+  it("marks a run that names a binding this object never declared", () => {
+    const { binding, dispose } = harness([
+      { kind: "value", bindingId: "ghost" },
+    ]);
+
+    expect(binding().problem).toBe("undeclared");
+    void dispose();
   });
 });

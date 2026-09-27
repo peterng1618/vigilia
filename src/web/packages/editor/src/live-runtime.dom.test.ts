@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { LiveRuntime } from "./live-runtime.js";
 
 describe("LiveRuntime", () => {
-  it("shows a value run's token while authoring, without changing authored runs", async () => {
+  it("shows a value run's token when the author asks for tokens, without changing authored runs", async () => {
     const canvas = new Canvas(document.createElement("canvas"));
     const text = new Textbox("CPU --", { id: "cpu-label" });
     const authored = {
@@ -32,6 +32,9 @@ describe("LiveRuntime", () => {
       },
     });
 
+    // The structure view is the deliberate override, not the default; the
+    // default is covered by `run-display.dom.test.ts`.
+    runtime.setRunDisplay("tokens");
     runtime.setSource({
       latest: (key) =>
         key === "cpu.load"
@@ -46,7 +49,6 @@ describe("LiveRuntime", () => {
       history: () => [],
     });
 
-    // Tokens are the authoring default: the author sees the structure.
     expect(text.text).toBe("CPU @cpu.load");
     expect(text.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
     await canvas.dispose();
