@@ -15,13 +15,21 @@ export interface BackgroundMediaOptions {
    * dropped. Distinct from `SceneAdapterOptions.onAssetError`, which reports a
    * node's own asset by id; this one carries a human-readable reason. */
   readonly onMediaError?: (message: string) => void;
-  /** Called once per decoded video frame. Nothing subscribes to it unless a
+  /** Called once per decoded video frame. Subscribed once, at mount, and
+   *  re-armed on every later `update()`: making it per-update let a caller
+   *  silently stop following frames by omitting it. Nothing subscribes unless a
    *  video is the media, so an image background starts no loop at all. */
   readonly onFrame?: () => void;
 }
 
+/** Reconfiguration carries the document, never the frame subscription. */
+export type BackgroundMediaUpdate = Omit<
+  BackgroundMediaOptions,
+  "host" | "onFrame"
+>;
+
 export interface BackgroundMediaHandle {
-  update(options: Omit<BackgroundMediaOptions, "host">): void;
+  update(options: BackgroundMediaUpdate): void;
   setBounds(bounds: {
     readonly left: number;
     readonly top: number;
@@ -33,13 +41,6 @@ export interface BackgroundMediaHandle {
    *  it out of the canvas it is painting. */
   backdrop(): BackdropMedia | undefined;
   destroy(): void;
-}
-
-interface Bounds {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
 }
 
 /** Mounts the optional DOM-only artboard background below the caller's canvas. */
@@ -55,7 +56,8 @@ export function mountBackgroundMedia(
   let stopFrames: (() => void) | undefined;
   let element: HTMLImageElement | HTMLVideoElement | undefined;
   let fit: "cover" | "contain" = "cover";
-  let bounds: Bounds = { left: 0, top: 0, width: 0, height: 0 };
+  let artboardSize = { width: 0, height: 0 };
+  const onFrame = options.onFrame;
 
   const stop = (): void => {
     disposeSource?.();
@@ -64,11 +66,12 @@ export function mountBackgroundMedia(
     stopFrames = undefined;
   };
 
-  const update = (next: Omit<BackgroundMediaOptions, "host">): void => {
+  const update = (next: BackgroundMediaUpdate): void => {
     stop();
     layer.replaceChildren();
     element = undefined;
     const media = next.artboard.backgroundMedia;
+    artboardSize = { width: next.artboard.width, height: next.artboard.height };
     const asset = next.assets?.find(
       (candidate) => candidate.id === media?.assetId,
     );
@@ -109,14 +112,13 @@ export function mountBackgroundMedia(
     fit = media.fit;
     element = mounted;
     layer.append(mounted);
-    stopFrames = followFrames(mounted, next.onFrame);
+    stopFrames = followFrames(mounted, onFrame);
   };
 
   update(options);
   return {
     update,
     setBounds(next) {
-      bounds = next;
       layer.style.left = `${next.left}px`;
       layer.style.top = `${next.top}px`;
       layer.style.right = "";
@@ -128,7 +130,8 @@ export function mountBackgroundMedia(
       const mounted = element;
       if (mounted === undefined) return undefined;
       return {
-        paint(ctx, region, deviceScale) {
+        artboard: artboardSize,
+        paint(ctx, region, device) {
           const source = intrinsic(mounted);
           if (source === undefined) return false;
           // A source with no intrinsic size — an SVG authored without width or
@@ -137,17 +140,17 @@ export function mountBackgroundMedia(
           const [width, height] =
             source.width > 0 && source.height > 0
               ? [source.width, source.height]
-              : [bounds.width * deviceScale, bounds.height * deviceScale];
+              : [device.width, device.height];
           ctx.drawImage(
             mounted,
             ...mediaDrawArgs({
               sourceWidth: width,
               sourceHeight: height,
               fit,
-              deviceLeft: bounds.left * deviceScale,
-              deviceTop: bounds.top * deviceScale,
-              deviceWidth: bounds.width * deviceScale,
-              deviceHeight: bounds.height * deviceScale,
+              deviceLeft: device.left,
+              deviceTop: device.top,
+              deviceWidth: device.width,
+              deviceHeight: device.height,
               region,
             }),
           );

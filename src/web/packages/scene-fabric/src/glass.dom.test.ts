@@ -2,7 +2,7 @@
 
 import { Group, Point, Rect, StaticCanvas } from "fabric/es";
 import { afterEach, describe, expect, it } from "vitest";
-import { createGlass, type GlassHandle } from "./glass.js";
+import { createGlass, type DeviceRect, type GlassHandle } from "./glass.js";
 
 /**
  * What these tests can and cannot prove.
@@ -24,7 +24,8 @@ interface Stage {
   readonly draws: Draw[];
   readonly errors: string[];
   readonly glass: GlassHandle;
-  regions: { left: number; top: number; width: number; height: number }[];
+  regions: DeviceRect[];
+  paints: PaintCall[];
   pixel(x: number, y: number): readonly [number, number, number, number];
   destroy(): void;
 }
@@ -58,14 +59,19 @@ function bars(
   return result;
 }
 
+/** Records the rect the sampler hands the media, so a test can assert where the
+ *  media was told to sit rather than only what it drew. */
+interface PaintCall {
+  readonly region: DeviceRect;
+  readonly device: DeviceRect;
+}
+
 function stage(options: {
   readonly size?: number;
   readonly texture?: boolean;
+  readonly artboard?: { readonly width: number; readonly height: number };
   readonly backdrop?: () => {
-    paint(
-      ctx: CanvasRenderingContext2D,
-      region: { left: number; top: number; width: number; height: number },
-    ): boolean;
+    paint(ctx: CanvasRenderingContext2D, region: DeviceRect): boolean;
   };
 }): Stage {
   const size = options.size ?? 200;
@@ -94,15 +100,19 @@ function stage(options: {
 
   const errors: string[] = [];
   const regions: Stage["regions"] = [];
+  const paints: PaintCall[] = [];
   let destroyed = false;
   const glass = createGlass({
     canvas,
-    ...(options.backdrop === undefined
+    // Omitted entirely unless asked for, so the "no media" cases really have none.
+    ...(options.backdrop === undefined && options.artboard === undefined
       ? {}
       : {
           backdrop: () => ({
-            paint: (ctx, region) => {
+            artboard: options.artboard ?? { width: size, height: size },
+            paint: (ctx, region, device) => {
               regions.push({ ...region });
+              paints.push({ region: { ...region }, device: { ...device } });
               return options.backdrop?.().paint(ctx, region) ?? true;
             },
           }),
@@ -116,6 +126,7 @@ function stage(options: {
     errors,
     glass,
     regions,
+    paints,
     pixel(x, y) {
       const d = context.getImageData(x, y, 1, 1).data;
       return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0, d[3] ?? 0];
@@ -183,12 +194,14 @@ describe("glass composition", () => {
     expect(glassed.containsPoint(new Point(100, 100))).toBe(true);
     const withValue = withGlass.pixel(100, 100);
     const plain = without.pixel(100, 100);
-    // 50% white over black. Compositing the panel's own fill a second time —
-    // sampling itself — would make this 0.5*255 + 0.5*127 = 191.
+    // 50% white over black is 127 either way, so a *uniform* plate cannot tell
+    // a correct sample from a self-sampled one. What separates them is the
+    // clip: with the clip the panel returns to exactly the untinted value, and
+    // a self-sampled panel would come back lighter, because the sampled region
+    // would already carry the fill.
     expect(plain[0]).toBeGreaterThan(120);
     expect(plain[0]).toBeLessThan(135);
     expect(withValue).toEqual(plain);
-    expect(withValue[0]).toBeLessThan(180);
     expect(withGlass.draws).toHaveLength(1);
   });
 
@@ -388,6 +401,42 @@ describe("glass composition", () => {
     expect((first.top ?? 0) - (second?.top ?? 0)).toBe(20);
   });
 
+  it("hands the media the artboard rect in device pixels, not the camera zoom", () => {
+    // The media layer is positioned in CSS pixels, so the plane scale used to
+    // convert its bounds would apply the camera zoom a second time. Carrying the
+    // artboard rect instead makes it right at any zoom, and the zoom is what
+    // this case exists to vary: a fit camera is not 1:1.
+    const s = stage({ artboard: { width: 200, height: 200 } });
+    s.canvas.setViewportTransform([0.5, 0, 0, 0.5, 40, 20]);
+    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.renderAll();
+
+    expect(s.paints).toHaveLength(1);
+    const device = s.paints[0]?.device;
+    // 200 artboard units through a 0.5 viewport at offset (40, 20): 100x100 at
+    // (40, 20). The old derivation produced 200x200 at (80, 40).
+    expect(device).toEqual({ left: 40, top: 20, width: 100, height: 100 });
+    // And the panel's own region still follows the same matrix.
+    expect(s.regions[0]?.left).toBeGreaterThanOrEqual(0);
+    expect(s.regions[0]?.top).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps the media rect through a capture multiplier", () => {
+    const s = stage({ artboard: { width: 200, height: 200 } });
+    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.renderAll();
+    s.paints.length = 0;
+    // Fabric folds the multiplier into the viewport transform and turns retina
+    // scaling off, so the plane matrix is the only place the factor lives.
+    s.canvas.toCanvasElement(3);
+    expect(s.paints[0]?.device).toEqual({
+      left: 0,
+      top: 0,
+      width: 600,
+      height: 600,
+    });
+  });
+
   it("draws the backdrop at full alpha whatever the panel's own opacity is", () => {
     const s = stage({});
     s.canvas.add(panel({ opacity: 0.5 }));
@@ -422,6 +471,15 @@ describe("glass composition", () => {
     scaled.canvas.add(panel({ scaleX: 2, scaleY: 2, left: 60, top: 60 }));
     scaled.canvas.renderAll();
     expect(scaled.draws[0]?.filter).toBe("blur(48px)");
+    // The retina leg, which every other case here leaves at 1 — so both
+    // `* retina` terms would otherwise be unexercised. The collaborator Fabric
+    // reads the ratio through is stubbed rather than the global, which
+    // jsdom pins at 1; a real high-DPI browser is the browser suite's job.
+    const dense = stage({});
+    dense.canvas.getRetinaScaling = () => 2;
+    dense.canvas.add(panel());
+    dense.canvas.renderAll();
+    expect(dense.draws[0]?.filter).toBe("blur(48px)");
     // Zero is a valid treatment and must not be filtered away silently.
     const zero = stage({});
     zero.canvas.add(panel({ vigiliaGlass: { blurRadius: 0 } }));
@@ -595,6 +653,29 @@ describe("glass composition", () => {
 
     expect(s.draws).toHaveLength(1);
     expect(s.glass.liveSurfaces()).toBe(1);
+  });
+
+  it("refuses an unusable corner radius rather than clipping to a square", () => {
+    const s = stage({});
+    // Present and not a number: reading it as 0 would silently clip to a square
+    // nobody authored, which is a different panel from the one asked for.
+    s.canvas.add(
+      panel({
+        rx: "wide" as unknown as number,
+        ry: "wide" as unknown as number,
+      }),
+    );
+    s.canvas.renderAll();
+    expect(s.draws).toHaveLength(0);
+    expect(s.errors[0]).toContain("no measurable box");
+
+    // A following, well-formed panel is unaffected: the failed one left no
+    // clipped context behind for it.
+    s.errors.length = 0;
+    s.canvas.add(panel({ left: 120, top: 120 }));
+    s.canvas.renderAll();
+    expect(s.draws).toHaveLength(1);
+    expect(s.errors).toEqual([]);
   });
 
   it("releases every scratch surface and listener on dispose", () => {

@@ -22,15 +22,22 @@ export interface DeviceRect {
 /**
  * The artboard background media. It is a DOM sibling below the canvas, so the
  * canvas never contains it and a panel has to be handed it separately.
+ *
+ * The rect it covers is stated in **artboard units**, not screen pixels: both
+ * mounts lay the media layer over exactly the artboard rect, so mapping that
+ * with the same plane matrix the sampler already uses for object bounds is
+ * exact, survives a `toCanvasElement` capture, and cannot disagree with what
+ * the caller happened to measure in CSS.
  */
 export interface BackdropMedia {
-  /** Paints the media over `region` of `ctx`, in the media layer's own offset.
-   *  `deviceScale` converts the media's canvas-relative CSS bounds into `ctx`
-   *  pixels. False when the source has decoded no pixels yet. */
+  /** Artboard size the media layer is laid over. */
+  readonly artboard: { readonly width: number; readonly height: number };
+  /** Paints the media over `region` of `ctx`, with `device` its rect in `ctx`'s
+   *  own pixels. False when the source has decoded no pixels yet. */
   paint(
     ctx: CanvasRenderingContext2D,
     region: DeviceRect,
-    deviceScale: number,
+    device: DeviceRect,
   ): boolean;
 }
 
@@ -58,23 +65,21 @@ export interface GlassHandle {
  * allocation. Measured by Task 1 as cheap well past this: a 1672x941 artboard
  * peaks around 0.9 Mpx.
  */
+/**
+ * Per panel, not a scene-wide total. Task 1 measured a 1672x941 artboard
+ * peaking near 0.9 Mpx for one panel, and the browser accepted far more, so
+ * this is our own ceiling rather than a platform one.
+ *
+ * The *radius* cap lives in `renderer-core` and is in artboard units; the cost
+ * argument behind it was measured in device pixels at DPR 1, where the two
+ * coincide. An authored 48 is therefore a 96 px blur at DPR 2, past the band it
+ * was chosen inside - still a fraction of a frame, and this ceiling rather than
+ * the radius is what bounds the work.
+ */
 const MAX_BACKDROP_PIXELS = 4_194_304;
 
 /** Below this a region is a sliver and the blur has nothing to show. */
 const MIN_REGION_PX = 2;
-
-/** `ctx.filter` was reported absent by Safari; treat a no-op write as unusable. */
-function supportsFilter(ctx: CanvasRenderingContext2D): boolean {
-  const before = ctx.filter;
-  try {
-    ctx.filter = "blur(1px)";
-    const usable = ctx.filter === "blur(1px)";
-    ctx.filter = before;
-    return usable;
-  } catch {
-    return false;
-  }
-}
 
 interface Panel {
   readonly object: FabricObject;
@@ -92,6 +97,9 @@ export function createGlass(options: GlassOptions): GlassHandle {
   const { canvas } = options;
   const panels = new Map<FabricObject, Panel>();
   const reported = new Set<string>();
+  // A browser either has `ctx.filter` or it does not, so this is asked once
+  // rather than written and read back for every panel on every frame.
+  let filterUsable: boolean | undefined;
   let disposed = false;
 
   function report(message: string): void {
@@ -219,7 +227,8 @@ export function createGlass(options: GlassOptions): GlassHandle {
     }
     const target = ctx.canvas;
     if (target === undefined || target === null) return;
-    if (!supportsFilter(ctx)) {
+    filterUsable ??= probeFilter(ctx);
+    if (!filterUsable) {
       report(
         "This browser cannot blur a canvas backdrop; glass renders untinted.",
       );
@@ -245,10 +254,17 @@ export function createGlass(options: GlassOptions): GlassHandle {
     const scratchContext = scratch.context;
 
     // The media is a DOM sibling below the canvas, so the canvas alone misses
-    // the wallpaper; it goes down first and the scene composites over it.
-    options
-      .backdrop?.()
-      ?.paint(scratchContext, region, Math.hypot(plane[0], plane[1]));
+    // the wallpaper; it goes down first and the scene composites over it. Its
+    // rect is the artboard's, through the same matrix the objects use.
+    const media = options.backdrop?.();
+    if (media !== undefined) {
+      media.paint(scratchContext, region, {
+        left: plane[4],
+        top: plane[5],
+        width: media.artboard.width * plane[0],
+        height: media.artboard.height * plane[3],
+      });
+    }
     scratchContext.drawImage(
       target,
       region.left,
@@ -262,35 +278,38 @@ export function createGlass(options: GlassOptions): GlassHandle {
     );
 
     ctx.save();
-    // Fabric applies the panel's own opacity, shadow and composite before this
-    // event. The backdrop is the scene, not the panel: the panel's fill is
-    // composited over it by Fabric afterwards, at the panel's own alpha.
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "rgba(0, 0, 0, 0)";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.setTransform(own[0], own[1], own[2], own[3], own[4], own[5]);
-    if (!localPath(ctx, object)) {
-      ctx.restore();
-      report(
-        `"${nameOf(object)}" has no measurable box, so its backdrop blur was skipped.`,
+    try {
+      // Fabric applies the panel's own opacity, shadow and composite before
+      // this event. The backdrop is the scene, not the panel: the panel's fill
+      // is composited over it by Fabric afterwards, at the panel's own alpha.
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.shadowColor = "rgba(0, 0, 0, 0)";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.setTransform(own[0], own[1], own[2], own[3], own[4], own[5]);
+      if (!localPath(ctx, object)) {
+        report(
+          `"${nameOf(object)}" has no measurable box, so its backdrop blur was skipped.`,
+        );
+        return;
+      }
+      ctx.clip();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.filter = blurRadius > 0 ? `blur(${blurRadius}px)` : "none";
+      ctx.drawImage(
+        scratch.element,
+        region.left,
+        region.top,
+        region.width,
+        region.height,
       );
-      return;
+    } finally {
+      // Carries the transform, clip, filter and the state above back, even if
+      // the clip or the draw threw.
+      ctx.restore();
     }
-    ctx.clip();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.filter = blurRadius > 0 ? `blur(${blurRadius}px)` : "none";
-    ctx.drawImage(
-      scratch.element,
-      region.left,
-      region.top,
-      region.width,
-      region.height,
-    );
-    // `restore()` carries the transform, clip, filter and the state above back.
-    ctx.restore();
   }
 
   function surfaceFor(
@@ -299,14 +318,14 @@ export function createGlass(options: GlassOptions): GlassHandle {
   ):
     | { element: HTMLCanvasElement; context: CanvasRenderingContext2D }
     | undefined {
-    if (panel.surface === undefined)
-      panel.surface = document.createElement("canvas");
-    const element = panel.surface;
+    // Published only once it is usable, so `liveSurfaces()` cannot over-report.
+    const element = panel.surface ?? document.createElement("canvas");
     // Resizing clears the surface, so only do it when the region actually moved.
     if (element.width !== region.width) element.width = region.width;
     if (element.height !== region.height) element.height = region.height;
     const context = panel.context ?? element.getContext("2d") ?? undefined;
     if (context === undefined) return undefined;
+    panel.surface = element;
     panel.context = context;
     context.clearRect(0, 0, region.width, region.height);
     return { element, context };
@@ -407,8 +426,9 @@ function localPath(
     return false;
   const left = -width / 2;
   const top = -height / 2;
-  const rx = Math.min(number(object, "rx") ?? 0, width / 2);
-  const ry = Math.min(number(object, "ry") ?? 0, height / 2);
+  const rx = radius(object, "rx", width);
+  const ry = radius(object, "ry", height);
+  if (rx === undefined || ry === undefined) return false;
   ctx.beginPath();
   if (rx === 0 || ry === 0) {
     ctx.rect(left, top, width, height);
@@ -458,4 +478,34 @@ function number(object: FabricObject, key: string): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+/**
+ * A corner radius, clamped to half the side as Fabric clamps its own. Absent
+ * means square; present-and-unusable is refused rather than read as square,
+ * which would clip to a shape nobody authored.
+ */
+function radius(
+  object: FabricObject,
+  key: string,
+  side: number,
+): number | undefined {
+  const value = (object as unknown as Record<string, unknown>)[key];
+  if (value === undefined) return 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+    return undefined;
+  return Math.min(value, side / 2);
+}
+
+/** `ctx.filter` was reported absent by Safari; a no-op write means unusable. */
+function probeFilter(ctx: CanvasRenderingContext2D): boolean {
+  const before = ctx.filter;
+  try {
+    ctx.filter = "blur(1px)";
+    const usable = ctx.filter === "blur(1px)";
+    ctx.filter = before;
+    return usable;
+  } catch {
+    return false;
+  }
 }

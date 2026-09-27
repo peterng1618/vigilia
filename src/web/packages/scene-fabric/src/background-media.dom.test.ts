@@ -303,4 +303,86 @@ describe("background media as a glass backdrop", () => {
       }
     }
   });
+
+  it("keeps following frames across a reconfiguration that omits onFrame", () => {
+    // The subscription is taken at mount. Two shipped paths reconfigure the
+    // media without restating it - the editor's `setArtboard`, and its
+    // `setBackgroundMedia` remount - and both used to stop the video cold.
+    const scheduled: (() => void)[] = [];
+    const proto = HTMLVideoElement.prototype as unknown as {
+      requestVideoFrameCallback: (cb: () => void) => number;
+      cancelVideoFrameCallback: (handle: number) => void;
+    };
+    const had = "requestVideoFrameCallback" in proto;
+    proto.requestVideoFrameCallback = (cb) => {
+      scheduled.push(cb);
+      return scheduled.length;
+    };
+    proto.cancelVideoFrameCallback = () => {};
+
+    try {
+      const host = document.createElement("div");
+      let frames = 0;
+      const handle = mountBackgroundMedia({
+        host,
+        artboard: {
+          ...artboard,
+          backgroundMedia: { assetId: "loop", fit: "cover" },
+        },
+        assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+        resolveAsset: () => ({ url: "blob:loop" }),
+        onFrame: () => {
+          frames += 1;
+        },
+      });
+      expect(scheduled).toHaveLength(1);
+
+      // A same-media reconfiguration, as `updateArtboard` performs it.
+      handle.update({
+        artboard: {
+          ...artboard,
+          backgroundMedia: { assetId: "loop", fit: "cover" },
+        },
+        assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+        resolveAsset: () => ({ url: "blob:loop" }),
+      });
+      expect(
+        scheduled,
+        "the video is followed again after update",
+      ).toHaveLength(2);
+      // The schedule grows by one per armed loop, and firing a frame re-arms
+      // it, so everything after this point is a delta rather than a count.
+      scheduled[1]?.();
+      expect(frames, "a frame still reaches the host").toBe(1);
+
+      // A switch to a different video, as `setBackgroundMedia` performs it.
+      const afterFire = scheduled.length;
+      handle.update({
+        artboard: {
+          ...artboard,
+          backgroundMedia: { assetId: "other", fit: "cover" },
+        },
+        assets: [{ id: "other", kind: "video", path: "assets/other.webm" }],
+        resolveAsset: () => ({ url: "blob:other" }),
+      });
+      expect(scheduled.length, "the new video is followed too").toBe(
+        afterFire + 1,
+      );
+
+      // And back to an image, which must stop following entirely.
+      const afterSwitch = scheduled.length;
+      handle.update({
+        artboard,
+        assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+        resolveAsset: () => ({ url: "blob:hero" }),
+      });
+      expect(scheduled.length, "an image starts no loop").toBe(afterSwitch);
+      handle.destroy();
+    } finally {
+      if (!had) {
+        delete (proto as Record<string, unknown>)["requestVideoFrameCallback"];
+        delete (proto as Record<string, unknown>)["cancelVideoFrameCallback"];
+      }
+    }
+  });
 });

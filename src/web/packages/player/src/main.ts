@@ -94,6 +94,17 @@ async function start(host: HTMLElement): Promise<void> {
   }
 }
 
+/**
+ * A glass panel this renderer cannot composite — an unsupported `ctx.filter`, a
+ * cross-origin asset that taints the surface, a sample over the size ceiling.
+ * The player has no user-visible diagnostic surface, so this follows the
+ * convention `onUnsupported` already sets: a named, greppable warning rather
+ * than a silently missing blur.
+ */
+function reportGlassError(message: string): void {
+  console.warn(`Vigilia: glass cannot be rendered as authored — ${message}`);
+}
+
 function startFixtureTheme(
   host: HTMLElement,
   theme: ThemeDocument,
@@ -154,6 +165,7 @@ function startFixtureTheme(
         `Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`,
       );
     },
+    onGlassError: reportGlassError,
   });
 
   reportIssues(first);
@@ -257,6 +269,7 @@ async function startHostedTheme(
       const url = resolveAsset(assetId);
       return url === undefined ? undefined : { url };
     },
+    onGlassError: reportGlassError,
   });
   const releaseFonts = await loadFontAssets({
     assets: theme.assets ?? [],
