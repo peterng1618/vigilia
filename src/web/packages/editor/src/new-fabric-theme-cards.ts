@@ -134,7 +134,7 @@ export function cpuCard(): ObjectJson[] {
     },
     path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
     label("cpu-card-title", 528, 212, 140, "CPU", 24, "text"),
-    text("cpu-card-value", 456, 258, 180, percent(90, 60, "cpu-card-load")),
+    text("cpu-card-value", 456, 258, 246, percent(90, 60, "cpu-card-load")),
     // `chart` is the one helper that takes Fabric's centre origin, so these are
     // the box's middle, not its corner.
     chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
@@ -151,7 +151,7 @@ export function gpuCard(): ObjectJson[] {
     card("gpu-card", 715, 187, 290, 307),
     path("gpu-card-icon", 748, 213, starterIcons.gpu(48), "gpu", 3.9),
     label("gpu-card-title", 824, 212, 140, "GPU", 24, "text"),
-    text("gpu-card-value", 748, 258, 180, percent(90, 60, "gpu-card-load")),
+    text("gpu-card-value", 748, 258, 246, percent(90, 60, "gpu-card-load")),
     chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
       ...sparkSettings,
       stroke: { ref: "palette.gpu" },
@@ -221,10 +221,9 @@ function memoryCard(options: {
     // hides `detail` and `axisLabel` outright, so there is no chart-internal
     // value text to suppress and no choice to make.
     //
-    // Both sit at the reference's own centre. The arithmetic that would hold
-    // that centre against a changing reading is `fabric-text.ts`'s, and it does
-    // not hold: the file test named in STATUS.md measures it, and the fix is
-    // Task 8's "fixed-box alignment … intact", not this task's.
+    // Both sit at the reference's own centre, and they hold it because
+    // `text()` authors `wrap: true` — the box is restored on every refresh, so
+    // the placement arithmetic has the authored width to work from.
     text(
       `${prefix}-value`,
       options.ringCentreX - 90,

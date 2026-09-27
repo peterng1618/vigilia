@@ -138,7 +138,6 @@ export function lucidePath(
       const resolved = resolve(upper, args, x, y, relative, scale);
       commands.push(resolved.command);
       [x, y] = resolved.end;
-      if (upper === "M") [startX, startY] = [x, y];
     }
   }
   return commands;

@@ -121,6 +121,23 @@ describe("Lucide icon geometry", () => {
     }
   });
 
+  // Pinned as a rule rather than as a glyph: every other test in this file
+  // iterates the chosen set, so a converter that stopped reading a moveto's
+  // implicit pairs would only be caught if one of the chosen glyphs happened
+  // to use one. This spells it out.
+  it("reads a moveto's letter-less coordinate pairs as linetos", () => {
+    // `chevron-right` is written exactly this way.
+    const commands = lucidePath([["path", { d: "m9 18 6-6-6-6" }]], 24);
+    expect(commands).toEqual([
+      ["M", 9, 18],
+      ["L", 15, 12],
+      ["L", 9, 6],
+    ]);
+    // Three pairs, not four: `9 18`, `6-6`, `-6-6`. A fourth would be a
+    // reading the source as four moveto argument pairs and drawing a shape
+    // Lucide never drew.
+  });
+
   it("turns a rect's corner radius into arcs rather than dropping it", () => {
     const square = lucidePath(
       [["rect", { x: 4, y: 4, width: 16, height: 16, rx: 2 }]],

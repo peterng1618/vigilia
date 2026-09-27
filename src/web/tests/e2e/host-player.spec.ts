@@ -129,6 +129,86 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("pre")).toHaveCount(0);
   });
 
+  // Where the placement defect actually reproduces, and where the witness
+  // belongs. The editor is not this surface: it revives a v2 object as a
+  // `Textbox`, and Fabric's `Textbox.initDimensions` is written as "Unlike
+  // superclass's version of this function, Textbox does not update its width"
+  // — so the editor's `ram-value` cannot become 566.9. The player is where the
+  // document comes back through serialisation carrying whatever width the
+  // object had, and where the aligned readings were measured landing outside
+  // their cards.
+  //
+  // A `test.fail`, because the fix may or may not have landed. The starter
+  // now authors `wrap: true`, which is what makes the player revive a
+  // `Textbox` too; until that is verified in a real player run the marker
+  // stays, and the day the widths hold this goes red rather than silent.
+  //
+  // The starter is saved through the host's own store rather than a fixture,
+  // because the three objects are the starter's own and no fixture has them.
+  test.fail(
+    "holds each aligned reading inside its authored box in the player",
+    async ({ page }, testInfo) => {
+      test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
+
+      await page.goto(`${HOST}/editor/`);
+      await expect(
+        page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      ).toBeVisible({ timeout: 20_000 });
+      await page.getByRole("button", { name: "File", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Save to library" }).click();
+      await expect(page.locator("#status")).toContainText("Saved to library", {
+        timeout: 20_000,
+      });
+
+      await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
+      await page.waitForSelector('canvas[data-vigilia="artboard"]');
+      await page.waitForTimeout(8000);
+      const measured = await page.evaluate(() => {
+        const canvas = (
+          window as unknown as {
+            vigilia?: {
+              handle: {
+                canvas: {
+                  getObjects(): Array<{ get(name: string): unknown }>;
+                };
+              };
+            };
+          }
+        ).vigilia?.handle.canvas;
+        return ["ram-value", "vram-value", "storage-card-value"].map((id) => {
+          const object = canvas
+            ?.getObjects()
+            .find((candidate) => candidate.get("id") === id);
+          const rect = (
+            object as { getBoundingRect?: () => { right: number } } | undefined
+          )?.getBoundingRect?.();
+          return {
+            id,
+            width: Number(object?.get("width") ?? 0),
+            right: Number(rect?.right ?? 0),
+          };
+        });
+      });
+      // The authored boxes, per object. The two ring readings are 180 wide and
+      // the storage share is 200; asserting one number for all three is a test
+      // that can never pass, which is what round one's witness did.
+      const authored: Readonly<Record<string, number>> = {
+        "ram-value": 180,
+        "vram-value": 180,
+        "storage-card-value": 200,
+      };
+      for (const object of measured) {
+        expect(object.width, object.id).toBeCloseTo(
+          authored[object.id] ?? 0,
+          3,
+        );
+        // And the ink lands inside the artboard, which is where the reviewer
+        // measured 1640-1667 for a card that ends at 1632.
+        expect(object.right, object.id).toBeLessThanOrEqual(1672);
+      }
+    },
+  );
+
   test("a theme's language decides the words its clock shows", async ({
     page,
   }, testInfo) => {

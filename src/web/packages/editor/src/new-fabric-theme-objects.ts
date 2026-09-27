@@ -119,6 +119,15 @@ export function text(
     ...(spacing === undefined ? {} : { charSpacing: spacing }),
     vigiliaPaint: { fill: `palette.${first.token}` },
     vigiliaText: {
+      // `wrap` is not cosmetic: it is what decides the Fabric class. With it
+      // false, `adapter.ts` revives the object as a `FabricText`, and Fabric's
+      // `Text.initDimensions` sets `width = calcTextWidth()` — the measured
+      // run. With it true, the object is a `Textbox` built at `box.width` and
+      // `updateText` restores that width on every refresh, so the box the
+      // placement arithmetic reads is the box the author wrote. That is the
+      // whole difference between a centred reading landing in its card and
+      // rendering flush-left and overflowing out of it.
+      wrap: true,
       ...(options?.align === undefined ? {} : { align: options.align }),
       ...(options?.verticalAlign === undefined
         ? {}

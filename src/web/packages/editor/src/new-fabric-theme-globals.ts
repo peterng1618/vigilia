@@ -10,9 +10,13 @@ import type { FabricPalette } from "@vigilia/renderer-core";
  * against the scene body.
  */
 
+/**
+ * The palette is the single place a colour is named. `solidOf` below repeats
+ * the solid ones because a scene object also carries Fabric's own resolved
+ * colour beside its `vigiliaPaint` reference — one authored fact, two
+ * representations, not two authored facts.
+ */
 export const panel = "#081523d9";
-
-/** One colour per device family, so a card's reading and its icon cannot drift apart. */
 
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
