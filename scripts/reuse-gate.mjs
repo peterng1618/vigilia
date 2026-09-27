@@ -96,35 +96,79 @@ function readStdin() {
   }
 }
 
+/** 0 allows, 2 refuses. Fail-open, by design, on anything unexpected. */
+function decide(path, claimed) {
+  if (typeof path !== "string" || path === "") return 0;
+  if (!isWatched(path)) return 0;
+  return covers(posix(relative(ROOT, resolve(ROOT, path))), claimed) ? 0 : 2;
+}
+
+if (process.argv.includes("--self-test")) {
+  // This gate shipped a version that allowed every write, because Windows
+  // relative() yields backslashes and the watchlist used forward slashes. A
+  // gate that cannot refuse is worse than no gate, so prove it still can.
+  const claimed = [
+    "src/web/packages/scene-fabric/src/glass.ts",
+    "src/web/packages/renderer-core/src/theme/",
+  ];
+  const abs = (p) => `${ROOT}/${p}`;
+  const cases = [
+    ["allows a path claimed by a note", abs("src/web/packages/scene-fabric/src/glass.ts"), 0],
+    ["allows a path under a claimed directory", abs("src/web/packages/renderer-core/src/theme/glass.ts"), 0],
+    ["refuses a watchlisted path with no note", abs("src/web/packages/host/src/providers/lhm.ts"), 2],
+    ["allows a path outside the watchlist", abs("src/web/packages/editor/src/ui-copy.ts"), 0],
+    ["allows a test on a watchlisted path", abs("src/web/packages/host/src/providers/lhm.test.ts"), 0],
+    ["refuses a watchlisted file in a watched directory", abs("scripts/anything.mjs"), 2],
+    ["allows an empty path", "", 0],
+  ];
+  let failed = 0;
+  for (const [name, path, expected] of cases) {
+    const got = decide(path, claimed);
+    const ok = got === expected;
+    if (!ok) failed += 1;
+    console.log(`${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${expected}, got ${got})`}`);
+  }
+  if (failed > 0) {
+    console.error(`reuse-gate self-test: ${failed} case(s) wrong`);
+    process.exit(1);
+  }
+  console.log("reuse-gate self-test: all cases behave");
+  process.exit(0);
+}
+
 try {
   if (process.env.VIGILIA_SKIP_REUSE_GATE === "1") process.exit(0);
 
   const input = JSON.parse(readStdin() || "{}");
-  const rel = input.tool_input?.file_path ?? input.tool_input?.path ?? "";
-  if (typeof rel !== "string" || rel === "") process.exit(0);
-  if (!isWatched(rel)) process.exit(0);
-  if (covers(posix(relative(ROOT, resolve(ROOT, rel))), claimedPaths()))
-    process.exit(0);
+  const path = input.tool_input?.file_path ?? input.tool_input?.path ?? "";
+  if (decide(path, claimedPaths()) === 0) process.exit(0);
 
   process.stderr.write(
     [
       "",
       "REUSE GATE — refused.",
       "",
-      `  ${relative(ROOT, resolve(ROOT, rel))}`,
+      `  ${posix(relative(ROOT, resolve(ROOT, path)))}`,
       "",
       "  This is a mechanism boundary. Work all seven rungs of AGENTS.md's",
       "  reuse gate, then land a decision note claiming this path:",
       "",
       "    docs/decisions/NNNN-<slug>.md   (template in docs/decisions/README.md)",
       "",
-      "  The note records what you searched, what you found, and why each",
-      "  alternative was rejected. The searches are the evidence; a list of",
-      "  libraries without them is worth nothing.",
+      "  The gate is about INTEGRATION, not existence. A native API existing",
+      "  is not an answer, and rung 3 succeeding does not discharge rungs 4-5.",
+      "  The question is whether anyone has solved THIS SHAPE of problem - in",
+      "  this renderer, against this host, under these constraints - and what",
+      "  they learned. A capability that still needs sampling, ordering,",
+      "  invalidation, disposal and ownership decisions is exactly the",
+      "  undischarged case: that is where the work is.",
       "",
-      "  A native API existing is not an answer — rung 3 succeeding does not",
-      "  discharge rungs 4-5. If the decision is genuinely recorded elsewhere,",
-      "  set VIGILIA_SKIP_REUSE_GATE=1 and say where it is recorded.",
+      "  Record what you searched, what you found, and why each alternative was",
+      "  rejected. The searches are the evidence; a list of libraries without",
+      "  them is worth nothing.",
+      "",
+      "  If the decision is genuinely recorded elsewhere, set",
+      "  VIGILIA_SKIP_REUSE_GATE=1 and say where it is recorded.",
       "",
     ].join("\n"),
   );
