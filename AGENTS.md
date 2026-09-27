@@ -61,11 +61,22 @@ Vigilia process.
   Keep the file to current objective, active work, latest completed change, next
   steps and blockers/unverified only, maximum 70 lines; run
   `npm run status:check` from `src/web/`.
-- After three unsuccessful repair attempts, record a non-critical bug in its own
-  `docs/bugs/open/` file, index it in `docs/bugs/README.md`, and include
-  evidence and its next pickup action. Resume only when a user asks; move
-  resolved bugs to `docs/bugs/closed/` without indexing them; do not duplicate
-  them outside plan-relevant references.
+- Judge a defect's size when you observe it. **File a bug issue** when any of
+  these holds: the cause is not established; more than one owner could fix it;
+  the fix needs a design decision; it spans subsystems; it blocks the active
+  plan; it would need a spec rather than a task. **Fix it on the fly** when all
+  of these hold: the cause is named with `file:line`, the fix sits inside one
+  owner, the correct behaviour is already specified, a regression test is
+  obvious, and no work is lost and no data misrepresented. Say which side you
+  took and why, in the commit. Nothing goes three attempts unrecorded — at the
+  third, file it and say what was tried. Agents file with
+  `gh issue create --body-file` against `.github/ISSUE_TEMPLATE/bug.yml`;
+  humans use that form. Close the issue with the fixing commit. Do not
+  duplicate a finding in specs, status or reports; plans may link it.
+- A filed request is `needs-triage` until judged. An accepted request closes
+  with a link to the spec or plan that now owns it; a declined one closes as
+  `not planned` with the reason, never silently. `STATUS.md` alone decides
+  acceptance, so the queue keeps one owner.
 
 ## Architecture guardrails
 
