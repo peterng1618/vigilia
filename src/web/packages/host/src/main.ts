@@ -140,11 +140,12 @@ export async function run(argv: readonly string[]): Promise<number> {
         lhmProvider.describeDevices(),
         libraryProvider.describeDevices(),
       ]);
-      // Not a union: the two providers name a drive differently (LHM by model,
-      // the library by mount) and LHM reports no mount, so listing both would
-      // show one physical drive twice. The list must describe what the provider
-      // that answers readings can actually serve, so LHM's list wins whenever
-      // it has one and the library's fills in only when it does not.
+      // Not a union: both providers name a drive by its model now, so LHM's
+      // list already covers the drives the library can reach, and concatenating
+      // them would list one physical drive twice under two different slugs.
+      // The list must describe what the provider that answers readings can
+      // actually serve, so LHM's list wins whenever it has one and the
+      // library's fills in only when it does not.
       const prefer = <T extends { readonly id: string }>(
         first: readonly T[],
         second: readonly T[],

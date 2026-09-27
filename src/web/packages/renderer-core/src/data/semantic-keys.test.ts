@@ -55,6 +55,42 @@ describe("the semantic key vocabulary", () => {
     // provider contradict the vocabulary later.
     expect(SEMANTIC_KEYS.filter((d) => /\.\d+\./.test(d.key))).toEqual([]);
   });
+
+  it("declares the device identity keys as text, not as measurements", () => {
+    // A caption is a name, not a quantity: no unit, and no `instant` (which
+    // would make `plan.ts` reformat the provider's string as a date).
+    for (const key of [
+      "cpu.brand",
+      "cpu.model",
+      "cpu.manufacturer",
+      "gpu.name",
+      "disk.name",
+    ]) {
+      const declared = describeSemanticKey(key);
+
+      expect(declared, key).toBeDefined();
+      expect(declared?.unit, key).toBeUndefined();
+      expect(declared?.instant, key).toBeUndefined();
+      expect(isKnownSemanticKey(key), key).toBe(true);
+    }
+  });
+
+  it("keeps the three CPU identity fields as separate keys", () => {
+    // The library reports a manufacturer, a brand and a model that all differ
+    // (`Intel` / `Core™ i9-10850K` / `165` on the dev machine), and which one
+    // reads best is the theme author's choice.
+    for (const key of ["cpu.brand", "cpu.model", "cpu.manufacturer"]) {
+      expect(describeSemanticKey(key)?.family, key).toBe("cpu");
+      expect(describeSemanticKey(key)?.label, key).toBeTruthy();
+    }
+  });
+
+  it("puts a device caption in its own device's family", () => {
+    // The family is what makes the settings page ask which device a theme
+    // means, so a caption must ask exactly as the readings beside it do.
+    expect(describeSemanticKey("gpu.name")?.family).toBe("gpu");
+    expect(describeSemanticKey("disk.name")?.family).toBe("disk");
+  });
 });
 
 describe("describeSemanticKey", () => {

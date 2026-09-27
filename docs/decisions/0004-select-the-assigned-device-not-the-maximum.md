@@ -3,7 +3,13 @@
 - **Date:** 2026-09-28
 - **Status:** accepted
 - **Paths:** `src/web/packages/host/src/providers/`,
-  `src/web/packages/host/src/server.ts`
+  `src/web/packages/host/src/server.ts`,
+  `src/web/packages/host/src/settings/devices.ts`,
+  `src/web/packages/host/src/main.ts`,
+  `src/web/packages/host/public/settings.html`,
+  `src/web/packages/renderer-core/src/data/semantic-keys.ts`,
+  `src/web/packages/editor/src/new-fabric-theme.ts`,
+  `src/web/packages/editor/src/new-fabric-theme-cards.ts`
 
 ## The problem
 
@@ -277,6 +283,31 @@ another drive.
 
 **In-flight assignment changes need no generation counter.** Every provider
 reads its assignment exactly once, *after* the asynchronous reads, at selection
-time; an assignment published while a sample is in flight is therefore the one
-that sample uses, for the caption and the metrics together. A counter would be
-a second thing to keep in sync with no case it covers.
+time, and scopes both the caption and the figures by that one read. An
+assignment published while a sample is in flight is therefore the one that
+sample uses. A counter would be a second thing to keep in sync with no case it
+covers. **This holds per provider and stops there**: `registry.sample` fans out
+with `Promise.allSettled`, so an assignment landing between LHM's read and the
+library's pairs one provider's figure with the other's name for one frame.
+`registry.test.ts` pins that split so it is visible rather than silent; closing
+it needs a host-owned epoch threaded through the registry, which is a provider
+contract change and out of scope here.
+
+## Two product decisions this did not settle, made here
+
+**The unassigned default is "the first device the machine reports", not
+"the busiest".** This changes shipped behaviour on an unconfigured host, and
+the brief ruled on everything else here without mentioning it. The reasoning
+stands on its own — a caption that changes text every sample cannot be read,
+cannot fit a fixed box, and on a two-card machine would flicker between "RTX
+3080" and "RTX 3080 Ti", which is precisely the ambiguity the caption exists to
+remove. The settings page's "Busiest (default)" is updated to match. **Reversible
+if the user prefers the old default**, at the cost of the caption flickering.
+
+**The starter's storage caption is a gap until a consumer picks a drive.** The
+reference shows "Games (D:)" there. An unconfigured host measures every volume
+at once, and no one drive's name describes that sum, so the honest reading is a
+gap — and binding `disk.name` puts the starter in the `system-disk` group, so the
+settings page asks the consumer which drive the theme means. The alternative —
+printing one drive's name over a sum — is the misattribution this note exists to
+prevent. Also a product decision, also reversible.

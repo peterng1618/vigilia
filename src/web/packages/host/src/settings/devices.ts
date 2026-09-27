@@ -117,11 +117,16 @@ export function createDeviceSettingsStore(
   };
 }
 
-/** The name to show for a device: the consumer's choice, else the detected one. */
+/**
+ * The name to show for a device: the consumer's choice, else the detected one.
+ *
+ * Takes the names map rather than the whole settings, because the provider that
+ * acquired a reading knows which device it read and needs only this.
+ */
 export function displayNameFor(
-  settings: DeviceSettings,
+  names: Readonly<Record<string, string>>,
   deviceId: string,
   detectedName: string,
 ): string {
-  return settings.names[deviceId] ?? detectedName;
+  return names[deviceId] ?? detectedName;
 }

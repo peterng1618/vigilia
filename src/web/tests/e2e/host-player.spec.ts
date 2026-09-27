@@ -325,6 +325,96 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("pre")).toHaveCount(0);
   });
 
+  test("paints each caption from the host's own reading of that key", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+
+    // Self-contained: the starter reaches the host's library only when a
+    // browser saves it, so this does that itself rather than leaning on
+    // whichever test happened to run first.
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 20_000,
+    });
+
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  vigilia?: { live?: { batchCount?: number } };
+                }
+              ).vigilia?.live?.batchCount ?? 0,
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
+
+    // The rendered text and the host's own sample for the same key, read in
+    // one pass so a repaint between them cannot make this vacuously true.
+    const read = (): Promise<{
+      caption: string;
+      reported: string;
+      status: string;
+      temperature: string;
+    }> =>
+      page.evaluate(() => {
+        const w = window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: { getObjects(): Array<{ get(name: string): unknown }> };
+            };
+            live?: { source?: { latest(key: string): unknown } };
+          };
+        };
+        const objects = w.vigilia?.handle.canvas.getObjects() ?? [];
+        const text = (id: string): string =>
+          String(objects.find((o) => o.get("id") === id)?.get("text") ?? "");
+        const sample = w.vigilia?.live?.source?.latest("gpu.name") as
+          | { textValue?: string; status?: string }
+          | undefined;
+
+        return {
+          caption: text("gpu-card-caption"),
+          reported: String(sample?.textValue ?? ""),
+          status: String(sample?.status ?? ""),
+          temperature: text("gpu-card-temp"),
+        };
+      });
+
+    // The card shows what the host said about the card, verbatim: a caption
+    // painted from anything else is the misattribution this key exists to stop.
+    await expect
+      .poll(
+        async () => {
+          const { caption, reported } = await read();
+          return caption === reported && reported.length > 0;
+        },
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+
+    // And it is a real name rather than the gap a missing reading would show,
+    // with a live figure beside it from the same card.
+    const settled = await read();
+    expect(settled.status).toBe("ok");
+    expect(settled.caption).not.toBe("—");
+    expect(settled.temperature).toMatch(/\d+°C$/);
+  });
+
   test("renders a hosted theme in the player and streams live samples", async ({
     page,
   }, testInfo) => {

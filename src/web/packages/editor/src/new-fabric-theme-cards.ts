@@ -30,11 +30,9 @@ import {
  * mockup's 15-unit disagreement between the two cards.
  *
  * What is not here is anything no provider supplies. The reference names its
- * CPU and GPU models and its storage volume; the baseline GPU provider returns
- * the maximum across controllers, so a caption naming one card could sit over
- * another's readings. Those captions are Task 9's, and until then each card
- * carries a frequency or a temperature, which is a measurement rather than an
- * identity.
+ * CPU and GPU models and its storage volume; those three captions are bindings
+ * like any other reading, so a machine that cannot say one shows a gap instead
+ * of a stand-in name, and a card's name always describes the figures beside it.
  */
 
 /** `defaultLineSettings` ships an area fill, and the reference's trend lines do not. */
@@ -152,6 +150,24 @@ export function cpuCard(): ObjectJson[] {
       101.7,
       percent(90, 60, "cpu-card-load"),
     ),
+    // The reference writes the processor's own name under the figure. It is a
+    // binding, not prose: a theme carries no machine's identity, and a caption
+    // that cannot be read is a gap, never a stand-in model.
+    //
+    // The box runs wider than the value above it, left to the card's own inset:
+    // a model name is longer than the reading column, and "…RTX 3080…" and
+    // "RTX 3080 Ti" are different cards. The type presets are a fixed set, so
+    // shrinking the face is not the lever — 16 is not a preset this document
+    // may use, and the editor refuses the whole theme without one.
+    text("cpu-card-caption", 433, 358, 262, 50, [
+      {
+        kind: "value",
+        bindingId: "cpu-card-model",
+        token: "dim",
+        size: 20,
+        weight: "400",
+      },
+    ]),
     // `chart` is the one helper that takes Fabric's centre origin, so these are
     // the box's middle, not its corner.
     chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
@@ -183,6 +199,17 @@ export function gpuCard(): ObjectJson[] {
       101.7,
       percent(90, 60, "gpu-card-load"),
     ),
+    // The assigned card's name, beside the figures it answers for. Two lines,
+    // for the reason on the CPU card: a truncated model names no card.
+    text("gpu-card-caption", 733, 358, 262, 50, [
+      {
+        kind: "value",
+        bindingId: "gpu-card-model",
+        token: "dim",
+        size: 20,
+        weight: "400",
+      },
+    ]),
     chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
       ...sparkSettings,
       stroke: { ref: "palette.gpu" },
@@ -419,10 +446,19 @@ export function storageCard(): ObjectJson[] {
       track: { ref: "palette.chartTrack" },
     }),
     // The row the reference puts the volume name and a chevron on. The name is
-    // Task 9's — no key in the vocabulary is a drive's *name*, and the baseline
-    // provider would not be the volume the card's bar measures. The chevron is
-    // not a reading and claims nothing, so it ships: decorative in this scope,
-    // not a new navigation action.
+    // the selected volume's own: it reads a gap until a consumer picks a drive,
+    // because until then the bar measures every volume at once and no one
+    // volume's name describes that sum. The chevron is not a reading and claims
+    // nothing, so it ships: decorative in this scope, not a navigation action.
+    text("storage-card-name", 1234, 612, 330, 22.6, [
+      {
+        kind: "value",
+        bindingId: "storage-card-volume",
+        token: "text",
+        size: 20,
+        weight: "500",
+      },
+    ]),
     path("storage-chevron", 1590, 626, starterIcons.chevron(24), "dim", 2),
   ];
 }

@@ -864,7 +864,7 @@ describe("A theme's own device answers", () => {
 
     // The answer is the difference, so the providers must be told about it:
     // without this the dashboard keeps showing the disk the consumer replaced.
-    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-d" });
+    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-d", names: {} });
 
     // Another theme reads the machine's own answer, not this theme's.
     await request(
@@ -873,7 +873,7 @@ describe("A theme's own device answers", () => {
       "/api/themes/active",
       json({ id: "disk-spare" }),
     );
-    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-c" });
+    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-c", names: {} });
   });
 
   it("publishes the assignment a chosen theme implies", async () => {
@@ -898,6 +898,30 @@ describe("A theme's own device answers", () => {
       "/api/themes/active",
       json({ id: "disk-only" }),
     );
-    expect(pushed.at(-1)).toEqual({ gpu: "gpu-1", systemDisk: "disk-d" });
+    expect(pushed.at(-1)).toEqual({
+      gpu: "gpu-1",
+      systemDisk: "disk-d",
+      names: {},
+    });
+  });
+
+  it("publishes the consumer's chosen name, so a caption reaches the display", async () => {
+    // The other half of the choice: which device answers, and what it is
+    // called. A name the settings page accepted has to arrive with the
+    // assignment, or a caption can only ever print the machine's own string.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/devices",
+      json({
+        assigned: { "system-disk": "lexar-500gb-ssd" },
+        names: { "lexar-500gb-ssd": "System drive" },
+      }),
+    );
+
+    expect(pushed.at(-1)).toEqual({
+      systemDisk: "lexar-500gb-ssd",
+      names: { "lexar-500gb-ssd": "System drive" },
+    });
   });
 });

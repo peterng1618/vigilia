@@ -90,14 +90,14 @@ describe("device settings", () => {
   });
 
   it("shows the consumer's name, else the detected one", () => {
-    const settings = normalizeDeviceSettings({
+    const { names } = normalizeDeviceSettings({
       names: { "lexar-500gb-ssd": "System drive" },
     });
 
-    expect(displayNameFor(settings, "lexar-500gb-ssd", "Lexar 500GB SSD")).toBe(
+    expect(displayNameFor(names, "lexar-500gb-ssd", "Lexar 500GB SSD")).toBe(
       "System drive",
     );
-    expect(displayNameFor(settings, "st4000dm004-2cv104", "ST4000DM004")).toBe(
+    expect(displayNameFor(names, "st4000dm004-2cv104", "ST4000DM004")).toBe(
       "ST4000DM004",
     );
   });

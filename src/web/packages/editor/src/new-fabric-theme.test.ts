@@ -226,10 +226,11 @@ describe("the new Fabric document", () => {
 
   it("authors no reading, device name or time axis that nothing supplies", () => {
     const prose = literalText(createNewFabricTheme());
-    // Every one of these was authored text standing in for a reading. A caption
-    // naming one GPU over the baseline provider's maximum-across-controllers
-    // figures misattributes a device, so the model names stay absent until the
-    // captions are real readings.
+    // Every one of these was authored text standing in for a reading. The
+    // device names are now real readings — bound to `cpu.brand`, `gpu.name` and
+    // `disk.name`, which resolve from the same device the figures beside them
+    // describe — so they must appear as bindings, never as prose. Prose would
+    // name one machine's hardware on every machine.
     for (const claim of [
       "7800X3D",
       "RTX 4080",
@@ -242,6 +243,20 @@ describe("the new Fabric document", () => {
       "All systems nominal",
     ])
       expect(prose, claim).not.toContain(claim);
+  });
+
+  it("binds each caption to the key that names the device its card measures", () => {
+    const bindings = bindingsOf(createNewFabricTheme());
+    const keyOf = (node: string, binding: string) =>
+      bindings[node]?.find((b) => b.id === binding)?.semanticKey;
+
+    expect(keyOf("cpu-card-caption", "cpu-card-model")).toBe("cpu.brand");
+    expect(keyOf("gpu-card-caption", "gpu-card-model")).toBe("gpu.name");
+    expect(keyOf("storage-card-name", "storage-card-volume")).toBe("disk.name");
+    // The GPU caption and the GPU figures must resolve from one device, so a
+    // theme cannot show card A's load under card B's name.
+    expect(keyOf("gpu-card-value", "gpu-card-load")).toBe("gpu.load");
+    expect(keyOf("storage-bar", "storage-used")).toBe("disk.used.percent");
   });
 
   it("places every reference card on its measured box", () => {

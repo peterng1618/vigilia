@@ -20,7 +20,7 @@ describe("device assignment", () => {
   it("changes which GPU answers the theme's gpu.* keys", () => {
     const sensors = [
       ...realSensors(),
-      // A second GPU, so "the highest reading" and "the chosen one" differ.
+      // A second GPU, so "one device" and "the highest of each" differ.
       {
         sensorId: "/gpu-amd/0/load/0",
         hardwareId: "/gpu-amd/0",
@@ -39,13 +39,18 @@ describe("device assignment", () => {
       },
     ];
 
-    // Unassigned: the highest reading wins, as before.
+    // Unassigned: the first card the machine reports answers, and every key
+    // comes from it. This used to assert the opposite — that the highest
+    // reading won — which is the defect `docs/decisions/0004` removes: a
+    // maximum could pair one card's load with another's temperature under a
+    // single caption.
     const unassigned = new Map(
       matchLhmSensorsAssigned(sensors, ["gpu.load", "gpu.temp"], {}).map(
         (m) => [m.semanticKey, m.value],
       ),
     );
-    expect(unassigned.get("gpu.load")).toBe(99);
+    expect(unassigned.get("gpu.load")).not.toBe(99);
+    expect(unassigned.get("gpu.temp")).not.toBe(88);
 
     // Assigned to the NVIDIA card: the theme's single gpu.load must follow it,
     // even though the AMD card reads higher.
@@ -56,6 +61,9 @@ describe("device assignment", () => {
     );
     expect(chosen.get("gpu.load")).toBeLessThan(99);
     expect(chosen.get("gpu.temp")).toBeLessThan(88);
+    // The same two figures the unassigned case reports: one card either way,
+    // and the assignment only says which.
+    expect(chosen.get("gpu.load")).toBe(unassigned.get("gpu.load"));
   });
 
   it("changes which drive the system-disk keys describe", () => {
@@ -92,9 +100,10 @@ describe("device assignment", () => {
     expect(assigned.get("cpu.fan")).toBeGreaterThan(0);
   });
 
-  it("falls back to the default when the assigned device is gone", () => {
+  it("reports a gap when the assigned device is gone, not another device's figures", () => {
     // A drive removed after it was chosen: the keys must report a gap, not a
-    // reading from a different drive.
+    // reading from a different drive. The title used to say "falls back to the
+    // default" while asserting the opposite.
     const assigned = matchLhmSensorsAssigned(realSensors(), ["disk.total"], {
       systemDisk: "drive-that-was-removed",
     });
@@ -102,7 +111,12 @@ describe("device assignment", () => {
     expect(assigned).toEqual([]);
   });
 
-  it("behaves exactly as before when nothing is assigned", () => {
+  it("leaves the groups nothing assigned alone, and picks one card for the GPU", () => {
+    // Unassigned storage is still the host's total, exactly as `matchLhmSensors`
+    // computes it. The GPU group is the one that changed: it answers from a
+    // single card now, where it used to take the highest of each. The captured
+    // payload has one GPU, so the two agree here and only diverge with a second
+    // card — which `library-devices.test.ts` covers by injection.
     const sensors = realSensors();
     const keys = ["cpu.temp", "gpu.load", "disk.total", "network.download"];
 

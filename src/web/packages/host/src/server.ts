@@ -385,6 +385,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       ...(gpu === undefined ? {} : { gpu }),
       ...(systemDisk === undefined ? {} : { systemDisk }),
       ...(dataDisk === undefined ? {} : { dataDisk }),
+      // The consumer's chosen names ride with the choice, so a rename reaches
+      // the caption and the readings it names in the same publish.
+      names: stored.names,
     };
   }
 

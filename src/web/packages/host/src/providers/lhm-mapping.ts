@@ -446,6 +446,12 @@ export interface DeviceAssignment {
   readonly systemDisk?: string;
   /** Device id for the per-device data-disk keys, when a theme names one. */
   readonly dataDisk?: string;
+  /**
+   * What the consumer calls each device, keyed by device id. It rides with the
+   * choice rather than beside it, so one publish reaches the readings and the
+   * caption that names them in the same cycle.
+   */
+  readonly names?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -465,24 +471,95 @@ function isDataDiskKey(key: string): boolean {
   return (DATA_DISK_KEYS as readonly string[]).includes(key);
 }
 
+/** Which hardware node answers a group's unsuffixed keys, by device id. */
+function nodeFor(
+  sensors: readonly LhmSensor[],
+  group: HardwareGroup,
+  assigned: string | undefined,
+): string | undefined {
+  const seen = new Map<string, string>();
+
+  for (const sensor of sensors) {
+    if (groupOf(sensor.hardwareType) === group) {
+      seen.set(sensor.hardwareId, diskDeviceId(sensor.hardwareType));
+    }
+  }
+
+  const ids = [...seen.values()];
+  if (ids.length === 0) {
+    return undefined;
+  }
+
+  // With no assignment, the first node the machine reports answers — the same
+  // rule the library provider uses, so one caption names one device whichever
+  // provider is running. "Busiest" would be wrong here for the reason it is
+  // wrong there: the caption would change text every sample.
+  return assigned === undefined ? ids[0] : ids.find((id) => id === assigned);
+}
+
+/**
+ * The name of the device a group's unsuffixed keys describe, or undefined when
+ * no single device answers them.
+ *
+ * The GPU group is scoped to one node either way, so it always has a name. The
+ * storage group is summed across every drive until one is assigned — a
+ * legitimate host total, and a total no one drive's name describes.
+ */
+export function lhmDeviceName(
+  sensors: readonly LhmSensor[],
+  group: "gpu" | "storage",
+  assignment: DeviceAssignment,
+): string | undefined {
+  const deviceId =
+    group === "gpu"
+      ? nodeFor(sensors, "gpu", assignment.gpu)
+      : assignment.systemDisk;
+
+  if (deviceId === undefined) {
+    return undefined;
+  }
+
+  for (const sensor of sensors) {
+    if (
+      groupOf(sensor.hardwareType) === group &&
+      diskDeviceId(sensor.hardwareType) === deviceId
+    ) {
+      return sensor.hardwareType;
+    }
+  }
+
+  return undefined;
+}
+
 export function matchLhmSensorsAssigned(
   sensors: readonly LhmSensor[],
   semanticKeys: readonly string[],
   assignment: DeviceAssignment,
 ): readonly LhmMatch[] {
-  const gpuId = assignment.gpu;
+  // The GPU group always answers from one node, so every `gpu.*` figure and
+  // the `gpu.name` caption beside them come from the same card. Storage is
+  // scoped only once a drive is chosen; until then it is the host's total.
+  //
+  // An assigned device this PC does not have scopes its group to nothing: a
+  // fallback to the default would answer with a different card's readings under
+  // the name the consumer chose for the one they removed.
+  const gpuId = nodeFor(sensors, "gpu", assignment.gpu);
+  // Scoped whenever a card answers, assigned or not: that is the whole point.
+  const gpuWanted = gpuId !== undefined || assignment.gpu !== undefined;
+  const diskWanted = assignment.systemDisk !== undefined;
   const diskId = assignment.systemDisk;
 
   const scoped =
-    gpuId === undefined && diskId === undefined
+    !gpuWanted && !diskWanted
       ? sensors
       : sensors.filter((sensor) => {
           const group = groupOf(sensor.hardwareType);
           const id = diskDeviceId(sensor.hardwareType);
 
-          // Keep everything that is not one of the assigned groups.
-          if (group === "gpu" && gpuId !== undefined) return id === gpuId;
-          if (group === "storage" && diskId !== undefined) return id === diskId;
+          // Keep everything that is not one of the selected groups.
+          if (group === "gpu" && gpuWanted)
+            return gpuId !== undefined && id === gpuId;
+          if (group === "storage" && diskWanted) return id === diskId;
           return true;
         });
 

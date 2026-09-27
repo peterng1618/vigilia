@@ -47,6 +47,15 @@ describe("the device slots a theme needs", () => {
     expect(requiredDeviceGroups(themeWith(["vram.used"]))).toEqual(["gpu"]);
   });
 
+  it("asks for the device a caption names, because a caption needs one", () => {
+    // A theme that shows only a GPU name still has to say which card that is,
+    // or the caption is ambiguous on a machine with two.
+    expect(requiredDeviceGroups(themeWith(["gpu.name"]))).toEqual(["gpu"]);
+    expect(requiredDeviceGroups(themeWith(["disk.name"]))).toEqual([
+      "system-disk",
+    ]);
+  });
+
   it("returns the slots in the order the page presents them", () => {
     expect(
       requiredDeviceGroups(

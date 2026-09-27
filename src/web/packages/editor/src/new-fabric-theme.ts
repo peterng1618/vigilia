@@ -65,6 +65,10 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         { id: "cpu-card-load", semanticKey: "cpu.load", precision: 0 },
       ],
       "cpu-card-sparkline": [{ id: "cpu-card-spark", semanticKey: "cpu.load" }],
+      // Three captions, each bound to the device the card's figures describe.
+      // `cpu.brand` rather than `cpu.model`: the library reports all three and
+      // the brand is the one that reads as a product name on a caption.
+      "cpu-card-caption": [{ id: "cpu-card-model", semanticKey: "cpu.brand" }],
       // The reference writes GHz; the key reports MHz, so the binding scales and
       // the author writes the unit. A conversion of a real reading, not a unit
       // the provider cannot produce.
@@ -80,6 +84,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         { id: "gpu-card-load", semanticKey: "gpu.load", precision: 0 },
       ],
       "gpu-card-sparkline": [{ id: "gpu-card-spark", semanticKey: "gpu.load" }],
+      "gpu-card-caption": [{ id: "gpu-card-model", semanticKey: "gpu.name" }],
       "gpu-card-freq": [
         {
           id: "gpu-card-clock",
@@ -136,6 +141,9 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         { id: "storage-percent", semanticKey: "disk.used.percent" },
       ],
       "storage-bar": [{ id: "storage-used", semanticKey: "disk.used.percent" }],
+      "storage-card-name": [
+        { id: "storage-card-volume", semanticKey: "disk.name" },
+      ],
       "network-down": [
         {
           id: "network-download-label",
