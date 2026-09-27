@@ -3,6 +3,12 @@
 - **Status:** queued spec; awaiting written-spec review. Plan: not yet written.
 - **Date:** 2026-09-27
 - **Queue:** after reference-theme fidelity; before the font trio catalogue.
+- **Plan refresh required when activated (2026-09-27).** Reference-theme fidelity is
+  still changing the surface this spec proves — panels and their material controls,
+  glass, tracked typography, gauge and caption authoring, chart families, the semantic
+  key vocabulary and the device-identity rules. **The plan must be written against the
+  delivered surface, not inherited from any earlier draft of this scope.** The
+  from-blank requirement below is not negotiable and does not expire with the refresh.
 
 ## Intent
 

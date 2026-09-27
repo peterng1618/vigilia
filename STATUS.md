@@ -21,7 +21,10 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - **Queued spec, no plan:** [author journey proof](docs/superpowers/specs/2026-09-27-author-journey-proof-design.md)
   — awaiting written-spec review; not activated, and queued between reference-
   theme fidelity and the font catalogue. Proves the shipped authoring surface by
-  rebuilding the reference composition from blank through the UI alone.
+  rebuilding the reference composition from blank through the UI alone, with no
+  generator, starter, fixture or hand-edited JSON. **Its plan must be written
+  against the delivered surface, not inherited** — reference-theme fidelity is still
+  changing the surface it proves.
 - **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
   — not activated. Replaces the one-entry hand-written trio with 380 generated
   pairings over 238 faces, and the two-option dropdown with one searchable picker.
