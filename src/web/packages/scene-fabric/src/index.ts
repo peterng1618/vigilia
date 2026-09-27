@@ -15,6 +15,7 @@ export {
   type BackgroundMediaHandle,
   type BackgroundMediaOptions,
   type BackgroundMediaSource,
+  mediaDrawArgs,
   mountBackgroundMedia,
 } from "./background-media.js";
 export type {
@@ -27,6 +28,13 @@ export {
   withoutEngineAnimation,
 } from "./chart-object.js";
 export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
+export {
+  type BackdropMedia,
+  createGlass,
+  type DeviceRect,
+  type GlassHandle,
+  type GlassOptions,
+} from "./glass.js";
 export type { UnsupportedReporter } from "./fabric-nodes.js";
 export {
   applyAuthoredText,

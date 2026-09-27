@@ -10,7 +10,8 @@ export type EditorErrorCategory =
   | "snapping"
   | "crop"
   | "image"
-  | "background-media";
+  | "background-media"
+  | "glass";
 
 export interface EditorDiagnostic {
   readonly category: EditorErrorCategory;

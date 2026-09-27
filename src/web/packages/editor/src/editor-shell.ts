@@ -13,6 +13,7 @@ import {
   applyObjectTypePresets,
   artboardPaintKey,
   type BackgroundMediaSource,
+  createGlass,
   createSceneAdapter,
   cssArtboardPaint,
   disposeScene,
@@ -374,6 +375,8 @@ export async function mountEditorShell({
             assets: mediaAssets,
             resolveAsset: mediaResolve,
             onMediaError: reportMediaError,
+            // The video is a DOM sibling, so Fabric never sees a frame change.
+            onFrame: () => editor.canvas.requestRenderAll(),
           });
     // The media layer is a DOM sibling of the canvas rather than a Fabric
     // object, so it has to be repositioned by hand whenever the camera moves.
@@ -382,6 +385,13 @@ export async function mountEditorShell({
     };
     editor.viewport.onChange(placeMedia);
     placeMedia();
+
+    // After the media, because a glass panel samples that layer for its backdrop.
+    const glass = createGlass({
+      canvas: editor.canvas,
+      ...(media === undefined ? {} : { backdrop: () => media?.backdrop() }),
+      onGlassError: (message) => editor.errorManager.warn("glass", message),
+    });
 
     return {
       editor,
@@ -447,6 +457,7 @@ export async function mountEditorShell({
       },
       destroy() {
         resize?.disconnect();
+        glass.dispose();
         media?.destroy();
         scene?.dispose();
         disposeScene(editor.canvas);

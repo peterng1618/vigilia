@@ -1,4 +1,5 @@
 import type { Artboard, AssetReference } from "@vigilia/renderer-core";
+import type { BackdropMedia, DeviceRect } from "./glass.js";
 
 export interface BackgroundMediaSource {
   readonly url: string;
@@ -14,6 +15,9 @@ export interface BackgroundMediaOptions {
    * dropped. Distinct from `SceneAdapterOptions.onAssetError`, which reports a
    * node's own asset by id; this one carries a human-readable reason. */
   readonly onMediaError?: (message: string) => void;
+  /** Called once per decoded video frame. Nothing subscribes to it unless a
+   *  video is the media, so an image background starts no loop at all. */
+  readonly onFrame?: () => void;
 }
 
 export interface BackgroundMediaHandle {
@@ -24,7 +28,18 @@ export interface BackgroundMediaHandle {
     readonly width: number;
     readonly height: number;
   }): void;
+  /** Pixel access for the glass sampler, or undefined with nothing to sample.
+   *  The media is a DOM sibling below the canvas, so a glass panel cannot read
+   *  it out of the canvas it is painting. */
+  backdrop(): BackdropMedia | undefined;
   destroy(): void;
+}
+
+interface Bounds {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /** Mounts the optional DOM-only artboard background below the caller's canvas. */
@@ -37,11 +52,22 @@ export function mountBackgroundMedia(
     "position:absolute;inset:0;overflow:hidden;pointer-events:none;";
   options.host.prepend(layer);
   let disposeSource: (() => void) | undefined;
+  let stopFrames: (() => void) | undefined;
+  let element: HTMLImageElement | HTMLVideoElement | undefined;
+  let fit: "cover" | "contain" = "cover";
+  let bounds: Bounds = { left: 0, top: 0, width: 0, height: 0 };
 
-  const update = (next: Omit<BackgroundMediaOptions, "host">): void => {
+  const stop = (): void => {
     disposeSource?.();
     disposeSource = undefined;
+    stopFrames?.();
+    stopFrames = undefined;
+  };
+
+  const update = (next: Omit<BackgroundMediaOptions, "host">): void => {
+    stop();
     layer.replaceChildren();
+    element = undefined;
     const media = next.artboard.backgroundMedia;
     const asset = next.assets?.find(
       (candidate) => candidate.id === media?.assetId,
@@ -67,39 +93,145 @@ export function mountBackgroundMedia(
       return;
     }
 
-    const element =
+    const mounted =
       asset.kind === "video"
         ? document.createElement("video")
         : document.createElement("img");
-    element.src = source.url;
-    element.style.cssText = `display:block;width:100%;height:100%;object-fit:${media.fit};`;
-    if (element instanceof HTMLVideoElement) {
-      element.autoplay = true;
-      element.muted = true;
-      element.loop = true;
-      element.playsInline = true;
+    mounted.src = source.url;
+    mounted.style.cssText = `display:block;width:100%;height:100%;object-fit:${media.fit};`;
+    if (mounted instanceof HTMLVideoElement) {
+      mounted.autoplay = true;
+      mounted.muted = true;
+      mounted.loop = true;
+      mounted.playsInline = true;
     }
     disposeSource = source.dispose;
-    layer.append(element);
+    fit = media.fit;
+    element = mounted;
+    layer.append(mounted);
+    stopFrames = followFrames(mounted, next.onFrame);
   };
 
   update(options);
   return {
     update,
-    setBounds(bounds) {
-      layer.style.left = `${bounds.left}px`;
-      layer.style.top = `${bounds.top}px`;
+    setBounds(next) {
+      bounds = next;
+      layer.style.left = `${next.left}px`;
+      layer.style.top = `${next.top}px`;
       layer.style.right = "";
       layer.style.bottom = "";
-      layer.style.width = `${bounds.width}px`;
-      layer.style.height = `${bounds.height}px`;
+      layer.style.width = `${next.width}px`;
+      layer.style.height = `${next.height}px`;
+    },
+    backdrop(): BackdropMedia | undefined {
+      const mounted = element;
+      if (mounted === undefined) return undefined;
+      return {
+        paint(ctx, region, deviceScale) {
+          const source = intrinsic(mounted);
+          if (source === undefined) return false;
+          // A source with no intrinsic size — an SVG authored without width or
+          // height — has no ratio to preserve, which is what the element does
+          // too; the box stands in for the source so nothing is cropped.
+          const [width, height] =
+            source.width > 0 && source.height > 0
+              ? [source.width, source.height]
+              : [bounds.width * deviceScale, bounds.height * deviceScale];
+          ctx.drawImage(
+            mounted,
+            ...mediaDrawArgs({
+              sourceWidth: width,
+              sourceHeight: height,
+              fit,
+              deviceLeft: bounds.left * deviceScale,
+              deviceTop: bounds.top * deviceScale,
+              deviceWidth: bounds.width * deviceScale,
+              deviceHeight: bounds.height * deviceScale,
+              region,
+            }),
+          );
+          return true;
+        },
+      };
     },
     destroy() {
-      disposeSource?.();
-      disposeSource = undefined;
+      stop();
+      element = undefined;
       layer.remove();
     },
   };
+}
+
+/**
+ * The nine `drawImage` arguments that reproduce the element's `object-fit` over
+ * a device-space region, offset by where the media layer actually sits.
+ * `object-fit` is a CSS layout decision that `drawImage` does not apply, and
+ * `object-position` is never authored, so the crop stays centred.
+ */
+export function mediaDrawArgs(input: {
+  readonly sourceWidth: number;
+  readonly sourceHeight: number;
+  readonly fit: "cover" | "contain";
+  readonly deviceLeft: number;
+  readonly deviceTop: number;
+  readonly deviceWidth: number;
+  readonly deviceHeight: number;
+  readonly region: DeviceRect;
+}): readonly [number, number, number, number, number, number, number, number] {
+  const { sourceWidth, sourceHeight, deviceWidth, deviceHeight } = input;
+  const scale =
+    input.fit === "cover"
+      ? Math.max(deviceWidth / sourceWidth, deviceHeight / sourceHeight)
+      : Math.min(deviceWidth / sourceWidth, deviceHeight / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+  return [
+    (sourceWidth - width) / 2,
+    (sourceHeight - height) / 2,
+    width,
+    height,
+    input.deviceLeft - input.region.left + (deviceWidth - width) / 2,
+    input.deviceTop - input.region.top + (deviceHeight - height) / 2,
+    width,
+    height,
+  ];
+}
+
+/**
+ * Fabric cannot see a `<video>` that is a DOM sibling rather than an object, so
+ * nothing repaints and the glass keeps a still frame of a moving background.
+ * Repainting on the video's own cadence is the fix; on its own it is a loop.
+ */
+function followFrames(
+  element: HTMLImageElement | HTMLVideoElement,
+  onFrame: (() => void) | undefined,
+): (() => void) | undefined {
+  if (!(element instanceof HTMLVideoElement) || onFrame === undefined) return;
+  if (typeof element.requestVideoFrameCallback !== "function") return;
+  let live = true;
+  const step = (): void => {
+    if (!live) return;
+    onFrame();
+    pending = element.requestVideoFrameCallback(step);
+  };
+  let pending = element.requestVideoFrameCallback(step);
+  return () => {
+    live = false;
+    element.cancelVideoFrameCallback(pending);
+  };
+}
+
+/** The decoded pixels, or undefined while there are none to draw. */
+function intrinsic(
+  element: HTMLImageElement | HTMLVideoElement,
+): { readonly width: number; readonly height: number } | undefined {
+  if (element instanceof HTMLVideoElement) {
+    if (element.readyState < 2) return undefined;
+    return { width: element.videoWidth, height: element.videoHeight };
+  }
+  if (!element.complete || element.naturalWidth === 0) return undefined;
+  return { width: element.naturalWidth, height: element.naturalHeight };
 }
 
 function isBackgroundAsset(

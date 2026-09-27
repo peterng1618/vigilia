@@ -17,6 +17,7 @@ import {
   type BackgroundMediaSource,
   mountBackgroundMedia,
 } from "./background-media.js";
+import { createGlass } from "./glass.js";
 import { clampRenderScale } from "./render-scale.js";
 
 /**
@@ -36,6 +37,9 @@ export interface FabricSceneOptions
   /** Reports an unresolvable declared background; distinct from the adapter's
    * per-node `onAssetError`. */
   readonly onMediaError?: (message: string) => void;
+  /** Reports a glass panel this renderer cannot composite, such as a browser
+   * without `ctx.filter` or a cross-origin asset that taints the surface. */
+  readonly onGlassError?: (message: string) => void;
 }
 
 export interface FabricSceneHandle extends SceneHandle {
@@ -88,10 +92,22 @@ export function mountFabricScene(
           artboard: currentArtboard,
           assets: options.assets,
           resolveAsset: options.resolveAsset,
+          // The video is not a Fabric object, so nothing else would repaint.
+          onFrame: () => canvas.requestRenderAll(),
           ...(options.onMediaError === undefined
             ? {}
             : { onMediaError: options.onMediaError }),
         });
+
+  // Glass is not a plan feature: it is a property on revived Fabric objects, so
+  // the owner re-resolves them from the canvas rather than from `update()`.
+  const glass = createGlass({
+    canvas,
+    ...(media === undefined ? {} : { backdrop: () => media.backdrop() }),
+    ...(options.onGlassError === undefined
+      ? {}
+      : { onGlassError: options.onGlassError }),
+  });
 
   let currentTransform = fit();
 
@@ -173,6 +189,8 @@ export function mountFabricScene(
 
     dispose(): void {
       adapter.dispose();
+      // Before the media: the glass sampler reads the media layer.
+      glass.dispose();
       media?.destroy();
       // `destroy()` also disposes remaining Fabric objects.
       void canvas.destroy();
