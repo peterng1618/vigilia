@@ -1,0 +1,86 @@
+name: Bug
+description: Something is not working, or is working in a way an author would not expect.
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bug is a defect you observed. If the cause is not yet established, say so
+        rather than guessing — a guess recorded as a cause sends the next person to
+        the wrong subsystem.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: The precise symptom, not your diagnosis of it.
+      placeholder: >-
+        Enter a group, select a child, press Delete. Nothing is deleted.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: >-
+        Root cause with file:line. If you have not established it, write
+        "cause not established" and say what you have ruled out — that is a
+        complete answer here, and better than a guess.
+      placeholder: >-
+        deletion-manager/index.ts:28 calls canvas.remove(...targets); Fabric's
+        Collection.remove searches canvas._objects only, so a grouped child is
+        never found.
+    validations:
+      required: true
+  - type: textarea
+    id: not-this
+    attributes:
+      label: Why it is not some other subsystem
+      description: >-
+        Name the adjacent subsystem a reader would reasonably suspect, and why it
+        is correct. Skip only if there genuinely is no candidate.
+      placeholder: >-
+        Glass subscribes to object:removed and is correct — the event never fires
+        because Fabric never emits it.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Reproduction steps, test names, commits, measurements.
+      placeholder: >-
+        Failing test: editor/src/deletion-manager/index.dom.test.ts
+        Commits: 753c585, 01aa7dc
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: Next pickup action
+      description: >-
+        What the next person should do first. If the choice between owners is
+        itself the open question, say that and list the candidates — declining to
+        choose is a valid answer.
+      placeholder: >-
+        Resolve the object to the collection that holds it (object.group, then the
+        canvas). Decide what delete means for a grouped child first.
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      description: >-
+        Any one of these makes it an issue. All of them being false means it is
+        small: cause named with file:line, fix inside one owner, behaviour already
+        specified, obvious regression test.
+      options:
+        - Cause is not established
+        - More than one owner could fix it
+        - The fix needs a design decision
+        - It spans subsystems
+        - It blocks the active plan
+        - It would need a spec, not a task
+    validations:
+      required: true

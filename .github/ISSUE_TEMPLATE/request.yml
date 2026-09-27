@@ -1,0 +1,56 @@
+name: Request or feedback
+description: A feature you want, or an observation about how the product feels.
+title: ""
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An item that needs the full bug shape is a bug — use the bug form instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What you want, or what you noticed.
+    validations:
+      required: true
+  - type: textarea
+    id: journey
+    attributes:
+      label: Which journey it breaks or improves
+      description: >-
+        The concrete path a person takes. "Picking a saved theme" rather than
+        "the library is confusing".
+      placeholder: >-
+        Authoring a gauge label — the run shows "-" and I cannot tell which
+        binding I attached.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Screenshots, themes, commits, or where you saw it.
+    validations:
+      required: false
+  - type: textarea
+    id: done
+    attributes:
+      label: What "done" would look like
+      description: >-
+        The observable outcome, not the implementation. This is what decides
+        whether the work is finished.
+      placeholder: >-
+        A bound run on the editor canvas reads @cpu.temp, and the saved theme is
+        unchanged.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - feature request
+        - feedback
+    validations:
+      required: true
