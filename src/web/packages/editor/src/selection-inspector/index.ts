@@ -224,11 +224,11 @@ export function createSelectionInspector(
     // Refused today: delete, duplicate, copy, cut and lock
     // (`object-actions.ts` gates them on `!locked`), nudging (`canvas-nudge`
     // filters it out) and arrange (`canArrange` refuses a locked member). Not
-    // refused anywhere: the four ordering actions and group/ungroup, which
-    // `object-actions.ts` keeps on a bare selection, and run bindings, which
-    // `#setBindings` writes without reading a lock. Gating those here would
-    // advertise a refusal that never happens, so only the fields that write the
-    // object directly are withheld.
+    // refused anywhere: the four ordering actions, and group/ungroup, whose
+    // `eligible` predicates read the selection's kind and membership but never
+    // its lock; and run bindings, which `#setBindings` writes without reading
+    // one. Gating those here would advertise a refusal that never happens, so
+    // only the fields that write the object directly are withheld.
     const locked = object.get("locked") === true;
     if (locked) {
       const note = document.createElement("p");

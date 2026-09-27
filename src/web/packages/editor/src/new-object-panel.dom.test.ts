@@ -139,6 +139,39 @@ describe("new object panel", () => {
     expect(addChart).toHaveBeenCalledWith(family);
   });
 
+  it("reports a chart construction the theme cannot reference, like every sibling", () => {
+    // `ChartManager.addChart` calls `newChart` into `createNewChartDefaults`
+    // with no handler of its own, so an unwrapped chart button is the only one
+    // in this panel that fails silently.
+    const addChart = vi.fn(() => {
+      throw new Error("A new chart requires a palette token.");
+    });
+    const editor = editorStub();
+    const panel = createNewObjectPanel(
+      document.body,
+      editor as never,
+      undefined,
+      {
+        addChart,
+      },
+    );
+
+    for (const label of ["Gauge", "Line", "Bar", "Pie"]) {
+      [...panel.root.querySelectorAll("button")]
+        .find((button) => button.textContent === label)!
+        .click();
+    }
+
+    // All four, not one: the wrapper is the module's, so a button that opted
+    // out would be a silent failure the author cannot see.
+    expect(addChart).toHaveBeenCalledTimes(4);
+    expect(editor.errorManager.warn).toHaveBeenCalledTimes(4);
+    for (const call of editor.errorManager.warn.mock.calls) {
+      expect(call[0]).toBe("controls");
+      expect(call[1]).toContain("palette token");
+    }
+  });
+
   it("delegates text construction to the editor with derived v2 defaults", () => {
     const addText = vi.fn();
     const root = createNewObjectPanel(

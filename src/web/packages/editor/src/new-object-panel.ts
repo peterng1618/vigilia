@@ -33,6 +33,11 @@ export function createNewObjectPanel(
    * it — a palette without a usable token, or type presets without a body.
    * Reported through the editor's own diagnostics, because a throw out of a
    * click handler leaves the author with a button that silently does nothing.
+   *
+   * Every construction in this panel goes through it, charts included:
+   * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults`
+   * with no handler of its own, so an unwrapped chart button would be the only
+   * one here that fails silently.
    */
   const constructing = (build: () => void): void => {
     try {
@@ -86,7 +91,9 @@ export function createNewObjectPanel(
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;
-    button.addEventListener("click", () => actions?.addChart(family));
+    button.addEventListener("click", () =>
+      constructing(() => actions?.addChart(family)),
+    );
     return button;
   });
   root.append(heading, text, panel, ...charts);
