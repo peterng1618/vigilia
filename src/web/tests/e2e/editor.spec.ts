@@ -946,8 +946,8 @@ test.describe("Fabric editor route", () => {
     // Switched to live values through the View menu, the same run paints a real
     // reading. This is where "current data" is proved: the player cannot be
     // used for it, because a chart in this starter throws inside ECharts there
-    // and kills the frame loop, which the task report records against
-    // `host-player.spec.ts`.
+    // — the throw itself, not the frame loop, which now survives it. The
+    // remaining cause is tracked against `host-player.spec.ts`.
     await page.getByRole("button", { name: "View", exact: true }).click();
     await page
       .getByRole("menuitem", { name: "Value runs: tokens", exact: true })

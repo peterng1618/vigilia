@@ -366,7 +366,14 @@ function hydrateCharts(
   for (const object of objects) {
     if (object instanceof VigiliaChart) {
       const id = object.get("id");
-      if (typeof id === "string") {
+      if (typeof id !== "string") continue;
+      // **Per chart, deliberately.** A chart that throws must cost that chart
+      // and nothing else: this runs in the same callback as the text repaint
+      // and the render, so an unguarded throw here would leave every reading on
+      // the display frozen at whatever it last showed — which is a total
+      // freeze caused by one bad option, and the defect this file already had
+      // one level up in the frame loop.
+      try {
         const content = {
           family: object.family,
           settings: object.settings,
@@ -384,6 +391,12 @@ function hydrateCharts(
           undefined,
         );
         object.setOption(plan.option);
+      } catch (error) {
+        reportRepaintError(
+          `Chart "${id}" failed to draw and was left as it was. ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
     }
   }

@@ -283,19 +283,31 @@ export class ChartManager {
   }
 
   #applyChart(id: string, chart: VigiliaChart): void {
-    const plan = buildChartPlan(
-      id,
-      { family: chart.family, settings: chart.settings } as ChartContent,
-      this.#bindings[id] ?? [],
-      {
-        source: this.#source,
-        nowMs: Date.now(),
-        animate: false,
-      },
-      [],
-      this.#globals?.palette,
-    );
-    chart.setOption(plan.option);
+    // **Per chart, and reported, not swallowed.** `refresh()` runs beside the
+    // text repaint in one callback, so a chart that throws would take every
+    // bound reading on the canvas down with it. One bad chart costs that chart.
+    try {
+      const plan = buildChartPlan(
+        id,
+        { family: chart.family, settings: chart.settings } as ChartContent,
+        this.#bindings[id] ?? [],
+        {
+          source: this.#source,
+          nowMs: Date.now(),
+          animate: false,
+        },
+        [],
+        this.#globals?.palette,
+      );
+      chart.setOption(plan.option);
+    } catch (error) {
+      this.#editor.errorManager.warn(
+        "controls",
+        `Chart "${id}" failed to draw and was left as it was. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   #selectedChart(): VigiliaChart | undefined {

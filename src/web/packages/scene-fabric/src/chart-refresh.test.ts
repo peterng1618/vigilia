@@ -107,9 +107,14 @@ describe("startChartRefresh", () => {
       { requestFrame, cancelFrame },
     );
     const frame = callbacks.keys().next().value;
+    // The same shape the two sibling tests use: assert the frame exists, then
+    // call it optionally. `callbacks.get(frame!)` would typecheck and would
+    // also pass when the callback is missing, which is the opposite of what
+    // this test is for.
+    expect(frame).toBeDefined();
     // No `onError`: the loop still has to keep going rather than throw out of a
     // frame callback, which the browser would swallow and the loop would end.
-    expect(() => callbacks.get(frame!)(0)).not.toThrow();
+    expect(() => callbacks.get(frame! as number)?.(0)).not.toThrow();
     expect(callbacks.size).toBeGreaterThan(0);
     scheduler.dispose();
   });

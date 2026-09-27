@@ -210,3 +210,73 @@ describe("ChartManager", () => {
     expect(canvas.off).toHaveBeenCalledTimes(6);
   });
 });
+
+describe("a chart that throws", () => {
+  it("costs that chart alone, and the rest of the scene keeps repainting", () => {
+    // **The claim under test.** `EditorSession.refresh()` composes the text
+    // repaint and `ChartManager.refresh()` in one callback, so a chart whose
+    // `setOption` throws must not stop the readings beside it — otherwise one
+    // bad option freezes the whole editor, which is the same defect one level
+    // up in the frame loop.
+    const good = new VigiliaChart({
+      id: "good",
+      family: "gauge",
+      width: 100,
+      height: 100,
+      settings: defaultGaugeSettings,
+    });
+    const bad = new VigiliaChart({
+      id: "bad",
+      family: "gauge",
+      width: 100,
+      height: 100,
+      settings: defaultGaugeSettings,
+    });
+    const goodSetOption = vi
+      .spyOn(good, "setOption")
+      .mockImplementation(() => undefined);
+    const badSetOption = vi.spyOn(bad, "setOption").mockImplementation(() => {
+      throw new Error("setOption blew up");
+    });
+
+    const objects = [bad, good];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const warn = vi.fn();
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn, error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: document.body,
+    });
+
+    // The constructor hydrates too, so the spies are cleared and the assertion
+    // is about one refresh pass rather than about how often the manager runs.
+    goodSetOption.mockClear();
+    badSetOption.mockClear();
+    warn.mockClear();
+
+    manager.refresh();
+
+    // The healthy chart drew. If the throw had escaped, the loop would have
+    // ended here and this would be zero — which is the whole assertion.
+    expect(goodSetOption).toHaveBeenCalledTimes(1);
+    expect(badSetOption).toHaveBeenCalledTimes(1);
+    // And it was reported rather than swallowed: a silently frozen chart is
+    // indistinguishable from a chart with no data.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]?.[1])).toContain("setOption blew up");
+    manager.destroy();
+  });
+});

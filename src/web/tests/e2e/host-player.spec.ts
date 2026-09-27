@@ -254,10 +254,16 @@ test.describe("hosted player over the real host", () => {
    * live reading repaints there — not the CPU card's, and not the starter's own
    * clock. Isolated by rebuilding the document **without** the CPU card, so it
    * predates Task 6 and belongs to the chart hydration path
-   * (`buildChartPlan` / `setOption`). The frame loop itself is now caught and
-   * rescheduled, so the scene degrades instead of freezing; this is the
-   * remaining half, and until it is fixed the claim lives here rather than in
-   * the passing test beside it. Recorded in `task-6-report.md`.
+   * (`buildChartPlan` / `setOption`). The **cause is not established**:
+   * `createPointer` is gated on `seriesModel.get(['pointer','show'])` and
+   * `buildGaugeOption` sets it to `false`, so `GaugeView._renderPointer`
+   * running is not yet explained. That is issue #6's.
+   *
+   * What is fixed around it: the frame loop catches and reschedules, and each
+   * chart is guarded individually, so a throwing chart costs that chart rather
+   * than the scene. This fixme is the remaining half — the throw itself — and
+   * until it is the claim lives here rather than in the passing test beside
+   * it. Recorded in `task-6-report.md`.
    */
   test("shows a live CPU reading once the starter's charts stop throwing in the player", async ({
     page,
