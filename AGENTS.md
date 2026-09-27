@@ -106,7 +106,8 @@ Vigilia process.
 ## Reuse before build
 
 Vigilia is a product, not a general-purpose framework. Before implementing a
-generic capability or substantial infrastructure:
+generic capability or substantial infrastructure, work all seven rungs and
+**record the result of each**:
 
 1. Search Vigilia for an existing owner or partial implementation.
 2. Inspect current direct/transitive dependencies.
@@ -115,13 +116,44 @@ generic capability or substantial infrastructure:
 5. Compare realistic options on fit, maintenance, licence, platform support,
    runtime/bundle cost and testability.
 6. Run the smallest executable probe when behaviour is uncertain.
-7. Build custom only when the alternatives are unsuitable, and record why in the
-   active Superpowers design or plan when the choice is non-obvious.
+7. Build custom only when the alternatives are unsuitable, and record why.
+
+**No rung is a licence to stop.** A rung that succeeds is a *result to record*,
+not permission to skip what follows. Satisfying rung 3 in particular does **not**
+discharge rungs 4–5. This rule used to say "search alternatives *only if* the
+native API fails", which made compliance indistinguishable from omission: native
+APIs usually work, so the search that would have caught the hard part never
+triggered. That conditional is removed.
+
+**The gate is about integration, not existence.** "A native feature exists" is
+not an answer. The question is whether anyone has solved *this shape* of problem
+— in this renderer, against this host, under these constraints — and what they
+learned doing it. A native capability that still needs sampling, ordering,
+invalidation, disposal and ownership decisions has not been discharged by being
+present; that is where the work is.
 
 This gate applies especially to editor mechanics, hardware/OS integration,
-networking, parsers/protocol clients, archives, media processing, persistence,
-caches, schedulers and auth/security primitives. Do not reject a library merely
-because its API is unfamiliar.
+networking, parsers/protocol clients, archives, media processing, **rendering
+and compositing**, persistence, caches, schedulers and auth/security
+primitives. Do not reject a library merely because its API is unfamiliar.
+
+### Recording it
+
+A task touching a **mechanism boundary** — the paths in `scripts/reuse-gate.mjs`'s
+watchlist, which are the owners where a wrong decision is expensive and
+invisible — must:
+
+- carry a `## Reuse gate` section in its implementer report, **one line per
+  rung**, including the rungs that found nothing;
+- land a decision note at `docs/decisions/NNNN-<slug>.md` recording what was
+  searched, what was found, and why each alternative was rejected. A note that
+  lists alternatives without saying what was searched is worthless; **the searches
+  are the evidence.**
+
+`scripts/reuse-gate.mjs` refuses the first write to a watchlisted path while no
+decision note claims that path. It is deliberately blunt: it can only check
+*presence*, never quality, and it does not replace the review loop catching a
+note that answers nothing.
 
 ## Code and files
 

@@ -5,6 +5,19 @@
     "andrej-karpathy-skills@karpathy-skills": true
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 10,
+            "command": "$p = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { $PWD }; node \"$p/scripts/reuse-gate.mjs\""
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": "*",
