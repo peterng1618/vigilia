@@ -105,6 +105,12 @@ function reportGlassError(message: string): void {
   console.warn(`Vigilia: glass cannot be rendered as authored — ${message}`);
 }
 
+/** A repaint that threw. Reported, not shown: the scene keeps rendering, so
+ *  replacing it with a failure panel would hide a display that still works. */
+function reportRepaintError(message: string): void {
+  console.warn(`Vigilia: ${message}`);
+}
+
 function startFixtureTheme(
   host: HTMLElement,
   theme: ThemeDocument,
@@ -198,7 +204,9 @@ function startFixtureTheme(
       return;
     }
     tick();
-    chartRefresh = startChartRefresh(tick, 30);
+    chartRefresh = startChartRefresh(tick, 30, undefined, {
+      onError: reportRepaintError,
+    });
   };
 
   const pause = (): void => {
@@ -315,7 +323,9 @@ async function startHostedTheme(
 
   refresh();
   showConnectionState("connecting", keys.length);
-  const chartRefresh = startChartRefresh(refresh, 30);
+  const chartRefresh = startChartRefresh(refresh, 30, undefined, {
+    onError: reportRepaintError,
+  });
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);
   window.addEventListener(

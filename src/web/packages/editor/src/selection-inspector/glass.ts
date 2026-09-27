@@ -156,12 +156,18 @@ export function createGlassFields(
     invalidMessage: uiCopy.inspectorFields.invalidValue,
     onReject: refused,
     onCommit: (value) => {
-      // A refused value has to be put back on the box as well as on the object,
-      // or the field would show a radius the document does not carry.
-      if (commit(() => writeTreatment(object, value))) return;
-      if (treatmentOf(object) === undefined) return;
-      blur.setValue(treatmentOf(object)?.blurRadius ?? 0);
-      refused();
+      if (!hooks.stillTarget()) return;
+      // `numberField` accepted the value and already moved `last`, so refusing
+      // through the field is what puts the box and the alert line back — the
+      // same path an empty or negative value takes, rather than a second kind
+      // of feedback the author has to learn separately.
+      if (!writeTreatment(object, value))
+        blur.refuse(treatmentOf(object)?.blurRadius ?? 0);
+      else {
+        hooks.refreshGlass();
+        hooks.commit();
+        hooks.onChange();
+      }
     },
   });
   root.append(blur.row);

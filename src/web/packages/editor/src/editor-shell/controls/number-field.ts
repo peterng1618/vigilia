@@ -20,6 +20,12 @@ export interface NumberField {
   readonly row: HTMLElement;
   readonly input: HTMLInputElement;
   setValue(value: number): void;
+  /** Refuses an edit the field itself accepted, for a caller that only finds
+      out afterwards — a bound the primitive does not know. `restoreTo` is the
+      value the caller knows to be authoritative; without it the last value this
+      field accepted is used. Same alert line, same rollback, so one field never
+      has two kinds of invalid-input feedback. */
+  refuse(restoreTo?: number): void;
 }
 
 /** The bare input, its label and its error line. `host` is the row the error
@@ -32,6 +38,7 @@ interface NumberInput {
   readonly label: HTMLLabelElement;
   readonly input: HTMLInputElement;
   setValue(value: number): void;
+  refuse(): void;
 }
 
 let fieldSeq = 0;
@@ -41,7 +48,12 @@ export function numberField(options: NumberFieldOptions): NumberField {
   row.className = "vigilia-field";
   const field = numberInput({ ...options, host: row });
   row.append(field.label, field.input);
-  return { row, input: field.input, setValue: field.setValue };
+  return {
+    row,
+    input: field.input,
+    setValue: field.setValue,
+    refuse: field.refuse,
+  };
 }
 
 /** Validated numeric input: it parses, refuses out-of-range values instead of
@@ -78,14 +90,19 @@ export function numberInput(options: NumberInputOptions): NumberInput {
   };
 
   // `change`, never per keystroke: a half-typed `1` of `1000` is not an edit.
+  const refuse = (restoreTo = last): void => {
+    last = restoreTo;
+    input.value = String(restoreTo);
+    if (alert.parentElement === null) options.host.append(alert);
+    options.onReject?.();
+  };
+
   input.addEventListener("change", () => {
     // `Number("")` is 0, so an empty field is refused rather than coerced.
     const raw = input.value.trim();
     const next = raw === "" ? Number.NaN : Number(raw);
     if (!accepted(next)) {
-      input.value = String(last);
-      if (alert.parentElement === null) options.host.append(alert);
-      options.onReject?.();
+      refuse();
       return;
     }
     last = next;
@@ -93,5 +110,5 @@ export function numberInput(options: NumberInputOptions): NumberInput {
     options.onCommit(next);
   });
 
-  return { label, input, setValue };
+  return { label, input, setValue, refuse };
 }

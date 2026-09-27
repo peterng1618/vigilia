@@ -101,6 +101,11 @@ function type(field: HTMLInputElement, value: string): void {
   field.dispatchEvent(new Event("change"));
 }
 
+/** The field's own invalid-input line, when it is showing. */
+function alertIn(host: HTMLElement): Element | null {
+  return host.querySelector(".vigilia-field [role='alert']");
+}
+
 /** A live object of each kind the published schema allows. */
 const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
   Rect: () => panel(),
@@ -204,7 +209,7 @@ describe("the glass control in the selection inspector", () => {
     const bound = PUBLISHED_BLUR_MAXIMUM;
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, editor, field } = setup(rect);
+    const { host, history, editor, field } = setup(rect);
     const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
 
     type(blur, String(bound));
@@ -212,15 +217,46 @@ describe("the glass control in the selection inspector", () => {
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
     expect(history.saveState).toHaveBeenCalledTimes(1);
 
-    type(blur, String(bound + 1));
+    // Re-read: the accepted edit re-rendered the panel, so the element the
+    // first commit belonged to is detached and holds no authority.
+    const afterCommit = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-glass-blur]",
+    )!;
+    type(afterCommit, String(bound + 1));
 
     // Refused by the contract's own reader, not by a number copied into the
     // editor: a clamp to the bound would look identical on screen and
     // silently lose the radius the author asked for.
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
-    expect(blur.value).toBe(String(bound));
+    expect(afterCommit.value).toBe(String(bound));
     expect(history.saveState).toHaveBeenCalledTimes(1);
     expect(editor.errorManager.warn).toHaveBeenCalled();
+    // And through the field's own alert, the same one an empty or negative
+    // value raises. One field, one kind of invalid-input feedback.
+    expect(alertIn(host)).toBeTruthy();
+  });
+
+  it("says nothing when a stale event is refused, because nothing was wrong", () => {
+    const first = panel();
+    first.set("vigiliaGlass", { blurRadius: 12 });
+    const { host, history, editor } = setup(first);
+    const blur = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-glass-blur]",
+    )!;
+    const second = panel();
+    second.set("id", "second");
+    (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
+      () => second;
+
+    type(blur, "30");
+
+    // The field belonged to a selection that is gone. Reporting "that value
+    // cannot be applied" would blame the author's number for a selection
+    // change, which is the one thing here that is not the number's fault.
+    expect(first.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).not.toHaveBeenCalled();
+    expect(alertIn(host)).toBeNull();
   });
 
   it("refuses an emptied or negative radius instead of reading it as zero", () => {

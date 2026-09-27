@@ -99,15 +99,16 @@ omission 0001 records, and it is why rung 4 ran.
 
 ## Rung 4 — ecosystem
 
-Searched: the editor's own installed headless library, `@base-ui/react@1.8.0`,
-through its published documentation (Context7, `/mui/base-ui`) — its Checkbox
-accessibility page, its `Checkbox.Root` state contract, and its
-`checkbox-group` labelling patterns. A general web sweep was attempted and
-**failed**: the Exa search tool returned a free-tier rate limit, so this rung
-rests on one authoritative source plus the installed tree, not on a survey.
-Recorded as a limit rather than dressed up as coverage.
+Searched twice. The **first attempt failed**: the Exa tool returned a free-tier
+rate limit, so only the accessibility half below got done, and that half is
+rung 3's job. That was recorded rather than passed off as coverage, and the
+search was retried. It is recorded here as two passes because they are not the
+same question.
 
-Found, verbatim from those docs:
+**Pass 1 — the control's accessibility.** `@base-ui/react@1.8.0`, the editor's
+own installed headless library, through its published documentation (Context7,
+`/mui/base-ui`): its Checkbox accessibility page, its `Checkbox.Root` state
+contract, its `checkbox-group` labelling patterns.
 
 - *"Base UI components handle ARIA attributes, roles, pointer interactions,
   keyboard navigation, and focus management, adhering to WAI-ARIA Authoring
@@ -120,10 +121,51 @@ Found, verbatim from those docs:
   The parts of Base UI's Checkbox that earn their keep here — the accessible
   name and the Space key — are already provided by the platform.
 
+**Pass 2 — the invalidation question, which is the one a survey could have
+changed.** The question is: when an authored property changes **in place** on an
+object that is already in the tree, how does an ecosystem invalidate the derived
+render layer it depends on? Fabric's own caching page, its events guide, its
+gotchas page, and fabricjs/fabric.js#9418.
+
+- **Fabric invalidates from inside `set`, from a declared key list.**
+  `object.set()` compares the key against `stateProperties` / `cacheProperties`
+  and marks the object dirty itself. The docs are explicit: *"As of today there
+  isn't a method to force cache refresh imperatively"* and *"It is suggested to
+  always use the `set` method … to avoid stale caches."* The gotchas page gives
+  the hand-written equivalent: `rect.set('dirty', true)`.
+- **Fabric deliberately does not fire `object:modified` for it.** Issue #9418 is
+  exactly this report. The maintainer's answer: *"`stateful` was used to fire an
+  object modified every render cycle in which a change in state properties was
+  determined. All the events that can modify an object already fire an
+  `object:modified` event, and the user has no ability to change colors or state
+  outside developer written code, so there is no really need for event firing
+  here."* And on code that does want it: *"consider events as something that have
+  to warn you when the user is changing things using code that is not written by
+  you."*
+- **The events guide says the same thing about events in general:** *"In general
+  if you need to write code for something to happen events from that something
+  are unnecessary"* — call the function.
+
+**What this changes: nothing, and that is a result rather than a silence.** The
+option this rung was supposed to test is the one rung 5 rejected — listen for
+`object:modified`, or add a new "authored property changed" event, instead of
+having the writer ask. Fabric's own maintainer rejects exactly that: the event
+is for changes the library cannot see, and the code that calls `set` *is* the
+code that knows. Our situation is the same shape, with the same answer, and
+Fabric goes further and puts the invalidation inside `set` itself.
+
+The one thing the search did change: it removed the option of listening for
+`object:modified`, which until now had only been rejected on our own reasoning.
+It is Fabric's stated design, not our preference, and the alternative we ship —
+the writer asking the lifecycle — is what Fabric's docs recommend.
+
 Dead ends: adopting Base UI's `Checkbox` (React-only, second rendering path,
 form semantics the domain does not have); `role="switch"` (promises an immediate
 effect the composite cannot deliver); re-deriving a `numberInput` (the editor
-already owns one, and Task 3's panel fields are built on it).
+already owns one, and Task 3's panel fields are built on it); a Fabric
+`object:modified` listener (fabricjs/fabric.js#9418); a new "authored property
+changed" event (fabricjs.com/docs/events — "events from that something are
+unnecessary").
 
 ## Rung 5 — comparison
 
@@ -154,21 +196,35 @@ from the object.
 
 ## Decision
 
-Two changes, both in `scene-fabric/src/glass.ts`:
+**The defect is in `scene-fabric/src/glass.ts`; the fix spans it and four editor
+files.** Both halves are needed, and the second one is where the surface is.
 
-1. **`composite()` reads the authored radius live** — `glassTreatment(object)`
-   per panel per frame — and the `Panel` record loses its `blurRadius` field.
-   The authored property is then the only place a radius exists, in the same
-   spirit as the viewport transform the file already refuses to cache. This is
-   the fix for the defect; everything else is plumbing.
-2. **The editor asks for a re-resolve.** `EditorShell` exposes the handle's
-   existing public `sync()` as `refreshGlass()`, the session passes it to the
-   selection inspector, and the glass control calls it in its commit. The
-   control that changes the property is what tells the lifecycle, so there is no
-   new event and no new subscription for either mount to learn.
+1. **`scene-fabric/src/glass.ts` — the composite reads the authored radius
+   live.** `composite()` asks `glassTreatment(object)` per panel per frame, and
+   the `Panel` record loses its `blurRadius` field. The authored property is
+   then the only place a radius exists, in the same spirit as the viewport
+   transform this file already refuses to cache. **This is the fix for the
+   defect**; everything else is plumbing to it.
+
+2. **The editor asks for a re-resolve, and that is four files:**
+   - `editor/src/editor-shell.ts` — `EditorShell.refreshGlass()` exposes the
+     handle's existing public `sync()`. The shell creates and disposes the
+     handle, so the shell is what owns the re-resolve.
+   - `editor/src/editor-session.ts` — passes `refreshGlass` to the inspector.
+   - `editor/src/selection-inspector/index.ts` — the option is **required**, so
+     no construction site can skip it and ship a control that accepts an edit and
+     applies none; it is handed to the fields inside the existing `!locked` block.
+   - `editor/src/selection-inspector/glass.ts` (new) — the control, which calls
+     it in its commit.
+
+   No new event and no new subscription for either mount to learn. Fabric's own
+   maintainer rejects the event alternative for exactly this case
+   (fabricjs/fabric.js#9418), and its events guide says the same about events in
+   general.
 
 **Not because `sync` already exists** — that is the answer to a question nobody
-asked. The work is the discovery that a cached radius and an unreachable
-`sync` made the control inert, and the ecosystem search is what established
-that the accessibility half of the field needs nothing beyond a native
-checkbox and a `label[for]`.
+asked. The work is the discovery that a cached radius and an unreachable `sync`
+made the control inert, and the ecosystem search is what established both that
+the accessibility half of the field needs nothing beyond a native checkbox and a
+`label[for]`, and that the writer-asks-the-lifecycle shape is the ecosystem's own
+answer rather than ours.

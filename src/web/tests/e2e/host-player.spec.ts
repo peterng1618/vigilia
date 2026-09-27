@@ -239,16 +239,61 @@ test.describe("hosted player over the real host", () => {
     expect((await readCard()).treatment).toEqual({ blurRadius: 16 });
 
     // The reading object is present and still a value run, bound to the key the
-    // card declares. **The number itself is not asserted here**, and that is a
-    // recorded gap rather than an oversight: a chart in this starter throws
-    // inside ECharts in the player, which kills the frame loop, so no live text
-    // repaints — the starter's own clock included. It reproduces with the CPU
-    // card removed from the document, so it predates this task and belongs to
-    // the chart hydration path, not to the card. See the task report.
+    // card declares. **The number is not asserted here** — the `fixme` test below
+    // is where that claim lives until the chart defect it is blocked on is
+    // fixed. A comment is not tracking; a failing test is.
     expect((await readCard()).reading).toBe("—%");
 
     // The player's failure path is a `<pre>`; an absent one is the claim.
     await expect(page.locator("pre")).toHaveCount(0);
+  });
+
+  /**
+   * The live half of the card's reading, blocked on a defect this task did not
+   * cause: a chart in this starter throws inside ECharts in the player, so no
+   * live reading repaints there — not the CPU card's, and not the starter's own
+   * clock. Isolated by rebuilding the document **without** the CPU card, so it
+   * predates Task 6 and belongs to the chart hydration path
+   * (`buildChartPlan` / `setOption`). The frame loop itself is now caught and
+   * rescheduled, so the scene degrades instead of freezing; this is the
+   * remaining half, and until it is fixed the claim lives here rather than in
+   * the passing test beside it. Recorded in `task-6-report.md`.
+   */
+  test("shows a live CPU reading once the starter's charts stop throwing in the player", async ({
+    page,
+  }, testInfo) => {
+    test.fixme(
+      true,
+      "a chart in this starter throws inside ECharts in the player",
+    );
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            (
+              window as unknown as {
+                vigilia?: {
+                  handle: {
+                    canvas: {
+                      getObjects(): Array<{ get(name: string): unknown }>;
+                    };
+                  };
+                };
+              }
+            ).vigilia?.handle.canvas
+              .getObjects()
+              .find((object) => object.get("id") === "cpu-card-value")
+              ?.get("text"),
+          ),
+        { timeout: 15_000 },
+      )
+      .toMatch(/^\d+%$/);
   });
 
   test("renders a hosted theme in the player and streams live samples", async ({

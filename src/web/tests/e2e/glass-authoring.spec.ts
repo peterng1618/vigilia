@@ -189,6 +189,105 @@ test.describe("authoring frosted glass through the inspector", () => {
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: onEnable,
     });
+    // And through the field's own alert, the same one an empty value raises.
+    await expect(page.locator(".vigilia-field [role='alert']")).toHaveCount(1);
+  });
+
+  test("carries the treatment through redo, duplicate and a token change", async ({
+    page,
+  }, testInfo) => {
+    desktop(testInfo.project.name);
+    await openFixture(page);
+    await selectAuthoringPanel(page);
+    await page.locator("[data-vigilia-glass-enabled]").focus();
+    await page.keyboard.press("Space");
+    await typeInto(page, page.locator("[data-vigilia-glass-blur]"), "24");
+
+    // **Redo.** An edit an author can undo and get back is an edit the document
+    // actually holds; a control whose history is one-way is a different promise.
+    //
+    // Focus leaves the number box first, because `edit.undo` and `edit.redo` are
+    // deliberately deferred to a focused text field — Ctrl+Z in a number input is
+    // that input's own undo, not the scene's. The radius box is the last control
+    // in the panel, so Tab leaves focus on it, and the undo has to be aimed
+    // somewhere real.
+    await page.locator("[data-vigilia-glass-enabled]").focus();
+    // Two entries, so two steps: the enable wrote one and the radius another.
+    await page.keyboard.press("Control+z");
+    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveValue("16");
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
+      blurRadius: 16,
+    });
+    await page.keyboard.press("Control+z");
+    await expect(
+      page.locator("[data-vigilia-glass-enabled]"),
+    ).not.toBeChecked();
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toBeUndefined();
+    await page.keyboard.press("Control+y");
+    await page.keyboard.press("Control+y");
+    await expect(page.locator("[data-vigilia-glass-enabled]")).toBeChecked();
+    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveValue("24");
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
+      blurRadius: 24,
+    });
+
+    // **A token change through the UI.** The treatment is not a colour, so a
+    // palette edit must not disturb it — and the panel must stay attached and
+    // keep compositing, which is what the pixels show.
+    const centre = await clientOfScene(
+      page,
+      AUTHORING_PANEL_ID,
+      GLASS_ARTBOARD.width,
+    );
+    await page.mouse.click(centre.x, centre.y);
+    // The **stroke** token, not the fill: replacing the panel's own tint with
+    // an opaque colour would legitimately hide the glass and the blur would
+    // then have nothing to show. Changing the outline is a palette edit the
+    // treatment has to survive, with the backdrop still visible behind it.
+    await page.locator("[data-vigilia-palette-token]").selectOption("edge");
+    const colour = page.locator("[data-vigilia-palette-color]");
+    await colour.fill("rgb(200 220 255)");
+    await colour.press("Tab");
+    await expect(colour).toHaveValue("rgb(200 220 255)");
+
+    expect((await treatmentOf(page, AUTHORING_PANEL_ID)) as unknown).toEqual({
+      blurRadius: 24,
+    });
+    assertBlur(
+      await readGlass(page, { id: AUTHORING_PANEL_ID, band: BAND }),
+      "editor, after a token change",
+    );
+
+    // **Duplicate.** The clipboard carries `SCENE_PERSISTED_PROPERTIES`, which
+    // includes the treatment; a copy without it would silently lose the blur.
+    const before = (await saveEnvelope(page)) as {
+      scene: { objects: ReadonlyArray<Record<string, unknown>> };
+    };
+    // History restores drop Fabric's selection, so the panel is clicked again
+    // before the dock is asked to act — which is what an author does too.
+    await selectAuthoringPanel(page);
+    const dock = page.locator('[aria-label="Selected object actions"]');
+    await dock.getByRole("button", { name: "Duplicate" }).click();
+    const after = (await saveEnvelope(page)) as {
+      scene: { objects: ReadonlyArray<Record<string, unknown>> };
+    };
+    // Counted by the radius this panel carries, because the fixture ships one
+    // already-frosted panel of its own and a bare "has a treatment" count would
+    // include it.
+    const at = (envelope: {
+      scene: { objects: ReadonlyArray<Record<string, unknown>> };
+    }): number =>
+      envelope.scene.objects.filter(
+        (object) =>
+          (object["vigiliaGlass"] as { blurRadius?: number } | undefined)
+            ?.blurRadius === 24,
+      ).length;
+    expect(at(before)).toBe(1);
+    expect(at(after)).toBe(2);
+    // And the copy is a distinct object, not the original counted twice.
+    expect(
+      new Set(after.scene.objects.map((object) => object["id"])).size,
+    ).toBe(after.scene.objects.length);
   });
 
   test("keeps a grouped panel's blur, so grouping is not a way to lose it", async ({

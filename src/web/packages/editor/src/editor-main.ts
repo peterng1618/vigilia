@@ -48,6 +48,16 @@ async function start(): Promise<void> {
   const chartRefresh = startChartRefresh(
     () => active?.extensions.refresh(),
     chartRefreshRate,
+    undefined,
+    // The session is mounted later, so the report is routed through whatever is
+    // current; a throw before one exists is still logged.
+    {
+      onError: (message) => {
+        const manager = active?.shell.editor.errorManager;
+        if (manager === undefined) console.warn(`[vigilia:repaint] ${message}`);
+        else manager.warn("controls", message);
+      },
+    },
   );
   /** Document actions come from the session once it exists; the View menu's
    * source/refresh controls are owned here and only dispatch through it. */
