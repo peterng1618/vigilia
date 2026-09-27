@@ -93,10 +93,13 @@ Findings go in the plan's **Findings** table as they are observed, with the
 surface, what happened and whether it blocks the journey. That table is the
 durable record during the rebuild; the pass is not auditable without it.
 
-A finding that survives three repair attempts is a non-critical bug and moves to
-`docs/bugs/open/` and is indexed in `docs/bugs/README.md`, per `AGENTS.md`. Fresh
-findings do not go there directly, and no finding is duplicated in specs,
-status or reports.
+A finding judged complex or large — by the signals in
+[GitHub Issues as the backlog](2026-09-27-github-issues-backlog-design.md) — is
+filed as an issue as soon as it is observed, so nothing is lost if the session
+dies. A small finding whose cause is understood and whose fix sits inside one
+owner is fixed here without one. Nothing goes three attempts unrecorded. The
+Findings table is the working record and the issue is the durable one; no
+finding is duplicated in specs, status or reports.
 
 Classification is the author's call at observation time:
 

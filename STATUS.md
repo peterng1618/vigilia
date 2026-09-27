@@ -10,8 +10,7 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Active work
 
-- **Completed plans, both archived:** `2026-09-25-snapping-fidelity.md`,
-  `2026-09-26-clock-and-theme-locale.md`.
+- **Completed plans, both archived:** `2026-09-25-snapping-fidelity.md`, `2026-09-26-clock-and-theme-locale.md`.
 - **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
   — subagent-driven. Tasks 1, 2, 3, 4 and 8 complete; Task 5 (glass lifecycle) in
   flight; 6, 7, 9, 10, 11, 12 remain. Ledger:
@@ -23,13 +22,14 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
   — not activated. Replaces the one-entry hand-written trio with 380 generated
   pairings over 238 faces, and the two-option dropdown with one searchable picker.
-- **Queued spec, no plan:** [GitHub Issues as the backlog](docs/superpowers/specs/2026-09-27-github-issues-backlog-design.md)
-  — written-spec review pending. Replaces `docs/bugs/` with issues filed by agent
-  and human. **Must not run while a plan is active**: the in-flight plan and two
-  e2e comments cite the bug registry.
+- **Queued plan:** [GitHub Issues as the backlog](docs/superpowers/plans/2026-09-27-github-issues-backlog.md)
+  — replaces `docs/bugs/` with issues filed by agent and human. The spec's "not
+  while a plan is active" rule is **overridden**: the running plan's citation is
+  repointed and a note goes to its Task 5 subagent; the two e2e comments it is
+  writing are deferred, not edited under it.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
-  node-tree render path. It must account for `metadata.locale`: v1 documents
-  carry no metadata, and absent means `en` there.
+  node-tree render path — must account for `metadata.locale`, since v1 documents
+  carry no metadata and absent means `en` there.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md).
 
 ## Last completed change
@@ -40,9 +40,9 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
   sampling nothing.
 - Video-frame invalidation measured broken and fixed; zero idle repaints from a
   glass panel; scratch surfaces released on every path.
-- The author journey is consolidated to one spec, queued between this plan and
-  the font catalogue. The seven-day release spec is deleted; its promise and the
-  by-hand-rebuild requirement are absorbed.
+- The author journey is consolidated to one spec, queued between this plan and the
+  font catalogue. The seven-day release spec is deleted, its promise and the
+  by-hand-rebuild requirement absorbed, and its finding protocol repointed at Issues.
 - Five shipped author/consumer spec pairs still read `in progress`, plus
   `settings-scope`: shipped-and-unverified, not outstanding. **Status flips are
   held** until the new plan's Phase 1 observes them.
@@ -57,8 +57,8 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - `display-fabric.spec.ts` "is byte-stable at a fixed clock on one platform" is
   load-induced: failed under full-suite parallel load, passed on re-run.
 - Undocumented whether `PreCompact`/`SessionStart` fire for a *subagent's*
-  compaction; the `agent_id` guard is defense-in-depth, not a demonstrated fix.
-  No mechanism catches a dispatch the controller never recorded.
+  compaction; the `agent_id` guard is defense-in-depth, not a demonstrated fix. No
+  mechanism catches a dispatch the controller never recorded.
 - Unverified: browser round-trip of text align/wrap/overflow, in-place edit +
   undo, run preset/override; phone surfaces exercised by suite, not by eye. Owned
   by the queued author journey proof spec.
