@@ -15,16 +15,14 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
   `2026-09-26-clock-and-theme-locale.md` (all tasks, review and
   runtime-text-layout repair closed).
 - **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
-  — activated 2026-09-27, subagent-driven. Task 1 (the glass probe) is complete
-  and unblocks Tasks 2–12; Task 2 (the authored `vigiliaGlass` contract) is in
-  flight. Ledger: `.superpowers/sdd/2026-09-26-reference-theme-fidelity/progress.md`.
+  — subagent-driven. Tasks 1, 2, 3, 4 and 8 complete; Task 5 (glass lifecycle) in
+  flight; 6, 7, 9, 10, 11, 12 remain. Ledger:
+  `.superpowers/sdd/2026-09-26-reference-theme-fidelity/progress.md`.
 - **Queued spec, no plan:** [author journey proof](docs/superpowers/specs/2026-09-27-author-journey-proof-design.md)
-  — awaiting written-spec review; not activated, and queued between reference-
-  theme fidelity and the font catalogue. Proves the shipped authoring surface by
-  rebuilding the reference composition from blank through the UI alone, with no
-  generator, starter, fixture or hand-edited JSON. **Its plan must be written
-  against the delivered surface, not inherited** — reference-theme fidelity is still
-  changing the surface it proves.
+  — awaiting written-spec review; queued between reference-theme fidelity and the
+  font catalogue. Proves the shipped surface by rebuilding the reference from blank
+  through the UI alone — no generator, starter, fixture or hand-edited JSON. **Its
+  plan must be written against the delivered surface, not inherited.**
 - **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
   — not activated. Replaces the one-entry hand-written trio with 380 generated
   pairings over 238 faces, and the two-option dropdown with one searchable picker.
@@ -35,38 +33,36 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Last completed change
 
-- Planning pass: the author journey is consolidated to one spec,
-  `2026-09-27-author-journey-proof-design.md`, queued between reference-theme
-  fidelity and the font catalogue. Scope is **remaining work only** — the proof
-  obligation, three unverified round trips, phone surfaces, status debt.
-- The seven-day release spec is deleted. Its promise and the by-hand-rebuild
-  requirement are absorbed; the sequence, recruitment and the ≥80% metric are not
-  replaced by another schedule. One tester means no usability rate is claimed.
+- **Task 4 — glass renders.** Real clipped backdrop blur in both mounts, shared
+  lifecycle in `scene-fabric`, 48-unit cap, ~1 ms/frame. A real defect was found
+  and fixed: the editor wired **no backdrop at all**, so every editor panel was
+  sampling nothing.
+- Video-frame invalidation measured broken and fixed; zero idle repaints from a
+  glass panel; scratch surfaces released on every path.
+- The author journey is consolidated to one spec, queued between this plan and
+  the font catalogue. The seven-day release spec is deleted; its promise and the
+  by-hand-rebuild requirement are absorbed.
 - Five shipped author/consumer spec pairs still read `in progress`, plus
-  `settings-scope`, whose plan is already archived: shipped-and-unverified, not
-  outstanding. **The status flips are held** until the new plan's Phase 1
-  observes them. Inbound links repointed in the reference-fidelity spec and one
-  stale-plan note.
+  `settings-scope`: shipped-and-unverified, not outstanding. **Status flips are
+  held** until the new plan's Phase 1 observes them.
 
 ## Next
 
-1. Continue reference-theme fidelity, Task 2 onward.
-2. Then the queued font catalogue plan, then the queued specs.
+1. Continue reference-theme fidelity, Task 5 onward.
+2. Then the font catalogue plan, then the queued specs.
 
 ## Blockers / unverified
 
 - `display-fabric.spec.ts` "is byte-stable at a fixed clock on one platform" is
-  load-induced: failed under full-suite parallel load, passed on re-run. Not
-  reproduced at base, so not proven pre-existing.
+  load-induced: failed under full-suite parallel load, passed on re-run.
 - Undocumented whether `PreCompact`/`SessionStart` fire for a *subagent's*
   compaction; the `agent_id` guard is defense-in-depth, not a demonstrated fix.
-  No mechanism catches a dispatch the controller never recorded; a `SubagentStop`
-  ledger audit for unknown agent ids is the only candidate.
+  No mechanism catches a dispatch the controller never recorded.
 - Unverified: browser round-trip of text align/wrap/overflow, in-place edit +
-  undo, run preset/override; phone surfaces exercised by suite, not by eye.
-  Owned by the queued author journey proof spec, not outstanding work here.
-- Pre-existing, not from this plan: `format:check` fails on
-  `snap-manager/scaling/scaling.dom.test.ts` (`01aa7dc`); the starter binds the
-  unowned `memory.used`, so its donut renormalises to a false 100%; the baseline
-  GPU provider returns the **maximum** across controllers, so a caption naming
-  one GPU could sit over another's readings.
+  undo, run preset/override; phone surfaces exercised by suite, not by eye. Owned
+  by the queued author journey proof spec.
+- Carried into this plan's work, not merely pre-existing: the starter binds the
+  unowned `memory.used` so its donut renormalises to a false 100% (Task 7), and
+  the baseline GPU provider returns the **maximum** across controllers so a
+  caption could name one GPU over another's readings (Task 9). Also outstanding:
+  `format:check` fails on `snap-manager/scaling/scaling.dom.test.ts` (`01aa7dc`).
