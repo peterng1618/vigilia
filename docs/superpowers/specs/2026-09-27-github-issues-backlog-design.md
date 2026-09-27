@@ -1,6 +1,6 @@
 # GitHub Issues as the backlog
 
-- **Status:** queued spec; awaiting written-spec review. Plan: not yet written.
+- **Status:** implemented — [implementation plan](../plans/2026-09-27-github-issues-backlog.md) executed 2026-09-27.
 - **Date:** 2026-09-27
 - **Queue:** independent of the feature queue. Runs when the active plan closes.
 
@@ -186,6 +186,23 @@ finding no live reference, and by following every link in the changed files.
 Whether the judgement rule is *well-judged* is not verifiable here — it is
 improved by the first few times an agent takes the wrong side, and corrected in
 `AGENTS.md` when it does.
+
+### What was observed on 2026-09-27
+
+- Three labels created with the descriptions above, read back through
+  `gh label list`; no `queued` label exists.
+- All four records are issues: #2 and #3 open with `bug` + `needs-triage`,
+  #4 and #5 closed as `completed`, their bodies naming `1fc22b7` and
+  `6ea5314`.
+- `AGENTS.md` carries the size judgement and the request lifecycle, and names
+  no `docs/bugs/` path.
+- The repo-wide sweep went from six bug-file citations to zero. The remaining
+  mentions of `docs/bugs/` are in this spec and its plan, which describe its
+  removal.
+- **Not verified:** the two forms' rendered check. GitHub reads issue forms from
+  the default branch, so they could only be validated structurally (schema,
+  required fields, non-empty dropdowns) until they reach `main`. A form GitHub
+  rejects shows no template at all, indistinguishable from "not configured".
 
 ## Related
 
