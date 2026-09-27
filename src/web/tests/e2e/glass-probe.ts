@@ -14,46 +14,51 @@ import {
  *
  * The statistics are **located features, never means**. A mean over a panel
  * stays identical whether a backdrop was blurred correctly, half-shifted or
- * tinted; a peak adjacent-column gradient and a plateau width cannot.
+ * tinted; a peak adjacent-column gradient and the width of a dark run cannot.
  *
  * The band is placed from the panel's own device box, never from hand-picked
- * artboard coordinates. Two mistakes shaped that, both recorded because they
- * produced confident wrong numbers first:
+ * artboard coordinates. Three mistakes shaped that, each recorded because it
+ * produced a confident wrong number first:
  *
  *  - `getElement()` on an interactive Fabric `Canvas` returns the **upper**
- *    canvas, the interaction layer. The scene is painted on `lowerCanvasEl`.
+ *    canvas, the interaction layer. The scene is on `lowerCanvasEl`.
  *  - A band that reaches the panel's own 2px stroke reads a composite of about
- *    240 as content, and two statistics then pass **vacuously** on an empty
+ *    240 as content, and two statistics then passed **vacuously** on an empty
  *    band. The band is placed inside the straight part and its row count is
  *    asserted.
+ *  - The first column that reaches the minimum is a flat run's **left edge**,
+ *    not its centre — a 30px error on a marker this wide. Positions are run
+ *    midpoints.
  */
 
 /** The x window the band covers; its rows come from the panel's device box. */
 export const BANDS = { panel: { left: 336, width: 120 } } as const;
 
-interface Profile {
-  /** Largest adjacent-column luminance step, over the band's column means. */
+interface Band {
+  /** Mean luminance of each column in the band. */
+  readonly means: readonly number[];
+  /** Largest adjacent-column step. */
   readonly peakGradient: number;
-  /** Columns at or above 90% of the band's peak. A sharp stripe reaches its
-   *  extreme for a few pixels; a blurred one has a broad plateau. */
-  readonly plateauWidth: number;
-  /** Backing-store x of the dark run's **midpoint**. The first column that
-   *  reaches the minimum is a flat run's left edge, not its centre, and the
-   *  marker is wide enough for that to be a 30px error. */
-  readonly darkestAt: number;
-  /** Columns in the dark run. Blur widens a located feature; a tint cannot. */
-  readonly darkWidth: number;
   readonly darkest: number;
   readonly brightest: number;
+}
+
+interface Run {
+  /** Backing-store x of the run's midpoint. */
+  readonly centre: number;
 }
 
 export interface Reading {
   /** Rows the backdrop band actually covers. An empty band makes every
    *  statistic vacuously pass, so it is asserted rather than assumed. */
   readonly bandRows: number;
-  readonly glass: Profile;
+  readonly glass: Band;
   /** The same band read out of the media image itself, unblurred. */
-  readonly reference: Profile;
+  readonly reference: Band;
+  readonly glassRun: Run;
+  readonly referenceRun: Run;
+  /** The marker centre, which needs a level near the media's own darkness. */
+  readonly referenceCentre: number;
   /** Backing-store x the media stripe must land at, from its own geometry. */
   readonly expectedCentre: number;
   readonly mediaReady: boolean;
@@ -74,6 +79,13 @@ interface FabricCanvas {
   getRetinaScaling(): number;
   renderAll(): void;
 }
+
+/** Where in a profile's own range a run is counted. */
+const MARKER_LEVEL = 0.15;
+/** Near the bright end: a blur bleeds the marker's darkness outward, and that
+ *  is the only level at which the widening is visible. At the midpoint the
+ *  blurred flanks are still below the level in both profiles. */
+const BLEED_LEVEL = 0.85;
 
 /** The media has to have real pixels, not merely to be "complete": `complete`
  *  is also true of a failed image, which is how an earlier run of this probe
@@ -116,7 +128,8 @@ export async function readGlass(page: Page): Promise<Reading> {
   await waitForMedia(page);
   return page.evaluate(
     (input) => {
-      const { bands, STRIPE_X, STRIPE_WIDTH, SOURCE_WIDTH } = input;
+      const { bands, STRIPE_X, STRIPE_WIDTH, SOURCE_WIDTH, marker, bleed } =
+        input;
       const scope = window as unknown as
         | { vigilia?: { handle: { canvas: FabricCanvas } } }
         | { vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } } };
@@ -213,76 +226,65 @@ export async function readGlass(page: Page): Promise<Reading> {
         bandTop + Math.max(8, Math.floor(height * 0.25)) - 1,
       );
 
-      /** `threshold` is supplied for the panel so both profiles are measured on
-       *  the media's own brightness scale. A floor relative to each profile's
-       *  own extrema cannot measure width under a blur: lifting the flanks also
-       *  lowers the floor's reference, so the run shrinks instead of widening. */
-      const profile = (
-        read: (x: number, y: number) => number,
-        threshold?: number,
-      ): Profile => {
+      /** Column means, and the extrema **of those means**. Taking the extrema
+       *  per pixel instead put the level below whole runs of columns, which is
+       *  the scale mismatch this replaced. */
+      const band = (read: (x: number, y: number) => number): Band => {
         const columns = Math.max(1, right - left + 1);
         const means = new Array<number>(columns).fill(0);
-        let darkest = Infinity;
-        let brightest = -Infinity;
-        for (let y = bandTop; y <= bandBottom; y += 1) {
-          for (let x = left; x <= right; x += 1) {
-            const value = read(x, y);
-            means[x - left] += value;
-            if (value < darkest) darkest = value;
-            if (value > brightest) brightest = value;
-          }
-        }
+        for (let y = bandTop; y <= bandBottom; y += 1)
+          for (let x = left; x <= right; x += 1) means[x - left] += read(x, y);
         const rows = bandBottom - bandTop + 1;
         for (let i = 0; i < columns; i += 1) means[i] /= rows;
-        // Built from the **column means** the run is found on. An earlier
-        // version used the per-pixel extrema, which put the floor far below any
-        // column mean and made the whole band one dark run.
-        const level = threshold ?? darkest + (brightest - darkest) * 0.15;
-        let firstDark = -1;
-        let lastDark = -1;
-        for (let i = 0; i < columns; i += 1) {
-          const value = means[i];
-          if (value === undefined || value > level) continue;
-          if (firstDark < 0) firstDark = i;
-          lastDark = i;
-        }
-        if (firstDark < 0) firstDark = 0;
-        if (lastDark < firstDark) lastDark = firstDark;
-        const darkestAt = left + Math.round((firstDark + lastDark) / 2);
-        const darkWidth = lastDark - firstDark + 1;
         let peakGradient = 0;
         for (let i = 1; i < columns; i += 1) {
           const step = Math.abs(means[i] - means[i - 1]);
           if (step > peakGradient) peakGradient = step;
         }
-        const peak = Math.max(...means);
-        let plateau = 0;
-        for (const value of means) if (value >= peak * 0.9) plateau += 1;
         return {
+          means,
           peakGradient,
-          plateauWidth: plateau,
-          darkestAt,
-          darkWidth,
-          darkest,
-          brightest,
+          darkest: Math.min(...means),
+          brightest: Math.max(...means),
         };
       };
 
-      // The media first, so the panel is measured against its brightness scale.
-      const referenceProfile = profile(referenceLuma);
-      // Near the bright end of the media's own range: a blur bleeds the
-      // marker's darkness outward, so that is where the widening shows. At the
-      // midpoint the flanks are still below the level in both profiles and the
-      // run barely moves.
-      const level =
-        referenceProfile.darkest +
-        0.85 * (referenceProfile.brightest - referenceProfile.darkest);
+      /** The contiguous run of columns below `level`, as a midpoint and a width.
+       *  Both profiles are run at the **same** level, or a higher level on one
+       *  side would inflate its run and the comparison would mean nothing. */
+      const run = (b: Band, fraction: number): Run => {
+        const means = b.means;
+        const level = b.darkest + fraction * (b.brightest - b.darkest);
+        let first = -1;
+        let last = -1;
+        for (let i = 0; i < means.length; i += 1) {
+          const value = means[i];
+          if (value === undefined || value > level) continue;
+          if (first < 0) first = i;
+          last = i;
+        }
+        if (first < 0) first = 0;
+        if (last < first) last = first;
 
+        return { centre: left + Math.round((first + last) / 2) };
+      };
+
+      const glass = band(luma);
+      const reference = band(referenceLuma);
+      // The marker's own centre needs a level near the media's darkness, not the
+      // bleed level: at 0.85 the dark bars fall below it too.
+      const referenceCentre = run(
+        reference,
+        marker,
+        Math.round(expectedCentre),
+      ).centre;
       return {
         bandRows: bandBottom - bandTop + 1,
-        glass: profile(luma, level),
-        reference: referenceProfile,
+        glass,
+        reference,
+        glassRun: run(glass, bleed),
+        referenceRun: run(reference, bleed),
+        referenceCentre,
         expectedCentre,
         mediaReady: image.naturalWidth > 0,
       };
@@ -292,6 +294,8 @@ export async function readGlass(page: Page): Promise<Reading> {
       STRIPE_X: GLASS_STRIPE_SOURCE_X,
       STRIPE_WIDTH: GLASS_STRIPE_SOURCE_WIDTH,
       SOURCE_WIDTH: GLASS_MEDIA_SOURCE.width,
+      marker: MARKER_LEVEL,
+      bleed: BLEED_LEVEL,
     },
   ) as Promise<Reading>;
 }
@@ -311,25 +315,22 @@ export function assertBlur(reading: Reading, label: string): void {
     `${label}: the media has contrast to blur`,
   ).toBeGreaterThan(40);
 
-  // **The statistic that rejects a tint is the width of the dark run.** Blur
-  // spreads a located feature sideways; a tint changes its brightness and leaves
-  // its extent alone. Neither of the other two can do this job: with the sampler
-  // disabled the panel's peak gradient is 0, which passes "under a third", and
-  // its darkest is 255, which passes "lifted by the blur" - because a tint
-  // lightens a dark core too. They are kept as corroboration, not as the proof.
-  expect(
-    glass.darkWidth,
-    `${label}: blur widens the located feature, which a tint cannot (panel ${glass.darkWidth} vs media ${reference.darkWidth} columns)`,
-  ).toBeGreaterThan(reference.darkWidth + 20);
-
-  // Corroborating, not decisive: the edge is softer and the panel is not flat.
+  // **The blur evidence, and it is two-sided on purpose.** A tint over a
+  // transparent canvas gives a peak gradient of *zero*, which passes "under a
+  // third" on its own; an unblurred copy of the media gives the media's own
+  // gradient, which fails it. Only the pair rejects both, and both numbers come
+  // from the same band.
   expect(
     glass.peakGradient,
     `${label}: the backdrop is softened under the panel (panel ${glass.peakGradient.toFixed(1)} vs media ${reference.peakGradient.toFixed(1)})`,
   ).toBeLessThan(reference.peakGradient / 3);
   expect(
+    glass.peakGradient,
+    `${label}: the panel is not a flat wash (a tint over an empty canvas scores 0)`,
+  ).toBeGreaterThan(0.5);
+  expect(
     glass.brightest - glass.darkest,
-    `${label}: the panel is not a flat wash`,
+    `${label}: the panel carries backdrop detail`,
   ).toBeGreaterThan(8);
 }
 
@@ -345,22 +346,22 @@ export function assertMediaOffset(reading: Reading, label: string): void {
   //    sampler can move it, so it is stated as a precondition rather than
   //    dressed up as coverage.
   expect(
-    Math.abs(reading.reference.darkestAt - reading.expectedCentre),
-    `${label}: the media layer is where its geometry puts it (measured ${reading.reference.darkestAt}, expected ${Math.round(reading.expectedCentre)})`,
+    Math.abs(reading.referenceCentre - reading.expectedCentre),
+    `${label}: the media layer is where its geometry puts it (measured ${reading.referenceCentre}, expected ${Math.round(reading.expectedCentre)})`,
   ).toBeLessThanOrEqual(4);
   // 2. The panel shows the media behind it, measured against the *same* media
   //    read from the same band.
   //
   //    The tolerance is **one blur radius**, and that is weaker than I want:
-  //    the panel's dark run measures about 14px right of the media's, and one
-  //    radius is about 15.6px, so the two are indistinguishable at this
-  //    resolution. A symmetric blur should preserve a symmetric feature's centre
-  //    exactly, so the residual is unexplained; it is recorded in the task
-  //    report as an open measurement, not written off as noise. What this
-  //    tolerance does still catch is a sampler that shifts the media by a
-  //    panel's width, which is what a wrong offset looks like.
+  //    the panel's run measures about 14px right of the media's, and one radius
+  //    is about 15.6px, so the two are indistinguishable at this resolution. A
+  //    symmetric blur should preserve a symmetric feature's centre exactly, so
+  //    the residual is unexplained; it is recorded in the task report as an open
+  //    measurement, not written off as noise. What this tolerance does still
+  //    catch is a sampler that shifts the media by a panel's width, which is
+  //    what a wrong offset looks like.
   expect(
-    Math.abs(reading.glass.darkestAt - reading.reference.darkestAt),
-    `${label}: the panel shows the media behind it, within one blur radius (panel ${reading.glass.darkestAt}, media ${reading.reference.darkestAt})`,
+    Math.abs(reading.glassRun.centre - reading.referenceRun.centre),
+    `${label}: the panel shows the media behind it, within one blur radius (panel ${reading.glassRun.centre}, media ${reading.referenceRun.centre})`,
   ).toBeLessThanOrEqual(20);
 }

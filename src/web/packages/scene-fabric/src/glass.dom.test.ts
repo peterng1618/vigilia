@@ -688,10 +688,16 @@ describe("glass composition", () => {
   });
 
   it("restores the context when the composite throws mid-draw", () => {
-    // A tainting draw throws after the handler has forced the backdrop to full
-    // alpha and neutralised the panel's shadow. Fabric's own save/restore wraps
-    // the whole object, but not the state left between the throw and the
-    // object's own paint, which is the panel's fill.
+    // A tainting draw throws after the handler has clipped to the panel's path
+    // and put the identity transform in place for the final draw. Fabric's own
+    // save/restore wraps the whole object, but not the state left between the
+    // throw and the object's own paint.
+    //
+    // The leak that matters is the **clip**, not the alpha or the shadow: the
+    // path was built centred on the object's local origin, so under the identity
+    // transform the panel's fill lands at (-20,-20)-(20,20) - outside the clip it
+    // left behind at (80,80)-(120,120) - and is discarded. The sample then reads
+    // the black plate. A leaked alpha of 1 would only make the fill brighter.
     const withGlass = stage({});
     const without = stage({});
     for (const stageUnderTest of [withGlass, without]) {
@@ -715,11 +721,10 @@ describe("glass composition", () => {
     without.canvas.renderAll();
 
     // The composite was abandoned, so the panel must paint exactly as it would
-    // with no glass at all. Removing the `finally` leaves the forced alpha, the
-    // neutralised shadow and the panel's own transform live, and the fill then
-    // goes down wrong: measured, the panel reads black rather than the 63 a
-    // half-opacity white over black should give. That is the whole point of
-    // restoring the context, and it is what this asserts.
+    // with no glass at all: 0.5 object opacity over a 0.5 white fill over black
+    // is 63, not 127 - the 127 is a half-opacity white on its own. Removing the
+    // `finally` makes the panel read black instead, because the fill is clipped
+    // away. That is the whole point of restoring the context.
     expect(withGlass.errors[0]).toContain("tainted canvases");
     expect(withGlass.pixel(100, 100)).toEqual(without.pixel(100, 100));
   });

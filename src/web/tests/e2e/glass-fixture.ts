@@ -41,13 +41,14 @@ export const GLASS_PANEL = {
 } as const;
 
 export const GLASS_MEDIA_SOURCE = { width: 800, height: 450 } as const;
-export const GLASS_STRIPE_SOURCE_X = 480;
-export const GLASS_STRIPE_SOURCE_WIDTH = 80;
+export const GLASS_STRIPE_SOURCE_X = 440;
+export const GLASS_STRIPE_SOURCE_WIDTH = 120;
 
-/** Every 16 source px. Coarse enough that a 16-unit blur smooths the bars to
- *  near-flat, so the marker's measured midpoint is not riding a residual
- *  ripple, and sharp enough that a tint still leaves them intact. */
-const MEDIA_BAR_PITCH = 16;
+/** Every 64 source px - about 50 device px, well past twice the blur radius. The
+ *  bars therefore flatten out under a real blur while a tint leaves them
+ *  intact, and the marker is left as the only feature in the band, so a
+ *  measurement of it is measuring the blur rather than the bar pattern. */
+const MEDIA_BAR_PITCH = 64;
 
 /**
  * PNG, not SVG: a packaged SVG is served as an opaque byte stream and an
