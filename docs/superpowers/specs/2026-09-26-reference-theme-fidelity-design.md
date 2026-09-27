@@ -31,7 +31,7 @@ plan. Finish and verify snapping before activating this work. The user's request
 approved this spec for planning; plan review and glass feasibility still precede
 product implementation. Remaining queued work
 keeps its relative order behind this milestone. This does not silently expand the
-[author-first release](2026-09-26-author-first-release-design.md) promise.
+[author journey proof](2026-09-27-author-journey-proof-design.md) promise.
 
 ## Visual target and matching boundary
 
@@ -276,10 +276,11 @@ optional glow; host providers/device settings for metadata. Extend existing owne
 before adding modules. Record one glass owner when implemented; update contradictory
 current docs/schema/tests together, without creating parallel registries.
 
-Related: [author journey](2026-09-24-author-journey.md),
-[authoring polish](2026-09-24-authoring-and-consumer-polish.md), and product
-requirements §§73, 75, 83, 85, 87, 89, 91, 93, 97, 105, 111, 116, 120, 122, 124, 126.
-Reuse completed work/evidence; no overlapping queued plan execution.
+Related: [author journey proof](2026-09-27-author-journey-proof-design.md),
+which proves this whole composition afterwards through the UI alone, and
+product requirements §§73, 75, 83, 85, 87, 89, 91, 93, 97, 105, 111, 116, 120,
+122, 124, 126. Reuse completed work/evidence; no overlapping queued plan
+execution.
 
 References consulted: [Fabric custom properties](https://fabricjs.com/docs/using-custom-properties),
 [Fabric caching](https://fabricjs.com/docs/fabric-object-caching),

@@ -96,9 +96,9 @@ the document model as it already stands.
 > reference-theme fidelity, which changes the surface Task 6 proves: panels and their
 > material controls, glass, tracked typography, gauge and caption authoring, chart
 > families, the semantic key vocabulary and the device-identity rules. Its checkboxes
-> are a starting hypothesis, not the work. See
-> `docs/superpowers/specs/2026-09-26-author-first-release-design.md`, which now
-> carries the hard requirement this plan's evidence must eventually serve.
+> are a starting hypothesis, not the work. The re-derivation is now owned by
+> `docs/superpowers/specs/2026-09-27-author-journey-proof-design.md`, which also
+> closes this plan and its siblings on observed evidence.
 
 - [ ] `npm run format:check && npm run lint && npm run typecheck && npm test &&
       npm run build && npm run size`.
