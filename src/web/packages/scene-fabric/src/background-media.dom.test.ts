@@ -304,6 +304,94 @@ describe("background media as a glass backdrop", () => {
     }
   });
 
+  it("asks for a repaint when a still image finally decodes", () => {
+    // A glass panel samples the media into its backdrop, and an image with no
+    // decoded pixels has none to sample. The layer is a DOM sibling, so Fabric
+    // never sees it arrive: without this the panel keeps the empty sample it
+    // took before the bytes landed, and nothing else in the scene will
+    // repaint to correct it.
+    const host = document.createElement("div");
+    let frames = 0;
+    const handle = mountBackgroundMedia({
+      host,
+      artboard,
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+      onFrame: () => {
+        frames += 1;
+      },
+    });
+    const image = host.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    expect(image, "the layer mounted an image").not.toBeNull();
+    expect(frames, "nothing to report before the bytes land").toBe(0);
+
+    image?.dispatchEvent(new Event("load"));
+    expect(frames, "the decode asks for a repaint").toBe(1);
+    // Once, not a loop: a still image is not a moving thing.
+    image?.dispatchEvent(new Event("load"));
+    expect(frames, "and it is not a loop").toBe(1);
+
+    // A failed image never gets pixels, so it must not keep asking.
+    const failing = new Event("error");
+    image?.dispatchEvent(failing);
+    expect(frames, "a failed decode does not ask for a repaint").toBe(1);
+    handle.destroy();
+  });
+
+  it("stops asking for a repaint once the media is torn down", () => {
+    // A decode that lands after teardown would repaint a canvas the host has
+    // already released, and the listener is what has to go.
+    const host = document.createElement("div");
+    let frames = 0;
+    const handle = mountBackgroundMedia({
+      host,
+      artboard,
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+      onFrame: () => {
+        frames += 1;
+      },
+    });
+    const image = host.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    handle.destroy();
+    image?.dispatchEvent(new Event("load"));
+    expect(frames, "a decode after teardown asks for nothing").toBe(0);
+  });
+
+  it("re-arms the decode notification across a reconfiguration", () => {
+    // `update` replaces the element, so the new one needs its own listener or
+    // a swapped background never reaches the glass panels sampling it.
+    const host = document.createElement("div");
+    let frames = 0;
+    const handle = mountBackgroundMedia({
+      host,
+      artboard,
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+      onFrame: () => {
+        frames += 1;
+      },
+    });
+    handle.update({
+      artboard: {
+        ...artboard,
+        backgroundMedia: { assetId: "other", fit: "cover" },
+      },
+      assets: [{ id: "other", kind: "image", path: "assets/other.png" }],
+      resolveAsset: () => ({ url: "blob:other" }),
+    });
+    const swapped = host.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    swapped?.dispatchEvent(new Event("load"));
+    expect(frames, "the replacement image reports its own decode").toBe(1);
+    handle.destroy();
+  });
+
   it("keeps following frames across a reconfiguration that omits onFrame", () => {
     // The subscription is taken at mount. Two shipped paths reconfigure the
     // media without restating it - the editor's `setArtboard`, and its

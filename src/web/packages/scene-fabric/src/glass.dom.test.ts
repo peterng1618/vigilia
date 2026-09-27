@@ -794,6 +794,121 @@ describe("glass composition", () => {
     expect(s.errors).toEqual([]);
   });
 
+  it("re-resolves on a group membership change, which the canvas never fires", () => {
+    // `Group.add`/`Group.remove` are how grouping, ungrouping and a delete
+    // inside a group re-parent an object, and neither reaches the canvas's
+    // `object:added`/`object:removed`. Both directions matter and they are
+    // different failures: a group that gains a panel must stop caching or the
+    // panel samples that cache, and a group that loses its last panel must get
+    // its caching back or an ordinary group is left permanently uncached.
+    const s = stage({});
+    const group = new Group([], { left: 0, top: 0 });
+    s.canvas.add(group);
+    const loose = panel();
+    s.canvas.add(loose);
+    s.canvas.renderAll();
+    expect(loose.objectCaching, "a panel is uncached for itself").toBe(false);
+    expect(group.objectCaching, "an empty group keeps its own caching").toBe(
+      true,
+    );
+
+    // The join. Nothing but the group fires here.
+    group.add(loose);
+    expect(
+      group.objectCaching,
+      "the group is uncached once it holds a panel",
+    ).toBe(false);
+    s.canvas.renderAll();
+    expect(s.errors).toEqual([]);
+
+    // And the release: the group goes back to ordinary the moment it is empty.
+    group.remove(loose);
+    expect(
+      group.objectCaching,
+      "an empty group is handed its caching back",
+    ).toBe(true);
+  });
+
+  it("keeps a shared group uncached until its last panel leaves it", () => {
+    const s = stage({});
+    const first = panel();
+    const second = panel({ left: 120, top: 120 });
+    const group = new Group([first, second], { left: 0, top: 0 });
+    s.canvas.add(group);
+    s.canvas.renderAll();
+    expect(group.objectCaching, "the group is uncached for the panels").toBe(
+      false,
+    );
+    expect(s.draws).toHaveLength(2);
+
+    // The first to leave recorded the group and is the one that could hand it
+    // back too early, stranding the panel that is still sampling it.
+    group.remove(first);
+    s.canvas.renderAll();
+    expect(
+      group.objectCaching,
+      "the surviving panel still needs the group uncached",
+    ).toBe(false);
+    expect(s.errors).toEqual([]);
+    expect(s.draws).toHaveLength(3);
+
+    // And once the last one goes, the group is an ordinary group again.
+    group.remove(second);
+    s.canvas.renderAll();
+    expect(group.objectCaching).toBe(true);
+  });
+
+  it("composites a grouped panel without fading the backdrop by the panel opacity", () => {
+    // A pin, not a claim that group opacity is right. Task 4 measured that
+    // "group opacity 1.0 and 0.5 both blur correctly", and its composite
+    // deliberately neutralises the alpha Fabric has already applied, which
+    // includes the group's. This records the composite's own contribution so a
+    // later change to that is deliberate: the panel's own opacity, which
+    // Fabric applies to the fill immediately afterwards and which the
+    // backdrop must therefore not also apply, changes the interior.
+    //
+    // The backdrop itself is read through the recorded draw rather than
+    // through the panel's interior, which over an opaque plate is dominated by
+    // the fill - measured, a 0.5 group and a 0.5 panel composite the same
+    // backdrop and leave interiors of 63 and 31, entirely from the fill.
+    const s = stage({ texture: false });
+    s.canvas.add(
+      new Rect({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 200,
+        originX: "left",
+        originY: "top",
+        fill: "#000000",
+        selectable: false,
+        evented: false,
+      }),
+    );
+    const group = new Group([panel({ vigiliaGlass: { blurRadius: 8 } })], {
+      left: 100,
+      top: 100,
+      opacity: 0.5,
+    });
+    s.canvas.add(group);
+    s.canvas.renderAll();
+
+    expect(s.draws, "the grouped panel still composites").toHaveLength(1);
+    expect(
+      s.draws[0]?.alpha,
+      "the backdrop is not faded by the panel's own opacity",
+    ).toBe(1);
+
+    // And the group fade reaches the *fill*, which is the half of the panel
+    // the backdrop is not: proving it is what makes the two assertions above
+    // about different things rather than both about the fill.
+    group.opacity = 1;
+    s.canvas.renderAll();
+    expect(s.pixel(100, 100)[0], "an unfaded group lightens the interior").toBe(
+      127,
+    );
+  });
+
   it("releases every scratch surface and listener on dispose", () => {
     const created: HTMLCanvasElement[] = [];
     const original = document.createElement.bind(document);

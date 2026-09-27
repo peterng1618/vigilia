@@ -109,9 +109,11 @@ export async function waitForMedia(page: Page): Promise<void> {
     null,
     { timeout: 20_000 },
   );
-  // The media decodes after the first paint and nothing repaints the canvas when
-  // it does - bounded invalidation is Task 5's, not this assertion's. One forced
-  // render is therefore part of measuring, and is stated rather than hidden.
+  // The media decodes after the first paint, and the media layer is a DOM
+  // sibling Fabric cannot see, so the decode is what asks for the repaint
+  // that makes the backdrop sample real pixels. The forced render below waits
+  // for that repaint to have been requested rather than assuming it already
+  // happened; it is a synchronisation, not a workaround.
   await page.evaluate(() => {
     const scope = window as unknown as {
       vigilia?: { handle: { canvas: FabricCanvas } };
@@ -256,9 +258,10 @@ export async function readGlass(page: Page): Promise<Reading> {
        *  range, not the same absolute luminance. That is deliberate: a blurred
        *  profile is lifted and lower-contrast, so one absolute level would fall
        *  in a different part of each profile's range and bias the comparison.
-       *  It is also why this is only ever compared within one profile - the
-       *  earlier "the dark run gets wider" claim compared across two, and that
-       *  asymmetry is exactly what made it meaningless. */
+       *  A per-profile level is also why a run's *width* is not comparable
+       *  across two profiles, only its centre: the earlier "the dark run gets
+       *  wider" claim used two different fractions, so the widening it measured
+       *  was the level difference rather than the blur. */
       const run = (b: Band, fraction: number): Run => {
         const means = b.means;
         const level = b.darkest + fraction * (b.brightest - b.darkest);

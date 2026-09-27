@@ -310,4 +310,81 @@ describe("editor background media", () => {
       frames.restore();
     }
   });
+
+  it("repaints when a swapped background image decodes", async () => {
+    // The editor's whole reason for the media frame subscription: the layer is
+    // a DOM sibling, so a background that arrives after the first paint is
+    // invisible to Fabric. A glass panel sampling it keeps an empty backdrop
+    // until something asks for a repaint, and nothing else in the scene
+    // changes to do it.
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const hero = [
+      { id: "hero", kind: "image" as const, path: "assets/hero.png" },
+    ];
+
+    const shell = await mountEditorShell({
+      host,
+      artboard: {
+        width: 100,
+        height: 100,
+        backgroundMedia: { assetId: "hero", fit: "cover" },
+      },
+      assets: hero,
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    const canvas = shell.editor.canvas;
+    // `requestRenderAll` defers to a rAF, so the request is what is counted,
+    // not the render it eventually produces.
+    let asked = 0;
+    const original = canvas.requestRenderAll.bind(canvas);
+    canvas.requestRenderAll = (): void => {
+      asked += 1;
+      original();
+    };
+
+    const image = host.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    expect(image, "the editor mounted a background image").not.toBeNull();
+    expect(asked, "mounting alone asks for nothing").toBe(0);
+
+    image?.dispatchEvent(new Event("load"));
+    expect(asked, "the decode reaches the editor's canvas").toBe(1);
+
+    // Once, not a loop: a still image is not a moving thing.
+    image?.dispatchEvent(new Event("load"));
+    expect(asked, "and it is not a loop").toBe(1);
+    shell.destroy();
+  });
+
+  it("releases the media frame subscription when the editor is destroyed", async () => {
+    // A decode that lands after teardown would repaint a canvas the shell has
+    // already disposed.
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const shell = await mountEditorShell({
+      host,
+      artboard: {
+        width: 100,
+        height: 100,
+        backgroundMedia: { assetId: "hero", fit: "cover" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    const image = host.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    shell.destroy();
+    // Nothing to assert about a destroyed canvas except that nothing throws and
+    // no repaint is asked for; the listener removal is what is under test.
+    expect(() => image?.dispatchEvent(new Event("load"))).not.toThrow();
+  });
 });

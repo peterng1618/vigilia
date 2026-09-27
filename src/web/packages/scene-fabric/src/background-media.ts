@@ -54,6 +54,7 @@ export function mountBackgroundMedia(
   options.host.prepend(layer);
   let disposeSource: (() => void) | undefined;
   let stopFrames: (() => void) | undefined;
+  let stopDecoded: (() => void) | undefined;
   let element: HTMLImageElement | HTMLVideoElement | undefined;
   let fit: "cover" | "contain" = "cover";
   let artboardSize = { width: 0, height: 0 };
@@ -64,6 +65,8 @@ export function mountBackgroundMedia(
     disposeSource = undefined;
     stopFrames?.();
     stopFrames = undefined;
+    stopDecoded?.();
+    stopDecoded = undefined;
   };
 
   const update = (next: BackgroundMediaUpdate): void => {
@@ -113,6 +116,7 @@ export function mountBackgroundMedia(
     element = mounted;
     layer.append(mounted);
     stopFrames = followFrames(mounted, onFrame);
+    stopDecoded = notifyOnDecode(mounted, onFrame);
   };
 
   update(options);
@@ -222,6 +226,32 @@ function followFrames(
   return () => {
     live = false;
     element.cancelVideoFrameCallback(pending);
+  };
+}
+
+/**
+ * A still image's bytes land after the first paint, and until they do a glass
+ * panel sampling this layer has nothing to sample - it keeps the empty
+ * backdrop it took, because a DOM sibling is invisible to Fabric and nothing
+ * else in the scene changes to trigger a repaint. One notification when the
+ * decode lands, which is not a loop.
+ */
+function notifyOnDecode(
+  element: HTMLImageElement | HTMLVideoElement,
+  onFrame: (() => void) | undefined,
+): (() => void) | undefined {
+  if (onFrame === undefined) return undefined;
+  // A video's first frame is the first `requestVideoFrameCallback`, so it is
+  // already covered; and a cached image has decoded before it can be listened
+  // to, which `intrinsic` reports on the next render anyway.
+  if (element instanceof HTMLVideoElement) return undefined;
+  const onLoad = (): void => {
+    element.removeEventListener("load", onLoad);
+    onFrame();
+  };
+  element.addEventListener("load", onLoad);
+  return () => {
+    element.removeEventListener("load", onLoad);
   };
 }
 

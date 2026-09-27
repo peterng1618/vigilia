@@ -1,5 +1,5 @@
 import { glassTreatment } from "@vigilia/renderer-core";
-import { Group, type FabricObject, type StaticCanvas } from "fabric/es";
+import { type FabricObject, Group, type StaticCanvas } from "fabric/es";
 
 /**
  * Backdrop blur for authored glass panels. A panel samples the surface Fabric is
@@ -82,8 +82,6 @@ const MIN_REGION_PX = 2;
 interface Panel {
   readonly object: FabricObject;
   readonly blurRadius: number;
-  /** Ancestors whose caching was turned off, so detach can put it back. */
-  readonly disabled: readonly FabricObject[];
   readonly onBeforeRender: (event: {
     readonly ctx: CanvasRenderingContext2D;
   }) => void;
@@ -95,6 +93,13 @@ export function createGlass(options: GlassOptions): GlassHandle {
   const { canvas } = options;
   const panels = new Map<FabricObject, Panel>();
   const reported = new Set<string>();
+  // Every ancestor whose caching this handle turned off, so it can hand them
+  // back. A set rather than a per-panel list because two panels in one group
+  // share that group: whichever leaves first must not restore a cache the other
+  // is still sampling through.
+  const uncached = new Set<FabricObject>();
+  // Groups whose membership this handle is following; see `sync`.
+  const watched = new Set<Group>();
   // A browser either has `ctx.filter` or it does not, so this is asked once
   // rather than written and read back for every panel on every frame. Keyed by
   // the context: `toCanvasElement` paints through a different one, and a
@@ -111,7 +116,6 @@ export function createGlass(options: GlassOptions): GlassHandle {
 
   const release = (panel: Panel): void => {
     panel.object.off("before:render", panel.onBeforeRender);
-    for (const ancestor of panel.disabled) ancestor.objectCaching = true;
     // Zeroing the dimensions is what actually releases the backing store;
     // dropping the reference alone leaves it alive until the element is collected.
     if (panel.surface !== undefined) {
@@ -122,8 +126,33 @@ export function createGlass(options: GlassOptions): GlassHandle {
     panel.context = undefined;
   };
 
+  /** The panel itself and every group above it, nearest first. */
+  function chain(object: FabricObject): FabricObject[] {
+    const ancestors: FabricObject[] = [];
+    for (
+      let node: FabricObject | undefined = object;
+      node !== undefined;
+      node = node.parent
+    )
+      ancestors.push(node);
+    return ancestors;
+  }
+
   function attach(object: FabricObject): void {
-    if (disposed || panels.has(object)) return;
+    if (disposed) return;
+    const existing = panels.get(object);
+    // A panel that is already attached still has its ancestors re-read: a
+    // group it has just joined is a new ancestor, and the old one is handed
+    // back in `sync` once nothing needs it. Re-attaching the listener here
+    // would double it, so the panel itself is kept.
+    for (const ancestor of chain(object)) {
+      if (uncached.has(ancestor)) continue;
+      if (!ancestor.objectCaching) continue;
+      ancestor.objectCaching = false;
+      uncached.add(ancestor);
+    }
+    if (existing !== undefined) return;
+
     const treatment = glassTreatment(object);
     if (treatment === undefined) return;
     // Fabric overrides `drawObject` on `Group` and renders its children
@@ -145,21 +174,9 @@ export function createGlass(options: GlassOptions): GlassHandle {
 
     // A cached object paints into its own cache, which has no real backdrop, and
     // a cached group hides its children behind the same empty cache.
-    const disabled: FabricObject[] = [];
-    for (
-      let ancestor: FabricObject | undefined = object;
-      ancestor !== undefined;
-      ancestor = ancestor.parent
-    ) {
-      if (!ancestor.objectCaching) continue;
-      ancestor.objectCaching = false;
-      disabled.push(ancestor);
-    }
-
     const panel: Panel = {
       object,
       blurRadius: treatment.blurRadius,
-      disabled,
       surface: undefined,
       context: undefined,
       onBeforeRender: ({ ctx }) => {
@@ -183,11 +200,41 @@ export function createGlass(options: GlassOptions): GlassHandle {
     // it is `renderer-core`'s vocabulary, enforced at import, and re-deciding
     // it here would put a second owner on that list.
     const live = new Set<FabricObject>();
-    for (const object of walk(canvas.getObjects()))
+    const groups = new Set<Group>();
+    for (const object of walk(canvas.getObjects())) {
+      if (object instanceof Group) groups.add(object);
       if (glassTreatment(object) !== undefined) live.add(object);
+    }
+    // A group is a collection too, and its own membership events never reach
+    // the canvas. Grouping, ungrouping and a delete inside a group are all
+    // invisible without this, and each leaves a panel sampling either a cache
+    // it should have switched off or a group it should have released.
+    for (const group of watched) {
+      if (groups.has(group)) continue;
+      group.off("object:added", sync);
+      group.off("object:removed", sync);
+      watched.delete(group);
+    }
+    for (const group of groups) {
+      if (watched.has(group)) continue;
+      group.on("object:added", sync);
+      group.on("object:removed", sync);
+      watched.add(group);
+    }
     for (const object of [...panels.keys()])
       if (!live.has(object)) detach(object);
     for (const object of live) attach(object);
+    // `attach` re-reads each panel's ancestors, so a panel that just joined a
+    // group is covered; an ancestor no panel needs any more is handed back
+    // here, once the last panel that wanted it has gone.
+    const stillNeeded = new Set<FabricObject>();
+    for (const object of live)
+      for (const node of chain(object)) stillNeeded.add(node);
+    for (const ancestor of [...uncached]) {
+      if (stillNeeded.has(ancestor)) continue;
+      ancestor.objectCaching = true;
+      uncached.delete(ancestor);
+    }
   };
 
   // `loadFromJSON` clears and re-adds, so revival and history undo land here
@@ -345,7 +392,14 @@ export function createGlass(options: GlassOptions): GlassHandle {
       disposed = true;
       canvas.off("object:added", sync);
       canvas.off("object:removed", sync);
+      for (const group of watched) {
+        group.off("object:added", sync);
+        group.off("object:removed", sync);
+      }
+      watched.clear();
       for (const object of [...panels.keys()]) detach(object);
+      for (const ancestor of uncached) ancestor.objectCaching = true;
+      uncached.clear();
     },
   };
 }

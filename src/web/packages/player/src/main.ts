@@ -226,8 +226,15 @@ function startFixtureTheme(
     window.setTimeout(() => handle.resize(), 200);
   });
 
-  // Closing removes this display's keys from the host polling union.
-  window.addEventListener("pagehide", () => liveHandle?.close());
+  // Closing removes this display's keys from the host polling union, and
+  // releases the scene: its glass handle, media layer and video frame callback
+  // are not covered by anything else here.
+  window.addEventListener("pagehide", () => {
+    liveHandle?.close();
+    pause();
+    observer.disconnect();
+    handle.dispose();
+  });
 
   run();
   exposeForDiagnostics(handle, liveHandle);
@@ -312,6 +319,9 @@ async function startHostedTheme(
       chartRefresh.dispose();
       observer.disconnect();
       liveHandle.close();
+      // The scene owns the glass handle, the media layer and any video frame
+      // callback, and none of them is released by the teardown above.
+      handle.dispose();
     },
     { once: true },
   );

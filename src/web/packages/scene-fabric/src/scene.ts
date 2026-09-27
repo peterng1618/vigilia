@@ -84,6 +84,7 @@ export function mountFabricScene(
     ...withoutHostAndPlan(options),
   });
   let currentArtboard = options.artboard;
+  let disposed = false;
   const media =
     options.resolveAsset === undefined || currentArtboard === undefined
       ? undefined
@@ -188,6 +189,10 @@ export function mountFabricScene(
     },
 
     dispose(): void {
+      // Fabric's own `destroy()` throws on a second call, and a teardown path
+      // is exactly where a handle gets disposed twice.
+      if (disposed) return;
+      disposed = true;
       adapter.dispose();
       // Before the media: the glass sampler reads the media layer.
       glass.dispose();
