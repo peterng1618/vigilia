@@ -1,4 +1,5 @@
 import { __iconData as chartColumns } from "lucide-react/dist/esm/icons/chart-no-axes-column.mjs";
+import { __iconData as chevron } from "lucide-react/dist/esm/icons/chevron-right.mjs";
 import { __iconData as board } from "lucide-react/dist/esm/icons/circuit-board.mjs";
 import { __iconData as chip } from "lucide-react/dist/esm/icons/cpu.mjs";
 import { __iconData as drive } from "lucide-react/dist/esm/icons/hard-drive.mjs";
@@ -39,6 +40,17 @@ const ARITY: Readonly<Record<string, number>> = {
   a: 7,
   z: 0,
 };
+
+/** How many coordinate pairs follow at `from`, for a moveto with no letter per pair. */
+function countPairs(tokens: readonly string[], from: number): number {
+  let at = from;
+  let pairs = 0;
+  while (tokens[at] !== undefined && !/[A-Za-z]/.test(tokens[at] as string)) {
+    pairs += 1;
+    at += 2;
+  }
+  return pairs;
+}
 
 const TOKENS = /[A-Za-z]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g;
 
@@ -84,27 +96,43 @@ export function lucidePath(
         throw new Error(`Lucide path command "${letter}" has no arity.`);
       const relative = letter === letter.toLowerCase();
       const upper = letter.toUpperCase();
+      if (upper === "Z") {
+        commands.push(["Z"]);
+        index += 1;
+        [x, y] = [startX, startY];
+        continue;
+      }
+      // A moveto takes further coordinate pairs carrying no letter of their
+      // own, and each of them is a lineto. `chevron-right` is written
+      // `m9 18 6-6-6-6`, so reading only the first pair leaves `6-6-6` to be
+      // mistaken for a command letter.
+      const pairs = upper === "M" ? countPairs(tokens, index + 1) : 1;
       const args = tokens
-        .slice(index + 1, index + 1 + arity)
+        .slice(index + 1, index + 1 + pairs * arity)
         .map((token) => Number(token));
       if (
-        args.length !== arity ||
+        args.length !== pairs * arity ||
         args.some((value) => !Number.isFinite(value))
       )
         throw new Error(`Lucide path command "${letter}" is truncated.`);
-      const repeated = index > 0 && upper === "M";
-      index += 1 + arity;
-
-      // A repeated moveto argument pair continues as a lineto, per the spec.
-      if (repeated) {
-        const end = absolute(args[0] ?? 0, args[1] ?? 0, x, y, relative);
-        commands.push(["L", end[0] * scale, end[1] * scale]);
-        [x, y] = end;
-        continue;
-      }
-      if (upper === "Z") {
-        commands.push(["Z"]);
-        [x, y] = [startX, startY];
+      index += 1 + pairs * arity;
+      if (upper === "M") {
+        for (let pair = 0; pair < pairs; pair += 1) {
+          const end = absolute(
+            args[pair * arity] ?? 0,
+            args[pair * arity + 1] ?? 0,
+            x,
+            y,
+            relative,
+          );
+          commands.push(
+            pair === 0
+              ? ["M", end[0] * scale, end[1] * scale]
+              : ["L", end[0] * scale, end[1] * scale],
+          );
+          if (pair === 0) [startX, startY] = end;
+          [x, y] = end;
+        }
         continue;
       }
       const resolved = resolve(upper, args, x, y, relative, scale);
@@ -265,4 +293,5 @@ export const starterIcons = {
   trends: (size: number): PathCommand[] => lucidePath(chartColumns.node, size),
   storage: (size: number): PathCommand[] => lucidePath(drive.node, size),
   network: (size: number): PathCommand[] => lucidePath(waves.node, size),
+  chevron: (size: number): PathCommand[] => lucidePath(chevron.node, size),
 } as const;

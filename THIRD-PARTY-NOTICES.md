@@ -89,7 +89,10 @@ SOFTWARE.
 ## Runtime icons
 
 `lucide-react` 1.48.0 supplies the editor's action-bar icons, imported per-icon
-by name so the bundler keeps only the ones the registry uses. **Four of the
+by name so the bundler keeps only the ones the registry uses. Its per-icon
+geometry is also where the default theme's card icons come from: the starter reads the same
+modules and converts them to canvas path data at author time, so no second icon set
+ships and the player bundle is unchanged. **Four of the
 icons currently imported are derived from the Feather project and carry MIT as
 well as the package's ISC grant**: `ArrowDown`, `ArrowUp`, `Lock` and `Trash2`
 (`trash-2` in the package's own list). The remainder of the package's icons are

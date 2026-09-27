@@ -66,10 +66,14 @@ describe("Lucide icon geometry", () => {
       expect(box.minY, `${name} minY`).toBeGreaterThanOrEqual(-0.001);
       expect(box.maxX, `${name} maxX`).toBeLessThanOrEqual(size + 0.001);
       expect(box.maxY, `${name} maxY`).toBeLessThanOrEqual(size + 0.001);
-      // And it must actually draw: a glyph that collapsed to one point would
-      // satisfy the bounds above.
-      expect(box.maxX - box.minX, `${name} width`).toBeGreaterThan(size * 0.4);
-      expect(box.maxY - box.minY, `${name} height`).toBeGreaterThan(size * 0.2);
+      // And it must actually draw: a glyph that collapsed to a point would
+      // satisfy the bounds above. The floor is on the larger axis, because a
+      // narrow glyph is legitimate — a chevron fills half its box across and
+      // all of it down.
+      expect(
+        Math.max(box.maxX - box.minX, box.maxY - box.minY),
+        `${name} extent`,
+      ).toBeGreaterThan(size * 0.4);
     }
   });
 

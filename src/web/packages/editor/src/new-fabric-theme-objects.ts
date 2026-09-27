@@ -17,13 +17,7 @@ import type { PathCommand } from "./new-fabric-theme-icons.js";
 export type ObjectJson = Readonly<Record<string, unknown>>;
 
 // Authored positions are artboard top-left coordinates, never Fabric's centred defaults.
-export const positioned = { originX: "left", originY: "top" } as const;
-export const backgroundOnly = {
-  ...positioned,
-  selectable: false,
-  evented: false,
-} as const;
-
+const positioned = { originX: "left", originY: "top" } as const;
 export function rect(
   id: string,
   left: number,
@@ -84,21 +78,12 @@ export interface Run {
 }
 
 /**
- * A text object built from its runs, positioned by its own left edge.
+ * A text object built from its runs.
  *
  * The first run carries the object's own resolved Fabric fields, because that
  * is the run whose preset Fabric measures: the same rule
  * `applyObjectTypePresets` follows, and the reason a mixed-size label still
  * opens at the right size.
- *
- * There is deliberately no `align` option. `vigiliaText.align` is honoured by
- * `refreshLayout`, whose arithmetic assumes a **centre** origin: it places a
- * centred run at `box.x + box.width / 2`, and a `box` reconstructed from a
- * top-left-origin object is that object's left minus half its width. The two
- * cancel only while the authored box and the measured run are the same width.
- * Authored wide, a centred reading walks on every refresh — measured in the
- * player, where the storage figure drifted off the artboard and the VRAM ring's
- * percentage left its card. A left edge is stable whatever the reading is.
  */
 export function text(
   id: string,
@@ -106,6 +91,10 @@ export function text(
   top: number,
   width: number,
   runs: readonly Run[],
+  options?: {
+    readonly align?: "left" | "center" | "right";
+    readonly verticalAlign?: "top" | "middle" | "bottom";
+  },
 ): ObjectJson {
   const first = runs[0] as Run;
   const presetId = `${first.size}-${first.weight}`;
@@ -119,12 +108,21 @@ export function text(
     text: plain(runs),
     fontFamily: "Segoe UI, sans-serif",
     fontSize: first.size,
+    // Alignment lives in the authored content and is written to Fabric on every
+    // live refresh, which leaves the *first* paint of a revived document showing
+    // the text from the box's left edge. Writing it here as well makes the
+    // document correct before the first sample ever arrives.
+    ...(options?.align === undefined ? {} : { textAlign: options.align }),
     fontWeight: first.weight,
     fill: solidOf[first.token],
     lineHeight: 1.18,
     ...(spacing === undefined ? {} : { charSpacing: spacing }),
     vigiliaPaint: { fill: `palette.${first.token}` },
     vigiliaText: {
+      ...(options?.align === undefined ? {} : { align: options.align }),
+      ...(options?.verticalAlign === undefined
+        ? {}
+        : { verticalAlign: options.verticalAlign }),
       runs: runs.map((run) =>
         run.kind === "literal"
           ? {

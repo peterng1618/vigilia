@@ -221,39 +221,47 @@ function memoryCard(options: {
     // hides `detail` and `axisLabel` outright, so there is no chart-internal
     // value text to suppress and no choice to make.
     //
-    // Both are placed by their left edge at the reference's own centre less half
-    // a typical run's width, for the reason `text()` gives on alignment: the
-    // reference centres these, and a centre an authored top-left object cannot
-    // hold is a centre that walks.
+    // Both sit at the reference's own centre. The arithmetic that would hold
+    // that centre against a changing reading is `fabric-text.ts`'s, and it does
+    // not hold: the file test named in STATUS.md measures it, and the fix is
+    // Task 8's "fixed-box alignment … intact", not this task's.
     text(
       `${prefix}-value`,
-      options.ringCentreX - 55,
+      options.ringCentreX - 90,
       337,
-      130,
+      180,
       percent(60, 46, `${prefix}-percent`),
+      { align: "center", verticalAlign: "middle" },
     ),
-    text(`${prefix}-capacity`, options.ringCentreX - 70, 406, 150, [
-      {
-        kind: "value",
-        bindingId: `${prefix}-used`,
-        token: "text",
-        size: 20,
-        weight: "400",
-        precision: 1,
-        unitDisplay: "none",
-      },
-      { kind: "literal", text: " / ", token: "dim", size: 20, weight: "400" },
-      {
-        kind: "value",
-        bindingId: `${prefix}-total`,
-        token: "text",
-        size: 20,
-        weight: "400",
-        precision: 0,
-        unitDisplay: "none",
-      },
-      { kind: "literal", text: " GB", token: "dim", size: 20, weight: "400" },
-    ]),
+    text(
+      `${prefix}-capacity`,
+      options.ringCentreX - 100,
+      406,
+      200,
+      [
+        {
+          kind: "value",
+          bindingId: `${prefix}-used`,
+          token: "text",
+          size: 20,
+          weight: "400",
+          precision: 1,
+          unitDisplay: "none",
+        },
+        { kind: "literal", text: " / ", token: "dim", size: 20, weight: "400" },
+        {
+          kind: "value",
+          bindingId: `${prefix}-total`,
+          token: "text",
+          size: 20,
+          weight: "400",
+          precision: 0,
+          unitDisplay: "none",
+        },
+        { kind: "literal", text: " GB", token: "dim", size: 20, weight: "400" },
+      ],
+      { align: "center" },
+    ),
   ];
 }
 
@@ -306,10 +314,8 @@ export function trendsCard(): ObjectJson[] {
     path("trends-card-icon", 74, 530, starterIcons.trends(34), "cpu", 2.8),
     label("trends-card-title", 134, 528, 420, "Performance Trends", 24, "text"),
     // The legend is a text object, not a chart setting: `LineSettings` has no
-    // legend property and the settings panel exposes no legend field. Its left
-    // edge is where the reference ends its run less that run's measured width,
-    // for the reason `text()` gives on alignment.
-    text("trends-legend", 820, 528, 300, legend),
+    // legend property and the settings panel exposes no legend field.
+    text("trends-legend", 680, 528, 390, legend, { align: "center" }),
     chart("trends-chart", 616, 695, 963, 215, "line", {
       ...plainLine,
       // Area fill is first-series only, so three filled series are not
@@ -334,19 +340,24 @@ export function storageCard(): ObjectJson[] {
     card("storage-card", 1138, 507, 494, 165),
     path("storage-card-icon", 1170, 528, starterIcons.storage(40), "cpu", 3.3),
     label("storage-card-title", 1234, 528, 240, "Storage", 24, "text"),
-    // The reference writes the share against the card's right edge; the left
-    // edge here is that edge less the run's measured width, for the reason
-    // `text()` gives on alignment.
-    text("storage-card-value", 1500, 526, 120, [
-      {
-        kind: "value",
-        bindingId: "storage-percent",
-        token: "text",
-        size: 44,
-        weight: "600",
-        precision: 0,
-      },
-    ]),
+    // The reference writes the share against the card's right edge.
+    text(
+      "storage-card-value",
+      1460,
+      526,
+      200,
+      [
+        {
+          kind: "value",
+          bindingId: "storage-percent",
+          token: "text",
+          size: 44,
+          weight: "600",
+          precision: 0,
+        },
+      ],
+      { align: "center" },
+    ),
     chart("storage-bar", 1385, 603, 430, 26, "bar", {
       ...defaultBarSettings,
       // A track is what makes a bar a progress bar rather than a column.
@@ -357,6 +368,12 @@ export function storageCard(): ObjectJson[] {
       fill: { ref: "palette.storageFill" },
       track: { ref: "palette.chartTrack" },
     }),
+    // The row the reference puts the volume name and a chevron on. The name is
+    // Task 9's — no key in the vocabulary is a drive's *name*, and the baseline
+    // provider would not be the volume the card's bar measures. The chevron is
+    // not a reading and claims nothing, so it ships: decorative in this scope,
+    // not a new navigation action.
+    path("storage-chevron", 1590, 626, starterIcons.chevron(24), "dim", 2),
   ];
 }
 
@@ -402,7 +419,7 @@ export function networkCard(): ObjectJson[] {
   ];
 }
 
-export const twilightGradient = {
+const twilightGradient = {
   type: "linear",
   coords: { x1: 0, y1: 0, x2: 0, y2: 941 },
   colorStops: [

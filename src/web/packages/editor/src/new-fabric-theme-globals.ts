@@ -10,16 +10,9 @@ import type { FabricPalette } from "@vigilia/renderer-core";
  * against the scene body.
  */
 
-export const text = "#ecf5ff";
-export const dim = "#a8bed0";
 export const panel = "#081523d9";
 
 /** One colour per device family, so a card's reading and its icon cannot drift apart. */
-export const cpu = "#4da3ff";
-export const gpu = "#a98bff";
-export const ram = "#2ee6a8";
-export const vram = "#c964e8";
-export const down = "#22d3ee";
 
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
@@ -40,19 +33,19 @@ export const starterPalette = {
       ],
     },
   },
-  text: { name: "Text", value: { kind: "solid", color: text } },
-  dim: { name: "Muted text", value: { kind: "solid", color: dim } },
-  panel: { name: "Panel", value: { kind: "solid", color: panel } },
+  text: { name: "Text", value: { kind: "solid", color: "#ecf5ff" } },
+  dim: { name: "Muted text", value: { kind: "solid", color: "#a8bed0" } },
+  panel: { name: "Panel", value: { kind: "solid", color: "#081523d9" } },
   panelStroke: {
     name: "Panel outline",
     value: { kind: "solid", color: "#9fc7e52b" },
   },
   rule: { name: "Rule", value: { kind: "solid", color: "#7dbde0" } },
-  cpu: { name: "CPU", value: { kind: "solid", color: cpu } },
-  gpu: { name: "GPU", value: { kind: "solid", color: gpu } },
-  ram: { name: "RAM", value: { kind: "solid", color: ram } },
-  vram: { name: "VRAM", value: { kind: "solid", color: vram } },
-  down: { name: "Download", value: { kind: "solid", color: down } },
+  cpu: { name: "CPU", value: { kind: "solid", color: "#4da3ff" } },
+  gpu: { name: "GPU", value: { kind: "solid", color: "#a98bff" } },
+  ram: { name: "RAM", value: { kind: "solid", color: "#2ee6a8" } },
+  vram: { name: "VRAM", value: { kind: "solid", color: "#c964e8" } },
+  down: { name: "Download", value: { kind: "solid", color: "#22d3ee" } },
   chartTrack: {
     name: "Chart track",
     value: { kind: "solid", color: "#223047" },
@@ -92,29 +85,16 @@ export type StarterPaletteId = keyof typeof starterPalette;
  * same token rather than restated at every call site.
  */
 export const solidOf: Readonly<Record<string, string>> = {
-  text,
-  dim,
-  panel,
+  text: "#ecf5ff",
+  dim: "#a8bed0",
+  panel: "#081523d9",
   rule: "#7dbde0",
-  cpu,
-  gpu,
-  ram,
-  vram,
-  down,
+  cpu: "#4da3ff",
+  gpu: "#a98bff",
+  ram: "#2ee6a8",
+  vram: "#c964e8",
+  down: "#22d3ee",
   chartTrack: "#223047",
-};
-
-const paletteIds: Readonly<Record<string, StarterPaletteId>> = {
-  [text]: "text",
-  [dim]: "dim",
-  [panel]: "panel",
-  "#9fc7e52b": "panelStroke",
-  "#7dbde0": "rule",
-  [cpu]: "cpu",
-  [gpu]: "gpu",
-  [ram]: "ram",
-  [vram]: "vram",
-  [down]: "down",
 };
 
 export const starterTypePresets = {
@@ -276,12 +256,4 @@ export function charSpacingPx(
       | undefined
   )?.letterSpacing;
   return typeof value === "number" ? (value / fontSize) * 1000 : undefined;
-}
-
-export function paletteIdFor(value: unknown): StarterPaletteId {
-  if (typeof value === "string" && paletteIds[value] !== undefined)
-    return paletteIds[value];
-  throw new Error(
-    `Starter scene paint "${String(value)}" has no palette token.`,
-  );
 }
