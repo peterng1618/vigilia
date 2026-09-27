@@ -1,11 +1,14 @@
 import { createCanvas } from "canvas";
 
 /**
- * The authored glass scene both mounts are inspected with.
+ * The authored glass scene the browser proof renders.
  *
- * One envelope serves the real editor (through its file-open path) and the real
- * player (through the host), so the two are provably the same scene rather
- * than two scenes that look alike.
+ * **Only the editor mount uses this.** The player would load the same envelope
+ * through the host, but its background media 404s there - the resolver and the
+ * host's asset route disagree about the `assets/` prefix, recorded in
+ * `docs/bugs/open/host-cannot-serve-packaged-assets.md` - so the player's media
+ * path has no end-to-end proof yet. There is no player spec for this fixture and
+ * this header used to claim otherwise.
  *
  * **The media is the only backdrop, and nothing opaque is drawn over it.** A
  * first version put 160 opaque bars in the scene as texture; they hid the media
@@ -14,9 +17,12 @@ import { createCanvas } from "canvas";
  * itself, so one source answers both questions: is the backdrop softened, and
  * does the panel show the part of the media behind it.
  *
- * The artboard is 4:3 and the stage is not, so the media layer carries a real
- * horizontal offset. A 16:9 board in a 16:9 stage letterboxes to zero offset,
- * where a sampler that ignored the layer's position would still look right.
+ * The artboard is 4:3, so the media layer does carry a real offset - but in the
+ * editor's stage it is **vertical only**, and a vertical stripe cannot detect a
+ * horizontal misplacement. What this fixture pins for placement is therefore the
+ * layer's scale and vertical position; the horizontal `deviceLeft` term is
+ * pinned arithmetically only, because both mounts happen to put the layer at
+ * `left = 0`. That gap rides with the bug's pickup action.
  *
  * No foreground **text**: this container has no usable font and renders
  * "FROST" as a placeholder dash, so the sharp-foreground claim is not

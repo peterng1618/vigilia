@@ -689,13 +689,9 @@ describe("glass composition", () => {
 
   it("restores the context when the composite throws mid-draw", () => {
     // A tainting draw throws after the handler has forced the backdrop to full
-    // alpha. Fabric's own save/restore wraps the whole object, but not the state
-    // left between the throw and the object's own paint: on a half-opacity panel
-    // the fill would then go on at full strength.
-    //
-    // The filter would be the more obvious leak, and it is the one this cannot
-    // use: node-canvas ignores ctx.filter outright, so a leftover filter is
-    // invisible here however the code is written.
+    // alpha and neutralised the panel's shadow. Fabric's own save/restore wraps
+    // the whole object, but not the state left between the throw and the
+    // object's own paint, which is the panel's fill.
     const withGlass = stage({});
     const without = stage({});
     for (const stageUnderTest of [withGlass, without]) {
@@ -718,8 +714,12 @@ describe("glass composition", () => {
     withGlass.canvas.renderAll();
     without.canvas.renderAll();
 
-    // The composite was abandoned, so the panel paints exactly as it would
-    // with no glass at all - a blurred fill would not match.
+    // The composite was abandoned, so the panel must paint exactly as it would
+    // with no glass at all. Removing the `finally` leaves the forced alpha, the
+    // neutralised shadow and the panel's own transform live, and the fill then
+    // goes down wrong: measured, the panel reads black rather than the 63 a
+    // half-opacity white over black should give. That is the whole point of
+    // restoring the context, and it is what this asserts.
     expect(withGlass.errors[0]).toContain("tainted canvases");
     expect(withGlass.pixel(100, 100)).toEqual(without.pixel(100, 100));
   });

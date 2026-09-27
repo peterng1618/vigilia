@@ -9,12 +9,15 @@ behind it.
 
 ## What happens
 
-`createAssetResolver` (`src/web/packages/renderer-core/src/theme/assets.ts`) is
-given a base URL of the theme root and appends the **whole** declared asset
-path, including its `assets/` prefix. The host's asset route
-(`/^\/api\/themes\/([^/]+)\/assets\/(.+)$/`, `src/web/packages/host/src/server.ts`)
-consumes the first `assets/` in the URL as its own literal, so the decoded
-remainder is the path *minus* that prefix and never matches the declaration.
+`createAssetResolver` (`src/web/packages/renderer-core/src/theme/assets.ts:32-33`)
+is given a base URL of the theme root and appends the **whole** declared asset
+path, `assets/badge.svg`, producing `/api/themes/<id>/assets/badge.svg`. The
+host's route (`/^\/api\/themes\/([^/]+)\/assets\/(.+)$/`,
+`src/web/packages/host/src/server.ts:710-730`) matches that, and its second
+group must **still contain** `assets/badge.svg` to find the declaration - but
+that group's leading `/assets/` is the route's own literal, so the remainder
+decodes to `badge.svg`. The prefix is consumed by the route, and the declaration
+is never matched.
 
 Measured against a running host with the seeded `e2e-hosted` theme, which
 declares `assets/badge.svg`:

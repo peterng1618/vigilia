@@ -41,6 +41,8 @@ interface Profile {
    *  reaches the minimum is a flat run's left edge, not its centre, and the
    *  marker is wide enough for that to be a 30px error. */
   readonly darkestAt: number;
+  /** Columns in the dark run. Blur widens a located feature; a tint cannot. */
+  readonly darkWidth: number;
   readonly darkest: number;
   readonly brightest: number;
 }
@@ -211,7 +213,14 @@ export async function readGlass(page: Page): Promise<Reading> {
         bandTop + Math.max(8, Math.floor(height * 0.25)) - 1,
       );
 
-      const profile = (read: (x: number, y: number) => number): Profile => {
+      /** `threshold` is supplied for the panel so both profiles are measured on
+       *  the media's own brightness scale. A floor relative to each profile's
+       *  own extrema cannot measure width under a blur: lifting the flanks also
+       *  lowers the floor's reference, so the run shrinks instead of widening. */
+      const profile = (
+        read: (x: number, y: number) => number,
+        threshold?: number,
+      ): Profile => {
         const columns = Math.max(1, right - left + 1);
         const means = new Array<number>(columns).fill(0);
         let darkest = Infinity;
@@ -226,18 +235,22 @@ export async function readGlass(page: Page): Promise<Reading> {
         }
         const rows = bandBottom - bandTop + 1;
         for (let i = 0; i < columns; i += 1) means[i] /= rows;
-        const floor = darkest + (brightest - darkest) * 0.15;
+        // Built from the **column means** the run is found on. An earlier
+        // version used the per-pixel extrema, which put the floor far below any
+        // column mean and made the whole band one dark run.
+        const level = threshold ?? darkest + (brightest - darkest) * 0.15;
         let firstDark = -1;
         let lastDark = -1;
         for (let i = 0; i < columns; i += 1) {
-          if (means[i] > floor ?? 0) continue;
-          if (means[i] === undefined || means[i] > floor) continue;
+          const value = means[i];
+          if (value === undefined || value > level) continue;
           if (firstDark < 0) firstDark = i;
           lastDark = i;
         }
         if (firstDark < 0) firstDark = 0;
         if (lastDark < firstDark) lastDark = firstDark;
         const darkestAt = left + Math.round((firstDark + lastDark) / 2);
+        const darkWidth = lastDark - firstDark + 1;
         let peakGradient = 0;
         for (let i = 1; i < columns; i += 1) {
           const step = Math.abs(means[i] - means[i - 1]);
@@ -250,15 +263,26 @@ export async function readGlass(page: Page): Promise<Reading> {
           peakGradient,
           plateauWidth: plateau,
           darkestAt,
+          darkWidth,
           darkest,
           brightest,
         };
       };
 
+      // The media first, so the panel is measured against its brightness scale.
+      const referenceProfile = profile(referenceLuma);
+      // Near the bright end of the media's own range: a blur bleeds the
+      // marker's darkness outward, so that is where the widening shows. At the
+      // midpoint the flanks are still below the level in both profiles and the
+      // run barely moves.
+      const level =
+        referenceProfile.darkest +
+        0.85 * (referenceProfile.brightest - referenceProfile.darkest);
+
       return {
         bandRows: bandBottom - bandTop + 1,
-        glass: profile(luma),
-        reference: profile(referenceLuma),
+        glass: profile(luma, level),
+        reference: referenceProfile,
         expectedCentre,
         mediaReady: image.naturalWidth > 0,
       };
@@ -287,19 +311,22 @@ export function assertBlur(reading: Reading, label: string): void {
     `${label}: the media has contrast to blur`,
   ).toBeGreaterThan(40);
 
-  // Real blur, and specifically not a tint: a tint leaves the edge intact.
+  // **The statistic that rejects a tint is the width of the dark run.** Blur
+  // spreads a located feature sideways; a tint changes its brightness and leaves
+  // its extent alone. Neither of the other two can do this job: with the sampler
+  // disabled the panel's peak gradient is 0, which passes "under a third", and
+  // its darkest is 255, which passes "lifted by the blur" - because a tint
+  // lightens a dark core too. They are kept as corroboration, not as the proof.
+  expect(
+    glass.darkWidth,
+    `${label}: blur widens the located feature, which a tint cannot (panel ${glass.darkWidth} vs media ${reference.darkWidth} columns)`,
+  ).toBeGreaterThan(reference.darkWidth + 20);
+
+  // Corroborating, not decisive: the edge is softer and the panel is not flat.
   expect(
     glass.peakGradient,
     `${label}: the backdrop is softened under the panel (panel ${glass.peakGradient.toFixed(1)} vs media ${reference.peakGradient.toFixed(1)})`,
   ).toBeLessThan(reference.peakGradient / 3);
-  // A second, independent signal, and the one a tint cannot fake: blurring
-  // lifts the dark core, because the marker's darkness is spread sideways.
-  // (A plateau-width ratio was tried first and is a poor instrument here - the
-  // media's own bars are already broad enough that the ratio never separates.)
-  expect(
-    glass.darkest,
-    `${label}: the dark core is lifted by the blur (panel ${glass.darkest.toFixed(1)} vs media ${reference.darkest.toFixed(1)})`,
-  ).toBeGreaterThan(reference.darkest + 20);
   expect(
     glass.brightest - glass.darkest,
     `${label}: the panel is not a flat wash`,
