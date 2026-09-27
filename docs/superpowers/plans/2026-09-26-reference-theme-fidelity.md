@@ -293,8 +293,8 @@ no DOM overlay scene, second editable tree or pixel-streaming transport.
   text stays sharp; tint-only fallback must report failure and cannot pass.
   **Amended 2026-09-27:** the blur half is proved here, in the **editor** mount —
   the only mount whose media loads, since the player's is blocked by
-  `docs/bugs/open/host-cannot-serve-packaged-assets.md`. The **foreground-text half
-  moves to Task 11**, where the missing font is in scope; this container renders
+  [vigilia#3](https://github.com/peterng1618/vigilia/issues/3). The **foreground-text
+  half moves to Task 11**, where the missing font is in scope; this container renders
   `FROST` as a dash, so the sharp-foreground assertion cannot be made here at all.
   The media *scale* and vertical placement are proved in real pixels; the
   horizontal `deviceLeft` term is pinned arithmetically only, because both mounts

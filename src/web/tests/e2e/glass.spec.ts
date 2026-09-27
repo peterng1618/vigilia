@@ -13,8 +13,9 @@ const EDITOR = "http://127.0.0.1:4174/";
  * This is where the media can load at all. The host cannot serve a packaged
  * asset to the player - its asset route and the player's asset resolver disagree
  * about the `assets/` prefix, so a hosted theme's media 404s (recorded in
- * `docs/bugs/open/`; the two owners are outside this task). So the blur and the
- * media-offset claims are proved here, on the mount that can load the media.
+ * [issue #3](https://github.com/peterng1618/vigilia/issues/3); the two owners are
+ * outside this task). So the blur and the media-offset claims are proved here, on the
+ * mount that can load the media.
  *
  * The foreground-text half is not measured: this container has no usable font
  * and renders "FROST" as a placeholder dash, so it is Task 11's, where font work

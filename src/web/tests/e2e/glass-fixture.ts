@@ -6,7 +6,7 @@ import { createCanvas } from "canvas";
  * **Only the editor mount uses this.** The player would load the same envelope
  * through the host, but its background media 404s there - the resolver and the
  * host's asset route disagree about the `assets/` prefix, recorded in
- * `docs/bugs/open/host-cannot-serve-packaged-assets.md` - so the player's media
+ * [issue #3](https://github.com/peterng1618/vigilia/issues/3) - so the player's media
  * path has no end-to-end proof yet. There is no player spec for this fixture and
  * this header used to claim otherwise.
  *
