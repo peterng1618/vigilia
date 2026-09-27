@@ -105,55 +105,18 @@ Vigilia process.
 
 ## Reuse before build
 
-Vigilia is a product, not a general-purpose framework. Before implementing a
-generic capability or substantial infrastructure, work all seven rungs and
-**record the result of each**:
+A **mechanism boundary** is an owner where a wrong decision is expensive and
+invisible — nothing fails, it just renders wrong or leaks. Watchlist:
+`scripts/reuse-gate.mjs`.
 
-1. Search Vigilia for an existing owner or partial implementation.
-2. Inspect current direct/transitive dependencies.
-3. Check the browser/Node/OS/platform API.
-4. Search the relevant ecosystem for maintained libraries or reusable source.
-5. Compare realistic options on fit, maintenance, licence, platform support,
-   runtime/bundle cost and testability.
-6. Run the smallest executable probe when behaviour is uncertain.
-7. Build custom only when the alternatives are unsuitable, and record why.
+Before designing a change to one, work all seven rungs (owner, dependencies,
+platform, ecosystem, comparison, probe, build) and record each result, including
+the rungs that found nothing. **Rung 3 passing does not discharge rungs 4–5** —
+that conditional is what made the rule skippable.
 
-**No rung is a licence to stop.** A rung that succeeds is a *result to record*,
-not permission to skip what follows. Satisfying rung 3 in particular does **not**
-discharge rungs 4–5. This rule used to say "search alternatives *only if* the
-native API fails", which made compliance indistinguishable from omission: native
-APIs usually work, so the search that would have caught the hard part never
-triggered. That conditional is removed.
-
-**The gate is about integration, not existence.** "A native feature exists" is
-not an answer. The question is whether anyone has solved *this shape* of problem
-— in this renderer, against this host, under these constraints — and what they
-learned doing it. A native capability that still needs sampling, ordering,
-invalidation, disposal and ownership decisions has not been discharged by being
-present; that is where the work is.
-
-This gate applies especially to editor mechanics, hardware/OS integration,
-networking, parsers/protocol clients, archives, media processing, **rendering
-and compositing**, persistence, caches, schedulers and auth/security
-primitives. Do not reject a library merely because its API is unfamiliar.
-
-### Recording it
-
-A task touching a **mechanism boundary** — the paths in `scripts/reuse-gate.mjs`'s
-watchlist, which are the owners where a wrong decision is expensive and
-invisible — must:
-
-- carry a `## Reuse gate` section in its implementer report, **one line per
-  rung**, including the rungs that found nothing;
-- land a decision note at `docs/decisions/NNNN-<slug>.md` recording what was
-  searched, what was found, and why each alternative was rejected. A note that
-  lists alternatives without saying what was searched is worthless; **the searches
-  are the evidence.**
-
-`scripts/reuse-gate.mjs` refuses the first write to a watchlisted path while no
-decision note claims that path. It is deliberately blunt: it can only check
-*presence*, never quality, and it does not replace the review loop catching a
-note that answers nothing.
+Land a note at `docs/decisions/NNNN-<slug>.md` before the first write; the hook
+refuses until one claims the path. Template, and what needs no note:
+[`docs/decisions/README.md`](docs/decisions/README.md).
 
 ## Code and files
 
@@ -165,9 +128,8 @@ note that answers nothing.
   replace inspection.
 - Do not dump whole files, trees, giant diffs or full test logs into context when
   a focused query or range suffices.
-- Before adding a shipped dependency, verify its licence from primary/package
-  metadata and update `THIRD-PARTY-NOTICES.md` plus
-  `docs/engineering/dependencies.md` when required.
+- Before adding a shipped dependency, verify its licence from package metadata and
+  update `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md`.
 - Do not hand-edit `src/web/package-lock.json` (change manifests, then
   `npm install`) or `src/web/packages/*/dist/**`.
 - Follow surrounding naming/import style; avoid unrelated formatting churn. No
@@ -199,22 +161,10 @@ Superpowers owns sequencing; these are Vigilia-specific evidence rules:
 
 ## Commands
 
-Run from `src/web/`:
-
-| Task | Command |
-|---|---|
-| Install | `npm install` |
-| Unit tests | `npm test` |
-| Typecheck | `npm run typecheck` |
-| Build all | `npm run build` |
-| Format check | `npm run format:check` |
-| Lint | `npm run lint` |
-| Player size gate | `npm run size` |
-| Browser tests | `npm run test:e2e` |
-| Run host | `node packages/host/bin/vigilia.js --no-browser` |
-
-Prefer workspace scripts and focused test paths over hand-written broad command
-lists.
+Run from `src/web/`; the scripts are `package.json`'s, so read them there rather
+than trusting a copy. The one command that is not a script is the host:
+`node packages/host/bin/vigilia.js --no-browser`, after building it. See
+*Important traps*.
 
 ## Important traps
 
