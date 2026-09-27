@@ -4,14 +4,28 @@ import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
-/** The artboard Task 1 set its budget on: 1672x941, same DPR, same browser
- *  family. The yardstick is a **delta** - the composite's own cost - and these
- *  are the same conditions Task 1 measured that delta under, so the two are
- *  comparable even though their absolute frame times are not.
+/**
+ * The artboard Task 1 set its budget on: **1672x941, the same one**, at the
+ * same DPR and in the same browser family.
  *
- *  What the absolute times are not is comparable: a scene with much else in it
- *  has a large baseline, and subtracting a large baseline is noisier, not
- *  different in kind. A small baseline makes the delta *cleaner*.
+ * What that does and does not make comparable, stated plainly because an
+ * earlier version of this header got it wrong in the direction that mattered:
+ *
+ *  - **Comparable in kind, not in figure.** Task 1's 0.61 ms is a *delta* for
+ *    **three** panels at hardcoded zoom 0.6 on a bare `StaticCanvas`, radius 0
+ *    against 12. This is a delta for **one** panel in the real editor at
+ *    `zoomToFit` (0.765, 1.63x the area), panel-removed against panel-kept.
+ *    Neither is a per-panel figure, so a ratio between them measures nothing
+ *    and none is quoted here.
+ *  - **The scene differs**: panel count, zoom, and whether a background media
+ *    layer is present at all. The artboard, DPR and browser family match.
+ *
+ * What survives on this data: a glass composite costs roughly 1-2 ms marginal
+ * per frame in the real editor, is flat in radius, and - from the paired
+ * no-media curve below - is **not** dominated by the media repaint. Whether
+ * that is above a budget that was set for a different configuration is
+ * unresolvable here in both directions, and the `< 3 ms` assertion below is
+ * this task's own regression bound, not a budget conformance claim.
  */
 const BUDGET_ARTBOARD = { width: 1672, height: 941 };
 
@@ -30,17 +44,32 @@ function fixture(withMedia: boolean) {
   return written.bytes;
 }
 
+/**
+ * The **file name is the barrier**, and it has to be: both opens report the
+ * same status text, so waiting on `#status` after the second open is satisfied
+ * by the first open's text and returns immediately - measuring whatever canvas
+ * happens to be mounted at that moment. Distinct names make the wait mean
+ * something, and the media-layer count is asserted afterwards so the scene
+ * under the next `curve()` is provably the one just opened.
+ */
 async function open(page: Page, withMedia: boolean): Promise<void> {
+  const name = withMedia
+    ? "glass-with-media.vigilia-theme"
+    : "glass-no-media.vigilia-theme";
   await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "glass.vigilia-theme",
+    name,
     mimeType: "application/octet-stream",
     buffer: Buffer.from(fixture(withMedia)),
   });
-  await expect(page.locator("#status")).toHaveText(
-    "Opened glass.vigilia-theme",
+  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  // Match set: the scene just opened is the one measured. A stale editor would
+  // still have the media layer the no-media open is supposed to have dropped.
+  await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(
+    withMedia ? 1 : 0,
   );
   if (!withMedia) return;
-  // With no media there is nothing to wait for, and waiting would hang.
+  // Real pixels, or the composite has no backdrop to sample and the curve is
+  // measuring a different thing again.
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
@@ -50,6 +79,9 @@ async function open(page: Page, withMedia: boolean): Promise<void> {
     },
     null,
     { timeout: 20_000 },
+  );
+  await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(
+    1,
   );
 }
 
@@ -63,9 +95,12 @@ async function curve(
 ): Promise<Array<{ radius: number; cost: number }>> {
   return page.evaluate(() => {
     const scope = window as unknown as Record<string, unknown>;
-    const key = Object.keys(scope).find((candidate) =>
-      candidate.startsWith("vigilia-fabric-editor"),
-    );
+    // The **last** matching key, not the first: a stale editor from a previous
+    // mount would sort first and be the wrong scene to measure.
+    const live = Object.keys(scope)
+      .filter((candidate) => candidate.startsWith("vigilia-fabric-editor"))
+      .sort();
+    const key = live[live.length - 1] ?? "";
     const editor = (
       scope[key ?? ""] as
         | {

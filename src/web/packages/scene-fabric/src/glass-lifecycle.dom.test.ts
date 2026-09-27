@@ -232,11 +232,14 @@ describe("glass lifecycle", () => {
       "a panel fade alone leaves the backdrop at full strength",
     ).toBe(1);
 
-    // The dependency above, stated: the panel must be on the real surface for
-    // its ancestor's alpha to exist at all. A cached panel would divide by its
-    // own opacity against a standing 1 and read 2 for this case.
-    const cached = compositeWith(0.5, 0.5);
-    expect(cached.panel.objectCaching, "the panel is not cached").toBe(false);
+    // A **premise check**, not a second behaviour: it states the condition
+    // under which the readings above mean anything, and would catch the
+    // uncaching regressing. It does not exercise a cached panel - a cached
+    // *group* is refused by the cache-context guard, and a cached *panel*
+    // never reaches the composite at all, so there is no "reads 2" case here.
+    const reading = compositeWith(0.5, 0.5);
+    expect(reading.panel.objectCaching, "the panel is not cached").toBe(false);
+    expect(reading.alpha, "and the reading above used that").toBe(0.5);
   });
 
   it("refuses a panel whose own opacity cannot be divided out", () => {

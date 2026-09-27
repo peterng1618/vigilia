@@ -312,24 +312,40 @@ describe("mountFabricScene disposal", () => {
         return original(name, options);
       }) as typeof original;
 
-    expect(() => {
-      scene.resize();
-      scene.update(plan());
-      scene.updateArtboard({
-        width: 400,
-        height: 300,
-        backgroundMedia: { assetId: "hero", fit: "contain" },
-      });
-    }).not.toThrow();
-    // The DOM cannot show the leak, because `destroy()` removed the layer and
-    // anything re-appended lands on a detached node. What it *does* show is
-    // the allocation: an `updateArtboard` past the guard builds a fresh image
-    // with a load listener, and nothing will ever release it.
-    (document as unknown as { createElement: typeof original }).createElement =
-      original;
-    expect(createdAfterDispose, "a disposed scene allocates no new media").toBe(
-      0,
-    );
+    // `finally`, because the patch is global: restored only on the success
+    // path, a failure here would leak it into every later test in the file and
+    // turn one red assertion into an unexplained cascade.
+    try {
+      expect(() => {
+        scene.resize();
+        scene.update(plan());
+        scene.updateArtboard({
+          width: 400,
+          height: 300,
+          backgroundMedia: { assetId: "hero", fit: "contain" },
+        });
+      }).not.toThrow();
+      // The DOM cannot show the leak, because `destroy()` removed the layer and
+      // anything re-appended lands on a detached node. What it *does* show is
+      // the allocation: an `updateArtboard` past the guard builds a fresh image
+      // with a load listener, and nothing will ever release it.
+      //
+      // The three guards fail by **two different mechanisms**, which is why
+      // both halves are here. `resize` and `update` reach `fit()`, which
+      // destructures `this.lower` after `destroy()` deleted it - a `TypeError`
+      // caught by the `not.toThrow()` below. `updateArtboard` returns before
+      // touching the canvas, so the counter is its only observable. Removing
+      // either guard alone is caught; removing both would let the first
+      // mechanism mask the second, which is why the counter is separate.
+      expect(
+        createdAfterDispose,
+        "a disposed scene allocates no new media",
+      ).toBe(0);
+    } finally {
+      (
+        document as unknown as { createElement: typeof original }
+      ).createElement = original;
+    }
     element.remove();
   });
 
