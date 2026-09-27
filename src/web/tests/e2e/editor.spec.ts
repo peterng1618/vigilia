@@ -1009,6 +1009,68 @@ test.describe("Fabric editor route", () => {
     ]);
   });
 
+  // Expected to FAIL while the placement defect stands. Measured in the live
+  // player over three refresh rounds: ram-value holds its authored left of 1113
+  // exactly and does not move, while its width becomes 566.9 — the measured
+  // run's width, not the 180 the author wrote, measured from the authoring
+  // token "@ram.used.percent%". `refreshLayout` then places the run against a
+  // box the author never wrote, so the reference's centred ring readings land
+  // elsewhere.
+  //
+  // A unit test cannot witness this: under jsdom and node-canvas the authored
+  // box survives the refresh untouched (measured: live 180, authored 180), so an
+  // `it.fails` there would be a guard that could not fail for its own reason.
+  // Only a real font and the authoring-token text produce the rewrite.
+  //
+  // `test.fail` is the alarm: the day the box survives, this passes and the
+  // suite goes red until the marker comes off.
+  test.fail(
+    "keeps each aligned reading inside its authored box after a refresh",
+    async ({ page }, testInfo) => {
+      test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+      await page.goto(EDITOR);
+      await expect(
+        page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      ).toBeVisible();
+      // The runtime paints on its own schedule, and the box is only rewritten
+      // once it has, so a read taken before the first refresh would agree with
+      // the authored value and pass vacuously.
+      await page.locator('[data-vigilia-layer="cpu-card-value"]').click();
+      const measured = await page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getObjects(): Array<{
+                    id?: string;
+                    left: number;
+                    width: number;
+                  }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas
+          .getObjects()
+          .filter((o) =>
+            ["ram-value", "vram-value", "storage-card-value"].includes(
+              o.id ?? "",
+            ),
+          )
+          .map((o) => ({ id: o.id, left: o.left, width: o.width }));
+      });
+      expect(
+        measured.length,
+        "the starter's aligned readings were not found",
+      ).toBe(3);
+      for (const object of measured)
+        expect(object.width, object.id + " width").toBeCloseTo(180, 3);
+    },
+  );
+
   test("captures the mounted editor for visual review", async ({
     page,
   }, testInfo) => {

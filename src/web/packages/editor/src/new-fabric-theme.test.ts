@@ -8,7 +8,6 @@ import {
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
-  refreshBoundText,
   reviveThemeEnvelope,
   serialiseThemeEnvelope,
   VigiliaChart,
@@ -285,91 +284,6 @@ describe("the new Fabric document", () => {
     }
   });
 
-  it.fails("keeps each aligned reading inside its authored box after a refresh", async () => {
-    // The reference centres both ring readings and the legend and writes the
-    // storage share against the card's right edge. Holding those against a
-    // reading that changes width is `scene-fabric/src/fabric-text.ts`'s job, and
-    // Task 8 owns it; this names the case so it cannot be forgotten.
-    //
-    // `it.fails`, because it fails today and for a measured reason. Measured in
-    // the real player over three refresh rounds: the object's `left` is exactly
-    // the authored value and does not move, but its `width` becomes the
-    // *measured run's* width rather than the authored box — 566.9 for a
-    // 180-wide `ram-value` on a 60px face, 597.4 for the VRAM ring, 391 for the
-    // 200-wide storage share, and `@ram.used.percent%` is the text that width
-    // was measured from. The box the placement arithmetic reads is therefore not
-    // the box the author wrote, and the run lands where that box puts it.
-    //
-    // Deliberately not "the starter authors no `align`". Dropping the key moves
-    // every object onto the branch that reads the *current* width rather than
-    // the one captured before the text changed — the same expression, different
-    // staleness — so it gives up the reference's centring without giving up the
-    // defect. A test that pins the absence of a key cannot see the walk, and a
-    // starter that hides a rendering defect inside a layout commit is the wrong
-    // place to meet it.
-    const theme = createNewFabricTheme();
-    const canvas = new StaticCanvas(undefined, {
-      width: theme.artboard.width,
-      height: theme.artboard.height,
-    });
-    await reviveThemeEnvelope(canvas, theme);
-    // Two refreshes with readings of different widths, because the second is
-    // where a stale box shows: the first measures, the second places.
-    for (const reading of [0.42, 0.97]) {
-      refreshBoundText(
-        canvas,
-        theme.bindings ?? {},
-        {
-          latest: () => ({
-            sensorId: "library:ram.used.percent",
-            semanticKey: "ram.used.percent",
-            status: "ok",
-            value: reading * 100,
-            timestamp: "2026-09-27T10:00:00.000Z",
-          }),
-          history: () => [],
-        },
-        theme.globals,
-      );
-    }
-    const authored = new Map(
-      objectsOf(theme)
-        .filter((object) => object["type"] === "Textbox")
-        .map((object) => [
-          String(object["id"]),
-          { left: Number(object["left"]), width: Number(object["width"]) },
-        ]),
-    );
-    for (const id of [
-      "ram-value",
-      "vram-value",
-      "ram-capacity",
-      "storage-card-value",
-      "trends-legend",
-    ]) {
-      const object = canvas
-        .getObjects()
-        .find((candidate) => candidate.get("id") === id) as
-        | {
-            left: number;
-            width: number;
-            getBoundingRect(): { left: number; right: number };
-          }
-        | undefined;
-      const box = authored.get(id);
-      if (object === undefined || box === undefined)
-        throw new Error(`no starter object ${id}`);
-      expect(object.left, `${id} left`).toBeCloseTo(box.left, 3);
-      // The measured run is the whole defect: the authored box has to survive
-      // the refresh that measures it.
-      expect(object.width, `${id} width`).toBeCloseTo(box.width, 3);
-      expect(
-        object.getBoundingRect().right,
-        `${id} ink right`,
-      ).toBeLessThanOrEqual(theme.artboard.width);
-    }
-    await canvas.dispose();
-  });
   it("gives every card the radius and border width measured off the reference", () => {
     const theme = createNewFabricTheme();
     // A card is a stroked Rect; the background is a Rect too, so the match set
