@@ -22,7 +22,7 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - **Glass is authorable and the starter's first reference card ships (Task 6).** The inspector gained a frosted-glass enable and blur radius on the existing `vigiliaGlass` property, gated on a rectangle; the bound is refused by `renderer-core`'s own reader rather than a copied number.
 - Two defects made the control inert, both fixed: the glass handle re-resolved only on add/remove, so **enabling glass through the UI attached nothing**; and it cached the radius at attach time, so **the blur field moved the control and not the picture**. `EditorShell.refreshGlass` is the seam.
 - The starter now carries a frosted CPU card — palette-backed rectangle, two-run live reading, `cpu.load` sparkline through the line family — saved, reopened and played from the host. Differences are in `task-6-report.md`.
-- `new-fabric-theme.ts` was over `AGENTS.md`'s 800-line stop; its globals moved to `new-fabric-theme-globals.ts`, leaving 695 lines.
+- `new-fabric-theme.ts` was over `AGENTS.md`'s 800-line stop; its globals moved to `new-fabric-theme-globals.ts`, leaving 697 lines.
 
 ## Next
 
@@ -34,4 +34,5 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - `display-fabric.spec.ts` byte-stability is load-induced: failed under parallel load, passed on re-run.
 - Undocumented whether `PreCompact`/`SessionStart` fire for a *subagent's* compaction; the `agent_id` guard is defense-in-depth, not a fix. No mechanism catches a dispatch the controller never recorded.
 - Unverified: browser round-trip of text align/wrap/overflow, in-place edit + undo, run preset/override; phone surfaces exercised by suite, not by eye. Owned by the queued author journey proof spec.
+- A chart in the starter throws inside ECharts **in the player**, so no live reading repaints there — not the CPU card's, and not the starter's own clock. Isolated without Task 6's card, so it predates it; `host-player.spec.ts` carries it as a `fixme` test. The frame loop itself is now caught and rescheduled, so the scene degrades rather than freezing.
 - Carried into this plan: the starter binds unowned `memory.used`, so its donut renormalises to a false 100% (Task 7); the baseline GPU provider returns the **maximum** across controllers, so a caption could name one GPU over another's readings (Task 9). `format:check` fails on `snap-manager/scaling/scaling.dom.test.ts` (`01aa7dc`).
