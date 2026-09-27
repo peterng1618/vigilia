@@ -129,14 +129,16 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("pre")).toHaveCount(0);
   });
 
-  // Where the placement defect actually reproduces, and where the witness
-  // belongs. The editor is not this surface: it revives a v2 object as a
-  // `Textbox`, and Fabric's `Textbox.initDimensions` is written as "Unlike
-  // superclass's version of this function, Textbox does not update its width"
-  // — so the editor's `ram-value` cannot become 566.9. The player is where the
-  // document comes back through serialisation carrying whatever width the
-  // object had, and where the aligned readings were measured landing outside
-  // their cards.
+  // Where the defect becomes visible, and where the witness belongs. It is
+  // **produced in the editor** — the editor measures 566.9365234375 for the same
+  // object — but the editor revives from `createNewFabricTheme()` on every load, so
+  // only a document that has been *saved* carries the inflated width. The player
+  // is where a saved document is read back, so that is where the assertion lives.
+  //
+  // Round 1 claimed the editor could not produce this, on the strength of a
+  // Fabric doc comment. In the installed 7.4.0 `Textbox.initDimensions` (fabric/dist/
+  // index.mjs:18446) does not narrow but **does** widen, to `dynamicMinWidth` — and
+  // the editor's unbreakable authoring token is what sets it.
   //
   // A `test.fail`, because the fix may or may not have landed. The starter
   // now authors `wrap: true`, which is what makes the player revive a
