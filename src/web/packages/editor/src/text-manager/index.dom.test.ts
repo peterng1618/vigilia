@@ -128,6 +128,30 @@ describe("double-clicking a bound run", () => {
     text.destroy();
   });
 
+  it("keeps the binding when the author only looked at the run", () => {
+    // Fabric's `exitEditing` (`index.mjs:17102-17105`) compares `_textBeforeEdit`
+    // to decide whether to fire `modified`; it never restores it. So after a
+    // double-click and nothing else, `text` is still the token the authoring
+    // view painted, and writing that back would turn a sensor card into prose —
+    // permanently, in both mounts, from a gesture that changed nothing.
+    const object = reading();
+    const canvas = scene(object);
+    const text = withAuthoringView(canvas, vi.fn());
+    canvas.fire("mouse:dblclick", { target: object } as never);
+
+    expect(object.text).toBe(TOKEN);
+    object.exitEditing();
+
+    expect(object.get(VIGILIA_TEXT_PROPERTY)).toEqual({
+      wrap: true,
+      overflow: "ellipsis",
+      align: "center",
+      box: { width: 180, height: 72 },
+      ...AUTHORED,
+    });
+    text.destroy();
+  });
+
   it("writes what was typed back as the object's authored run", () => {
     const object = reading();
     const canvas = scene(object);
@@ -157,7 +181,7 @@ describe("double-clicking a bound run", () => {
 });
 
 describe("a width the author dragged", () => {
-  it("records it as the new authored box", () => {
+  it("records it as the new authored box, on every step of the drag", () => {
     const object = reading();
     const canvas = scene(object);
     const save = vi.fn();
@@ -165,14 +189,40 @@ describe("a width the author dragged", () => {
 
     // The statement Fabric's `changeWidth` control executes
     // (`fabric/dist/index.mjs:6737`), then the event it fires around it.
-    object.set("width", 120);
-    canvas.fire("object:resizing", { transform: { target: object } } as never);
+    for (const width of [170, 150, 130, 120]) {
+      object.set("width", width);
+      canvas.fire("object:resizing", {
+        transform: { target: object },
+      } as never);
+      const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
+        box?: { width: number };
+      };
+      expect(authored.box?.width, `step ${width}`).toBe(width);
+    }
+    text.destroy();
+  });
 
-    const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
-      box?: { width: number; height: number };
-    };
-    expect(authored.box?.width).toBe(120);
-    expect(save).toHaveBeenCalled();
+  it("saves once, when the gesture ends, and not once per step", () => {
+    // `save` is `history.save()`, a full `serialiseScene` and an undo entry per
+    // call. A drag is dozens of `object:resizing` events, so saving on each
+    // would be dozens of serialisations and dozens of undos. Fabric reports the
+    // gesture as finished on `object:modified`, and that is where the codebase
+    // already answers this — see `editor-shell.ts:213-215`.
+    const object = reading();
+    const canvas = scene(object);
+    const save = vi.fn();
+    const text = withAuthoringView(canvas, save);
+
+    for (const width of [170, 150, 130, 120]) {
+      object.set("width", width);
+      canvas.fire("object:resizing", {
+        transform: { target: object },
+      } as never);
+    }
+    expect(save).not.toHaveBeenCalled();
+
+    canvas.fire("object:modified", { target: object } as never);
+    expect(save).toHaveBeenCalledOnce();
     text.destroy();
   });
 });

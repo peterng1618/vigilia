@@ -46,12 +46,17 @@ export class LiveRuntime {
   showAuthoringView(object: { isEditing: boolean }): void {
     const editing = object.isEditing;
     object.isEditing = false;
-    applyAuthoredText(this.#canvas, this.#globals, {
-      bindings: this.#bindings,
-      transform: toAuthoringSegments,
-      only: (candidate) => candidate === object,
-    });
-    object.isEditing = editing;
+    try {
+      applyAuthoredText(this.#canvas, this.#globals, {
+        bindings: this.#bindings,
+        transform: toAuthoringSegments,
+        only: (candidate) => candidate === object,
+      });
+    } finally {
+      // A throw here must not leave Fabric believing the object is not editing,
+      // which would strand the caret and the 30 fps skip that protects it.
+      object.isEditing = editing;
+    }
     this.#canvas.requestRenderAll();
   }
 

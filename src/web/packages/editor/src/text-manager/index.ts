@@ -105,17 +105,19 @@ export function createTextManager(
       return;
     }
 
-    // Fabric enters inline editing on the first click's mouse-up
-    // (`Text.mouseUpHandler`, `index.mjs:17833`), so the object is usually
-    // *already* editing by the time the double-click arrives, and the call
-    // below is then Fabric's own no-op. Bailing on `isEditing` instead is what
-    // left the first keystroke editing a reading: the token has to be painted
-    // now, and the whole run selected, or Fabric's hidden textarea still holds
-    // the reading and typing edits that rather than what is on screen.
-    if (!target.isEditing) {
-      target.enterEditing();
-    }
+    // Fabric enters inline editing on the second click's mouse-up
+    // (`Text.mouseUpHandler`, `index.mjs:17824`/`:17833` — the first leaves
+    // `this.selected` false, so its guard at `:17832` is never reached), so the
+    // object is already editing by the time the double-click arrives. Bailing
+    // on `isEditing` instead is what left the first keystroke editing a reading:
+    // the token has to be painted now, and the whole run selected, or Fabric's
+    // hidden textarea still holds the reading and typing edits that rather than
+    // what is on screen.
+    target.enterEditing();
     showAuthoringView(target);
+    // What the authoring view painted, so an edit that changed nothing can be
+    // told apart from one that did — see the `editing:exited` handler.
+    const painted = target.text;
     // Fabric writes the hidden textarea exactly once, as it enters editing
     // (`enterEditingImpl`, `index.mjs:16908`), and `_updateTextarea` then only
     // ever syncs the *selection*. So a run painted after that point is what the
@@ -124,11 +126,10 @@ export function createTextManager(
     // value, so this repeats Fabric's own write rather than changing what
     // Fabric does. The upgrade path, if that field ever moves, is to paint the
     // token before `enterEditing` — which needs a signal that a *double*-click
-    // is coming, and Fabric enters editing on the first click's mouse-up, so
+    // is coming, and Fabric enters editing on the second click's mouse-up, so
     // there is none.
-    const editing = target as IText & { hiddenTextarea?: HTMLTextAreaElement };
-    if (editing.hiddenTextarea !== undefined) {
-      editing.hiddenTextarea.value = target.text;
+    if (target.hiddenTextarea) {
+      target.hiddenTextarea.value = target.text;
     }
     target.selectAll();
     // Fabric collapses the caret again after this handler — the second
@@ -143,18 +144,37 @@ export function createTextManager(
     });
     canvas.requestRenderAll();
     target.once("editing:exited", () => {
+      // Fabric's `exitEditing` (`index.mjs:17102-17105`) compares
+      // `_textBeforeEdit` to decide whether to fire `modified` and never
+      // restores it, so after a double-click and nothing else `text` is still
+      // the token this view painted. Writing that back would turn a sensor card
+      // into prose from a gesture that changed nothing.
+      if (target.text === painted) {
+        return;
+      }
       keepTypedText(target);
       save();
     });
   };
 
   const onResizing = (event: object): void => {
+    // Fabric reports a resize on every step of the drag, and `adoptResizedBox`
+    // changes the authored box on each one, so this only records the box. The
+    // history entry waits for `object:modified` — Fabric reports the gesture as
+    // finished only then, and a per-step save is a full scene serialisation and
+    // an undo entry per tick.
     adoptResizedBox(event);
-    save();
+  };
+
+  const onModified = (event: { target?: unknown }): void => {
+    if (event.target instanceof IText) {
+      save();
+    }
   };
 
   canvas.on("mouse:dblclick" as never, onDoubleClick as never);
   canvas.on("object:resizing" as never, onResizing as never);
+  canvas.on("object:modified" as never, onModified as never);
 
   return {
     addText(options = {}) {
@@ -173,6 +193,7 @@ export function createTextManager(
     destroy() {
       canvas.off("mouse:dblclick" as never, onDoubleClick as never);
       canvas.off("object:resizing" as never, onResizing as never);
+      canvas.off("object:modified" as never, onModified as never);
     },
   };
 }

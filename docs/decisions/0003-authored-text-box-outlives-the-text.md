@@ -133,10 +133,12 @@ is a plain number; whether it is a constraint or a measurement is a *mode*.
 
 **Fabric says out loud that it does not do this.**
 
-- Issue #2376 (2015), the author: "the behaviour that @onassar described
-  originally is what is supposed to happen. **The box has a fixed width and
-  should never change.** If that doesn't work, it's a bug I haven't seen in my
-  implementation."
+- Issue #2376 (2015), `inssein` — **not** the issue author, who is `onassar` and
+  argues the *opposite* further down the same thread (he wanted the box to
+  *grow* to fit the text, and the maintainers landed on breaking words
+  instead): "the behaviour that @onassar described originally is what is
+  supposed to happen. **The box has a fixed width and should never change.** If
+  that doesn't work, it's a bug I haven't seen in my implementation."
 - Issue #5911, a maintainer: "**We do not have maxWidth for text.** How that
   would be have when words are too long? clip? stop accepting inputs. It sounds
   a custom implementation for a custom application." The only out-of-the-box

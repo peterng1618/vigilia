@@ -14,11 +14,22 @@ import { emptySampleSource, resolveTextSegments } from "@vigilia/renderer-core";
 import {
   FabricText,
   Group,
+  IText,
   Rect,
   type StaticCanvas,
   Textbox,
   type TextProps,
 } from "fabric/es";
+import {
+  applyClip,
+  assertBoxWidth,
+  authoredBox,
+  boxFrom,
+  guardBoxWidth,
+  placeInBox,
+  scaleOf,
+  withLineCapacity,
+} from "./authored-box.js";
 import { paintFor } from "./paint.js";
 import { placementFor } from "./placement.js";
 import { textShapeFor } from "./text-runs.js";
@@ -42,8 +53,6 @@ export type PlanTextObject = FabricText | Textbox;
 export const VIGILIA_TEXT_PROPERTY = "vigiliaText";
 
 const VIGILIA_TEXT_LAYOUT_PROPERTY = "vigiliaTextLayout";
-/** Marks an object whose `set` has been guarded; a revived object is fresh. */
-const BOX_GUARD = Symbol.for("vigilia.authoredBox");
 const ELLIPSIS = "…";
 
 type RuntimeTextLayout = Readonly<{
@@ -52,154 +61,16 @@ type RuntimeTextLayout = Readonly<{
   readonly style: PlanNode["style"];
 }>;
 
-/** Fabric's own flag. A `FabricText` has no inline editing to be in. */
+/**
+ * Fabric's own flag.
+ *
+ * `IText` and not `Textbox`, because that is what the editor's double-click
+ * guard admits: an unwrapped object is still an `IText` and is still editable,
+ * so restricting this to `Textbox` would leave an object the author can type
+ * into being repainted from a sample underneath the caret.
+ */
 function isEditing(object: PlanTextObject): boolean {
-  return object instanceof Textbox && object.isEditing;
-}
-
-function scaleOf(value: number): number {
-  return value === 0 ? 1 : value;
-}
-
-/** How far Fabric's `left`/`top` anchor sits from the object's leading edge. */
-function anchorOffset(origin: string | number, size: number): number {
-  if (origin === "left" || origin === "top") return 0;
-  return origin === "right" || origin === "bottom" ? size : size / 2;
-}
-
-/**
- * The box a `left`/`top` anchor describes, in parent space.
- *
- * `left`/`top` are the position of whichever origin the object uses, so every
- * box read back off an object — the authored one, a clip's, or the object's own
- * measured edges — goes through here. Reading one through a centre origin moves
- * a corner-anchored object off its corner by half its own size.
- */
-function boxFrom(
-  object: PlanTextObject,
-  width: number,
-  height: number,
-  offsetX = 0,
-  offsetY = 0,
-): PlanBox {
-  const scaleX = scaleOf(object.scaleX);
-  const scaleY = scaleOf(object.scaleY);
-  const scaledWidth = width * scaleX;
-  const scaledHeight = height * scaleY;
-
-  return {
-    x: object.left - anchorOffset(object.originX, scaledWidth) + offsetX,
-    y: object.top - anchorOffset(object.originY, scaledHeight) + offsetY,
-    width: scaledWidth,
-    height: scaledHeight,
-    rotation: object.angle,
-    scaleX: object.scaleX,
-    scaleY: object.scaleY,
-  };
-}
-
-/** The object's own coordinate origin, in parent space. */
-function objectCentre(object: PlanTextObject): { x: number; y: number } {
-  const own = boxFrom(object, object.width, object.height);
-  return { x: own.x + own.width / 2, y: own.y + own.height / 2 };
-}
-
-/**
- * The box the author wrote, in parent space.
- *
- * `vigiliaText.box` is scene units; Fabric's `width` is the same box before
- * `scaleX`. The object's `left`/`top` are the box's own corner, so they say
- * where the box is without anything having to measure the text to find out.
- */
-function authoredBox(
-  object: PlanTextObject,
-  authored: TextContent,
-): PlanBox | undefined {
-  const box = authored.box;
-  return box === undefined ? undefined : boxFrom(object, box.width, box.height);
-}
-
-/**
- * Keep Fabric's own width writes at the number the caller asked for.
- *
- * Every width decision an author or a renderer makes reaches `set` — Fabric's
- * `changeWidth` control (`index.mjs:6737`), `updateText`, the editor's
- * `applyTextboxWidth` — and `set` re-enters `initDimensions`, which widens the
- * object to its longest run before the call returns. Without this the width an
- * author dragged is gone before `object:resizing` reports it. Fabric's own
- * widening goes through `_set`, which is not overridden.
- */
-function guardBoxWidth(object: PlanTextObject): void {
-  if (!(object instanceof Textbox) || BOX_GUARD in object) {
-    return;
-  }
-
-  const base = object.set.bind(object);
-  object.set = ((
-    key: string | Record<string, unknown>,
-    value?: unknown,
-  ): PlanTextObject => {
-    const requested =
-      typeof key === "string"
-        ? key === "width"
-          ? value
-          : undefined
-        : key["width"];
-    const result = base(key, value) as PlanTextObject;
-    if (typeof requested === "number" && Number.isFinite(requested)) {
-      object.width = requested;
-    }
-    return result;
-  }) as typeof object.set;
-
-  Object.defineProperty(object, BOX_GUARD, { value: true });
-}
-
-/**
- * Put the authored width back after the pass's last `initDimensions`.
- *
- * A direct assignment, because `width` is a layout property on a `Textbox` and
- * a restore written as a `set` re-enters `initDimensions` inside its own call.
- */
-function restoreBox(object: PlanTextObject, authored: TextContent): void {
-  const box = authored.box;
-  if (box === undefined || !(object instanceof Textbox)) return;
-  object.width = box.width / scaleOf(object.scaleX);
-}
-
-/**
- * Put the object's own edges where the authored alignment puts them.
- *
- * A wrapped object's width is the box, so horizontal alignment is `textAlign`
- * inside it and only the vertical axis moves; an unwrapped one is its own run
- * and moves on both. `anchorOffset` converts the edge back to whichever origin
- * the object uses, which is how a v2 document's left/top-corner text and the
- * plan path's centred text share one owner.
- */
-function placeInBox(
-  object: PlanTextObject,
-  box: PlanBox,
-  layout: PlanTextLayout,
-): void {
-  const width = object.width * scaleOf(object.scaleX);
-  const height = object.height * scaleOf(object.scaleY);
-  const left =
-    layout.align === "left"
-      ? box.x
-      : layout.align === "right"
-        ? box.x + box.width - width
-        : box.x + (box.width - width) / 2;
-  const top =
-    layout.verticalAlign === "top"
-      ? box.y
-      : layout.verticalAlign === "bottom"
-        ? box.y + box.height - height
-        : box.y + (box.height - height) / 2;
-
-  object.set({
-    left: left + anchorOffset(object.originX, width),
-    top: top + anchorOffset(object.originY, height),
-  });
+  return object instanceof IText && object.isEditing;
 }
 
 function runtimeLayout(
@@ -227,7 +98,11 @@ function runtimeLayout(
   // first would make the second pass see whatever the first one measured.
   const fixed = authoredBox(object, authored);
   if (fixed !== undefined) {
-    return { box: fixed, layout, style: styleFor(object) };
+    return {
+      box: fixed,
+      layout: withLineCapacity(object, fixed, layout),
+      style: styleFor(object),
+    };
   }
 
   if (clip instanceof Rect) {
@@ -416,10 +291,9 @@ export function applyAuthoredText(
               : { textAlign: authored.align }),
           });
           object.initDimensions();
-          // After that last `initDimensions`, which widens to the longest run:
-          // the box, both alignments and the clip all read from the state this
-          // leaves behind, and a restore before this line is overwritten by it.
-          restoreBox(object, authored);
+          // `refreshLayout` restores the box, places by both alignments and
+          // clips; it has to follow this last `initDimensions`, which widens to
+          // the longest run and would otherwise be what it reads.
           refreshLayout(object, segments, runtimeLayout(object, authored));
         }
       }
@@ -480,7 +354,6 @@ export function refreshBoundText(
               : { textAlign: authored.align }),
           });
           object.initDimensions();
-          restoreBox(object, authored);
           refreshLayout(object, segments, layoutState);
         }
       }
@@ -503,6 +376,10 @@ function refreshLayout(
     write(object, ellipsised(object, segments, style, box, layout), style);
   }
 
+  // After the ellipsis rewrite too: that `write` is a `set` and re-enters
+  // `initDimensions`, which widens the object to its longest run — the same
+  // thing the pass-level restore exists to undo, one call later.
+  assertBoxWidth(object, box);
   placeInBox(object, box, layout);
   applyClip(object, layout, box);
 }
@@ -631,36 +508,6 @@ function truncate(
   kept[kept.length - 1] = { ...last, text: `${last.text}${ELLIPSIS}` };
 
   return kept;
-}
-
-/** Relative clip path follows object rotation/scale and is offset for edge alignment. */
-function applyClip(
-  object: PlanTextObject,
-  layout: PlanTextLayout,
-  box: PlanBox,
-): void {
-  if (layout.overflow === "visible") {
-    delete object.clipPath;
-    return;
-  }
-
-  const scaleX = object.scaleX === 0 ? 1 : object.scaleX;
-  const scaleY = object.scaleY === 0 ? 1 : object.scaleY;
-  // A clip path is positioned in the object's own coordinate system, whose
-  // origin is the object's centre — which is not where `left`/`top` put it
-  // unless the origin is centred. Every authored text object is a corner, so
-  // this is the difference between clipping the box and clipping half a box away
-  // from it.
-  const centre = objectCentre(object);
-
-  object.clipPath = new Rect({
-    width: box.width / scaleX,
-    height: box.height / scaleY,
-    left: (box.x + box.width / 2 - centre.x) / scaleX,
-    top: (box.y + box.height / 2 - centre.y) / scaleY,
-    originX: "center",
-    originY: "center",
-  });
 }
 
 /** Report text treatments the canvas path still cannot express honestly. */

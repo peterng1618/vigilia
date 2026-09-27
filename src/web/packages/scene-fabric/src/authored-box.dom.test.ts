@@ -106,9 +106,10 @@ describe("the authored box outlives a token wider than it", () => {
 
     paint(canvas);
 
-    // The premise, so a pass that cannot fail is not reported as a pass.
+    // The premise, so a pass that cannot fail is not reported as a pass. The
+    // token is wider than the box, so it is *marked* rather than shown whole —
+    // that is the ellipsis test's subject, not this one's.
     expect(tokenOverflowsBox()).toBe(true);
-    expect(object.text).toContain(TOKEN);
     expect(object.width).toBe(BOX.width);
   });
 
@@ -161,7 +162,12 @@ describe("the authored box outlives a token wider than it", () => {
 
     paint(canvas);
 
+    // The premise, then the behaviour: with no authored box the object measures
+    // its own, so the token widens it exactly as it always did. Asserting the
+    // premise alone would pass whatever the code did.
     expect(tokenOverflowsBox()).toBe(true);
+    expect(object.width).toBeGreaterThan(BOX.width);
+    expect(object.clipPath?.width).toBe(object.width);
   });
 });
 
@@ -404,5 +410,80 @@ describe("an object with no authored box", () => {
 
     expect(object.left).toBeCloseTo(left, 6);
     expect(object.top).toBeCloseTo(top, 6);
+  });
+});
+
+describe("an ellipsis on wrapped text inside a fixed box", () => {
+  /** A box one line tall, so a second line cannot fit. */
+  function oneLineBox(
+    layout: Readonly<Record<string, unknown>>,
+    text: string,
+  ): Textbox {
+    const object = new Textbox(text, {
+      id: "ram-value",
+      left: BOX.x,
+      top: BOX.y,
+      width: BOX.width,
+      fontSize: 32,
+      lineHeight: 1.18,
+      originX: "left",
+      originY: "top",
+    });
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      wrap: true,
+      overflow: "ellipsis",
+      align: "center",
+      box: { width: BOX.width, height: 0 },
+      ...layout,
+      runs: [{ kind: "literal", text }],
+    });
+    // The authored height is one line, so `maxLines` has something to derive.
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+      box: { width: BOX.width, height: object.getHeightOfLine(0) },
+    });
+    return object;
+  }
+
+  it("marks a run that needs more lines than the box has", () => {
+    const object = oneLineBox({}, "MEM 61 GB of 32 GB used");
+    const canvas = canvasOf(object);
+    // The premise, read before the pass: the text really does need more than
+    // the one line this box has room for.
+    const needed = object.textLines.length;
+
+    paint(canvas);
+
+    expect(needed).toBeGreaterThan(1);
+    expect(object.text.endsWith("…")).toBe(true);
+    expect(object.textLines.length).toBe(1);
+    expect(object.text).not.toBe("MEM 61 GB of 32 GB used");
+  });
+
+  it("leaves a run that already fits alone", () => {
+    // The counter-case, without which the test above says nothing: the default
+    // `maxLines === undefined` must not ellipsise every box.
+    const object = oneLineBox({}, "ok");
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.text).toBe("ok");
+    expect(object.text).not.toContain("…");
+  });
+
+  it("still clips when the box is too short for even one line", () => {
+    // A box shorter than its own line height has no line to show, and the clip
+    // is what keeps the remainder off whatever is beside it.
+    const object = oneLineBox({}, "MEM 61 GB of 32 GB used");
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+      box: { width: BOX.width, height: 1 },
+    });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.clipPath).toBeInstanceOf(Rect);
   });
 });
