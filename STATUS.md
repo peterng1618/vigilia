@@ -26,7 +26,7 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents carry
   no metadata, and absent means `en` there.
-- **Queued spec, no plan:** [author-first seven-day release](docs/superpowers/specs/2026-09-26-author-first-release-design.md) — written-spec review pending; blank-to-running theme, ≥80% unassisted completion; not activated by the reference-theme priority change.
+- **Queued spec, no plan:** [author-first seven-day release](docs/superpowers/specs/2026-09-26-author-first-release-design.md) — written-spec review pending; blank-to-running theme, ≥80% unassisted completion; not activated by the reference-theme priority change. **Hard requirement added 2026-09-27:** rebuild the whole reference dashboard from a blank scene through the UI alone, no generator or JSON, recording gaps and friction as findings. **Its implementation plan must be refreshed when activated** — the seven-day sequence predates reference-theme fidelity and must be re-derived against the delivered surface.
 - Compaction recovery: [`adr/0010-dispatch-record-owns-recovery-state.md`](docs/adr/0010-dispatch-record-owns-recovery-state.md).
 
 ## Last completed change

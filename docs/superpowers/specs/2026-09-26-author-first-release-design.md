@@ -2,6 +2,14 @@
 
 Date: 2026-09-26
 Status: queued spec; written-spec review pending; no implementation plan.
+**Plan refresh required when activated (2026-09-27):** reference-theme fidelity is
+changing the authoring surface this spec is written against — panels and their
+material controls, glass, tracked typography, gauge and caption authoring, chart
+families, the semantic key vocabulary and the device-identity rules. This spec's
+seven-day sequence and its gap list were written before that and **must be
+re-derived against the delivered surface, not executed as written.** Treat the
+day-by-day plan as a starting hypothesis; the hard requirement above is not
+negotiable and does not expire with the refresh.
 
 ## Intent and release promise
 
@@ -38,6 +46,20 @@ broken. Release requires:
 - No known defects block completion, lose work, misrepresent data, or make
   exposed functionality unusable.
 - Essential keyboard access, validation, security and privacy remain intact.
+- **Hard requirement (2026-09-27): the reference dashboard is rebuilt from a blank
+  scene by hand, through the UI alone.** The journey above proves a heading, a live
+  value and a chart. This proves the *whole* reference composition — every card,
+  gauge, caption, binding, icon and panel — and it is the only thing that can. A
+  composition that exists solely because a generator emitted it conceals missing,
+  broken, hard-to-use or ugly editing surfaces, which is the failure this release
+  exists to prevent. The rule this enforces is the spec's own: *code-only starter
+  properties cannot conceal missing authoring controls.*
+  - No generator, starter file, fixture, hand-edited JSON or developer
+    intervention at any point. If a control does not exist, that is the finding.
+  - Gaps, friction and visual quality are recorded as findings in their own right.
+    A journey that completes but is unpleasant has still failed the requirement.
+  - The authoring surface is judged as an author sees it — including whether the
+    controls are findable and whether the result looks like the reference.
 - Representative first-time authors demonstrate usability. Developer fluency
   and passing automated tests alone do not establish intuitive authoring.
 

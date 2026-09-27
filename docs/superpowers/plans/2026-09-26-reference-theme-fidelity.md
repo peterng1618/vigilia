@@ -291,6 +291,15 @@ no DOM overlay scene, second editable tree or pixel-streaming transport.
 - [ ] Inspect identical authored scenes through real editor Canvas and player
   StaticCanvas. Verify texture behind glass visibly softens while foreground
   text stays sharp; tint-only fallback must report failure and cannot pass.
+  **Amended 2026-09-27:** the blur half is proved here, in the **editor** mount —
+  the only mount whose media loads, since the player's is blocked by
+  `docs/bugs/open/host-cannot-serve-packaged-assets.md`. The **foreground-text half
+  moves to Task 11**, where the missing font is in scope; this container renders
+  `FROST` as a dash, so the sharp-foreground assertion cannot be made here at all.
+  The media *scale* and vertical placement are proved in real pixels; the
+  horizontal `deviceLeft` term is pinned arithmetically only, because both mounts
+  happen to place the layer at `left = 0`. Silent deferral is not acceptable; each
+  split is recorded rather than assumed, and each is inherited below.
 
 **Verification:** Shared glass tests and focused browser pixel/visual inspection,
 including unsupported capability diagnostics and unaffected non-glass scenes.
@@ -307,7 +316,10 @@ rather than invent another global scheduler.
 - [ ] Pin stale-backdrop cases: moving/resizing/rotating a panel, changing a lower
   object, changing z-order/group opacity, **video frame updates (measured broken —
   see the Task 1 result above)**, palette changes, zoom/DPR/fit and
-  undo/revival replacing object identity.
+  undo/revival replacing object identity. **Inherited from Task 4 (2026-09-27):**
+  a ~14 px unexplained residual in the media-offset measurement — a symmetric blur
+  should not shift a located feature, so this is not noise and must be explained,
+  not closed.
 - [ ] Connect bounded invalidation and shared media lifetime. Dispose listeners,
   video callbacks, surfaces and chart references on delete, replace and unmount.
   Hidden/disconnected rendering follows current policy and resumes accurately.
@@ -455,6 +467,9 @@ fixture and real-host setup, package/persistence boundaries; screenshot registry
 - [ ] Exercise reference-size/fitted/DPR views, nested/rotated/overlapping panels,
   background replacement/video, font failure, invalid import, disconnect/reconnect,
   missing sensors and device reassignment. Verify errors preserve recoverable work.
+  **Also owns, from Task 4 (2026-09-27):** the sharp-foreground-text half of Task
+  4's browser inspection — text above glass stays sharp through a real mount — which
+  Task 4 could not prove because the container has no usable font.
 - [ ] Rebuild/capture/inspect affected registered actions. Compare latest target
   side by side, record remaining discrepancies and fix required ones within their
   owners. Exempt background pixels, live data and fine chart treatment only;

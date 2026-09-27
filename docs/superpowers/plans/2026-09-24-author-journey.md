@@ -92,6 +92,14 @@ the document model as it already stands.
 
 ### Task 6 — Integration proof
 
+> **Stale, and must be re-derived before dispatch (2026-09-27).** This plan predates
+> reference-theme fidelity, which changes the surface Task 6 proves: panels and their
+> material controls, glass, tracked typography, gauge and caption authoring, chart
+> families, the semantic key vocabulary and the device-identity rules. Its checkboxes
+> are a starting hypothesis, not the work. See
+> `docs/superpowers/specs/2026-09-26-author-first-release-design.md`, which now
+> carries the hard requirement this plan's evidence must eventually serve.
+
 - [ ] `npm run format:check && npm run lint && npm run typecheck && npm test &&
       npm run build && npm run size`.
 - [ ] Full local `npm run test:e2e`.
