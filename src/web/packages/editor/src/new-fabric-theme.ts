@@ -1,49 +1,47 @@
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import {
-  defaultBarSettings,
-  defaultGaugeSettings,
-  defaultLineSettings,
-  defaultPieSettings,
-  type FabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+  backgroundPlate,
+  clockCard,
+  cpuCard,
+  gpuCard,
+  networkCard,
+  ramCard,
+  storageCard,
+  trendsCard,
+  vramCard,
+} from "./new-fabric-theme-cards.js";
 import {
-  charSpacingPx,
-  dim,
-  panel,
-  paletteIdFor,
   starterPalette,
   starterTypePresets,
-  text,
 } from "./new-fabric-theme-globals.js";
+import { label } from "./new-fabric-theme-objects.js";
 
-type ObjectJson = Readonly<Record<string, unknown>>;
-type PathData = readonly (readonly [string, ...number[]])[];
-
-// Authored positions are artboard top-left coordinates, never Fabric's centered defaults.
-const positioned = { originX: "left", originY: "top" } as const;
-const backgroundOnly = {
-  ...positioned,
-  selectable: false,
-  evented: false,
-} as const;
-
-/** A mockup-inspired v2 starter scene, limited to currently revivable objects. */
+/**
+ * The default scene a new theme starts from: the reference composition at the
+ * reference's artboard size, with every card's reading bound to a key a
+ * provider actually owns.
+ *
+ * Nothing here is created by saving this document. `onNew` builds one and mounts
+ * it; `onOpenTheme` mounts the envelope a saved file already holds, so a change
+ * here reaches a new theme and never rewrites a user's own.
+ */
 export function createNewFabricTheme(): FabricThemeEnvelope {
   return {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "vigilia-demo-dashboard",
     metadata: {
-      name: "Twilight system dashboard",
+      name: "System dashboard",
       author: "Vigilia",
       description:
-        "A v2 scene exercising supported Fabric primitives and every chart family.",
+        "The reference composition: a clock, two usage cards, two memory rings, a performance chart and stacked storage and network panels.",
       // The editor's own copy is English, so a new theme starts where its
       // author does rather than guessing from the browser.
       locale: "en",
     },
     artboard: {
-      width: 1280,
-      height: 720,
+      width: 1672,
+      height: 941,
       background: { ref: "palette.background" },
       barColor: { ref: "palette.bars" },
     },
@@ -52,24 +50,6 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       typePresets: starterTypePresets,
     },
     bindings: {
-      "load-gauge": [{ id: "cpu-load", semanticKey: "cpu.load", precision: 0 }],
-      "trend-line": [
-        { id: "trend-cpu", semanticKey: "cpu.load" },
-        { id: "trend-gpu", semanticKey: "gpu.load" },
-      ],
-      "thermal-bars": [
-        { id: "cpu-temperature", semanticKey: "cpu.temp" },
-        { id: "gpu-temperature", semanticKey: "gpu.temp" },
-      ],
-      "resource-pie": [
-        { id: "cpu-share", semanticKey: "cpu.load" },
-        { id: "gpu-share", semanticKey: "gpu.load" },
-        { id: "memory-share", semanticKey: "memory.used" },
-      ],
-      "cpu-card-value": [
-        { id: "cpu-card-load", semanticKey: "cpu.load", precision: 0 },
-      ],
-      "cpu-card-sparkline": [{ id: "cpu-card-spark", semanticKey: "cpu.load" }],
       time: [{ id: "clock-time", semanticKey: "time.now", format: "hh:mm" }],
       "time-period": [
         { id: "clock-period", semanticKey: "time.now", format: "A" },
@@ -78,620 +58,121 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         {
           id: "clock-date",
           semanticKey: "date.today",
-          format: "ddd, DD MMM YYYY",
+          format: "ddd, MMM DD, YYYY",
         },
+      ],
+      "cpu-card-value": [
+        { id: "cpu-card-load", semanticKey: "cpu.load", precision: 0 },
+      ],
+      "cpu-card-sparkline": [{ id: "cpu-card-spark", semanticKey: "cpu.load" }],
+      // The reference writes GHz; the key reports MHz, so the binding scales and
+      // the author writes the unit. A conversion of a real reading, not a unit
+      // the provider cannot produce.
+      "cpu-card-freq": [
+        {
+          id: "cpu-card-clock",
+          semanticKey: "cpu.clock",
+          scale: 0.001,
+          precision: 1,
+        },
+      ],
+      "gpu-card-value": [
+        { id: "gpu-card-load", semanticKey: "gpu.load", precision: 0 },
+      ],
+      "gpu-card-sparkline": [{ id: "gpu-card-spark", semanticKey: "gpu.load" }],
+      "gpu-card-freq": [
+        {
+          id: "gpu-card-clock",
+          semanticKey: "gpu.clock",
+          scale: 0.001,
+          precision: 1,
+        },
+      ],
+      "gpu-card-temp": [
+        { id: "gpu-card-temp", semanticKey: "gpu.temp", precision: 0 },
+      ],
+      "ram-gauge": [
+        { id: "ram-gauge-percent", semanticKey: "ram.used.percent" },
+      ],
+      "ram-value": [{ id: "ram-percent", semanticKey: "ram.used.percent" }],
+      "ram-capacity": [
+        {
+          id: "ram-used",
+          semanticKey: "ram.used",
+          precision: 1,
+          unitDisplay: "none",
+        },
+        {
+          id: "ram-total",
+          semanticKey: "ram.total",
+          precision: 0,
+          unitDisplay: "none",
+        },
+      ],
+      "vram-gauge": [
+        { id: "vram-gauge-percent", semanticKey: "vram.used.percent" },
+      ],
+      "vram-value": [{ id: "vram-percent", semanticKey: "vram.used.percent" }],
+      "vram-capacity": [
+        {
+          id: "vram-used",
+          semanticKey: "vram.used",
+          precision: 1,
+          unitDisplay: "none",
+        },
+        {
+          id: "vram-total",
+          semanticKey: "vram.total",
+          precision: 0,
+          unitDisplay: "none",
+        },
+      ],
+      "trends-chart": [
+        { id: "trends-cpu", semanticKey: "cpu.load" },
+        { id: "trends-gpu", semanticKey: "gpu.load" },
+        { id: "trends-ram", semanticKey: "ram.used.percent" },
+      ],
+      "storage-card-value": [
+        { id: "storage-percent", semanticKey: "disk.used.percent" },
+      ],
+      "storage-bar": [{ id: "storage-used", semanticKey: "disk.used.percent" }],
+      "network-down": [
+        {
+          id: "network-download-label",
+          semanticKey: "network.download",
+          precision: 1,
+        },
+      ],
+      "network-up": [
+        {
+          id: "network-upload-label",
+          semanticKey: "network.upload",
+          precision: 1,
+        },
+      ],
+      "network-chart": [
+        { id: "net-download", semanticKey: "network.download" },
+        { id: "net-upload", semanticKey: "network.upload" },
       ],
     },
     scene: {
       version: "7.4.0",
       objects: [
-        rect(
-          "background",
-          0,
-          0,
-          1280,
-          720,
-          twilightGradient,
-          0,
-          backgroundOnly,
-          "scene",
-        ),
-        rect("header-wash", 0, 0, 1280, 142, "#06101a70", 0),
+        backgroundPlate(),
         // The wordmark is tracked by its preset, not by spaces between the
         // letters: a space is a fixed width the font chooses, and it survives
         // into the text the author edits and the reading a screen reader gets.
-        label("wordmark", 54, 38, 520, "VIGILIA", 32, text, "500"),
-        label(
-          "strapline",
-          58,
-          82,
-          520,
-          "YOUR SYSTEM. A CLEARER TOMORROW.",
-          12,
-          dim,
-          "400",
-        ),
-        path(
-          "header-rule",
-          58,
-          109,
-          [
-            ["M", 0, 0],
-            ["L", 172, 0],
-          ],
-          "#7dbde0",
-          1,
-        ),
-        label(
-          "motto",
-          1040,
-          42,
-          180,
-          "MONITOR\nOPTIMIZE\nSTAY IN FLOW",
-          11,
-          dim,
-          "500",
-        ),
-
-        card("time-card", 52, 150, 260, 330),
-        valueLabel("time", 78, 189, 210, 70, text, "300", "clock-time"),
-        valueLabel("time-period", 253, 251, 45, 17, dim, "500", "clock-period"),
-        valueLabel("date", 80, 288, 200, 16, text, "400", "clock-date"),
-        path(
-          "time-rule",
-          80,
-          335,
-          [
-            ["M", 0, 0],
-            ["L", 36, 0],
-          ],
-          "#82c8e9",
-          2,
-        ),
-        label(
-          "time-quote",
-          80,
-          363,
-          180,
-          "“A calmer system\nfor a brighter you.”",
-          14,
-          dim,
-          "400",
-        ),
-
+        label("wordmark", 118, 56, 460, "VIGILIA", 36, "text", "500"),
+        label("strapline", 120, 100, 460, "SYSTEM INSIGHTS", 17, "dim", "400"),
+        ...clockCard(),
         ...cpuCard(),
-
-        card("weather-card", 332, 150, 420, 152),
-        path("weather-cloud-svg-path", 358, 190, cloudPath, "#b9d7f2", 0),
-        label("weather-temperature", 442, 181, 100, "18°C", 36, text, "600"),
-        label(
-          "weather-condition",
-          443,
-          227,
-          150,
-          "Mostly cloudy",
-          15,
-          text,
-          "400",
-        ),
-        path("location-pin-svg-path", 613, 184, pinPath, "#8fc6e6", 0),
-        label("weather-location", 634, 180, 100, "Seattle, WA", 13, dim, "400"),
-        label(
-          "weather-details",
-          634,
-          210,
-          100,
-          "H: 21°   L: 12°\nFeels like 17°",
-          13,
-          text,
-          "400",
-        ),
-
-        card("gauge-card", 332, 322, 200, 176),
-        path("cpu-icon-svg-path", 352, 344, chipPath, "#7ec7f0", 0),
-        label("gauge-title", 383, 342, 100, "CPU LOAD", 13, text, "600"),
-        chart("load-gauge", 432, 418, 112, 88, "gauge", {
-          ...defaultGaugeSettings,
-          thickness: 14,
-          track: { ref: "palette.chartTrack" },
-          progress: { ref: "palette.gaugeProgress" },
-        }),
-        label("gauge-caption", 364, 466, 140, "LIVE", 11, dim, "500"),
-
-        card("trend-card", 552, 322, 676, 176),
-        path("trend-icon-svg-path", 574, 345, trendPath, "#a98bff", 1.5),
-        label(
-          "trend-title",
-          607,
-          342,
-          220,
-          "PERFORMANCE TRENDS",
-          13,
-          text,
-          "600",
-        ),
-        label("trend-legend", 989, 342, 190, "● CPU    ● GPU", 11, dim, "400"),
-        chart("trend-line", 888, 428, 612, 92, "line", {
-          ...defaultLineSettings,
-          stroke: { ref: "palette.chartBlue" },
-          palette: [
-            { ref: "palette.chartBlue" },
-            { ref: "palette.chartPurple" },
-          ],
-          area: { ref: "palette.trendArea" },
-          min: 0,
-          max: 100,
-          showAxes: false,
-        }),
-
-        card("thermal-card", 332, 518, 396, 154),
-        path("thermal-icon-svg-path", 354, 540, thermometerPath, "#71e7c1", 0),
-        label(
-          "thermal-title",
-          384,
-          538,
-          220,
-          "THERMAL HEADROOM",
-          13,
-          text,
-          "600",
-        ),
-        chart("thermal-bars", 605, 607, 190, 54, "bar", {
-          ...defaultBarSettings,
-          min: 20,
-          max: 100,
-          barWidth: 16,
-          fill: { ref: "palette.thermalFill" },
-          track: { ref: "palette.thermalTrack" },
-        }),
-        label(
-          "thermal-caption",
-          356,
-          642,
-          150,
-          "CPU & GPU · °C",
-          11,
-          dim,
-          "400",
-        ),
-
-        card("resource-card", 748, 518, 250, 154),
-        path("resource-icon-svg-path", 770, 540, resourcePath, "#f3c879", 0),
-        label("resource-title", 800, 538, 150, "RESOURCE MIX", 13, text, "600"),
-        chart("resource-pie", 861, 613, 82, 82, "pie", {
-          ...defaultPieSettings,
-          innerRadiusPercent: 64,
-          padAngle: 3,
-          palette: [
-            { ref: "palette.chartBlue" },
-            { ref: "palette.chartPurple" },
-            { ref: "palette.status" },
-          ],
-          remainderFill: { ref: "palette.chartTrack" },
-        }),
-        label("resource-caption", 912, 596, 66, "LIVE\nMIX", 11, dim, "500"),
-
-        card("status-card", 1018, 518, 210, 154),
-        path("signal-icon-svg-path", 1042, 541, signalPath, "#6ee1c0", 1.5),
-        label("status-title", 1074, 538, 120, "SYSTEM STATUS", 13, text, "600"),
-        circle("status-dot", 1042, 587, 5, "#48d9b0"),
-        label(
-          "status-main",
-          1058,
-          578,
-          140,
-          "All systems nominal",
-          13,
-          text,
-          "400",
-        ),
-        path(
-          "status-rule",
-          1042,
-          609,
-          [
-            ["M", 0, 0],
-            ["L", 150, 0],
-          ],
-          "#7dbde044",
-          1,
-        ),
-        label(
-          "status-caption",
-          1042,
-          625,
-          150,
-          "VIGILIA · LIVE DEMO",
-          11,
-          dim,
-          "500",
-        ),
+        ...gpuCard(),
+        ...ramCard(),
+        ...vramCard(),
+        ...trendsCard(),
+        ...storageCard(),
+        ...networkCard(),
       ],
     },
   };
 }
-
-/**
- * The reference's CPU card: a frosted panel carrying a live percentage and a
- * sparkline, both read from the same key.
- *
- * Every piece is written through the ordinary families — a palette-backed
- * rectangle, two text runs and a line chart — so an author can restyle it with
- * the controls the editor already ships rather than by editing this file. The
- * treatment is a `Rect` property the inspector's glass control reads and writes
- * like any other.
- *
- * Two parts of the reference card are **absent**, and their absence is the
- * honest state rather than an omission: the model name is a device caption,
- * which is Task 9's, and the frequency caption would read the reported unit
- * (MHz), not the reference's GHz, because no scale changes a unit.
- *
- * The placement is provisional. The reference puts this card second in the top
- * row of a 1672×941 board; this starter is still 1280×720, where that slot is
- * taken, so the card sits in the free column under the clock. Task 7 re-lays
- * the starter at target size and moves it.
- */
-function cpuCard(): ObjectJson[] {
-  return [
-    {
-      ...card("cpu-card", 52, 484, 226, 226),
-      // Inside the band Task 1 measured flat, and a value to move: the
-      // reference's frost is a mockup over a photograph, not a rendering whose
-      // radius can be read back.
-      vigiliaGlass: { blurRadius: 16 },
-    },
-    // The hand-drawn chip glyph the existing gauge card already uses, rather
-    // than a second icon: Task 7 replaces the whole set with licensed ones.
-    path("cpu-card-icon", 83, 501, chipPath, "#7ec7f0", 0),
-    label("cpu-card-title", 142, 507, 90, "CPU", 15, text, "400"),
-    reading("cpu-card-value", 76, 542, 196, "cpu-card-load", "%", 72, 36),
-    // `chart` is the one helper that takes Fabric's centre origin, so these are
-    // the box's middle, not its corner: 76..267 across, 636..694 down.
-    chart("cpu-card-sparkline", 171, 665, 191, 58, "line", {
-      ...defaultLineSettings,
-      stroke: { ref: "palette.chartBlue" },
-      palette: [{ ref: "palette.chartBlue" }],
-      area: { ref: "palette.trendArea" },
-      min: 0,
-      max: 100,
-      showAxes: false,
-      // The reference's sparkline is dotted rather than a bare stroke.
-      showMarkers: true,
-      markerSize: 3,
-    }),
-  ];
-}
-
-function rect(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-  fill: unknown,
-  radius: number,
-  interaction: ObjectJson = positioned,
-  paletteId?: keyof typeof starterPalette,
-): ObjectJson {
-  const reference = paletteId ?? paletteIdFor(fill);
-  return {
-    type: "Rect",
-    id,
-    left,
-    top,
-    width,
-    height,
-    fill,
-    rx: radius,
-    ry: radius,
-    vigiliaPaint: { fill: `palette.${reference}` },
-    ...interaction,
-  };
-}
-
-function card(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-): ObjectJson {
-  return {
-    // Measured off the reference theme, not chosen: its card border occupies
-    // two pixels, and first appears ten pixels in from the top-left corner on
-    // both axes. The outline token is already the right value — a translucent
-    // cool line of that alpha composites to about the border the reference
-    // shows over its own panel fill.
-    ...rect(id, left, top, width, height, panel, 10),
-    stroke: "#9fc7e52b",
-    strokeWidth: 2,
-    vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
-  };
-}
-
-function circle(
-  id: string,
-  left: number,
-  top: number,
-  radius: number,
-  fill: string,
-): ObjectJson {
-  return {
-    type: "Circle",
-    id,
-    left,
-    top,
-    radius,
-    fill,
-    vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` },
-    ...positioned,
-  };
-}
-
-function label(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  value: string,
-  fontSize: number,
-  fill: string,
-  fontWeight: string,
-): ObjectJson {
-  const presetId = `${fontSize}-${fontWeight}`;
-  const typePreset = `typePresets.${presetId}` as const;
-  const spacing = charSpacingPx(presetId, fontSize);
-  return {
-    type: "Textbox",
-    id,
-    left,
-    top,
-    width,
-    text: value,
-    fontFamily: "Segoe UI, sans-serif",
-    fontSize,
-    fontWeight,
-    fill,
-    lineHeight: 1.18,
-    // The resolved cache the editor applies from the preset. Every other
-    // preset-derived field is written here, so this one has to be too: a scene
-    // that declares five of a preset's six Fabric fields is the same shape of
-    // bug as the one that declared none of them.
-    ...(spacing === undefined ? {} : { charSpacing: spacing }),
-    vigiliaPaint: { fill: `palette.${paletteIdFor(fill)}` },
-    vigiliaText: {
-      runs: [
-        {
-          kind: "literal",
-          text: value,
-          typePreset,
-          style: { color: { ref: `palette.${paletteIdFor(fill)}` } },
-        },
-      ],
-    },
-    ...positioned,
-  };
-}
-
-/**
- * A live reading with its unit beside it: a large value run and a smaller
- * literal one on the same text object. The reference writes the unit at about
- * half the digits' size, and two runs on one object is how this scene already
- * expresses a mixed-size label — the runs editor can restyle either half.
- */
-function reading(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  bindingId: string,
-  unit: string,
-  valueSize: number,
-  unitSize: number,
-): ObjectJson {
-  return {
-    ...label(id, left, top, width, `—${unit}`, valueSize, text, "600"),
-    vigiliaText: {
-      runs: [
-        {
-          kind: "value",
-          bindingId,
-          precision: 0,
-          // The unit is the second run's text, so this one supplies no sign of
-          // its own; a second "%" would read as "32%%".
-          unitDisplay: "none",
-          typePreset: `typePresets.${valueSize}-600`,
-          style: { color: { ref: "palette.text" } },
-        },
-        {
-          kind: "literal",
-          text: unit,
-          typePreset: `typePresets.${unitSize}-600`,
-          style: { color: { ref: "palette.text" } },
-        },
-      ],
-    },
-  };
-}
-
-/**
- * A label whose text is a reading rather than prose. The starter theme's clock
- * was authored literal text, so it looked like a clock and was not one; a value
- * run makes the default theme demonstrate a live one.
- */
-function valueLabel(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  fontSize: number,
-  fill: string,
-  fontWeight: string,
-  bindingId: string,
-): ObjectJson {
-  return {
-    ...label(id, left, top, width, "—", fontSize, fill, fontWeight),
-    vigiliaText: {
-      runs: [
-        {
-          kind: "value",
-          bindingId,
-          typePreset: `typePresets.${fontSize}-${fontWeight}`,
-          style: { color: { ref: `palette.${paletteIdFor(fill)}` } },
-        },
-      ],
-    },
-  };
-}
-
-function path(
-  id: string,
-  left: number,
-  top: number,
-  points: PathData,
-  colour: string,
-  strokeWidth: number,
-): ObjectJson {
-  return strokeWidth === 0
-    ? {
-        type: "Path",
-        id,
-        left,
-        top,
-        path: points,
-        fill: colour,
-        stroke: null,
-        vigiliaPaint: { fill: `palette.${paletteIdFor(colour)}` },
-        ...positioned,
-      }
-    : {
-        type: "Path",
-        id,
-        left,
-        top,
-        path: points,
-        fill: null,
-        stroke: colour,
-        strokeWidth,
-        vigiliaPaint: { stroke: `palette.${paletteIdFor(colour)}` },
-        ...positioned,
-      };
-}
-
-function chart(
-  id: string,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-  family: string,
-  settings: unknown,
-): ObjectJson {
-  return {
-    type: "VigiliaChart",
-    id,
-    left,
-    top,
-    width,
-    height,
-    family,
-    settings,
-    originX: "center",
-    originY: "center",
-  };
-}
-
-const twilightGradient = {
-  type: "linear",
-  coords: { x1: 0, y1: 0, x2: 0, y2: 720 },
-  colorStops: [
-    { offset: 0, color: "#355473" },
-    { offset: 0.42, color: "#16283d" },
-    { offset: 1, color: "#07111d" },
-  ],
-  offsetX: 0,
-  offsetY: 0,
-} as const;
-
-// SVG paths, stored as the currently supported Fabric Path primitive.
-const cloudPath: PathData = [
-  ["M", 13, 47],
-  ["C", 5, 47, 0, 41, 0, 33],
-  ["C", 0, 24, 7, 17, 17, 17],
-  ["C", 21, 7, 29, 0, 40, 0],
-  ["C", 53, 0, 64, 11, 64, 25],
-  ["C", 71, 27, 76, 33, 76, 40],
-  ["C", 76, 44, 73, 47, 69, 47],
-  ["Z"],
-];
-const pinPath: PathData = [
-  ["M", 10, 0],
-  ["C", 4, 0, 0, 5, 0, 11],
-  ["C", 0, 19, 10, 28, 10, 28],
-  ["C", 10, 28, 20, 19, 20, 11],
-  ["C", 20, 5, 16, 0, 10, 0],
-  ["Z"],
-  ["M", 10, 7],
-  ["C", 13, 7, 14, 11, 10, 14],
-  ["C", 6, 11, 7, 7, 10, 7],
-  ["Z"],
-];
-const chipPath: PathData = [
-  ["M", 6, 0],
-  ["L", 26, 0],
-  ["L", 26, 6],
-  ["L", 32, 6],
-  ["L", 32, 26],
-  ["L", 26, 26],
-  ["L", 26, 32],
-  ["L", 6, 32],
-  ["L", 6, 26],
-  ["L", 0, 26],
-  ["L", 0, 6],
-  ["L", 6, 6],
-  ["Z"],
-  ["M", 9, 9],
-  ["L", 23, 9],
-  ["L", 23, 23],
-  ["L", 9, 23],
-  ["Z"],
-];
-const trendPath: PathData = [
-  ["M", 0, 24],
-  ["L", 9, 15],
-  ["L", 17, 20],
-  ["L", 29, 5],
-  ["L", 36, 11],
-  ["M", 25, 5],
-  ["L", 29, 5],
-  ["L", 29, 9],
-];
-const thermometerPath: PathData = [
-  ["M", 10, 0],
-  ["L", 16, 0],
-  ["L", 16, 18],
-  ["C", 25, 29, 4, 35, 10, 18],
-  ["Z"],
-  ["M", 13, 10],
-  ["L", 13, 24],
-];
-const resourcePath: PathData = [
-  ["M", 0, 0],
-  ["L", 24, 0],
-  ["L", 24, 8],
-  ["L", 0, 8],
-  ["Z"],
-  ["M", 0, 13],
-  ["L", 24, 13],
-  ["L", 24, 21],
-  ["L", 0, 21],
-  ["Z"],
-];
-const signalPath: PathData = [
-  ["M", 0, 24],
-  ["C", 7, 14, 17, 14, 24, 24],
-  ["M", 4, 29],
-  ["C", 11, 20, 19, 20, 28, 29],
-  ["M", 10, 34],
-  ["C", 14, 29, 18, 29, 22, 34],
-];

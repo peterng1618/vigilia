@@ -174,8 +174,19 @@ test.describe("glass cost on the real editor", () => {
     // a negative one there is inside the observed spread and would flake
     // without carrying information. It stays on the media readings, where a
     // negative would contradict the measurement outright.
+    //
+    // **The bound moved from 3 ms to 4 ms on 2026-09-27, and the reason is the
+    // scene, not the machine.** Task 1 measured this composite flat at
+    // 2.5-3.7 ms across 0-48 px, so a `< 3` guard was already sitting inside the
+    // band it was written to guard. The reference-fidelity starter then replaced
+    // Task 6's provisional 226x226 CPU card with the reference's 280x307 one —
+    // 1.68x the area — and three runs of the unchanged measurement on the new
+    // scene read 2.56, 2.87 and 3.09 ms at 48 px with media, so the old bound
+    // failed one run in three. The guard still sits above the whole observed
+    // spread and well inside the 33.3 ms frame budget, which is the property it
+    // exists to protect; it is the number, not the property, that moved.
     for (const { radius, cost } of withMedia) {
-      expect(cost, `the ${radius} px composite is bounded`).toBeLessThan(3);
+      expect(cost, `the ${radius} px composite is bounded`).toBeLessThan(4);
       expect(
         cost,
         `and the ${radius} px reading is not inverted`,
@@ -185,7 +196,7 @@ test.describe("glass cost on the real editor", () => {
       expect(
         cost,
         `the media-free ${radius} px composite is bounded`,
-      ).toBeLessThan(3);
+      ).toBeLessThan(4);
     }
   });
 });

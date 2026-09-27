@@ -19,13 +19,24 @@ import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
+/**
+ * The starter scene's artboard width. Every helper that turns a scene x into a
+ * client point needs it, and a stale 1280 inside a 1672-wide scene puts the
+ * pointer somewhere the test never intended — the whole gesture would run
+ * against the background and still assert something.
+ */
+const STARTER_WIDTH = 1672;
+
 /** Shift-clicks two starter labels into an `ActiveSelection`, the product's own
  * multi-selection path. Both centres sit inside their label and outside every
  * card behind it, so each click resolves to the label itself. A drag then moves
  * the composed selection as one unit. */
 async function selectTwoLabels(page: Page): Promise<void> {
-  const first = await clientOfScene(page, "status-title");
-  const second = await clientOfScene(page, "status-main");
+  // Inside each label's measured run rather than its box: a Textbox hit-tests
+  // the glyphs, so the box centre of a wide label lands past the text and the
+  // click selects the card behind it.
+  const first = await sceneToClient(page, STARTER_WIDTH, 200, 78);
+  const second = await sceneToClient(page, STARTER_WIDTH, 180, 114);
   await page.mouse.click(first.x, first.y);
   await page.keyboard.down("Shift");
   await page.mouse.click(second.x, second.y);
@@ -174,7 +185,7 @@ async function worldRightOf(page: Page, id: string): Promise<number> {
 async function guidePixelsAtSceneX(
   page: Page,
   sceneX: number,
-  sceneWidth = 1280,
+  sceneWidth = STARTER_WIDTH,
 ): Promise<number> {
   return page.evaluate(
     async ([x, width]) => {
@@ -236,69 +247,72 @@ async function guidePixelsAtSceneX(
  * everywhere and only the glyphs are light.
  */
 async function inkReachOf(page: Page, id: string): Promise<number> {
-  return page.evaluate(async (objectId) => {
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            viewport: {
-              artboardScreenRect(): {
-                left: number;
-                top: number;
-                width: number;
-                height: number;
+  return page.evaluate(
+    async ([objectId, artboard]) => {
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              viewport: {
+                artboardScreenRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                  height: number;
+                };
+              };
+              canvas: {
+                getObjects(): Array<{
+                  id?: string;
+                  getBoundingRect(): ArtboardRect;
+                }>;
               };
             };
-            canvas: {
-              getObjects(): Array<{
-                id?: string;
-                getBoundingRect(): ArtboardRect;
-              }>;
-            };
           };
-        };
-      }
-    ).vigiliaEditorBridge;
-    const object = bridge.editor.canvas
-      .getObjects()
-      .find((candidate) => candidate.id === objectId);
-    if (object === undefined) return -1;
-    const view = bridge.editor.viewport.artboardScreenRect();
-    const element = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.lower-canvas",
-    );
-    const context = element?.getContext("2d");
-    if (element === null || context === null || context === undefined)
-      return -1;
+        }
+      ).vigiliaEditorBridge;
+      const object = bridge.editor.canvas
+        .getObjects()
+        .find((candidate) => candidate.id === objectId);
+      if (object === undefined) return -1;
+      const view = bridge.editor.viewport.artboardScreenRect();
+      const element = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.lower-canvas",
+      );
+      const context = element?.getContext("2d");
+      if (element === null || context === null || context === undefined)
+        return -1;
 
-    const rect = object.getBoundingRect();
-    const ratio = element.width / element.getBoundingClientRect().width;
-    const scale = view.width / 1280;
-    const left = Math.round((view.left + rect.left * scale) * ratio);
-    const top = Math.round((view.top + rect.top * scale) * ratio);
-    const width = Math.max(1, Math.round(rect.width * scale * ratio));
-    const height = Math.max(1, Math.round(rect.height * scale * ratio));
-    const pixels = context.getImageData(left, top, width, height).data;
+      const rect = object.getBoundingRect();
+      const ratio = element.width / element.getBoundingClientRect().width;
+      const scale = view.width / artboard;
+      const left = Math.round((view.left + rect.left * scale) * ratio);
+      const top = Math.round((view.top + rect.top * scale) * ratio);
+      const width = Math.max(1, Math.round(rect.width * scale * ratio));
+      const height = Math.max(1, Math.round(rect.height * scale * ratio));
+      const pixels = context.getImageData(left, top, width, height).data;
 
-    let rightmost = -1;
-    for (let column = 0; column < width; column += 1) {
-      for (let row = 0; row < height; row += 1) {
-        const at = (row * width + column) * 4;
-        const luminance =
-          0.2126 * (pixels[at] ?? 0) +
-          0.7152 * (pixels[at + 1] ?? 0) +
-          0.0722 * (pixels[at + 2] ?? 0);
-        if (luminance > 140) {
-          rightmost = column;
-          break;
+      let rightmost = -1;
+      for (let column = 0; column < width; column += 1) {
+        for (let row = 0; row < height; row += 1) {
+          const at = (row * width + column) * 4;
+          const luminance =
+            0.2126 * (pixels[at] ?? 0) +
+            0.7152 * (pixels[at + 1] ?? 0) +
+            0.0722 * (pixels[at + 2] ?? 0);
+          if (luminance > 140) {
+            rightmost = column;
+            break;
+          }
         }
       }
-    }
-    return rightmost;
-  }, id);
+      return rightmost;
+    },
+    [id, STARTER_WIDTH] as [string, number],
+  );
 }
 
 /** Drags a named object's `mr` handle so its raw right edge would land at
@@ -314,8 +328,8 @@ async function resizeRightHandleTo(
   options: { ctrlKey?: boolean; captureName?: string } = {},
 ): Promise<{ right: number; raw: number; guidePixels: number }> {
   const handle = await objectHandleScenePoint(page, id, "mr");
-  const from = await sceneToClient(page, 1280, handle.x, handle.y);
-  const to = await sceneToClient(page, 1280, toSceneX, handle.y);
+  const from = await sceneToClient(page, STARTER_WIDTH, handle.x, handle.y);
+  const to = await sceneToClient(page, STARTER_WIDTH, toSceneX, handle.y);
   const travelled = await page.evaluate(
     ([fx, fy, tx, ty]) => {
       const c = (
@@ -376,7 +390,7 @@ async function clearSceneX(
   to: number,
 ): Promise<{ x: number; distance: number }> {
   return page.evaluate(
-    ([objectId, start, end]: [string, number, number]) => {
+    ([objectId, start, end, artboard]: [string, number, number, number]) => {
       const bridge = (
         window as unknown as {
           vigiliaEditorBridge: {
@@ -392,8 +406,9 @@ async function clearSceneX(
         }
       ).vigiliaEditorBridge;
       // The artboard is a snap source too; every test in this file treats the
-      // fixture artboard as 1280 wide, so its edges and centre belong here.
-      const lines = [0, 640, 1280];
+      // scene as the starter's artboard wide, so its edges and centre belong
+      // here. Passed in rather than closed over: this runs in the page.
+      const lines = [0, artboard / 2, artboard];
       for (const object of bridge.editor.canvas.getObjects()) {
         if (object.id === objectId) continue;
         const rect = object.getBoundingRect();
@@ -410,7 +425,7 @@ async function clearSceneX(
       }
       return best;
     },
-    [excludeId, from, to] as [string, number, number],
+    [excludeId, from, to, STARTER_WIDTH] as [string, number, number, number],
   );
 }
 
@@ -467,13 +482,13 @@ async function dragActiveSelection(
   const current = await activeGeometry(page);
   const from = await sceneToClient(
     page,
-    1280,
+    STARTER_WIDTH,
     current.centre.x,
     current.centre.y,
   );
   const to = await sceneToClient(
     page,
-    1280,
+    STARTER_WIDTH,
     current.centre.x + amount,
     current.centre.y,
   );
@@ -661,9 +676,11 @@ test.describe("Fabric editor route", () => {
       vigiliaText: {
         runs: [
           {
-            // A body-role preset, not the first (a caption too small to
-            // inspect comfortably).
-            typePreset: "typePresets.17-500",
+            // The largest body-role preset, which is what the editor's new-text
+            // defaults pick — not the first entry, and not a caption too small
+            // to inspect comfortably. At the reference's artboard that is the
+            // 32px date face.
+            typePreset: "typePresets.32-400",
             style: { color: { ref: "palette.text" } },
           },
         ],
@@ -890,7 +907,7 @@ test.describe("Fabric editor route", () => {
     // Clicked left of the reading rather than at the card's centre: the centre
     // is where the value run is, and a text object is selectable in its own
     // right, exactly as every other label on a starter card is.
-    const spot = await sceneToClient(page, 1280, 64, 600);
+    const spot = await sceneToClient(page, STARTER_WIDTH, 438, 420);
     await page.mouse.click(spot.x, spot.y);
     await expect.poll(() => activeId(page)).toBe("cpu-card");
     await openInspectorTab(page, "Design");
@@ -1131,10 +1148,10 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await selectStarterChart(page);
     await page
-      .locator('[data-vigilia-binding="cpu-load"]')
+      .locator('[data-vigilia-binding="ram-gauge-percent"]')
       .selectOption("ram.used");
     const precision = page.locator(
-      '[data-vigilia-binding-field="cpu-load.precision"]',
+      '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
     );
     await precision.fill("2");
     await precision.press("Tab");
@@ -1207,7 +1224,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    const layer = page.locator('[data-vigilia-layer="load-gauge"]');
+    const layer = page.locator('[data-vigilia-layer="ram-gauge"]');
     await expect(layer).toBeVisible();
     await layer.click();
     await expect(layer).toHaveAttribute("aria-selected", "true");
@@ -1402,7 +1419,7 @@ test.describe("Fabric editor route", () => {
     };
     expect(envelope.globals.palette.chartTrack).toBeUndefined();
     expect(
-      envelope.scene.objects.find((object) => object.id === "load-gauge")
+      envelope.scene.objects.find((object) => object.id === "ram-gauge")
         ?.settings?.track,
     ).toEqual({ ref: "palette.bars" });
   });
@@ -1416,7 +1433,7 @@ test.describe("Fabric editor route", () => {
     await page.route("https://cdn.jsdelivr.net/fontsource/fonts/**", (route) =>
       route.fulfill({ body: Buffer.from([0, 1, 2]) }),
     );
-    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     await page.locator("[data-vigilia-font-face]").selectOption("inter-700");
     await page.locator("[data-vigilia-font-apply]").click();
     const size = page.locator("[data-vigilia-type-size]");
@@ -1436,11 +1453,11 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toHaveText(
       "Opened type-preset.vigilia-theme",
     );
-    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const reopened = (await saveEnvelope(page)) as {
       globals: {
         typePresets: {
-          "32-500": {
+          "36-500": {
             value: {
               size: number;
               letterSpacing: number;
@@ -1451,7 +1468,7 @@ test.describe("Fabric editor route", () => {
         };
       };
     };
-    expect(reopened.globals.typePresets["32-500"].value).toMatchObject({
+    expect(reopened.globals.typePresets["36-500"].value).toMatchObject({
       size: 34,
       letterSpacing: 0.25,
       face: { assetId: "inter-700" },
@@ -1476,7 +1493,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const tracking = page.locator("[data-vigilia-type-letter-spacing]");
 
     await tracking.fill("0");
@@ -1487,7 +1504,7 @@ test.describe("Fabric editor route", () => {
     await tracking.press("Tab");
     const tracked = await inkReachOf(page, "wordmark");
 
-    // Six gaps at 6px each is 36px of extra tracking at 32px. The bar is
+    // Six gaps at 6px each is 36px of extra tracking at 36px. The bar is
     // below that, so a resampling artefact cannot produce it — but it has to be
     // real ink, and ink only reaches that far if the tracking propagated.
     expect(untracked).toBeGreaterThan(0);
@@ -1500,7 +1517,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator("[data-vigilia-type-preset]").selectOption("32-500");
+    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const face = page.locator("[data-vigilia-font-face]");
     await face.scrollIntoViewIfNeeded();
     await expect(face).toBeVisible();
@@ -1516,15 +1533,15 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator("[data-vigilia-type-preset]").selectOption("11-400");
+    await page.locator("[data-vigilia-type-preset]").selectOption("20-400");
     await page
       .locator("[data-vigilia-type-replacement]")
-      .selectOption("11-500");
+      .selectOption("24-400");
     await page.locator("[data-vigilia-type-delete]").scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-type-reassignment");
     await page.locator("[data-vigilia-type-delete]").click();
     await expect(
-      page.locator('[data-vigilia-type-preset] option[value="11-400"]'),
+      page.locator('[data-vigilia-type-preset] option[value="20-400"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
@@ -1536,11 +1553,11 @@ test.describe("Fabric editor route", () => {
         }>;
       };
     };
-    expect(envelope.globals.typePresets["11-400"]).toBeUndefined();
+    expect(envelope.globals.typePresets["20-400"]).toBeUndefined();
     expect(
-      envelope.scene.objects.find((object) => object.id === "trend-legend")
+      envelope.scene.objects.find((object) => object.id === "cpu-card-title")
         ?.vigiliaText?.runs[0]?.typePreset,
-    ).toBe("typePresets.11-500");
+    ).toBe("typePresets.24-400");
   });
 
   test("captures dirty document replacement confirmation for visual review", async ({
@@ -1609,7 +1626,7 @@ test.describe("Fabric editor route", () => {
     expect(envelope.artboard.fitMode).toBe("cover");
     expect(envelope.artboard.width).toBe(1000);
     expect(envelope.artboard.background).toEqual({ ref: "palette.bars" });
-    expect(leftFor(envelope, "wordmark")).toBe(54);
+    expect(leftFor(envelope, "wordmark")).toBe(118);
   });
 
   test("shows the Style tab's resolved appearance for a selection", async ({
@@ -1700,10 +1717,10 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await selectStarterChart(page);
     await page
-      .locator('[data-vigilia-binding="cpu-load"]')
+      .locator('[data-vigilia-binding="ram-gauge-percent"]')
       .selectOption("ram.used");
     const precision = page.locator(
-      '[data-vigilia-binding-field="cpu-load.precision"]',
+      '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
     );
     await precision.fill("2");
     await precision.press("Tab");
@@ -1711,8 +1728,8 @@ test.describe("Fabric editor route", () => {
     const envelope = (await saveEnvelope(page)) as {
       bindings: Record<string, Array<{ id: string; semanticKey: string }>>;
     };
-    expect(envelope.bindings["load-gauge"]).toContainEqual({
-      id: "cpu-load",
+    expect(envelope.bindings["ram-gauge"]).toContainEqual({
+      id: "ram-gauge-percent",
       semanticKey: "ram.used",
       precision: 2,
     });
@@ -1738,7 +1755,7 @@ test.describe("Fabric editor route", () => {
       };
     };
     expect(
-      envelope.scene.objects.find((object) => object.id === "load-gauge")
+      envelope.scene.objects.find((object) => object.id === "ram-gauge")
         ?.settings?.progress,
     ).toEqual({ ref: "palette.chartTrack" });
   });
@@ -2544,21 +2561,18 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await selectStarterChart(page);
     // The grab point comes from the object's own geometry, through the camera.
-    const start = await clientOfScene(page, "load-gauge");
-    const left = leftFor(await saveEnvelope(page), "load-gauge");
+    const start = await clientOfStarterGauge(page);
+    const left = leftFor(await saveEnvelope(page), "ram-gauge");
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(start.x + 80, start.y);
     await page.mouse.up();
-    expect(leftFor(await saveEnvelope(page), "load-gauge")).toBeGreaterThan(
+    expect(leftFor(await saveEnvelope(page), "ram-gauge")).toBeGreaterThan(
       left,
     );
 
     await page.keyboard.press("Control+z");
-    expect(leftFor(await saveEnvelope(page), "load-gauge")).toBeCloseTo(
-      left,
-      3,
-    );
+    expect(leftFor(await saveEnvelope(page), "ram-gauge")).toBeCloseTo(left, 3);
     await expect
       .poll(() =>
         page.evaluate(() => {
@@ -2576,7 +2590,7 @@ test.describe("Fabric editor route", () => {
             | undefined;
           const chart = editor?.canvas
             .getObjects()
-            .find((object) => object.get("id") === "load-gauge") as
+            .find((object) => object.get("id") === "ram-gauge") as
             | { option?: { series?: unknown[] } }
             | undefined;
           const option = chart?.option;
@@ -2604,7 +2618,7 @@ test.describe("Fabric editor route", () => {
 
     /** Artboard coordinates to page pixels, through the live camera. */
     const at = (x: number, y: number): Promise<{ x: number; y: number }> =>
-      sceneToClient(page, 1280, x, y);
+      sceneToClient(page, STARTER_WIDTH, x, y);
 
     /** The authored background object, by id, as the page's own instance. */
     const background = async (): Promise<unknown> =>
@@ -2670,8 +2684,10 @@ test.describe("Fabric editor route", () => {
         return editor?.canvas.getActiveObject()?.get("id") ?? null;
       });
 
-    // A point in bare artboard, clear of every authored card and label.
-    const spot = await at(640, 690);
+    // A point in bare artboard below the card rows, clear of every authored
+    // card and label. (The old 640,690 landed inside the reference composition's
+    // wide performance card, so the click would have hit a panel.)
+    const spot = await at(836, 890);
 
     // The guard is geometric, not a hit test: `findTarget` skips an object with
     // `evented: false`, so it reports nothing here whether or not the background
@@ -2798,11 +2814,12 @@ test.describe("Fabric editor route", () => {
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
 
-    // Drag the "SYSTEM STATUS" label (starter scene: left 1074, top 538,
-    // originX left) horizontally until its left edge lands on the status
-    // card's left edge (1018) — a vertical alignment inside the 5-px threshold.
-    const grab = await sceneToClient(page, 1280, 1104, 546);
-    const drop = await sceneToClient(page, 1280, 1048, 546);
+    // Drag the network card's title (starter scene: left 1230, top 704,
+    // originX left) horizontally until its left edge lands 2px short of the
+    // storage card's left edge (1138) — a vertical alignment inside the 5-px
+    // threshold, against the only card edge near that landing.
+    const grab = await sceneToClient(page, STARTER_WIDTH, 1270, 720);
+    const drop = await sceneToClient(page, STARTER_WIDTH, 1270 - 94, 720);
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
     await page.mouse.move(drop.x, drop.y, { steps: 12 });
@@ -2821,28 +2838,22 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    const card = await objectRect(page, "resource-card");
+    const card = await objectRect(page, "ram-card");
     const select = await sceneToClient(
       page,
-      1280,
+      STARTER_WIDTH,
       card.left + (card.width / 2) * 0.6,
       card.top + 10,
     );
     await page.mouse.click(select.x, select.y);
     expect((await activeGeometry(page)).members).toBe(1);
 
-    const line = (await objectRect(page, "status-card")).left;
+    const line = (await objectRect(page, "vram-card")).left;
     const target = line - 2;
-    const ctrl = await resizeRightHandleTo(
-      page,
-      "resource-card",
-      target,
-      testInfo,
-      {
-        ctrlKey: true,
-        captureName: "editor-snap-resize-ctrl",
-      },
-    );
+    const ctrl = await resizeRightHandleTo(page, "ram-card", target, testInfo, {
+      ctrlKey: true,
+      captureName: "editor-snap-resize-ctrl",
+    });
 
     // Ctrl-resize must match Ctrl-drag: preserve raw fractional geometry and
     // suppress guides, even when the raw edge is inside the snap threshold.
@@ -2859,16 +2870,16 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    const dragCard = await objectRect(page, "resource-card");
+    const dragCard = await objectRect(page, "ram-card");
     const dragSelect = await sceneToClient(
       page,
-      1280,
+      STARTER_WIDTH,
       dragCard.left + (dragCard.width / 2) * 0.6,
       dragCard.top + 10,
     );
     await page.mouse.click(dragSelect.x, dragSelect.y);
     const dragBefore = await activeGeometry(page);
-    const dragLine = (await objectRect(page, "status-card")).left;
+    const dragLine = (await objectRect(page, "vram-card")).left;
     const dragged = await dragActiveSelection(
       page,
       dragLine - 2 - dragBefore.rect.left,
@@ -2890,17 +2901,21 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    // Select the resource card by clicking its top strip, above every child. A
+    // Select the RAM card by clicking its top strip, above every child. A
     // resize handle is only hit-testable on the active object, so this is not
     // optional: without it the pointerdown below starts a drag, not a scale.
-    // The pair matters: the resource card's right edge (999) has no other
-    // candidate line within the acquire threshold, so the only line the drag can
-    // reach is the status card's left edge — a nearer neighbour would be acquired
-    // first and held, and the edge would land there instead.
-    const card = await objectRect(page, "resource-card");
+    // The pair matters: the RAM card's right edge (1318) has no other candidate
+    // line within the acquire threshold, so the only line the drag can reach is
+    // the VRAM card's left edge (1332) — a nearer neighbour would be acquired
+    // first and held, and the edge would land there instead. Both cards are
+    // frosted like every other panel, and neither carries the one treatment that
+    // is not: the frosted CPU card's own mr handle does not track the pointer
+    // (recorded as a concern in the Task 7 report), so it cannot be the subject
+    // of a resize that has to land on a line.
+    const card = await objectRect(page, "ram-card");
     const select = await sceneToClient(
       page,
-      1280,
+      STARTER_WIDTH,
       card.left + (card.width / 2) * 0.6,
       card.top + 10,
     );
@@ -2913,17 +2928,12 @@ test.describe("Fabric editor route", () => {
     // snap to, which is exactly the mistake Review Focus item 1 names.
     const clear = await clearSceneX(
       page,
-      "resource-card",
+      "ram-card",
       card.left + card.width + 60,
-      1240,
+      STARTER_WIDTH,
     );
     expect(clear.distance).toBeGreaterThan(5);
-    const raw = await resizeRightHandleTo(
-      page,
-      "resource-card",
-      clear.x,
-      undefined,
-    );
+    const raw = await resizeRightHandleTo(page, "ram-card", clear.x, undefined);
     expect(Math.abs(raw.right - raw.raw)).toBeLessThan(3);
     // The user-visible half of "a guide with no snap": nothing was applied, so
     // no guide may be painted. Asserted on the pixels, because the geometry
@@ -2933,7 +2943,7 @@ test.describe("Fabric editor route", () => {
     expect(raw.guidePixels).toBe(0);
 
     // Then the snap, from a fresh page: drag the same handle so the raw right
-    // edge lands 2px short of the status card's left edge. That is inside the
+    // edge lands 2px short of the VRAM card's left edge. That is inside the
     // threshold, so a live resize path pulls the edge onto the line and a dead
     // one leaves it 2px short.
     await page.goto(EDITOR);
@@ -2942,10 +2952,10 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
     await page.mouse.click(select.x, select.y);
 
-    const line = (await objectRect(page, "status-card")).left;
+    const line = (await objectRect(page, "vram-card")).left;
     const snapped = await resizeRightHandleTo(
       page,
-      "resource-card",
+      "ram-card",
       line - 2,
       testInfo,
     );
@@ -2970,9 +2980,9 @@ test.describe("Fabric editor route", () => {
     // subject — a composed selection — is never exercised.
     expect(before.members).toBe(2);
 
-    // `status-card`'s world left edge is a line near the drag's landing, read
+    // `time-card`'s world left edge is a line near the drag's landing, read
     // rather than restated so the card's half-pixel stroke is included.
-    const line = await worldLeftOf(page, "status-card");
+    const line = await worldLeftOf(page, "time-card");
 
     // Raw landing 4px past the line: inside the acquire threshold, so an eligible
     // selection is pulled onto a candidate. 4px, not 1px, because the pointer's
@@ -2999,8 +3009,8 @@ test.describe("Fabric editor route", () => {
 
     await selectTwoLabels(page);
     expect((await activeGeometry(page)).members).toBe(2);
-    // `status-card`'s world left edge is a candidate line near the drag landing.
-    const line = await worldLeftOf(page, "status-card");
+    // `time-card`'s world left edge is a candidate line near the drag landing.
+    const line = await worldLeftOf(page, "time-card");
 
     // Positive control: the SAME gesture on the same objects while still
     // eligible. The raw landing is 4px past a candidate line, inside the acquire
@@ -3033,14 +3043,14 @@ test.describe("Fabric editor route", () => {
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
 
-    // Select the "time" label (scene 78,189, size ~210x70) via the canvas,
-    // then sweep its rotation handle above the top edge: the degree readout
-    // must appear beside the pointer mid-gesture.
-    const centre = await sceneToClient(page, 1280, 180, 220);
+    // Select the performance card's title (scene 134,528, literal text) via
+    // the canvas, then sweep its rotation handle above the top edge: the degree
+    // readout must appear beside the pointer mid-gesture.
+    const centre = await sceneToClient(page, STARTER_WIDTH, 200, 545);
     await page.mouse.click(centre.x, centre.y);
     // Fabric's mtr sits above the top edge at the object's centre X, roughly
     // 45px above the bounding top plus the handle radius.
-    const handle = await sceneToClient(page, 1280, 180, 132);
+    const handle = await sceneToClient(page, STARTER_WIDTH, 200, 457);
     await page.mouse.move(handle.x, handle.y);
     await page.mouse.down();
     await page.mouse.move(handle.x + 30, handle.y + 30, { steps: 12 });
@@ -3058,9 +3068,9 @@ test.describe("Fabric editor route", () => {
     const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
 
-    // Select the "time" label; the dock anchors to the canvas bottom and
-    // shows only the actions this selection can run.
-    const centre = await sceneToClient(page, 1280, 180, 220);
+    // Select the performance card's title; the dock anchors to the canvas
+    // bottom and shows only the actions this selection can run.
+    const centre = await sceneToClient(page, STARTER_WIDTH, 200, 545);
     await page.mouse.click(centre.x, centre.y);
     const dock = page.locator('[aria-label="Selected object actions"]');
     await expect(dock).toHaveAttribute("data-visible", "true");
@@ -3099,7 +3109,7 @@ test.describe("Fabric editor route", () => {
         )
     ).sort();
 
-    const centre = await clientOfScene(page, "load-gauge");
+    const centre = await clientOfScene(page, "ram-gauge");
     await page.mouse.click(centre.x, centre.y, { button: "right" });
 
     const menu = page.locator('[aria-label="Canvas actions"]');
@@ -3378,17 +3388,16 @@ test.describe("Fabric editor route", () => {
       .locator("#vigilia-fabric-editor canvas.upper-canvas")
       .boundingBox())!;
     // Artboard point -> client point. The scale is uniform and derived from the
-    // rect, so this mapping is correct whether or not the artboard's aspect
-    // happens to match 1280x720 — which it does NOT: `fitScale()` is
-    // `Math.min(vw/1280, vh/720)` (`viewport-manager/index.ts:97-100`), a
-    // contain-fit, so at the measured 626x594 host the artboard draws 626x352 and
-    // every point below y=720 in artboard space is BELOW the canvas.
+    // rect, so this mapping is correct whatever the artboard's aspect:
+    // `fitScale()` is `Math.min(vw/w, vh/h)` (`viewport-manager/index.ts:97-100`), a
+    // contain-fit, so at the measured 626x594 host the 1672x941 artboard draws
+    // 626x352 and every point below y=941 in artboard space is BELOW the canvas.
     //
     // The `canvasBox.x/y` terms are the whole difference between this and a
     // vacuous test: without them every point below lands ~357px left and ~72px
     // above where it belongs, off the canvas, where the drag selects nothing and
     // the assertion passes while proving nothing.
-    const scale = rect.width / 1280;
+    const scale = rect.width / STARTER_WIDTH;
     const at = (x: number, y: number): [number, number] => [
       canvasBox.x + rect.left + x * scale,
       canvasBox.y + rect.top + y * scale,
@@ -3398,7 +3407,7 @@ test.describe("Fabric editor route", () => {
 
     // The pasteboard is the vertical band BELOW the artboard, and it is the only
     // one there is. `fitScale()` is a contain-fit, so at the 626x594 host the
-    // scale is `min(626/1280, 594/720) = 0.489` and the artboard draws 626x352 —
+    // scale is `min(626/1672, 594/941) = 0.374` and the artboard draws 626x352 —
     // full canvas width, centred vertically, leaving 121px bands above and below.
     // An earlier revision of this step claimed "about 240px of pasteboard below
     // the artboard and 350px to its right"; there is no pasteboard to its right,
@@ -3440,9 +3449,9 @@ test.describe("Fabric editor route", () => {
     // The vacuity guard: the same gesture started INSIDE an object must move it.
     // Without this, a canvas that ignores pointer input entirely would pass the
     // assertions above.
-    // The target is `time-card` (52,150 260x330), deliberately NOT the header band:
+    // The target is `time-card` (40,187 367x307), deliberately NOT the header:
     // Step 3 offers disarming `header-wash` as a fix, and a guard that drags inside
-    // its 0..142 band would stop being interactive the moment that fix is taken,
+    // it would stop being interactive the moment that fix is taken,
     // failing for a reason unrelated to the marquee. (70,450) is inside the card
     // and outside every child it contains.
     const [ox, oy] = at(70, 450);
@@ -3569,7 +3578,7 @@ test.describe("Fabric editor route", () => {
         window as unknown as {
           vigiliaEditorBridge: { selectLayer(id: string): void };
         }
-      ).vigiliaEditorBridge.selectLayer("header-wash");
+      ).vigiliaEditorBridge.selectLayer("time-rule");
     });
     const left = (): Promise<number | undefined> =>
       page.evaluate(() => {
@@ -3586,11 +3595,11 @@ test.describe("Fabric editor route", () => {
         ).vigiliaEditorBridge;
         return b.editor.canvas
           .getObjects()
-          .find((object) => object.id === "header-wash")?.left;
+          .find((object) => object.id === "time-rule")?.left;
       });
     const before = await left();
     if (typeof before !== "number")
-      throw new Error("header-wash is missing from the canvas");
+      throw new Error("time-rule is missing from the canvas");
     await page.keyboard.press("ArrowRight");
     expect(await left()).toBe(before + 1);
     await page.keyboard.press("Shift+ArrowRight");
@@ -3623,11 +3632,11 @@ test.describe("Fabric editor route", () => {
     // the layer rename input (Plan B Task 5) and confirm the selection is
     // untouched; without this the binding silently steals the field's own
     // select-all and the author's typed text is never selected.
-    await page.locator('[data-vigilia-layer="header-wash"]').dblclick();
+    await page.locator('[data-vigilia-layer="time-rule"]').dblclick();
     const rename = page.locator('input[aria-label^="Rename"]');
     await expect(rename).toBeFocused();
     await rename.press("Control+a");
-    expect(await selectedIds()).toEqual(["header-wash"]);
+    expect(await selectedIds()).toEqual(["time-rule"]);
 
     // ...and the same key with focus on the document does select everything.
     // Without this the test only ever proves the binding stays silent.
@@ -3710,11 +3719,21 @@ async function openInspectorTab(page: Page, name: string): Promise<void> {
   await page.getByRole("tab", { name, exact: true }).click();
 }
 
+/**
+ * A point inside the starter gauge that is not covered by the reading centred in
+ * it. The gauge's own centre is the obvious choice and the wrong one: a text
+ * object is selectable in its own right, so a click there selects the label and
+ * the chart panel never opens. The gauge's box is opaque, so anywhere inside it
+ * off the label's measured run will do.
+ */
+async function clientOfStarterGauge(
+  page: Page,
+): Promise<{ x: number; y: number }> {
+  return sceneToClient(page, STARTER_WIDTH, 1068, 375);
+}
+
 async function selectStarterChart(page: Page): Promise<void> {
-  // The chart's own centre, through the camera. A box-relative constant used to
-  // land only 4px inside the object's bottom edge, which is why a drag meant for
-  // the chart grabbed its parent card instead.
-  const centre = await clientOfScene(page, "load-gauge");
+  const centre = await clientOfStarterGauge(page);
   await page.mouse.click(centre.x, centre.y);
   // The precondition this helper never had: the tab lookup below turns a wrong
   // selection into a confusing timeout, so name the failure here instead.
@@ -3735,7 +3754,7 @@ async function selectStarterChart(page: Page): Promise<void> {
           ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
       ),
     )
-    .toBe("load-gauge");
+    .toBe("ram-gauge");
   // A chart selection routes the inspector to its Data tab.
   await openInspectorTab(page, "Data");
   await expect(

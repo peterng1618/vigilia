@@ -3,7 +3,10 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
+import {
+  isKnownSemanticKey,
+  validateFabricThemeEnvelope,
+} from "@vigilia/renderer-core";
 import {
   reviveThemeEnvelope,
   serialiseThemeEnvelope,
@@ -13,90 +16,357 @@ import { StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 
+type ObjectJson = Readonly<Record<string, unknown>>;
+
+/**
+ * The reference artboard and the box of every card on it, measured off
+ * `docs/superpowers/specs/2026-09-26-reference-theme-target.png`: the card
+ * borders were located by the transition of its two-pixel outline. Stated here
+ * rather than imported from the builder, so the assertion is against the
+ * measurement and not against whatever the builder happens to emit.
+ */
+const ARTBOARD = { width: 1672, height: 941 } as const;
+
+const CARDS: ReadonlyArray<{
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}> = [
+  { id: "time-card", left: 40, top: 187, width: 367, height: 307 },
+  { id: "cpu-card", left: 421, top: 187, width: 280, height: 307 },
+  { id: "gpu-card", left: 715, top: 187, width: 290, height: 307 },
+  { id: "ram-card", left: 1019, top: 187, width: 299, height: 307 },
+  { id: "vram-card", left: 1332, top: 187, width: 300, height: 307 },
+  // The reference's trends card starts at x 294; this one spans the left
+  // column to the 40-unit margin the rest of the composition uses, so the
+  // reference's gap for the coffee mug is not reproduced as a hole.
+  { id: "trends-card", left: 40, top: 507, width: 1084, height: 335 },
+  { id: "storage-card", left: 1138, top: 507, width: 494, height: 165 },
+  { id: "network-card", left: 1138, top: 687, width: 494, height: 155 },
+];
+
+const objectsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
+  theme.scene.objects as readonly ObjectJson[];
+
+const objectById = (
+  theme: ReturnType<typeof createNewFabricTheme>,
+  id: string,
+) => objectsOf(theme).find((object) => object["id"] === id) ?? {};
+
+const bindingsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
+  theme.bindings ?? {};
+
+const chartsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
+  objectsOf(theme).filter((object) => object["type"] === "VigiliaChart");
+
+/** Every string the document shows as authored prose, across all text runs. */
+const literalText = (theme: ReturnType<typeof createNewFabricTheme>): string =>
+  objectsOf(theme)
+    .flatMap((object) => {
+      const authored = object["vigiliaText"] as
+        | { readonly runs?: ReadonlyArray<Record<string, unknown>> }
+        | undefined;
+      return (authored?.runs ?? []).map((run) => run["text"]);
+    })
+    .filter((text): text is string => typeof text === "string")
+    .join("\n");
+
 describe("the new Fabric document", () => {
-  it("starts with a validated v2 dashboard that includes the supported showcase surface", () => {
+  it("starts with a validated v2 dashboard on the reference artboard", () => {
     const document_ = createNewFabricTheme();
 
     expect(validateFabricThemeEnvelope(document_)).toEqual({
       ok: true,
       envelope: document_,
     });
-    expect(document_.scene.objects).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "background" }),
-        expect.objectContaining({ id: "weather-cloud-svg-path", type: "Path" }),
-        expect.objectContaining({ id: "time", type: "Textbox" }),
-        expect.objectContaining({
-          id: "load-gauge",
-          type: "VigiliaChart",
-          family: "gauge",
-        }),
-        expect.objectContaining({
-          id: "trend-line",
-          type: "VigiliaChart",
-          family: "line",
-        }),
-        expect.objectContaining({
-          id: "thermal-bars",
-          type: "VigiliaChart",
-          family: "bar",
-        }),
-        expect.objectContaining({
-          id: "resource-pie",
-          type: "VigiliaChart",
-          family: "pie",
-        }),
-      ]),
-    );
-    expect(document_.scene.objects).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: "background",
-          originX: "left",
-          originY: "top",
-        }),
-        expect.objectContaining({
-          id: "trend-line",
-          originX: "center",
-          originY: "center",
-        }),
-      ]),
-    );
-    const objects = document_.scene.objects as readonly Readonly<
-      Record<string, unknown>
-    >[];
-    expect(
-      objects.find((object) => object["id"] === "background"),
-    ).toMatchObject({ selectable: false, evented: false });
-    expect(
-      objects.find((object) => object["id"] === "load-gauge"),
-    ).not.toMatchObject({ selectable: false });
+    expect(document_.artboard).toMatchObject(ARTBOARD);
+    expect(document_.metadata?.locale).toBe("en");
     expect(document_.globals?.typePresets).toMatchObject({
-      "32-500": { value: { trioRole: "heading" } },
-      "36-600": { value: { trioRole: "heading" } },
-      "70-300": { value: { trioRole: "heading" } },
-      "14-400": { value: { trioRole: "body" } },
+      "36-500": { value: { trioRole: "heading" } },
+      "90-600": { value: { trioRole: "heading" } },
+      "24-400": { value: { trioRole: "body" } },
       mono: { value: { trioRole: "mono" } },
+    });
+    // The background plate is the one object that must not steal a click.
+    expect(objectById(document_, "background")).toMatchObject({
+      originX: "left",
+      originY: "top",
+      selectable: false,
+      evented: false,
     });
   });
 
-  it("starts a new theme in English, so it validates", () => {
+  it("binds only keys the vocabulary owns, and every value run resolves", () => {
+    // The envelope validator checks that a `semanticKey` is a string of 1-120
+    // characters and nothing else, so a validator-green document proves nothing
+    // about a binding being live. `isKnownSemanticKey` is the actual vocabulary.
     const theme = createNewFabricTheme();
+    const unknown = Object.entries(bindingsOf(theme)).flatMap(
+      ([objectId, list]) =>
+        list
+          .filter((binding) => !isKnownSemanticKey(binding.semanticKey))
+          .map((binding) => `${objectId} -> ${binding.semanticKey}`),
+    );
+    expect(unknown, "a starter binding no provider owns").toEqual([]);
 
-    expect(theme.metadata?.locale).toBe("en");
-    expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
+    // A value run names a binding on its own object; pointing at one the object
+    // does not declare renders an em dash and an unmapped-key issue instead.
+    for (const object of objectsOf(theme)) {
+      const id = String(object["id"]);
+      const runs = (
+        object["vigiliaText"] as
+          | { readonly runs?: ReadonlyArray<Record<string, unknown>> }
+          | undefined
+      )?.runs;
+      if (runs === undefined) continue;
+      const declared = new Set(
+        (bindingsOf(theme)[id] ?? []).map((binding) => binding.id),
+      );
+      for (const run of runs)
+        if (run["kind"] === "value")
+          expect(
+            declared.has(String(run["bindingId"])),
+            `${id}: ${String(run["bindingId"])}`,
+          ).toBe(true);
+    }
   });
 
-  it("tracks only what the reference measures, and fits its boxes", async () => {
-    // Typography, not a value dump. Two things an untracked starter gets wrong:
-    // a wordmark reads as one grey run, and a tracked clock or reading does not
-    // — a numeral's advance is a grid cell and opening it up breaks the column
-    // it sits in.
-    //
-    // The section labels are untracked on purpose: the reference has no
-    // all-caps section label, so there is nothing to measure a value against,
-    // and at a measured ratio they overflow every box they are applied to. The
-    // fit assertion below is what keeps that from coming back.
+  it("spells system memory `ram`, never the stale `memory.` name", () => {
+    // The defect this replaced: `memory.used` is in no provider's key list, the
+    // host synthesises a `missing` sample, and a pie renormalises its remaining
+    // slices to a false 100%. The starter now binds a key a provider owns.
+    const theme = createNewFabricTheme();
+    const keys = Object.values(bindingsOf(theme))
+      .flat()
+      .map((binding) => binding.semanticKey);
+    expect(keys.filter((key) => key.startsWith("memory."))).toEqual([]);
+    expect(bindingsOf(theme)["ram-gauge"]).toEqual([
+      expect.objectContaining({ semanticKey: "ram.used.percent" }),
+    ]);
+  });
+
+  it("ships the chart families the reference uses, and no others", () => {
+    const charts = chartsOf(createNewFabricTheme());
+    const families = charts.map((chart) => chart["family"]);
+    const count = (family: string): number =>
+      families.filter((value) => value === family).length;
+
+    // Two gauges (partial arc, full ring), four line charts (two sparklines, the
+    // performance chart, the network chart) and one bar (storage). The reference
+    // has no pie, so the starter no longer ships one.
+    expect(count("gauge")).toBe(2);
+    expect(count("line")).toBe(4);
+    expect(count("bar")).toBe(1);
+    expect(families.filter((family) => family === "pie")).toEqual([]);
+  });
+
+  it("binds both gauges to a usage percentage over a 0-100 range", () => {
+    const theme = createNewFabricTheme();
+    // `max` is a plain number with no way to reference `ram.total`, so a gauge
+    // bound to the absolute gigabytes would draw a clamped fraction of a total
+    // it cannot know. The percentage key is the only honest option.
+    expect(bindingsOf(theme)["ram-gauge"]).toEqual([
+      expect.objectContaining({ semanticKey: "ram.used.percent" }),
+    ]);
+    expect(objectById(theme, "ram-gauge")["settings"]).toMatchObject({
+      min: 0,
+      max: 100,
+    });
+    expect(bindingsOf(theme)["vram-gauge"]).toEqual([
+      expect.objectContaining({ semanticKey: "vram.used.percent" }),
+    ]);
+    expect(objectById(theme, "vram-gauge")["settings"]).toMatchObject({
+      min: 0,
+      max: 100,
+    });
+  });
+
+  it("draws the RAM arc open at the bottom and the VRAM one as a full ring", () => {
+    const theme = createNewFabricTheme();
+    // Both are settings values on one family, not a new capability: the default
+    // 225 -> -45 is the 270-degree arc the reference's RAM card shows, and
+    // 0 -> 360 closes it.
+    expect(objectById(theme, "ram-gauge")["settings"]).toMatchObject({
+      startAngle: 225,
+      endAngle: -45,
+    });
+    expect(objectById(theme, "vram-gauge")["settings"]).toMatchObject({
+      startAngle: 0,
+      endAngle: 360,
+    });
+  });
+
+  it("keeps each gauge's capacity label a separate live-text object", () => {
+    const theme = createNewFabricTheme();
+    // `buildGaugeOption` hides `detail` and `axisLabel` outright, so there is no
+    // chart-internal value text to suppress and no choice to make: the number in
+    // the middle of a ring is an ordinary text object bound to a reading.
+    for (const [gauge, reading] of [
+      ["ram-gauge", "ram-value"],
+      ["vram-gauge", "vram-value"],
+    ] as const) {
+      const value = objectById(theme, reading);
+      expect(value["type"], reading).toBe("Textbox");
+      const runs = (
+        value["vigiliaText"] as { readonly runs: ReadonlyArray<ObjectJson> }
+      ).runs;
+      expect(runs[0]?.["kind"], reading).toBe("value");
+      expect(
+        (bindingsOf(theme)[reading] ?? []).map(
+          (binding) => binding.semanticKey,
+        ),
+        reading,
+      ).toEqual([
+        gauge === "ram-gauge" ? "ram.used.percent" : "vram.used.percent",
+      ]);
+    }
+  });
+
+  it("authors no reading, device name or time axis that nothing supplies", () => {
+    const prose = literalText(createNewFabricTheme());
+    // Every one of these was authored text standing in for a reading. A caption
+    // naming one GPU over the baseline provider's maximum-across-controllers
+    // figures misattributes a device, so the model names stay absent until the
+    // captions are real readings.
+    for (const claim of [
+      "7800X3D",
+      "RTX 4080",
+      "Games (D:)",
+      "Seattle",
+      "Mostly cloudy",
+      "A calmer system",
+      "6:30",
+      "7:30",
+      "All systems nominal",
+    ])
+      expect(prose, claim).not.toContain(claim);
+  });
+
+  it("places every reference card on its measured box", () => {
+    const theme = createNewFabricTheme();
+    for (const card of CARDS) {
+      expect(
+        {
+          left: objectById(theme, card.id)["left"],
+          top: objectById(theme, card.id)["top"],
+          width: objectById(theme, card.id)["width"],
+          height: objectById(theme, card.id)["height"],
+        },
+        card.id,
+      ).toEqual({
+        left: card.left,
+        top: card.top,
+        width: card.width,
+        height: card.height,
+      });
+    }
+  });
+
+  it("keeps every object inside the artboard and off each other's card", () => {
+    const theme = createNewFabricTheme();
+    const { width, height } = theme.artboard;
+    for (const object of objectsOf(theme)) {
+      const id = String(object["id"]);
+      const left = Number(object["left"]);
+      const top = Number(object["top"]);
+      expect(Number.isFinite(left) && Number.isFinite(top), id).toBe(true);
+      // Charts are authored around their centre, so their top-left is negative.
+      const w = Number(object["width"] ?? 0);
+      const h = Number(object["height"] ?? 0);
+      const minX = object["originX"] === "center" ? left - w / 2 : left;
+      const minY = object["originY"] === "center" ? top - h / 2 : top;
+      expect(minX, `${id} left`).toBeGreaterThanOrEqual(-1);
+      expect(minY, `${id} top`).toBeGreaterThanOrEqual(-1);
+      expect(minX + w, `${id} right`).toBeLessThanOrEqual(width + 1);
+      expect(minY + h, `${id} bottom`).toBeLessThanOrEqual(height + 1);
+    }
+  });
+
+  it("authors no text alignment, because a centred reading walks off its card", () => {
+    // `refreshLayout` places an aligned run at `box.x + box.width / 2`, and the
+    // box it reconstructs from a top-left-origin object is that object's left
+    // minus half its width. The two cancel only while the authored box and the
+    // measured run are the same width: the starter's storage figure and both
+    // ring readings were authored wider than their readings, and in the player
+    // each drifted further right on every refresh until the figure left the
+    // artboard. A left edge holds whatever the reading turns out to be.
+    const offenders = objectsOf(createNewFabricTheme()).flatMap((object) => {
+      const authored = object["vigiliaText"] as
+        | Readonly<Record<string, unknown>>
+        | undefined;
+      if (authored === undefined) return [];
+      return Object.keys(authored)
+        .filter((key) => key === "align" || key === "verticalAlign")
+        .map((key) => `${String(object["id"])}: ${key}`);
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it("gives every card the radius and border width measured off the reference", () => {
+    const theme = createNewFabricTheme();
+    // A card is a stroked Rect; the background is a Rect too, so the match set
+    // is filtered rather than assumed.
+    const cards = objectsOf(theme).filter(
+      (object) => object["type"] === "Rect" && object["stroke"] !== undefined,
+    );
+    expect(cards.map((card) => card["id"]).sort()).toEqual(
+      CARDS.map((card) => card.id).sort(),
+    );
+    // Measured off docs/superpowers/specs/2026-09-26-reference-theme-target.png:
+    // the top border occupies rows 187-188 and the left border columns 40-41 of
+    // the 1672-wide reference, and first appears 10px in from the corner.
+    for (const card of cards) {
+      expect(card["strokeWidth"], String(card["id"])).toBe(2);
+      expect(card["rx"], String(card["id"])).toBe(10);
+      expect(card["ry"], String(card["id"])).toBe(10);
+    }
+  });
+
+  it("composes every icon from Lucide, stroked rather than hand-drawn", () => {
+    const theme = createNewFabricTheme();
+    const icons = objectsOf(theme).filter((object) =>
+      String(object["id"]).endsWith("-icon"),
+    );
+    // Every card the reference shows an icon on: CPU, GPU, RAM, VRAM, trends,
+    // storage and network.
+    expect(icons.map((icon) => icon["id"]).sort()).toEqual([
+      "cpu-card-icon",
+      "gpu-card-icon",
+      "network-card-icon",
+      "ram-card-icon",
+      "storage-card-icon",
+      "trends-card-icon",
+      "vram-card-icon",
+    ]);
+    for (const icon of icons) {
+      const id = String(icon["id"]);
+      // Lucide glyphs are strokes on a 24-unit grid, never fills; a filled path
+      // here is one of the hand-drawn constants the reference replaces.
+      expect(icon["type"], id).toBe("Path");
+      expect(Number(icon["strokeWidth"]), id).toBeGreaterThan(0);
+      expect(icon["fill"], id).toBeNull();
+      const commands = icon["path"] as ReadonlyArray<readonly unknown[]>;
+      expect(commands.length, id).toBeGreaterThan(1);
+      for (const command of commands)
+        for (const value of command.slice(1))
+          expect(Number.isFinite(Number(value)), `${id} ${command[0]}`).toBe(
+            true,
+          );
+    }
+    // The hand-drawn weather and thermal glyphs are gone, not kept alongside.
+    expect(
+      objectsOf(theme)
+        .map((object) => String(object["id"]))
+        .filter((id) => id.endsWith("-svg-path")),
+    ).toEqual([]);
+  });
+
+  it("tracks only the wordmark and the strapline, and fits their boxes", async () => {
+    // Typography, not a value dump. A tracked clock or reading does not read as
+    // a clock or a reading: a numeral's advance is a grid cell, and opening it up
+    // breaks the column it sits in.
     const theme = createNewFabricTheme();
     const presets = theme.globals?.typePresets as Record<
       string,
@@ -107,36 +377,24 @@ describe("the new Fabric document", () => {
       return typeof value === "number" ? value : undefined;
     };
 
-    // Tracked: the wordmark and the strapline. The wordmark's value is measured
-    // off the reference image, not judged by eye — see the note on the preset.
-    expect(spacingOf("32-500")).toBeGreaterThan(0);
-    expect(spacingOf("12-400")).toBeGreaterThan(0);
+    // Tracked: the wordmark and the overline under it. Both values are measured
+    // off the reference image rather than judged by eye — see the presets.
+    expect(spacingOf("36-500"), "wordmark").toBeGreaterThan(0);
+    expect(spacingOf("17-400"), "strapline").toBeGreaterThan(0);
 
-    // Untracked: the section labels (an unmeasured role, in boxes sized for one
-    // line), and the readings.
-    for (const id of ["13-600", "70-300", "36-600", "16-400", "17-500"]) {
+    // Untracked: every other preset, including all the readings.
+    for (const id of Object.keys(presets)) {
+      if (id === "36-500" || id === "17-400") continue;
       expect(spacingOf(id) ?? 0, id).toBe(0);
     }
 
-    // And every value is a real number the converter can use, not a string
-    // that would silently become no tracking at all.
-    for (const value of Object.values(presets)) {
-      const spacing = value.value["letterSpacing"];
-      if (spacing === undefined) continue;
-      expect(Number.isFinite(spacing)).toBe(true);
-    }
-
-    // Tracking widens a line, and a `Textbox` wraps rather than spills. A
-    // tracked label that no longer fits its authored box silently becomes two
-    // lines — invisible in the preset panel, and only on the canvas.
     const canvas = new StaticCanvas(undefined, {
       width: theme.artboard.width,
       height: theme.artboard.height,
     });
     await reviveThemeEnvelope(canvas, theme);
     // Keyed off each object's own run reference, not its id: an object id is
-    // `gauge-title`, and the preset it uses is `13-600`. Keying by id matches
-    // nothing, and the loop would pass on an empty set.
+    // `ram-value` and the preset it uses is `60-600`.
     const tracked = canvas.getObjects().filter((object) => {
       const authored = object.get("vigiliaText") as
         | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
@@ -145,20 +403,15 @@ describe("the new Fabric document", () => {
       const preset = ref?.slice("typePresets.".length);
       return preset !== undefined && spacingOf(preset) !== undefined;
     });
-    // The fit check first, so an overflow is reported as an overflow. A tracked
-    // preset that outgrows its box must not be reported as "the tracked set
-    // changed" — that is the wrong thing, and it is what a maintainer
-    // re-tracking a label would be told.
+    // The fit check first, so an overflow is reported as an overflow rather than
+    // as "the tracked set changed".
     for (const object of tracked) {
       const id = String(object.get("id"));
       const lines = (object as { textLines?: string[] }).textLines;
       expect(lines, id).toBeDefined();
       expect(lines?.length, id).toBe(1);
     }
-    // Then a floor against the empty set, which is the loop's one vacuous
-    // mode. Which presets are tracked is not asserted here: that belongs to the
-    // object-JSON test below, and pinning it here would put a set mismatch
-    // between a maintainer and the failure they actually caused.
+    // A floor against the empty set, which is the loop's one vacuous mode.
     expect(
       tracked.map((object) => object.get("id")),
       "no tracked object was found, so nothing was checked",
@@ -167,12 +420,10 @@ describe("the new Fabric document", () => {
   });
 
   it("writes the resolved tracking into every tracked object's own JSON", async () => {
-    // Every other preset-derived Fabric field is written into the object, so
-    // the starter declares five of a preset's six and omits the one this task
-    // is about. Not a live bug — the editor applies presets at mount — but the
-    // starter is the document every other task copies from, and a reader
-    // comparing an object against its preset would conclude the sixth field
-    // does not exist.
+    // Every other preset-derived Fabric field is written into the object, so the
+    // starter would declare five of a preset's six and omit the sixth. Not a
+    // live bug — the editor applies presets at mount — but the starter is the
+    // document every other task copies from.
     const theme = createNewFabricTheme();
     const presets = theme.globals?.typePresets as Record<
       string,
@@ -184,9 +435,6 @@ describe("the new Fabric document", () => {
     });
     await reviveThemeEnvelope(canvas, theme);
 
-    // Every text object, keyed off its own run reference: an object id is
-    // `gauge-title` and the preset it uses is `13-600`, so id-keying matches
-    // nothing and the loop would pass on an empty set.
     const written: Array<[string, number]> = [];
     const absent: string[] = [];
     for (const object of canvas.getObjects()) {
@@ -197,71 +445,30 @@ describe("the new Fabric document", () => {
         "typePresets.".length,
       );
       if (presetId === undefined) continue;
-      const authored0 = presets[presetId]?.value["letterSpacing"];
-      if (typeof authored0 !== "number") continue;
+      if (typeof presets[presetId]?.value["letterSpacing"] !== "number")
+        continue;
       const id = String(object.get("id"));
-      // 28px at 32px is Fabric's 1/1000 em: 875.
       const writtenValue = object.get("charSpacing") as number;
-      if (typeof writtenValue === "number" && writtenValue !== 0) {
+      if (typeof writtenValue === "number" && writtenValue !== 0)
         written.push([id, writtenValue]);
-      } else {
-        absent.push(id);
-      }
+      else absent.push(id);
     }
 
-    // Every tracked object carries its preset's converted value.
+    // 28px at 36px is Fabric's 1/1000 em.
     expect(written).toEqual([
-      ["wordmark", 875],
-      ["strapline", (6.5 / 12) * 1000],
+      ["wordmark", (28 / 36) * 1000],
+      ["strapline", (6 / 17) * 1000],
     ]);
-    // So a preset that tracks and an object that does not is caught here, not
-    // discovered by a reader.
     expect(absent).toEqual([]);
     await canvas.dispose();
   });
 
-  it("gives every card the radius and border width measured off the reference", () => {
-    const theme = createNewFabricTheme();
-    // A card is a stroked Rect; the background and the header wash are Rects
-    // too, so the match set is named rather than assumed.
-    const cards = (
-      theme.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
-    ).filter(
-      (object) => object["type"] === "Rect" && object["stroke"] !== undefined,
-    );
-    expect(cards.map((card) => card["id"])).toEqual([
-      "time-card",
-      "cpu-card",
-      "weather-card",
-      "gauge-card",
-      "trend-card",
-      "thermal-card",
-      "resource-card",
-      "status-card",
-    ]);
-
-    // Measured off docs/superpowers/specs/2026-09-26-reference-theme-target.png,
-    // not judged by eye: the card's top border occupies rows 186-187 and its
-    // left border columns 39-40 of the 1672-wide reference, so the border is
-    // 2px; and the border first appears 10px in from the top-left corner on
-    // both axes, so the corner radius is 10.
-    for (const card of cards) {
-      expect(card["strokeWidth"], String(card["id"])).toBe(2);
-      expect(card["rx"], String(card["id"])).toBe(10);
-      expect(card["ry"], String(card["id"])).toBe(10);
-    }
-  });
-
   it("ships a frosted CPU card whose value and sparkline read one live key", async () => {
     const theme = createNewFabricTheme();
-    const object = (id: string): Record<string, unknown> =>
-      (
-        theme.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
-      ).find((candidate) => candidate["id"] === id) ?? {};
 
     // The panel is an ordinary card rectangle carrying the treatment the
     // inspector's glass control reads and writes — not a bespoke object kind.
-    const card = object("cpu-card");
+    const card = objectById(theme, "cpu-card");
     expect(card).toMatchObject({
       type: "Rect",
       vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
@@ -290,45 +497,33 @@ describe("the new Fabric document", () => {
         Number.NaN,
     );
 
-    // The reading: a value run and a smaller literal unit on one text object,
-    // bound to a key this document declares.
-    const value = object("cpu-card-value");
-    const runs = (
-      value["vigiliaText"] as {
-        runs: ReadonlyArray<Record<string, unknown>>;
-      }
-    ).runs;
+    // The reading: a value run and a smaller literal unit on one text object.
+    const value = objectById(theme, "cpu-card-value");
+    const runs = (value["vigiliaText"] as { runs: ReadonlyArray<ObjectJson> })
+      .runs;
     expect(runs).toHaveLength(2);
     expect(runs[0]).toMatchObject({
       kind: "value",
       bindingId: "cpu-card-load",
-      // Whole numbers: without the precision the renderer rounds to one decimal
-      // and the card reads "36.0%", which is not what a usage figure says.
       precision: 0,
       unitDisplay: "none",
     });
     expect(runs[1]).toMatchObject({ kind: "literal", text: "%" });
-    const valueBinding = theme.bindings?.["cpu-card-value"] ?? [];
-    expect(valueBinding).toEqual([
+    expect(bindingsOf(theme)["cpu-card-value"]).toEqual([
       expect.objectContaining({ semanticKey: "cpu.load" }),
     ]);
 
-    // The sparkline: the same line family the trend card already uses, on the
-    // same key, with the area gradient that family already supports.
-    expect(object("cpu-card-sparkline")).toMatchObject({
+    // The sparkline reads the same key, so the card cannot show a percentage and
+    // a waveform for two different moments.
+    expect(objectById(theme, "cpu-card-sparkline")).toMatchObject({
       type: "VigiliaChart",
       family: "line",
     });
-    expect(theme.bindings?.["cpu-card-sparkline"]).toEqual([
+    expect(bindingsOf(theme)["cpu-card-sparkline"]).toEqual([
       expect.objectContaining({ semanticKey: "cpu.load" }),
     ]);
-    // Both halves read the same key, so a card cannot show a percentage and a
-    // waveform for two different moments.
-    const sparkline = object("cpu-card-sparkline") as {
-      settings: Record<string, unknown>;
-    };
-    expect(sparkline.settings).toMatchObject({
-      area: { ref: "palette.trendArea" },
+    expect(objectById(theme, "cpu-card-sparkline")["settings"]).toMatchObject({
+      area: { ref: "palette.sparkArea" },
       showAxes: false,
     });
     expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
@@ -342,15 +537,11 @@ describe("the new Fabric document", () => {
     });
     await reviveThemeEnvelope(canvas, theme);
 
-    // The revived object carries what the document authored, which is the only
-    // way the inspector can show and edit it before anything is saved.
     const revived = canvas
       .getObjects()
       .find((object) => object.get("id") === "cpu-card");
     expect(revived?.get("vigiliaGlass")).toEqual({ blurRadius: 16 });
 
-    // And the re-serialised document is byte-identical on the property, so a
-    // save/reopen/export/import cycle cannot quietly drop it.
     const saved = serialiseThemeEnvelope(canvas, theme);
     expect(
       (
@@ -361,7 +552,7 @@ describe("the new Fabric document", () => {
     await canvas.dispose();
   });
 
-  it("revives the gradient, SVG-derived paths, and every chart family", async () => {
+  it("revives the background gradient, the Lucide paths and every chart", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {
       width: theme.artboard.width,
@@ -373,10 +564,18 @@ describe("the new Fabric document", () => {
       canvas.getObjects().find((object) => object.get("id") === "background")
         ?.fill,
     ).toMatchObject({ type: "linear" });
-    // Five, not four: the CPU card's sparkline is a fifth line-family chart.
+
+    const chart = canvas
+      .getObjects()
+      .find((object) => object.get("id") === "cpu-card-icon");
+    expect(chart?.get("strokeWidth")).toBeGreaterThan(0);
+    expect(
+      (chart?.get("path") as unknown[] | undefined)?.length,
+    ).toBeGreaterThan(1);
+
     expect(
       canvas.getObjects().filter((object) => object instanceof VigiliaChart),
-    ).toHaveLength(5);
+    ).toHaveLength(7);
     const saved = serialiseThemeEnvelope(canvas, theme);
     const validation = validateFabricThemeEnvelope(saved);
     if (!validation.ok)

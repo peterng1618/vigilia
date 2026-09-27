@@ -4,15 +4,22 @@ import type { FabricPalette } from "@vigilia/renderer-core";
  * The starter theme's palette, type presets and the two lookups the scene
  * helpers need from them.
  *
- * Its own module because `new-fabric-theme.ts` had reached 874 lines against
- * `AGENTS.md`'s 800-line stop, and the globals are a separable responsibility:
- * they are the document's vocabulary, and every object in the scene is written
- * against them rather than against the scene body.
+ * Its own module because `new-fabric-theme.ts` outgrew `AGENTS.md`'s 800-line
+ * stop, and the globals are a separable responsibility: they are the document's
+ * vocabulary, and every object in the scene is written against them rather than
+ * against the scene body.
  */
 
 export const text = "#ecf5ff";
 export const dim = "#a8bed0";
 export const panel = "#081523d9";
+
+/** One colour per device family, so a card's reading and its icon cannot drift apart. */
+export const cpu = "#4da3ff";
+export const gpu = "#a98bff";
+export const ram = "#2ee6a8";
+export const vram = "#c964e8";
+export const down = "#22d3ee";
 
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
@@ -33,10 +40,6 @@ export const starterPalette = {
       ],
     },
   },
-  headerWash: {
-    name: "Header wash",
-    value: { kind: "solid", color: "#06101a70" },
-  },
   text: { name: "Text", value: { kind: "solid", color: text } },
   dim: { name: "Muted text", value: { kind: "solid", color: dim } },
   panel: { name: "Panel", value: { kind: "solid", color: panel } },
@@ -44,236 +47,206 @@ export const starterPalette = {
     name: "Panel outline",
     value: { kind: "solid", color: "#9fc7e52b" },
   },
-  cyan: { name: "Cyan", value: { kind: "solid", color: "#7dbde0" } },
-  cyanMuted: {
-    name: "Muted cyan",
-    value: { kind: "solid", color: "#7dbde044" },
-  },
-  lightCyan: { name: "Light cyan", value: { kind: "solid", color: "#82c8e9" } },
-  iconBlue: { name: "Icon blue", value: { kind: "solid", color: "#7ec7f0" } },
-  cloud: { name: "Cloud", value: { kind: "solid", color: "#b9d7f2" } },
-  pin: { name: "Location pin", value: { kind: "solid", color: "#8fc6e6" } },
-  purple: { name: "Purple", value: { kind: "solid", color: "#a98bff" } },
-  green: { name: "Green", value: { kind: "solid", color: "#71e7c1" } },
-  gold: { name: "Gold", value: { kind: "solid", color: "#f3c879" } },
-  signal: { name: "Signal", value: { kind: "solid", color: "#6ee1c0" } },
-  status: { name: "Status", value: { kind: "solid", color: "#48d9b0" } },
+  rule: { name: "Rule", value: { kind: "solid", color: "#7dbde0" } },
+  cpu: { name: "CPU", value: { kind: "solid", color: cpu } },
+  gpu: { name: "GPU", value: { kind: "solid", color: gpu } },
+  ram: { name: "RAM", value: { kind: "solid", color: ram } },
+  vram: { name: "VRAM", value: { kind: "solid", color: vram } },
+  down: { name: "Download", value: { kind: "solid", color: down } },
   chartTrack: {
     name: "Chart track",
-    value: { kind: "solid", color: "#2a2f3a" },
+    value: { kind: "solid", color: "#223047" },
   },
-  chartBlue: { name: "Chart blue", value: { kind: "solid", color: "#4db8ff" } },
-  chartPurple: {
-    name: "Chart purple",
-    value: { kind: "solid", color: "#ae7cff" },
-  },
-  gaugeProgress: {
-    name: "Gauge progress",
-    value: {
-      kind: "gradient",
-      angle: 0,
-      stops: [
-        { offset: 0, color: "#41b8ff" },
-        { offset: 1, color: "#bc75ff" },
-      ],
-    },
-  },
-  trendArea: {
-    name: "Trend area",
+  sparkArea: {
+    name: "Sparkline area",
     value: {
       kind: "gradient",
       angle: 90,
       stops: [
-        { offset: 0, color: "#4db8ff66" },
-        { offset: 1, color: "#4db8ff00" },
+        { offset: 0, color: "#4da3ff66" },
+        { offset: 1, color: "#4da3ff00" },
       ],
     },
   },
-  thermalFill: {
-    name: "Thermal fill",
+  storageFill: {
+    name: "Storage fill",
     value: {
       kind: "gradient",
       angle: 0,
       stops: [
-        { offset: 0, color: "#48d9b0" },
-        { offset: 1, color: "#f3bb68" },
+        { offset: 0, color: "#3f7fe0" },
+        { offset: 1, color: "#5ea2ff" },
       ],
     },
-  },
-  thermalTrack: {
-    name: "Thermal track",
-    value: { kind: "solid", color: "#183145" },
   },
 } as const satisfies FabricPalette;
 
 export type StarterPaletteId = keyof typeof starterPalette;
 
+/**
+ * The solid colour behind each token, for the Fabric fields a scene object also
+ * writes beside its `vigiliaPaint` reference.
+ *
+ * A v2 object carries the resolved colour *and* the reference, so the reference
+ * is the thing that has to be right; this is the resolved half, read from the
+ * same token rather than restated at every call site.
+ */
+export const solidOf: Readonly<Record<string, string>> = {
+  text,
+  dim,
+  panel,
+  rule: "#7dbde0",
+  cpu,
+  gpu,
+  ram,
+  vram,
+  down,
+  chartTrack: "#223047",
+};
+
 const paletteIds: Readonly<Record<string, StarterPaletteId>> = {
   [text]: "text",
   [dim]: "dim",
   [panel]: "panel",
-  "#06101a70": "headerWash",
   "#9fc7e52b": "panelStroke",
-  "#7dbde0": "cyan",
-  "#7dbde044": "cyanMuted",
-  "#82c8e9": "lightCyan",
-  "#7ec7f0": "iconBlue",
-  "#b9d7f2": "cloud",
-  "#8fc6e6": "pin",
-  "#a98bff": "purple",
-  "#71e7c1": "green",
-  "#f3c879": "gold",
-  "#6ee1c0": "signal",
-  "#48d9b0": "status",
+  "#7dbde0": "rule",
+  [cpu]: "cpu",
+  [gpu]: "gpu",
+  [ram]: "ram",
+  [vram]: "vram",
+  [down]: "down",
 };
 
 export const starterTypePresets = {
-  "11-400": {
+  // Body first: `createNewTextDefaults` and the chart defaults take the first
+  // preset as a new object's, so the order here is the editor's default face.
+  "20-400": {
     name: "Caption",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 11,
+      size: 20,
       weight: "400",
       lineHeight: 1.18,
       trioRole: "body",
     },
   },
-  "11-500": {
-    name: "Caption medium",
-    value: {
-      family: "Segoe UI, sans-serif",
-      size: 11,
-      weight: "500",
-      lineHeight: 1.18,
-      trioRole: "body",
-    },
-  },
-  "12-400": {
+  "17-400": {
     name: "Overline",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 12,
+      size: 17,
       weight: "400",
-      // Measured off the reference: 6.5px at 12px is 0.54 em, and the ink gap
-      // between letters divided by cap height came out at 0.75 there.
-      letterSpacing: 6.5,
+      // Measured off the reference's "SYSTEM INSIGHTS": the six glyph advances
+      // across "SYSTEM" run 16px apart at a 12px cap height, which is 0.29 em of
+      // the 17px face once the letter's own advance is taken out.
+      letterSpacing: 6,
       lineHeight: 1.18,
       trioRole: "body",
     },
   },
-  "13-400": {
-    name: "Body small",
+  "20-500": {
+    name: "Rate",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 13,
-      weight: "400",
+      size: 20,
+      weight: "500",
       lineHeight: 1.18,
       trioRole: "body",
     },
   },
-  "13-600": {
-    name: "Section label",
+  "24-400": {
+    name: "Card title",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 13,
-      weight: "600",
-      // Untracked, and deliberately so. The reference theme has no all-caps
-      // section label — its card titles are sentence case — so there is nothing
-      // there to measure a value against, and any number here would be invented.
-      // Tracked, it also overflows: 7px wraps all five of these labels onto a
-      // second line inside boxes sized for one. Task 7 recomposes these titles
-      // to the reference's sentence case.
-      lineHeight: 1.18,
-      trioRole: "body",
-    },
-  },
-  "14-400": {
-    name: "Body",
-    value: {
-      family: "Segoe UI, sans-serif",
-      size: 14,
+      size: 24,
       weight: "400",
       lineHeight: 1.18,
       trioRole: "body",
     },
   },
-  "15-400": {
-    name: "Body large",
-    value: {
-      family: "Segoe UI, sans-serif",
-      size: 15,
-      weight: "400",
-      lineHeight: 1.18,
-      trioRole: "body",
-    },
-  },
-  "16-400": {
-    name: "Date",
-    value: {
-      family: "Segoe UI, sans-serif",
-      size: 16,
-      weight: "400",
-      lineHeight: 1.18,
-      trioRole: "body",
-    },
-  },
-  "17-500": {
+  "24-500": {
     name: "Period",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 17,
+      size: 24,
       weight: "500",
       lineHeight: 1.18,
       trioRole: "body",
     },
   },
-  "32-500": {
-    name: "Wordmark",
+  "32-400": {
+    name: "Date",
     value: {
       family: "Segoe UI, sans-serif",
       size: 32,
+      weight: "400",
+      lineHeight: 1.18,
+      trioRole: "body",
+    },
+  },
+  "36-500": {
+    name: "Wordmark",
+    value: {
+      family: "Segoe UI, sans-serif",
+      size: 36,
       weight: "500",
-      // Measured off the reference, not judged by eye: the six inter-letter
-      // gaps average 94px against a 78px cap height — a ratio of 1.205, and
-      // uniform across every pair, which is tracking rather than side bearings.
-      // At a 0.72 em cap height that is 0.87 em, so 28px here.
+      // Measured off the reference, not judged by eye: the glyphs of "VIGILIA"
+      // stand 26px cap height and the five advances between them average 45px
+      // at a 36px face, which is 0.78 em once each letter's own advance is out.
       letterSpacing: 28,
       lineHeight: 1.18,
       trioRole: "heading",
     },
   },
-  "36-600": {
-    name: "Metric",
+  "44-600": {
+    name: "Share",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 36,
+      size: 44,
       weight: "600",
       lineHeight: 1.18,
       trioRole: "heading",
     },
   },
-  "70-300": {
+  "46-600": {
+    name: "Ring unit",
+    value: {
+      family: "Segoe UI, sans-serif",
+      size: 46,
+      weight: "600",
+      lineHeight: 1.18,
+      trioRole: "heading",
+    },
+  },
+  "60-600": {
+    name: "Ring reading",
+    value: {
+      family: "Segoe UI, sans-serif",
+      size: 60,
+      weight: "600",
+      lineHeight: 1.18,
+      trioRole: "heading",
+    },
+  },
+  "90-600": {
+    name: "Card reading",
+    value: {
+      family: "Segoe UI, sans-serif",
+      size: 90,
+      weight: "600",
+      // Untracked, for the reason the clock below gives.
+      lineHeight: 1.18,
+      trioRole: "heading",
+    },
+  },
+  "108-300": {
     name: "Clock",
     value: {
       family: "Segoe UI, sans-serif",
-      size: 70,
+      size: 108,
       weight: "300",
-      // Untracked, and so are the metric, date and period above: a numeral's
-      // advance is a grid cell, and opening it up breaks the column.
-      lineHeight: 1.18,
-      trioRole: "heading",
-    },
-  },
-  "72-600": {
-    name: "Reading",
-    value: {
-      family: "Segoe UI, sans-serif",
-      // Measured off the reference's CPU card rather than chosen: its "32"
-      // occupies 68 rows of the 1672-wide target, which at a 0.72 em figure
-      // height is a 94px face, and 1280/1672 of that is 72 here.
-      size: 72,
-      weight: "600",
-      // Untracked, for the reason the clock above gives.
+      // Untracked, and so is every reading: a numeral's advance is a grid cell,
+      // and opening it up breaks the column it sits in.
       lineHeight: 1.18,
       trioRole: "heading",
     },
