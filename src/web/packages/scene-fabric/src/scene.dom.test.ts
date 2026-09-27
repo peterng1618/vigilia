@@ -94,16 +94,12 @@ describe("mountFabricScene disposal", () => {
     proto.cancelVideoFrameCallback = (handle) => cancelled.push(handle);
 
     try {
-      let frames = 0;
       const scene = mountFabricScene({
         host: element,
         plan: plan(),
         artboard: { width: 400, height: 300 },
         assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
         resolveAsset: () => ({ url: "blob:loop" }),
-        onGlassError: () => {
-          frames += 1;
-        },
       });
       const artboard: Artboard = {
         width: 400,
@@ -126,10 +122,23 @@ describe("mountFabricScene disposal", () => {
       ).toBeNull();
       expect(element.textContent, "the host is empty").toBe("");
       expect(cancelled, "the frame callback was cancelled").toHaveLength(1);
-      // A frame that was already queued must not fire after teardown.
-      const before = frames;
+      // A frame callback already queued when teardown happened must not reach
+      // the host afterwards. Counting *repaints*, not a snapshot against itself:
+      // `onFrame` is the scene's `requestRenderAll`, so this is what a leaked
+      // callback would drive.
+      const canvas = scene.canvas;
+      let repaints = 0;
+      const originalRequest = canvas.requestRenderAll.bind(canvas);
+      canvas.requestRenderAll = (): void => {
+        repaints += 1;
+        originalRequest();
+      };
       scheduled.forEach((cb) => cb());
-      expect(frames).toBe(before);
+      canvas.requestRenderAll = originalRequest;
+      expect(
+        repaints,
+        "a queued frame after teardown asks for no repaint",
+      ).toBe(0);
       element.remove();
     } finally {
       if (!had) {
@@ -173,6 +182,109 @@ describe("mountFabricScene disposal", () => {
     scene.dispose();
     image?.dispatchEvent(new Event("load"));
     expect(repaints, "and a decode after teardown asks for nothing").toBe(1);
+    element.remove();
+  });
+
+  it("releases everything over repeated full mount/render/dispose cycles", () => {
+    // Task 1 measured a 56-surface leak over ten mount/unmount cycles, and it
+    // was the *scene* that leaked, not just the glass handle - so this cycles
+    // the whole mount rather than the handle alone.
+    const created: HTMLCanvasElement[] = [];
+    const original = document.createElement.bind(document);
+    (document as unknown as { createElement: typeof original }).createElement =
+      ((name: string, options?: ElementCreationOptions) => {
+        const made = original(name, options);
+        if (name === "canvas") created.push(made as HTMLCanvasElement);
+        return made;
+      }) as typeof original;
+
+    const perCycle: number[] = [];
+    const stillHolding: number[] = [];
+    try {
+      for (let cycle = 0; cycle < 10; cycle += 1) {
+        const element = host();
+        const scene = mountFabricScene({
+          host: element,
+          plan: plan(),
+          artboard: { width: 400, height: 300 },
+          assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+          resolveAsset: () => ({ url: "blob:hero" }),
+        });
+        scene.updateArtboard({
+          width: 400,
+          height: 300,
+          backgroundMedia: { assetId: "hero", fit: "cover" },
+        });
+        const before = created.length;
+        scene.canvas.add(
+          new Rect({
+            left: 40,
+            top: 40,
+            width: 60,
+            height: 40,
+            originX: "left",
+            originY: "top",
+            fill: "rgba(255, 255, 255, 0.2)",
+            vigiliaGlass: { blurRadius: 8 },
+          }),
+        );
+        scene.canvas.renderAll();
+        scene.dispose();
+        // Everything this cycle allocated after the baseline, and any of it
+        // still holding a backing store.
+        // The glass scratch is the one that is *reused* between frames, so it
+        // is the one whose size changes when a second frame is drawn. Fabric
+        // allocates canvases of its own during a render and `destroy()` does
+        // not zero those, so they cannot be the subject of this claim.
+        const sized = created
+          .slice(before)
+          .map((made) => `${made.width}x${made.height}`);
+        scene.canvas.renderAll();
+        const scratch = created
+          .slice(before)
+          .find((made, i) => `${made.width}x${made.height}` !== sized[i]);
+        perCycle.push(created.length - before);
+        // Whether the reused scratch is still holding a backing store.
+        stillHolding.push(
+          scratch === undefined ? 0 : scratch.width > 0 ? 1 : 0,
+        );
+        element.remove();
+      }
+    } finally {
+      (
+        document as unknown as { createElement: typeof original }
+      ).createElement = original;
+    }
+
+    // Task 1's leak was a count that *grew* with the cycles - 56 surfaces
+    // after ten - so the property is that it does not. A single cycle could
+    // never have shown it, which is why this is ten.
+    expect(
+      perCycle[0],
+      "the surface was found, so the test measured something",
+    ).toBeGreaterThan(0);
+    expect(
+      new Set(stillHolding).size,
+      "the scratch is released on every cycle, identically",
+    ).toBe(1);
+    expect(
+      Math.max(...stillHolding),
+      "and no cycle leaves a backing store behind",
+    ).toBe(0);
+  });
+
+  it("is inert once disposed", () => {
+    // A `ResizeObserver` and an `orientationchange` handler both outlive a
+    // teardown, so a host that resizes after the scene is gone must not drive
+    // a destroyed canvas.
+    const element = host();
+    const scene = mountFabricScene({ host: element, plan: plan() });
+    scene.dispose();
+    expect(() => {
+      scene.resize();
+      scene.update(plan());
+      scene.updateArtboard({ width: 400, height: 300 });
+    }).not.toThrow();
     element.remove();
   });
 

@@ -168,12 +168,14 @@ export function mountFabricScene(
     },
 
     update(next: ScenePlan): void {
+      if (disposed) return;
       plan = next;
       currentTransform = fit();
       adapter.apply(next);
     },
 
     updateArtboard(artboard: Artboard): void {
+      if (disposed) return;
       currentArtboard = artboard;
       if (media === undefined || options.resolveAsset === undefined) return;
       media.update({
@@ -184,6 +186,9 @@ export function mountFabricScene(
     },
 
     resize(): void {
+      // A `ResizeObserver` and an `orientationchange` handler both outlive a
+      // teardown, and the player's `pagehide` is not the only way a mount ends.
+      if (disposed) return;
       currentTransform = fit();
       canvas.requestRenderAll();
     },

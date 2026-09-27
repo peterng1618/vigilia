@@ -109,11 +109,10 @@ export async function waitForMedia(page: Page): Promise<void> {
     null,
     { timeout: 20_000 },
   );
-  // The media decodes after the first paint, and the media layer is a DOM
-  // sibling Fabric cannot see, so the decode is what asks for the repaint
-  // that makes the backdrop sample real pixels. The forced render below waits
-  // for that repaint to have been requested rather than assuming it already
-  // happened; it is a synchronisation, not a workaround.
+  // The media decodes after the first paint and the canvas is not repainted
+  // when it does, so one forced render is part of measuring. Stated rather than
+  // hidden: `waitForFunction` above observes the image, not a repaint, and the
+  // `evaluate` below is a synchronous render rather than a wait.
   await page.evaluate(() => {
     const scope = window as unknown as {
       vigilia?: { handle: { canvas: FabricCanvas } };

@@ -361,9 +361,12 @@ describe("editor background media", () => {
     shell.destroy();
   });
 
-  it("releases the media frame subscription when the editor is destroyed", async () => {
-    // A decode that lands after teardown would repaint a canvas the shell has
-    // already disposed.
+  it("stops asking for a repaint once the editor is destroyed", async () => {
+    // A decode that lands after teardown would ask a canvas the shell has
+    // already released to repaint. The listener is on the image element, which
+    // outlives `destroy()`, so what is under test is that the repaint stops -
+    // not merely that nothing throws, which the DOM reports rather than
+    // propagating through `dispatchEvent` and so proves nothing.
     const host = document.createElement("div");
     Object.defineProperties(host, {
       clientWidth: { value: 400 },
@@ -379,12 +382,21 @@ describe("editor background media", () => {
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => ({ url: "blob:hero" }),
     });
+    const canvas = shell.editor.canvas;
     const image = host.querySelector<HTMLImageElement>(
       "[data-vigilia-background-media] img",
     );
+    expect(image, "the editor mounted a background image").not.toBeNull();
+    let asked = 0;
+    const original = canvas.requestRenderAll.bind(canvas);
+    canvas.requestRenderAll = (): void => {
+      asked += 1;
+      original();
+    };
+
     shell.destroy();
-    // Nothing to assert about a destroyed canvas except that nothing throws and
-    // no repaint is asked for; the listener removal is what is under test.
-    expect(() => image?.dispatchEvent(new Event("load"))).not.toThrow();
+    expect(asked, "teardown itself asks for nothing").toBe(0);
+    image?.dispatchEvent(new Event("load"));
+    expect(asked, "and a decode afterwards asks for nothing").toBe(0);
   });
 });

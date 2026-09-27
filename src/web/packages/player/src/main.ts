@@ -228,13 +228,19 @@ function startFixtureTheme(
 
   // Closing removes this display's keys from the host polling union, and
   // releases the scene: its glass handle, media layer and video frame callback
-  // are not covered by anything else here.
-  window.addEventListener("pagehide", () => {
-    liveHandle?.close();
-    pause();
-    observer.disconnect();
-    handle.dispose();
-  });
+  // are not covered by anything else here. `once` because a `visibilitychange`
+  // that arrives after this would otherwise restart the refresh loop against a
+  // disposed scene.
+  window.addEventListener(
+    "pagehide",
+    () => {
+      liveHandle?.close();
+      pause();
+      observer.disconnect();
+      handle.dispose();
+    },
+    { once: true },
+  );
 
   run();
   exposeForDiagnostics(handle, liveHandle);

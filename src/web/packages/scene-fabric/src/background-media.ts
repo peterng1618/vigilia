@@ -242,8 +242,7 @@ function notifyOnDecode(
 ): (() => void) | undefined {
   if (onFrame === undefined) return undefined;
   // A video's first frame is the first `requestVideoFrameCallback`, so it is
-  // already covered; and a cached image has decoded before it can be listened
-  // to, which `intrinsic` reports on the next render anyway.
+  // already covered and must not ask twice.
   if (element instanceof HTMLVideoElement) return undefined;
   const onLoad = (): void => {
     element.removeEventListener("load", onLoad);

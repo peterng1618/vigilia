@@ -9,3 +9,4 @@ relevant bugs.
 ## Open
 
 - [Hosted themes cannot load their packaged assets in the player](open/host-cannot-serve-packaged-assets.md)
+- [Delete cannot remove an object that lives inside a group](open/delete-inside-a-group-is-unreachable.md)

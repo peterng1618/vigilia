@@ -86,60 +86,97 @@ test.describe("glass lifecycle in the real editor", () => {
         renders += 1;
         originalRender();
       };
-      // Composites are counted at the panel, so "did the owner do work" is
-      // separated from "did something repaint".
-      let composites = 0;
-      (panel["on"] as (event: string, handler: () => void) => void).call(
-        panel,
-        "before:render",
-        () => {
-          composites += 1;
-        },
-      );
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const withPanel = renders;
-      const compositesWithPanel = composites;
+      // **Composites are counted at the surface, not at the panel.** A
+      // `before:render` listener fires whether or not `composite` runs,
+      // succeeds, or bails, so it cannot tell "glass worked" from "glass was
+      // deleted". The composite is the panel's own five-argument `drawImage` -
+      // the filtered backdrop draw - which nothing else in the scene makes:
+      // Fabric blits cached objects with the two-argument form.
+      const compositeCount = (): number => {
+        const context = canvas.getContext();
+        const original = context.drawImage.bind(context);
+        let composites = 0;
+        context.drawImage = ((...args: unknown[]) => {
+          if (args.length === 5) composites += 1;
+          return (original as (...a: unknown[]) => unknown)(...args);
+        }) as typeof context.drawImage;
+        try {
+          canvas.renderAll();
+        } finally {
+          context.drawImage = original;
+        }
+        return composites;
+      };
 
-      // The same scene without the panel: the media layer, the glass owner and
-      // the editor's chart refresh are all still mounted, so the difference is
-      // the panel and nothing else.
+      // Several alternating rounds rather than one pair: a single 1000 ms
+      // window of a 30 Hz loop moves by more than one frame when the machine
+      // is also running other specs, and a property that cannot be measured
+      // under load is not a property. The **minimum** of each side is the
+      // right statistic - the editor's loop sets a floor, and a panel can only
+      // ever add repaints above it, so a floor comparison is the conservative
+      // one: if glass added even one frame per round, the with-panel minimum
+      // would rise above the without-panel one.
+      let withPanelMin = Number.POSITIVE_INFINITY;
+      let withoutPanelMin = Number.POSITIVE_INFINITY;
+      for (let round = 0; round < 3; round += 1) {
+        renders = 0;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        withPanelMin = Math.min(withPanelMin, renders);
+
+        canvas.remove(panel);
+        renders = 0;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        withoutPanelMin = Math.min(withoutPanelMin, renders);
+        canvas.add(panel);
+      }
+
+      // Match set: the panel is really compositing, and stops being when it is
+      // gone. Without this the delta below would also be satisfied by a
+      // `createGlass` that never ran.
+      const compositesInOneFrame = compositeCount();
       canvas.remove(panel);
-      renders = 0;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const withoutPanel = renders;
+      const compositesWithoutPanel = compositeCount();
+      canvas.add(panel);
 
       canvas.renderAll = originalRender;
-      return { withPanel, withoutPanel, compositesWithPanel };
+      return {
+        withPanelMin,
+        withoutPanelMin,
+        compositesInOneFrame,
+        compositesWithoutPanel,
+      };
     });
 
     // Match set: the editor's own refresh really is running in both windows,
     // so a zero here would mean the scene was static rather than that glass
     // is free.
     expect(
-      measurement.withPanel,
+      measurement.withPanelMin,
       "the editor is repainting at all",
     ).toBeGreaterThan(10);
     expect(
-      measurement.withoutPanel,
+      measurement.withoutPanelMin,
       "and keeps repainting with the panel removed",
     ).toBeGreaterThan(10);
-    // The property. The two windows are the same 1000 ms of the same loop, so
-    // they are equal up to the loop's own jitter, and the panel can only ever
-    // be at or below the window without it.
-    // Two separate 1000 ms samples of a live 30 Hz loop, so they differ by the
-    // loop's own jitter; the claim is that the panel adds nothing, which shows
-    // up as the two being the same within that jitter rather than the panel's
-    // window being systematically higher.
+    // Match set: the panel is really compositing, and stops being when it is
+    // gone. Without this the delta below would also be satisfied by a
+    // `createGlass` that never ran.
     expect(
-      measurement.withPanel,
+      measurement.compositesInOneFrame,
+      "the panel composites its backdrop in a frame",
+    ).toBeGreaterThan(0);
+    expect(
+      measurement.compositesWithoutPanel,
+      "and does not once it is removed",
+    ).toBe(0);
+    // The property. Two separate 1000 ms samples of a live 30 Hz loop, so they
+    // differ by the loop's own jitter. `±1` is that jitter at 30 Hz - 60 ms -
+    // and bounds the panel to at most one extra repaint a second, where `+3`
+    // would have let a repaint every 333 ms through.
+    expect(
+      measurement.withPanelMin,
       "a glass panel adds no repaint of its own",
-    ).toBeLessThanOrEqual(measurement.withoutPanel + 3);
-    // One composite per editor frame: the owner rides frames someone else
-    // asked for, and misses none of them.
-    expect(
-      measurement.compositesWithPanel,
-      "one composite per editor frame",
-    ).toBe(measurement.withPanel);
+    ).toBeLessThanOrEqual(measurement.withoutPanelMin + 1);
   });
 });

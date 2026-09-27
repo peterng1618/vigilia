@@ -138,42 +138,46 @@ export function createGlass(options: GlassOptions): GlassHandle {
     return ancestors;
   }
 
-  function attach(object: FabricObject): void {
-    if (disposed) return;
-    const existing = panels.get(object);
-    // A panel that is already attached still has its ancestors re-read: a
-    // group it has just joined is a new ancestor, and the old one is handed
-    // back in `sync` once nothing needs it. Re-attaching the listener here
-    // would double it, so the panel itself is kept.
+  /**
+   * A cached object paints into its own cache, which has no real backdrop, and
+   * a cached group hides its children behind the same empty cache. Idempotent:
+   * a second panel in the same group re-reads the chain and finds it already
+   * switched off, which is what keeps the shared set in `sync` honest.
+   */
+  function uncacheChain(object: FabricObject): void {
     for (const ancestor of chain(object)) {
       if (uncached.has(ancestor)) continue;
       if (!ancestor.objectCaching) continue;
       ancestor.objectCaching = false;
       uncached.add(ancestor);
     }
-    if (existing !== undefined) return;
+  }
 
+  function attach(object: FabricObject): void {
+    if (disposed) return;
+    // A panel that is already attached still has its ancestors re-read: a
+    // group it has just joined is a new ancestor, and the old one is handed
+    // back in `sync` once nothing needs it. Re-attaching the listener would
+    // double it, so the panel itself is kept.
+    if (panels.has(object)) {
+      uncacheChain(object);
+      return;
+    }
     const treatment = glassTreatment(object);
     if (treatment === undefined) return;
     // Fabric overrides `drawObject` on `Group` and renders its children
     // directly, so a group never fires `before:render` and there is no boundary
     // at which its backdrop could be sampled. Refuse loudly rather than render
-    // a panel whose blur silently never appears.
+    // a panel whose blur silently never appears. Ahead of `uncacheChain`, so a
+    // refused group is left exactly as the author set it.
     if (object instanceof Group) {
       report(
         `Glass on "${nameOf(object)}" is a group, which Fabric gives no render boundary; put the treatment on the panel rectangle instead.`,
       );
       return;
     }
-    if (!Number.isFinite(treatment.blurRadius) || treatment.blurRadius < 0) {
-      report(
-        `Glass on "${nameOf(object)}" has an unusable blur radius and was not rendered.`,
-      );
-      return;
-    }
+    uncacheChain(object);
 
-    // A cached object paints into its own cache, which has no real backdrop, and
-    // a cached group hides its children behind the same empty cache.
     const panel: Panel = {
       object,
       blurRadius: treatment.blurRadius,
@@ -330,10 +334,24 @@ export function createGlass(options: GlassOptions): GlassHandle {
 
     ctx.save();
     try {
-      // Fabric applies the panel's own opacity, shadow and composite before
-      // this event. The backdrop is the scene, not the panel: the panel's fill
-      // is composited over it by Fabric afterwards, at the panel's own alpha.
-      ctx.globalAlpha = 1;
+      // Fabric has already multiplied this context by every opacity above the
+      // panel's own, because a group's opacity belongs to its whole subtree and
+      // every other renderer honours it. The backdrop is part of that subtree,
+      // so it keeps those factors.
+      //
+      // The panel's own opacity is the one factor excluded: the backdrop is the
+      // scene rather than the panel, and Fabric applies that factor to the
+      // panel's fill immediately after this event, so applying it here too
+      // would fade the blur twice. It is divided out of the live value rather
+      // than recomputed, so the two cannot disagree.
+      const panelOpacity = ownOpacity(object);
+      if (panelOpacity === undefined) {
+        report(
+          `"${nameOf(object)}" has an unusable opacity, so its backdrop blur was skipped.`,
+        );
+        return;
+      }
+      ctx.globalAlpha = ctx.globalAlpha / panelOpacity;
       ctx.globalCompositeOperation = "source-over";
       ctx.shadowColor = "rgba(0, 0, 0, 0)";
       ctx.shadowBlur = 0;
@@ -536,6 +554,18 @@ function number(object: FabricObject, key: string): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+/**
+ * The panel's own opacity, which the composite divides out of the context's
+ * alpha. Zero is refused as well as non-numeric: Fabric's `isNotVisible()`
+ * short-circuits an invisible object before `before:render` fires, so a zero
+ * here is a hand-edited scene, and dividing by it would put an infinity into
+ * the frame rather than the absence the author asked for.
+ */
+function ownOpacity(object: FabricObject): number | undefined {
+  const value = number(object, "opacity");
+  return value !== undefined && value > 0 ? value : undefined;
 }
 
 /**
