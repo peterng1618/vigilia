@@ -78,19 +78,21 @@ a bug.
 
 ## Labels and state
 
-Three custom labels over GitHub's defaults:
+Two custom labels over GitHub's defaults:
 
-| Label | Meaning |
-|---|---|
-| `needs-triage` | filed, not yet judged or accepted |
-| `blocked` | waiting on a named plan or decision |
-| `feedback` | an observation or preference, not a requested change |
+| Label | Meaning | Set by |
+|---|---|---|
+| `needs-triage` | filed, not yet judged or accepted | both issue forms |
+| `blocked` | waiting on a named plan or decision | the agent, per `AGENTS.md` |
 
 Reuse `bug`, `enhancement`, `wontfix` and `duplicate` unchanged.
 
 A `queued` label is deliberately absent. An accepted request closes its issue
 with a link to the spec, so no issue carries queue state. Labels that nothing
-ever sets are a second, wrong source of truth.
+ever sets are a second, wrong source of truth — which is why there is no
+`feedback` label: a GitHub issue form cannot map a dropdown answer to a label,
+so it would have had no writer, and the form's own `Kind` question already
+records it.
 
 ## Roadmap lifecycle
 
@@ -116,27 +118,32 @@ Deleting under it breaks a pointer a running task depends on.
 Migration runs after the active plan closes. It is a few minutes of work when
 that is true and a broken reference when it is not.
 
-**Overridden on 2026-09-27.** The user authorised migration while
-reference-theme fidelity is still active, with the risk managed rather than
-waited out: the plan's citation is repointed at the issue, a note goes to the
-Task 5 subagent in its execution workspace, and the two e2e comments are
-deliberately left stale rather than edited under a subagent that is writing
-them — one of them untracked, so an edit could lose work that exists nowhere
-else. The follow-up repoint is recorded as a checkbox on that plan's Task 5.
+**Overridden on 2026-09-27, and completed.** The user authorised migration while
+reference-theme fidelity was still active. The deferral this section called for
+turned out not to be needed: the Task 5 subagent had already landed the two e2e
+files, so all three citations — the plan's, `glass.spec.ts`'s and
+`glass-fixture.ts`'s — were repointed at the issue. Nothing was deferred and
+nothing is outstanding. A note in the plan's execution workspace tells that
+subagent the registry is gone and where the defect went.
 
 ## Repo changes
 
 - `AGENTS.md`: the three-attempts bullet becomes the judgement rule above, plus
   filing, closing and the no-duplication rule restated for issues.
+- `.github/bug-report-template.md`: the body an agent posts with. The form a
+  human fills asks the same questions; both are needed because `gh` cannot post
+  an issue form.
 - `docs/README.md`: the bug row repoints to Issues; `bugs/README.md` is deleted.
-- `docs/bugs/`: deleted once the active plan closes.
-- `docs/superpowers/specs/2026-09-27-author-journey-proof-design.md`: its
-  finding protocol names `docs/bugs/open/`; repointed to the issue.
+- `docs/bugs/`: deleted, with the running plan's citation repointed first.
 - `docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md` and the two
-  e2e comments: repointed in the same commit as the deletion.
+  e2e comments: repointed at the hosted-asset issue before the deletion, so the
+  tree was never in a state where a citation resolved to nothing.
 - `docs/superpowers/plans/archive/2026-09-25-snapping-fidelity.md`: links the
   closed bug file it closed. Repointed to the issue number; its history is not
   edited.
+
+The author-journey proof spec needed no change: its finding protocol already
+named this spec rather than a bug path.
 
 ## Migration
 
@@ -167,11 +174,11 @@ or it is not there.
 - `AGENTS.md` states the judgement rule, the filing and closing duty, and no
   longer mentions `docs/bugs/`.
 - Every live reference to a `docs/bugs/` path is repointed, including the two
-  e2e comments and the author-journey spec; the archived plan's link resolves
-  to its issue.
-- The three custom labels exist with the meanings above.
+  e2e comments and the active plan; the archived plan's link resolves to its
+  issue.
+- The two custom labels exist with the meanings above, and each has a writer.
 - The four migration issues exist, the two open ones open and the two closed
-  ones closed with their resolving commit.
+  ones closed with a commit that changed source.
 - The bug issue form covers every section of the bug shape, including
   `cause not established` and the option to decline choosing an owner.
 
@@ -189,16 +196,20 @@ improved by the first few times an agent takes the wrong side, and corrected in
 
 ### What was observed on 2026-09-27
 
-- Three labels created with the descriptions above, read back through
-  `gh label list`; no `queued` label exists.
+- Two labels created with the descriptions above, read back through
+  `gh label list`; no `queued` label exists. A third, `feedback`, was created
+  and then **deleted** — a GitHub issue form cannot map a dropdown answer to a
+  label, so it had no writer, which this spec calls a second source of truth.
 - All four records are issues: #2 and #3 open with `bug` + `needs-triage`,
-  #4 and #5 closed as `completed`, their bodies naming `1fc22b7` and
-  `6ea5314`.
+  #4 and #5 closed as `completed`. Their bodies name `a3d1eca` and `6ea5314`,
+  each checked to have changed something under `src/` — the first migration
+  named the commit that only rewrote the bug record, which would have answered
+  "did we already try this?" with nothing.
 - `AGENTS.md` carries the size judgement and the request lifecycle, and names
   no `docs/bugs/` path.
 - The repo-wide sweep went from six bug-file citations to zero. The remaining
-  mentions of `docs/bugs/` are in this spec and its plan, which describe its
-  removal.
+  mentions of `docs/bugs/` are in this spec, its plan and `STATUS.md`, which
+  describe its removal.
 - **Not verified:** the two forms' rendered check. GitHub reads issue forms from
   the default branch, so they could only be validated structurally (schema,
   required fields, non-empty dropdowns) until they reach `main`. A form GitHub
