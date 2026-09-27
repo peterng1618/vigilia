@@ -34,10 +34,16 @@ Fabric's `Collection.remove` is the whole mechanism, read at
 
 ```js
 remove(...objects) {
-  const array = this._objects, removed = [];
+  const array = this._objects,
+    removed = [];
   objects.forEach((object) => {
     const index = array.indexOf(object);
-    if (index !== -1) { array.splice(1); removed.push(object); this._onObjectRemoved(object); }
+    // only call onObjectRemoved if an object was actually removed
+    if (index !== -1) {
+      array.splice(index, 1);
+      removed.push(object);
+      this._onObjectRemoved(object);
+    }
   });
   return removed;
 }

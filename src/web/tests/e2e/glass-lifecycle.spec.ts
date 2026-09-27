@@ -117,6 +117,13 @@ test.describe("glass lifecycle in the real editor", () => {
       // ever add repaints above it, so a floor comparison is the conservative
       // one: if glass added even one frame per round, the with-panel minimum
       // would rise above the without-panel one.
+      //
+      // **What this narrowing costs.** A min is less *sensitive*, not less
+      // correct, for the property it states: a regression present in all three
+      // rounds is caught, and an intermittent one - one that fires in some
+      // rounds and not others - can hide behind a good round. The test bounds
+      // the systematic case; it does not bound a flaky one. The per-round
+      // counts are the thing to read if this ever fails intermittently.
       let withPanelMin = Number.POSITIVE_INFINITY;
       let withoutPanelMin = Number.POSITIVE_INFINITY;
       for (let round = 0; round < 3; round += 1) {

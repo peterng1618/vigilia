@@ -21,11 +21,13 @@ import { createGlass, type DeviceRect, type GlassHandle } from "./glass.js";
  * sampled, what is excluded, what is clipped, what the radius converts to —
  * and the real blurred pixels are proved in the browser.
  *
- * A second limit, measured: jsdom hands `before:render` a context object that
- * is not the one `canvas.getContext()` returns, so the alpha Fabric has set
- * cannot be observed here. Tests that care about it set it from a listener
- * registered before the glass handler, which is the same position an ancestor
- * group's opacity occupies.
+ * The alpha Fabric has set **is** observable here, and a real `Group` is the
+ * way to observe it. What is easy to get wrong is reading it from a *cached*
+ * panel: Fabric renders a cached object into its own cache, whose context
+ * carries no ancestor alpha, so the reading is 1 whatever the group's opacity
+ * is. The glass handle switches that caching off, which is what makes the
+ * grouped cases measurable — an earlier note here claimed the context itself
+ * was unreachable, which was wrong.
  */
 
 export interface Draw {

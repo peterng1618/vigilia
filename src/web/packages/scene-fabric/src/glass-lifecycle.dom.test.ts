@@ -193,27 +193,26 @@ describe("glass lifecycle", () => {
     // immediately after this event and the backdrop is the scene rather than
     // the panel - applying it to both would fade the blur twice.
     //
-    // The alpha Fabric has set is *fed in* rather than read from the tree: jsdom
-    // hands `before:render` a context object that is not the one
-    // `canvas.getContext()` returns, so the ancestor alpha cannot be observed
-    // here. Fabric's own value is the product of the two, so the listener sets
-    // that product, standing where a group's opacity would; it is registered
-    // before the glass handler attaches, so the composite reads it.
+    // A **real** group, because the alpha this asserts is Fabric's, and a
+    // hand-fed one would pass even if Fabric stopped multiplying ancestor
+    // opacity into the context. `stage` records what the composite wrote, on
+    // the surface it painted on.
+    //
+    // This is only observable at all because the glass handle keeps the chain
+    // uncached: a panel left cached renders into its *own* cache, whose context
+    // carries no ancestor alpha at all, and the composite would divide by the
+    // panel's own against a standing 1. That dependency is asserted below.
     const compositeWith = (
       ancestor: number,
       own: number,
-    ): { alpha: number; errors: readonly string[] } => {
+    ): { alpha: number; panel: Rect } => {
       const s = stage({ texture: false });
       const subject = panel({ vigiliaGlass: { blurRadius: 8 }, opacity: own });
-      subject.on(
-        "before:render",
-        ({ ctx }: { ctx: CanvasRenderingContext2D }) => {
-          ctx.globalAlpha = ancestor * own;
-        },
+      s.canvas.add(
+        new Group([subject], { left: 100, top: 100, opacity: ancestor }),
       );
-      s.canvas.add(subject);
       s.canvas.renderAll();
-      return { alpha: s.draws[0]?.alpha ?? -1, errors: s.errors };
+      return { alpha: s.draws[0]?.alpha ?? -1, panel: subject };
     };
 
     // Every case lands on the ancestor's own fade, whatever the panel's is:
@@ -232,7 +231,12 @@ describe("glass lifecycle", () => {
       compositeWith(1, 0.25).alpha,
       "a panel fade alone leaves the backdrop at full strength",
     ).toBe(1);
-    expect(compositeWith(0.5, 1).errors).toEqual([]);
+
+    // The dependency above, stated: the panel must be on the real surface for
+    // its ancestor's alpha to exist at all. A cached panel would divide by its
+    // own opacity against a standing 1 and read 2 for this case.
+    const cached = compositeWith(0.5, 0.5);
+    expect(cached.panel.objectCaching, "the panel is not cached").toBe(false);
   });
 
   it("refuses a panel whose own opacity cannot be divided out", () => {

@@ -276,15 +276,60 @@ describe("mountFabricScene disposal", () => {
   it("is inert once disposed", () => {
     // A `ResizeObserver` and an `orientationchange` handler both outlive a
     // teardown, so a host that resizes after the scene is gone must not drive
-    // a destroyed canvas.
+    // a destroyed canvas. Mounted **with** a resolver, so the media path is
+    // live: an `updateArtboard` on a scene with no media returns early and
+    // would never reach the guard at all.
     const element = host();
-    const scene = mountFabricScene({ host: element, plan: plan() });
+    const scene = mountFabricScene({
+      host: element,
+      plan: plan(),
+      artboard: { width: 400, height: 300 },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    scene.updateArtboard({
+      width: 400,
+      height: 300,
+      backgroundMedia: { assetId: "hero", fit: "cover" },
+    });
+    expect(
+      element.querySelector("[data-vigilia-background-media] img"),
+      "the media layer is live before teardown",
+    ).not.toBeNull();
+
     scene.dispose();
+    expect(
+      element.querySelector("[data-vigilia-background-media] img"),
+      "and gone after it",
+    ).toBeNull();
+
+    // Counted from here, so only a post-teardown allocation is in the tally.
+    const original = document.createElement.bind(document);
+    let createdAfterDispose = 0;
+    (document as unknown as { createElement: typeof original }).createElement =
+      ((name: string, options?: ElementCreationOptions) => {
+        if (name === "img" || name === "video") createdAfterDispose += 1;
+        return original(name, options);
+      }) as typeof original;
+
     expect(() => {
       scene.resize();
       scene.update(plan());
-      scene.updateArtboard({ width: 400, height: 300 });
+      scene.updateArtboard({
+        width: 400,
+        height: 300,
+        backgroundMedia: { assetId: "hero", fit: "contain" },
+      });
     }).not.toThrow();
+    // The DOM cannot show the leak, because `destroy()` removed the layer and
+    // anything re-appended lands on a detached node. What it *does* show is
+    // the allocation: an `updateArtboard` past the guard builds a fresh image
+    // with a load listener, and nothing will ever release it.
+    (document as unknown as { createElement: typeof original }).createElement =
+      original;
+    expect(createdAfterDispose, "a disposed scene allocates no new media").toBe(
+      0,
+    );
     element.remove();
   });
 
