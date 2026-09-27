@@ -215,6 +215,13 @@ than trusting a copy. The one command that is not a script is the host:
   staging it.
 - Propagate a changed decision to contradictory current docs/tests together.
 - Pushing, publishing and opening a PR are external actions.
+- **Creating or updating a GitHub issue is also an external action**, and the user
+  has authorised it for agents: file, edit, label and close issues as
+  `AGENTS.md`'s bug rule requires without asking first. It is still an external
+  action, so name it in the commit and keep every claim in the body supportable —
+  a cause you have not established is written as "cause not established", not
+  guessed. Anything beyond an issue — a release, a wiki edit, a transfer, or
+  anything on a repo other than this one — still needs the user.
 
 ## Communication and brevity
 

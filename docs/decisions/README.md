@@ -4,6 +4,12 @@ One file per decision where **the way something is built** was not obvious and
 the reasoning would otherwise be lost. The rule these record is
 [`AGENTS.md`](../../AGENTS.md)'s *Reuse before build* gate.
 
+**Why this exists.** The recurring expensive failure in this project is not a
+bug — it is judging a problem simple, writing it from scratch, and learning
+several tasks later that it was a rabbit hole someone had already mapped. It
+looks like progress while it compounds, and undoing it costs more than the
+search would have. These notes are the search, kept.
+
 ## When one is required
 
 A task that touches a **mechanism boundary** — the watchlist in
@@ -14,7 +20,12 @@ those paths. The gate refuses the write; the note is how you unblock it.
 
 Naming a library, or recording that a native API exists. Neither discharges
 the gate. A native capability that still needs sampling, ordering, invalidation,
-disposal and ownership decisions is exactly the case the gate is for.
+disposal and ownership decisions is exactly the case the gate is for — that is
+where the work is.
+
+**Rung 4 is the one that gets skipped**, because rung 3 usually works. The
+question is not "does a library exist" but "has anyone solved *this shape*, and
+what did they learn".
 
 ## Template
 

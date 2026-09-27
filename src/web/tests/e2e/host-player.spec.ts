@@ -262,9 +262,12 @@ test.describe("hosted player over the real host", () => {
   test("shows a live CPU reading once the starter's charts stop throwing in the player", async ({
     page,
   }, testInfo) => {
+    // Tracked as https://github.com/peterng1618/vigilia/issues/6 — a `fixme`
+    // reports as skipped whether it passes or fails, so it can never go red and
+    // cannot enforce the claim on its own. The issue is the durable record.
     test.fixme(
       true,
-      "a chart in this starter throws inside ECharts in the player",
+      "a chart in this starter throws inside ECharts in the player (issue #6)",
     );
     test.skip(
       !isDesktopSurface(testInfo),
