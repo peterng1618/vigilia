@@ -10,22 +10,23 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Active work
 
-- **Completed plans, both archived:** `2026-09-25-snapping-fidelity.md` (eleven
-  tasks; gate, close-out and whole-plan review closed 2026-09-27) and
-  `2026-09-26-clock-and-theme-locale.md` (all tasks, review and
-  runtime-text-layout repair closed).
+- **Completed plans, both archived:** `2026-09-25-snapping-fidelity.md`,
+  `2026-09-26-clock-and-theme-locale.md`.
 - **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md)
   — subagent-driven. Tasks 1, 2, 3, 4 and 8 complete; Task 5 (glass lifecycle) in
   flight; 6, 7, 9, 10, 11, 12 remain. Ledger:
   `.superpowers/sdd/2026-09-26-reference-theme-fidelity/progress.md`.
 - **Queued spec, no plan:** [author journey proof](docs/superpowers/specs/2026-09-27-author-journey-proof-design.md)
-  — awaiting written-spec review; queued between reference-theme fidelity and the
-  font catalogue. Proves the shipped surface by rebuilding the reference from blank
-  through the UI alone — no generator, starter, fixture or hand-edited JSON. **Its
-  plan must be written against the delivered surface, not inherited.**
+  — **approved 2026-09-27**; plan deferred until this plan closes, since it must be
+  written against the delivered surface. Proves the shipped surface by rebuilding the
+  reference from blank through the UI alone — no generator, starter, fixture or JSON.
 - **Queued plan:** [font catalogue and trio picker](docs/superpowers/plans/2026-09-27-font-trio-catalog.md)
   — not activated. Replaces the one-entry hand-written trio with 380 generated
   pairings over 238 faces, and the two-option dropdown with one searchable picker.
+- **Queued spec, no plan:** [GitHub Issues as the backlog](docs/superpowers/specs/2026-09-27-github-issues-backlog-design.md)
+  — written-spec review pending. Replaces `docs/bugs/` with issues filed by agent
+  and human. **Must not run while a plan is active**: the in-flight plan and two
+  e2e comments cite the bug registry.
 - **Queued spec, no plan:** removing the v1 document format and the fixture
   node-tree render path. It must account for `metadata.locale`: v1 documents
   carry no metadata, and absent means `en` there.
