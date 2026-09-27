@@ -8,4 +8,4 @@ relevant bugs.
 
 ## Open
 
-None.
+- [Hosted themes cannot load their packaged assets in the player](open/host-cannot-serve-packaged-assets.md)

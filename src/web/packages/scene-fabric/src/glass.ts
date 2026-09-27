@@ -61,20 +61,18 @@ export interface GlassHandle {
 }
 
 /**
- * Bounded by the surface being painted, so a large panel cannot force a large
- * allocation. Measured by Task 1 as cheap well past this: a 1672x941 artboard
- * peaks around 0.9 Mpx.
- */
-/**
- * Per panel, not a scene-wide total. Task 1 measured a 1672x941 artboard
- * peaking near 0.9 Mpx for one panel, and the browser accepted far more, so
- * this is our own ceiling rather than a platform one.
+ * The ceiling on the **sample region**, per panel, not a scene-wide total. It
+ * bounds the scratch surface and the blurred area; it does not bound blur cost,
+ * which Task 1 measured as flat across a radius sweep at a fixed size. Task 1
+ * measured a 1672x941 artboard peaking near 0.9 Mpx for one panel, and the
+ * browser accepted far more, so this is our own ceiling, not a platform one.
  *
- * The *radius* cap lives in `renderer-core` and is in artboard units; the cost
- * argument behind it was measured in device pixels at DPR 1, where the two
- * coincide. An authored 48 is therefore a 96 px blur at DPR 2, past the band it
- * was chosen inside - still a fraction of a frame, and this ceiling rather than
- * the radius is what bounds the work.
+ * The radius cap is a different thing and lives in `renderer-core`, in artboard
+ * units. Its cost argument was measured in *device* pixels at DPR 1, where the
+ * two coincide, so an authored 48 is a 96 px blur at DPR 2 - past the band it
+ * was chosen inside. This ceiling does not rescue that: a panel's region grows
+ * with its radius by twice the radius on each side, and a 96 px blur is simply
+ * more work than a 48 px one.
  */
 const MAX_BACKDROP_PIXELS = 4_194_304;
 
@@ -98,8 +96,11 @@ export function createGlass(options: GlassOptions): GlassHandle {
   const panels = new Map<FabricObject, Panel>();
   const reported = new Set<string>();
   // A browser either has `ctx.filter` or it does not, so this is asked once
-  // rather than written and read back for every panel on every frame.
-  let filterUsable: boolean | undefined;
+  // rather than written and read back for every panel on every frame. Keyed by
+  // the context: `toCanvasElement` paints through a different one, and a
+  // handle-wide answer would carry the live canvas's verdict into the capture.
+  let filterContext: CanvasRenderingContext2D | undefined;
+  let filterUsable = false;
   let disposed = false;
 
   function report(message: string): void {
@@ -227,7 +228,10 @@ export function createGlass(options: GlassOptions): GlassHandle {
     }
     const target = ctx.canvas;
     if (target === undefined || target === null) return;
-    filterUsable ??= probeFilter(ctx);
+    if (filterContext !== ctx) {
+      filterContext = ctx;
+      filterUsable = probeFilter(ctx);
+    }
     if (!filterUsable) {
       report(
         "This browser cannot blur a canvas backdrop; glass renders untinted.",

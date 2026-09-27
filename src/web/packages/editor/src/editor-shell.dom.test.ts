@@ -237,3 +237,77 @@ describe("native editor shell", () => {
     shell.destroy();
   });
 });
+
+describe("editor background media", () => {
+  /** `requestVideoFrameCallback` is the media's frame cadence, and the editor
+   *  has to ride it: the video is a DOM sibling Fabric never sees. Counting the
+   *  schedules is how a *remount* that lost the subscription shows up - the
+   *  session performs one during mount, so an update-only test never sees it. */
+  function trackVideoFrames(): { count: number; restore: () => void } {
+    const proto = HTMLVideoElement.prototype as unknown as {
+      requestVideoFrameCallback: (cb: () => void) => number;
+      cancelVideoFrameCallback: (handle: number) => void;
+    };
+    const had = "requestVideoFrameCallback" in proto;
+    const tracker = { count: 0 };
+    proto.requestVideoFrameCallback = () => {
+      tracker.count += 1;
+      return tracker.count;
+    };
+    proto.cancelVideoFrameCallback = () => {};
+    return {
+      get count() {
+        return tracker.count;
+      },
+      restore() {
+        if (!had) {
+          delete (proto as Record<string, unknown>)[
+            "requestVideoFrameCallback"
+          ];
+          delete (proto as Record<string, unknown>)["cancelVideoFrameCallback"];
+        }
+      },
+    };
+  }
+
+  it("keeps following video frames across the remount the session performs at start", async () => {
+    const frames = trackVideoFrames();
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const video = [
+      { id: "loop", kind: "video" as const, path: "assets/loop.webm" },
+    ];
+    const artboard = {
+      width: 100,
+      height: 100,
+      backgroundMedia: { assetId: "loop", fit: "cover" as const },
+    };
+
+    try {
+      const shell = await mountEditorShell({
+        host,
+        artboard,
+        assets: video,
+        resolveAsset: () => ({ url: "blob:loop" }),
+      });
+      expect(frames.count, "the first mount follows frames").toBe(1);
+
+      // What the session does during mount: a remount, not an update.
+      shell.setBackgroundMedia(video, () => ({ url: "blob:loop" }));
+      expect(frames.count, "the remounted layer still follows frames").toBe(2);
+
+      // And an image background, which must start no loop.
+      shell.setBackgroundMedia(
+        [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+        () => ({ url: "blob:hero" }),
+      );
+      expect(frames.count, "an image starts no loop").toBe(2);
+      shell.destroy();
+    } finally {
+      frames.restore();
+    }
+  });
+});

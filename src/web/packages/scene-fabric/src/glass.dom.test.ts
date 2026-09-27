@@ -26,6 +26,11 @@ interface Stage {
   readonly glass: GlassHandle;
   regions: DeviceRect[];
   paints: PaintCall[];
+  /** Writes to `ctx.filter` of the probe's own value, which is how many times
+   *  the capability was actually asked. */
+  filterProbes: number;
+  /** Makes the next glass composite throw, as a tainting draw would. */
+  failNextComposite: boolean;
   pixel(x: number, y: number): readonly [number, number, number, number];
   destroy(): void;
 }
@@ -78,6 +83,20 @@ function stage(options: {
   const canvas = new StaticCanvas(undefined, { width: size, height: size });
   const context = canvas.getContext() as CanvasRenderingContext2D;
   const draws: Draw[] = [];
+  // `node-canvas` has no `ctx.filter` at all: it is an ordinary data property
+  // that starts undefined and echoes whatever is written. The seam reproduces
+  // that exactly, and counts the probe by the one value no panel ever asks for.
+  let filterProbes = 0;
+  let filterValue: unknown = context.filter;
+  const originalFilter = Object.getOwnPropertyDescriptor(context, "filter");
+  Object.defineProperty(context, "filter", {
+    configurable: true,
+    get: () => filterValue,
+    set: (value: string) => {
+      if (value === "blur(1px)") filterProbes += 1;
+      filterValue = value;
+    },
+  });
   const original = context.drawImage.bind(context);
   (context as unknown as { drawImage: typeof original }).drawImage = ((
     ...args: unknown[]
@@ -85,6 +104,10 @@ function stage(options: {
     // Only the five-argument form is the glass composite; Fabric blits every
     // cached object with the two-argument one, and counting those would make
     // the object count look like a panel count.
+    if (args.length === 5 && value.failNextComposite) {
+      value.failNextComposite = false;
+      throw new Error("SecurityError: tainted canvases may not be exported");
+    }
     if (args.length === 5)
       draws.push({
         alpha: context.globalAlpha,
@@ -127,6 +150,10 @@ function stage(options: {
     glass,
     regions,
     paints,
+    get filterProbes() {
+      return filterProbes;
+    },
+    failNextComposite: false,
     pixel(x, y) {
       const d = context.getImageData(x, y, 1, 1).data;
       return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0, d[3] ?? 0];
@@ -136,6 +163,9 @@ function stage(options: {
       destroyed = true;
       glass.dispose();
       void canvas.destroy();
+      if (originalFilter === undefined)
+        delete (context as unknown as Record<string, unknown>)["filter"];
+      else Object.defineProperty(context, "filter", originalFilter);
     },
   };
   stages.push(value);
@@ -421,19 +451,21 @@ describe("glass composition", () => {
     expect(s.regions[0]?.top).toBeGreaterThanOrEqual(0);
   });
 
-  it("keeps the media rect through a capture multiplier", () => {
+  it("keeps the media rect through a capture multiplier at a zoom", () => {
+    // Zoom 2, multiplier 3: the plane scale is 6. The old derivation multiplied
+    // the already-fit CSS bounds by the plane scale, which at zoom 1 happens to
+    // agree with the correct answer and only diverges from here.
     const s = stage({ artboard: { width: 200, height: 200 } });
+    s.canvas.setViewportTransform([2, 0, 0, 2, 0, 0]);
     s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
     s.paints.length = 0;
-    // Fabric folds the multiplier into the viewport transform and turns retina
-    // scaling off, so the plane matrix is the only place the factor lives.
     s.canvas.toCanvasElement(3);
     expect(s.paints[0]?.device).toEqual({
       left: 0,
       top: 0,
-      width: 600,
-      height: 600,
+      width: 1200,
+      height: 1200,
     });
   });
 
@@ -653,6 +685,85 @@ describe("glass composition", () => {
 
     expect(s.draws).toHaveLength(1);
     expect(s.glass.liveSurfaces()).toBe(1);
+  });
+
+  it("restores the context when the composite throws mid-draw", () => {
+    // A tainting draw throws after the handler has forced the backdrop to full
+    // alpha. Fabric's own save/restore wraps the whole object, but not the state
+    // left between the throw and the object's own paint: on a half-opacity panel
+    // the fill would then go on at full strength.
+    //
+    // The filter would be the more obvious leak, and it is the one this cannot
+    // use: node-canvas ignores ctx.filter outright, so a leftover filter is
+    // invisible here however the code is written.
+    const withGlass = stage({});
+    const without = stage({});
+    for (const stageUnderTest of [withGlass, without]) {
+      stageUnderTest.canvas.add(
+        new Rect({
+          left: 0,
+          top: 0,
+          width: 200,
+          height: 200,
+          originX: "left",
+          originY: "top",
+          fill: "#000000",
+          selectable: false,
+          evented: false,
+        }),
+      );
+      stageUnderTest.canvas.add(panel({ opacity: 0.5 }));
+    }
+    withGlass.failNextComposite = true;
+    withGlass.canvas.renderAll();
+    without.canvas.renderAll();
+
+    // The composite was abandoned, so the panel paints exactly as it would
+    // with no glass at all - a blurred fill would not match.
+    expect(withGlass.errors[0]).toContain("tainted canvases");
+    expect(withGlass.pixel(100, 100)).toEqual(without.pixel(100, 100));
+  });
+
+  it("asks once whether the browser can filter, however many panels", () => {
+    const s = stage({});
+    s.canvas.add(panel());
+    s.canvas.add(panel({ left: 120, top: 120 }));
+    s.canvas.renderAll();
+    expect(s.filterProbes, "one probe for the whole frame").toBe(1);
+
+    s.canvas.renderAll();
+    expect(s.filterProbes, "and none on the next frame").toBe(1);
+  });
+
+  it("does not publish a scratch surface it could not get a context for", () => {
+    const created = document.createElement.bind(document);
+    const opened: HTMLCanvasElement[] = [];
+    // Armed only once the stage exists, so Fabric's own canvas still resolves.
+    const armed = { now: false };
+    (document as unknown as { createElement: typeof created }).createElement =
+      ((name: string, options?: ElementCreationOptions) => {
+        const element = created(name, options) as HTMLElement;
+        if (name === "canvas" && armed.now) {
+          // A canvas that refuses a context is the failure this guards: the panel
+          // has to fall back to no sample rather than report a live surface it
+          // cannot draw into.
+          Object.defineProperty(element, "getContext", { value: () => null });
+          opened.push(element as HTMLCanvasElement);
+        }
+        return element;
+      }) as typeof created;
+    try {
+      const s = stage({ texture: false });
+      armed.now = true;
+      s.canvas.add(panel());
+      s.canvas.renderAll();
+      expect(opened.length, "a surface was tried").toBeGreaterThan(0);
+      expect(s.glass.liveSurfaces(), "but none is live").toBe(0);
+      expect(s.draws).toHaveLength(0);
+    } finally {
+      (document as unknown as { createElement: typeof created }).createElement =
+        created;
+    }
   });
 
   it("refuses an unusable corner radius rather than clipping to a square", () => {

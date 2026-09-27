@@ -12,6 +12,7 @@ import {
   applyObjectPalettePaints,
   applyObjectTypePresets,
   artboardPaintKey,
+  type BackgroundMediaHandle,
   type BackgroundMediaSource,
   createGlass,
   createSceneAdapter,
@@ -366,7 +367,12 @@ export async function mountEditorShell({
     const reportMediaError = (message: string): void => {
       editor.errorManager.warn("background-media", message);
     };
-    let media =
+    // Every mount of the media layer goes through here, so the frame
+    // subscription cannot be left off one of them. `setBackgroundMedia` is a
+    // remount, not an update, and the session performs one during mount - the
+    // layer that had the subscription was being torn down and replaced on every
+    // editor start.
+    const mountMedia = (): BackgroundMediaHandle | undefined =>
       mediaResolve === undefined
         ? undefined
         : mountBackgroundMedia({
@@ -378,6 +384,7 @@ export async function mountEditorShell({
             // The video is a DOM sibling, so Fabric never sees a frame change.
             onFrame: () => editor.canvas.requestRenderAll(),
           });
+    let media = mountMedia();
     // The media layer is a DOM sibling of the canvas rather than a Fabric
     // object, so it has to be repositioned by hand whenever the camera moves.
     const placeMedia = (): void => {
@@ -387,9 +394,13 @@ export async function mountEditorShell({
     placeMedia();
 
     // After the media, because a glass panel samples that layer for its backdrop.
+    // Always wired, never conditionally: the session replaces the layer through
+    // `setBackgroundMedia` *after* this returns, so `media` is undefined here
+    // even when the theme has a background. Omitting the option left the editor
+    // sampling nothing at all.
     const glass = createGlass({
       canvas: editor.canvas,
-      ...(media === undefined ? {} : { backdrop: () => media?.backdrop() }),
+      backdrop: () => media?.backdrop(),
       onGlassError: (message) => editor.errorManager.warn("glass", message),
     });
 
@@ -437,13 +448,7 @@ export async function mountEditorShell({
         media?.destroy();
         mediaAssets = nextAssets;
         mediaResolve = nextResolveAsset;
-        media = mountBackgroundMedia({
-          host: container,
-          artboard: currentArtboard,
-          assets: mediaAssets,
-          resolveAsset: mediaResolve,
-          onMediaError: reportMediaError,
-        });
+        media = mountMedia();
         placeMedia();
       },
       setGlobals(nextGlobals) {
