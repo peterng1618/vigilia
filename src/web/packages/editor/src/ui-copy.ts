@@ -41,7 +41,7 @@ export const uiCopy = {
     panelRadius: "Corner radius",
     panelShadow: "Shadow",
     panelShadowBlur: "Shadow blur",
-    panelShadowOffset: "Shadow offset (down)",
+    panelShadowOffset: "Shadow offset",
     opacity: "Opacity %",
     paint: "Paint",
     notSet: "not set",

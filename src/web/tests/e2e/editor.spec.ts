@@ -742,10 +742,16 @@ test.describe("Fabric editor route", () => {
     await expect(shadow).toBeVisible();
 
     // Pointer: the canvas, not the panel. Clicking the new panel's own centre
-    // must leave the same controls bound to the same object.
-    const inserted = await clientOfScene(page, (await activeId(page)) ?? "");
+    // must leave the controls bound to *that* object — asserted by the id the
+    // bridge reports and by the token the controls show. A starter card behind
+    // it would also render the fields, so "the field is visible" proves
+    // nothing; the inserted panel's fill is the surface token and no card
+    // shares it.
+    const panelId = (await activeId(page)) ?? "";
+    const inserted = await clientOfScene(page, panelId);
     await page.mouse.click(inserted.x, inserted.y);
-    await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
+    await expect.poll(() => activeId(page)).toBe(panelId);
+    await expect(fill).toHaveValue("palette.background");
 
     // Keyboard: one arrow step on the fill token. The inserted panel starts on
     // the surface token, so a step is a real change the envelope can show.

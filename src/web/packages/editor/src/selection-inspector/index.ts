@@ -220,110 +220,124 @@ export function createSelectionInspector(
     heading.textContent = uiCopy.inspectorFields.selection;
     root.append(heading);
 
-    // A locked object is not editable anywhere else either: the actions dock
-    // offers only Unlock, and nudge and arrange both skip it. Describing its
-    // fields here would advertise edits the rest of the editor refuses.
-    if (object.get("locked") === true) {
-      const locked = document.createElement("p");
-      locked.className = "vigilia-resolution";
-      locked.textContent = uiCopy.inspectorFields.locked;
-      root.append(locked);
-      return;
+    // A locked object is refused where the editor refuses it, and only there.
+    // Refused today: delete, duplicate, copy, cut and lock
+    // (`object-actions.ts` gates them on `!locked`), nudging (`canvas-nudge`
+    // filters it out) and arrange (`canArrange` refuses a locked member). Not
+    // refused anywhere: the four ordering actions and group/ungroup, which
+    // `object-actions.ts` keeps on a bare selection, and run bindings, which
+    // `#setBindings` writes without reading a lock. Gating those here would
+    // advertise a refusal that never happens, so only the fields that write the
+    // object directly are withheld.
+    const locked = object.get("locked") === true;
+    if (locked) {
+      const note = document.createElement("p");
+      note.className = "vigilia-resolution";
+      note.textContent = uiCopy.inspectorFields.locked;
+      root.append(note);
     }
 
-    const geometry = document.createElement("div");
+    if (!locked) {
+      const geometry = document.createElement("div");
 
-    /** A refused edit restores the field itself (the primitives own that);
-        the panel only has to report it, as it always has. */
-    const refused = (): void => {
-      editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
-    };
+      /** A refused edit restores the field itself (the primitives own that);
+          the panel only has to report it, as it always has. */
+      const refused = (): void => {
+        editor.errorManager.warn(
+          "controls",
+          uiCopy.inspectorFields.invalidValue,
+        );
+      };
 
-    // X/Y and W/H are pairs — an author reads and edits them together — while
-    // rotation stands alone. The pair primitive keeps the two boxes on one
-    // `.vigilia-field-row` line, as the artboard panel's Size row does.
-    const pair = (
-      rowLabel: string,
-      first: GeometryField,
-      second: GeometryField,
-    ): HTMLElement =>
-      linkedPair({
-        rowLabel,
-        first: {
-          label: first.label,
-          value: Math.round(readField(object, first.key)),
-          data: "vigiliaGeometry",
-          dataValue: first.key,
-        },
-        second: {
-          label: second.label,
-          value: Math.round(readField(object, second.key)),
-          data: "vigiliaGeometry",
-          dataValue: second.key,
-        },
-        ...(first.min === undefined ? {} : { min: first.min }),
+      // X/Y and W/H are pairs — an author reads and edits them together — while
+      // rotation stands alone. The pair primitive keeps the two boxes on one
+      // `.vigilia-field-row` line, as the artboard panel's Size row does.
+      const pair = (
+        rowLabel: string,
+        first: GeometryField,
+        second: GeometryField,
+      ): HTMLElement =>
+        linkedPair({
+          rowLabel,
+          first: {
+            label: first.label,
+            value: Math.round(readField(object, first.key)),
+            data: "vigiliaGeometry",
+            dataValue: first.key,
+          },
+          second: {
+            label: second.label,
+            value: Math.round(readField(object, second.key)),
+            data: "vigiliaGeometry",
+            dataValue: second.key,
+          },
+          ...(first.min === undefined ? {} : { min: first.min }),
+          invalidMessage: uiCopy.inspectorFields.invalidValue,
+          onReject: refused,
+          // Each half writes only its own key: X/Y and W/H are independent, and
+          // writing the sibling would quantise a fractional dimension the author
+          // never touched.
+          onCommitFirst: (value) => {
+            if (!stillTarget(object)) return;
+            write(object, first.key, value);
+            commit();
+          },
+          onCommitSecond: (value) => {
+            if (!stillTarget(object)) return;
+            write(object, second.key, value);
+            commit();
+          },
+        }).row;
+
+      geometry.append(
+        pair(
+          uiCopy.inspectorFields.position,
+          GEOMETRY_FIELDS.left,
+          GEOMETRY_FIELDS.top,
+        ),
+        pair(
+          uiCopy.inspectorFields.size,
+          GEOMETRY_FIELDS.width,
+          GEOMETRY_FIELDS.height,
+        ),
+      );
+
+      const rotation = numberField({
+        label: GEOMETRY_FIELDS.angle.label,
+        value: Math.round(readField(object, "angle")),
+        data: "vigiliaGeometry",
+        dataValue: "angle",
         invalidMessage: uiCopy.inspectorFields.invalidValue,
         onReject: refused,
-        // Each half writes only its own key: X/Y and W/H are independent, and
-        // writing the sibling would quantise a fractional dimension the author
-        // never touched.
-        onCommitFirst: (value) => {
+        onCommit: (value) => {
           if (!stillTarget(object)) return;
-          write(object, first.key, value);
+          write(object, "angle", value);
           commit();
         },
-        onCommitSecond: (value) => {
-          if (!stillTarget(object)) return;
-          write(object, second.key, value);
-          commit();
-        },
-      }).row;
+      });
+      geometry.append(rotation.row);
 
-    geometry.append(
-      pair(
-        uiCopy.inspectorFields.position,
-        GEOMETRY_FIELDS.left,
-        GEOMETRY_FIELDS.top,
-      ),
-      pair(
-        uiCopy.inspectorFields.size,
-        GEOMETRY_FIELDS.width,
-        GEOMETRY_FIELDS.height,
-      ),
-    );
+      root.append(geometry);
+    }
 
-    const rotation = numberField({
-      label: GEOMETRY_FIELDS.angle.label,
-      value: Math.round(readField(object, "angle")),
-      data: "vigiliaGeometry",
-      dataValue: "angle",
-      invalidMessage: uiCopy.inspectorFields.invalidValue,
-      onReject: refused,
-      onCommit: (value) => {
-        if (!stillTarget(object)) return;
-        write(object, "angle", value);
-        commit();
-      },
-    });
-    geometry.append(rotation.row);
-
-    root.append(geometry);
-
-    // Appearance, and what the object's references actually resolve to.
+    // Appearance, and what the object's references actually resolve to. The
+    // resolution lines are read-only, so a locked object still gets them: the
+    // author can see what the object is made of even when they cannot move it.
     const appearance = document.createElement("div");
-    appearance.append(
-      createOpacityField(context(), object, (candidate) =>
-        stillTarget(candidate),
-      ),
-    );
-    // Panel material, for a selection whose kind can carry it.
-    const panelFields = createPanelFields(context(), object, {
-      stillTarget: () => stillTarget(object),
-      commit,
-      onChange: render,
-    });
-    if (panelFields !== undefined) appearance.append(panelFields);
-
+    if (!locked) {
+      appearance.append(
+        createOpacityField(context(), object, (candidate) =>
+          stillTarget(candidate),
+        ),
+      );
+      // Panel material, for a selection whose kind can carry it.
+      const panelFields = createPanelFields(context(), object, {
+        stillTarget: () => stillTarget(object),
+        commit,
+        onChange: render,
+      });
+      if (panelFields !== undefined) appearance.append(panelFields);
+    }
     const reference = paintReferenceOf(object);
     appearance.append(
       createResolutionLine(

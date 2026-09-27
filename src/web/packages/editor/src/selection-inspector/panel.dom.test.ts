@@ -247,6 +247,26 @@ describe("panel fields in the selection inspector", () => {
     expect(shadow.blur).toBe(18);
   });
 
+  it("accepts a negative offset, which an imported shadow may already carry", () => {
+    const rect = panel();
+    rect.set({
+      [VIGILIA_PAINT_PROPERTY]: { shadowColor: "palette.text" },
+      shadow: new Shadow({ color: "#ecf5ff", blur: 8, offsetY: -6 }),
+    });
+    const { history, field } = setup(rect);
+    const offset = field<HTMLInputElement>(
+      "[data-vigilia-panel-shadow-offset]",
+    );
+    expect(offset.value).toBe("-6");
+
+    type(offset, "-3");
+
+    // A floor of zero would show the imported value and then refuse the same
+    // value back, which is a control that contradicts itself.
+    expect((rect.get("shadow") as Shadow).offsetY).toBe(-3);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
   it("shows no shadow controls until a shadow exists", () => {
     const { host } = setup(panel());
 

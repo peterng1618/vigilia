@@ -28,16 +28,34 @@ export function createNewObjectPanel(
   root.dataset["vigiliaPanel"] = "add";
   const heading = document.createElement("h2");
   heading.textContent = uiCopy.panels.add;
+  /**
+   * Runs a construction that refuses when the theme has no reference to give
+   * it — a palette without a usable token, or type presets without a body.
+   * Reported through the editor's own diagnostics, because a throw out of a
+   * click handler leaves the author with a button that silently does nothing.
+   */
+  const constructing = (build: () => void): void => {
+    try {
+      build();
+    } catch (error) {
+      editor.errorManager.warn(
+        "controls",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
   const text = document.createElement("button");
   text.type = "button";
   text.textContent = uiCopy.panels.text;
-  text.addEventListener("click", () => {
-    const content = "New text";
-    editor.textManager.addText({
-      text: content,
-      ...createNewTextDefaults(currentGlobals, content),
-    });
-  });
+  text.addEventListener("click", () =>
+    constructing(() => {
+      const content = "New text";
+      editor.textManager.addText({
+        text: content,
+        ...createNewTextDefaults(currentGlobals, content),
+      });
+    }),
+  );
   const panel = document.createElement("button");
   panel.type = "button";
   panel.textContent = uiCopy.panels.panel;
@@ -45,16 +63,18 @@ export function createNewObjectPanel(
   // One construction, not a shape factory: the defaults module owns what a
   // new panel is, and the canvas and history the editor already exposes own
   // where it lands and how it is recorded.
-  panel.addEventListener("click", () => {
-    const inserted = new Rect({
-      id: `panel-${crypto.randomUUID()}`,
-      ...createNewPanelDefaults(currentGlobals),
-    });
-    editor.canvas.add(inserted);
-    editor.canvas.setActiveObject(inserted);
-    editor.historyManager.saveState();
-    editor.canvas.requestRenderAll();
-  });
+  panel.addEventListener("click", () =>
+    constructing(() => {
+      const inserted = new Rect({
+        id: `panel-${crypto.randomUUID()}`,
+        ...createNewPanelDefaults(currentGlobals),
+      });
+      editor.canvas.add(inserted);
+      editor.canvas.setActiveObject(inserted);
+      editor.historyManager.saveState();
+      editor.canvas.requestRenderAll();
+    }),
+  );
   const charts = (
     [
       [uiCopy.chartFamilies.gauge, "gauge"],

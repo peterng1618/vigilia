@@ -327,18 +327,41 @@ describe("the selection inspector", () => {
     expect(history.saveState).not.toHaveBeenCalled();
   });
 
-  it("offers a locked selection no editable fields at all", () => {
+  it("withholds only the fields that write the object, not the ones the editor still serves", () => {
     rect.set({ locked: true, selectable: false, evented: false });
     const { host } = setup(rect);
 
-    // The object actions dock offers nothing but Unlock for a locked object,
-    // so the inspector must not advertise edits it would let through anyway.
+    // Deleted, duplicate, cut, nudge and arrange all refuse a locked object, so
+    // the fields that write it directly are withheld rather than advertised.
     for (const selector of [
       "[data-vigilia-opacity]",
       '[data-vigilia-geometry="left"]',
+      "[data-vigilia-panel-fill]",
     ]) {
       expect(host.querySelector(selector), selector).toBeNull();
     }
+    expect(host.textContent).toContain("locked");
+    // Read-only: the author still needs to see what the object resolves to.
+    expect(host.querySelector("[data-vigilia-resolution]")).not.toBeNull();
+  });
+
+  it("keeps the run editor on a locked object, because nothing refuses it", () => {
+    const text = new IText("Hi", { left: 0, top: 0, id: "locked-label" });
+    text.set({
+      locked: true,
+      selectable: false,
+      evented: false,
+      vigiliaText: {
+        runs: [{ kind: "value", bindingId: "clock-date" }],
+      },
+    });
+    const { host } = setup(text);
+
+    // `#setBindings` writes bindings without reading a lock, and the ordering
+    // and grouping actions stay on a bare selection, so hiding the run editor
+    // would refuse work the editor actually performs.
+    expect(host.querySelector("[data-vigilia-runs]")).not.toBeNull();
+    expect(host.querySelector("[data-vigilia-run-source]")).not.toBeNull();
     expect(host.textContent).toContain("locked");
   });
 

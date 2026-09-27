@@ -76,7 +76,7 @@ export interface NewPanelDefaults extends NewPaintDefaults {
 export function createNewPanelDefaults(
   globals: FabricGlobals | undefined,
 ): NewPanelDefaults {
-  const [id, entry] = surfacePalette(globals);
+  const [id, entry] = surfacePalette(globals, "panel");
   const fill = fabricArtboardPaint(
     entry.value,
     NEW_PANEL_SIZE.width,
@@ -174,7 +174,7 @@ export function createNewChartDefaults(
   family: ChartFamily,
 ): ChartContent["settings"] {
   const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
-  const surface = surfacePalette(globals);
+  const surface = surfacePalette(globals, "chart");
 
   if (paint === undefined) {
     throw new Error("New charts require a palette reference.");
@@ -215,9 +215,12 @@ export function createNewChartDefaults(
 const CONTENT_TOKENS = ["text", "ink", "foreground", "primary", "accent"];
 const SURFACE_TOKENS = ["background", "bars", "scene", "surface", "track"];
 
-/** The token for a surface a chart draws on, such as its track. */
+/** The token for a surface an object draws on: a chart track, a panel fill.
+    `what` names the object in the refusal, so a palette-less panel is not told
+    it needed a chart. */
 function surfacePalette(
   globals: FabricGlobals | undefined,
+  what: string,
 ): readonly [string, NonNullable<FabricGlobals["palette"]>[string]] {
   const entries = Object.entries(globals?.palette ?? {}).filter(
     ([id]) => id !== "none",
@@ -228,7 +231,7 @@ function surfacePalette(
     ).find((entry) => entry !== undefined) ?? entries[0];
 
   if (selected === undefined)
-    throw new Error("New charts require a palette token.");
+    throw new Error(`A new ${what} requires a palette token.`);
   return selected;
 }
 

@@ -28,14 +28,14 @@ type PaintProperty = keyof FabricPaintRefs;
  * alone draws nothing, so the committed edit must leave something visible —
  * and the blur field appears with it, so this is a value to move, not a rule.
  */
-export const DEFAULT_PANEL_SHADOW_BLUR = 8;
+const DEFAULT_PANEL_SHADOW_BLUR = 8;
 
 /**
  * How far a newly shadowed panel's shadow falls below it. A shadow with no
  * offset is a symmetric halo, not a shadow: the captured editor evidence showed
  * the light panel token drawing a white glow around the panel until this moved.
  */
-export const DEFAULT_PANEL_SHADOW_OFFSET = 4;
+const DEFAULT_PANEL_SHADOW_OFFSET = 4;
 
 export interface PanelFieldHooks {
   /** False once the panel describes a different object; the edit is refused. */
@@ -58,7 +58,8 @@ export function supportsPanelFields(object: FabricObject): boolean {
   return object instanceof Rect;
 }
 
-/** A copy of the object's own references, so a write cannot mutate them. */
+/** The object's own stored references. Only `writeRef` writes, and it spreads
+    first, so nothing here can mutate the object behind the validator. */
 function paintRefs(object: FabricObject): FabricPaintRefs {
   const value = object.get(VIGILIA_PAINT_PROPERTY);
   return typeof value === "object" && value !== null
@@ -110,7 +111,7 @@ function tokenField(options: TokenFieldOptions): HTMLDivElement {
   select.dataset[options.data] = "";
   const none = document.createElement("option");
   none.value = "";
-  none.textContent = uiCopy.panels.notSet;
+  none.textContent = uiCopy.inspectorFields.notSet;
   select.append(none);
   for (const token of tokenOptions(
     options.context.globals,
@@ -258,20 +259,17 @@ export function createPanelFields(
     const shadowNumber = (
       label: string,
       data: string,
+      min: number | undefined,
       read: (live: Shadow) => number,
       write: (live: Shadow, value: number) => void,
     ): HTMLElement =>
       numberField({
         label,
         value: Math.round(read(shadow)),
-        min: 0,
+        ...(min === undefined ? {} : { min }),
         data,
         invalidMessage: uiCopy.inspectorFields.invalidValue,
-        onReject: () =>
-          context.editor.errorManager.warn(
-            "controls",
-            uiCopy.inspectorFields.invalidValue,
-          ),
+        onReject: refused,
         onCommit: (value) =>
           commit(() => {
             const live = object.get("shadow");
@@ -283,16 +281,19 @@ export function createPanelFields(
       shadowNumber(
         uiCopy.inspectorFields.panelShadowBlur,
         "vigiliaPanelShadowBlur",
+        0,
         (live) => live.blur,
         (live, value) => {
           live.blur = value;
         },
       ),
-      // Downward only: an upward offset would be a second axis of freedom for
-      // no reason a panel needs, and this keeps the field to one number.
+      // Unbounded, because Fabric's own `offsetY` is: a shadow above a panel is
+      // legitimate, and a floor of zero would display a value the field then
+      // refused to accept on the author's next edit.
       shadowNumber(
         uiCopy.inspectorFields.panelShadowOffset,
         "vigiliaPanelShadowOffset",
+        undefined,
         (live) => live.offsetY,
         (live, value) => {
           live.offsetY = value;

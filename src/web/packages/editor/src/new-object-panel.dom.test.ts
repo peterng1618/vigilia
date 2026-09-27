@@ -21,6 +21,7 @@ function editorStub() {
     canvas,
     historyManager,
     textManager: { addText: vi.fn() },
+    errorManager: { warn: vi.fn(), error: vi.fn() },
   };
 }
 
@@ -93,6 +94,28 @@ describe("new object panel", () => {
 
     expect(button.type).toBe("button");
     expect(button.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("reports a construction the theme cannot supply a reference for", () => {
+    const editor = editorStub();
+    const panel = createNewObjectPanel(
+      document.body,
+      editor as never,
+      // No palette token at all, so the defaults factory refuses.
+      undefined,
+    );
+
+    panel.root
+      .querySelector<HTMLButtonElement>("[data-vigilia-panel-add]")!
+      .click();
+
+    // Reported through the editor's own diagnostics: a throw out of a click
+    // handler would leave the author with a button that silently does nothing.
+    expect(editor.errorManager.warn).toHaveBeenCalledWith(
+      "controls",
+      expect.stringContaining("palette token"),
+    );
+    expect(editor.canvas.add).not.toHaveBeenCalled();
   });
 
   it.each([
