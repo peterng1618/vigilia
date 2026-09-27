@@ -79,7 +79,7 @@ export function glassStripesPng(): Uint8Array {
 
 export const GLASS_ENVELOPE = {
   schemaVersion: 2 as const,
-  fabricVersion: "7.4.0",
+  fabricVersion: "7.4.0" as const,
   id: "e2e-glass",
   metadata: { name: "E2E glass", locale: "en" },
   artboard: {
@@ -88,8 +88,8 @@ export const GLASS_ENVELOPE = {
     fitMode: "contain" as const,
     // Transparent, or the artboard paint would hide the media layer the glass
     // has to sample, on screen and in the sampled region alike.
-    background: { ref: "palette.none" },
-    barColor: { ref: "palette.bar" },
+    background: { ref: "palette.none" as const },
+    barColor: { ref: "palette.bar" as const },
     backgroundMedia: { assetId: "stripes", fit: "contain" as const },
   },
   globals: {

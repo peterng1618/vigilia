@@ -12,9 +12,9 @@ import {
  * checked in the unit suite: the blur and the media's decoded pixels both need
  * a real rasteriser.
  *
- * The statistics are **located features, never means**. A mean over a panel
+ * The statistic is a **located measure, never a mean**. A mean over a panel
  * stays identical whether a backdrop was blurred correctly, half-shifted or
- * tinted; a peak adjacent-column gradient and the width of a dark run cannot.
+ * tinted; a peak adjacent-column gradient does not.
  *
  * The band is placed from the panel's own device box, never from hand-picked
  * artboard coordinates. Three mistakes shaped that, each recorded because it
@@ -113,13 +113,12 @@ export async function waitForMedia(page: Page): Promise<void> {
   // it does - bounded invalidation is Task 5's, not this assertion's. One forced
   // render is therefore part of measuring, and is stated rather than hidden.
   await page.evaluate(() => {
-    const scope = window as unknown as
-      | { vigilia?: { handle: { canvas: FabricCanvas } } }
-      | { vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } } };
+    const scope = window as unknown as {
+      vigilia?: { handle: { canvas: FabricCanvas } };
+      vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } };
+    };
     const canvas =
-      "vigilia" in scope && scope.vigilia !== undefined
-        ? scope.vigilia.handle.canvas
-        : scope.vigiliaEditorBridge?.editor.canvas;
+      scope.vigilia?.handle.canvas ?? scope.vigiliaEditorBridge?.editor.canvas;
     canvas?.renderAll();
   });
 }
@@ -130,13 +129,13 @@ export async function readGlass(page: Page): Promise<Reading> {
     (input) => {
       const { bands, STRIPE_X, STRIPE_WIDTH, SOURCE_WIDTH, marker, bleed } =
         input;
-      const scope = window as unknown as
-        | { vigilia?: { handle: { canvas: FabricCanvas } } }
-        | { vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } } };
+      const scope = window as unknown as {
+        vigilia?: { handle: { canvas: FabricCanvas } };
+        vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } };
+      };
       const canvas =
-        "vigilia" in scope && scope.vigilia !== undefined
-          ? scope.vigilia.handle.canvas
-          : scope.vigiliaEditorBridge?.editor.canvas;
+        scope.vigilia?.handle.canvas ??
+        scope.vigiliaEditorBridge?.editor.canvas;
       if (canvas === undefined) throw new Error("no Fabric canvas is mounted");
 
       const element = canvas.lowerCanvasEl ?? canvas.getElement();
@@ -249,9 +248,17 @@ export async function readGlass(page: Page): Promise<Reading> {
         };
       };
 
-      /** The contiguous run of columns below `level`, as a midpoint and a width.
-       *  Both profiles are run at the **same** level, or a higher level on one
-       *  side would inflate its run and the comparison would mean nothing. */
+      /** The midpoint of the columns below `level`: the first and last index
+       *  under it, which is the hull of possibly-disjoint runs rather than one
+       *  run. On this band they are contiguous and the two agree.
+       *
+       *  Each profile gets **its own** level - the same fraction of its own
+       *  range, not the same absolute luminance. That is deliberate: a blurred
+       *  profile is lifted and lower-contrast, so one absolute level would fall
+       *  in a different part of each profile's range and bias the comparison.
+       *  It is also why this is only ever compared within one profile - the
+       *  earlier "the dark run gets wider" claim compared across two, and that
+       *  asymmetry is exactly what made it meaningless. */
       const run = (b: Band, fraction: number): Run => {
         const means = b.means;
         const level = b.darkest + fraction * (b.brightest - b.darkest);
@@ -273,11 +280,7 @@ export async function readGlass(page: Page): Promise<Reading> {
       const reference = band(referenceLuma);
       // The marker's own centre needs a level near the media's darkness, not the
       // bleed level: at 0.85 the dark bars fall below it too.
-      const referenceCentre = run(
-        reference,
-        marker,
-        Math.round(expectedCentre),
-      ).centre;
+      const referenceCentre = run(reference, marker).centre;
       return {
         bandRows: bandBottom - bandTop + 1,
         glass,
@@ -352,16 +355,19 @@ export function assertMediaOffset(reading: Reading, label: string): void {
   // 2. The panel shows the media behind it, measured against the *same* media
   //    read from the same band.
   //
-  //    The tolerance is **one blur radius**, and that is weaker than I want:
-  //    the panel's run measures about 14px right of the media's, and one radius
-  //    is about 15.6px, so the two are indistinguishable at this resolution. A
-  //    symmetric blur should preserve a symmetric feature's centre exactly, so
-  //    the residual is unexplained; it is recorded in the task report as an open
-  //    measurement, not written off as noise. What this tolerance does still
-  //    catch is a sampler that shifts the media by a panel's width, which is
-  //    what a wrong offset looks like.
+  //    Measured, not assumed: the panel's run centre lands **2px** from the
+  //    media's, and the media's own centre is exact against its derived
+  //    position. The tolerance is 6 - three times the observed residual, and far
+  //    inside the panel's width, so a sampler that shifted the media by a
+  //    panel's width still cannot pass.
+  //
+  //    (An earlier round carried a 14px residual and a one-blur-radius
+  //    tolerance here. Both belonged to a fixture with a different marker and
+  //    bar pitch, and the 14px was the run detector picking up the media's
+  //    fragmented bar runs rather than the marker. It was re-measured, not
+  //    inherited.)
   expect(
     Math.abs(reading.glassRun.centre - reading.referenceRun.centre),
-    `${label}: the panel shows the media behind it, within one blur radius (panel ${reading.glassRun.centre}, media ${reading.referenceRun.centre})`,
-  ).toBeLessThanOrEqual(20);
+    `${label}: the panel shows the media behind it (panel ${reading.glassRun.centre}, media ${reading.referenceRun.centre})`,
+  ).toBeLessThanOrEqual(6);
 }
