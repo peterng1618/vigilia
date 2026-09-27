@@ -874,6 +874,124 @@ test.describe("Fabric editor route", () => {
     });
   });
 
+  test("ships the starter's frosted CPU card, reads it live, and round-trips it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    // The card is a rectangle carrying the treatment, a two-run reading and a
+    // line chart — so it is selected and inspected like anything else an
+    // author would click, and the control reads back what the document says.
+    // Clicked left of the reading rather than at the card's centre: the centre
+    // is where the value run is, and a text object is selectable in its own
+    // right, exactly as every other label on a starter card is.
+    const spot = await sceneToClient(page, 1280, 64, 600);
+    await page.mouse.click(spot.x, spot.y);
+    await expect.poll(() => activeId(page)).toBe("cpu-card");
+    await openInspectorTab(page, "Design");
+    const enabled = page.locator("[data-vigilia-glass-enabled]");
+    const blur = page.locator("[data-vigilia-glass-blur]");
+    await expect(enabled).toBeChecked();
+    await expect(blur).toHaveValue("16");
+
+    // The reading is a **value** run, not authored text: the editor's
+    // authoring view paints the key each value run reads, and the em-dash
+    // placeholder it replaces is gone. The number itself is the player's, and
+    // `host-player.spec.ts` is where it is asserted. Read through the editor
+    // bridge, because `canvasProp` addresses the player's handle.
+    const reading = await page.evaluate(() => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getObjects(): Array<{ get(name: string): unknown }>;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      return String(
+        bridge.editor.canvas
+          .getObjects()
+          .find((object) => object.get("id") === "cpu-card-value")
+          ?.get("text"),
+      );
+    });
+    expect(reading).toContain("cpu.load");
+    expect(reading).toMatch(/%$/);
+
+    // Switched to live values through the View menu, the same run paints a real
+    // reading. This is where "current data" is proved: the player cannot be
+    // used for it, because a chart in this starter throws inside ECharts there
+    // and kills the frame loop, which the task report records against
+    // `host-player.spec.ts`.
+    await page.getByRole("button", { name: "View", exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "Value runs: tokens", exact: true })
+      .click();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const bridge = (
+              window as unknown as {
+                vigiliaEditorBridge: {
+                  editor: {
+                    canvas: {
+                      getObjects(): Array<{ get(name: string): unknown }>;
+                    };
+                  };
+                };
+              }
+            ).vigiliaEditorBridge;
+            return String(
+              bridge.editor.canvas
+                .getObjects()
+                .find((object) => object.get("id") === "cpu-card-value")
+                ?.get("text"),
+            );
+          }),
+        { timeout: 15_000 },
+      )
+      .toMatch(/^\d+%$/);
+
+    await captureVisualReview(page, testInfo, "editor-starter-cpu-card");
+
+    // Save, reopen, and the treatment is still authored state rather than a
+    // cache the round trip dropped.
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "starter-cpu.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened starter-cpu.vigilia-theme",
+    );
+    const reopened = (await saveEnvelope(page)) as {
+      scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
+      bindings?: Record<string, ReadonlyArray<{ semanticKey: string }>>;
+    };
+    const card = reopened.scene.objects.find(
+      (object) => object["id"] === "cpu-card",
+    );
+    expect(card?.["vigiliaGlass"]).toEqual({ blurRadius: 16 });
+    // Both halves of the card still read the same key after the round trip.
+    expect(reopened.bindings?.["cpu-card-value"]).toEqual([
+      expect.objectContaining({ semanticKey: "cpu.load" }),
+    ]);
+    expect(reopened.bindings?.["cpu-card-sparkline"]).toEqual([
+      expect.objectContaining({ semanticKey: "cpu.load" }),
+    ]);
+  });
+
   test("captures the mounted editor for visual review", async ({
     page,
   }, testInfo) => {

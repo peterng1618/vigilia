@@ -14,6 +14,7 @@ import {
   resolveTypePreset,
   typePresetOf,
 } from "./appearance.js";
+import { createGlassFields } from "./glass.js";
 import { createPanelFields } from "./panel.js";
 import { createRunEditor, type RunBindingPort } from "./runs.js";
 
@@ -83,6 +84,14 @@ export interface SelectionInspectorOptions {
    * fields, so a text selection links there instead of duplicating them.
    */
   readonly revealTypePresets?: () => void;
+  /**
+   * Re-resolves the glass lifecycle. The handle belongs to the shell that
+   * created it and re-resolves on its own only when the canvas gains or loses
+   * an object, so an authored treatment written on a panel that is already
+   * there reaches it through this. Required rather than optional: without it the
+   * enable control would accept an edit and paint nothing.
+   */
+  readonly refreshGlass: () => void;
 }
 
 export function createSelectionInspector(
@@ -337,6 +346,14 @@ export function createSelectionInspector(
         onChange: render,
       });
       if (panelFields !== undefined) appearance.append(panelFields);
+      // Frosted glass, for a selection whose backdrop can actually be sampled.
+      const glassFields = createGlassFields(context(), object, {
+        stillTarget: () => stillTarget(object),
+        commit,
+        onChange: render,
+        refreshGlass: options.refreshGlass,
+      });
+      if (glassFields !== undefined) appearance.append(glassFields);
     }
     const reference = paintReferenceOf(object);
     appearance.append(

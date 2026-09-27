@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
 import {
   reviveThemeEnvelope,
@@ -228,6 +231,7 @@ describe("the new Fabric document", () => {
     );
     expect(cards.map((card) => card["id"])).toEqual([
       "time-card",
+      "cpu-card",
       "weather-card",
       "gauge-card",
       "trend-card",
@@ -248,7 +252,116 @@ describe("the new Fabric document", () => {
     }
   });
 
-  it("revives the gradient, SVG-derived paths, and all four chart families", async () => {
+  it("ships a frosted CPU card whose value and sparkline read one live key", async () => {
+    const theme = createNewFabricTheme();
+    const object = (id: string): Record<string, unknown> =>
+      (
+        theme.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
+      ).find((candidate) => candidate["id"] === id) ?? {};
+
+    // The panel is an ordinary card rectangle carrying the treatment the
+    // inspector's glass control reads and writes — not a bespoke object kind.
+    const card = object("cpu-card");
+    expect(card).toMatchObject({
+      type: "Rect",
+      vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
+      vigiliaGlass: { blurRadius: expect.any(Number) },
+    });
+    const treatment = card["vigiliaGlass"] as { blurRadius: number };
+    expect(treatment.blurRadius).toBeGreaterThan(0);
+    // The published bound, read from the schema the validator enforces rather
+    // than from a constant this package does not own.
+    const schema = JSON.parse(
+      readFileSync(
+        resolve(
+          dirname(fileURLToPath(import.meta.url)),
+          "../../../../../schema/theme-document.schema.json",
+        ),
+        "utf8",
+      ),
+    ) as {
+      $defs: Record<
+        string,
+        { properties?: Record<string, { maximum: number }> }
+      >;
+    };
+    expect(treatment.blurRadius).toBeLessThanOrEqual(
+      schema.$defs["glassTreatment"]?.["properties"]?.["blurRadius"]?.maximum ??
+        Number.NaN,
+    );
+
+    // The reading: a value run and a smaller literal unit on one text object,
+    // bound to a key this document declares.
+    const value = object("cpu-card-value");
+    const runs = (
+      value["vigiliaText"] as {
+        runs: ReadonlyArray<Record<string, unknown>>;
+      }
+    ).runs;
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toMatchObject({
+      kind: "value",
+      bindingId: "cpu-card-load",
+      // Whole numbers: without the precision the renderer rounds to one decimal
+      // and the card reads "36.0%", which is not what a usage figure says.
+      precision: 0,
+      unitDisplay: "none",
+    });
+    expect(runs[1]).toMatchObject({ kind: "literal", text: "%" });
+    const valueBinding = theme.bindings?.["cpu-card-value"] ?? [];
+    expect(valueBinding).toEqual([
+      expect.objectContaining({ semanticKey: "cpu.load" }),
+    ]);
+
+    // The sparkline: the same line family the trend card already uses, on the
+    // same key, with the area gradient that family already supports.
+    expect(object("cpu-card-sparkline")).toMatchObject({
+      type: "VigiliaChart",
+      family: "line",
+    });
+    expect(theme.bindings?.["cpu-card-sparkline"]).toEqual([
+      expect.objectContaining({ semanticKey: "cpu.load" }),
+    ]);
+    // Both halves read the same key, so a card cannot show a percentage and a
+    // waveform for two different moments.
+    const sparkline = object("cpu-card-sparkline") as {
+      settings: Record<string, unknown>;
+    };
+    expect(sparkline.settings).toMatchObject({
+      area: { ref: "palette.trendArea" },
+      showAxes: false,
+    });
+    expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
+  });
+
+  it("round-trips the CPU card's treatment through revival and serialisation", async () => {
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+
+    // The revived object carries what the document authored, which is the only
+    // way the inspector can show and edit it before anything is saved.
+    const revived = canvas
+      .getObjects()
+      .find((object) => object.get("id") === "cpu-card");
+    expect(revived?.get("vigiliaGlass")).toEqual({ blurRadius: 16 });
+
+    // And the re-serialised document is byte-identical on the property, so a
+    // save/reopen/export/import cycle cannot quietly drop it.
+    const saved = serialiseThemeEnvelope(canvas, theme);
+    expect(
+      (
+        saved.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
+      ).find((object) => object["id"] === "cpu-card")?.["vigiliaGlass"],
+    ).toEqual({ blurRadius: 16 });
+    expect(validateFabricThemeEnvelope(saved).ok).toBe(true);
+    await canvas.dispose();
+  });
+
+  it("revives the gradient, SVG-derived paths, and every chart family", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {
       width: theme.artboard.width,
@@ -260,9 +373,10 @@ describe("the new Fabric document", () => {
       canvas.getObjects().find((object) => object.get("id") === "background")
         ?.fill,
     ).toMatchObject({ type: "linear" });
+    // Five, not four: the CPU card's sparkline is a fifth line-family chart.
     expect(
       canvas.getObjects().filter((object) => object instanceof VigiliaChart),
-    ).toHaveLength(4);
+    ).toHaveLength(5);
     const saved = serialiseThemeEnvelope(canvas, theme);
     const validation = validateFabricThemeEnvelope(saved);
     if (!validation.ok)

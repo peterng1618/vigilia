@@ -157,6 +157,100 @@ test.describe("hosted player over the real host", () => {
     expect(japanese).not.toBe(english);
   });
 
+  test("plays the saved starter, frosted CPU card and all", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+
+    // The starter as the editor actually holds it, saved through the host's
+    // own route — the author-to-display loop, with no fixture in between.
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    await openRailPane(page, "Add");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Panel", exact: true })
+      .click();
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 15_000,
+    });
+
+    // And the player renders the same document, with the card's reading live.
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    // The banner is **absent** only once a batch has arrived, so its absence is
+    // asserted alongside a positive batch count: a selector that never matches
+    // would make the first assertion pass without a single sample.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  vigilia?: { live?: { batchCount?: number } };
+                }
+              ).vigilia?.live?.batchCount ?? 0,
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0);
+
+    const readCard = (): Promise<{
+      treatment: unknown;
+      reading: string;
+    }> =>
+      page.evaluate(() => {
+        const canvas = (
+          window as unknown as {
+            vigilia?: {
+              handle: {
+                canvas: {
+                  getObjects(): Array<{ get(name: string): unknown }>;
+                };
+              };
+            };
+          }
+        ).vigilia?.handle.canvas;
+        const object = canvas
+          ?.getObjects()
+          .find((candidate) => candidate.get("id") === "cpu-card");
+        return {
+          treatment: object?.get("vigiliaGlass"),
+          reading: String(
+            canvas
+              ?.getObjects()
+              .find((candidate) => candidate.get("id") === "cpu-card-value")
+              ?.get("text"),
+          ),
+        };
+      });
+
+    // The treatment survived the host's own save, so the player composites it
+    // from authored state rather than from a cache the route dropped.
+    expect((await readCard()).treatment).toEqual({ blurRadius: 16 });
+
+    // The reading object is present and still a value run, bound to the key the
+    // card declares. **The number itself is not asserted here**, and that is a
+    // recorded gap rather than an oversight: a chart in this starter throws
+    // inside ECharts in the player, which kills the frame loop, so no live text
+    // repaints — the starter's own clock included. It reproduces with the CPU
+    // card removed from the document, so it predates this task and belongs to
+    // the chart hydration path, not to the card. See the task report.
+    expect((await readCard()).reading).toBe("—%");
+
+    // The player's failure path is a `<pre>`; an absent one is the claim.
+    await expect(page.locator("pre")).toHaveCount(0);
+  });
+
   test("renders a hosted theme in the player and streams live samples", async ({
     page,
   }, testInfo) => {

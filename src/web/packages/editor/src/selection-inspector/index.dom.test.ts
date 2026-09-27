@@ -48,6 +48,7 @@ function setup(
       },
     } as never,
     revealTypePresets,
+    refreshGlass: vi.fn(),
     ...options,
   });
   return { inspector, host, history, editor, revealTypePresets };

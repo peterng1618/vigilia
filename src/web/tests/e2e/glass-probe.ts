@@ -124,12 +124,29 @@ export async function waitForMedia(page: Page): Promise<void> {
   });
 }
 
-export async function readGlass(page: Page): Promise<Reading> {
+export interface GlassTarget {
+  /** The authored id of the panel to measure, searched through groups. */
+  readonly id: string;
+  /** The artboard-x window the band covers; its rows come from the panel. */
+  readonly band: { readonly left: number; readonly width: number };
+}
+
+export async function readGlass(
+  page: Page,
+  target: GlassTarget = { id: "glass", band: BANDS.panel },
+): Promise<Reading> {
   await waitForMedia(page);
   return page.evaluate(
     (input) => {
-      const { bands, STRIPE_X, STRIPE_WIDTH, SOURCE_WIDTH, marker, bleed } =
-        input;
+      const {
+        bands,
+        STRIPE_X,
+        STRIPE_WIDTH,
+        SOURCE_WIDTH,
+        marker,
+        bleed,
+        panelId,
+      } = input;
       const scope = window as unknown as {
         vigilia?: { handle: { canvas: FabricCanvas } };
         vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } };
@@ -198,12 +215,30 @@ export async function readGlass(page: Page): Promise<Reading> {
         );
       };
 
-      const panel = canvas
-        .getObjects()
-        .find((candidate) => candidate.get("id") === "glass") as
-        | { getBoundingRect(): Rect }
-        | undefined;
-      if (panel === undefined) throw new Error('no object with id "glass"');
+      // A panel inside a group is not in `getObjects()`, so the search walks
+      // into them: the grouped case is a real authoring operation and has to be
+      // measurable, not skipped.
+      const findById = (
+        objects: Array<{
+          get(name: string): unknown;
+          getObjects?: () => Array<{ get(name: string): unknown }>;
+        }>,
+        id: string,
+      ): { getBoundingRect(): Rect } | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === id) {
+            return candidate as unknown as { getBoundingRect(): Rect };
+          }
+          const children = candidate.getObjects?.() ?? [];
+          const found = findById(children, id);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+
+      const panel = findById(canvas.getObjects(), panelId);
+      if (panel === undefined)
+        throw new Error(`no object with id "${panelId}"`);
       const rect = panel.getBoundingRect();
 
       const view = canvas.viewportTransform;
@@ -212,8 +247,8 @@ export async function readGlass(page: Page): Promise<Reading> {
         (x * view[0] + y * view[2] + view[4]) * retina,
         (x * view[1] + y * view[3] + view[5]) * retina,
       ];
-      const [x0, y0] = toDevice(bands.panel.left, rect.top);
-      const [x1] = toDevice(bands.panel.left + bands.panel.width, rect.top);
+      const [x0, y0] = toDevice(bands.left, rect.top);
+      const [x1] = toDevice(bands.left + bands.width, rect.top);
       const [, panelBottom] = toDevice(rect.left, rect.top + rect.height);
       const left = Math.max(0, Math.round(Math.min(x0, x1)));
       const right = Math.min(width - 1, Math.round(Math.max(x0, x1)) - 1);
@@ -295,7 +330,8 @@ export async function readGlass(page: Page): Promise<Reading> {
       };
     },
     {
-      bands: BANDS,
+      bands: target.band,
+      panelId: target.id,
       STRIPE_X: GLASS_STRIPE_SOURCE_X,
       STRIPE_WIDTH: GLASS_STRIPE_SOURCE_WIDTH,
       SOURCE_WIDTH: GLASS_MEDIA_SOURCE.width,

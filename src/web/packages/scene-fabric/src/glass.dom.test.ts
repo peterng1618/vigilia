@@ -336,6 +336,26 @@ describe("glass composition", () => {
     expect(zero.draws[0]?.filter).toBe("none");
   });
 
+  it("reads the authored radius again after a control changes it in place", () => {
+    const s = stage({});
+    const glassed = panel({ vigiliaGlass: { blurRadius: 8 } });
+    s.canvas.add(glassed);
+    s.canvas.renderAll();
+    // The attach's own composite, so the assertion below cannot be satisfied by
+    // a draw that happened before the edit.
+    s.draws.length = 0;
+
+    // What the inspector's blur field does: the property changes on an object
+    // that is already attached, and no add or remove follows it.
+    glassed.set("vigiliaGlass", { blurRadius: 40 });
+    s.canvas.renderAll();
+
+    const filters = s.draws.map((draw) => draw.filter);
+    expect(s.draws.length).toBeGreaterThan(0);
+    expect(filters).toContain("blur(40px)");
+    expect(filters).not.toContain("blur(8px)");
+  });
+
   it("scales the sample with a toCanvasElement capture multiplier", () => {
     const s = stage({ backdrop: () => ({ paint: () => true }) });
     s.canvas.add(panel());

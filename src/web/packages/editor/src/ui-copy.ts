@@ -42,6 +42,9 @@ export const uiCopy = {
     panelShadow: "Shadow",
     panelShadowBlur: "Shadow blur",
     panelShadowOffset: "Shadow offset",
+    /** The frosted-glass treatment and its one parameter. */
+    glassEnabled: "Frosted glass",
+    glassBlur: "Glass blur",
     opacity: "Opacity %",
     paint: "Paint",
     notSet: "not set",

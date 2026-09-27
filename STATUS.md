@@ -33,17 +33,21 @@ RAM/VRAM gauges, existing charts accepted, glow optional.
 
 ## Last completed change
 
-- The bug registry is replaced by GitHub Issues. `AGENTS.md` now judges a
-  defect's size on sight rather than counting three attempts: file when the
-  cause is unknown, the owner ambiguous or a design decision is needed; fix small
-  ones inline. The third failed attempt files the issue in that commit.
-- The author journey is consolidated to one spec, queued between this plan and the
-  font catalogue. The seven-day release spec is deleted and its promise absorbed.
-  Five shipped author/consumer spec pairs still read `in progress`:
-  shipped-and-unverified, **flips held** until that plan's Phase 1 observes them.
-- Glass (in flight, this plan): real clipped backdrop blur in both mounts,
-  48-unit cap, ~1 ms/frame. A real defect was found and fixed — the editor wired
-  **no backdrop at all**, so every editor panel sampled nothing.
+- **Glass is authorable and the starter's first reference card ships (Task 6).**
+  The inspector gained a frosted-glass enable and blur radius, written to the
+  existing `vigiliaGlass` property and gated on a rectangle; the bound is refused
+  by `renderer-core`'s own reader rather than a copied number, and a test names
+  every kind the published schema allows that gets no control.
+- Two defects made the control inert and both are fixed: the glass handle
+  re-resolved only on add/remove, so **enabling glass through the UI attached
+  nothing**; and it cached the radius at attach time, so **the blur field moved
+  the control and not the picture**. `EditorShell.refreshGlass` is the seam.
+- The starter now carries a frosted CPU card: a palette-backed rectangle, a
+  two-run live reading and a `cpu.load` sparkline through the line family, saved,
+  reopened and played from the host. Recorded differences are in
+  `.superpowers/sdd/2026-09-26-reference-theme-fidelity/task-6-report.md`.
+- `new-fabric-theme.ts` was over `AGENTS.md`'s 800-line stop; its globals moved to
+  `new-fabric-theme-globals.ts`, and the file is 695 lines.
 
 ## Next
 

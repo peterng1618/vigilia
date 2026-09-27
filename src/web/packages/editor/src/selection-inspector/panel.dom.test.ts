@@ -45,7 +45,11 @@ function setup(active: unknown) {
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
   };
-  createSelectionInspector(host, { editor: editor as never, globals });
+  createSelectionInspector(host, {
+    editor: editor as never,
+    globals,
+    refreshGlass: vi.fn(),
+  });
   const field = <T extends HTMLElement>(selector: string): T =>
     host.querySelector<T>(selector)!;
   return { host, history, editor, field };
@@ -353,6 +357,7 @@ describe("panel fields in the selection inspector", () => {
         errorManager: { warn: vi.fn(), error: vi.fn() },
       } as never,
       globals,
+      refreshGlass: vi.fn(),
     });
 
     inspector.render();

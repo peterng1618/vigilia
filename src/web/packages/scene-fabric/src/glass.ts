@@ -81,7 +81,6 @@ const MIN_REGION_PX = 2;
 
 interface Panel {
   readonly object: FabricObject;
-  readonly blurRadius: number;
   readonly onBeforeRender: (event: {
     readonly ctx: CanvasRenderingContext2D;
   }) => void;
@@ -180,7 +179,6 @@ export function createGlass(options: GlassOptions): GlassHandle {
 
     const panel: Panel = {
       object,
-      blurRadius: treatment.blurRadius,
       surface: undefined,
       context: undefined,
       onBeforeRender: ({ ctx }) => {
@@ -291,10 +289,15 @@ export function createGlass(options: GlassOptions): GlassHandle {
     }
 
     // Read every factor live: `toCanvasElement` swaps the viewport transform and
-    // the canvas dimensions for the duration of the capture.
+    // the canvas dimensions for the duration of the capture, and the editor's
+    // blur-radius control rewrites the authored property on a panel that is
+    // already attached. A radius captured at attach time is the one factor here
+    // that can go stale, and it is the one an author can change in place.
+    const treatment = glassTreatment(object);
+    if (treatment === undefined) return;
     const own = deviceMatrix(object, canvas);
     const plane = planeMatrix(canvas);
-    const blurRadius = panel.blurRadius * Math.hypot(own[0], own[1]);
+    const blurRadius = treatment.blurRadius * Math.hypot(own[0], own[1]);
 
     const region = sampleRegion(object, plane, blurRadius, target);
     if (region === undefined) return;

@@ -215,6 +215,9 @@ export class EditorSession {
       revealTypePresets: () => {
         this.#types.root.scrollIntoView({ block: "start" });
       },
+      // The shell owns the glass handle; the inspector writes the property and
+      // asks it to re-resolve.
+      refreshGlass: () => options.shell.refreshGlass(),
     });
     this.#selection.setLocale(options.envelope.metadata?.locale);
     this.#style = createStylePanel(options.panelHosts.style, {

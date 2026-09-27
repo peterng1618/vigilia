@@ -71,6 +71,13 @@ export interface EditorShell {
   readonly viewport: ViewportManager;
   readonly scene?: SceneAdapter;
   snapshot(input: FabricThemeEnvelopeInput): FabricThemeEnvelope;
+  /**
+   * Re-resolves the glass lifecycle. The handle this shell owns re-resolves on
+   * its own when the canvas gains or loses an object; an authored treatment
+   * written on a panel that is already there is neither, so the control that
+   * writes it asks for this.
+   */
+  refreshGlass(): void;
   setArtboard(artboard: Artboard): void;
   setBackgroundMedia(
     assets: readonly AssetReference[],
@@ -429,6 +436,7 @@ export async function mountEditorShell({
         }
         return validation.envelope;
       },
+      refreshGlass: () => glass.sync(),
       setArtboard(nextArtboard) {
         currentArtboard = nextArtboard;
         // The camera frames the board; the authored fit mode belongs to the

@@ -40,6 +40,9 @@ export const GLASS_PANEL = {
   blurRadius: 16,
 } as const;
 
+/** The selectable, untreated panel the authoring test drives the control on. */
+export const AUTHORING_PANEL_ID = "authoring";
+
 export const GLASS_MEDIA_SOURCE = { width: 800, height: 450 } as const;
 export const GLASS_STRIPE_SOURCE_X = 440;
 export const GLASS_STRIPE_SOURCE_WIDTH = 120;
@@ -142,6 +145,9 @@ export const GLASS_ENVELOPE = {
       },
       {
         // No treatment: the control that proves an ordinary panel is untouched.
+        // Selectable, so the authoring test can group it with the panel it
+        // gives a treatment to — a grouped panel is a real authoring operation
+        // and has to be measurable, not skipped.
         type: "Rect",
         version: "7.4.0",
         originX: "left",
@@ -154,8 +160,27 @@ export const GLASS_ENVELOPE = {
         ry: 12,
         fill: "rgba(255, 255, 255, 0.10)",
         id: "plain",
-        selectable: false,
-        evented: false,
+        vigiliaPaint: { fill: "palette.panel" },
+      },
+      {
+        /**
+         * The panel the **authoring** test drives. `plain` above is deliberately
+         * inert, and a control nobody can select is precisely the operation the
+         * glass control has to be proved on, so this one is selectable and
+         * carries no treatment to start from.
+         */
+        type: "Rect",
+        version: "7.4.0",
+        originX: "left",
+        originY: "top",
+        left: 40,
+        top: 300,
+        width: 200,
+        height: 80,
+        rx: 12,
+        ry: 12,
+        fill: "rgba(255, 255, 255, 0.10)",
+        id: AUTHORING_PANEL_ID,
         vigiliaPaint: { fill: "palette.panel" },
       },
     ],

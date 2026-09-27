@@ -25,6 +25,8 @@ If implementation moves an owner, update this map in the same change.
 | New-object defaults (text, charts, panels) | `editor/src/new-object-defaults.ts` |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
 | Panel material fields (fill, border, radius, shadow) | `editor/src/selection-inspector/panel.ts` |
+| Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
+| Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
