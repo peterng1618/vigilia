@@ -137,3 +137,29 @@ export async function captureVisualReview(
   });
   expect(screenshot.byteLength).toBeGreaterThan(1000);
 }
+
+/** A local file the chooser offers, in the shape both chooser paths accept. */
+export type LocalFile = {
+  name: string;
+  mimeType: string;
+  buffer: Buffer;
+};
+
+/**
+ * Chooses a local file the way an author does: press the button, then answer
+ * the file chooser it opened.
+ *
+ * `setInputFiles` against the hidden input proves a route the product does not
+ * offer — it drives a control no one can reach, so it stays green while the
+ * feature is unreachable. Going through the button and the chooser event is
+ * what a click actually produces, and it fails the moment the button is gone.
+ */
+export async function chooseAssetFile(
+  page: Page,
+  control: "import" | "replace",
+  file: LocalFile,
+): Promise<void> {
+  const chooser = page.waitForEvent("filechooser");
+  await page.locator(`[data-vigilia-asset-${control}]`).click();
+  await (await chooser).setFiles(file);
+}

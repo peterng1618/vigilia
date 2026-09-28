@@ -11,6 +11,7 @@ import { installFixedClock } from "./clock.js";
 import {
   type ArtboardRect,
   captureVisualReview,
+  chooseAssetFile,
   clientOfScene,
   objectHandleScenePoint,
   sceneToClient,
@@ -2182,7 +2183,15 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    // **The pane is opened first, because an author opens it first.** The import
+    // and replace below go through the buttons the pane renders, and a control
+    // behind a closed pane is not one a person can press. Driving the hidden
+    // input directly is the route this finding is about: it stays green while
+    // the feature is unreachable, so it proves nothing.
+    await openRailPane(page, "Assets");
+    await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
+    await expect(page.locator("[data-vigilia-asset-replace]")).toBeVisible();
+    await chooseAssetFile(page, "import", {
       name: "logo.png",
       mimeType: "image/png",
       buffer: Buffer.from(
@@ -2192,25 +2201,17 @@ test.describe("Fabric editor route", () => {
     });
     // The starter declares a packaged backdrop of its own, so the claim is that
     // this import produced exactly one option named for it — not a bare total,
-    // which a starter change would silently move.
-    const imported = page
-      .locator("[data-vigilia-asset-import]")
-      .locator("xpath=..")
-      .locator("option");
+    // which a starter change would silently move. An option carries the file the
+    // author chose, so that is what it is matched on.
+    const imported = page.locator("[data-vigilia-asset-select] option");
     await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
     // **The asset to replace is named, not assumed.** The panel's select keeps
     // whatever was selected, and a fresh document's first declaration is now
     // the starter's own backdrop — so a bare "replace" here would rewrite that
     // one. Saying which asset is meant keeps the test independent of
-    // declaration order. The pane has to be open for the select to be
-    // actionable, which counting options never needed.
-    await openRailPane(page, "Assets");
-    await page
-      .locator("[data-vigilia-asset-import]")
-      .locator("xpath=..")
-      .locator("select")
-      .selectOption("logo");
-    await page.locator("[data-vigilia-asset-replace]").setInputFiles({
+    // declaration order.
+    await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    await chooseAssetFile(page, "replace", {
       name: "logo.svg",
       mimeType: "image/svg+xml",
       buffer: Buffer.from(
@@ -2221,10 +2222,13 @@ test.describe("Fabric editor route", () => {
     // test's two imports are `logo` and `logo-2` — plus the starter's own
     // backdrop, which is why the count is not asserted as a bare total.
     await expect(imported.filter({ hasText: "logo" })).toHaveCount(2);
-    // **What the select holds afterwards is not asserted, because it is not a
-    // guarantee.** `createAssetPanel.render()` rebuilds the options and the
-    // browser falls back to the first, so the value has always been "the first
-    // declaration" — which read as `logo` only while that was the only one.
+    // **What the select holds afterwards is asserted, because the panel now
+    // guarantees it.** Re-rendering rebuilds the options and restores the
+    // previous selection, so replacing must not move the author off the asset
+    // they were pointing at.
+    await expect(page.locator("[data-vigilia-asset-select]")).toHaveValue(
+      "logo",
+    );
     // What the round trip owes is the two declarations and the object that
     // points at the second, both asserted below.
     await expect(assetReferences(page)).resolves.toContainEqual({
@@ -2324,7 +2328,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
     await openRailPane(page, "Assets");
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
       buffer: Buffer.from(

@@ -10,6 +10,7 @@ import { strToU8, zipSync } from "fflate";
 import {
   type ArtboardRect,
   captureVisualReview,
+  chooseAssetFile,
   clientOfScene,
 } from "./editor-canvas.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
@@ -2270,7 +2271,7 @@ test.describe("background media", () => {
     await openEditor(page);
 
     await openRailPane(page, "Assets");
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
       buffer: PIXEL_PNG,
@@ -2288,7 +2289,7 @@ test.describe("background media", () => {
 
     // **A second image under the same name.** A repeated filename is suffixed,
     // so it lands beside the first rather than on top of it.
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
       buffer: PIXEL_PNG,
@@ -2333,7 +2334,7 @@ test.describe("background media", () => {
     // so a decoded frame is the media owner's business, not this file's.
     await openEditor(page);
     await openRailPane(page, "Assets");
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    await chooseAssetFile(page, "import", {
       name: "loop.mp4",
       mimeType: "video/mp4",
       buffer: Buffer.from("not a decodable video"),
@@ -2445,7 +2446,7 @@ test.describe("known gaps, pinned", () => {
     );
     await openEditor(page);
     await openRailPane(page, "Assets");
-    await page.locator("[data-vigilia-asset-import]").setInputFiles({
+    await chooseAssetFile(page, "import", {
       name: "logo.png",
       mimeType: "image/png",
       buffer: PIXEL_PNG,
