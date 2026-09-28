@@ -16,4 +16,22 @@ export const uiCopy = {
   syntheticData: (themeName: string, keyCount: number): string =>
     `SYNTHETIC DATA — "${themeName}", ${keyCount} semantic keys served by ` +
     "@vigilia/fake-source, not by hardware",
+  /** Why sensors on this display have no reading. `groups` is already ordered
+   *  and bounded by the caller: one entry per distinct cause, carrying how
+   *  many sensors share it, so a cause said four times is said once. */
+  availability: {
+    notice: (
+      unread: number,
+      total: number,
+      groups: readonly { readonly count: number; readonly reason: string }[],
+      hiddenReasons: number,
+    ): string =>
+      `${unread} of ${total} sensors have no reading — ` +
+      [
+        ...groups.map((group) => `${group.count}× ${group.reason}`),
+        ...(hiddenReasons > 0 ? [`+${hiddenReasons} more reasons`] : []),
+      ].join(", "),
+    /** Stands in for the transport address a provider named in its reason. */
+    address: "its configured address",
+  },
 } as const;

@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **A committed edit retires the refusal it supersedes.** `EditorHistory.save()` fires `editor:edit-committed` on the canvas, at the §67 owner, so the clear travels with the history entry instead of every field having to remember.
-- **A refused edit cannot clear it.** The event fires after the suspension and `sameScene` guards, and a refusal records no entry by definition, so opacity `500` refused then `80` applied ends with a footer that says nothing false. F1.15's persistence is untouched: unrelated canvas traffic still does not take the line down.
-- **One owner.** `diagnostic-message` subscribes and clears; no field, panel or the error manager learns that messages exist, and the event shape is unchanged.
-- **Verified:** 1961 unit tests, typecheck, lint and format green. Red-without-fix: with the two `canvas.fire`/subscribe lines removed, both new tests go red and the six pre-existing ones stay green.
-- **Not verified by hand:** the footer was not driven in a browser — F1.21's plan row still needs its commit sha and a move to the fixed tail.
+- **F1.13: the player's unread-sensor banner groups by cause.** `availabilityNoticeText()` counts sensors per distinct reason and orders the most-shared first, so a cause four sensors share is said once with a count instead of four times in a row.
+- **The host still owns the reason vocabulary.** Only the player's presentation changed; a sample with no message still names its `sensorId`, and a transport address in a reason is replaced with "its configured address" — `ProviderHealth` already rules that a message reaching a browser must be redacted.
+- **The `(and N more)` sensor tail is gone, replaced by `+N more reasons`.** The cap is now on distinct causes (3), not on sensors, so every unread sensor stays counted in the leading `N of M` no matter how many causes there are.
+- **Verified:** 1969 unit tests, typecheck and player lint/format green. Red-without-fix took 5 of the 7 new tests red. Browser: 10 of 18 sensors, two causes, 220 characters on one 1920-wide line, no address, gaps still painted as gaps.
+- **Not verified in a browser:** the `+N more reasons` tail, because this host has only three reason shapes and cannot produce four. It is unit-tested only.
 
 ## Next
 

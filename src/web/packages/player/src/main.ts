@@ -30,6 +30,7 @@ import {
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { availabilityNoticeText } from "./availability-notice.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
@@ -464,11 +465,11 @@ function showFailure(host: HTMLElement, message: string): void {
 /**
  * Names the sensors this display cannot read, and why. Section 97 requires an
  * unavailable sensor to explain itself; without this the consumer sees empty
- * charts and no reason for them. The reason comes from the sample the host
- * sent, so it is the provider's own words.
+ * charts and no reason for them.
  *
- * Renders nothing when every key has a reading, and only the first few reasons
- * so a theme with many unreadable keys stays readable.
+ * Renders nothing when every key has a reading. The wording is
+ * `availabilityNoticeText`'s, which groups by cause so a reason shared by
+ * several sensors is said once rather than repeated in a row.
  */
 function showAvailabilityNotice(
   source: SampleSource,
@@ -477,28 +478,18 @@ function showAvailabilityNotice(
   const id = "vigilia-availability";
   document.getElementById(id)?.remove();
 
-  const reasons = semanticKeys
-    .map((key) => source.latest(key))
-    .filter(
-      (sample): sample is NonNullable<typeof sample> =>
-        sample !== undefined && sample.status !== "ok",
-    );
+  const text = availabilityNoticeText(
+    semanticKeys.map((key) => source.latest(key)),
+  );
 
-  if (reasons.length === 0) {
+  if (text === undefined) {
     return;
   }
 
-  const shown = reasons.slice(0, 3);
-  const more = reasons.length - shown.length;
   const notice = document.createElement("div");
   notice.id = id;
   notice.dataset["vigiliaAvailability"] = "";
-  notice.textContent =
-    `${reasons.length} of ${semanticKeys.length} sensors have no reading. ` +
-    shown
-      .map((sample) => sample.message ?? `${sample.sensorId}: ${sample.status}`)
-      .join(" ") +
-    (more > 0 ? ` (and ${more} more)` : "");
+  notice.textContent = text;
   notice.style.cssText =
     "position:fixed;left:0;right:0;top:0;z-index:9;padding:6px 12px;text-align:center;" +
     "background:#3a2a00;color:#ffce6a;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
