@@ -239,6 +239,9 @@ export const uiCopy = {
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
     language: "Language",
+    /** Names the live sample under the language control, which is a status
+     * region in its own right and announces itself when the choice changes. */
+    languageSample: "Sample in the chosen language",
     previewFit: "Preview fit",
     backgroundMedia: "Background media",
     mediaFit: "Media fit",
@@ -249,6 +252,10 @@ export const uiCopy = {
         read as a number or fell outside the field's range. */
     invalidNumber: "That value cannot be applied. Enter a number in range.",
     palette: "Palette",
+    /** Each pane's own chooser, named by what it lists rather than by the pane
+     * it sits in — the section heading already says Palette or Type presets. */
+    colourToken: "Colour token",
+    typePreset: "Type preset",
     paint: "Paint",
     addColour: "Add colour",
     addStop: "Add stop",

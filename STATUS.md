@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.13: the player's unread-sensor banner groups by cause.** `availabilityNoticeText()` counts sensors per distinct reason and orders the most-shared first, so a cause four sensors share is said once with a count instead of four times in a row.
-- **The host still owns the reason vocabulary.** Only the player's presentation changed; a sample with no message still names its `sensorId`, and a transport address in a reason is replaced with "its configured address" — `ProviderHealth` already rules that a message reaching a browser must be redacted.
-- **The `(and N more)` sensor tail is gone, replaced by `+N more reasons`.** The cap is now on distinct causes (3), not on sensors, so every unread sensor stays counted in the leading `N of M` no matter how many causes there are.
-- **Verified:** 1969 unit tests, typecheck and player lint/format green. Red-without-fix took 5 of the 7 new tests red. Browser: 10 of 18 sensors, two causes, 220 characters on one 1920-wide line, no address, gaps still painted as gaps.
-- **Not verified in a browser:** the `+N more reasons` tail, because this host has only three reason shapes and cannot produce four. It is unit-tested only.
+- **Every control in the theme-settings, palette and type-preset panels has the name a screen reader reads.** F1.19 and F1.4, one cause: a `<label>` with no `for`. 15 controls paired `label.htmlFor` with the control's `id`, the idiom `selection-inspector` already uses.
+- **More than the seven the finding named.** The audit opened the gradient and delete branches too and found 15: the palette's Angle, both stop positions and both stop colours, the `Paint` and `Reassign to` selects and the language sample were unnamed as well. `vigiliaPaletteToken` was **not** fixed by `ce80354` as the plan recorded.
+- **Release version is a named status.** `output` is labelable, so it takes the same pairing and Chromium computes `status "Release version"`; it also moved into the panel's own `.vigilia-field` row, where it lines up with the fields above it.
+- **Verified:** 1969 unit tests, typecheck, lint, format green; 4 new Playwright tests and 11 existing editor specs pass. Red-without-fix: with the two pairings removed, 6 controls read unnamed in Chromium and 4 unit tests go red. **Browser proof measured, not asserted** — `ariaSnapshot` over all 35 controls of the Settings pane, 0 unnamed.
+- **Not fixed, found while there:** F1.5 — the type panel's wrapped labels render as `Name` jammed against its own input; F1.3 — Description is still a single-line input. Separate backlog rows, not bundled here.
 
 ## Next
 

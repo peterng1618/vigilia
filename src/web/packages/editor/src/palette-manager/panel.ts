@@ -19,13 +19,22 @@ export function createPalettePanel(
   const root = document.createElement("section");
   const heading = document.createElement("h2");
   heading.textContent = uiCopy.panels.palette;
+  const tokenLabel = document.createElement("label");
+  tokenLabel.textContent = uiCopy.panels.colourToken;
   const select = document.createElement("select");
   select.dataset["vigiliaPaletteToken"] = "";
+  tokenLabel.htmlFor = select.id = `vigilia-palette-${++fieldSeq}`;
+  // The labelled grid row every other field in the shell uses. A flex row
+  // would put the 72px label column, the chooser and the button on one line,
+  // and those three do not fit in a 280px pane.
+  const tokenRow = document.createElement("div");
+  tokenRow.className = "vigilia-field";
+  tokenRow.append(tokenLabel, select);
   const add = document.createElement("button");
   add.type = "button";
   add.textContent = uiCopy.panels.addColour;
   const fields = document.createElement("div");
-  root.append(heading, select, add, fields);
+  root.append(heading, tokenRow, add, fields);
   host.append(root);
 
   let palette: FabricPalette = {};
@@ -52,7 +61,7 @@ export function createPalettePanel(
     draw();
   };
   const paletteFields = (entry: FabricPaletteEntry): HTMLElement[] => {
-    const name = textInput("Name", "vigiliaPaletteName", entry.name);
+    const name = field("Name", "vigiliaPaletteName", entry.name, "text");
     name.input.addEventListener("change", () => {
       const next = name.input.value.trim();
       if (next.length === 0) return draw();
@@ -82,6 +91,7 @@ export function createPalettePanel(
     });
     const label = document.createElement("label");
     label.textContent = uiCopy.panels.paint;
+    label.htmlFor = kind.id = `vigilia-palette-${++fieldSeq}`;
     const controls =
       entry.value.kind === "solid"
         ? solidFields(entry, entry.value, commit)
@@ -95,6 +105,7 @@ export function createPalettePanel(
     label.textContent = uiCopy.panels.reassign;
     const replacement = document.createElement("select");
     replacement.dataset["vigiliaPaletteReplacement"] = "";
+    label.htmlFor = replacement.id = `vigilia-palette-${++fieldSeq}`;
     for (const [id, entry] of Object.entries(palette)) {
       if (id === selected) continue;
       const option = document.createElement("option");
@@ -142,7 +153,7 @@ function solidFields(
   value: Extract<PalettePaint, { readonly kind: "solid" }>,
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
-  const color = textInput("Colour", "vigiliaPaletteColor", value.color);
+  const color = field("Colour", "vigiliaPaletteColor", value.color, "text");
   color.input.addEventListener("change", () => {
     const next = color.input.value.trim();
     if (next.length === 0) return;
@@ -156,7 +167,12 @@ function gradientFields(
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
-  const angle = numberInput("Angle", "vigiliaPaletteAngle", value.angle);
+  const angle = field(
+    "Angle",
+    "vigiliaPaletteAngle",
+    String(value.angle),
+    "number",
+  );
   angle.input.addEventListener("change", () => {
     const next = Number(angle.input.value);
     if (!Number.isFinite(next)) return;
@@ -164,18 +180,20 @@ function gradientFields(
   });
   const fields: HTMLElement[] = [angle.label, angle.input];
   for (const [index, stop] of value.stops.entries()) {
-    const offset = numberInput(
+    const offset = field(
       `Stop ${index + 1} position`,
       "vigiliaPaletteStopOffset",
-      stop.offset,
+      String(stop.offset),
+      "number",
     );
     offset.input.min = "0";
     offset.input.max = "1";
     offset.input.step = "0.01";
-    const color = textInput(
+    const color = field(
       `Stop ${index + 1} colour`,
       "vigiliaPaletteStopColor",
       stop.color,
+      "text",
     );
     const update = (): void => {
       const nextOffset = Number(offset.input.value);
@@ -225,31 +243,23 @@ function gradientFields(
   return fields;
 }
 
-function textInput(
+let fieldSeq = 0;
+
+/** A label and the input it names. `id` and `for` are paired so the name a
+    screen reader reads is the word the author can see. */
+function field(
   text: string,
   key: string,
   value: string,
+  type: "text" | "number",
 ): { readonly label: HTMLLabelElement; readonly input: HTMLInputElement } {
   const label = document.createElement("label");
   label.textContent = text;
   const input = document.createElement("input");
-  input.type = "text";
+  input.type = type;
   input.dataset[key] = "";
   input.value = value;
-  return { label, input };
-}
-
-function numberInput(
-  text: string,
-  key: string,
-  value: number,
-): { readonly label: HTMLLabelElement; readonly input: HTMLInputElement } {
-  const label = document.createElement("label");
-  label.textContent = text;
-  const input = document.createElement("input");
-  input.type = "number";
-  input.dataset[key] = "";
-  input.value = String(value);
+  label.htmlFor = input.id = `vigilia-palette-${++fieldSeq}`;
   return { label, input };
 }
 

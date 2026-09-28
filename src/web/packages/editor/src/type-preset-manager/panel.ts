@@ -29,13 +29,22 @@ export function createTypePresetPanel(
   const root = document.createElement("section");
   const heading = document.createElement("h2");
   heading.textContent = uiCopy.panels.typePresets;
+  const presetLabel = document.createElement("label");
+  presetLabel.textContent = uiCopy.panels.typePreset;
   const select = document.createElement("select");
   select.dataset["vigiliaTypePreset"] = "";
+  presetLabel.htmlFor = select.id = `vigilia-type-${++fieldSeq}`;
+  // The labelled grid row every other field in the shell uses. A flex row
+  // would put the 72px label column, the chooser and the button on one line,
+  // and those three do not fit in a 280px pane.
+  const presetRow = document.createElement("div");
+  presetRow.className = "vigilia-field";
+  presetRow.append(presetLabel, select);
   const add = document.createElement("button");
   add.type = "button";
   add.textContent = uiCopy.panels.addType;
   const fields = document.createElement("div");
-  root.append(heading, select, add, fields);
+  root.append(heading, presetRow, add, fields);
   host.append(root);
   let presets: TypePresets = {};
   let selected = "";
@@ -219,6 +228,7 @@ export function createTypePresetPanel(
     label.textContent = uiCopy.panels.reassign;
     const replacement = document.createElement("select");
     replacement.dataset["vigiliaTypeReplacement"] = "";
+    label.htmlFor = replacement.id = `vigilia-type-${++fieldSeq}`;
     for (const [id, entry] of Object.entries(presets)) {
       if (id === selected) continue;
       const option = document.createElement("option");
@@ -260,6 +270,8 @@ export function createTypePresetPanel(
     },
   };
 }
+
+let fieldSeq = 0;
 
 function input(
   label: string,

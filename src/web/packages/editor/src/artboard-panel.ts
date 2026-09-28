@@ -53,8 +53,14 @@ export function createArtboardPanel(
   versionLabel.textContent = uiCopy.panels.releaseVersion;
   const version = document.createElement("output");
   version.dataset["vigiliaThemeVersion"] = "";
+  // `output` is a labelable element, so the same pairing the editable fields
+  // use names a value the author reads but never types.
+  versionLabel.htmlFor = version.id = `vigilia-output-${++fieldSeq}`;
   const languageSample = document.createElement("output");
   languageSample.dataset["vigiliaThemeLanguageSample"] = "";
+  // A status region announces itself, so it needs a name of its own: sharing
+  // the control's "Language" would leave two things in the row called Language.
+  languageSample.setAttribute("aria-label", uiCopy.panels.languageSample);
   const language = selectInput(uiCopy.panels.language, "vigiliaThemeLanguage");
   const fit = selectInput(uiCopy.panels.previewFit, "vigiliaArtboardFitMode");
   for (const fitMode of ["contain", "cover"] as const) {
@@ -220,8 +226,7 @@ export function createArtboardPanel(
     fieldRow(author),
     fieldRow(description),
     language.row,
-    versionLabel,
-    version,
+    fieldRow({ label: versionLabel, input: version }),
     ...rows,
   );
   languageSample.style.gridColumn = "1 / -1";
@@ -315,7 +320,7 @@ function fieldRow(field: {
   return row;
 }
 
-let selectSeq = 0;
+let fieldSeq = 0;
 
 /** A preset id read back from one of the three controls, or the default when
     that control is showing the Custom reading. The options are this module's
@@ -334,23 +339,20 @@ function selectInput(
   label.textContent = text;
   const select = document.createElement("select");
   select.dataset[data] = "";
-  label.htmlFor = select.id = `vigilia-select-${++selectSeq}`;
+  label.htmlFor = select.id = `vigilia-select-${++fieldSeq}`;
   row.append(label, select);
   return { row, select };
 }
 
 function textInput(
   text: string,
-  data:
-    | "vigiliaThemeName"
-    | "vigiliaThemeAuthor"
-    | "vigiliaThemeDescription"
-    | "vigiliaThemeVersion",
+  data: "vigiliaThemeName" | "vigiliaThemeAuthor" | "vigiliaThemeDescription",
 ): { readonly label: HTMLLabelElement; readonly input: HTMLInputElement } {
   const label = document.createElement("label");
   label.textContent = text;
   const input = document.createElement("input");
   input.dataset[data] = "";
+  label.htmlFor = input.id = `vigilia-text-${++fieldSeq}`;
   return { label, input };
 }
 
