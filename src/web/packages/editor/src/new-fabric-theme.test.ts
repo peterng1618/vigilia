@@ -554,8 +554,13 @@ describe("the new Fabric document", () => {
     expect(bindingsOf(theme)["cpu-card-sparkline"]).toEqual([
       expect.objectContaining({ semanticKey: "cpu.load" }),
     ]);
+    // The chart's ink is the glass ink, not `cpu`/`sparkArea`: this card
+    // transmits, so its field is a photograph, and `#4da3ff` sits 37 luma from
+    // the CPU card's bright horizon — under the one-pixel edge floor, which
+    // reads as a grey line rather than a stroke.
     expect(objectById(theme, "cpu-card-sparkline")["settings"]).toMatchObject({
-      area: { ref: "palette.sparkArea" },
+      area: { ref: "palette.frostArea" },
+      stroke: { ref: "palette.frostInk" },
       showAxes: false,
     });
     expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
@@ -572,7 +577,7 @@ describe("the new Fabric document", () => {
     // The authored radius itself, not just "some radius": 40 is the value that
     // dissolves the sunset's structure behind the card, and a round trip that
     // quietly fell back to a default would leave a panel that blurs without
-    // diffusing — see `docs/decisions/0013-frost-is-diffusion-grain-and-an-edge-not-a-tint.md`.
+    // diffusing — see `docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md`.
     const authored = cpuCard().find((object) => object["id"] === "cpu-card")?.[
       "vigiliaGlass"
     ];

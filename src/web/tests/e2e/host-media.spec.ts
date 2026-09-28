@@ -431,6 +431,286 @@ async function compositedInk(
   );
 }
 
+/**
+ * A clip that presents a **new frame on every animation frame**, which the
+ * dwell fixture above cannot do.
+ *
+ * `canvas.captureStream` only emits a frame when the canvas *changes*, so a
+ * fixture that repaints once every 1500 ms encodes eight frames across ten
+ * seconds and the display presents **one new frame per second** — measured,
+ * not assumed: the dwell fixture delivered 1, 2, 3, 3, 4, 5, 6, 6 callbacks
+ * over eight one-second samples. That is correct `requestVideoFrameCallback`
+ * behaviour and it is exactly why the dwell fixture cannot carry a cadence
+ * claim. This one repaints every frame, so the callback fires as often as the
+ * compositor presents.
+ *
+ * A 16:9 source, because the fixture artboard is 16:9 and `cover` then shows
+ * the whole frame: a bar at a given fraction of the width is at that same
+ * fraction behind the panel, which is what makes the picture locatable.
+ */
+async function recordPerFrameWebm(page: Page): Promise<Uint8Array> {
+  const base64 = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext("2d");
+    if (context === null) throw new Error("no 2d context for the fixture");
+    const mimeType = ["video/webm;codecs=vp8", "video/webm"].find((type) =>
+      MediaRecorder.isTypeSupported(type),
+    );
+    if (mimeType === undefined) {
+      throw new Error("this browser cannot record the fixture's video");
+    }
+    const recorder = new MediaRecorder(canvas.captureStream(60), { mimeType });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => chunks.push(event.data);
+    const stopped = new Promise((resolve) => {
+      recorder.onstop = resolve;
+    });
+    recorder.start();
+    const started = performance.now();
+    let frame = 0;
+    await new Promise<void>((done) => {
+      const draw = (): void => {
+        frame += 1;
+        context.fillStyle = "#000000";
+        context.fillRect(0, 0, 320, 180);
+        // A bright bar that walks the whole width, so no two frames are alike.
+        const x = (frame % 48) * (320 / 48);
+        context.fillStyle = "#ffffff";
+        context.fillRect(x, 0, 6, 180);
+        if (performance.now() - started > 1600) {
+          done();
+          return;
+        }
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    });
+    recorder.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(chunks).arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  });
+  return new Uint8Array(Buffer.from(base64, "base64"));
+}
+
+/**
+ * The video frame callback, and what the player can and cannot see of it.
+ *
+ * `followFrames` arms `requestVideoFrameCallback` so a playing video repaints
+ * the glass beneath it. On the **editor** it is the only thing that does: the
+ * editor's media mount hands `requestRenderAll` to `onFrame` and the editor
+ * runs no repaint loop of its own, so without the callback a frosted panel
+ * freezes on the video's first frame. (`background-media.dom.test.ts` covers
+ * the arming and the re-arming; nothing browser-tests the editor's freeze,
+ * which is a named gap, not a claim here.)
+ *
+ * The **player** is different, and this is the measurement rather than the
+ * expectation. Both of its mount paths start `startChartRefresh(tick, 30)` on
+ * `requestAnimationFrame`, so it already repaints on every animation frame the
+ * compositor offers — and a video frame is presented *as* an animation frame,
+ * so the callback's `requestRenderAll` lands in a frame that already has one
+ * and Fabric coalesces the two into a single render. Counted over three
+ * seconds on this machine, against the per-frame clip above:
+ *
+ * ```
+ *                      requestRenderAll calls   renders   rVFC deliveries
+ *   callback deleted           92                 40            0
+ *   callback armed            143                 50           49
+ * ```
+ *
+ * 92 requests already became 40 renders with no callback at all, and the
+ * callback's 51 extra requests added 10 renders. **The player cannot attribute
+ * renders to this mechanism**, and a test that passed with the mechanism
+ * removed would be a test of something else.
+ *
+ * So the test asserts the two things that are true and machine-independent:
+ *
+ * 1. **The mechanism is live and following frames.** If `followFrames` rots,
+ *    delivery stops and this goes red.
+ * 2. **Withholding delivery does not collapse the display's repainting** — the
+ *    control, run mid-mount on the same page and the same scene. This is the
+ *    non-distinguishability stated as a measurement, and it is also the
+ *    tripwire: if the player ever stops repainting on animation frames, the
+ *    second phase collapses and this goes red at the moment the callback
+ *    *does* become load-bearing.
+ *
+ * Delivery is switched by **withholding the callback from the page**, not by
+ * removing the API, so the product's own arming path runs in both phases and
+ * they differ by exactly one variable.
+ */
+const FRAME_DELIVERY = `
+window.__frameProbe = { delivered: 0, withheld: 0, allow: true };
+const proto = HTMLVideoElement.prototype;
+const native = proto.requestVideoFrameCallback;
+proto.requestVideoFrameCallback = function (callback) {
+  const state = window.__frameProbe;
+  // **The element, captured here.** Inside the callback \`this\` is a
+  // \`VideoFrameCallbackContext\`, not the video — so a re-arm written as
+  // \`this.requestVideoFrameCallback(callback)\` calls a method the context does
+  // not have, throws, and the count stays at zero for ever. Measured, not
+  // assumed: that is what the withholding phase read before the element was
+  // captured in a closure.
+  const element = this;
+  return native.call(element, function (now, metadata) {
+    // **The probe re-arms itself.** \`followFrames\` re-arms from inside its own
+    // callback, so a wrapper that returns without calling it ends the product's
+    // chain after exactly one frame — and \`withheld\` would then count one,
+    // never the browser's cadence. Re-arming here measures what the browser is
+    // presenting, which is what the control claims: the video kept playing and
+    // the page kept throwing those frames away.
+    if (!state.allow) {
+      state.withheld += 1;
+      return element.requestVideoFrameCallback(callback);
+    }
+    state.delivered += 1;
+    return callback(now, metadata);
+  });
+};
+`;
+
+test.describe("the video frame callback on the real player", () => {
+  test("is armed and following frames, and the player repaints without it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "a decoded video frame and its glass are a desktop read",
+    );
+    const id = themeId(testInfo.project.name);
+    await page.addInitScript({ content: FRAME_DELIVERY });
+    await publish(page, id, await recordPerFrameWebm(page));
+
+    await page.setViewportSize({ width: 1280, height: 960 });
+    await page.goto(`${HOST}/?theme=${id}`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const video = document.querySelector<HTMLVideoElement>(
+              "[data-vigilia-background-media] video",
+            );
+            return video === null
+              ? -1
+              : video.readyState * 1000 + video.videoWidth;
+          }),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(2000);
+
+    /** Renders and deliveries over one window, from the player's own canvas
+     *  event and the page's own callback wrapper, in a single read. */
+    const over = async (
+      ms: number,
+    ): Promise<{ renders: number; delivered: number; withheld: number }> =>
+      page.evaluate(async (duration) => {
+        const scope = window as unknown as {
+          __renders: number;
+          __frameProbe: { delivered: number; withheld: number };
+          vigilia: {
+            handle: {
+              canvas: {
+                on(event: string, cb: () => void): void;
+                off(event: string, cb: () => void): void;
+              };
+            };
+          };
+        };
+        const state = scope.__frameProbe;
+        const before = {
+          delivered: state.delivered,
+          withheld: state.withheld,
+        };
+        scope.__renders = 0;
+        const bump = (): void => {
+          scope.__renders += 1;
+        };
+        const canvas = scope.vigilia.handle.canvas;
+        canvas.on("after:render", bump);
+        await new Promise((done) => setTimeout(done, duration));
+        canvas.off("after:render", bump);
+        return {
+          renders: scope.__renders,
+          delivered: state.delivered - before.delivered,
+          withheld: state.withheld - before.withheld,
+        };
+      }, ms);
+
+    // **Phase A — the mechanism armed.** The callback is really being called
+    // and really is delivering, on every window this test takes.
+    const armed = await over(3000);
+    expect(
+      armed.delivered,
+      "the product's frame callback is armed and following frames",
+    ).toBeGreaterThan(8);
+    expect(
+      armed.renders,
+      "and the display repaints while it does",
+    ).toBeGreaterThan(4);
+
+    // **Phase B — delivery withheld, same page, same scene.** The product's
+    // chain is still armed; the page simply stops handing it frames, which is
+    // what removing the mechanism would leave behind.
+    await page.evaluate(() => {
+      (
+        window as unknown as { __frameProbe: { allow: boolean } }
+      ).__frameProbe.allow = false;
+    });
+    // The in-flight callback drains within one frame, and that is the product's
+    // chain ending — nothing re-arms it but its own callback. The probe keeps
+    // re-arming, so `withheld` stays a count of frames the browser is still
+    // presenting.
+    await page.waitForTimeout(500);
+    const idle = await over(3000);
+    // **The video is still playing.** `withheld` counts frames the *browser*
+    // presented, so it is only the control the claim needs if the media
+    // itself never stalled. Without this the numbers would also be produced by
+    // a video that stopped, and "the player repaints without the callback"
+    // would be resting on a paused video that happens to be cheap to draw.
+    const advanced = await page.evaluate(async () => {
+      const video = document.querySelector<HTMLVideoElement>(
+        "[data-vigilia-background-media] video",
+      );
+      if (video === null)
+        throw new Error("the background video is not mounted");
+      const before = video.currentTime;
+      await new Promise((done) => setTimeout(done, 1000));
+      return {
+        advanced: video.currentTime - before,
+        paused: video.paused,
+      };
+    });
+    expect(advanced.paused, "the background video is still playing").toBe(
+      false,
+    );
+    expect(
+      advanced.advanced,
+      "and its clock is still moving, so the withheld frames are real",
+    ).toBeGreaterThan(0);
+    expect(
+      idle.withheld,
+      "the browser kept presenting frames the page then withheld",
+    ).toBeGreaterThan(4);
+    expect(
+      idle.delivered,
+      "and the product's chain ended, so nothing was delivered in this window",
+    ).toBe(0);
+    // **The claim.** The display keeps repainting on its own cadence, so the
+    // render count does not collapse. 0.4 is a floor chosen to hold on both
+    // ends of the machine range rather than a measured ratio: on this host the
+    // two phases are within 30 % of each other, and on a host whose
+    // compositor runs faster than the 30 Hz cap the ratio approaches 0.5.
+    expect(
+      idle.renders,
+      `the player still repaints with no video frames delivered (${idle.renders} against ${armed.renders} armed)`,
+    ).toBeGreaterThan(armed.renders * 0.4);
+  });
+});
+
 test.describe("changing media on the real player", () => {
   test("a playing video background reaches the glass panel over it", async ({
     page,

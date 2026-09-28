@@ -1582,34 +1582,32 @@ test.describe("the reference composition, captured", () => {
     // threshold does **not** discriminate the two fills and is not claimed to.
     expect(reading.blurred.rows, "the band covers rows").toBeGreaterThan(20);
 
-    // **The material under the panel is the photograph, diffused.** Read on the
-    // range and not on the adjacent-column step: this card's radius is 40
-    // artboard units, which is a 15 px kernel at this mount's 0.3744 camera,
-    // and a step measured across a kernel that wide is near zero for any
-    // backdrop — blurred or not. The range is what survives a blur, and it
-    // falls 7.56 -> 2.91, a 2.6x drop.
+    // **The material under the panel is the photograph, diffused hard.** With
+    // the card's 40 artboard units — a 15 px kernel at this mount's 0.3744
+    // camera — the backdrop's range falls 7.43 -> 1.48, a **5.0x** drop, and
+    // its column-to-column step 0.74 -> 0.23. Both are read on the range and
+    // the step rather than on either alone, because a kernel that wide
+    // flattens high frequencies for any backdrop and keeps the low ones.
     expect(
       reading.clearSharp.contrast / reading.clearBlurred.contrast,
-      `the sampled backdrop is genuinely blurred (${reading.clearSharp.contrast} sharp against ${reading.clearBlurred.contrast} blurred)`,
-    ).toBeGreaterThan(2);
-    // Softened, not erased: 38 % of the range is left, which is what a 40-unit
-    // radius over a photograph's own structure costs. A panel that merely
-    // tinted its backdrop would move this number not at all.
+      `the sampled backdrop is genuinely diffused (${reading.clearSharp.contrast} sharp against ${reading.clearBlurred.contrast} blurred)`,
+    ).toBeGreaterThan(3);
+    // And it is diffusion, not erasure: a fifth of the range survives, where a
+    // panel that merely tinted its backdrop would leave all of it.
     expect(
       reading.clearBlurred.contrast,
-      "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(reading.clearSharp.contrast * 0.3);
+      "the blur diffuses the backdrop rather than erasing it",
+    ).toBeGreaterThan(reading.clearSharp.contrast * 0.15);
 
-    // **The authored panel is that same backdrop under a 72 % tint**, so it
-    // reads 0.28 of it — 0.80 here, measured against the model at 0.81. The
-    // floor is low because a strongly diffused surface is *supposed* to be
-    // locally smooth; what it separates is the even gradient the photograph
-    // replaced, and that measures 0.00 at every radius, so 0.4 has a 100 %
-    // margin over the measurement and is unreachable by a fill.
+    // **The authored panel is that backdrop through a 30 % tint**, so it reads
+    // about 1.08 of 1.48 — the photograph is still *visible through the glass*,
+    // which is the whole claim, and 30 % is the floor the caption's contrast
+    // sets rather than a look. The even gradient this replaced measures 0.00 at
+    // every radius, so 0.6 is a floor with margin and is unreachable by a fill.
     expect(
       reading.blurred.contrast,
       "the frosted panel carries backdrop structure, not an even fill",
-    ).toBeGreaterThan(0.4);
+    ).toBeGreaterThan(0.6);
 
     // **Text and the chart's stroke stay sharp above the glass.** The measure
     // is the glyph band alone: the frame with the object minus the frame
@@ -1641,6 +1639,27 @@ test.describe("the reference composition, captured", () => {
     expect(reading.dataUrl, "and the capture path encodes it").toBeGreaterThan(
       10_000,
     );
+
+    // **And the reading on the frosted card is still a reading.** The card
+    // transmits now, so its field is a photograph through a 30 % tint rather
+    // than a near black panel — which is the point, and which is also what put
+    // the muted grey token below AA. `underCpu` is the WCAG relative luminance
+    // of that field with the caption hidden; `#ecf5ff` is 0.904, and 4.5:1
+    // needs the field at or under 0.162. It measures 0.135 here — 5.1:1 —
+    // and the tint is what puts it there: at 18 % the same field reads 0.1874
+    // and the caption falls to 4.02:1.
+    const whiteOn = (field: number): number => (0.904 + 0.05) / (field + 0.05);
+    expect(
+      whiteOn(reading.underCpu),
+      `the frosted card's caption reads at AA (field ${reading.underCpu})`,
+    ).toBeGreaterThan(4.5);
+    // The opaque card beside it is unchanged by any of this, and is the control
+    // that says the frosted one is the outlier rather than the rule: a glass
+    // that has to tint itself dark to carry white text is a panel, not glass.
+    expect(
+      whiteOn(reading.underGpu),
+      "and the opaque card is no worse",
+    ).toBeGreaterThan(whiteOn(reading.underCpu));
 
     // The picture itself, looked at. Registered in
     // `docs/evidence/screenshots/README.md` and inspected before it is kept.
@@ -1871,8 +1890,11 @@ function starterBackdropBands(page: Page): Promise<{
     card.set("vigiliaGlass", authored);
     canvas.renderAll();
 
-    // Text legibility: the mean luma under a label's own box, with the label
-    // hidden, on the frosted card and on an opaque one beside it.
+    // Text legibility: the field under a label's own box, with the label
+    // hidden, on the frosted card and on an opaque one beside it. Read as WCAG
+    // **relative luminance** rather than a weighted sRGB mean, because a
+    // contrast ratio is defined on the linearised value and averaging first
+    // would put the number in the wrong space to divide by.
     const lumaUnder = (id: string): number => {
       const label = objects.find((object) => object.get("id") === id);
       if (label === undefined) throw new Error(`no ${id}`);
@@ -1893,11 +1915,17 @@ function starterBackdropBands(page: Page): Promise<{
         ).data;
       label.set("visible", was);
       canvas.renderAll();
+      const channel = (value: number): number => {
+        const s = value / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
       let sum = 0;
       for (let i = 0; i < data.length; i += 4)
         sum +=
-          0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
-      return Math.round((sum / (data.length / 4)) * 100) / 100;
+          0.2126 * channel(data[i]!) +
+          0.7152 * channel(data[i + 1]!) +
+          0.0722 * channel(data[i + 2]!);
+      return Math.round((sum / (data.length / 4)) * 10_000) / 10_000;
     };
     const underCpu = lumaUnder("cpu-card-caption");
     const underGpu = lumaUnder("gpu-card-caption");

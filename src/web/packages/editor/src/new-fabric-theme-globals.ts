@@ -26,14 +26,25 @@ export const panel = "#081523d9";
 /**
  * The tint a *frosted* panel carries, which is not the tint an opaque one does.
  *
- * Measured, not chosen: the frosted card's own `panel` fill is 85% opaque, and
- * a backdrop behind it reaches the eye at 2.4/255 of contrast — 16.02 blurred
- * backdrop times (1 − 0.851) = 2.39, which is what the browser reported. A blur
- * applied under an almost-opaque panel is a blur of nothing. At 72% the same
- * backdrop reads at 4.5/255 while the card stays a dark card: 56 luma against
- * `#ecf5ff` text, measured, not eyeballed.
+ * Measured from both ends, because it is a floor set by what is behind the glass
+ * rather than a look:
+ *
+ * - **Down.** The frosted card's own `panel` fill is 85% opaque, and a backdrop
+ *   behind it reaches the eye at 2.4/255 of contrast — 16.02 blurred backdrop
+ *   times (1 − 0.851) = 2.39, which is what the browser reported. A blur applied
+ *   under an almost-opaque panel is a blur of nothing.
+ * - **Up.** This card sits on the photograph's bright horizon, and the panel's
+ *   field is that photograph at (1 − alpha) plus the tint. At 18% the field
+ *   measures 0.1874 WCAG luminance and `#ecf5ff` reads **4.02:1** against it —
+ *   under AA's 4.5. At 24% it reads 4.49, which passes and is not a floor worth
+ *   having on a threshold that moves with the photograph; at 30% the field is
+ *   0.135 and the caption reads **5.1:1**.
+ *
+ * 30% is therefore the floor the contrast requirement sets, not a preference,
+ * and the photograph still reads through it: the panel's carried backdrop
+ * structure falls from 1.27 to about 1.08 against a 0.6 floor.
  */
-export const frost = "#081523b8";
+export const frost = "#0815234d";
 
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
@@ -54,7 +65,7 @@ export const starterPalette = {
   panel: { name: "Panel", value: { kind: "solid", color: "#081523d9" } },
   frost: {
     name: "Frosted panel",
-    value: { kind: "solid", color: "#081523b8" },
+    value: { kind: "solid", color: frost },
   },
   panelStroke: {
     name: "Panel outline",
@@ -78,6 +89,29 @@ export const starterPalette = {
       stops: [
         { offset: 0, color: "#4da3ff66" },
         { offset: 1, color: "#4da3ff00" },
+      ],
+    },
+  },
+  // The frosted cards' chart ink, and the reason it is a separate token from
+  // `cpu`/`gpu`/`sparkArea` above: those are mid-luma blues measured for a
+  // near-opaque panel, and a card that transmits is a *mid-luma photographic*
+  // field. Measured across this card row the field averages 55, but the CPU
+  // card sits on the photograph's bright horizon at 114 — and `#4da3ff` is
+  // luma 151, only 37 away from it, which is under the one-pixel edge floor
+  // and reads as a soft grey line. A light ink separates from both ends of
+  // that range: 232 is 177 from the bright card and 177 from the dark one.
+  frostInk: {
+    name: "Chart ink on glass",
+    value: { kind: "solid", color: "#dbeafe" },
+  },
+  frostArea: {
+    name: "Chart area on glass",
+    value: {
+      kind: "gradient",
+      angle: 90,
+      stops: [
+        { offset: 0, color: "#dbeafe59" },
+        { offset: 1, color: "#dbeafe00" },
       ],
     },
   },
@@ -108,7 +142,7 @@ export const solidOf: Readonly<Record<string, string>> = {
   text: "#ecf5ff",
   dim: "#a8bed0",
   panel: "#081523d9",
-  frost: "#081523b8",
+  frost,
   background: "#0c0e13",
   rule: "#7dbde0",
   cpu: "#4da3ff",
@@ -117,6 +151,7 @@ export const solidOf: Readonly<Record<string, string>> = {
   vram: "#c964e8",
   down: "#22d3ee",
   chartTrack: "#223047",
+  frostInk: "#dbeafe",
 };
 
 export const starterTypePresets = {

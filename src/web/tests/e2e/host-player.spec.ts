@@ -491,8 +491,9 @@ test.describe("hosted player over the real host", () => {
       });
 
     // The treatment survived the host's own save, so the player composites it
-    // from authored state rather than from a cache the route dropped.
-    expect((await readCard()).treatment).toEqual({ blurRadius: 16 });
+    // from authored state rather than from a cache the route dropped — and it
+    // is the card's own authored radius, 40, not a default the route supplied.
+    expect((await readCard()).treatment).toEqual({ blurRadius: 40 });
 
     // And the reading is **live**, which is the claim this card was added for.
     // Polled because a reading arrives over SSE; a single read would be
@@ -1240,40 +1241,35 @@ test.describe("a display fed by the real host", () => {
     ).toBeLessThan(photo!.meanLuma * 0.08);
 
     // Measured on this machine, 2026-09-28, at 1672x941 with this card's
-    // 40-unit radius: the photograph 7.45, the same backdrop under a clear fill
-    // 7.55 sharp / 3.26 blurred, and 0.95 as authored over `palette.frost`
-    // (72 % opaque, so 3.26 x 0.278 = 0.91, which is what it measures to
-    // within 0.04). The gradient this replaced has a mean luma step between
-    // adjacent columns of **0.00** at every scale, so a panel over it could not
-    // read above zero however wide the radius was.
+    // 40-unit radius: the photograph 7.51, the same backdrop under a clear fill
+    // 7.51 sharp / 1.75 diffused, and 1.46 as authored over `palette.frost` at
+    // 18 % — about 1.28 at the 30 % the card's caption contrast sets. The
+    // gradient this replaced has a mean luma step between adjacent columns of
+    // **0.00** at every scale, so a panel over it could not read above zero
+    // however wide the radius was.
     expect(blurred.rows, "the band covers rows").toBeGreaterThan(20);
 
-    // **And it is the glass that softened it.** The blur-off control is the
-    // same code path with `blurRadius: 0`, so the panel still composites and
-    // only the radius differs: 2.19 sharp against 0.95 authored, a 2.3x drop.
-    // Read on the range and not on the adjacent-column step — 40 artboard units
-    // is a 40 px kernel here, against a 140-column band, so a step measured
-    // across a kernel that wide is near zero for any backdrop.
+    // **And it is the glass that did it.** The blur-off control is the same
+    // authored panel through the same code path with `blurRadius: 0`, so the
+    // only difference is the radius: 6.17 against 1.46, a **4.2x** drop. A
+    // panel that merely tinted its backdrop would move this number not at all.
     expect(
       sharp.contrast / blurred.contrast,
-      `the sampled backdrop is genuinely blurred on the display too (${sharp.contrast} at radius 0 against ${blurred.contrast} authored)`,
-    ).toBeGreaterThan(2);
-    // Softened, not erased: 43 % of the range is left, which is what a 40-unit
-    // radius over a photograph's own structure costs. A panel that merely
-    // tinted its backdrop would move this number not at all.
+      `the display's frosted panel is diffused by its own treatment (${sharp.contrast} at radius 0 against ${blurred.contrast} authored)`,
+    ).toBeGreaterThan(3);
+    // Diffused, not erased: 23 % of the range survives.
     expect(
       clearBlurred.contrast,
-      "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(clearSharp.contrast * 0.3);
+      "the blur diffuses the backdrop rather than erasing it",
+    ).toBeGreaterThan(clearSharp.contrast * 0.15);
 
     // **The floor that separates "a photograph is behind this" from "an even
-    // fill"**, and it is low because a strongly diffused surface is *supposed*
-    // to be locally smooth: 0.95 here, 0.80 in the editor's mount, against the
-    // 0.00 the even gradient reads at every radius.
+    // fill"**: about 1.28 here against 1.08 in the editor's mount, and 0.00 for
+    // the even gradient at every radius.
     expect(
       blurred.contrast,
       "the display's frosted panel carries backdrop structure",
-    ).toBeGreaterThan(0.4);
+    ).toBeGreaterThan(0.6);
 
     // **Taint.** The bytes are same-origin, so the display's canvas is not
     // tainted, and the capture path that reads it back works. A CDN URL would

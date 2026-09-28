@@ -13,8 +13,9 @@ const EDITOR = "http://127.0.0.1:4174/";
  *
  *  - **Comparable in kind, not in figure.** Task 1's 0.61 ms is a *delta* for
  *    **three** panels at hardcoded zoom 0.6 on a bare `StaticCanvas`, radius 0
- *    against 12. This is a delta for **one** panel in the real editor at
- *    `zoomToFit` (0.765, 1.63x the area), panel-removed against panel-kept.
+ *    against 12. This is a delta for **every** panel the scene carries, in the
+ *    real editor at `zoomToFit` (0.765, 1.63x the area), all of them removed
+ *    against all of them kept.
  *    Neither is a per-panel figure, so a ratio between them measures nothing
  *    and none is quoted here.
  *  - **The scene differs**: panel count, zoom, and whether a background media
@@ -117,10 +118,14 @@ async function curve(
         | undefined
     )?.canvas;
     if (editor === undefined) throw new Error("no editor canvas is mounted");
-    const panel = editor
+    // **Every** panel carrying the treatment, because the starter's top card
+    // row is five of them and a bound measured on one says nothing about the
+    // scene the product actually renders.
+    const panels = editor
       .getObjects()
-      .find((object) => object["vigiliaGlass"] !== undefined);
-    if (panel === undefined) throw new Error("the fixture has no glass panel");
+      .filter((object) => object["vigiliaGlass"] !== undefined);
+    if (panels.length === 0) throw new Error("the fixture has no glass panel");
+    const panel = panels[0];
 
     const time = (samples: number, frames: number): number => {
       editor.renderAll();
@@ -139,9 +144,9 @@ async function curve(
       panel.set("vigiliaGlass", { blurRadius: radius });
       editor.renderAll();
       const withGlass = time(9, 50);
-      editor.remove(panel);
+      editor.remove(...panels);
       const withoutGlass = time(9, 50);
-      editor.add(panel);
+      editor.add(...panels);
       measured.push({ radius, cost: withGlass - withoutGlass });
     }
     return measured;

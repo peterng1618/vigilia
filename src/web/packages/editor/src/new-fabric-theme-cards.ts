@@ -3,11 +3,11 @@ import {
   defaultGaugeSettings,
   defaultLineSettings,
 } from "@vigilia/renderer-core";
-import { frost, type StarterPaletteId } from "./new-fabric-theme-globals.js";
+import { type StarterPaletteId } from "./new-fabric-theme-globals.js";
 import { starterIcons } from "./new-fabric-theme-icons.js";
 import {
-  card,
   chart,
+  frostedCard,
   label,
   type ObjectJson,
   path,
@@ -92,7 +92,7 @@ const valued = (
 
 export function clockCard(): ObjectJson[] {
   return [
-    card("time-card", 40, 187, 367, 307),
+    frostedCard("time-card", 40, 187, 367, 307),
     // `hh:mm` with the meridiem on its own object: the reference sets it at a
     // quarter of the digits' size, and one tracking value is measured once per
     // object, so two sizes cannot share a text object anyway.
@@ -104,7 +104,7 @@ export function clockCard(): ObjectJson[] {
       60,
       27.12,
       24,
-      "dim",
+      "text",
       "500",
       "clock-period",
     ),
@@ -132,17 +132,7 @@ export function clockCard(): ObjectJson[] {
  */
 export function cpuCard(): ObjectJson[] {
   return [
-    {
-      ...card("cpu-card", 421, 187, 280, 307),
-      // Frosted, not filled. `card()`'s `panel` tint is 85% opaque, and the
-      // backdrop behind it then reached the eye at 2.4/255 — measured, against
-      // 16.02 for the same backdrop under a clear fill. The glass works; the
-      // fill was hiding it. The outline is the same, so the card still reads
-      // as a card.
-      fill: frost,
-      vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
-      vigiliaGlass: { blurRadius: 40 },
-    },
+    frostedCard("cpu-card", 421, 187, 280, 307),
     path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
     label("cpu-card-title", 528, 212, 140, 27.12, "CPU", 24, "text"),
     text(
@@ -166,7 +156,13 @@ export function cpuCard(): ObjectJson[] {
       {
         kind: "value",
         bindingId: "cpu-card-model",
-        token: "dim",
+        // `text`, not `dim`. The muted grey was chosen against a card at 72 %
+        // opacity, where this line sat on a near-black field; on a glass that
+        // actually transmits, it measures 3.1:1 against the backdrop and fails
+        // AA for body text. The white token measures 5.4:1 on the same pixels,
+        // and the hierarchy the grey was carrying comes from the 20 px against
+        // the 24 px title instead.
+        token: "text",
         size: 20,
         weight: "400",
       },
@@ -175,8 +171,9 @@ export function cpuCard(): ObjectJson[] {
     // the box's middle, not its corner.
     chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
       ...sparkSettings,
-      stroke: { ref: "palette.cpu" },
-      palette: [{ ref: "palette.cpu" }],
+      area: { ref: "palette.frostArea" },
+      stroke: { ref: "palette.frostInk" },
+      palette: [{ ref: "palette.frostInk" }],
     }),
     text(
       "cpu-card-freq",
@@ -191,7 +188,7 @@ export function cpuCard(): ObjectJson[] {
 
 export function gpuCard(): ObjectJson[] {
   return [
-    card("gpu-card", 715, 187, 290, 307),
+    frostedCard("gpu-card", 715, 187, 290, 307),
     path("gpu-card-icon", 748, 213, starterIcons.gpu(48), "gpu", 3.9),
     label("gpu-card-title", 824, 212, 140, 27.12, "GPU", 24, "text"),
     text(
@@ -208,15 +205,16 @@ export function gpuCard(): ObjectJson[] {
       {
         kind: "value",
         bindingId: "gpu-card-model",
-        token: "dim",
+        token: "text",
         size: 20,
         weight: "400",
       },
     ]),
     chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
       ...sparkSettings,
-      stroke: { ref: "palette.gpu" },
-      palette: [{ ref: "palette.gpu" }],
+      area: { ref: "palette.frostArea" },
+      stroke: { ref: "palette.frostInk" },
+      palette: [{ ref: "palette.frostInk" }],
     }),
     text(
       "gpu-card-freq",
@@ -227,11 +225,11 @@ export function gpuCard(): ObjectJson[] {
       valued("gpu-card-clock", " GHz"),
     ),
     text("gpu-card-temp", 892, 452, 110, 22.6, [
-      { kind: "literal", text: "| ", token: "dim", size: 20, weight: "400" },
+      { kind: "literal", text: "| ", token: "text", size: 20, weight: "400" },
       {
         kind: "value",
         bindingId: "gpu-card-temp",
-        token: "dim",
+        token: "text",
         size: 20,
         weight: "400",
         precision: 0,
@@ -260,7 +258,7 @@ function memoryCard(options: {
 }): ObjectJson[] {
   const { prefix } = options;
   return [
-    card(options.id, options.left, 187, options.width, 307),
+    frostedCard(options.id, options.left, 187, options.width, 307),
     path(
       `${prefix}-card-icon`,
       options.iconLeft,
@@ -318,7 +316,13 @@ function memoryCard(options: {
           precision: 1,
           unitDisplay: "none",
         },
-        { kind: "literal", text: " / ", token: "dim", size: 20, weight: "400" },
+        {
+          kind: "literal",
+          text: " / ",
+          token: "text",
+          size: 20,
+          weight: "400",
+        },
         {
           kind: "value",
           bindingId: `${prefix}-total`,
@@ -328,7 +332,13 @@ function memoryCard(options: {
           precision: 0,
           unitDisplay: "none",
         },
-        { kind: "literal", text: " GB", token: "dim", size: 20, weight: "400" },
+        {
+          kind: "literal",
+          text: " GB",
+          token: "text",
+          size: 20,
+          weight: "400",
+        },
       ],
       { align: "center" },
     ),
@@ -374,13 +384,13 @@ export function trendsCard(): ObjectJson[] {
     legend.push({
       kind: "literal",
       text: ` ${name}${name === "RAM" ? "" : "   "}`,
-      token: "dim",
+      token: "text",
       size: 20,
       weight: "400",
     });
   }
   return [
-    card("trends-card", 40, 507, 1084, 335),
+    frostedCard("trends-card", 40, 507, 1084, 335),
     path("trends-card-icon", 74, 530, starterIcons.trends(34), "cpu", 2.8),
     label(
       "trends-card-title",
@@ -416,7 +426,7 @@ export function trendsCard(): ObjectJson[] {
 
 export function storageCard(): ObjectJson[] {
   return [
-    card("storage-card", 1138, 507, 494, 165),
+    frostedCard("storage-card", 1138, 507, 494, 165),
     path("storage-card-icon", 1170, 528, starterIcons.storage(40), "cpu", 3.3),
     label("storage-card-title", 1234, 528, 240, 27.12, "Storage", 24, "text"),
     // The reference writes the share against the card's right edge.
@@ -462,13 +472,13 @@ export function storageCard(): ObjectJson[] {
         weight: "500",
       },
     ]),
-    path("storage-chevron", 1590, 626, starterIcons.chevron(24), "dim", 2),
+    path("storage-chevron", 1590, 626, starterIcons.chevron(24), "text", 2),
   ];
 }
 
 export function networkCard(): ObjectJson[] {
   return [
-    card("network-card", 1138, 687, 494, 155),
+    frostedCard("network-card", 1138, 687, 494, 155),
     path("network-card-icon", 1170, 706, starterIcons.network(40), "down", 3.3),
     label("network-card-title", 1230, 704, 240, 27.12, "Network", 24, "text"),
     // The arrows are typographic marks rather than icon objects: they sit inside

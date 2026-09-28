@@ -80,15 +80,37 @@ const MAX_BACKDROP_PIXELS = 4_194_304;
 const MIN_REGION_PX = 2;
 
 /**
- * The surface grain, at the strength two independent canvas implementations
- * name: 8 % over the glass, composited `overlay` rather than laid on as a haze,
- * because a flat translucent grey reads as a layer *over* the panel while an
- * overlay blend scatters light the way etched glass does.
+ * The surface grain, composited `overlay` rather than laid on as a haze: a flat
+ * translucent grey reads as a layer *over* the panel, while an overlay blend
+ * scatters light the way etched glass does. Its job is to kill the banding a
+ * heavy blur lays over a smooth gradient.
+ *
+ * **1.5 %, not the 8 % two canvas recipes name.** Measured here: at 8 % the
+ * grain raised a blurred band's column-to-column step to 1.4 against a sharp
+ * 1.6, which is the noise swamping the blur it sits on — and at 3 % it still
+ * cut the blur's own 5.9x drop in fine detail to 1.6x. A surface noise that
+ * hides the diffusion is worse than none, because the eye reads noise as
+ * "not blurred". The tile is the same; the level comes from the reading.
  *
  * Not a dial. Grain is a property of the material — see
- * `docs/decisions/0013-frost-is-diffusion-grain-and-an-edge-not-a-tint.md`.
+ * `docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md`.
  */
-const GRAIN_ALPHA = 0.03;
+const GRAIN_ALPHA = 0.015;
+
+/**
+ * How far the glass pushes the backdrop's colour back out.
+ *
+ * A Gaussian blur is an average, and an average moves towards grey — that is
+ * arithmetic, not taste: every channel is pulled towards its neighbours' mean,
+ * so a saturated backdrop arrives desaturated. Compounding the blur with
+ * `saturate()` is the correction, and the ecosystem calls it the difference
+ * between amateur glass and Apple's. 1.6 is the middle of the 140–180 % band
+ * those sources converge on.
+ *
+ * `ctx.filter` is a filter *list*, so this composes with the blur in the one
+ * pass rather than costing a second one.
+ */
+const GLASS_SATURATION = 1.6;
 
 /** Grain reads as grain at any density; the tile is stretched, not regenerated. */
 const GRAIN_TILE_PX = 128;
@@ -413,7 +435,14 @@ export function createGlass(options: GlassOptions): GlassHandle {
       }
       ctx.clip();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.filter = blurRadius > 0 ? `blur(${blurRadius}px)` : "none";
+      // One filter list, one pass: the blur diffuses and the saturation puts
+      // back the colour the blur averaged away. A radius of zero gets no
+      // filter at all — there is nothing to desaturate, and grading an
+      // undiffused backdrop is a look, not a glass.
+      ctx.filter =
+        blurRadius > 0
+          ? `blur(${blurRadius}px) saturate(${GLASS_SATURATION})`
+          : "none";
       ctx.drawImage(
         scratch.element,
         region.left,

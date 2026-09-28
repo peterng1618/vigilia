@@ -917,7 +917,10 @@ test.describe("Fabric editor route", () => {
     const enabled = page.locator("[data-vigilia-glass-enabled]");
     const blur = page.locator("[data-vigilia-glass-blur]");
     await expect(enabled).toBeChecked();
-    await expect(blur).toHaveValue("16");
+    // The card's own authored radius, read back through the control: 40 is the
+    // value that dissolves the sunset's structure behind the glass, so a
+    // control showing anything else would mean the control invented a default.
+    await expect(blur).toHaveValue("40");
 
     // The reading is a **value** run, not authored text. The editor paints
     // the reading by default — a dashboard showing `@cpu.load` where the reader
@@ -982,7 +985,7 @@ test.describe("Fabric editor route", () => {
     const card = reopened.scene.objects.find(
       (object) => object["id"] === "cpu-card",
     );
-    expect(card?.["vigiliaGlass"]).toEqual({ blurRadius: 16 });
+    expect(card?.["vigiliaGlass"]).toEqual({ blurRadius: 40 });
     // Both halves of the card still read the same key after the round trip.
     expect(reopened.bindings?.["cpu-card-value"]).toEqual([
       expect.objectContaining({ semanticKey: "cpu.load" }),

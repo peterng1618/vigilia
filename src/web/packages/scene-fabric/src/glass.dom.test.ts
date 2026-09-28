@@ -369,28 +369,38 @@ describe("glass composition", () => {
   });
 
   it("converts the authored radius to device pixels through the real matrix", () => {
-    const filterFor = (configure: (canvas: StaticCanvas) => void): string => {
+    const filterFor = (
+      configure: (canvas: StaticCanvas) => void,
+      radius = 24,
+    ): string => {
       const s = stage({});
-      s.canvas.add(panel());
+      s.canvas.add(panel({ vigiliaGlass: { blurRadius: radius } }));
       configure(s.canvas);
       s.canvas.renderAll();
       return s.draws[0]?.filter ?? "none";
     };
 
     // 1:1 at DPR 1 is the case where artboard units and device pixels coincide,
-    // which is exactly why the distinction was invisible until now.
-    expect(filterFor(() => {})).toBe("blur(24px)");
+    // which is exactly why the distinction was invisible until now. The
+    // saturation rides in the same filter list: one pass, not two.
+    expect(filterFor(() => {})).toBe("blur(24px) saturate(1.6)");
+    // **A radius of zero gets no filter at all**, not `saturate` on its own.
+    // Saturation exists to put back what a blur averaged away; with nothing
+    // diffused there is nothing to put back, and grading an undiffused
+    // backdrop would make the blur-off control disagree with the photograph it
+    // exists to be a control for.
+    expect(filterFor(() => {}, 0)).toBe("none");
     // Zoom halves it.
     expect(
       filterFor((canvas) =>
         canvas.setViewportTransform([0.5, 0, 0, 0.5, 0, 0]),
       ),
-    ).toBe("blur(12px)");
+    ).toBe("blur(12px) saturate(1.6)");
     // A panel's own scale multiplies it, exactly as its `rx` does.
     const scaled = stage({});
     scaled.canvas.add(panel({ scaleX: 2, scaleY: 2, left: 60, top: 60 }));
     scaled.canvas.renderAll();
-    expect(scaled.draws[0]?.filter).toBe("blur(48px)");
+    expect(scaled.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
     // The retina leg, which every other case here leaves at 1 — so both
     // `* retina` terms would otherwise be unexercised. The collaborator Fabric
     // reads the ratio through is stubbed rather than the global, which
@@ -399,7 +409,7 @@ describe("glass composition", () => {
     dense.canvas.getRetinaScaling = () => 2;
     dense.canvas.add(panel());
     dense.canvas.renderAll();
-    expect(dense.draws[0]?.filter).toBe("blur(48px)");
+    expect(dense.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
     // Zero is a valid treatment and must not be filtered away silently.
     const zero = stage({});
     zero.canvas.add(panel({ vigiliaGlass: { blurRadius: 0 } }));
@@ -447,7 +457,7 @@ describe("glass composition", () => {
 
     const filters = s.draws.map((draw) => draw.filter);
     expect(s.draws.length).toBeGreaterThan(0);
-    expect(filters).toContain("blur(40px)");
+    expect(filters).toContain("blur(40px) saturate(1.6)");
     expect(filters).not.toContain("blur(8px)");
   });
 

@@ -1,6 +1,6 @@
 import {
   charSpacingPx,
-  panel,
+  frost,
   type StarterPaletteId,
   solidOf,
 } from "./new-fabric-theme-globals.js";
@@ -44,7 +44,23 @@ export function rect(
   };
 }
 
-export function card(
+/**
+ * The card, and the only place that says a panel is made of glass.
+ *
+ * The box and the outline are measured off the reference theme, not chosen: its
+ * card border occupies two pixels and first appears ten pixels in from the
+ * top-left corner on both axes. The outline token is already the right value —
+ * a translucent cool line of that alpha composites to about the border the
+ * reference shows.
+ *
+ * The fill is `frost` and the treatment is what makes the panel transmit what
+ * is behind it, because at `panel`'s 85 % alpha a blur is a blur of nothing.
+ * The authored radius is the one the theme's cards share, and it is inside both
+ * the published bound of 48 and Task 1's measured-flat 0-64 px band.
+ */
+export const FROST_RADIUS = 40;
+
+export function frostedCard(
   id: string,
   left: number,
   top: number,
@@ -52,14 +68,11 @@ export function card(
   height: number,
 ): ObjectJson {
   return {
-    // Measured off the reference theme, not chosen: its card border occupies two
-    // pixels and first appears ten pixels in from the top-left corner on both
-    // axes. The outline token is already the right value — a translucent cool
-    // line of that alpha composites to about the border the reference shows.
-    ...rect(id, left, top, width, height, panel, 10),
+    ...rect(id, left, top, width, height, frost, 10),
     stroke: "#9fc7e52b",
     strokeWidth: 2,
-    vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
+    vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
+    vigiliaGlass: { blurRadius: FROST_RADIUS },
   };
 }
 
