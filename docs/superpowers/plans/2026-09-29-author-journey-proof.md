@@ -129,6 +129,17 @@ Written 2026-09-29 against the tree, not inherited. Every key below was read fro
 - **There is no blank theme today.** `New` calls `createNewFabricTheme()` (`editor-main.ts:148`), which emits the entire finished composition. The only route to a blank scene is selecting everything and deleting it — a workaround no author is expected to understand, and exactly the thing this pass exists to catch. **Phase 0 makes the blank state real; the rebuild starts from it.**
 - **Alignment, wrap and overflow are run-level, not object-level.** The 2026-09-24 author-journey plan says otherwise and is wrong; see its Task 2. The rebuild drives the run editor.
 
+### Driving the editor from a test
+
+Measured 2026-09-29, so the driver does not rediscover these:
+
+- The editor's global is **`window["vigilia-fabric-editor-1"]`**, holding `{ canvas, viewport, historyManager, textManager, imageManager, layerManager, objectLockManager, errorManager, cropManager, deletionManager, clipboardManager, groupingManager, destroy }`. **`window.vigilia` is the player's, not the editor's** — reaching for it finds nothing and looks like a broken app.
+- `canvas.viewportTransform` is a **property**. There is no `getViewportTransform()` method; calling it throws.
+- The artboard controls exist and are `vigiliaArtboardWidth` / `vigiliaArtboardHeight`, in the Data tab under Theme Settings.
+- The View menu offers `Zoom to fit`, `Zoom to selection` and `100 %`, plus `Data source`, `Chart refresh` and `Value runs` toggles.
+- A starter text object is Fabric `textbox`; a newly inserted one is `i-text`. **Both enter editing mode**, so in-place editing covers the whole document — but a scene holds two text classes, which is worth remembering when a round trip misbehaves.
+- Reading the scene through the handle is fine and is how the driver counts and locates objects. **Writing** through it is not — every authored change goes through a real control.
+
 ---
 
 ## Phase 0 — The blank state
