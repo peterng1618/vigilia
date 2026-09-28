@@ -478,27 +478,24 @@ test.describe("hosted player over the real host", () => {
     );
     test.slow();
 
-    // **Known gap, pinned rather than written around, and it is a second
-    // defect of this task's own family.** The ring and its reading are
-    // rendered as separate objects, so a gauge can look complete while its
-    // coloured arc is missing: the track is grey ink and the reading is
-    // ordinary text. Measured on the same document in the same run — the
-    // editor's `ram-gauge` carries 2.7k–15.9k saturated pixels, the player's
-    // carries 219 — and the player's console says why:
+    // **Was pinned as a known gap, and the gap is closed.** The ring and its
+    // reading are separate objects, so a gauge could look complete while its
+    // coloured arc was missing: the track is grey ink and the reading is
+    // ordinary text. The player's console said why, and the per-chart guard in
+    // `hydrateCharts` turned it into a warning rather than a `pageerror`, so a
+    // run watching for uncaught errors saw none:
     //
     //   Vigilia: Chart "ram-gauge" failed to draw and was left as it was.
     //   Cannot read properties of undefined (reading '0')
     //
-    // ECharts throws while rendering the round-capped gauge on the display
-    // and the per-chart guard in `hydrateCharts` turns that into a warning
-    // rather than a `pageerror`, which is why a run that watched for
-    // uncaught errors saw none. Owner: the gauge render, and the question is
-    // whether the throw is ours or ECharts 6.1.0's — see the task report.
-    test.fail(
-      true,
-      "ECharts throws while rendering a round-capped gauge on the display",
-    );
-
+    // The cause is ECharts 6.1.0's, and it is in the data, not the paint.
+    // `GaugeView._renderPointer` reads its own `_progressEls` inside the
+    // data-diff `update` callback and only assigns it after a render that drew
+    // an arc. The display's first render happens before telemetry arrives, so
+    // the first sample crossed that read with the flag flipping under a datum
+    // that had been there all along. A gauge with no arc now carries no datum
+    // (`0008`), which turns the crossing into an `add` — and the editor, which
+    // mounts with a sample in hand, never took that path at all.
     await saveStarterThroughTheHost(page);
     await openDisplayWithLiveData(page);
     await page.waitForTimeout(8000);

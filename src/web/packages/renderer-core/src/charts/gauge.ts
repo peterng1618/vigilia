@@ -65,6 +65,11 @@ export function buildGaugeOption(
   const track = resolveChartPaint(settings.track, palette);
   const progress = resolveChartPaint(settings.progress, palette);
 
+  // One condition for the whole arc. Missing samples show only the track,
+  // never a false zero (§83); a paint that resolves to nothing is the same
+  // absence, an arc the author cannot see the value in (0007).
+  const arcDrawn = plottable && progress !== undefined;
+
   // Clamp only the drawn arc; preserve the raw reading elsewhere (§83).
   const displayValue = plottable
     ? clamp(sample.value, settings.min, settings.max)
@@ -88,10 +93,7 @@ export function buildGaugeOption(
           },
         },
         progress: {
-          // Missing samples show only the track, never a false zero (§83).
-          // A paint that resolves to nothing is the same absence: an arc the
-          // author cannot see the value in would be a number with no ink (0007).
-          show: plottable && progress !== undefined,
+          show: arcDrawn,
           width: settings.thickness,
           roundCap: settings.roundCap,
           ...progressItemStyle(progress ?? NO_PAINT, settings, displayValue),
@@ -102,7 +104,11 @@ export function buildGaugeOption(
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: { show: false },
-        data: [{ value: displayValue }],
+        // No arc, no datum. ECharts reads its own previous progress element
+        // inside the data-diff update callback and only fills it after a render
+        // that drew an arc, so a datum outliving `progress.show: false` throws
+        // inside its renderer (0008).
+        data: arcDrawn ? [{ value: displayValue }] : [],
         silent: true,
         ...toEngineAnimation(settings.animation, animate),
       },
