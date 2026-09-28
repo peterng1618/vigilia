@@ -430,7 +430,7 @@ test.describe("hosted player over the real host", () => {
     await openRailPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
+      .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     await page.getByRole("button", { name: "File", exact: true }).click();
     await page.getByRole("menuitem", { name: "Save to library" }).click();

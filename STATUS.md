@@ -19,10 +19,9 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **Artboard sizes are derived, not listed.** `artboard-presets.ts` holds one ratio table and one resolution table; `artboardSize` is the only place an edge is computed. 16:9 / 19.5:9 / 4:3, both orientations, at 1080p / 2K / 4K.
-- **A resolution names the short edge** — 1080 / 1440 / 2160 — so 19.5:9 at 1080p is 2340 × 1080 rather than 1080 × 585, and the long edge is the ratio's work. Portrait is the same row with the two numbers swapped, so the orientations cannot drift.
-- **No entry is named after a device**, per the product decision: nothing in the list claims a handset, and the lists are the data the control renders from.
-- **`artboardSize` throws a `RangeError` on an unknown id** rather than returning a default, because it is a trust boundary for anything persisting a size and a defaulted artboard is a document the author did not draw. 22 unit tests; the red-without-fix took all 9 portrait assertions down.
+- **Four `Panel` selectors repaired for the shape group.** F1.9's shape group made the Add pane's "Panel" button a "Rectangle"; the surviving `getByRole` calls in `reference-theme.spec.ts` (3) and `host-player.spec.ts` (1) now name it, and match exactly one button in a real browser.
+- **A fifth, unlisted break was found and fixed:** the same file's "Line" *chart* click became a strict-mode violation once the "Line" *shape* joined it. Scoped to the panel's own buttons, since the chart families sit beside the shape group rather than inside it — the click produces a `vigiliachart`, verified live.
+- **The three remaining `name: "Panel"` hits are palette-token definitions**, not selectors, and were left alone; `snapping.spec.ts` never had one.
 
 ## Next
 

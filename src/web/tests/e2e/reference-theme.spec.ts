@@ -400,9 +400,12 @@ test.describe("the reference composition, authored", () => {
 
     // **The author's work.** A panel inserted and styled through the product.
     await openRailPane(page, "Add");
+    // The shape that replaced the old "Panel" button. Only "Line" needs the
+    // "Shape" group to tell it from the "Line" chart, so a plain name is
+    // unambiguous here and stays readable.
     await page
       .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
+      .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const authored = (await activeId(page)) ?? "";
     expect(authored).not.toBe("");
@@ -515,7 +518,7 @@ test.describe("the reference composition, authored", () => {
     const textId = (await activeId(page)) ?? "";
     await page
       .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
+      .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";
     expect(textId).not.toBe("");
@@ -535,9 +538,13 @@ test.describe("the reference composition, authored", () => {
     // binding select the chart panel owns. The select is named
     // `<nodeId>.<bindingId>`, so the node is read back rather than guessed.
     await openRailPane(page, "Add");
+    // The "Line" *chart*, not the "Line" shape that now shares the word. The
+    // chart families sit beside the shape group rather than inside it, so
+    // scoping to the panel's own buttons is what tells the two apart.
     await page
       .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Line", exact: true })
+      .locator(":scope > button")
+      .and(page.getByRole("button", { name: "Line", exact: true }))
       .click();
     const chartId = (await activeId(page)) ?? "";
     expect(
@@ -651,7 +658,7 @@ test.describe("the reference composition, authored", () => {
     await openRailPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
+      .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";
     const before = (await sceneFacts(page)).find((f) => f.id === panelId);
