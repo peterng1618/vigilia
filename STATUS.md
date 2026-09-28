@@ -19,11 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.8: a scene object can be named.** An optional `name` rides on the object beside its stable `id`, in the persisted scene; absent means fall back to the id, so a scene authored before the field still opens.
-- **The name is authored state, not display state.** `editorMetadata.layerNames` — the editor-only side map that made a rename neither undoable nor saveable as scene data — is gone rather than left as a second owner. A rename is one history entry and travels in the envelope's scene.
-- **The envelope is the trust boundary:** a `name` that is not a non-blank string within the published bound is refused on import, at the object's own path, and published in `theme-document.schema.json` with a drift guard against the code's bound.
-- **The selection inspector's Name field sets and clears it** — one history entry per edit, refused rather than truncated past the bound — and new objects arrive named after the button that made them, so a first layer list is a list of names rather than uuids.
-- **A rename through the inspector reaches the layer list.** The bridge republished rows only on selection, so the field and the row it names would have drifted; it now republishes on object change too, proven by a test that fails without the fix.
+- **Artboard sizes are derived, not listed.** `artboard-presets.ts` holds one ratio table and one resolution table; `artboardSize` is the only place an edge is computed. 16:9 / 19.5:9 / 4:3, both orientations, at 1080p / 2K / 4K.
+- **A resolution names the short edge** — 1080 / 1440 / 2160 — so 19.5:9 at 1080p is 2340 × 1080 rather than 1080 × 585, and the long edge is the ratio's work. Portrait is the same row with the two numbers swapped, so the orientations cannot drift.
+- **No entry is named after a device**, per the product decision: nothing in the list claims a handset, and the lists are the data the control renders from.
+- **`artboardSize` throws a `RangeError` on an unknown id** rather than returning a default, because it is a trust boundary for anything persisting a size and a defaulted artboard is a document the author did not draw. 22 unit tests; the red-without-fix took all 9 portrait assertions down.
 
 ## Next
 
