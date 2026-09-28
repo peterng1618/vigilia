@@ -138,6 +138,10 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 **One thing checked and *not* a finding.** The footer's `textContent` reads `"Fabric editor readyWarning: …"` with no separator, which looked like a layout bug. It is not: the two are separate elements with a measured **12px gap** (status 22–147, message 159–990). `textContent` concatenation is not a layout defect, and this was worth measuring rather than reporting.
 
+| F1.22 | **The Open-library surface is dumped in the page corner over the menus** | `File ▸ Open library` renders its picker at **`position: fixed`, `left: 0`, `top: 0`**, 276 × 59, with `z-index: auto`. Measured against the menubar (141–386 at top 23): **File, Edit, Insert and Arrange are all obscured**; only View escapes. It is also **not a dialog** — no `role="dialog"`, so no modal semantics, no focus trap, and Escape will not close it. An author who opens the library loses four of the five menus and has no modal affordance telling them a surface is up. | the library panel |
+
+**The round trip itself is sound.** Verified by hand against a host with an empty, isolated library: naming the theme, `Save to library` writes it and reports **"Saved to library"**; the dirty-document guard correctly interrupts with Save / Discard / Cancel; and reopening carries the name through. Two earlier attempts appeared to show "Save to library does nothing and says nothing" — **that was my own bad selector, not the product.** Menus stay in the DOM after closing, so `[role=menu] button` was matching a stale View menu; the items are `role="menuitem"`. That trap is now recorded above, because the rebuild driver would have hit it and drawn a false finding.
+
 ### Landed
 
 | # | Finding | Landed in | Proof |
@@ -222,6 +226,7 @@ Measured 2026-09-29, so the driver does not rediscover these:
 - The View menu offers `Zoom to fit`, `Zoom to selection` and `100 %`, plus `Data source`, `Chart refresh` and `Value runs` toggles.
 - A starter text object is Fabric `textbox`; a newly inserted one is `i-text`. **Both enter editing mode**, so in-place editing covers the whole document — but a scene holds two text classes, which is worth remembering when a round trip misbehaves.
 - Reading the scene through the handle is fine and is how the driver counts and locates objects. **Writing** through it is not — every authored change goes through a real control.
+- **Menus are `role="menuitem"`, and a closed menu stays in the DOM.** Querying `[role=menu] button` matches a stale menu's items and silently clicks the wrong control — this produced a false "Save to library does nothing" before it was caught. Match on `role="menuitem"` and confirm the item is on screen. A driver that clicks the wrong control produces a confident, wrong finding, which is worse than no finding.
 
 ---
 
