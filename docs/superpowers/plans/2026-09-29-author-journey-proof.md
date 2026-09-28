@@ -70,12 +70,17 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 | F1.5 | Two `<label>`s stacked with no input between | A structural bug in Type presets, not a style choice. | type preset panel |
 | F1.6 | No favicon | 404 on every load of the editor. | editor `index.html` / build |
 | F1.7 | The Insert menu omits Panel | Two surfaces offer the same six objects and have already drifted: the rail's **Add** pane offers Text, Panel, Gauge, Line, Bar, Pie; the **Insert** menu offers the same list **minus Panel**. The omission matters — a panel is the most fundamental object here and the composition is mostly panels. Two lists that must stay in sync and don't is the actual defect; one owner reading from both is the fix. | `new-object-panel.ts` + the menu owner |
+| F1.8 | **A scene object cannot be named at all** | Insert a Text and the layer list shows `text-7363db18-c109-42ec-b1ec-8728c2d04292`. There is no field to change it: the only "Name" inputs in the whole editor are `vigiliaThemeName`, `vigiliaPaletteName` and `vigiliaTypeName`. Every object an author ever creates is a UUID, permanently. This is the most author-facing gap found so far and it was escalated from P2 on the evidence. **Escalated 2026-09-29.** | `renderer-core` types + envelope schema + validator + editor |
+
+**F1.8's shape, decided.** The authored `id` stays the stable key and is what bindings and round-trips reference — it is not renamed. A new optional `name` rides on the object beside it, exactly as globals already carry a display name (§75). Absent means "fall back to the id", so a hand-authored scene that predates the field still opens. The layer list, the selection and any semantics that would otherwise print an id show the name when there is one.
+
+| F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope decided:** Panel gains a **shape** choice of **Rectangle, Ellipse, Triangle**. A circle is an ellipse with equal sides and a rounded rect is a rect with the corner radius the panel already exposes, so neither earns a separate option. **Consequence, stated rather than hidden:** glass and panel material stay **Rect-only** — `supportsGlass` asserts it at `glass.test.ts:85`, and the renderer's `localPath` draws `ctx.rect` and a rounded rect and knows nothing else. A non-rect shape therefore carries no frosted treatment and no material fields until those owners are widened and measured. That limitation is the honest state, not a silent one. | `new-object-defaults.ts`, the panel primitive, `renderer-core` schema |
 
 ### P2 — data model
 
 | # | Finding | Why it is not a UI fix | Fix owner |
 |---|---|---|---|
-| F2.1 | The layer list shows raw authored ids — `network-chart`, `storage-bar`, `gpu-card-temp` | An author-facing name is a **new authored property on every scene object**, persisted in the envelope and checked by the validator. §75 gives display names to globals only. The id stays the key; the name is what the UI shows. | `renderer-core` types + envelope schema + validator + editor |
+| — | *No P2 items. F2.1 was escalated to **F1.8** on the evidence: an object cannot be named at all.* | | |
 
 ### P3 — withdrawn, recorded so they are not re-raised
 
