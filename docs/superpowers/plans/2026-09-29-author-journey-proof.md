@@ -229,6 +229,7 @@ Measured 2026-09-29, so the driver does not rediscover these:
 - A starter text object is Fabric `textbox`; a newly inserted one is `i-text`. **Both enter editing mode**, so in-place editing covers the whole document — but a scene holds two text classes, which is worth remembering when a round trip misbehaves.
 - Reading the scene through the handle is fine and is how the driver counts and locates objects. **Writing** through it is not — every authored change goes through a real control.
 - **Menus are `role="menuitem"`, and a closed menu stays in the DOM.** Querying `[role=menu] button` matches a stale menu's items and silently clicks the wrong control — this produced a false "Save to library does nothing" before it was caught. Match on `role="menuitem"` and confirm the item is on screen. A driver that clicks the wrong control produces a confident, wrong finding, which is worse than no finding.
+- **The Playwright MCP browser and the host ports are SHARED between the root session and every running agent.** Two agents and the root all drove one browser: an agent's player fixture at `:4191` navigated the root's page out from under it mid-test, and background hosts on `:4185`/`:4186` were killed twice by processes they did not own. **Each agent must pick its own ports and expect the browser to move** — the e2e suite's own ports (4173 player, 4174 editor, 4175 host) plus the root's (4180 editor) are already taken. If a page you were reading is not the page you opened, another agent moved it; re-navigate rather than reporting what you see.
 
 ---
 
