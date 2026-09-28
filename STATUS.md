@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **A refused edit now says so.** `editor-shell/diagnostic-message.tsx` subscribes to the error manager's `editor:error`/`editor:warning` canvas events and puts them in the status line, so the number that snapped back has a reason beside it.
-- **One `role="status"` region, always mounted, beside the free-running status text** — two writers, two nodes. It persists until a newer diagnostic replaces it or a different document is open; no timer, because a message that leaves is the silence this fixes.
-- **Severity is a word and a Lucide mark, not a colour**: `OctagonAlert` + "Error" versus `TriangleAlert` + "Warning", with `data-severity`/`data-category` on the line. The category is not collapsed into the text; each site's own message already says what it refused.
-- **Verified:** 83 editor-shell unit tests, editor typecheck, lint, format; red-without-fix drops both new tests.
+- **The Assets pane's import and replace are reachable controls.** Each is a named button that opens its hidden file input — the idiom the package opener already uses. The buttons keep the `data-vigilia-asset-import`/`-replace` names the specs already drove; the hidden inputs move to `-input`.
+- **An asset is named by the file it came from and previewed.** The select lists `hero.png`, not `hero`, and shows the selected image or SVG. Re-rendering keeps the selection, so importing no longer moves the pane off the asset an author was pointing at.
+- **A refused or unplaceable file is reported, not swallowed.** A `role="alert"` in the pane and one `errorManager.error` say so; the manager validates before it mutates, so a bad file leaves document and package untouched. A removal blocked by a reference says why instead of doing nothing.
+- **Verified:** asset-manager unit and dom tests, editor typecheck, biome lint and format on the changed files.
 
 ## Next
 

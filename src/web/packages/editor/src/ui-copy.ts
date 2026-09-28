@@ -225,6 +225,17 @@ export const uiCopy = {
         the same word on two buttons. */
     shapes: "Shape",
     assets: "Assets",
+    /** The Assets pane's controls. `import` and `replace` are the two actions
+        the pane can take on a local file, so they are named as actions; the
+        select is labelled by what it lists rather than by the pane. */
+    importAsset: "Import asset",
+    replaceAsset: "Replace asset",
+    assetList: "Asset",
+    /** Shown when a chosen file is not a readable image, video or font the
+        package accepts. The author's other work is untouched. */
+    assetImportFailed: "That file could not be imported.",
+    /** Shown when a removal is refused because something still points at it. */
+    assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
     language: "Language",
