@@ -58,8 +58,21 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 | F0.1 | `New` emits the finished composition; there is no blank state | Task 2 | not started |
 | F0.2 | No artboard chooser — a new document's size is not the author's to pick | Task 1 | **dispatched once and lost** — see below |
 | F0.3 | The starter is what `New` means, so it cannot be left behind | Task 3 | not started |
+| **F0.4** | **An author cannot import or replace an asset at all** | see below — **new, 2026-09-29** | not started |
 
 **The first F0.2 dispatch produced nothing.** The agent created no file, committed nothing and never reported — it was running alongside two others in one worktree and appears to have died silently. Its orphaned full-Playwright child was still burning CPU against a tree that changed twice underneath it, so it was stopped; its result would have meant nothing regardless. **Re-dispatched 2026-09-29.** Recorded because a silent loss is invisible to compaction, and the second one would have been too.
+
+### F0.4 — an author cannot import or replace an asset, and the tests say it works
+
+**This is the best finding in the pass: a fully tested feature that no human can reach.**
+
+`createAssetPanel` (`packages/editor/src/asset-manager/index.ts:243`) appends two `input[type=file]` elements — `data-vigilia-asset-import` and `data-vigilia-asset-replace` — plus a remove button, and **nothing triggers them**. Measured: both inputs are `display: none` with `getClientRects().length === 0`, no `<label for>`, not wrapped in a label. The only interactive elements the pane renders are a `<select>` and **"Remove asset"**. Grepping the package, the only two `.click()` calls are `picker.click()` (the package opener, `editor-main.ts:156`) and `link.click()` in persistence — neither touches the asset inputs.
+
+**Why the suite is green anyway:** the specs import with `setInputFiles` (`editor.spec.ts:2185`, `reference-theme.spec.ts:2273`), which drives a `display: none` input directly and does not care that a human could never click it. The feature is proven by a method the product does not offer.
+
+**What an author can actually do with assets today:** look at the one the starter shipped (`starter-backdrop`) in a dropdown, and remove it. There is no way to add one, replace one, or preview one. That blocks background media on a new theme — which F0.1 and F0.2 are both being built to enable.
+
+**Fix shape:** a visible control per hidden input (a labelled button that calls `.click()` on it, which is the pattern the package opener already uses), plus whatever the pane needs so the asset is identifiable rather than a bare id in a dropdown. **And the spec should stop being able to pass by a route a human does not have** — the fix is incomplete until a test reaches the import through the control a user would click.
 
 ### P1 — ship defects found by hand, measured at 1920 × 1080
 
