@@ -27,6 +27,9 @@ export const HOST_TEMP_THEME_ID = "e2e-temp";
 /** Twin clock themes: language is their only rendering difference. */
 export const HOST_JAPANESE_THEME_ID = "e2e-lang-ja";
 export const HOST_ENGLISH_THEME_ID = "e2e-lang-en";
+/** Binds a key no provider reports, so the player's gap is measurable: a
+ * theme that invented a reading for it would be the failure this catches. */
+export const HOST_MISSING_THEME_ID = "e2e-missing-sensor";
 export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
 
 /** The node a reading is painted into, by the id a test reads it back by. */
@@ -259,6 +262,45 @@ export async function seedHostTheme(): Promise<void> {
       semanticKey: "date.today",
       format: "[日付 ]MMM ddd",
     }),
+    // **A key nothing can report.** The envelope validator only checks that a
+    // semantic key is a string of 1-120 characters, so this is a well-formed
+    // package that a display must render as a gap.
+    {
+      ...envelopeFor(HOST_MISSING_THEME_ID, "E2E missing", CLOCK_NODE_ID, {
+        semanticKey: "quantum.entanglement",
+      }),
+      scene: {
+        version: "7.4.0" as const,
+        objects: [
+          {
+            type: "Textbox",
+            version: "7.4.0",
+            originX: "left",
+            originY: "top",
+            left: 40,
+            top: 140,
+            width: 420,
+            height: 60,
+            text: "--",
+            fontSize: 22,
+            fontFamily: "system-ui, sans-serif",
+            fill: "palette.ink",
+            id: CLOCK_NODE_ID,
+            vigiliaPaint: { fill: "palette.ink" },
+            vigiliaText: {
+              runs: [
+                {
+                  kind: "value",
+                  bindingId: "bound-value",
+                  typePreset: "typePresets.11-400",
+                  style: { color: { ref: "palette.ink" } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
   ];
 
   rmSync(HOST_THEMES_DIR, { recursive: true, force: true });

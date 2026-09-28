@@ -1,9 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 import { canvasProp } from "./canvas-probe.js";
+import { captureVisualReview } from "./editor-canvas.js";
 import {
   CLOCK_NODE_ID,
   HOST_ENGLISH_THEME_ID,
   HOST_JAPANESE_THEME_ID,
+  HOST_MISSING_THEME_ID,
   HOST_PORT,
   HOST_TEMP_THEME_ID,
   HOST_THEME_ID,
@@ -655,5 +657,351 @@ test.describe("the units this PC reads in", () => {
     } finally {
       await request.put(`${HOST}/api/display`, { data: {} });
     }
+  });
+});
+
+/**
+ * The display half of Task 11's checklist, and the only surface on which a
+ * *missing* reading is a real state: the editor's preview source samples every
+ * key it is asked for, so only a display fed by a provider that reports nothing
+ * can show a gap.
+ */
+test.describe("a display fed by the real host", () => {
+  test("paints a gap for a key nothing reports, never a zero", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  vigilia?: { live?: { batchCount?: number } };
+                }
+              ).vigilia?.live?.batchCount ?? 0,
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
+
+    // A display must never invent a reading. The whole host has answered with
+    // a batch and the node is still a gap, so the gap is the host's answer and
+    // not a slow first frame.
+    //
+    // The host does report the key — as `status: "missing"` with a message
+    // naming the cause and **no value at all**, which is the point: the gap is
+    // declared, not absent. A fabricated `0` or an absent sample would both
+    // look identical on screen, and this is the assertion that separates the
+    // three.
+    // `expect.poll` takes no argument in this Playwright, so the node id
+    // travels into the page through `page.evaluate`, which does.
+    const readGap = async (): Promise<{
+      readonly text: string;
+      readonly status: string;
+      readonly hasValue: boolean;
+    }> =>
+      page.evaluate((nodeId) => {
+        const handle = (
+          window as unknown as {
+            vigilia?: {
+              handle: {
+                canvas: {
+                  getObjects?(): Array<{ get(n: string): unknown }>;
+                };
+              };
+              live?: { source?: { latest(k: string): unknown } };
+            };
+          }
+        ).vigilia;
+        // The scene is revived asynchronously, so an unmounted canvas is "not
+        // yet" rather than a reading — otherwise the poll would reject instead
+        // of retrying.
+        const getObjects = handle?.handle.canvas.getObjects;
+        if (typeof getObjects !== "function")
+          return { text: "", status: "", hasValue: false };
+        const object = getObjects
+          .call(handle!.handle.canvas)
+          .find((candidate) => candidate.get("id") === nodeId);
+        const sample = handle?.live?.source?.latest("quantum.entanglement") as
+          | { status?: string; value?: unknown }
+          | undefined;
+        return {
+          text: String(object?.get("text") ?? ""),
+          status: String(sample?.status ?? ""),
+          hasValue: sample !== undefined && "value" in sample,
+        };
+      }, CLOCK_NODE_ID);
+
+    await expect
+      .poll(readGap, { timeout: 20_000 })
+      .toEqual({ text: "—", status: "missing", hasValue: false });
+  });
+
+  test("stores the picture the editor captured, and serves it back", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 20_000,
+    });
+
+    // **The picture came back through the host's own route**, which is the only
+    // place the capture path is exercised end to end: `vite preview` has no
+    // thumbnail store.
+    const response = await request.get(
+      `${HOST}/api/themes/vigilia-demo-dashboard/thumbnail`,
+    );
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("image/png");
+    const bytes = await response.body();
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+    // PNG magic, so a JSON error body served as a picture cannot pass.
+    expect([...bytes.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+
+    // **And it is a picture of the theme, not a blank card.** The starter's
+    // background plate is an opaque gradient, so a capture that carried the
+    // composition has opaque pixels; one that captured nothing would not.
+    const dataUrl = `data:image/png;base64,${bytes.toString("base64")}`;
+    const census = await page.evaluate(async (source) => {
+      const image = new Image();
+      image.src = source;
+      await image.decode();
+      const surface = document.createElement("canvas");
+      surface.width = image.naturalWidth;
+      surface.height = image.naturalHeight;
+      const context = surface.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(
+        0,
+        0,
+        surface.width,
+        surface.height,
+      ).data;
+      let opaque = 0;
+      let clear = 0;
+      let coloured = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i + 3]! > 240) opaque += 1;
+        if (pixels[i + 3]! === 0) clear += 1;
+        const [r, g, b] = [pixels[i]!, pixels[i + 1]!, pixels[i + 2]!];
+        if (pixels[i + 3]! > 240 && Math.max(r, g, b) - Math.min(r, g, b) > 24)
+          coloured += 1;
+      }
+      const total = pixels.length / 4;
+      return {
+        width: surface.width,
+        height: surface.height,
+        opaque: opaque / total,
+        clear: clear / total,
+        coloured: coloured / total,
+      };
+    }, dataUrl);
+    // Not blank, and not a transparent card: the composition is in it.
+    expect(census.width).toBeGreaterThan(100);
+    expect(census.opaque, "the picture carries the theme").toBeGreaterThan(0.3);
+    expect(
+      census.coloured,
+      "the picture is not one flat colour",
+    ).toBeGreaterThan(0.001);
+
+    // Kept as evidence, and looked at before it is kept.
+    await page.setContent(
+      `<body style="margin:0;background:#0c0e13"><img src="${dataUrl}" style="display:block;width:${census.width * 2}px;image-rendering:pixelated"></body>`,
+    );
+    await page.waitForTimeout(400);
+    await page.screenshot({
+      path: "../../docs/evidence/screenshots/host-theme-thumbnail-desktop-chromium.png",
+      fullPage: true,
+    });
+  });
+
+  test("reconnects after the stream fails, and the reading resumes", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+    test.slow();
+
+    // **The stream is refused, then allowed.** `page.context().setOffline` was
+    // tried first and does not work here: with the context offline this
+    // Chromium kept delivering batches over the open `EventSource` — 11 batches
+    // across 20 s, no banner — so it tears down neither the connection nor the
+    // reader. Blocking the route is the platform's own network layer and does
+    // fail the connection, which is the state this exercises.
+    //
+    // What is **not** covered: an established connection dying mid-stream. The
+    // state machine under test (`live-source.ts`) is the same either way — the
+    // `error` listener sets `reconnecting` and the browser's own retry brings
+    // it back — but the drop here happens at connect time.
+    await page.route("**/ws", (route) => route.abort());
+    await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
+    await expect(page.locator("#vigilia-connection")).toBeVisible({
+      timeout: 30_000,
+    });
+    // The banner names the state, so a page that merely failed to load cannot
+    // pass it.
+    await expect(page.locator("#vigilia-connection")).toHaveText(
+      /reconnect|connect/i,
+    );
+
+    // **And it recovers by itself.** The retry is the browser's, not a reload:
+    // the page is never navigated again, so a passing banner only means the
+    // stream came back.
+    await page.unroute("**/ws");
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 60_000,
+    });
+    const batches = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            vigilia?: { live?: { batchCount?: number } };
+          }
+        ).vigilia?.live?.batchCount ?? 0,
+    );
+    expect(batches, "samples arrived after the reconnect").toBeGreaterThan(0);
+    // And a real reading is on the canvas, not just an open socket.
+    await expect
+      .poll(async () => await shownClock(page), { timeout: 30_000 })
+      .toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  });
+
+  test("plays the reference composition on the real host, for visual review", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "the reference composition is a desktop read",
+    );
+    test.slow();
+
+    // **The display surface, not the editor's preview.** The editor's preview
+    // source attaches no units, so a screenshot of the editor shows "29" where
+    // the display shows "47%", and the reference image is a display. Saving
+    // through the host's own route keeps this the same document a consumer
+    // would load.
+    await page.goto(`${HOST}/editor/`);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Save to library" }).click();
+    await expect(page.locator("#status")).toContainText("Saved to library", {
+      timeout: 20_000,
+    });
+
+    await page.setViewportSize({ width: 1672, height: 941 });
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  vigilia?: { live?: { batchCount?: number } };
+                }
+              ).vigilia?.live?.batchCount ?? 0,
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
+    // Until the readings arrive every card shows a gap, which is a truthful
+    // picture of nothing and not the one being compared.
+    await expect
+      .poll(
+        async () => {
+          const painted = await page.evaluate(() => {
+            const handle = (
+              window as unknown as {
+                vigilia?: {
+                  handle: {
+                    canvas: {
+                      getObjects?(): Array<{ get(n: string): unknown }>;
+                    };
+                  };
+                };
+              }
+            ).vigilia;
+            // The scene revives asynchronously, so an unmounted canvas is "not
+            // yet" rather than a reading.
+            const getObjects = handle?.handle.canvas.getObjects;
+            if (typeof getObjects !== "function") return "";
+            return String(
+              getObjects
+                .call(handle!.handle.canvas)
+                .find((object) => object.get("id") === "storage-card-value")
+                ?.get("text") ?? "",
+            );
+          });
+          return painted;
+        },
+        { timeout: 30_000 },
+      )
+      .not.toBe("—");
+
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0);
+    // **Charts, waited on rather than slept through.** The stream can take
+    // several seconds to connect, and a chart's line chart is a rolling
+    // window — so the condition to wait for is the one being captured: a
+    // trends series that actually has points. A sleep would produce a picture
+    // of an empty scene and call it evidence.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const handle = (
+              window as unknown as {
+                vigilia?: {
+                  handle: {
+                    canvas: {
+                      getObjects?(): Array<Record<string, unknown>>;
+                    };
+                  };
+                };
+              }
+            ).vigilia;
+            const getObjects = handle?.handle.canvas.getObjects;
+            if (typeof getObjects !== "function") return 0;
+            const chart = getObjects
+              .call(handle!.handle.canvas)
+              .find(
+                (object) => object.get("id") === "trends-chart",
+              ) as unknown as
+              | {
+                  _chart?: {
+                    getOption(): { series?: Array<{ data?: unknown[] }> };
+                  };
+                }
+              | undefined;
+            const series = chart?._chart?.getOption().series ?? [];
+            return series.reduce(
+              (total, entry) => total + (entry.data?.length ?? 0),
+              0,
+            );
+          }),
+        { timeout: 60_000 },
+      )
+      .toBeGreaterThan(10);
+    await captureVisualReview(page, testInfo, "player-reference");
   });
 });

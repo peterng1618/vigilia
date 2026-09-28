@@ -45,6 +45,11 @@ result, not merely a mounted editor.
 | Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` |
 | Theme settings | Author a background image | `editor-background-media` / `authors a packaged background image` |
 | Viewport | Resize or change zoom | `editor-zoom-readout` / `tracks the camera's zoom in the stage readout` |
+| Viewport | Read the same composition at a two-device-pixel ratio | `editor-reference-dpr2` / `the fitted, reference-size and DPR views` |
+| Glass authoring | Turn a second panel's treatment on over an already-treated one | `editor-reference-overlap` / `rotated and overlapping panels both keep compositing` |
+| Document | Save, reopen and take a New document | `editor-reference-new` / `a new document is the reference composition` |
+| Document | Insert, style, glass and bind, then save, close and reopen | `editor-reference-journey` / `insert, style, glass, bind and text survive save` |
+| Capture | The picture the thumbnail path produces, at 2x on the library's ground | `editor-reference-capture` / `the capture path shows the glass and the packaged assets` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
 ## Settings page (`/settings`, real host)
@@ -52,6 +57,8 @@ result, not merely a mounted editor.
 | Domain | Visible action | Capture / title regex |
 |---|---|---|
 | Settings scope | Choose a theme whose bindings need a device | `settings-theme-question` / `captures the question a theme raises` |
+| Theme library | Save the starter to the library and read the picture the host stored | `host-theme-thumbnail` / `stores the picture the editor captured` |
+| Player | Play the saved reference composition at the reference's own size | `player-reference` / `plays the reference composition on the real host` |
 
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
