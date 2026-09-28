@@ -24,7 +24,9 @@ interface ShownDiagnostic {
  * The error manager owns them and knows nothing about the DOM; this is the one
  * place they become a line the author can see and hear. The author is looking at
  * the field that refused, not here, so the line holds the reason until a newer
- * one replaces it or a different document is open.
+ * one replaces it, a committed edit retires it, or a different document is open.
+ * The lifetime is deliberate: only a recorded edit ends it, because only a
+ * recorded edit is a fix.
  */
 export function DiagnosticMessage({
   canvas,
@@ -39,11 +41,17 @@ export function DiagnosticMessage({
         setShown({ canvas, severity, diagnostic });
     const onError = receive("error");
     const onWarning = receive("warning");
+    // A refusal outlives every unrelated event and stops at the first commit
+    // the author makes after it: telling them it is still unapplied once it
+    // has been applied is the same lie at a different speed.
+    const onCommitted = (): void => setShown(undefined);
     canvas.on("editor:error" as never, onError as never);
     canvas.on("editor:warning" as never, onWarning as never);
+    canvas.on("editor:edit-committed" as never, onCommitted as never);
     return () => {
       canvas.off("editor:error" as never, onError as never);
       canvas.off("editor:warning" as never, onWarning as never);
+      canvas.off("editor:edit-committed" as never, onCommitted as never);
     };
   }, [canvas]);
 

@@ -55,6 +55,10 @@ export class EditorHistory {
     this.#entries.splice(this.#index + 1);
     this.#entries.push(scene);
     this.#index += 1;
+    // A recorded entry is the one signal that an edit landed, so it is where a
+    // reason the author was given goes stale. A refused edit records nothing
+    // and so never reaches here: the refusal survives the field that raised it.
+    this.#canvas.fire("editor:edit-committed" as never);
   }
 
   async undo(): Promise<void> {

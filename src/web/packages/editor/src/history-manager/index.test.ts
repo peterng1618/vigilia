@@ -28,6 +28,30 @@ describe("EditorHistory", () => {
     expect(canvas.fire).toHaveBeenCalledWith("editor:history-state-loaded");
   });
 
+  it("raises the commit on the canvas, and only when an entry is recorded", () => {
+    const canvas = { fire: vi.fn() };
+    let value = 0;
+    const history = new EditorHistory({
+      canvas: canvas as never,
+      serialize: () => ({ value }) as never,
+      revive: async () => {},
+    });
+    history.reset();
+
+    // A refused edit changes nothing, so a save that records no entry is not
+    // the fix and must not retire the reason the author was given.
+    history.save();
+    const release = history.suspend();
+    value = 1;
+    history.save();
+    release();
+    expect(canvas.fire).not.toHaveBeenCalled();
+
+    history.save();
+    expect(canvas.fire).toHaveBeenCalledTimes(1);
+    expect(canvas.fire).toHaveBeenCalledWith("editor:edit-committed");
+  });
+
   it("records one entry for a suspended burst, and none while suspended", async () => {
     let value = 0;
     const history = new EditorHistory({

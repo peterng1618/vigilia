@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **The Assets pane's import and replace are reachable controls.** Each is a named button that opens its hidden file input — the idiom the package opener already uses. The buttons keep the `data-vigilia-asset-import`/`-replace` names the specs already drove; the hidden inputs move to `-input`.
-- **An asset is named by the file it came from and previewed.** The select lists `hero.png`, not `hero`, and shows the selected image or SVG. Re-rendering keeps the selection, so importing no longer moves the pane off the asset an author was pointing at.
-- **A refused or unplaceable file is reported, not swallowed.** A `role="alert"` in the pane and one `errorManager.error` say so; the manager validates before it mutates, so a bad file leaves document and package untouched. A removal blocked by a reference says why instead of doing nothing.
-- **The import specs no longer prove a route a person does not have**, and the pane split out of the model to `panel.ts` the way `palette-manager` and `type-preset-manager` already do. `ownership.md` says so.
-- **Verified:** 1956 unit tests, typecheck, lint, format, and 6 editor e2e. Red-without-fix: with the button's `.click()` stubbed out, the import test times out on the file chooser. A browser pass drove the rail, the keyboard (Enter opens the chooser) and the file, and the pane rendered the preview and both buttons at 1920×1080.
+- **A committed edit retires the refusal it supersedes.** `EditorHistory.save()` fires `editor:edit-committed` on the canvas, at the §67 owner, so the clear travels with the history entry instead of every field having to remember.
+- **A refused edit cannot clear it.** The event fires after the suspension and `sameScene` guards, and a refusal records no entry by definition, so opacity `500` refused then `80` applied ends with a footer that says nothing false. F1.15's persistence is untouched: unrelated canvas traffic still does not take the line down.
+- **One owner.** `diagnostic-message` subscribes and clears; no field, panel or the error manager learns that messages exist, and the event shape is unchanged.
+- **Verified:** 1961 unit tests, typecheck, lint and format green. Red-without-fix: with the two `canvas.fire`/subscribe lines removed, both new tests go red and the six pre-existing ones stay green.
+- **Not verified by hand:** the footer was not driven in a browser — F1.21's plan row still needs its commit sha and a move to the fixed tail.
 
 ## Next
 

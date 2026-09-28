@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { createErrorManager } from "../error-manager/index.js";
+import { EditorHistory } from "../history-manager/index.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 
 function mount(canvas: Canvas): {
@@ -91,6 +92,7 @@ it("leaves the message up rather than taking it away", async () => {
   });
   // Unrelated canvas traffic is what a status line sees all day; a refusal that
   // left on the next event would be the silence this surface exists to end.
+  // Only a recorded edit retires it, which raw canvas traffic is not.
   await act(async () => {
     canvas.fire("object:modified" as never);
   });
@@ -98,6 +100,46 @@ it("leaves the message up rather than taking it away", async () => {
   expect(liveRegion(view.host)?.textContent).toBe(
     "Warning: That value cannot be applied to the selection.",
   );
+  logged.mockRestore();
+});
+
+it("retires a refusal once the edit that supersedes it is committed", async () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const view = mount(canvas);
+  await view.rerender(canvas);
+  const manager = createErrorManager(canvas);
+  const logged = vi.spyOn(console, "warn").mockImplementation(() => {});
+  let opacity = 1;
+  const history = new EditorHistory({
+    canvas,
+    serialize: () => ({ opacity }) as never,
+    revive: async () => {},
+  });
+  history.reset();
+
+  await act(async () => {
+    manager.warn("controls", "That value cannot be applied to the selection.");
+  });
+  expect(liveRegion(view.host)?.textContent).toBe(
+    "Warning: That value cannot be applied to the selection.",
+  );
+
+  // The refused edit: the field snapped back, so the scene never changed and
+  // the reason it gave is still the true one.
+  await act(async () => {
+    history.save();
+  });
+  expect(liveRegion(view.host)?.textContent).toBe(
+    "Warning: That value cannot be applied to the selection.",
+  );
+
+  // The author's next attempt lands. Saying it still cannot be applied after
+  // it has been applied is a new way of lying, not the old silence.
+  opacity = 0.8;
+  await act(async () => {
+    history.save();
+  });
+  expect(liveRegion(view.host)?.textContent).toBe("");
   logged.mockRestore();
 });
 
