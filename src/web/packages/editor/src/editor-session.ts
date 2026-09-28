@@ -10,7 +10,8 @@ import {
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { AssetManager, createAssetPanel } from "./asset-manager/index.js";
+import { AssetManager } from "./asset-manager/index.js";
+import { createAssetPanel } from "./asset-manager/panel.js";
 import {
   type CanvasNudge,
   createCanvasNudge,

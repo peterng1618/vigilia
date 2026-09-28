@@ -28,7 +28,7 @@ If implementation moves an owner, update this map in the same change.
 | Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
-| Open-package asset bytes and controls | `editor/src/asset-manager/` |
+| Open-package asset bytes and controls | `editor/src/asset-manager/` (`index.ts` bytes, `panel.ts` the pane) |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 | Structured editor diagnostics | `editor/src/error-manager/` |

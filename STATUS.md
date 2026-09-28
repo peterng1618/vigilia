@@ -22,8 +22,8 @@ hand is what finds the authoring control that is missing.
 - **The Assets pane's import and replace are reachable controls.** Each is a named button that opens its hidden file input — the idiom the package opener already uses. The buttons keep the `data-vigilia-asset-import`/`-replace` names the specs already drove; the hidden inputs move to `-input`.
 - **An asset is named by the file it came from and previewed.** The select lists `hero.png`, not `hero`, and shows the selected image or SVG. Re-rendering keeps the selection, so importing no longer moves the pane off the asset an author was pointing at.
 - **A refused or unplaceable file is reported, not swallowed.** A `role="alert"` in the pane and one `errorManager.error` say so; the manager validates before it mutates, so a bad file leaves document and package untouched. A removal blocked by a reference says why instead of doing nothing.
-- **The import specs no longer prove a route a person does not have.** `chooseAssetFile` opens the Assets pane, clicks the button and answers the file chooser, so a missing button fails the test; all four `setInputFiles` sites go through it.
-- **Verified:** 1956 unit tests, typecheck, lint, format, and 6 editor e2e. Red-without-fix: with the button's `.click()` stubbed out, the import test times out on the file chooser.
+- **The import specs no longer prove a route a person does not have**, and the pane split out of the model to `panel.ts` the way `palette-manager` and `type-preset-manager` already do. `ownership.md` says so.
+- **Verified:** 1956 unit tests, typecheck, lint, format, and 6 editor e2e. Red-without-fix: with the button's `.click()` stubbed out, the import test times out on the file chooser. A browser pass drove the rail, the keyboard (Enter opens the chooser) and the file, and the pane rendered the preview and both buttons at 1920×1080.
 
 ## Next
 

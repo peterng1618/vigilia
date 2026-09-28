@@ -2,7 +2,7 @@
 import { FabricImage } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
-import { createAssetPanel } from "./index.js";
+import { createAssetPanel } from "./panel.js";
 
 describe("asset panel", () => {
   it("exposes local import, selected replacement, and protected removal controls", () => {

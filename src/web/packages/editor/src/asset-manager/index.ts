@@ -3,15 +3,10 @@ import type {
   FabricThemeEnvelope,
   FontAssetReference,
 } from "@vigilia/renderer-core";
-import {
-  objectAssetReference,
-  setObjectAssetReference,
-} from "@vigilia/scene-fabric";
+import { objectAssetReference } from "@vigilia/scene-fabric";
 import { FabricImage, Group, type StaticCanvas } from "fabric/es";
-import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 import { boundedImageElement } from "../image-manager/index.js";
-import { uiCopy } from "../ui-copy.js";
 
 const TYPES = {
   png: { mime: "image/png", kind: "image" },
@@ -29,12 +24,12 @@ const TYPES = {
 
 type AssetExtension = keyof typeof TYPES;
 type AssetKind = (typeof TYPES)[AssetExtension]["kind"];
-type LocalAssetReference =
+export type LocalAssetReference =
   | (AssetReference & { readonly kind: AssetKind })
   | FontAssetReference;
 /** The kinds a canvas image can be bound to; a video or a font is packaged
     without ever becoming an object. */
-type PlacedAssetReference = AssetReference & {
+export type PlacedAssetReference = AssetReference & {
   readonly kind: "image" | "svg";
 };
 
@@ -242,246 +237,6 @@ export class AssetManager {
     if (url !== undefined) URL.revokeObjectURL(url);
     this.#previewUrls.delete(assetId);
   }
-}
-
-/** Local-file controls; the editor continues to own canvas selection and history. */
-export function createAssetPanel(
-  host: HTMLElement,
-  manager: AssetManager,
-  editor: EditorInteraction,
-  changed: () => void,
-  isReferenced?: (assetId: string) => boolean,
-): HTMLElement {
-  const root = document.createElement("section");
-  const listLabel = document.createElement("label");
-  listLabel.textContent = uiCopy.panels.assetList;
-  const select = document.createElement("select");
-  select.dataset["vigiliaAssetSelect"] = "";
-  listLabel.htmlFor = select.id = `vigilia-asset-${++assetPanelSeq}`;
-  const preview = document.createElement("img");
-  preview.dataset["vigiliaAssetPreview"] = "";
-  preview.style.cssText = "max-width:100%;max-height:120px;object-fit:contain";
-  const importInput = input("data-vigilia-asset-import-input");
-  const replaceInput = input("data-vigilia-asset-replace-input");
-  const importButton = action(
-    "vigiliaAssetImport",
-    uiCopy.panels.importAsset,
-    () => importInput.click(),
-  );
-  const replaceButton = action(
-    "vigiliaAssetReplace",
-    uiCopy.panels.replaceAsset,
-    () => replaceInput.click(),
-  );
-  const remove = action("vigiliaAssetRemove", uiCopy.panels.removeAsset, () => {
-    const id = select.value;
-    if (
-      [...editor.canvas.getObjects()].some(
-        (object) => objectAssetReference(object)?.assetId === id,
-      ) ||
-      isReferenced?.(id) === true
-    ) {
-      report(uiCopy.panels.assetReferenced);
-      return;
-    }
-    if (manager.remove(id)) {
-      report("");
-      changed();
-      render();
-    }
-  });
-  const alert = document.createElement("p");
-  alert.setAttribute("role", "alert");
-  const field = document.createElement("div");
-  field.className = "vigilia-field";
-  field.append(listLabel, select);
-  const actions = document.createElement("div");
-  actions.className = "vigilia-field-row";
-  actions.append(importButton, replaceButton, remove);
-  root.append(
-    Object.assign(document.createElement("h2"), {
-      textContent: uiCopy.panels.assets,
-    }),
-    field,
-    preview,
-    actions,
-    alert,
-    importInput,
-    replaceInput,
-  );
-  host.append(root);
-
-  const report = (message: string): void => {
-    alert.textContent = message;
-  };
-  const selected = (): LocalAssetReference | undefined =>
-    manager.declarations.find((asset) => asset.id === select.value);
-  /** The file an author chose, not the id the package keys it by. */
-  const fileNameOf = (asset: LocalAssetReference): string => {
-    const separator = asset.path.lastIndexOf("/");
-    return separator < 0 ? asset.path : asset.path.slice(separator + 1);
-  };
-  const drawPreview = (): void => {
-    const asset = selected();
-    const url = asset === undefined ? undefined : manager.previewUrl(asset.id);
-    if (asset === undefined || url === undefined) {
-      preview.removeAttribute("src");
-      preview.hidden = true;
-      return;
-    }
-    preview.alt = fileNameOf(asset);
-    preview.src = url;
-    preview.hidden = false;
-  };
-  const render = (): void => {
-    const previous = select.value;
-    select.replaceChildren(
-      ...manager.declarations.map((asset) =>
-        Object.assign(document.createElement("option"), {
-          value: asset.id,
-          textContent: fileNameOf(asset),
-        }),
-      ),
-    );
-    // Rebuilding the options drops the selection, and an author who was
-    // pointing at one asset must not find the pane pointing at another.
-    if (manager.declarations.some((asset) => asset.id === previous))
-      select.value = previous;
-    drawPreview();
-  };
-
-  const add = async (file: File, replaceSelected: boolean): Promise<void> => {
-    let asset: LocalAssetReference;
-    try {
-      asset = await manager.import(file);
-    } catch (error) {
-      // The manager validates before it mutates, so a refused file leaves the
-      // package and the document exactly as they were.
-      report(uiCopy.panels.assetImportFailed);
-      editor.errorManager.error(
-        "image",
-        uiCopy.panels.assetImportFailed,
-        error,
-      );
-      return;
-    }
-    if (!isPlaceable(asset)) {
-      report("");
-      changed();
-      render();
-      return;
-    }
-    try {
-      if (!(await place(asset, file, replaceSelected))) {
-        // The bytes are declared even when no object took them, so the pane
-        // still redraws: an asset the author cannot see is worse than one they can.
-        report(uiCopy.panels.assetImportFailed);
-        changed();
-        render();
-        return;
-      }
-    } catch (error) {
-      report(uiCopy.panels.assetImportFailed);
-      editor.errorManager.error(
-        "image",
-        uiCopy.panels.assetImportFailed,
-        error,
-      );
-      changed();
-      render();
-      return;
-    }
-    report("");
-    editor.historyManager.saveState();
-    editor.canvas.requestRenderAll();
-    changed();
-    render();
-  };
-
-  /** Puts the imported bytes on the canvas: onto the selection, or as a new
-      object. False means nothing took them, which is a refusal the author is
-      told about rather than a silent success. */
-  const place = async (
-    asset: PlacedAssetReference,
-    file: File,
-    replaceSelected: boolean,
-  ): Promise<boolean> => {
-    const target = editor.canvas.getActiveObject();
-    if (
-      replaceSelected &&
-      target instanceof FabricImage &&
-      objectAssetReference(target) !== undefined
-    ) {
-      const url = manager.previewUrl(asset.id);
-      if (url === undefined) return false;
-      const image = await FabricImage.fromURL(url);
-      setObjectAssetReference(target, { assetId: asset.id, kind: asset.kind });
-      target.setElement(image.getElement());
-      target.setCoords();
-      return true;
-    }
-    const imported = await editor.imageManager.importImage({
-      source: file,
-      scale: "image-contain",
-      withoutSave: true,
-    });
-    if (imported === null || !(imported.image instanceof FabricImage))
-      return false;
-    setObjectAssetReference(imported.image, {
-      assetId: asset.id,
-      kind: asset.kind,
-    });
-    imported.image.setCoords();
-    editor.canvas.setActiveObject(imported.image);
-    return true;
-  };
-
-  select.addEventListener("change", drawPreview);
-  importInput.addEventListener("change", () => {
-    const file = importInput.files?.[0];
-    if (file !== undefined) void add(file, false);
-    importInput.value = "";
-  });
-  replaceInput.addEventListener("change", () => {
-    const file = replaceInput.files?.[0];
-    if (file !== undefined) void add(file, true);
-    replaceInput.value = "";
-  });
-  render();
-  return root;
-}
-
-let assetPanelSeq = 0;
-
-function isPlaceable(
-  asset: LocalAssetReference,
-): asset is PlacedAssetReference {
-  return asset.kind === "image" || asset.kind === "svg";
-}
-
-function action(
-  dataset: string,
-  text: string,
-  onClick: () => void,
-): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.dataset[dataset] = "";
-  button.textContent = text;
-  button.addEventListener("click", onClick);
-  return button;
-}
-
-function input(
-  data: "data-vigilia-asset-import-input" | "data-vigilia-asset-replace-input",
-): HTMLInputElement {
-  const element = document.createElement("input");
-  element.type = "file";
-  element.accept =
-    ".png,.jpg,.jpeg,.webp,.svg,.mp4,.webm,.woff2,.woff,.ttf,.otf";
-  element.hidden = true;
-  element.setAttribute(data, "");
-  return element;
 }
 
 function extensionOf(name: string): AssetExtension | undefined {
