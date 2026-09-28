@@ -19,13 +19,12 @@ interface ShownDiagnostic {
 }
 
 /**
- * The shell's reading of the error manager's structured diagnostics (§F1.15).
+ * The shell's reading of the error manager's structured diagnostics.
  *
- * The error manager owns the diagnostics and knows nothing about the DOM; this
- * is the one place they become a line the author can see and hear. A refusal
- * leaves the number it refused standing, so the message stays until a newer one
- * replaces it or a different document is open — an author who looks away and
- * looks back still reads why.
+ * The error manager owns them and knows nothing about the DOM; this is the one
+ * place they become a line the author can see and hear. The author is looking at
+ * the field that refused, not here, so the line holds the reason until a newer
+ * one replaces it or a different document is open.
  */
 export function DiagnosticMessage({
   canvas,

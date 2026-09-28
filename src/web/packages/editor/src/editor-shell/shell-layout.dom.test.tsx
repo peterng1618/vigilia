@@ -123,6 +123,7 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
       viewport: { zoom: () => 1, onChange: () => () => undefined },
     } as unknown as EditorShellBridge["editor"],
   });
+  const manager = createErrorManager(canvas);
   const logged = vi.spyOn(console, "warn").mockImplementation(() => {});
 
   layout.setBridge(bridge, undefined);
@@ -133,11 +134,9 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
   expect(line?.querySelector('[aria-label="Editor message"]')).not.toBeNull();
   expect(line?.textContent).not.toContain("cannot be applied");
 
-  createErrorManager(canvas).warn(
-    "controls",
-    "That value cannot be applied to the selection.",
-  );
-  await act(async () => undefined);
+  await act(async () => {
+    manager.warn("controls", "That value cannot be applied to the selection.");
+  });
   expect(line?.textContent).toContain(
     "Warning: That value cannot be applied to the selection.",
   );
