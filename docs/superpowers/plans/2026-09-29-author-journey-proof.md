@@ -38,8 +38,50 @@ Recorded here so an executor does not re-open them.
 | Artboard sizes offered | **16:9, 19.5:9 and 4:3**, landscape and portrait, at **1080p, 2K and 4K**. No device names — the 19.5:9 entry is not labelled as any handset. |
 | How a resolution maps onto a ratio | **The short edge.** 1080p / 2K / 4K are 1080 / 1440 / 2160 on the short side; the long edge is derived from the ratio. 16:9 therefore lands on the familiar 1920×1080, 2560×1440 and 3840×2160. |
 | Where the chooser appears | **On New, and driving the inspector's artboard controls.** One preset list, two uses. |
+| Scene objects and their names | **Objects get an author-facing display name**, as globals already do (§75). The authored id stays the stable key; the name is what the layer list, the selection and the semantics show. |
+| The left panel | **Collapsible.** The rail button for the visible pane toggles it closed, and reopening restores it. |
 
 The starter keeps its own 1672 × 941 artboard. It is not resized to a preset — 16:9 is its *ratio*, and the new-document presets are a separate list.
+
+---
+
+## Findings backlog
+
+**This section is live and grows.** The pass is driven by using the product, and every gap found is either fixed here or recorded. Priorities are re-ordered as new findings arrive — a P1 becomes P0 if it blocks the rebuild, and finished items move to the archived tail rather than disappearing.
+
+**Standing instruction (2026-09-29):** this plan's scope is whatever it takes to ship. Finding something broken, missing, misaligned, hard to read, or inconsistent with the repo's own conventions means it enters this backlog and gets done — not that it gets noted for later.
+
+### P0 — must land before the rebuild
+
+| # | Finding | Fix owner |
+|---|---|---|
+| F0.1 | `New` emits the finished composition; there is no blank state | Task 2 |
+| F0.2 | No artboard chooser — a new document's size is not the author's to pick | Task 1 |
+| F0.3 | The starter is what `New` means, so it cannot be left behind | Task 3 |
+
+### P1 — ship defects found by hand, measured at 1920 × 1080
+
+| # | Finding | Why it is a defect | Fix owner |
+|---|---|---|---|
+| F1.1 | The left panel cannot be collapsed | `280px` fixed, `resize: none`, no splitter, and clicking the active rail item reclaims **0px**. The `aria-pressed` mechanism is already there; the toggle is not. | `editor-shell/shell-layout.tsx` + CSS |
+| F1.2 | Rail icons are Unicode glyphs stored as copy | `ui-copy.ts:13` holds `▤ + ▣ ⚙` as **translatable strings**, so an icon cannot be a component. `layer-panel.tsx` already has the right pattern: `KIND_ICONS: Record<LayerKind, LucideIcon>`. `railMark` should go, not be restyled. | `ui-copy.ts`, `shell-layout.tsx` |
+| F1.3 | Description is a single-line `<input>` holding prose | 781px of text in a 161px field, truncated mid-word, unreadable. A description is multi-line; it needs a `textarea`. | theme settings panel |
+| F1.4 | "Release version" is a bare `<label>` | No `for`, no form control — it wraps an `<output>` and associates with nothing. | theme settings panel |
+| F1.5 | Two `<label>`s stacked with no input between | A structural bug in Type presets, not a style choice. | type preset panel |
+| F1.6 | No favicon | 404 on every load of the editor. | editor `index.html` / build |
+| F1.7 | The Insert menu omits Panel | Two surfaces offer the same six objects and have already drifted: the rail's **Add** pane offers Text, Panel, Gauge, Line, Bar, Pie; the **Insert** menu offers the same list **minus Panel**. The omission matters — a panel is the most fundamental object here and the composition is mostly panels. Two lists that must stay in sync and don't is the actual defect; one owner reading from both is the fix. | `new-object-panel.ts` + the menu owner |
+
+### P2 — data model
+
+| # | Finding | Why it is not a UI fix | Fix owner |
+|---|---|---|---|
+| F2.1 | The layer list shows raw authored ids — `network-chart`, `storage-bar`, `gpu-card-temp` | An author-facing name is a **new authored property on every scene object**, persisted in the envelope and checked by the validator. §75 gives display names to globals only. The id stays the key; the name is what the UI shows. | `renderer-core` types + envelope schema + validator + editor |
+
+### P3 — withdrawn, recorded so they are not re-raised
+
+| # | Finding | Why it was withdrawn |
+|---|---|---|
+| W1 | "The canvas gets only 35% of the viewport" | Measured in a 1008px-wide window. At 1920 × 1080 it is **66%**, and View offers "Zoom to fit". The panel being non-collapsible is F1.1; the share was an artifact of the window. |
 
 ## Review Focus
 
