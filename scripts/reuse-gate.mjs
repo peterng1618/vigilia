@@ -55,7 +55,12 @@ function isWatched(path) {
   return WATCHLIST.some((w) => (w.endsWith("/") ? rel.startsWith(w) : rel === w));
 }
 
-/** Paths any note claims, from its `Paths:` frontmatter line. */
+/**
+ * Paths any note claims. A note lists them as a bullet that wraps onto indented
+ * continuation lines, so reading only the line that starts with `Paths:` misses
+ * every path after the first — which made the gate refuse files a note had
+ * actually claimed. Read the whole bullet.
+ */
 function claimedPaths() {
   let notes;
   try {
@@ -64,6 +69,7 @@ function claimedPaths() {
     return [];
   }
   const claimed = [];
+  const lines = (text) => text.replace(/\r\n/g, "\n").split("\n");
   for (const file of notes) {
     let text;
     try {
@@ -71,10 +77,19 @@ function claimedPaths() {
     } catch {
       continue;
     }
-    const line = text.split("\n").find((l) => l.startsWith("- **Paths:**"));
-    if (line === undefined) continue;
-    for (const m of line.matchAll(/`(src\/[^`]+|scripts\/[^`]+)`/g)) {
-      claimed.push(m[1].replace(/\/$/, "/"));
+    const rows = lines(text);
+    for (const [i, row] of rows.entries()) {
+      if (!/^- \*\*Paths:\*\*/.test(row)) continue;
+      // The bullet wraps: indented rows that follow belong to the same field.
+      for (const next of rows.slice(i + 1)) {
+        if (!/^[ \t]+\S/.test(next)) break;
+        for (const m of next.matchAll(/`(src\/[^`]+|scripts\/[^`]+)`/g)) {
+          claimed.push(m[1].replace(/\/$/, "/"));
+        }
+      }
+      for (const m of row.matchAll(/`(src\/[^`]+|scripts\/[^`]+)`/g)) {
+        claimed.push(m[1].replace(/\/$/, "/"));
+      }
     }
   }
   return claimed;
