@@ -1,9 +1,9 @@
 import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
-import { Rect } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
 import {
-  createNewPanelDefaults,
+  createNewShape,
   createNewTextDefaults,
+  SHAPE_KINDS,
 } from "./new-object-defaults.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -61,25 +61,37 @@ export function createNewObjectPanel(
       });
     }),
   );
-  const panel = document.createElement("button");
-  panel.type = "button";
-  panel.textContent = uiCopy.panels.panel;
-  panel.dataset["vigiliaPanelAdd"] = "";
-  // One construction, not a shape factory: the defaults module owns what a
-  // new panel is, and the canvas and history the editor already exposes own
-  // where it lands and how it is recorded.
-  panel.addEventListener("click", () =>
-    constructing(() => {
-      const inserted = new Rect({
-        id: `panel-${crypto.randomUUID()}`,
-        ...createNewPanelDefaults(currentGlobals),
-      });
-      editor.canvas.add(inserted);
-      editor.canvas.setActiveObject(inserted);
-      editor.historyManager.saveState();
-      editor.canvas.requestRenderAll();
-    }),
-  );
+  /**
+   * The primitives, in a labelled group rather than eight more chips beside
+   * the four chart families: "Line" is both a chart and a shape, and a flat
+   * list would put the same word on two buttons. One construction each — the
+   * defaults module owns what a new shape is, and the canvas and history the
+   * editor already exposes own where it lands and how it is recorded.
+   */
+  const shapes = document.createElement("fieldset");
+  const shapesLegend = document.createElement("legend");
+  shapesLegend.textContent = uiCopy.panels.shapes;
+  const shapeButtons = SHAPE_KINDS.map((kind) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = uiCopy.shapeKinds[kind];
+    button.dataset["vigiliaPanelAdd"] = kind;
+    button.addEventListener("click", () =>
+      constructing(() => {
+        const inserted = createNewShape(
+          `panel-${crypto.randomUUID()}`,
+          currentGlobals,
+          kind,
+        );
+        editor.canvas.add(inserted);
+        editor.canvas.setActiveObject(inserted);
+        editor.historyManager.saveState();
+        editor.canvas.requestRenderAll();
+      }),
+    );
+    return button;
+  });
+  shapes.append(shapesLegend, ...shapeButtons);
   const charts = (
     [
       [uiCopy.chartFamilies.gauge, "gauge"],
@@ -96,7 +108,7 @@ export function createNewObjectPanel(
     );
     return button;
   });
-  root.append(heading, text, panel, ...charts);
+  root.append(heading, text, shapes, ...charts);
   host.append(root);
   return {
     root,

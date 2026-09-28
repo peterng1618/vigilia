@@ -1,6 +1,17 @@
 // @vitest-environment jsdom
 import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
-import { Rect, Shadow, Textbox } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  Line,
+  Path,
+  Polygon,
+  Polyline,
+  Rect,
+  Shadow,
+  Textbox,
+  Triangle,
+} from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
 
@@ -69,6 +80,41 @@ function type(field: HTMLInputElement, value: string): void {
   field.dispatchEvent(new Event("change"));
 }
 
+function typeArea(field: HTMLTextAreaElement, value: string): void {
+  field.value = value;
+  field.dispatchEvent(new Event("change"));
+}
+
+/** Authored placement, as a value rather than a fresh literal: Fabric infers
+    its options type from one, and the inferred type rejects the `id`. */
+const PLACED = {
+  id: "shape",
+  left: 0,
+  top: 0,
+  originX: "left",
+  originY: "top",
+} as const;
+
+const CORNERS = [
+  { x: 0, y: 0 },
+  { x: 100, y: 0 },
+  { x: 50, y: 100 },
+] as const;
+
+/** Every primitive the Add pane can insert, as a live selection. */
+const SHAPES = [
+  [
+    "rect",
+    () => new Rect({ ...PLACED, width: 360, height: 200, rx: 10, ry: 10 }),
+  ],
+  ["circle", () => new Circle({ ...PLACED, radius: 100 })],
+  ["ellipse", () => new Ellipse({ ...PLACED, rx: 180, ry: 100 })],
+  ["triangle", () => new Triangle({ ...PLACED, width: 360, height: 200 })],
+  ["polygon", () => new Polygon([...CORNERS], PLACED)],
+  ["polyline", () => new Polyline([...CORNERS], PLACED)],
+  ["line", () => new Line([0, 0, 100, 50], PLACED)],
+  ["path", () => new Path("M 0 0 L 100 0 L 0 50 Z", PLACED)],
+] as const;
 describe("panel fields in the selection inspector", () => {
   it("offers fill, stroke, border width and corner radius for a panel", () => {
     const rect = panel();
@@ -365,4 +411,189 @@ describe("panel fields in the selection inspector", () => {
 
     expect(saveState).not.toHaveBeenCalled();
   });
+});
+
+describe("shape material and a shape's own fields", () => {
+  it.each(SHAPES)("offers the material fields for a %s", (_kind, build) => {
+    const { host } = setup(build());
+
+    // Every one of these classes owns a fill, a stroke, a border width and a
+    // shadow. Offering them for one kind only would leave a shape that can be
+    // placed and not coloured.
+    for (const selector of [
+      "[data-vigilia-panel-fill]",
+      "[data-vigilia-panel-stroke]",
+      "[data-vigilia-panel-border]",
+      "[data-vigilia-panel-shadow]",
+    ]) {
+      expect(host.querySelector(selector), selector).not.toBeNull();
+    }
+  });
+
+  it.each(SHAPES)(
+    "offers a corner radius for a %s only when it is a rectangle",
+    (kind, build) => {
+      const { host } = setup(build());
+      const radius = host.querySelector("[data-vigilia-panel-radius]");
+
+      // A radius box over a shape Fabric gives no `rx` to would show `NaN` and
+      // write a property the object does not read.
+      expect(radius !== null, kind).toBe(kind === "rect");
+    },
+  );
+
+  it.each(SHAPES)(
+    "gives every field on a %s an accessible name",
+    (_kind, build) => {
+      const shape = build();
+      shape.set(
+        "shadow",
+        new Shadow({ color: "#ecf5ff", blur: 8, offsetY: 4 }),
+      );
+      const { host } = setup(shape);
+
+      const controls = host.querySelectorAll<HTMLElement>(
+        ".vigilia-field > input, .vigilia-field > select, .vigilia-field > textarea, .vigilia-field-row input",
+      );
+      expect(controls.length).toBeGreaterThan(0);
+      for (const control of controls) {
+        const name =
+          host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
+            ?.textContent ?? control.closest("label")?.textContent;
+        expect(name, control.outerHTML).toBeTruthy();
+      }
+    },
+  );
+
+  it("writes a chosen fill onto a shape that is not a rectangle", () => {
+    const triangle = new Triangle({ ...PLACED, width: 360, height: 200 });
+    const { history, field } = setup(triangle);
+
+    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+
+    expect(triangle.fill).toBe("#ecf5ff");
+    expect(triangle.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      fill: "palette.text",
+    });
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a polygon's own side count, and refuses a two-sided one", () => {
+    const polygon = new Polygon([...CORNERS], PLACED);
+    const { history, editor, field } = setup(polygon);
+    const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
+    expect(sides.value).toBe("3");
+
+    type(sides, "2");
+
+    // A two-sided polygon is not a repaired three-sided one: the count stays
+    // what it was and the edit is reported, not coerced.
+    expect(polygon.points).toHaveLength(3);
+    expect(sides.value).toBe("3");
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).toHaveBeenCalled();
+  });
+
+  it("redraws a polygon with the side count the author asked for", () => {
+    const polygon = new Polygon([...CORNERS], {
+      ...PLACED,
+      left: 20,
+      top: 30,
+    });
+    const { history, field } = setup(polygon);
+
+    type(field<HTMLInputElement>("[data-vigilia-shape-sides]"), "6");
+
+    expect(polygon.points).toHaveLength(6);
+    // The box the author placed is theirs; only the corners move.
+    expect(polygon.width).toBe(100);
+    expect(polygon.height).toBe(100);
+    expect(polygon.left).toBe(20);
+    expect(polygon.top).toBe(30);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a polyline's own points and writes back the ones typed", () => {
+    const polyline = new Polyline([...CORNERS], PLACED);
+    const { history, field } = setup(polyline);
+    const points = field<HTMLTextAreaElement>("[data-vigilia-shape-points]");
+
+    expect(points.value).toBe("0, 0\n100, 0\n50, 100");
+
+    typeArea(points, "1, 2\n3, 4");
+
+    expect(polyline.points).toEqual([
+      { x: 1, y: 2 },
+      { x: 3, y: 4 },
+    ]);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["a, b", "1, 2, 3", "1, 2\nnot a point", "1, 2\n"])(
+    "refuses %o as a polyline's points rather than reading it as zero",
+    (typed) => {
+      const polyline = new Polyline([...CORNERS], PLACED);
+      const before = polyline.points;
+      const { history, editor, field } = setup(polyline);
+
+      typeArea(
+        field<HTMLTextAreaElement>("[data-vigilia-shape-points]"),
+        typed,
+      );
+
+      expect(polyline.points).toEqual(before);
+      expect(history.saveState).not.toHaveBeenCalled();
+      expect(editor.errorManager.warn).toHaveBeenCalled();
+    },
+  );
+
+  it("moves a line from its own two endpoints", () => {
+    const line = new Line([0, 0, 100, 50], PLACED);
+    const { history, field } = setup(line);
+
+    type(field<HTMLInputElement>('[data-vigilia-shape-line="x2"]'), "200");
+
+    expect(line.x2).toBe(200);
+    expect(line.x1).toBe(0);
+    expect(line.width).toBe(200);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a path's own data as editable path data", () => {
+    const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
+    const { history, field } = setup(path);
+    const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
+
+    expect(data.value).toBe("M 0 0 L 100 0 L 0 50 Z");
+
+    typeArea(data, "M 0 0 L 10 10");
+
+    // Fabric's own parser is the one that reads it, and its normalised
+    // commands are what the scene persists.
+    expect(path.path).toEqual([
+      ["M", 0, 0],
+      ["L", 10, 10],
+    ]);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["not a path", "   ", "M 0 0"])(
+    "refuses %o as a path rather than emptying the shape",
+    (typed) => {
+      const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
+      const before = path.path;
+      const { history, editor, field } = setup(path);
+      const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
+
+      typeArea(data, typed);
+
+      // A path Fabric cannot parse comes back empty, and a lone moveto has no
+      // extent at all: either would replace a real shape with one nothing can
+      // select or see.
+      expect(path.path).toEqual(before);
+      expect(data.value).toBe("M 0 0 L 100 0 L 0 50 Z");
+      expect(history.saveState).not.toHaveBeenCalled();
+      expect(editor.errorManager.warn).toHaveBeenCalled();
+    },
+  );
 });

@@ -20,6 +20,10 @@ export const uiCopy = {
   /** Selection inspector field labels. */
   inspectorFields: {
     selection: "Selection",
+    /** What the selected object is called in the layer list, as against the id. */
+    name: "Name",
+    /** Shown when a name is rejected rather than truncated to the published bound. */
+    invalidName: "That name cannot be applied to the selection.",
     x: "X",
     y: "Y",
     /** The Size pair marks its boxes W and H, as the artboard panel's does: the
@@ -34,7 +38,8 @@ export const uiCopy = {
     nothingSelected: "Select an object to inspect it.",
     /** Shown instead of any field when the selection is locked. */
     locked: "This object is locked. Unlock it to edit it.",
-    /** Panel appearance. A panel is a rectangle, so these appear for one only. */
+    /** Panel appearance. Every primitive shape owns a fill, a stroke, a border
+        width and a shadow; the corner radius is a rectangle's alone. */
     panelFill: "Fill",
     panelStroke: "Stroke",
     panelBorder: "Border width",
@@ -42,6 +47,13 @@ export const uiCopy = {
     panelShadow: "Shadow",
     panelShadowBlur: "Shadow blur",
     panelShadowOffset: "Shadow offset",
+    /** What one shape owns and no other: its corners, its points, its ends or
+        its data. The general geometry fields above stay unchanged. */
+    shapeSides: "Sides",
+    shapePoints: "Points",
+    shapeStart: "Start",
+    shapeEnd: "End",
+    shapePath: "Path data",
     /** The frosted-glass treatment and its one parameter. */
     glassEnabled: "Frosted glass",
     glassBlur: "Glass blur",
@@ -162,6 +174,21 @@ export const uiCopy = {
     bar: "Bar",
     pie: "Pie",
   },
+  /**
+   * One label per primitive shape. The Add pane's shape list, the defaults that
+   * build each kind and the inspector's own fields all read this, so a shape is
+   * named in exactly one place.
+   */
+  shapeKinds: {
+    rect: "Rectangle",
+    circle: "Circle",
+    ellipse: "Ellipse",
+    triangle: "Triangle",
+    polygon: "Polygon",
+    polyline: "Polyline",
+    line: "Line",
+    path: "Path",
+  },
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
@@ -177,6 +204,10 @@ export const uiCopy = {
     add: "Add",
     text: "Text",
     panel: "Panel",
+    /** The Add pane's shape list legend. A group rather than eight more chips
+        beside the four chart families: "Line" is both, and a flat list would put
+        the same word on two buttons. */
+    shapes: "Shape",
     assets: "Assets",
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",

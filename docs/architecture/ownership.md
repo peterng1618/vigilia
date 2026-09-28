@@ -22,9 +22,9 @@ If implementation moves an owner, update this map in the same change.
 | Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
 | Semantic layer projection and arrange actions | `editor/src/editor-shell/layer-tree.ts`, `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
-| New-object defaults (text, charts, panels) | `editor/src/new-object-defaults.ts` |
+| New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
-| Panel material fields (fill, border, radius, shadow) | `editor/src/selection-inspector/panel.ts` |
+| Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
 | Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |

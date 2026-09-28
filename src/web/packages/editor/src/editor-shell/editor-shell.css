@@ -317,6 +317,24 @@ body,
   display: block;
   margin-top: 12px;
 }
+/* The Add pane's shape list is a group, because "Line" is both a chart and a
+   shape and a flat chip list would put the same word on two buttons. The UA
+   groove border and legend are the only things reset: the shell's own 1px edge
+   and muted caps are what the rest of the panel is drawn in. */
+.editor-shell-panel fieldset {
+  margin: 12px 0 0;
+  padding: 2px 6px 4px;
+  min-inline-size: 0;
+  border: 1px solid var(--shell-edge);
+  border-radius: 8px;
+}
+.editor-shell-panel legend {
+  padding: 0 4px;
+  color: var(--shell-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
 .editor-shell-panel button,
 .editor-shell-panel input,
 .editor-shell-panel select,
@@ -334,8 +352,21 @@ body,
 .editor-shell-panel input,
 .editor-shell-panel select,
 .editor-shell-inspector input,
-.editor-shell-inspector select {
+.editor-shell-inspector select,
+.editor-shell-inspector textarea {
   padding: 4px 6px;
+}
+/* A polyline's points and a path's data are documents, so their field takes
+   the panel's own control surface rather than the browser's default one. */
+.editor-shell-inspector textarea {
+  max-width: 100%;
+  margin: 3px 4px 3px 0;
+  border: 1px solid var(--shell-edge);
+  border-radius: 6px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+  font: inherit;
+  resize: vertical;
 }
 .editor-shell-panel button,
 .editor-shell-inspector button {
@@ -431,6 +462,7 @@ body,
 }
 .vigilia-field input,
 .vigilia-field select,
+.vigilia-field textarea,
 .vigilia-field-row input,
 .vigilia-field-row select {
   width: auto;

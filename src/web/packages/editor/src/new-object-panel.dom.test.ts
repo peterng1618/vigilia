@@ -4,9 +4,20 @@ import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
-import { Rect } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  Line,
+  Path,
+  Polygon,
+  Polyline,
+  Rect,
+  Triangle,
+} from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { SHAPE_KINDS } from "./new-object-defaults.js";
 import { createNewObjectPanel } from "./new-object-panel.js";
+import { uiCopy } from "./ui-copy.js";
 
 /** The construction surface a panel insertion writes through: the canvas and
     the history, exactly as the editor's own managers use them. */
@@ -23,6 +34,15 @@ function editorStub() {
     textManager: { addText: vi.fn() },
     errorManager: { warn: vi.fn(), error: vi.fn() },
   };
+}
+
+/** The chart buttons sit outside the shape group, so "Line" names two
+    different things in this panel and only one of them is a chart. */
+function chartButton(root: HTMLElement, label: string): HTMLButtonElement {
+  return [...root.querySelectorAll("button")].find(
+    (button) =>
+      button.textContent === label && button.closest("fieldset") === null,
+  )!;
 }
 
 const palette = {
@@ -132,9 +152,7 @@ describe("new object panel", () => {
       { addChart },
     );
 
-    [...panel.root.querySelectorAll("button")]
-      .find((button) => button.textContent === label)!
-      .click();
+    chartButton(panel.root, label).click();
 
     expect(addChart).toHaveBeenCalledWith(family);
   });
@@ -157,9 +175,7 @@ describe("new object panel", () => {
     );
 
     for (const label of ["Gauge", "Line", "Bar", "Pie"]) {
-      [...panel.root.querySelectorAll("button")]
-        .find((button) => button.textContent === label)!
-        .click();
+      chartButton(panel.root, label).click();
     }
 
     // All four, not one: the wrapper is the module's, so a button that opted
@@ -170,6 +186,113 @@ describe("new object panel", () => {
       expect(call[0]).toBe("controls");
       expect(call[1]).toContain("palette token");
     }
+  });
+
+  it("offers every primitive Fabric ships as a named shape, not one panel", () => {
+    const { root } = createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+    );
+
+    // One list, read by the panel: a shape the author cannot insert is the same
+    // gap as a shape with no properties.
+    const group = root.querySelector("fieldset")!;
+    expect(group.querySelector("legend")?.textContent).toBe(
+      uiCopy.panels.shapes,
+    );
+    expect(
+      [...group.querySelectorAll("button")].map((button) =>
+        button.getAttribute("data-vigilia-panel-add"),
+      ),
+    ).toEqual([...SHAPE_KINDS]);
+  });
+
+  it("groups the shapes so the shape Line is not the chart Line", () => {
+    const { root } = createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+    );
+
+    // "Line" is both a chart family and a primitive. A flat chip list would put
+    // the same word on two buttons and leave the author to guess which is which.
+    expect(
+      chartButton(root, uiCopy.chartFamilies.line).closest("fieldset"),
+    ).toBeNull();
+    expect(
+      root.querySelector('[data-vigilia-panel-add="line"]')?.textContent,
+    ).toBe(uiCopy.shapeKinds.line);
+  });
+
+  it.each([
+    ["rect", Rect],
+    ["circle", Circle],
+    ["ellipse", Ellipse],
+    ["triangle", Triangle],
+    ["polygon", Polygon],
+    ["polyline", Polyline],
+    ["line", Line],
+    ["path", Path],
+  ] as const)("inserts a %s as its own Fabric class", (kind, Class) => {
+    const editor = editorStub();
+    const { root } = createNewObjectPanel(
+      document.body,
+      editor as never,
+      palette as never,
+    );
+
+    root
+      .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+      .click();
+
+    const inserted = editor.canvas.add.mock.calls[0]?.[0];
+    expect(inserted).toBeInstanceOf(Class);
+    // One construction, not a factory call per shape: one object, one
+    // activation, one history entry.
+    expect(editor.canvas.setActiveObject).toHaveBeenCalledWith(inserted);
+    expect(editor.historyManager.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([...SHAPE_KINDS])(
+    "names the %s button for a screen reader",
+    (kind) => {
+      const { root } = createNewObjectPanel(
+        document.body,
+        editorStub() as never,
+        palette as never,
+      );
+      const button = root.querySelector<HTMLButtonElement>(
+        `[data-vigilia-panel-add="${kind}"]`,
+      )!;
+
+      expect(button.type).toBe("button");
+      expect(button.textContent?.trim()).toBe(uiCopy.shapeKinds[kind]);
+    },
+  );
+
+  it("reports a shape the theme cannot supply a reference for", () => {
+    const editor = editorStub();
+    const { root } = createNewObjectPanel(
+      document.body,
+      editor as never,
+      undefined,
+    );
+
+    for (const kind of SHAPE_KINDS) {
+      root
+        .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+        .click();
+    }
+
+    // All eight, not one: the wrapper is the module's, so a shape button that
+    // opted out would be a silent failure the author cannot see.
+    expect(editor.errorManager.warn).toHaveBeenCalledTimes(SHAPE_KINDS.length);
+    for (const call of editor.errorManager.warn.mock.calls) {
+      expect(call[0]).toBe("controls");
+      expect(call[1]).toContain("palette token");
+    }
+    expect(editor.canvas.add).not.toHaveBeenCalled();
   });
 
   it("delegates text construction to the editor with derived v2 defaults", () => {

@@ -17,6 +17,15 @@ import {
 } from "./editor-canvas.js";
 import { isDesktopSurface } from "./surface.js";
 
+/** Clicks one primitive in the Add pane's shape group. */
+async function insertShape(page: Page, name: string): Promise<void> {
+  await page
+    .locator('[data-vigilia-panel="add"]')
+    .getByRole("group", { name: "Shape" })
+    .getByRole("button", { name, exact: true })
+    .click();
+}
+
 const EDITOR = "http://127.0.0.1:4174/";
 
 /**
@@ -739,10 +748,9 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await openRailPane(page, "Add");
-    await page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
-      .click();
+    // The Add pane's shapes are a group: "Line" is both a chart family and a
+    // primitive, so the legend is what tells the two apart.
+    await insertShape(page, "Rectangle");
     await openInspectorTab(page, "Design");
 
     // Insertion selects what it inserted, so the controls belong to the new
@@ -848,6 +856,50 @@ test.describe("Fabric editor route", () => {
     ).toHaveLength(1);
   });
 
+  test("offers every primitive as a named shape and styles one that is not a rectangle", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await openRailPane(page, "Add");
+
+    const shapes = page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("group", { name: "Shape" });
+    await expect(shapes.getByRole("button")).toHaveCount(8);
+    // Grouped, because the shape "Line" and the "Line" chart are the same
+    // word beside each other otherwise.
+    await expect(
+      page
+        .locator('[data-vigilia-panel="add"]')
+        .getByRole("button", { name: "Line", exact: true }),
+    ).toHaveCount(2);
+
+    await insertShape(page, "Polygon");
+    await openInspectorTab(page, "Design");
+
+    // A shape that is not a rectangle is still a shape: it carries material,
+    // it has no corner radius to show, and it has a side count of its own.
+    await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
+    await expect(page.locator("[data-vigilia-panel-radius]")).toHaveCount(0);
+    const sides = page.locator("[data-vigilia-shape-sides]");
+    await expect(sides).toBeVisible();
+    await typeInto(page, sides, "5");
+    await expect(sides).toHaveValue("5");
+
+    const envelope = (await saveEnvelope(page)) as {
+      scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
+    };
+    const polygon = envelope.scene.objects.find(
+      (object) => object["type"] === "Polygon",
+    );
+    expect((polygon?.["points"] as unknown[]).length).toBe(5);
+    // The material the author did not touch is still a palette reference, so
+    // the document stays reassignable.
+    expect(polygon?.["vigiliaPaint"]).toEqual({ fill: "palette.background" });
+  });
+
   test("reassigns an authored panel's fill, stroke and shadow before deleting a token", async ({
     page,
   }, testInfo) => {
@@ -855,10 +907,9 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await openRailPane(page, "Add");
-    await page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Panel", exact: true })
-      .click();
+    // The Add pane's shapes are a group: "Line" is both a chart family and a
+    // primitive, so the legend is what tells the two apart.
+    await insertShape(page, "Rectangle");
     await openInspectorTab(page, "Design");
     const panelId = (await activeId(page)) ?? "";
     await page

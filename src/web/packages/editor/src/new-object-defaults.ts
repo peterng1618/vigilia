@@ -14,7 +14,19 @@ import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
-import type { Gradient } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  type FabricObject,
+  type Gradient,
+  Line,
+  Path,
+  Polygon,
+  Polyline,
+  Rect,
+  Triangle,
+} from "fabric/es";
+import { uiCopy } from "./ui-copy.js";
 
 /** Semantic defaults for a new object; generic construction remains editor-owned. */
 export interface NewPaintDefaults {
@@ -23,6 +35,8 @@ export interface NewPaintDefaults {
 }
 
 export interface NewTextDefaults extends NewPaintDefaults {
+  /** What the layer list shows until the author renames it; the id stays the key. */
+  readonly name: string;
   /** Placement, so a new object does not straddle the artboard corner. */
   readonly left: number;
   readonly top: number;
@@ -47,6 +61,21 @@ export interface NewTextDefaults extends NewPaintDefaults {
 /** Where a new object is placed, inset from the artboard corner. */
 export const NEW_OBJECT_INSET = 40;
 
+/**
+ * What a newly inserted object is called until the author renames it: the label
+ * of the control that made it. The Add pane already spells every object, so
+ * reusing those words is the naming this repo has — and a new object that
+ * arrived as a bare uuid would leave the layer list unreadable from the first
+ * click, with nothing to tell two panels apart.
+ */
+export function newObjectName(kind: "panel" | "text" | ChartFamily): string {
+  return kind === "text"
+    ? uiCopy.panels.text
+    : kind === "panel"
+      ? uiCopy.panels.panel
+      : uiCopy.chartFamilies[kind];
+}
+
 /** A new panel's size in whole artboard units: a card, not a full artboard. */
 export const NEW_PANEL_SIZE = { width: 360, height: 200 } as const;
 
@@ -61,6 +90,8 @@ export interface NewPanelDefaults extends NewPaintDefaults {
   /** Narrowed from `NewPaintDefaults`, so a panel goes straight into Fabric's
       own `Rect` constructor without a cast at the call site. */
   readonly fill: string | Gradient<"linear">;
+  /** What the layer list shows until the author renames it; the id stays the key. */
+  readonly name: string;
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -72,10 +103,21 @@ export interface NewPanelDefaults extends NewPaintDefaults {
   readonly originY: "top";
 }
 
-/** Supplies a surface-backed, sized, rounded placement for a new panel. */
-export function createNewPanelDefaults(
+/** Artboard coordinates, so the inspector's X and Y are the shape's edges. */
+const PLACED = {
+  left: NEW_OBJECT_INSET,
+  top: NEW_OBJECT_INSET,
+  originX: "left",
+  originY: "top",
+} as const;
+
+/**
+ * The surface a new shape is filled with, and where it lands. One rule for
+ * every kind: a shape an author draws a card on must be as legible as a panel.
+ */
+function newShapeSurface(
   globals: FabricGlobals | undefined,
-): NewPanelDefaults {
+): Omit<NewPanelDefaults, "width" | "height" | "rx" | "ry" | "name"> {
   const [id, entry] = surfacePalette(globals, "panel");
   const fill = fabricArtboardPaint(
     entry.value,
@@ -87,17 +129,192 @@ export function createNewPanelDefaults(
     throw new Error(`Palette token "palette.${id}" cannot paint a new panel.`);
 
   return {
-    left: NEW_OBJECT_INSET,
-    top: NEW_OBJECT_INSET,
+    ...PLACED,
+    fill,
+    [VIGILIA_PAINT_PROPERTY]: { fill: `palette.${id}` },
+  };
+}
+
+/** Supplies a surface-backed, sized, rounded placement for a new panel. */
+export function createNewPanelDefaults(
+  globals: FabricGlobals | undefined,
+): NewPanelDefaults {
+  return {
+    ...newShapeSurface(globals),
+    name: newObjectName("panel"),
     width: NEW_PANEL_SIZE.width,
     height: NEW_PANEL_SIZE.height,
     rx: NEW_PANEL_RADIUS,
     ry: NEW_PANEL_RADIUS,
-    originX: "left",
-    originY: "top",
-    fill,
-    [VIGILIA_PAINT_PROPERTY]: { fill: `palette.${id}` },
   };
+}
+
+/**
+ * The primitive shapes Fabric 7 ships, in the order the Add pane offers them.
+ * One list: the pane's buttons, the geometry below and the inspector's own
+ * fields all read it, so a shape is never described in two places.
+ */
+export const SHAPE_KINDS = [
+  "rect",
+  "circle",
+  "ellipse",
+  "triangle",
+  "polygon",
+  "polyline",
+  "line",
+  "path",
+] as const;
+
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
+/**
+ * A stroke wide enough to read at artboard scale, and the round caps and joins
+ * an open shape's corners need: a miter on a sharp polyline runs a long spike
+ * past the point the author placed.
+ */
+const NEW_SHAPE_STROKE_WIDTH = 2;
+
+/**
+ * An open shape is stroked rather than filled — a polyline, a line and a path
+ * are what they are drawn with — so it takes a content token, which is the
+ * palette's own answer to "a colour visible against the surface".
+ */
+function newShapeStroke(globals: FabricGlobals | undefined): {
+  readonly fill: null;
+  readonly stroke: string | Gradient<"linear">;
+  readonly strokeWidth: number;
+  readonly strokeLineCap: "round";
+  readonly strokeLineJoin: "round";
+  readonly [VIGILIA_PAINT_PROPERTY]: { readonly stroke: `palette.${string}` };
+} & typeof PLACED {
+  const [id, entry] = firstPalette(globals);
+  const stroke = fabricArtboardPaint(entry.value, 1, 1);
+
+  if (stroke === undefined)
+    throw new Error(`Palette token "palette.${id}" cannot paint a new shape.`);
+
+  return {
+    ...PLACED,
+    fill: null,
+    stroke,
+    strokeWidth: NEW_SHAPE_STROKE_WIDTH,
+    strokeLineCap: "round",
+    strokeLineJoin: "round",
+    [VIGILIA_PAINT_PROPERTY]: { stroke: `palette.${id}` },
+  };
+}
+
+/**
+ * A hexagon rather than a triangle: a triangle has its own entry, and three is
+ * the one side count that cannot show what the side-count field does.
+ */
+export const NEW_POLYGON_SIDES = 6;
+
+/**
+ * Evenly spaced corners around a box, scaled to fill it.
+ *
+ * The one place a shape is described by something other than its points: Fabric
+ * 7 dropped `numPoints`, so the count an author edits is recomputed into the
+ * corners the scene actually stores — the same thing Fabric 5 did, and the
+ * points remain the only persisted truth. Filling the box rather than inscribing
+ * a circle in it is what keeps the side count from silently resizing a shape
+ * whose width and height the author already set.
+ */
+export function cornersForSides(
+  sides: number,
+  width: number,
+  height: number,
+): { x: number; y: number }[] {
+  const unit = Array.from({ length: sides }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * 2 * Math.PI) / sides;
+    return { x: Math.cos(angle), y: Math.sin(angle) };
+  });
+  // An even spread never reaches the unit circle on both axes, so each is
+  // stretched to the box: a hexagon with a corner at the top is otherwise
+  // 86.6 % of the width the author set.
+  const reachX = width / (2 * Math.max(...unit.map(({ x }) => Math.abs(x))));
+  const reachY = height / (2 * Math.max(...unit.map(({ y }) => Math.abs(y))));
+  return unit.map(({ x, y }) => ({
+    x: width / 2 + x * reachX,
+    y: height / 2 + y * reachY,
+  }));
+}
+
+/** An open line across the new-shape box, rising left to right. */
+const NEW_POLYLINE_POINTS = [
+  { x: 0, y: NEW_PANEL_SIZE.height },
+  { x: NEW_PANEL_SIZE.width / 3, y: NEW_PANEL_SIZE.height / 3 },
+  { x: (NEW_PANEL_SIZE.width * 2) / 3, y: (NEW_PANEL_SIZE.height * 2) / 3 },
+  { x: NEW_PANEL_SIZE.width, y: 0 },
+];
+
+/**
+ * An arrow, as the SVG data a path is authored in. A path is arbitrary data, so
+ * its default is the one shape here that no other entry draws and whose own
+ * field is visibly worth editing.
+ */
+const NEW_PATH = `M 0 ${NEW_PANEL_SIZE.height / 2} L ${NEW_PANEL_SIZE.width / 2} ${NEW_PANEL_SIZE.height / 2} L ${NEW_PANEL_SIZE.width / 2} ${NEW_PANEL_SIZE.height / 4} L ${NEW_PANEL_SIZE.width} ${NEW_PANEL_SIZE.height / 2} L ${NEW_PANEL_SIZE.width / 2} ${(NEW_PANEL_SIZE.height * 3) / 4} L ${NEW_PANEL_SIZE.width / 2} ${NEW_PANEL_SIZE.height} L 0 ${NEW_PANEL_SIZE.height / 2} Z`;
+
+/**
+ * Constructs one new shape.
+ *
+ * The class lives here rather than at the click site because Fabric takes a
+ * polygon's points, a line's endpoints and a path's commands as constructor
+ * arguments, not as options: eight option bags would be eight wrong calls. Where
+ * the object lands and how the edit is recorded stay with the editor.
+ */
+export function createNewShape(
+  id: string,
+  globals: FabricGlobals | undefined,
+  kind: ShapeKind,
+): FabricObject {
+  const { width, height } = NEW_PANEL_SIZE;
+
+  switch (kind) {
+    case "rect":
+      return new Rect({ id, ...createNewPanelDefaults(globals) });
+    case "circle":
+      return new Circle({
+        id,
+        ...newShapeSurface(globals),
+        radius: height / 2,
+      });
+    case "ellipse":
+      return new Ellipse({
+        id,
+        ...newShapeSurface(globals),
+        rx: width / 2,
+        ry: height / 2,
+      });
+    case "triangle":
+      return new Triangle({
+        id,
+        ...newShapeSurface(globals),
+        width,
+        height,
+      });
+    case "polygon": {
+      // A value rather than a fresh literal: Fabric infers its options type
+      // from one, and the inferred type has no room for the authored `id`.
+      const options = { id, ...newShapeSurface(globals) };
+      return new Polygon(
+        cornersForSides(NEW_POLYGON_SIDES, width, height),
+        options,
+      );
+    }
+    case "polyline":
+      return new Polyline(NEW_POLYLINE_POINTS, {
+        id,
+        ...newShapeStroke(globals),
+      });
+    case "line":
+      return new Line([0, 0, width, height], {
+        id,
+        ...newShapeStroke(globals),
+      });
+    case "path":
+      return new Path(NEW_PATH, { id, ...newShapeSurface(globals) });
+  }
 }
 
 /** Supplies valid authored references without making defaults document state. */
@@ -129,6 +346,7 @@ export function createNewTextDefaults(
 
   return {
     ...paint,
+    name: newObjectName("text"),
     // Fabric's own default is (0,0) with a centre origin, which puts a new
     // object half off the artboard corner where it is awkward to select. Charts
     // already start inset; text must too.
