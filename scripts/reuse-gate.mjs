@@ -36,6 +36,7 @@ const WATCHLIST = [
   "src/web/packages/scene-fabric/src/chart-object.ts",
   "src/web/packages/scene-fabric/src/object-asset.ts",
   "src/web/packages/renderer-core/src/theme/",
+  "src/web/packages/renderer-core/src/charts/",
   "src/web/packages/renderer-core/src/data/protocol.ts",
   "src/web/packages/host/src/providers/",
   "src/web/packages/host/src/serve/static-path.ts",
