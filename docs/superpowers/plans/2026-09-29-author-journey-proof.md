@@ -14,7 +14,8 @@
 
 - **No generator, starter file, fixture, hand-edited JSON or developer intervention at any point** in Phase 2. Opening the starter and editing it is not the rebuild. The only legal moves are the controls in the delivered surface and the ones this plan names.
 - **A control that does not exist is the finding.** Do not work around it with the canvas dock, a marquee, a drag, or code. A workaround is a defect in the surface, not a technique.
-- **A blocking finding stops the pass until it is fixed.** Do not defer one to keep moving, and do not build the next region on top of it. File large ones as issues and fix what the pass can; if it cannot, stop and report where.
+- **Fix what you find, using what the repo already decides.** A property not exposed in the panel, a layout that does not line up, something hard to read, an icon that is not Lucide — each is fixed in the pass, not merely recorded. The repo already answers most of these: `docs/architecture/ownership.md` names the owner, the surrounding code sets the idiom, `ui-copy.ts` holds the copy, and the existing controls set the pattern. A reasonable decision from those is a decision, and making it is the job. Fix it, regression-test it, and move on.
+- **Note and continue only for a genuine unknown** — a product decision with no precedent in the repo and no owner who can be inferred. Record it in the Findings table, keep the rebuild moving past it, and do not stop the pass. Nothing waits on a human.
 - **Gaps, friction and visual quality are findings in their own right.** A journey that completes but is unpleasant has still failed.
 - Paint resolves through palette tokens (§73) and type through named type presets (§75). A per-object colour that bypasses a token is a defect, not a shortcut — the rebuild varies the frosted tint by editing a token.
 - Missing or non-`ok` telemetry is never fabricated as zero/default data (§97). A gap in the display is a correct result.
@@ -31,7 +32,7 @@ Recorded here so an executor does not re-open them.
 
 | Decision | Ruling |
 |---|---|
-| A blocking finding that cannot be fixed quickly | **Stop the pass** and fix it first. Do not defer to keep moving. |
+| A blocking finding that cannot be fixed quickly | **Fix it in the pass, using what the repo already decides** — ownership, idiom, copy, and the existing controls' pattern. Note and move on only for a genuine unknown with no precedent. The pass never stops for a human. |
 | A blank theme's palette | **Minimal starting set** — `text`, `dim`, `panel`, `frost`, `panelStroke`, `rule`, `chartTrack`, `frostInk`, `frostArea`. Not the reference palette's device colours. |
 | The starter's reach, now that `New` is blank | **Also a library template**, not only a File item. |
 | Artboard sizes offered | **16:9, 19.5:9 and 4:3**, landscape and portrait, at **1080p, 2K and 4K**. No device names — the 19.5:9 entry is not labelled as any handset. |

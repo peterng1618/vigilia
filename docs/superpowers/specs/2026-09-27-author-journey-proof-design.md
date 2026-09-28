@@ -133,10 +133,13 @@ finding is duplicated in specs, status or reports.
 Classification is the author's call at observation time:
 
 - **Blocking** — the journey cannot complete, work can be lost, or data is
-  misrepresented. **Fixed in this plan, and the pass stops until it is.** A
-  blocking finding is not deferred to keep the rebuild moving, and the next
-  region is never built on top of one. If it cannot be fixed, the pass stops and
-  reports where it stopped.
+  misrepresented. **Fixed in this plan**, using what the repo already decides:
+  the owner named in `ownership.md`, the idiom of the surrounding code, the copy
+  in `ui-copy.ts`, and the pattern the existing controls set. A property that is
+  not exposed, a layout that does not line up, something hard to read, an icon
+  that is not Lucide — each is fixed, regression-tested, and passed over. A
+  reasonable decision from what is already here is a decision, and making it is
+  the work.
 - **Deferred** — recorded, not fixed here, with the reason. Reserved for what is
   not blocking.
 
@@ -146,8 +149,8 @@ Classification is the author's call at observation time:
    UI, and compared against the target.
 2. Every gap, friction point and visual-quality problem is in the Findings
    table. None silently dropped.
-3. Every blocking finding is fixed here, and the pass stopped rather than moving
-   on while one was open.
+3. Every blocking finding is fixed here, decided from what the repo already
+   owns, and the rebuild moved past it.
 4. The three unverified round trips are driven in a browser, and the phone-width
    surfaces are inspected by eye.
 5. The five status debts in "What already shipped", and the settings-scope one,
@@ -201,8 +204,9 @@ privacy and essential keyboard access are not tradeable for a smoother journey.
   generator, starter, fixture or JSON, and compared to the target.
 - Every gap, friction point and visual-quality problem observed is in the
   Findings table with a blocking/deferred classification.
-- Every blocking finding is fixed or explicitly deferred with a reason; a
-  finding is never dropped by omission.
+- Every blocking finding is fixed in the pass, decided from what the repo already
+  owns; a finding is never dropped by omission, and one that is a genuine product
+  unknown is recorded with that said plainly.
 - Text alignment, wrap and overflow round-trip through save/reopen in a
   browser, with the persisted envelope inspected rather than only the DOM.
 - In-place text editing commits, undo restores the previous text, and the
