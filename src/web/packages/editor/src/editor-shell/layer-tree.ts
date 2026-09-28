@@ -1,3 +1,4 @@
+import { objectName } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
 
@@ -51,13 +52,14 @@ function kindOf(object: FabricObject): LayerKind {
   return "shape";
 }
 
-function nameOf(
-  id: string,
-  names: Readonly<Record<string, string>>,
-  kind: LayerKind,
-): string {
-  const stored = names[id];
-  if (stored !== undefined && stored.trim() !== "") return stored;
+/**
+ * What a row prints: the object's authored name, else the id it falls back to.
+ * The name lives on the object beside the id, so the projection reads it where
+ * every other property is read and cannot drift from what a save writes.
+ */
+function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
+  const authored = objectName(object);
+  if (authored !== undefined) return authored;
   if (id.trim() !== "") return id;
   return kindLabels[kind];
 }
@@ -66,12 +68,10 @@ function nameOf(
 export function projectLayers({
   root,
   selected,
-  names,
   collapsed,
 }: {
   readonly root: readonly FabricObject[];
   readonly selected: readonly FabricObject[];
-  readonly names: Readonly<Record<string, string>>;
   readonly collapsed: ReadonlySet<string>;
 }): readonly LayerRow[] {
   const rows: LayerRow[] = [];
@@ -90,7 +90,7 @@ export function projectLayers({
       const isCollapsed = collapsed.has(id);
       rows.push({
         id,
-        name: nameOf(id, names, kind),
+        name: nameOf(object, id, kind),
         kind,
         depth,
         parentId,

@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.9: the Add pane inserts every primitive Fabric 7 ships** — Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path — as one labelled "Shape" group, because "Line" is both a chart family and a shape and a flat chip list said the same word twice.
-- **Material widens with the shapes, glass does not.** `supportsPanelFields` now covers the eight classes, so all of them get fill, stroke, border width and shadow; the corner radius stays a rectangle's alone. `GLASS_OBJECT_TYPES` and `localPath` are untouched, and a unit test proves a non-rect shape is refused a glass treatment at the envelope.
-- **Each shape exposes only what is its own:** a polygon's side count, a polyline's points, a line's two endpoints, a path's data — refused rather than repaired when the input is not a shape (two sides, a point that is not two numbers, data Fabric's parser cannot read).
-- **Fabric 7 has no `numPoints` and no polygon corner radius**, verified in the installed package, so a corner radius is offered for a rectangle only; a control that accepts an edit and applies none is what the file's own comment forbids.
-- **Every shape round-trips its own property** through `toObject` → `fromObject` → `toObject`, proven per shape in `new-object-defaults.test.ts`, and the two editor specs that clicked "Panel" now click the shape group.
+- **F1.8: a scene object can be named.** An optional `name` rides on the object beside its stable `id`, in the persisted scene; absent means fall back to the id, so a scene authored before the field still opens.
+- **The name is authored state, not display state.** `editorMetadata.layerNames` — the editor-only side map that made a rename neither undoable nor saveable as scene data — is gone rather than left as a second owner. A rename is one history entry and travels in the envelope's scene.
+- **The envelope is the trust boundary:** a `name` that is not a non-blank string within the published bound is refused on import, at the object's own path, and published in `theme-document.schema.json` with a drift guard against the code's bound.
+- **The selection inspector's Name field sets and clears it** — one history entry per edit, refused rather than truncated past the bound — and new objects arrive named after the button that made them, so a first layer list is a list of names rather than uuids.
+- **A rename through the inspector reaches the layer list.** The bridge republished rows only on selection, so the field and the row it names would have drifted; it now republishes on object change too, proven by a test that fails without the fix.
 
 ## Next
 

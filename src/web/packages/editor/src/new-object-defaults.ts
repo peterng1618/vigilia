@@ -67,13 +67,21 @@ export const NEW_OBJECT_INSET = 40;
  * reusing those words is the naming this repo has — and a new object that
  * arrived as a bare uuid would leave the layer list unreadable from the first
  * click, with nothing to tell two panels apart.
+ *
+ * Every kind the Add pane can insert is covered. A shape excluded here would
+ * not fall back to its id but to the panel name, so an ellipse would be listed
+ * as a Panel — a second object wearing the first one's name is worse than no
+ * name at all.
  */
-export function newObjectName(kind: "panel" | "text" | ChartFamily): string {
-  return kind === "text"
-    ? uiCopy.panels.text
-    : kind === "panel"
-      ? uiCopy.panels.panel
-      : uiCopy.chartFamilies[kind];
+export function newObjectName(
+  kind: "panel" | "text" | ChartFamily | ShapeKind,
+): string {
+  if (kind === "text") return uiCopy.panels.text;
+  if (kind === "panel") return uiCopy.panels.panel;
+  if (kind in uiCopy.chartFamilies) {
+    return uiCopy.chartFamilies[kind as ChartFamily];
+  }
+  return uiCopy.shapeKinds[kind as ShapeKind];
 }
 
 /** A new panel's size in whole artboard units: a card, not a full artboard. */
@@ -269,19 +277,25 @@ export function createNewShape(
   kind: ShapeKind,
 ): FabricObject {
   const { width, height } = NEW_PANEL_SIZE;
+  // Beside the id in every branch: a shape the author inserted must be as
+  // nameable as a text object, and an unnamed one is listed by its uuid.
+  const name = newObjectName(kind);
 
   switch (kind) {
     case "rect":
-      return new Rect({ id, ...createNewPanelDefaults(globals) });
+      // The panel defaults carry the panel's own name, so this one's wins.
+      return new Rect({ id, ...createNewPanelDefaults(globals), name });
     case "circle":
       return new Circle({
         id,
+        name,
         ...newShapeSurface(globals),
         radius: height / 2,
       });
     case "ellipse":
       return new Ellipse({
         id,
+        name,
         ...newShapeSurface(globals),
         rx: width / 2,
         ry: height / 2,
@@ -289,6 +303,7 @@ export function createNewShape(
     case "triangle":
       return new Triangle({
         id,
+        name,
         ...newShapeSurface(globals),
         width,
         height,
@@ -296,7 +311,7 @@ export function createNewShape(
     case "polygon": {
       // A value rather than a fresh literal: Fabric infers its options type
       // from one, and the inferred type has no room for the authored `id`.
-      const options = { id, ...newShapeSurface(globals) };
+      const options = { id, name, ...newShapeSurface(globals) };
       return new Polygon(
         cornersForSides(NEW_POLYGON_SIDES, width, height),
         options,
@@ -305,15 +320,17 @@ export function createNewShape(
     case "polyline":
       return new Polyline(NEW_POLYLINE_POINTS, {
         id,
+        name,
         ...newShapeStroke(globals),
       });
     case "line":
       return new Line([0, 0, width, height], {
         id,
+        name,
         ...newShapeStroke(globals),
       });
     case "path":
-      return new Path(NEW_PATH, { id, ...newShapeSurface(globals) });
+      return new Path(NEW_PATH, { id, name, ...newShapeSurface(globals) });
   }
 }
 

@@ -149,7 +149,10 @@
     },
     "fabricObject": {
       "type": "object",
-      "properties": { "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" } },
+      "properties": {
+        "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" },
+        "name": { "$ref": "#/$defs/objectName" }
+      },
       "allOf": [
         {
           "if": { "required": ["vigiliaGlass"] },
@@ -157,6 +160,10 @@
         }
       ],
       "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "objectName": {
+      "description": "Display name shown in the layer list and selection. The id stays the stable key and is what this falls back to when the name is absent.",
+      "type": "string", "minLength": 1, "maxLength": 120
     },
     "glassTreatment": {
       "description": "Authored backdrop blur. Absence means off; 0 means no blur. Artboard units.",

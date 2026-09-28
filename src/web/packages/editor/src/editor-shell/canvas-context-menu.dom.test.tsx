@@ -56,8 +56,6 @@ function facadeStub(): EditorActionFacade {
     duplicate: vi.fn(),
     group: vi.fn(),
     ungroup: vi.fn(),
-    layerNames: vi.fn(() => ({})),
-    setLayerNames: vi.fn(),
   };
 }
 

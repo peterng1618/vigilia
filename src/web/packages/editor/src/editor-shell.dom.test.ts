@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
+import { objectName } from "@vigilia/renderer-core";
 import { serialiseScene } from "@vigilia/scene-fabric";
-import { FabricImage } from "fabric/es";
+import { FabricImage, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mountEditorShell } from "./editor-shell.js";
 
@@ -125,7 +126,7 @@ describe("native editor shell", () => {
     host.remove();
   });
 
-  it("writes display names into editorMetadata and reads them back on reopen", async () => {
+  it("carries an object's display name in the scene, not in editor metadata", async () => {
     const host = document.createElement("div");
     Object.defineProperties(host, {
       clientWidth: { value: 400 },
@@ -140,78 +141,33 @@ describe("native editor shell", () => {
       artboard: { width: 100, height: 100 },
       metadata: { locale: "en" },
     };
+    const panel = new Rect({ id: "header", width: 40, height: 20 });
+    panel.set("name", "Header rule");
+    shell.editor.canvas.add(panel);
 
-    // Nothing renamed yet: the key is absent rather than an empty object, so a
-    // document that never renamed a layer does not grow dead payload.
-    expect(shell.layerNames()).toEqual({});
-    expect(shell.snapshot(input).editorMetadata).toBeUndefined();
-
-    shell.setLayerNames({ header: "Header rule" });
     const saved = shell.snapshot(input);
-    expect(saved.editorMetadata).toEqual({
-      layerNames: { header: "Header rule" },
-    });
+    // The name is authored document state on the object, so it travels in the
+    // scene. An editor-metadata side map would be a second owner of the same
+    // label, free to disagree with what the layer list prints.
+    expect(saved.editorMetadata).toBeUndefined();
+    expect(serialiseScene(shell.editor.canvas).objects[0]?.["name"]).toBe(
+      "Header rule",
+    );
 
     shell.destroy();
     host.remove();
 
     // Reopening the saved envelope is what makes the name durable; keeping it
-    // only on the shell would pass every assertion above.
+    // only on the live object would pass every assertion above.
     const reopened = await mountEditorShell({
       host: document.createElement("div"),
       artboard: { width: 100, height: 100 },
       envelope: saved,
     });
-    expect(reopened.layerNames()).toEqual({ header: "Header rule" });
-    expect(reopened.snapshot(input).editorMetadata).toEqual({
-      layerNames: { header: "Header rule" },
-    });
+    expect(objectName(reopened.editor.canvas.getObjects()[0] as Rect)).toBe(
+      "Header rule",
+    );
     reopened.destroy();
-  });
-
-  it("reads only string-valued layer names out of a hand-edited editorMetadata", async () => {
-    const host = document.createElement("div");
-    Object.defineProperties(host, {
-      clientWidth: { value: 400 },
-      clientHeight: { value: 300 },
-    });
-    const envelopeFor = (layerNames: unknown) => ({
-      schemaVersion: 2 as const,
-      fabricVersion: "7.4.0",
-      id: "theme",
-      metadata: { locale: "en" } as const,
-      artboard: { width: 100, height: 100 },
-      scene: { version: "7.4.0", objects: [] },
-      // Seeded literally: `setLayerNames` only ever writes the shape the editor
-      // produces, so only a literal envelope exercises the reader against a file
-      // carrying something else under the same key.
-      editorMetadata: { layerNames },
-    });
-
-    // `logo` and the blank key survive a naive Object.fromEntries, so the filter
-    // is the only thing keeping them out.
-    const shell = await mountEditorShell({
-      host,
-      artboard: { width: 100, height: 100 },
-      envelope: envelopeFor({ header: "Header rule", logo: 42, "  ": 7 }),
-    });
-    expect(shell.layerNames()).toEqual({ header: "Header rule" });
-    shell.destroy();
-    host.remove();
-
-    // The key itself is free-form JSON too; a wrong-shaped one must not throw.
-    // An array is the case a plain `typeof raw === "object"` check lets through,
-    // and it must be rejected as a whole: an array *member* is already covered
-    // by the per-value string filter above.
-    for (const wrong of [null, ["nope"]]) {
-      const wrongShape = await mountEditorShell({
-        host: document.createElement("div"),
-        artboard: { width: 100, height: 100 },
-        envelope: envelopeFor(wrong),
-      });
-      expect(wrongShape.layerNames()).toEqual({});
-      wrongShape.destroy();
-    }
   });
 
   it("exposes a camera over the mounted canvas", async () => {

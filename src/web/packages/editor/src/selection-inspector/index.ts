@@ -10,6 +10,7 @@ import { numberField } from "../editor-shell/controls/number-field.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
+  createNameField,
   createOpacityField,
   createResolutionLine,
   createTypePresetReveal,
@@ -258,6 +259,14 @@ export function createSelectionInspector(
     }
 
     if (!locked) {
+      // What the object is called, above the numbers that describe it: this is
+      // the field the layer list and every reference-facing surface read.
+      root.append(
+        createNameField(context(), object, (candidate) =>
+          stillTarget(candidate),
+        ),
+      );
+
       const geometry = document.createElement("div");
 
       /** A refused edit restores the field itself (the primitives own that);

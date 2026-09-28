@@ -6,8 +6,10 @@ import {
   buildLineOption,
   defaultLineSettings,
   glassTreatment,
+  objectName,
   type Sample,
   VIGILIA_GLASS_PROPERTY,
+  VIGILIA_NAME_PROPERTY,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
@@ -327,6 +329,71 @@ describe("identity survives a round trip", () => {
     expect(glassTreatment(revived.getObjects()[0]!)).toEqual({
       blurRadius: 16,
     });
+  });
+
+  it("retains an authored display name through serialisation and revival", async () => {
+    // The registration that matters here is the persisted-properties
+    // allowlist, not a Fabric subclass: an unlisted property is dropped on
+    // save, so a missing entry fails here rather than at some later render.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const scene = serialiseScene(canvasOf(rect));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_NAME_PROPERTY]).toBe("Header panel");
+    expect(objectName(revived.getObjects()[0]!)).toBe("Header panel");
+  });
+
+  it("adds no name key to an object that has none", async () => {
+    // Absence is the backward-compatibility contract: a scene authored before
+    // the field must not grow an empty name on the next save.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    const scene = serialiseScene(canvasOf(rect));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+    expect(objectName(revived.getObjects()[0]!)).toBeUndefined();
+  });
+
+  it("drops the name again when an author clears it", async () => {
+    // Clearing is a real edit, not a blank label: the key goes rather than
+    // holding "", so the reader falls back to the id exactly as it would for a
+    // scene that never had a name.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const canvas = canvasOf(rect);
+    rect.set(VIGILIA_NAME_PROPERTY, undefined);
+
+    const scene = serialiseScene(canvas);
+
+    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+  });
+
+  it("retains a nested display name on a grouped child", async () => {
+    const panel = new Rect({ width: 40, height: 24 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const group = new Group([panel]);
+    group.set("id", "card");
+    group.set(VIGILIA_NAME_PROPERTY, "Card");
+    const scene = serialiseScene(canvasOf(group));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    const [revivedGroup] = revived.getObjects();
+    expect(objectName(revivedGroup!)).toBe("Card");
+    // A group's children are read through Fabric's own accessor; the persisted
+    // key list reaches them, but the revived instance is what a surface sees.
+    const child = (revivedGroup as Group).getObjects()[0]!;
+    expect(objectName(child)).toBe("Header panel");
   });
 
   it("retains a nested glass treatment on a grouped panel", async () => {
@@ -965,6 +1032,7 @@ describe("there is exactly one owner of scene serialisation", () => {
     ).toBeGreaterThan(10);
     expect(SCENE_PERSISTED_PROPERTIES).toEqual([
       "id",
+      VIGILIA_NAME_PROPERTY,
       VIGILIA_TEXT_PROPERTY,
       VIGILIA_PAINT_PROPERTY,
       VIGILIA_ASSET_PROPERTY,

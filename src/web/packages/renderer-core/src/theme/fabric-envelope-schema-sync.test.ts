@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
+import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
 
 const SCHEMA_PATH = fileURLToPath(
   new URL(
@@ -140,6 +141,24 @@ describe("published Fabric theme schema", () => {
 
     expect(published["if"]).toEqual({ required: ["vigiliaGlass"] });
     expect(types["enum"]).toEqual(GLASS_TYPES);
+  });
+
+  it("publishes the object name at the bound the validator refuses", () => {
+    // Same reason as the glass bound above: a copied literal here would let a
+    // name the editor accepts be rejected by the schema, or the reverse.
+    const document = schema();
+    const name = document.$defs["objectName"]!;
+
+    expect(name["type"]).toBe("string");
+    expect(name["maxLength"]).toBe(MAX_OBJECT_NAME_LENGTH);
+    expect(
+      (
+        document.$defs["fabricObject"]!["properties"] as Record<
+          string,
+          Record<string, unknown>
+        >
+      )["name"],
+    ).toEqual({ $ref: "#/$defs/objectName" });
   });
 
   it("discriminates fully declared WOFF2 font assets from other assets", () => {

@@ -92,28 +92,11 @@ export interface EditorShell {
    * picture is something holding the handle (0007).
    */
   backdrop(): BackdropMedia | undefined;
-  /** Layer display names: editor metadata, not authored document content (§172). */
-  layerNames(): Readonly<Record<string, string>>;
-  setLayerNames(names: Readonly<Record<string, string>>): void;
   destroy(): void;
 }
 
 const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
 let nextEditorContainer = 1;
-
-/** `editorMetadata` is free-form JSON, so its `layerNames` key is re-validated
- * on the way in rather than trusted as the shape the editor writes. */
-function layerNamesFrom(
-  editorMetadata: Readonly<Record<string, unknown>> | undefined,
-): Readonly<Record<string, string>> {
-  const raw = editorMetadata?.["layerNames"];
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  return Object.fromEntries(
-    Object.entries(raw).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string",
-    ),
-  );
-}
 
 /** Last resolved artboard paint per mounted shell; the plate is only rebuilt
  * when its paint or its size changes. */
@@ -327,7 +310,6 @@ export async function mountEditorShell({
   container.style.visibility = "hidden";
   let currentArtboard = artboard;
   let globals: Globals | undefined = envelope?.globals;
-  let layerNames = layerNamesFrom(envelope?.editorMetadata);
   host.append(container);
   const paintMemo: PaintMemo = { background: undefined };
   let resize: ResizeObserver | undefined;
@@ -422,19 +404,8 @@ export async function mountEditorShell({
       editor,
       viewport: editor.viewport,
       ...(scene === undefined ? {} : { scene }),
-      layerNames: () => layerNames,
-      setLayerNames(names) {
-        layerNames = names;
-      },
       snapshot(input) {
-        const next = serialiseThemeEnvelope(editor.canvas, {
-          ...input,
-          // The envelope carries editor-only state; the editor owns this key.
-          // An empty map is dropped rather than persisted as dead payload.
-          ...(Object.keys(layerNames).length === 0
-            ? {}
-            : { editorMetadata: { ...input.editorMetadata, layerNames } }),
-        });
+        const next = serialiseThemeEnvelope(editor.canvas, input);
         const validation = validateFabricThemeEnvelope(next);
         if (!validation.ok) {
           throw new Error(

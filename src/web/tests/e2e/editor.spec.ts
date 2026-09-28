@@ -2042,24 +2042,37 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
   });
 
-  test("keeps a layer's display name across save and reopen", async ({
+  test("names an object from the selection inspector and keeps it across save and reopen", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
     await page.locator('[data-vigilia-layer="wordmark"]').click();
-    await renameLayer(page, "wordmark", "Brand mark");
+    await openInspectorTab(page, "Design");
+
+    // Driven through the control, not the bridge: reaching into the page would
+    // prove the bridge works, not that an author can name anything.
+    const name = page.locator("[data-vigilia-name]");
+    await expect(name).toBeVisible();
+    await name.fill("Brand mark");
+    await name.press("Tab");
+
+    await expect(page.locator('[data-vigilia-layer="wordmark"]')).toContainText(
+      "Brand mark",
+    );
 
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
-    const names = saved.parsed.envelope as {
-      editorMetadata?: { layerNames?: Record<string, string> };
+    const envelope = saved.parsed.envelope as {
+      scene?: { objects?: { id?: string; name?: string }[] };
     };
-    expect(names.editorMetadata).toEqual({
-      layerNames: { wordmark: "Brand mark" },
-    });
+    // The name is authored state on the object, so it travels in the scene and
+    // not in an editor-only side map beside it.
+    expect(
+      envelope.scene?.objects?.find((object) => object.id === "wordmark")?.name,
+    ).toBe("Brand mark");
 
     await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
       name: "renamed.vigilia-theme",
@@ -2070,11 +2083,47 @@ test.describe("Fabric editor route", () => {
       "Opened renamed.vigilia-theme",
     );
 
-    // The reopened document's own projection must carry the name, not just the
-    // bytes: a reader that never loads the key would pass the assertion above.
-    await expect
-      .poll(() => layerNamesInPage(page))
-      .toMatchObject({ wordmark: "Brand mark" });
+    // The reopened document's own layer list must carry the name, not just the
+    // bytes: a reader that never loaded the property would pass the assertion
+    // above.
+    await expect(page.locator('[data-vigilia-layer="wordmark"]')).toContainText(
+      "Brand mark",
+    );
+  });
+
+  test("falls back to the id for an object authored before names existed", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await setThemePackage(page, "unnamed.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "unnamed",
+      metadata: { locale: "en" },
+      artboard: { width: 320, height: 180 },
+      scene: {
+        version: "7.4.0",
+        objects: [{ type: "Rect", id: "panel", width: 100, height: 50 }],
+      },
+    });
+    await expect(page.locator("#status")).toHaveText(
+      "Opened unnamed.vigilia-theme",
+    );
+
+    // A scene with no name on the object still opens, still shows its id, and
+    // still accepts a name typed into the same control.
+    await expect(page.locator('[data-vigilia-layer="panel"]')).toContainText(
+      "panel",
+    );
+    await page.locator('[data-vigilia-layer="panel"]').click();
+    await openInspectorTab(page, "Design");
+    await page.locator("[data-vigilia-name]").fill("Card");
+    await page.locator("[data-vigilia-name]").press("Tab");
+    await expect(page.locator('[data-vigilia-layer="panel"]')).toContainText(
+      "Card",
+    );
   });
 
   test("round-trips an opened v2 Fabric scene through the save path", async ({
@@ -3872,43 +3921,6 @@ async function selectStarterChart(page: Page): Promise<void> {
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();
-}
-
-/** The shell bridge, the one owner of a rename in the page. */
-async function renameLayer(
-  page: Page,
-  id: string,
-  name: string,
-): Promise<void> {
-  await page.evaluate(
-    ([layerId, next]) => {
-      const bridge = (
-        window as unknown as {
-          vigiliaEditorBridge?: {
-            renameLayer(id: string, name: string): void;
-          };
-        }
-      ).vigiliaEditorBridge;
-      if (bridge === undefined) throw new Error("No editor bridge is mounted.");
-      bridge.renameLayer(layerId, next);
-    },
-    [id, name] as const,
-  );
-}
-
-async function layerNamesInPage(page: Page): Promise<unknown> {
-  return page.evaluate(() => {
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge?: {
-          layers(): readonly { id: string; name: string }[];
-        };
-      }
-    ).vigiliaEditorBridge;
-    return Object.fromEntries(
-      (bridge?.layers() ?? []).map((row) => [row.id, row.name]),
-    );
-  });
 }
 
 async function assetReferences(page: Page): Promise<unknown[]> {

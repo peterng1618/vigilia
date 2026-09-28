@@ -3,7 +3,7 @@ import { Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { findById, ownerOf, pathTo, projectLayers } from "./layer-tree.js";
 
-const base = { names: {}, collapsed: new Set<string>(), selected: [] } as const;
+const base = { collapsed: new Set<string>(), selected: [] } as const;
 
 describe("layer projection", () => {
   it("lists top-most first, matching paint order reversed", () => {
@@ -83,14 +83,37 @@ describe("layer projection", () => {
     expect(rows.find((row) => row.id === "child")?.selected).toBe(false);
   });
 
-  it("prefers a stored display name over the id", () => {
-    const rect = new Rect({ id: "header", width: 10, height: 10 });
-    const rows = projectLayers({
-      ...base,
-      root: [rect],
-      names: { header: "Header rule" },
+  it("prefers the object's own display name over the id", () => {
+    const rect = new Rect({
+      id: "header",
+      width: 10,
+      height: 10,
+      name: "Header rule",
     });
+    const rows = projectLayers({ ...base, root: [rect] });
     expect(rows[0]?.name).toBe("Header rule");
+  });
+
+  it("keeps the id as the row's key when the object is named", () => {
+    // The name is a label; the id is what every bridge command targets and
+    // what bindings reference, so naming must not move either.
+    const rect = new Rect({
+      id: "header",
+      width: 10,
+      height: 10,
+      name: "Header rule",
+    });
+    const rows = projectLayers({ ...base, root: [rect] });
+    expect(rows[0]?.id).toBe("header");
+    expect(findById([rect], rows[0]!.id)).toBe(rect);
+  });
+
+  it("falls back to the id for an object authored before the field", () => {
+    // The backward-compatibility contract: a scene with no name on the object
+    // still opens and still shows something an author can recognise.
+    const rect = new Rect({ id: "header", width: 10, height: 10 });
+    const rows = projectLayers({ ...base, root: [rect] });
+    expect(rows[0]?.name).toBe("header");
   });
 
   it("does not crash on an object with no id", () => {
@@ -117,24 +140,16 @@ describe("layer projection", () => {
     expect(rows[0]?.name).toBe("unidentified");
   });
 
-  it("falls back to the kind when neither the stored name nor the id is usable", () => {
+  it("falls back to the kind when neither the name nor the id is usable", () => {
     // Whitespace counts as unusable: a blank row tells the author nothing.
-    const rect = new Rect({ id: "   ", width: 10, height: 10 });
-    const rows = projectLayers({
-      ...base,
-      root: [rect],
-      names: { "   ": "  " },
-    });
+    const rect = new Rect({ id: "   ", width: 10, height: 10, name: "  " });
+    const rows = projectLayers({ ...base, root: [rect] });
     expect(rows[0]?.name).toBe("Shape");
   });
 
-  it("keeps the id when only the stored name is blank", () => {
-    const rect = new Rect({ id: "header", width: 10, height: 10 });
-    const rows = projectLayers({
-      ...base,
-      root: [rect],
-      names: { header: "   " },
-    });
+  it("keeps the id when only the name is blank", () => {
+    const rect = new Rect({ id: "header", width: 10, height: 10, name: "   " });
+    const rows = projectLayers({ ...base, root: [rect] });
     expect(rows[0]?.name).toBe("header");
   });
 

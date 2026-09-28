@@ -2,6 +2,7 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   VIGILIA_GLASS_PROPERTY,
+  VIGILIA_NAME_PROPERTY,
 } from "@vigilia/renderer-core";
 import {
   Circle,
@@ -45,6 +46,8 @@ classRegistry.setClass(Textbox);
 
 export const SCENE_PERSISTED_PROPERTIES = [
   "id",
+  // The display name an author reads; the id beside it stays the stable key.
+  VIGILIA_NAME_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_ASSET_PROPERTY,

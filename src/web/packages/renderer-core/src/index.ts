@@ -276,6 +276,18 @@ export type { GlassTreatment } from "./theme/glass.js";
 // The reader and the property name are the external contract; the guard and
 // the bound stay inside the package, where the validator and its tests live.
 export { glassTreatment, VIGILIA_GLASS_PROPERTY } from "./theme/glass.js";
+// The reader and the property name are the external contract; the guard and
+// the bound stay inside the package, where the validator and its tests live.
+// The guard and the bound are exported because an editor field must refuse an
+// over-long name at the point of typing: a name past the bound would be refused
+// at import, and a document that cannot be saved is worse than one that rejects
+// a keystroke. The field refuses at this bound rather than a copy of it.
+export {
+  isObjectName,
+  MAX_OBJECT_NAME_LENGTH,
+  objectName,
+  VIGILIA_NAME_PROPERTY,
+} from "./theme/object-name.js";
 export { serializeThemeDocument } from "./theme/serialize.js";
 export type {
   IssueCode,

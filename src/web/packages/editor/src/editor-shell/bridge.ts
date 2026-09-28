@@ -1,3 +1,4 @@
+import { isObjectName } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
@@ -90,10 +91,16 @@ export function createEditorShellBridge(input: {
   const notify = (): void => {
     for (const listener of listeners) listener();
   };
+  // The projection reads object state — the display name lives on the object
+  // beside the id — so a change to an object republishes the rows. Selection
+  // alone is not enough: renaming from the inspector moves no selection, and a
+  // stale row would leave the layer list disagreeing with the field that
+  // changed it.
   const events = [
     "selection:created",
     "selection:updated",
     "selection:cleared",
+    "object:modified",
   ] as const;
   for (const event of events) canvas.on(event, notify);
   const activeObject = ():
@@ -133,8 +140,6 @@ export function createEditorShellBridge(input: {
   // Eligibility is owned by the registry; this only adds the selection gate.
   const can = (action: ShellAction): boolean =>
     activeObject() !== undefined && actionEnabled(gate, action);
-  const names = (): Readonly<Record<string, string>> =>
-    input.session.layerNames();
   /** The entered group, as objects — the manager's own transient state (§67). */
   const enteredContext = (): readonly FabricObject[] =>
     input.editor.groupingManager.groupContext();
@@ -156,7 +161,6 @@ export function createEditorShellBridge(input: {
     return projectLayers({
       root: canvas.getObjects(),
       selected,
-      names: names(),
       collapsed: collapsedGroups,
     });
   };
@@ -203,14 +207,20 @@ export function createEditorShellBridge(input: {
     notify();
   };
   const renameLayer = (id: string, name: string): void => {
+    const target = findById(canvas.getObjects(), id);
+    if (target === undefined) return;
     const trimmed = name.trim();
-    const next = { ...names() };
-    // Removing the key, not storing blank: the projection falls back to the id.
-    if (trimmed === "") delete next[id];
-    else next[id] = trimmed;
-    // Display state is editor-only, so this deliberately skips saveState():
-    // §67 keeps runtime state out of authored history.
-    input.session.setLayerNames(next);
+    if (trimmed === "") target.set("name", undefined);
+    else if (isObjectName(trimmed)) target.set("name", trimmed);
+    // Anything else is refused rather than written: clearing on a too-long
+    // name would make an author's typing vanish. The caller re-reads the
+    // projection afterwards, so a refused rename reverts the row to the name
+    // the object actually carries.
+    else return;
+    // The name is authored document state on the object, so this is a
+    // committed edit like any other: one history entry (§67).
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
     notify();
   };
   // The owner comparison `reorderLayer` refuses on, exposed so the panel can

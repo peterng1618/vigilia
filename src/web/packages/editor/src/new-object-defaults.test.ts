@@ -124,6 +124,21 @@ describe("new object defaults", () => {
     }
   });
 
+  it("names every insertable shape after the button that made it", () => {
+    // A shape the Add pane can insert but cannot name would arrive as a bare
+    // uuid, which is the exact gap F1.8 exists to close.
+    for (const kind of SHAPE_KINDS) {
+      expect(newObjectName(kind)).toBe(uiCopy.shapeKinds[kind]);
+    }
+  });
+
+  it("gives a newly built shape the name its kind implies", () => {
+    for (const kind of SHAPE_KINDS) {
+      const shape = createNewShape(`panel-1`, globals, kind);
+      expect(shape.get("name")).toBe(newObjectName(kind));
+    }
+  });
+
   it("derives a new panel from a surface token, not a content one", () => {
     const defaults = createNewPanelDefaults(globals);
 

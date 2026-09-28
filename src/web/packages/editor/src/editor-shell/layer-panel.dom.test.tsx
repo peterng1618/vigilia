@@ -31,6 +31,19 @@ function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
   } as EditorShellBridge;
 }
 
+it("titles a row with what it says rather than the key behind it", async () => {
+  // A tooltip printing the raw uuid told the author nothing the row did not,
+  // and the name is what every other surface shows for this object.
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(<LayerPanel bridge={bridge([
+    { ...textRow, name: "Brand mark" },
+  ])} />));
+
+  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]');
+  expect(row?.title).toBe("Brand mark");
+});
+
 it("indents a group child and shows only its state icons", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);

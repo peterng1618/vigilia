@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { Binding } from "@vigilia/renderer-core";
-import { instantIn } from "@vigilia/renderer-core";
+import { instantIn, MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
 import { IText, Rect, Textbox } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
@@ -11,6 +11,7 @@ function canvasWith(active: unknown) {
     getActiveObject: () => active,
     getObjects: () => (active === undefined ? [] : [active]),
     requestRenderAll: vi.fn(),
+    fire: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
   };
@@ -204,6 +205,107 @@ describe("the selection inspector", () => {
     expect(opacity.value).toBe("50");
     expect(history.saveState).not.toHaveBeenCalled();
     expect(editor.errorManager.warn).toHaveBeenCalled();
+  });
+
+  it("shows the object's display name and writes an edit back to it", () => {
+    rect.set("name", "Header panel");
+    const { host, history } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    expect(name.value).toBe("Header panel");
+
+    name.value = "Header rule";
+    name.dispatchEvent(new Event("change"));
+
+    expect(rect.get("name")).toBe("Header rule");
+    // One committed edit, one history entry (§67).
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the name field empty for an object that has none", () => {
+    // Absence is what a scene authored before the field looks like; showing the
+    // id in the field would make an unnamed object look named.
+    const { host } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    expect(name.value).toBe("");
+  });
+
+  it("clears the name when the author empties the field", () => {
+    rect.set("name", "Header panel");
+    const { host, history } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    name.value = "   ";
+    name.dispatchEvent(new Event("change"));
+
+    // The key goes rather than holding a blank label, so the layer list falls
+    // back to the id exactly as it does for a scene that never had a name.
+    expect(rect.get("name")).toBeUndefined();
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a name past the published bound rather than storing it", () => {
+    rect.set("name", "Header panel");
+    const { host, history, editor } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    name.value = "x".repeat(MAX_OBJECT_NAME_LENGTH + 1);
+    name.dispatchEvent(new Event("change"));
+
+    // The envelope would refuse this on import, so a save would throw; the field
+    // rejects the edit and restores what the object actually carries.
+    expect(rect.get("name")).toBe("Header panel");
+    expect(name.value).toBe("Header panel");
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).toHaveBeenCalled();
+  });
+
+  it("gives the name field an accessible label", () => {
+    const { host } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const label = host.querySelector<HTMLLabelElement>(
+      `label[for="${name.id}"]`,
+    );
+
+    expect(label?.textContent).toBe("Name");
+    // A field the author can only reach by pointer is not a control.
+    expect(name.tagName).toBe("INPUT");
+  });
+
+  it("withholds the name field on a locked object, like every other write", () => {
+    rect.set("locked", true);
+    const { host } = setup(rect);
+
+    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+  });
+
+  it("announces the edit so the layer list republishes the row", () => {
+    // The layer row prints this name, and the panel caches its projection, so
+    // a rename that only wrote the object would leave the two surfaces
+    // disagreeing until something else happened to republish.
+    rect.set("name", "Header panel");
+    const { host, editor } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    name.value = "Header rule";
+    name.dispatchEvent(new Event("change"));
+
+    expect(editor.canvas.fire).toHaveBeenCalledWith(
+      "object:modified",
+      expect.objectContaining({ target: rect }),
+    );
+  });
+
+  it("announces nothing when a name is refused", () => {
+    rect.set("name", "Header panel");
+    const { host, editor } = setup(rect);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+
+    name.value = "x".repeat(MAX_OBJECT_NAME_LENGTH + 1);
+    name.dispatchEvent(new Event("change"));
+
+    expect(editor.canvas.fire).not.toHaveBeenCalled();
   });
 
   it("names what a paint reference resolves to", () => {

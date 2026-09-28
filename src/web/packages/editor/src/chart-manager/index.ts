@@ -10,7 +10,10 @@ import {
 import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import { Group } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
-import { createNewChartDefaults } from "../new-object-defaults.js";
+import {
+  createNewChartDefaults,
+  newObjectName,
+} from "../new-object-defaults.js";
 import { createChartPropertyPanel } from "./panel.js";
 
 function newChart(
@@ -18,7 +21,16 @@ function newChart(
   globals: FabricGlobals | undefined,
   id: string,
 ): VigiliaChart {
-  const common = { id, left: 120, top: 80, width: 240, height: 160 };
+  const common = {
+    id,
+    // The family is what the author just chose, so it is what the layer list
+    // shows; a new chart that arrived as a bare uuid would be unreadable.
+    name: newObjectName(family),
+    left: 120,
+    top: 80,
+    width: 240,
+    height: 160,
+  };
 
   switch (family) {
     case "gauge":

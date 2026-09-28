@@ -1,7 +1,9 @@
-import type {
-  FabricGlobals,
-  FabricPalette,
-  TypePreset,
+import {
+  type FabricGlobals,
+  type FabricPalette,
+  isObjectName,
+  objectName,
+  type TypePreset,
 } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
@@ -183,4 +185,72 @@ export function createOpacityField(
 
   label.append(input);
   return label;
+}
+
+let nameSeq = 0;
+
+/**
+ * The object's display name — the one control that says what a layer is called,
+ * as against the id every reference uses. An empty field clears the name rather
+ * than storing a blank label, so the layer list falls back to the id exactly as
+ * it does for a scene authored before the field existed.
+ */
+export function createNameField(
+  context: AppearanceContext,
+  object: FabricObject,
+  stillTarget: (object: FabricObject) => boolean,
+): HTMLElement {
+  const authored = objectName(object);
+  const label = document.createElement("label");
+  label.textContent = uiCopy.inspectorFields.name;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.dataset["vigiliaName"] = "";
+  input.value = authored ?? "";
+  label.htmlFor = input.id = `vigilia-name-${++nameSeq}`;
+
+  const refuse = (): void => {
+    input.value = authored ?? "";
+    context.editor.errorManager.warn(
+      "controls",
+      uiCopy.inspectorFields.invalidName,
+    );
+  };
+
+  // `change`, not per keystroke: a half-typed name is not an edit, and this
+  // writes history.
+  input.addEventListener("change", () => {
+    const trimmed = input.value.trim();
+    if (trimmed !== "" && !isObjectName(trimmed)) {
+      refuse();
+      return;
+    }
+    if (!stillTarget(object)) return;
+    // Removing the key, not storing blank: the id is what the projection falls
+    // back to, so an emptied field must leave the object exactly as an
+    // unnamed one is.
+    object.set("name", trimmed === "" ? undefined : trimmed);
+    object.setCoords();
+    context.editor.canvas.requestRenderAll();
+    // The layer row prints this name, so the layer panel has to be told. It
+    // subscribes to the same signal a drag reports, which is why this fires it
+    // rather than holding a second path to the projection.
+    context.editor.canvas.fire(
+      "object:modified" as never,
+      {
+        target: object,
+      } as never,
+    );
+    context.editor.historyManager.saveState();
+  });
+
+  return row(label, input);
+}
+
+/** The inspector's own field row: a label and its control on one line. */
+function row(label: HTMLLabelElement, input: HTMLInputElement): HTMLElement {
+  const host = document.createElement("div");
+  host.className = "vigilia-field";
+  host.append(label, input);
+  return host;
 }

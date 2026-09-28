@@ -13,6 +13,7 @@ import {
   supportsGlass,
   VIGILIA_GLASS_PROPERTY,
 } from "./glass.js";
+import { isObjectName, VIGILIA_NAME_PROPERTY } from "./object-name.js";
 import { type ValidationIssue, validateThemeDocument } from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
@@ -1056,6 +1057,7 @@ function sceneObject(
     );
   }
   objectGlass(value, path, issues);
+  objectName(value, path, issues);
   if (!jsonSafe(value, path, depth, issues)) return;
   if (value["objects"] !== undefined) {
     if (!Array.isArray(value["objects"])) {
@@ -1112,6 +1114,28 @@ function objectGlass(
         `A glass treatment must be exactly { blurRadius }, a number from 0 to ${MAX_GLASS_BLUR_RADIUS} artboard units.`,
       ),
     );
+}
+
+/**
+ * The display name an object carries beside its stable id, refused before
+ * revival rather than coerced. Absence is legal and means the id stands in —
+ * a scene authored before the field still opens — so only a present value that
+ * is not a readable label is a refusal.
+ */
+function objectName(
+  value: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const name = value[VIGILIA_NAME_PROPERTY];
+  if (name === undefined || isObjectName(name)) return;
+  issues.push(
+    issue(
+      "invalid-fabric-scene",
+      `${path}/${VIGILIA_NAME_PROPERTY}`,
+      "A Fabric object name must be a non-blank string, so the layer list has something to show.",
+    ),
+  );
 }
 
 function jsonSafe(

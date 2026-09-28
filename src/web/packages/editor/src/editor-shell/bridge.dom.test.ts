@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -37,8 +38,6 @@ function facadeStub(): EditorActionFacade {
     duplicate: vi.fn(),
     group: vi.fn(),
     ungroup: vi.fn(),
-    layerNames: vi.fn(() => ({})),
-    setLayerNames: vi.fn(),
   };
 }
 
@@ -58,6 +57,10 @@ function bridgeFor(
       listeners.set(name, listener),
     ),
     off: vi.fn(),
+    // Fabric's own event bus, reduced to what the bridge subscribes to; the
+    // options argument is carried so a caller reads as it does on the canvas.
+    fire: (name: string, ..._options: readonly unknown[]) =>
+      listeners.get(name)?.(),
     ...canvasExtra,
   };
   const editor = {
@@ -65,6 +68,9 @@ function bridgeFor(
     // Real editors always carry the grouping manager; the empty context is the
     // default so a test that enters a group overrides only this one member.
     groupingManager: { groupContext: () => [] as readonly unknown[] },
+    // Every committed layer command records exactly one history entry, so the
+    // stub carries the manager they all go through.
+    historyManager: { saveState: vi.fn() },
     ...extra,
   };
   const session = { ...facadeStub(), ...sessionExtra };
@@ -84,6 +90,20 @@ it("reports selection changes and removes its canvas listeners", () => {
 
   bridge.destroy();
   expect(canvas.off).toHaveBeenCalled();
+});
+
+it("republishes the layer rows when an object changes, not only on selection", () => {
+  // A row prints the display name, which lives on the object, so a rename that
+  // moves no selection still has to reach the panel — otherwise the layer list
+  // and the inspector that changed it disagree.
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, canvas } = bridgeFor(rect);
+  const listener = vi.fn();
+  bridge.subscribe(listener);
+
+  canvas.fire("object:modified", { target: rect });
+
+  expect(listener).toHaveBeenCalled();
 });
 
 it("routes selection kind for menus, groups and charts", () => {
@@ -168,47 +188,61 @@ it("gates ungroup on a real Group selection", () => {
   expect(bridge.can("group")).toBe(false);
 });
 
-it("carries display names into the projection and back out again", () => {
-  const rect = new Rect({ id: "header", width: 10, height: 10 });
-  const { bridge, session } = bridgeFor(
-    rect,
-    {},
-    {
-      layerNames: () => ({ header: "Header rule" }),
-    },
-  );
+it("carries the object's display name into the projection and back out again", () => {
+  const rect = new Rect({
+    id: "header",
+    width: 10,
+    height: 10,
+    name: "Header rule",
+  });
+  const { bridge } = bridgeFor(rect);
   expect(bridge.layers()[0]?.name).toBe("Header rule");
 
   bridge.renameLayer("header", "Top rule");
-  // The write goes to the facade, not to a local copy — assert it there. The
-  // stub does not feed the value back, so re-reading layers() here would only
-  // re-assert the seeded value.
-  expect(session.setLayerNames).toHaveBeenCalledWith({ header: "Top rule" });
+  // The name rides on the object, so the next projection reads the write
+  // straight back rather than from a second store that could disagree.
+  expect(rect.get("name")).toBe("Top rule");
+  expect(bridge.layers()[0]?.name).toBe("Top rule");
 });
 
 it("clears the stored name when a rename is blank", () => {
-  const rect = new Rect({ id: "header", width: 10, height: 10 });
-  const { bridge, session } = bridgeFor(rect);
+  const rect = new Rect({
+    id: "header",
+    width: 10,
+    height: 10,
+    name: "Header rule",
+  });
+  const { bridge } = bridgeFor(rect);
   bridge.renameLayer("header", "   ");
-  // Removing the key, not storing whitespace: Task 3's name ladder already
-  // falls back to the id for a row with no stored name.
-  expect(session.setLayerNames).toHaveBeenCalledWith({});
+  // Removing the key, not storing whitespace: the projection falls back to the
+  // id for an object with no name, which is what a cleared name should show.
+  expect(rect.get("name")).toBeUndefined();
+  expect(bridge.layers()[0]?.name).toBe("header");
 });
 
-it("keeps sibling names when one is renamed", () => {
-  const rect = new Rect({ id: "header", width: 10, height: 10 });
-  const { bridge, session } = bridgeFor(
-    rect,
-    {},
-    {
-      layerNames: () => ({ other: "Kept" }),
-    },
-  );
-  bridge.renameLayer("header", "Top rule");
-  expect(session.setLayerNames).toHaveBeenCalledWith({
-    other: "Kept",
-    header: "Top rule",
+it("refuses a rename past the published bound rather than clearing the name", () => {
+  // Clearing here would make the author's typing vanish; the panel re-reads the
+  // projection, so a refused rename leaves the row showing what it carried.
+  const rect = new Rect({
+    id: "header",
+    width: 10,
+    height: 10,
+    name: "Header rule",
   });
+  const { bridge, editor } = bridgeFor(rect);
+  bridge.renameLayer("header", "x".repeat(MAX_OBJECT_NAME_LENGTH + 1));
+  expect(rect.get("name")).toBe("Header rule");
+  expect(editor.historyManager.saveState).not.toHaveBeenCalled();
+});
+
+it("saves one history entry per rename", () => {
+  // The name is authored document state now, so it is undoable like any other
+  // committed edit (§67) — the editor-only side map it replaces deliberately
+  // was not, which is why it could never be what a save carried.
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, editor } = bridgeFor(rect);
+  bridge.renameLayer("header", "Top rule");
+  expect(editor.historyManager.saveState).toHaveBeenCalledTimes(1);
 });
 
 it("selects a group child through its owning group, not the child", () => {

@@ -3,6 +3,7 @@ import {
   type FabricEnvelopeValidationResult,
   validateFabricThemeEnvelope,
 } from "./fabric-envelope-validate.js";
+import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
 import type { ValidationIssue } from "./validate.js";
 
 function withMetadata(
@@ -969,6 +970,85 @@ describe("authored glass treatment", () => {
         expect.objectContaining({
           code: "invalid-fabric-scene",
           path: "/scene/objects/0/objects/1/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+});
+
+describe("an object's authored display name", () => {
+  function withObjects(objects: readonly unknown[]): Record<string, unknown> {
+    // The shared fixture binds a chart; these cases replace the scene, so the
+    // binding would fail for an unrelated reason and hide the real one.
+    return withoutKey(
+      { ...envelope(), scene: { version: "7.4.0", objects } },
+      "bindings",
+    );
+  }
+
+  it("accepts a name, and treats absence as unnamed", () => {
+    // Absence must stay legal forever: a scene authored before the field is not
+    // invalid because it lacks the property, and the id is what it falls back
+    // to.
+    expect(
+      validateFabricThemeEnvelope(withObjects([{ type: "Rect", id: "panel" }]))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", name: "Header panel" },
+          {
+            type: "Rect",
+            id: "body",
+            name: "x".repeat(MAX_OBJECT_NAME_LENGTH),
+          },
+        ]),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("refuses a name that is not a label an author could read", () => {
+    // The envelope is the trust boundary: a value that is not a name is
+    // refused rather than kept and printed into a layer row.
+    for (const name of [
+      42,
+      null,
+      ["Header panel"],
+      { text: "Header panel" },
+      // A blank name is worse than none: it prints as an empty row, where
+      // absence falls back to the id.
+      "",
+      "   ",
+      "x".repeat(MAX_OBJECT_NAME_LENGTH + 1),
+    ]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type: "Rect", id: "panel", name }]),
+        ),
+        JSON.stringify(name),
+      ).toMatchObject({ ok: false });
+    }
+  });
+
+  it("validates a nested name at the child's own path", () => {
+    // The scene walk is the only thing that reaches a group child, so a name
+    // validated only at the top level would let a bad nested value through.
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        {
+          type: "Group",
+          id: "card",
+          objects: [{ type: "Rect", id: "inner", name: 42 }],
+        },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: "/scene/objects/0/objects/0/name",
         }),
       ]),
     });

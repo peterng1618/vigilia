@@ -153,7 +153,9 @@ export function LayerPanel({
               // here is cheap and the shell has no global key handler to own
               // the roving state, so all rows stay tabbable.
               tabIndex={0}
-              title={row.id}
+              // What the row says, not the key behind it: a tooltip that
+              // printed a raw uuid told the author nothing the row did not.
+              title={row.name}
               // A row being renamed is a text field: its own drag gesture is
               // selecting text, not restacking the layer.
               draggable={editing !== row.id}
