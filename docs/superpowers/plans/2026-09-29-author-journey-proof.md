@@ -146,6 +146,7 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | # | Finding | Landed in | Proof |
 |---|---|---|---|
+| F0.4 | An author cannot import or replace an asset at all | `ce80354`, `a36c5fb`, `c8590fe` | 1956 unit tests green; 6 e2e pass. Red-without-fix stubbed the trigger and the import test timed out waiting for a `filechooser`. **Verified by hand:** Import / Replace / Remove are visible, the dropdown reads `starter-backdrop.jpg` with the id as its value, a preview renders, and the hidden input is correctly still `display:none` behind a button. It also incidentally fixed one of F1.19's unlabelled controls. |
 | F1.9 | No shape surface; all primitive Fabric shapes and their properties | `9b47534` | 1908 unit tests green; red-without-fix took `panel.dom.test.ts` to **20 failed / 34 passed**; 3 Playwright specs pass; capture regenerated and inspected. **Glass did not widen**, as instructed. |
 | F1.8 | A scene object cannot be named at all | `1e0c5a0` | 1915 unit tests green; 4 Playwright specs pass; verified by hand — shapes get correct names, pre-field objects carry no `name` key. |
 | F1.15 | Every "refused, tell the author" path tells nobody | `074be0b`, `845bd3e` | 1956 unit tests green; red-without-fix took 4 tests red. **Verified by hand**: footer reads the refusal with `role="status"`, `data-severity`, `data-category` and an icon, and the field snaps back. Follow-on **F1.21** found. |
