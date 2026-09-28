@@ -134,11 +134,19 @@ The host was started for the first time in this pass — `node packages/host/bin
 
 The player had never been looked at as a user in this pass. It **works**: the dashboard renders live readings, the clock ticks, the rings and sparklines draw, and unsupplied values correctly paint a gap rather than a zero — which is the §97 behaviour the plan asks for and is **not** a finding.
 
+| F1.21 | **A refusal outlives the cause that cleared it** | Follow-on from F1.15, and reproduced by hand against the landed work. Opacity `500` is refused and the footer says *"Warning: That value cannot be applied to the selection."* Then opacity `80` is committed and accepted — `object.opacity` reads **0.8** — and the footer **still says the value cannot be applied**. The author fixed the problem and the editor keeps telling them it is not fixed, which is a new way of lying rather than the old silence. The message is replaced by a newer diagnostic or cleared on a document change, but not by the **successful edit that supersedes it**. The fix belongs where an edit is recorded: one `canvas.fire` in `EditorHistory.save()` (`history-manager/index.ts:51`), the §67 owner. | `history-manager` + `diagnostic-message` |
+
+**One thing checked and *not* a finding.** The footer's `textContent` reads `"Fabric editor readyWarning: …"` with no separator, which looked like a layout bug. It is not: the two are separate elements with a measured **12px gap** (status 22–147, message 159–990). `textContent` concatenation is not a layout defect, and this was worth measuring rather than reporting.
+
 ### Landed
 
 | # | Finding | Landed in | Proof |
 |---|---|---|---|
 | F1.9 | No shape surface; all primitive Fabric shapes and their properties | `9b47534` | 1908 unit tests green; red-without-fix took `panel.dom.test.ts` to **20 failed / 34 passed**; 3 Playwright specs pass; capture regenerated and inspected. **Glass did not widen**, as instructed. |
+| F1.8 | A scene object cannot be named at all | `1e0c5a0` | 1915 unit tests green; 4 Playwright specs pass; verified by hand — shapes get correct names, pre-field objects carry no `name` key. |
+| F1.15 | Every "refused, tell the author" path tells nobody | `074be0b`, `845bd3e` | 1956 unit tests green; red-without-fix took 4 tests red. **Verified by hand**: footer reads the refusal with `role="status"`, `data-severity`, `data-category` and an icon, and the field snaps back. Follow-on **F1.21** found. |
+| F0.2 | No artboard chooser | `1f3fa9c`, `a29f8bc` | 1946 unit tests green; red-without-fix took 9 portrait assertions red and 1 custom-fallback red. The implementer **corrected the plan**, which pointed Step 7 at `editor-shell/` while `ownership.md:22` names `artboard-panel.ts`. |
+| — | Four e2e selectors broken by F1.9, plus a fifth live ambiguity | `e5b52d6` | reference-theme 15 passed, host-player 22 passed. A blanket replace would have missed the fifth. |
 
 **Still open from that work:** `new-object-defaults.ts` is at 522 lines and `selection-inspector/panel.ts` at 636 — both over the "500 is a signal" line, and the implementer left them because the split candidate would export the shared commit/refuse plumbing across a module boundary. That is a real call to revisit, not a thing to wave through.
 
