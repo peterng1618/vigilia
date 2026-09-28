@@ -1581,26 +1581,35 @@ test.describe("the reference composition, captured", () => {
     // `panel` fill would read 7.44 x 0.149 = 1.11, which also passes, so this
     // threshold does **not** discriminate the two fills and is not claimed to.
     expect(reading.blurred.rows, "the band covers rows").toBeGreaterThan(20);
-    expect(
-      reading.blurred.contrast,
-      "the frosted panel carries backdrop structure, not an even fill",
-    ).toBeGreaterThan(1.0);
 
-    // **And the blur is what softened it.** Read on the backdrop alone, with
-    // the panel's own tint removed, so this is a measurement of the glass
-    // rather than of a dark card: 0.89 -> 0.22 is a 4.0x drop in step.
+    // **The material under the panel is the photograph, diffused.** Read on the
+    // range and not on the adjacent-column step: this card's radius is 40
+    // artboard units, which is a 15 px kernel at this mount's 0.3744 camera,
+    // and a step measured across a kernel that wide is near zero for any
+    // backdrop — blurred or not. The range is what survives a blur, and it
+    // falls 7.56 -> 2.91, a 2.6x drop.
     expect(
-      reading.clearSharp.peak / reading.clearBlurred.peak,
-      "the sampled backdrop is genuinely blurred",
-    ).toBeGreaterThan(2.5);
-    // Softened, not flattened: the blur takes 24 % off the range and cuts the
-    // step by a factor of four. A panel that merely tinted its backdrop would
-    // move the second number a great deal and the first not at all. 0.6 is
-    // "keeps most of the range"; a flattened panel reads near zero.
+      reading.clearSharp.contrast / reading.clearBlurred.contrast,
+      `the sampled backdrop is genuinely blurred (${reading.clearSharp.contrast} sharp against ${reading.clearBlurred.contrast} blurred)`,
+    ).toBeGreaterThan(2);
+    // Softened, not erased: 38 % of the range is left, which is what a 40-unit
+    // radius over a photograph's own structure costs. A panel that merely
+    // tinted its backdrop would move this number not at all.
     expect(
       reading.clearBlurred.contrast,
       "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(reading.clearSharp.contrast * 0.6);
+    ).toBeGreaterThan(reading.clearSharp.contrast * 0.3);
+
+    // **The authored panel is that same backdrop under a 72 % tint**, so it
+    // reads 0.28 of it — 0.80 here, measured against the model at 0.81. The
+    // floor is low because a strongly diffused surface is *supposed* to be
+    // locally smooth; what it separates is the even gradient the photograph
+    // replaced, and that measures 0.00 at every radius, so 0.4 has a 100 %
+    // margin over the measurement and is unreachable by a fill.
+    expect(
+      reading.blurred.contrast,
+      "the frosted panel carries backdrop structure, not an even fill",
+    ).toBeGreaterThan(0.4);
 
     // **Text and the chart's stroke stay sharp above the glass.** The measure
     // is the glyph band alone: the frame with the object minus the frame

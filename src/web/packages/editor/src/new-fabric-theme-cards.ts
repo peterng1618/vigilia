@@ -141,10 +141,7 @@ export function cpuCard(): ObjectJson[] {
       // as a card.
       fill: frost,
       vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
-      // Inside the band Task 1 measured flat, and a value to move: the
-      // reference's frost is a mockup over a photograph, not a rendering whose
-      // radius can be read back.
-      vigiliaGlass: { blurRadius: 16 },
+      vigiliaGlass: { blurRadius: 40 },
     },
     path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
     label("cpu-card-title", 528, 212, 140, 27.12, "CPU", 24, "text"),

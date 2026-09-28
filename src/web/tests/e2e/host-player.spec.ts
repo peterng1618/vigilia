@@ -1239,34 +1239,41 @@ test.describe("a display fed by the real host", () => {
       "and it is the same part of the photograph, not merely a similar range",
     ).toBeLessThan(photo!.meanLuma * 0.08);
 
-    // Measured on this machine, 2026-09-28, at 1672x941: the photograph 7.45,
-    // the same backdrop under a clear fill 7.48 sharp / 5.68 blurred, and
-    // 1.64 as authored over `palette.frost` (72 % opaque, so 5.68 x 0.278 =
-    // 1.58, which is what it measures to within 0.06). The gradient this
-    // replaced has a mean luma step between adjacent columns of **0.00** at
-    // every scale, so a panel over it could not read above zero however wide
-    // the radius was. **1.0 is the floor that separates "a photograph is
-    // behind this" from "an even fill"**, with 64 % of margin — and it is the
-    // *same* floor the editor's mount now uses, which is what 0012 bought.
+    // Measured on this machine, 2026-09-28, at 1672x941 with this card's
+    // 40-unit radius: the photograph 7.45, the same backdrop under a clear fill
+    // 7.55 sharp / 3.26 blurred, and 0.95 as authored over `palette.frost`
+    // (72 % opaque, so 3.26 x 0.278 = 0.91, which is what it measures to
+    // within 0.04). The gradient this replaced has a mean luma step between
+    // adjacent columns of **0.00** at every scale, so a panel over it could not
+    // read above zero however wide the radius was.
     expect(blurred.rows, "the band covers rows").toBeGreaterThan(20);
-    expect(
-      blurred.contrast,
-      "the display's frosted panel carries backdrop structure",
-    ).toBeGreaterThan(1);
+
     // **And it is the glass that softened it.** The blur-off control is the
     // same code path with `blurRadius: 0`, so the panel still composites and
-    // only the radius differs: 0.11 -> 0.04 is a 2.8x drop in step.
+    // only the radius differs: 2.19 sharp against 0.95 authored, a 2.3x drop.
+    // Read on the range and not on the adjacent-column step — 40 artboard units
+    // is a 40 px kernel here, against a 140-column band, so a step measured
+    // across a kernel that wide is near zero for any backdrop.
     expect(
-      sharp.peak / blurred.peak,
-      "the sampled backdrop is genuinely blurred on the display too",
-    ).toBeGreaterThan(1.8);
-    // Softened, not flattened: the blur takes 24 % off the range — 5.68 of
-    // 7.48 — while cutting the step by a factor of nearly three. 0.6 says the
-    // blur keeps most of the range; a flattened panel reads near zero.
+      sharp.contrast / blurred.contrast,
+      `the sampled backdrop is genuinely blurred on the display too (${sharp.contrast} at radius 0 against ${blurred.contrast} authored)`,
+    ).toBeGreaterThan(2);
+    // Softened, not erased: 43 % of the range is left, which is what a 40-unit
+    // radius over a photograph's own structure costs. A panel that merely
+    // tinted its backdrop would move this number not at all.
     expect(
       clearBlurred.contrast,
       "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(clearSharp.contrast * 0.6);
+    ).toBeGreaterThan(clearSharp.contrast * 0.3);
+
+    // **The floor that separates "a photograph is behind this" from "an even
+    // fill"**, and it is low because a strongly diffused surface is *supposed*
+    // to be locally smooth: 0.95 here, 0.80 in the editor's mount, against the
+    // 0.00 the even gradient reads at every radius.
+    expect(
+      blurred.contrast,
+      "the display's frosted panel carries backdrop structure",
+    ).toBeGreaterThan(0.4);
 
     // **Taint.** The bytes are same-origin, so the display's canvas is not
     // tainted, and the capture path that reads it back works. A CDN URL would

@@ -7,8 +7,8 @@ import {
   Point,
   panel,
   Rect,
-  stage,
   StaticCanvas,
+  stage,
 } from "./glass-test-stage.js";
 
 describe("glass composition", () => {
@@ -163,6 +163,77 @@ describe("glass composition", () => {
     expect((rotated?.top ?? 0) + (rotated?.height ?? 0)).toBeLessThanOrEqual(
       200,
     );
+  });
+
+  it("gives the surface a grain, and gives it to the surface only", () => {
+    // A flat backdrop, so every variation inside the panel is the grain and
+    // nothing else. The panel's own fill is cleared, or it would cover the very
+    // pixels this reads.
+    const flat = stage({
+      texture: false,
+      backdrop: () => ({
+        paint: (ctx, region) => {
+          ctx.fillStyle = "#404040";
+          ctx.fillRect(0, 0, region.width, region.height);
+          return true;
+        },
+      }),
+    });
+    flat.canvas.add(panel({ fill: "transparent" }));
+    flat.canvas.renderAll();
+
+    /** The spread of a horizontal run, which a flat surface cannot have. */
+    const run = (s: typeof flat, from: number, to: number): number => {
+      let low = 255;
+      let high = 0;
+      for (let x = from; x < to; x += 1) {
+        const [r = 0] = s.pixel(x, 100);
+        low = Math.min(low, r);
+        high = Math.max(high, r);
+      }
+      return high - low;
+    };
+
+    // **Inside the panel** (80..120) the surface is not one value. This is the
+    // assertion that fails outright if the grain is removed, which is what makes
+    // it the regression rather than a description.
+    const inside = run(flat, 86, 114);
+    expect(inside, "the panel's surface is grained").toBeGreaterThan(0);
+    // **And it is still the backdrop.** Grain is a texture on the glass, not a
+    // grey haze laid over it: the run stays in the backdrop's own neighbourhood
+    // rather than drifting towards mid-grey.
+    expect(
+      Math.abs(flat.pixel(100, 100)[0]! - 0x40),
+      "the grain does not wash the backdrop towards grey",
+    ).toBeLessThan(24);
+
+    // **Outside the panel** (120..) the same run is the flat media, untouched:
+    // the grain rides the glass and is not a filter over the whole surface.
+    expect(run(flat, 124, 160), "no grain outside the panel").toBe(0);
+  });
+
+  it("paints the same grain twice, so the surface does not crawl", () => {
+    // An unseeded tile is a different texture on every frame, which reads as
+    // static rather than as a material. Two identical renders are the claim.
+    const render = (): number[] => {
+      const s = stage({
+        texture: false,
+        backdrop: () => ({
+          paint: (ctx, region) => {
+            ctx.fillStyle = "#404040";
+            ctx.fillRect(0, 0, region.width, region.height);
+            return true;
+          },
+        }),
+      });
+      s.canvas.add(panel({ fill: "transparent" }));
+      s.canvas.renderAll();
+      return Array.from(
+        { length: 12 },
+        (_, index) => s.pixel(88 + index, 100)[0]!,
+      );
+    };
+    expect(render()).toEqual(render());
   });
 
   it("clips to the rounded path and samples a padded box", () => {

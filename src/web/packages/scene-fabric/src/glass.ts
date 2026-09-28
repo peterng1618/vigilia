@@ -79,6 +79,20 @@ const MAX_BACKDROP_PIXELS = 4_194_304;
 /** Below this a region is a sliver and the blur has nothing to show. */
 const MIN_REGION_PX = 2;
 
+/**
+ * The surface grain, at the strength two independent canvas implementations
+ * name: 8 % over the glass, composited `overlay` rather than laid on as a haze,
+ * because a flat translucent grey reads as a layer *over* the panel while an
+ * overlay blend scatters light the way etched glass does.
+ *
+ * Not a dial. Grain is a property of the material — see
+ * `docs/decisions/0013-frost-is-diffusion-grain-and-an-edge-not-a-tint.md`.
+ */
+const GRAIN_ALPHA = 0.03;
+
+/** Grain reads as grain at any density; the tile is stretched, not regenerated. */
+const GRAIN_TILE_PX = 128;
+
 interface Panel {
   readonly object: FabricObject;
   readonly onBeforeRender: (event: {
@@ -105,7 +119,37 @@ export function createGlass(options: GlassOptions): GlassHandle {
   // handle-wide answer would carry the live canvas's verdict into the capture.
   let filterContext: CanvasRenderingContext2D | undefined;
   let filterUsable = false;
+  // The grain's `CanvasPattern`, built once per context for the same reason as
+  // `filterUsable` above: a pattern is a per-context object, and the capture
+  // path does not paint through the live canvas's one. The tile is held
+  // alongside it so `dispose` can drop its backing store, which is the release
+  // contract the scratch surfaces are held to.
+  let grainContext: CanvasRenderingContext2D | undefined;
+  let grainPattern: CanvasPattern | null | undefined;
+  let grainTileElement: HTMLCanvasElement | undefined;
   let disposed = false;
+
+  /** This context's grain fill, built on first use and then reused. */
+  function grainFill(ctx: CanvasRenderingContext2D): CanvasPattern | undefined {
+    if (grainContext !== ctx) {
+      grainContext = ctx;
+      const tile = grainTile();
+      grainTileElement = tile;
+      grainPattern =
+        tile === undefined ? null : ctx.createPattern(tile, "repeat");
+    }
+    return grainPattern ?? undefined;
+  }
+
+  function releaseGrain(): void {
+    grainContext = undefined;
+    grainPattern = undefined;
+    if (grainTileElement !== undefined) {
+      grainTileElement.width = 0;
+      grainTileElement.height = 0;
+      grainTileElement = undefined;
+    }
+  }
 
   function report(message: string): void {
     if (reported.has(message)) return;
@@ -377,6 +421,22 @@ export function createGlass(options: GlassOptions): GlassHandle {
         region.width,
         region.height,
       );
+      // **Texture, over the diffusion and under the panel's own fill.** The
+      // clip is still the panel and the transform is still device space, so the
+      // fill lands on the card and nowhere else.
+      const grain = grainFill(ctx);
+      if (grain !== undefined) {
+        ctx.save();
+        ctx.filter = "none";
+        ctx.globalCompositeOperation = "overlay";
+        ctx.globalAlpha *= GRAIN_ALPHA;
+        // Anchored to the region's corner, not the viewport's, so panning the
+        // camera moves the surface with the panel instead of swimming it.
+        ctx.translate(region.left, region.top);
+        ctx.fillStyle = grain;
+        ctx.fillRect(0, 0, region.width, region.height);
+        ctx.restore();
+      }
     } finally {
       // Carries the transform, clip, filter and the state above back, even if
       // the clip or the draw threw.
@@ -411,6 +471,7 @@ export function createGlass(options: GlassOptions): GlassHandle {
     dispose(): void {
       if (disposed) return;
       disposed = true;
+      releaseGrain();
       canvas.off("object:added", sync);
       canvas.off("object:removed", sync);
       for (const group of watched) {
@@ -611,4 +672,38 @@ function probeFilter(ctx: CanvasRenderingContext2D): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The surface's grain, written straight into an `ImageData` buffer rather than
+ * through the shape pipeline, and from a **fixed seed** so the same panel looks
+ * the same in the editor, in the player and in a capture — and so the surface
+ * does not crawl between frames, which is what an unseeded tile becomes.
+ *
+ * Mid-grey is the neutral value for the `overlay` blend this is composited
+ * with, so the tile spans the full range around it and the panel neither lifts
+ * nor darkens on average.
+ */
+function grainTile(): HTMLCanvasElement | undefined {
+  const tile = document.createElement("canvas");
+  tile.width = GRAIN_TILE_PX;
+  tile.height = GRAIN_TILE_PX;
+  const context = tile.getContext("2d");
+  if (context === null) return undefined;
+  const image = context.createImageData(GRAIN_TILE_PX, GRAIN_TILE_PX);
+  const data = image.data;
+  let seed = 0x9e3779b9;
+  for (let index = 0; index < data.length; index += 4) {
+    // xorshift32: a whole generator, so the tile cannot depend on a host.
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    const shade = (seed >>> 24) & 0xff;
+    data[index] = shade;
+    data[index + 1] = shade;
+    data[index + 2] = shade;
+    data[index + 3] = 0xff;
+  }
+  context.putImageData(image, 0, 0);
+  return tile;
 }

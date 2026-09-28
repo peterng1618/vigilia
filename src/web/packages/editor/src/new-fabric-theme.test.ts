@@ -16,6 +16,7 @@ import {
 import { StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
+import { cpuCard } from "./new-fabric-theme-cards.js";
 import { STARTER_BACKDROP_PATH } from "./starter-backdrop.js";
 
 type ObjectJson = Readonly<Record<string, unknown>>;
@@ -568,17 +569,24 @@ describe("the new Fabric document", () => {
     });
     await reviveThemeEnvelope(canvas, theme);
 
+    // The authored radius itself, not just "some radius": 40 is the value that
+    // dissolves the sunset's structure behind the card, and a round trip that
+    // quietly fell back to a default would leave a panel that blurs without
+    // diffusing — see `docs/decisions/0013-frost-is-diffusion-grain-and-an-edge-not-a-tint.md`.
+    const authored = cpuCard().find((object) => object["id"] === "cpu-card")?.[
+      "vigiliaGlass"
+    ];
     const revived = canvas
       .getObjects()
       .find((object) => object.get("id") === "cpu-card");
-    expect(revived?.get("vigiliaGlass")).toEqual({ blurRadius: 16 });
+    expect(revived?.get("vigiliaGlass")).toEqual(authored);
 
     const saved = serialiseThemeEnvelope(canvas, theme);
     expect(
       (
         saved.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
       ).find((object) => object["id"] === "cpu-card")?.["vigiliaGlass"],
-    ).toEqual({ blurRadius: 16 });
+    ).toEqual(authored);
     expect(validateFabricThemeEnvelope(saved).ok).toBe(true);
     await canvas.dispose();
   });
