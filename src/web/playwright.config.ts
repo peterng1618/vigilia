@@ -18,9 +18,14 @@ import { HOST_PORT, HOST_THEMES_DIR } from "./tests/e2e/host-theme.js";
  * Only `phone-host` is limited to `host-player.spec.ts`: the host's three
  * viewport-independent HTTP checks were duplicated across both viewports for no
  * viewport reason, and the host's own phone rendering is covered by
- * `/api/sensors` rather than a layout that would differ.
+ * `/api/sensors` rather than a layout that would differ. `host-media.spec.ts`
+ * joins `HOST_SPECS` for the reason the others do — it boots a real host and
+ * writes theme packages into the shared themes directory — and reads only on
+ * `desktop-host`, because `phone-host` is not matched for it. It still guards
+ * with `isDesktopSurface`, so widening that project's `testMatch` later cannot
+ * silently turn a desktop pixel read into a phone one.
  */
-const HOST_SPECS = /host-(player|settings)\.spec\.ts/;
+const HOST_SPECS = /host-(player|settings|media).spec.ts/;
 
 export default defineConfig({
   testDir: "./tests/e2e",

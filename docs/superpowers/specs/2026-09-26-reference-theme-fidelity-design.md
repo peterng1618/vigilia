@@ -1,14 +1,14 @@
 # Reference theme fidelity and frosted glass
 
-- **Status:** implementation complete but **acceptance not fully met** — 8 of 9
-  clauses hold outright and the ninth is two-thirds closed. Inspecting the *real
-  player* at a fitted viewport, at a second DPR and with grouped/rotated/
-  overlapping panels is now proved by pixels; **changing media on the player is
-  the open third**, blocked on
-  [#3](https://github.com/peterng1618/vigilia/issues/3). Closing that clause
+- **Status:** **acceptance met.** All nine clauses are now proved by pixels on
+  both mounts. Inspecting the *real player* at a fitted viewport, at a second DPR
+  and with grouped/rotated/overlapping panels was closed by `827895d`; closing it
   found a real defect — the glass transform composed its matrices transposed, so
-  the blur was drawn beside the panel at any fitted viewport — now fixed. See the
-  plan's close-out, `827895d`, and `task-12b-report.md`.
+  the blur was drawn beside the panel at any fitted viewport — now fixed.
+  **Changing media on the player**, the last open part, is proved in
+  `task-12d-report.md`: a packaged video decodes on the player and the glass over
+  it tracks the *current* frame, and swapping a theme's background asset at
+  runtime replaces what the display shows by pixel count.
 - **Date:** 2026-09-26
 - **Queue:** immediately after snapping fidelity; before previously queued work.
 

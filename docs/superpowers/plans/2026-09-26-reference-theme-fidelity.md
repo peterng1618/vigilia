@@ -20,10 +20,17 @@ shell, Vitest, Playwright and Biome. No new dependency assumed.
 — 1672 × 941; RAM partial gauge, VRAM full ring. Documentation reference only,
 not a licensed asset to bundle in the product.
 
-**State:** Active. Task 1's probe is complete and its findings are recorded below
-and in `.superpowers/sdd/2026-09-26-reference-theme-fidelity/task-1-report.md`.
-Real clipped backdrop blur is proven achievable and cheap; Tasks 2–12 are
-unblocked. Glass is not a gate on any other task.
+**State:** Acceptance met; ready to archive. All twelve tasks are written,
+reviewed and committed, and the last open clause — *"Inspect editor and real
+player at target size, another fitted viewport and different DPR, including
+grouped/rotated/overlapping panels and changing media"* — is proved by pixels on
+both mounts. Changing media on the player, the part blocked on
+[#3](https://github.com/peterng1618/vigilia/issues/3), is closed in
+`task-12d-report.md`: a packaged video decodes on the player and the glass over
+it tracks the current frame, swapping a theme's background asset at runtime
+replaces what the display shows by pixel count, and the paired-display session
+that `75bff56` left unmeasured is now measured both ways. Task 1's probe and its
+findings are recorded below and in `task-1-report.md`.
 
 ## Global Constraints
 
