@@ -88,10 +88,17 @@ emits the finished composition, so an author who opens the product is handed a
 dashboard they did not make, and the only route to a blank scene is to select
 everything and delete it. That is a workaround no author is expected to
 understand, and building the proof on it would measure the workaround rather
-than the surface. **The first task therefore makes the blank state real** —
-`New` produces a blank theme and the starter becomes an explicit template
-action — and the rebuild starts from that. This is the plan delivering the
-obligation above, not a workaround around it.
+than the surface. **The plan therefore opens by making the blank state real**:
+`New` offers a blank theme at an artboard the author chooses, and the starter
+becomes an explicit template rather than what `New` means. The rebuild starts
+from there. This is the plan delivering the obligation above, not working around
+it.
+
+**The artboard sizes are a derived preset, not authored data.** A new theme is
+offered at 16:9, 19.5:9 or 4:3, landscape or portrait, at 1080p, 2K or 4K — the
+last naming the short edge, so 16:9 lands on the familiar 1920 × 1080 and
+19.5:9 on 2340 × 1080. No entry is named after a device. The same list drives
+the artboard controls, so a size the author types by hand is still theirs.
 
 Rules, all binding:
 
@@ -126,8 +133,12 @@ finding is duplicated in specs, status or reports.
 Classification is the author's call at observation time:
 
 - **Blocking** — the journey cannot complete, work can be lost, or data is
-  misrepresented. Fixed in this plan, or explicitly deferred with a reason.
-- **Deferred** — recorded, not fixed here, with the reason.
+  misrepresented. **Fixed in this plan, and the pass stops until it is.** A
+  blocking finding is not deferred to keep the rebuild moving, and the next
+  region is never built on top of one. If it cannot be fixed, the pass stops and
+  reports where it stopped.
+- **Deferred** — recorded, not fixed here, with the reason. Reserved for what is
+  not blocking.
 
 ## Definition of done
 
@@ -135,7 +146,8 @@ Classification is the author's call at observation time:
    UI, and compared against the target.
 2. Every gap, friction point and visual-quality problem is in the Findings
    table. None silently dropped.
-3. Every blocking finding is fixed here or explicitly deferred with a reason.
+3. Every blocking finding is fixed here, and the pass stopped rather than moving
+   on while one was open.
 4. The three unverified round trips are driven in a browser, and the phone-width
    surfaces are inspected by eye.
 5. The five status debts in "What already shipped", and the settings-scope one,
