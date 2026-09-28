@@ -96,6 +96,16 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 | F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope widened by the user (2026-09-29): all primitive Fabric shapes, and their properties.** Fabric 7 ships `Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path` — all present in the installed package, so this is authoring and material work, not a dependency. See the scope note below. | `new-object-defaults.ts`, the panel primitive, `selection-inspector/panel.ts` |
 
+### Host findings, found by running it (2026-09-29)
+
+The host was started for the first time in this pass — `node packages/host/bin/vigilia.js --no-browser --port 4185`. Everything below is measured, not inferred.
+
+| # | Finding | Evidence | Fix owner |
+|---|---|---|---|
+| F1.10 | **The root theme chooser shows no thumbnails, while `/settings` does** | The same nine themes on both pages. `/settings` renders a real thumbnail for *System dashboard* and a hatched placeholder for the eight fixtures that have none — that fallback works well. The root chooser renders **zero** `<img>` elements and issues **no** thumbnail request at all. One theme list has the shipped feature and the other does not. | the host's two theme lists |
+| F1.11 | **Nothing links to the editor** | `server.ts` serves `/editor` (302) and `/settings` (200). The root page renders **zero** `<a>` tags and zero `href`s, and `/settings` links nowhere either. A user who lands on the product cannot reach the editor from anywhere in the UI. | host root + settings markup |
+| F1.12 | **Device names fall back to machine strings** | Under *Devices on this PC* → *Graphics card*, the only value offered is **"First card found (default)"**. That is a discovery fallback presented as if it were a product name, and it is what a real user with one GPU sees. | the device-identity owner |
+
 ### P2 — data model
 
 | # | Finding | Why it is not a UI fix | Fix owner |
