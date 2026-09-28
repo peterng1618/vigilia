@@ -89,6 +89,28 @@ hardware-metrics source: verified from the package's own `LICENSE` and `npm
 view` metadata on 2026-09-24. It reads platform counters; it is not a vendored
 or linked third-party executable.
 
+## Bundled assets
+
+Not packages, and not vendored source: third-party **content** the product
+redistributes. Licence, provenance and the full notice live in
+`THIRD-PARTY-NOTICES.md`; this table is the index.
+
+| Asset | Where | Licence | Provenance |
+|---|---|---|---|
+| Starter backdrop, “city skyline during orange sunset” by Ashim D’Silva | `packages/editor/src/starter-backdrop.jpg`, declared by the starter document as `assets/starter-backdrop.jpg` and served same-origin by the host | Unsplash License (<https://unsplash.com/license>) | photo page <https://unsplash.com/photos/city-skyline-during-orange-sunset-NTTJsPPlQOk>, retrieved 2026-09-28, sha256 `6d4bbd98…5bf59b` |
+
+It is bundled rather than fetched for two reasons that are load-bearing, not
+cosmetic. A remote URL taints the canvas, and every pixel-reading path —
+`toDataURL` for the thumbnail, `getImageData` for the glass budget and the
+e2e probes — throws on a tainted one, so a CDN backdrop would silently break
+thumbnails and make the glass unmeasurable. And a local-first product whose
+default theme needs a CDN to look right is a defect on an offline display.
+
+**Re-verify before any re-crop or re-encode.** The `sha256` in the theme's
+asset declaration is checked against the file by
+`new-fabric-theme.test.ts`; changing the bytes without updating the declaration
+fails that test rather than shipping a claim that is no longer true.
+
 ## Release rule
 
 Before publishing: enumerate the runtime/transitive graph from the lockfile,

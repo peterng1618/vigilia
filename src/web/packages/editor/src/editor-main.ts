@@ -21,6 +21,7 @@ import { createEditorSource } from "./live-source.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
+import { loadStarterBackdrop } from "./starter-backdrop.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
 import { captureCanvas } from "./thumbnail-capture.js";
 
@@ -145,7 +146,11 @@ async function start(): Promise<void> {
       onBindingsChange: replaceSource,
       onNew: async () => {
         const fresh = createNewFabricTheme();
-        await mount({ input: envelopeInputFor(fresh), envelope: fresh });
+        await mount({
+          input: envelopeInputFor(fresh),
+          envelope: fresh,
+          assets: await starterAssets(),
+        });
         status.textContent = "New Fabric theme";
       },
       onOpenPackage: () => picker.click(),
@@ -217,8 +222,24 @@ async function start(): Promise<void> {
   await mount({
     input: envelopeInputFor(theme),
     envelope: theme,
+    assets: await starterAssets(),
   });
   status.textContent = "Fabric editor ready";
+}
+
+/**
+ * The starter's own declared bytes, read once.
+ *
+ * A new theme declares a packaged backdrop, and a declaration without bytes is
+ * a broken theme: the media layer would report it unreadable and the artboard
+ * would show nothing behind the glass. A package opened from disk brings its
+ * own, which is why this is only wired into the two paths that *build* the
+ * starter. `docs/decisions/0011`.
+ */
+let starterBytes: Promise<Readonly<Record<string, Uint8Array>>> | undefined;
+function starterAssets(): Promise<Readonly<Record<string, Uint8Array>>> {
+  starterBytes ??= loadStarterBackdrop();
+  return starterBytes;
 }
 
 void start();

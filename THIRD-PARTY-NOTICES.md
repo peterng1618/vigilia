@@ -145,6 +145,46 @@ SOFTWARE.
 Imported assets retain their own licence requirements; record source/hash/licence
 metadata.
 
+### Starter backdrop (bundled asset)
+
+`packages/editor/src/starter-backdrop.jpg` ships **inside** the product, as the
+default theme's artboard backdrop. It is a packaged theme asset, declared by
+path in the starter document and served same-origin by the host, so it is
+redistributed with every starter theme a user saves.
+
+| Field | Value |
+|---|---|
+| Work | “city skyline during orange sunset” |
+| Photographer | Ashim D’Silva (`@randomlies`) — <https://unsplash.com/@randomlies> |
+| Source page | <https://unsplash.com/photos/city-skyline-during-orange-sunset-NTTJsPPlQOk> |
+| Licence | **Unsplash License** — <https://unsplash.com/license> |
+| Retrieved | 2026-09-28 |
+| Shipped bytes | 2330 × 1311 JPEG, q75, centre-cropped to the artboard's 1.7768 aspect; 438 590 bytes |
+| sha256 | `6d4bbd987c0e6a6103eb310b2848e011e50a77be641e3e2cdd1b389d695bf59b` |
+
+Verified 2026-09-28 from the **primary source**, not from memory. The photo
+page carries the notice *"Free to use under the Unsplash License"*, links that
+licence, names the photographer, and embeds the exact CDN identifier the bytes
+were fetched under (`images.unsplash.com/photo-1587642314856-a00a0e4aee60`), which
+is what establishes that the downloaded file and the page are the same work.
+Unsplash's own Terms, §5 "License to Images", state the grant as an
+*"irrevocable, nonexclusive, worldwide copyright license to download, copy,
+modify, distribute, perform, and use images from Unsplash for free, including
+for commercial purposes, without permission from or attributing the photographer
+or Unsplash"*, excluding only the right to compile images to replicate a
+similar or competing service. Attribution is not required and is given anyway.
+
+The Terms also exclude **trademarks, logos or brands**, **recognisable people**
+and **works of art or authorship** appearing in an image. The shipped crop was
+inspected: a distant city skyline in silhouette at sunset, with no legible
+brand mark and no person. It is redistributed unmodified apart from resize and
+crop, both of which the licence permits expressly.
+
+The licence text itself is not reproduced here because it is not a
+copyleft-style licence with a notice requirement; the link above is the
+authoritative text and the URL is recorded in the theme package's own asset
+declaration, so it travels with the file.
+
 The approved curated-font slice will copy pairing metadata from
 [Fonttrio](https://github.com/kapishdima/fonttrio) as data, not a runtime
 dependency. Fonttrio is MIT licensed; preserve its attribution when shipping

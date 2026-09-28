@@ -20,6 +20,9 @@
  *
  * - reading `schema/theme-document.schema.json` off disk, so the drift guard
  *   compares against the published contract;
+ * - reading the starter's packaged backdrop as bytes, so the `sha256` its
+ *   declaration claims is checked against the file rather than trusted, and
+ *   hashing it to do so;
  * - walking `packages/editor/src` to assert the import-direction and file-size
  *   rules in `architecture.md` §4;
  * - walking `packages/renderer-core/src`, `scene-fabric/src` and `player/src`
@@ -33,9 +36,16 @@
  */
 
 declare module "node:fs" {
+  export function readFileSync(path: string): Uint8Array;
   export function readFileSync(path: string, encoding: "utf8"): string;
   export function readdirSync(path: string): string[];
   export function statSync(path: string): { isDirectory(): boolean };
+}
+
+declare module "node:crypto" {
+  export function createHash(algorithm: "sha256"): {
+    update(bytes: Uint8Array): { digest(encoding: "hex"): string };
+  };
 }
 
 declare module "node:path" {

@@ -1174,11 +1174,13 @@ function bandStats(
   page: Page,
   id: string,
   inset: { left: number; top: number; width: number; height: number },
+  blurRadius?: number,
 ): Promise<{ peak: number; contrast: number; rows: number }> {
   return page.evaluate(
-    ([objectId, box]) => {
+    ([objectId, box, radius]) => {
       type Obj = {
         get(n: string): unknown;
+        set(n: string, v: unknown): void;
         getBoundingRect(): {
           left: number;
           top: number;
@@ -1201,11 +1203,16 @@ function bandStats(
           };
         }
       ).vigiliaEditorBridge.editor.canvas;
-      canvas.renderAll();
       const object = canvas
         .getObjects()
         .find((candidate) => candidate.get("id") === objectId);
       if (object === undefined) throw new Error(`no object ${objectId}`);
+      // The blur-off control, the way `panelBand` takes one on the player: the
+      // treatment stays present, so the panel still composites, and only the
+      // radius differs between the two readings.
+      if (typeof radius === "number")
+        object.set("vigiliaGlass", { blurRadius: radius });
+      canvas.renderAll();
       const rect = object.getBoundingRect();
       const vp = canvas.viewportTransform;
       const retina = canvas.getRetinaScaling();
@@ -1244,7 +1251,42 @@ function bandStats(
         rows: height,
       };
     },
-    [id, inset] as const,
+    [id, inset, blurRadius] as const,
+  );
+}
+
+/**
+ * The starter's own media layer, decoded.
+ *
+ * The bytes land after the first paint and the glass samples whatever the
+ * `<img>` held at its last repaint, so a reading taken before the decode is a
+ * reading of an empty backdrop. `naturalWidth` is read *and* the element is
+ * required to be complete, so a broken or absent layer fails here rather than
+ * quietly producing a flat band below.
+ */
+async function waitForStarterBackdrop(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const image = document.querySelector<HTMLImageElement>(
+        "[data-vigilia-background-media] img",
+      );
+      return (
+        image !== null &&
+        image.complete &&
+        image.naturalWidth > 0 &&
+        image.naturalHeight > 0
+      );
+    },
+    undefined,
+    { timeout: 20_000 },
+  );
+  // One more frame: the decode fires `onFrame`, which repaints the canvas the
+  // band is read from.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
   );
 }
 
@@ -1479,7 +1521,345 @@ test.describe("the reference composition, captured", () => {
       "text over the blurred panel is as sharp as text over the sharp one",
     ).toBeGreaterThan(reading.control * 0.85);
   });
+  test("the starter's frosted card reads a real backdrop, and the canvas is untainted", async ({
+    page,
+  }, testInfo) => {
+    desktop(testInfo);
+    await openEditor(page);
+    await waitForStarterBackdrop(page);
+
+    // **The claim the default capture never made.** Every frosted panel in the
+    // starter used to sit over a three-stop vertical gradient, whose mean luma
+    // step between adjacent columns measures 0.00 — a blur had nothing to
+    // reveal, so the panel was an even fill however wide the radius was. The
+    // starter now carries a packaged photograph, and this measures the change
+    // in the mounted editor rather than in the source file.
+    //
+    // Measured on this machine, 2026-09-28, and quoted in every threshold:
+    //   with the card's old 85 %-opaque `panel` fill   contrast 2.40  (invisible)
+    //   with `palette.frost` at 72 %                   contrast 4.46
+    //   the same backdrop under a clear fill           contrast 16.02 blurred / 16.54 sharp
+    const reading = await starterBackdropBands(page);
+
+    // **The material reads.** 3.5 is between the 2.40 the old fill produced and
+    // the 4.46 this one does, so the threshold discriminates the two rather
+    // than passing both.
+    expect(reading.blurred.rows, "the band covers rows").toBeGreaterThan(20);
+    expect(
+      reading.blurred.contrast,
+      "the frosted panel carries backdrop structure, not an even fill",
+    ).toBeGreaterThan(3.5);
+
+    // **And the blur is what softened it.** Read on the backdrop alone, with
+    // the panel's own tint removed, so this is a measurement of the glass
+    // rather than of a dark card: 1.02 -> 0.47 is a 2.2x drop in step.
+    expect(
+      reading.clearSharp.peak / reading.clearBlurred.peak,
+      "the sampled backdrop is genuinely blurred",
+    ).toBeGreaterThan(1.6);
+    // Softened, not flattened: the blur cuts the step by half and takes 3 %
+    // off the range. A panel that merely tinted its backdrop would move the
+    // second number a great deal and the first not at all.
+    expect(
+      reading.clearBlurred.contrast,
+      "the blur softens the backdrop rather than erasing it",
+    ).toBeGreaterThan(reading.clearSharp.contrast * 0.85);
+
+    // **Text and the chart's stroke stay sharp above the glass.** The measure
+    // is the glyph band alone: the frame with the object minus the frame
+    // without it, whose best one-pixel-transition-over-range ratio is near 1
+    // for a sharp edge and near 1/16 for one spread across the blur. The
+    // starter's one frosted panel carries a line chart rather than a gauge, so
+    // the gauge-stroke half of this claim is the fixture's test above; what is
+    // new here is that the foreground has to survive a *photographic* backdrop.
+    expect(
+      reading.glyphs.blurred,
+      "the card's title keeps one-pixel edges over the blurred panel",
+    ).toBeGreaterThan(0.6);
+    expect(
+      reading.glyphs.blurred,
+      "and is as sharp as the same title over the unblurred one",
+    ).toBeGreaterThan(reading.glyphs.control * 0.85);
+    expect(
+      reading.glyphs.stroke,
+      "the sparkline's stroke stays sharp above the blurred panel",
+    ).toBeGreaterThan(0.6);
+
+    // **Taint, stated rather than implied.** `drawImage` tolerates a tainted
+    // canvas, so a composite that looks right proves nothing about the two
+    // paths that read pixels back: `getImageData` and `toDataURL` both throw a
+    // `SecurityError` on one, and both are load-bearing — the glass budget,
+    // this very probe, and the thumbnail. A cross-origin backdrop would pass
+    // every assertion above and fail both of these.
+    expect(reading.taint.read, "the canvas is not tainted").toBe("pixels");
+    expect(reading.dataUrl, "and the capture path encodes it").toBeGreaterThan(
+      10_000,
+    );
+
+    // The picture itself, looked at. Registered in
+    // `docs/evidence/screenshots/README.md` and inspected before it is kept.
+    await captureVisualReview(page, testInfo, "editor-starter-backdrop");
+  });
 });
+
+/**
+ * The starter's one frosted card, read twice, with its own contents taken out
+ * of the picture.
+ *
+ * **Why the contents are hidden.** `cpu-card` has no empty region: the icon,
+ * the title, the 90px reading, the caption and the sparkline cover it, and a
+ * band that crosses a glyph edge measures that edge — identically in both
+ * readings, which is exactly the failure the first version of this probe hit
+ * (peak 27.82 -> 27.82 with a 56.06 contrast: real backdrop, and a hard number
+ * belonging to the title). Hiding them is the same subtraction the sharp-text
+ * probe makes, and the difference is only the backdrop and the panel's own
+ * tint.
+ *
+ * **The control is the blur, not the card.** `blurRadius: 0` leaves the
+ * treatment present, so the panel still composites and only the radius differs.
+ * Both readings are taken here, in one call, so the second cannot inherit the
+ * first's radius by accident — which is how the first version read the same
+ * number twice.
+ */
+function starterBackdropBands(page: Page): Promise<{
+  blurred: { peak: number; contrast: number; rows: number };
+  sharp: { peak: number; contrast: number; rows: number };
+  clearBlurred: { peak: number; contrast: number; rows: number };
+  clearSharp: { peak: number; contrast: number; rows: number };
+  glyphs: { blurred: number; control: number; stroke: number };
+  taint: { read: string };
+  dataUrl: number;
+  underCpu: number;
+  underGpu: number;
+}> {
+  return page.evaluate(() => {
+    type Obj = {
+      get(n: string): unknown;
+      set(n: string, v: unknown): void;
+      getBoundingRect(): {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+      };
+    };
+    const canvas = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getObjects(): Obj[];
+              lowerCanvasEl: HTMLCanvasElement;
+              renderAll(): void;
+              getRetinaScaling(): number;
+              viewportTransform: number[];
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas;
+    const objects = canvas.getObjects();
+    const card = objects.find((object) => object.get("id") === "cpu-card");
+    if (card === undefined)
+      throw new Error("the starter lost its frosted card");
+    const box = card.getBoundingRect();
+    const centreInside = (object: Obj): boolean => {
+      const rect = object.getBoundingRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      return (
+        cx > box.left &&
+        cx < box.left + box.width &&
+        cy > box.top &&
+        cy < box.top + box.height
+      );
+    };
+    const hidden = objects.filter(
+      (object) => object !== card && centreInside(object),
+    );
+    const restore = hidden.map((object) => [object, object.get("visible")]);
+
+    const vp = canvas.viewportTransform;
+    const retina = canvas.getRetinaScaling();
+    const toDevice = (x: number, y: number): readonly [number, number] => [
+      (x * vp[0]! + y * vp[2]! + vp[4]!) * retina,
+      (x * vp[1]! + y * vp[3]! + vp[5]!) * retina,
+    ];
+    // A quarter of the shorter side in, so the band clears the rounded corners.
+    const inset = Math.round(Math.min(box.width, box.height) / 4);
+    const [x0, y0] = toDevice(box.left + inset, box.top + inset);
+    const [x1, y1] = toDevice(
+      box.left + box.width - inset,
+      box.top + box.height - inset,
+    );
+    const left = Math.max(0, Math.round(x0));
+    const top = Math.max(0, Math.round(y0));
+    const width = Math.max(1, Math.round(x1 - x0));
+    const height = Math.max(1, Math.round(y1 - y0));
+
+    const measure = (): { peak: number; contrast: number; rows: number } => {
+      canvas.renderAll();
+      const data = canvas.lowerCanvasEl
+        .getContext("2d")!
+        .getImageData(left, top, width, height).data;
+      const means = new Array<number>(width).fill(0);
+      for (let y = 0; y < height; y += 1)
+        for (let x = 0; x < width; x += 1) {
+          const i = (y * width + x) * 4;
+          means[x]! +=
+            0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+        }
+      for (let x = 0; x < width; x += 1) means[x]! /= height;
+      let peak = 0;
+      for (let x = 1; x < width; x += 1)
+        peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
+      return {
+        peak: Math.round(peak * 100) / 100,
+        contrast:
+          Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
+        rows: height,
+      };
+    };
+
+    for (const object of hidden) object.set("visible", false);
+    const authored = card.get("vigiliaGlass") as { blurRadius: number };
+    const authoredFill = card.get("fill") as string;
+    card.set("vigiliaGlass", authored);
+    const blurred = measure();
+    card.set("vigiliaGlass", { blurRadius: 0 });
+    const sharp = measure();
+    card.set("vigiliaGlass", authored);
+    card.set("fill", "rgba(8, 21, 35, 0)");
+    card.set("vigiliaGlass", authored);
+    const clearBlurred = measure();
+    card.set("vigiliaGlass", { blurRadius: 0 });
+    const clearSharp = measure();
+    card.set("fill", authoredFill);
+    card.set("vigiliaGlass", authored);
+    for (const [object, visible] of restore) object?.set("visible", visible);
+
+    // **Sharpness of what sits above the glass.** The object's own coverage:
+    // the frame with it minus the frame without it, which cancels the backdrop
+    // however photographic that backdrop is. Best step-over-range over the rows
+    // that carry any coverage — near 1 for a one-pixel edge, near 1/16 for one
+    // spread across a 16px blur.
+    const sharpness = (id: string, radius: number): number => {
+      const object = objects.find((candidate) => candidate.get("id") === id);
+      if (object === undefined) throw new Error(`the starter lost ${id}`);
+      card.set("vigiliaGlass", { blurRadius: radius });
+      const rect = object.getBoundingRect();
+      const [gx, gy] = toDevice(rect.left + 6, rect.top + 6);
+      const w = Math.max(
+        1,
+        Math.min(
+          canvas.lowerCanvasEl.width,
+          Math.round((rect.width - 12) * vp[0]! * retina),
+        ),
+      );
+      const h = Math.max(
+        1,
+        Math.min(
+          canvas.lowerCanvasEl.height,
+          Math.round((rect.height - 12) * vp[3]! * retina),
+        ),
+      );
+      const px = Math.max(0, Math.round(gx));
+      const py = Math.max(0, Math.round(gy));
+      const context = canvas.lowerCanvasEl.getContext("2d")!;
+      const grab = (): Uint8ClampedArray =>
+        context.getImageData(px, py, w, h).data.slice();
+      canvas.renderAll();
+      const withObject = grab();
+      const was = object.get("visible");
+      object.set("visible", false);
+      canvas.renderAll();
+      const without = grab();
+      object.set("visible", was);
+      canvas.renderAll();
+      const luma = (d: Uint8ClampedArray, i: number): number =>
+        0.2126 * d[i]! + 0.7152 * d[i + 1]! + 0.0722 * d[i + 2]!;
+      let best = 0;
+      for (let y = 0; y < h; y += 1) {
+        const diff = new Array<number>(w);
+        for (let x = 0; x < w; x += 1) {
+          const i = (y * w + x) * 4;
+          diff[x] = luma(withObject, i) - luma(without, i);
+        }
+        const range = Math.max(...diff) - Math.min(...diff);
+        // A row with no coverage in it has no edge to measure; 40 is the floor
+        // the existing sharp-text probe uses, and a glyph row clears it widely.
+        if (range < 40) continue;
+        let step = 0;
+        for (let x = 1; x < w; x += 1)
+          step = Math.max(step, Math.abs(diff[x]! - diff[x - 1]!));
+        best = Math.max(best, step / range);
+      }
+      return Math.round(best * 1000) / 1000;
+    };
+    const titleBlurred = sharpness("cpu-card-title", authored.blurRadius);
+    const titleControl = sharpness("cpu-card-title", 0);
+    const stroke = sharpness("cpu-card-sparkline", authored.blurRadius);
+    card.set("vigiliaGlass", authored);
+    canvas.renderAll();
+
+    // Text legibility: the mean luma under a label's own box, with the label
+    // hidden, on the frosted card and on an opaque one beside it.
+    const lumaUnder = (id: string): number => {
+      const label = objects.find((object) => object.get("id") === id);
+      if (label === undefined) throw new Error(`no ${id}`);
+      const rect = label.getBoundingRect();
+      const [lx, ly] = toDevice(rect.left + 4, rect.top + rect.height / 2 - 2);
+      const w = Math.max(1, Math.round((rect.width - 8) * vp[0]! * retina));
+      const h = Math.max(1, Math.round(4 * vp[3]! * retina));
+      const was = label.get("visible");
+      label.set("visible", false);
+      canvas.renderAll();
+      const data = canvas.lowerCanvasEl
+        .getContext("2d")!
+        .getImageData(
+          Math.max(0, Math.round(lx)),
+          Math.max(0, Math.round(ly)),
+          w,
+          h,
+        ).data;
+      label.set("visible", was);
+      canvas.renderAll();
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4)
+        sum +=
+          0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+      return Math.round((sum / (data.length / 4)) * 100) / 100;
+    };
+    const underCpu = lumaUnder("cpu-card-caption");
+    const underGpu = lumaUnder("gpu-card-caption");
+    canvas.renderAll();
+
+    // **Taint, stated rather than implied.** `drawImage` tolerates a tainted
+    // canvas, so a composite that looks right proves nothing about the two
+    // paths that read pixels back: `getImageData` and `toDataURL` both throw a
+    // `SecurityError` on one, and both are load-bearing — the glass budget,
+    // this very probe, and the thumbnail.
+    let read = "pixels";
+    let dataUrl = 0;
+    try {
+      canvas.lowerCanvasEl.getContext("2d")!.getImageData(left, top, 1, 1);
+      dataUrl = canvas.lowerCanvasEl.toDataURL().length;
+    } catch (error) {
+      read = `threw: ${String(error)}`;
+    }
+    return {
+      blurred,
+      sharp,
+      clearBlurred,
+      clearSharp,
+      glyphs: { blurred: titleBlurred, control: titleControl, stroke },
+      taint: { read },
+      dataUrl,
+      underCpu,
+      underGpu,
+    };
+  });
+}
 
 test.describe("the reference composition, at the sizes it is read at", () => {
   test("the fitted, reference-size and DPR views render the same composition", async ({
@@ -1795,11 +2175,13 @@ test.describe("background media", () => {
         { timeout: 15_000 },
       )
       .toBe("VIDEO");
-    // The saved document says `video`, not `image`.
+    // The saved document says `video`, not `image`. The starter declares a
+    // backdrop of its own, so the video is asserted to be *among* the
+    // declarations rather than to be the only one.
     const saved = await savePackage(page);
-    expect(saved.envelope["assets"]).toEqual([
+    expect(saved.envelope["assets"]).toContainEqual(
       expect.objectContaining({ id: "loop", kind: "video" }),
-    ]);
+    );
     expect(
       (saved.envelope["artboard"] as { backgroundMedia?: { assetId: string } })
         .backgroundMedia?.assetId,

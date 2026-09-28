@@ -1,6 +1,5 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import {
-  backgroundPlate,
   clockCard,
   cpuCard,
   gpuCard,
@@ -15,6 +14,7 @@ import {
   starterTypePresets,
 } from "./new-fabric-theme-globals.js";
 import { label } from "./new-fabric-theme-objects.js";
+import { starterBackdrop } from "./starter-backdrop.js";
 
 /**
  * The default scene a new theme starts from: the reference composition at the
@@ -42,13 +42,18 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     artboard: {
       width: 1672,
       height: 941,
-      background: { ref: "palette.background" },
+      // Transparent, because the backdrop is a media layer mounted *below* the
+      // canvas: an opaque artboard paint is exactly what would hide it. The
+      // letterbox bars outside the artboard are `barColor`, which stays.
+      background: { ref: "palette.none" },
       barColor: { ref: "palette.bars" },
+      backgroundMedia: { assetId: starterBackdrop.id, fit: "cover" },
     },
     globals: {
       palette: starterPalette,
       typePresets: starterTypePresets,
     },
+    assets: [starterBackdrop],
     bindings: {
       time: [{ id: "clock-time", semanticKey: "time.now", format: "hh:mm" }],
       "time-period": [
@@ -166,7 +171,6 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     scene: {
       version: "7.4.0",
       objects: [
-        backgroundPlate(),
         // The wordmark is tracked by its preset, not by spaces between the
         // letters: a space is a fixed width the font chooses, and it survives
         // into the text the author edits and the reading a screen reader gets.

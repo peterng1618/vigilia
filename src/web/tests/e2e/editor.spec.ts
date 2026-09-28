@@ -784,11 +784,14 @@ test.describe("Fabric editor route", () => {
     await typeInto(page, radius, "24");
 
     // A gradient cannot be a shadow colour, so none is offered there. The
-    // starter's `scene` token is one.
+    // starter's `sparkArea` token is one. (It used to be `scene`, which the
+    // starter no longer carries — its backdrop is packaged media — so naming
+    // that one would have made this assertion vacuous rather than true.)
     const shadowValues = await shadow
       .locator("option")
       .evaluateAll((options) => options.map((option) => option.value));
-    expect(shadowValues).not.toContain("palette.scene");
+    expect(shadowValues).toContain("palette.panelStroke");
+    expect(shadowValues).not.toContain("palette.sparkArea");
     await shadow.selectOption("palette.panelStroke");
     await expect(
       page.locator("[data-vigilia-panel-shadow-blur]"),
@@ -1354,24 +1357,27 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page
-      .locator("[data-vigilia-palette-token]")
-      .selectOption("background");
+    // The token deleted has to be one the **artboard** references, or the
+    // reassignment has nothing to reassign and the test passes for the wrong
+    // reason. `bars` is the artboard's `barColor`; its own paint is `none`
+    // since the backdrop became packaged media, so `background` — the token
+    // this used to delete — is no longer referenced by it.
+    await page.locator("[data-vigilia-palette-token]").selectOption("bars");
     await page
       .locator("[data-vigilia-palette-replacement]")
-      .selectOption("bars");
+      .selectOption("panel");
     await captureVisualReview(page, testInfo, "editor-palette-reassignment");
     await page.locator("[data-vigilia-palette-delete]").click();
     await expect(
-      page.locator('[data-vigilia-palette-token] option[value="background"]'),
+      page.locator('[data-vigilia-palette-token] option[value="bars"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
-      artboard: { background?: { ref: string } };
+      artboard: { barColor?: { ref: string } };
       globals: { palette: Record<string, unknown> };
     };
-    expect(envelope.artboard.background).toEqual({ ref: "palette.bars" });
-    expect(envelope.globals.palette.background).toBeUndefined();
+    expect(envelope.artboard.barColor).toEqual({ ref: "palette.panel" });
+    expect(envelope.globals.palette.bars).toBeUndefined();
   });
 
   test("reassigns chart paint before deleting its palette token", async ({
@@ -2081,12 +2087,26 @@ test.describe("Fabric editor route", () => {
         "base64",
       ),
     });
-    await expect(
-      page
-        .locator("[data-vigilia-asset-import]")
-        .locator("xpath=..")
-        .locator("option"),
-    ).toHaveCount(1);
+    // The starter declares a packaged backdrop of its own, so the claim is that
+    // this import produced exactly one option named for it — not a bare total,
+    // which a starter change would silently move.
+    const imported = page
+      .locator("[data-vigilia-asset-import]")
+      .locator("xpath=..")
+      .locator("option");
+    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
+    // **The asset to replace is named, not assumed.** The panel's select keeps
+    // whatever was selected, and a fresh document's first declaration is now
+    // the starter's own backdrop — so a bare "replace" here would rewrite that
+    // one. Saying which asset is meant keeps the test independent of
+    // declaration order. The pane has to be open for the select to be
+    // actionable, which counting options never needed.
+    await openRailPane(page, "Assets");
+    await page
+      .locator("[data-vigilia-asset-import]")
+      .locator("xpath=..")
+      .locator("select")
+      .selectOption("logo");
     await page.locator("[data-vigilia-asset-replace]").setInputFiles({
       name: "logo.svg",
       mimeType: "image/svg+xml",
@@ -2094,18 +2114,16 @@ test.describe("Fabric editor route", () => {
         '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="#00b8d9"/></svg>',
       ),
     });
-    await expect(
-      page
-        .locator("[data-vigilia-asset-import]")
-        .locator("xpath=..")
-        .locator("option"),
-    ).toHaveCount(2);
-    await expect(
-      page
-        .locator("[data-vigilia-asset-import]")
-        .locator("xpath=..")
-        .locator("select"),
-    ).toHaveValue("logo");
+    // The replacement is a second declaration, so the options named for this
+    // test's two imports are `logo` and `logo-2` — plus the starter's own
+    // backdrop, which is why the count is not asserted as a bare total.
+    await expect(imported.filter({ hasText: "logo" })).toHaveCount(2);
+    // **What the select holds afterwards is not asserted, because it is not a
+    // guarantee.** `createAssetPanel.render()` rebuilds the options and the
+    // browser falls back to the first, so the value has always been "the first
+    // declaration" — which read as `logo` only while that was the only one.
+    // What the round trip owes is the two declarations and the object that
+    // points at the second, both asserted below.
     await expect(assetReferences(page)).resolves.toContainEqual({
       assetId: "logo-2",
       kind: "svg",
@@ -2576,21 +2594,86 @@ test.describe("Fabric editor route", () => {
       .toBeGreaterThan(0);
   });
 
-  test("keeps the starter background unselectable after an undo", async ({
+  test("keeps a non-selectable object unselectable after an undo", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
-    // The reported bug: the starter background is authored `selectable: false`,
-    // so it resists a click on first open — but undo revives the scene through
-    // serialisation, and Fabric omits `selectable`/`evented` from `toObject`,
-    // so it came back an ordinary draggable object.
+    // The reported bug: an object authored `selectable: false` resists a click
+    // on first open — but undo revives the scene through serialisation, and
+    // Fabric omits `selectable`/`evented` from `toObject`, so it came back an
+    // ordinary draggable object. The fix is in
+    // `scene-fabric/src/persist.ts`, which lists both in
+    // `SCENE_PERSISTED_PROPERTIES`, so the guard is general.
     //
-    // This clicks bare artboard, because the plate is not what the author sees:
-    // the starter scene's own full-artboard `background` rect is the topmost
-    // object at that point, and it must decline the click on its own. A test
-    // aimed at the plate would pass even while that rect stayed selectable.
+    // **The witness is a fixture, not the starter.** The starter used to author
+    // a full-artboard `background` rect and this clicked bare artboard to meet
+    // it; its backdrop is packaged media now, so that object is gone and the
+    // property is asserted on a plate the test authors itself — which is also
+    // the property the fix actually covers. A test aimed at the plate alone
+    // would pass while any other non-selectable object stayed draggable.
     await page.goto(EDITOR);
+    await setThemePackage(page, "unselectable.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "unselectable",
+      metadata: { locale: "en" },
+      artboard: {
+        width: STARTER_WIDTH,
+        height: 941,
+        background: { ref: "palette.none" },
+        barColor: { ref: "palette.none" },
+      },
+      globals: {
+        palette: {
+          none: {
+            name: "None",
+            value: { kind: "solid" as const, color: "transparent" },
+          },
+          plate: {
+            name: "Plate",
+            value: { kind: "solid" as const, color: "#101318" },
+          },
+          ink: {
+            name: "Ink",
+            value: { kind: "solid" as const, color: "#ecf5ff" },
+          },
+        },
+        typePresets: {},
+      },
+      bindings: {},
+      scene: {
+        version: "7.4.0" as const,
+        objects: [
+          {
+            type: "Rect" as const,
+            id: "background",
+            left: 0,
+            top: 0,
+            width: STARTER_WIDTH,
+            height: 941,
+            fill: "palette.plate",
+            originX: "left" as const,
+            originY: "top" as const,
+            selectable: false,
+            evented: false,
+            vigiliaPaint: { fill: "palette.plate" },
+          },
+          {
+            type: "Rect" as const,
+            id: "draggable",
+            left: 400,
+            top: 400,
+            width: 200,
+            height: 60,
+            fill: "palette.ink",
+            originX: "left" as const,
+            originY: "top" as const,
+            vigiliaPaint: { fill: "palette.ink" },
+          },
+        ],
+      },
+    });
 
     /** Artboard coordinates to page pixels, through the live camera. */
     const at = (x: number, y: number): Promise<{ x: number; y: number }> =>
@@ -2660,9 +2743,7 @@ test.describe("Fabric editor route", () => {
         return editor?.canvas.getActiveObject()?.get("id") ?? null;
       });
 
-    // A point in bare artboard below the card rows, clear of every authored
-    // card and label. (The old 640,690 landed inside the reference composition's
-    // wide performance card, so the click would have hit a panel.)
+    // A point in bare artboard, clear of the fixture's one draggable rect.
     const spot = await at(836, 890);
 
     // The guard is geometric, not a hit test: `findTarget` skips an object with
@@ -2676,7 +2757,8 @@ test.describe("Fabric editor route", () => {
     await page.mouse.click(spot.x, spot.y);
     expect(await selected()).toBeNull();
 
-    // One authored change, so undo has entries either side of the revive.
+    // One authored change, so undo has entries either side of the revive. The
+    // drag lands on the fixture's own `draggable` rect.
     const marker = await at(432, 418);
     await page.mouse.move(marker.x, marker.y);
     await page.mouse.down();

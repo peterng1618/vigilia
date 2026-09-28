@@ -15,31 +15,47 @@ import type { FabricPalette } from "@vigilia/renderer-core";
  * the solid ones because a scene object also carries Fabric's own resolved
  * colour beside its `vigiliaPaint` reference — one authored fact, two
  * representations, not two authored facts.
+ *
+ * The artboard's own paint is `none`, because the backdrop is a packaged media
+ * layer mounted below the canvas and an opaque artboard paint would hide it; the
+ * letterbox bars outside it are `bars`. `background` survives that change as
+ * the **surface token new objects take** — see the note on its entry.
  */
 export const panel = "#081523d9";
 
+/**
+ * The tint a *frosted* panel carries, which is not the tint an opaque one does.
+ *
+ * Measured, not chosen: the frosted card's own `panel` fill is 85% opaque, and
+ * a backdrop behind it reaches the eye at 2.4/255 of contrast — 16.02 blurred
+ * backdrop times (1 − 0.851) = 2.39, which is what the browser reported. A blur
+ * applied under an almost-opaque panel is a blur of nothing. At 72% the same
+ * backdrop reads at 4.5/255 while the card stays a dark card: 56 luma against
+ * `#ecf5ff` text, measured, not eyeballed.
+ */
+export const frost = "#081523b8";
+
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
+  // Not the artboard's paint any more — that is `none`, because the backdrop is
+  // a media layer below the canvas. This is the **surface token new objects
+  // take**: `new-object-defaults.ts` picks the first of
+  // `background | bars | scene | surface | track` the palette actually has, so
+  // deleting it silently repainted every inserted panel and chart track with
+  // `bars` — pure black. The artboard and the surface are two different jobs
+  // that happened to share a token.
   background: {
     name: "Background",
     value: { kind: "solid", color: "#0c0e13" },
   },
   bars: { name: "Letterbox bars", value: { kind: "solid", color: "#000000" } },
-  scene: {
-    name: "Scene background",
-    value: {
-      kind: "gradient",
-      angle: 90,
-      stops: [
-        { offset: 0, color: "#355473" },
-        { offset: 0.42, color: "#16283d" },
-        { offset: 1, color: "#07111d" },
-      ],
-    },
-  },
   text: { name: "Text", value: { kind: "solid", color: "#ecf5ff" } },
   dim: { name: "Muted text", value: { kind: "solid", color: "#a8bed0" } },
   panel: { name: "Panel", value: { kind: "solid", color: "#081523d9" } },
+  frost: {
+    name: "Frosted panel",
+    value: { kind: "solid", color: "#081523b8" },
+  },
   panelStroke: {
     name: "Panel outline",
     value: { kind: "solid", color: "#9fc7e52b" },
@@ -92,6 +108,8 @@ export const solidOf: Readonly<Record<string, string>> = {
   text: "#ecf5ff",
   dim: "#a8bed0",
   panel: "#081523d9",
+  frost: "#081523b8",
+  background: "#0c0e13",
   rule: "#7dbde0",
   cpu: "#4da3ff",
   gpu: "#a98bff",

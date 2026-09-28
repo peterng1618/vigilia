@@ -3,7 +3,7 @@ import {
   defaultGaugeSettings,
   defaultLineSettings,
 } from "@vigilia/renderer-core";
-import type { StarterPaletteId } from "./new-fabric-theme-globals.js";
+import { frost, type StarterPaletteId } from "./new-fabric-theme-globals.js";
 import { starterIcons } from "./new-fabric-theme-icons.js";
 import {
   card,
@@ -12,7 +12,6 @@ import {
   type ObjectJson,
   path,
   type Run,
-  rect,
   text,
   valueLabel,
 } from "./new-fabric-theme-objects.js";
@@ -135,6 +134,13 @@ export function cpuCard(): ObjectJson[] {
   return [
     {
       ...card("cpu-card", 421, 187, 280, 307),
+      // Frosted, not filled. `card()`'s `panel` tint is 85% opaque, and the
+      // backdrop behind it then reached the eye at 2.4/255 — measured, against
+      // 16.02 for the same backdrop under a clear fill. The glass works; the
+      // fill was hiding it. The outline is the same, so the card still reads
+      // as a card.
+      fill: frost,
+      vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
       // Inside the band Task 1 measured flat, and a value to move: the
       // reference's frost is a mockup over a photograph, not a rendering whose
       // radius can be read back.
@@ -504,28 +510,3 @@ export function networkCard(): ObjectJson[] {
     }),
   ];
 }
-
-const twilightGradient = {
-  type: "linear",
-  coords: { x1: 0, y1: 0, x2: 0, y2: 941 },
-  colorStops: [
-    { offset: 0, color: "#355473" },
-    { offset: 0.42, color: "#16283d" },
-    { offset: 1, color: "#07111d" },
-  ],
-  offsetX: 0,
-  offsetY: 0,
-} as const;
-
-export const backgroundPlate = (): ObjectJson =>
-  rect(
-    "background",
-    0,
-    0,
-    1672,
-    941,
-    twilightGradient,
-    0,
-    { originX: "left", originY: "top", selectable: false, evented: false },
-    "scene",
-  );

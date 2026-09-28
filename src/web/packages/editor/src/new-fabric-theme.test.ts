@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,7 @@ import {
 import { StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
+import { STARTER_BACKDROP_PATH } from "./starter-backdrop.js";
 
 type ObjectJson = Readonly<Record<string, unknown>>;
 
@@ -89,13 +91,44 @@ describe("the new Fabric document", () => {
       "24-400": { value: { trioRole: "body" } },
       mono: { value: { trioRole: "mono" } },
     });
-    // The background plate is the one object that must not steal a click.
-    expect(objectById(document_, "background")).toMatchObject({
-      originX: "left",
-      originY: "top",
-      selectable: false,
-      evented: false,
+    // **The backdrop is a declared media asset, and nothing paints over it.**
+    // The gradient plate it replaced was a scene object sitting on the canvas
+    // and an opaque artboard paint behind it, so the media layer mounted below
+    // the canvas could not have been seen through either. Both are gone, and
+    // the artboard paint is now the transparent token the media needs.
+    expect(document_.artboard).toMatchObject({
+      background: { ref: "palette.none" },
+      backgroundMedia: { assetId: "starter-backdrop", fit: "cover" },
     });
+    expect(objectsOf(document_).map((object) => object["id"])).not.toContain(
+      "background",
+    );
+    // The declaration is what the player resolves and what the validator
+    // refuses a dangling `assetId` for, so its path and the bytes the editor
+    // hands `mount` are one fact, not two.
+    expect(document_.assets).toHaveLength(1);
+    expect(document_.assets?.[0]).toMatchObject({
+      kind: "image",
+      path: STARTER_BACKDROP_PATH,
+      license: { name: "Unsplash License" },
+    });
+  });
+
+  it("declares a backdrop whose bytes are really in the repository", () => {
+    // A `sha256` in the declaration is a claim about a file, and a claim that
+    // is never checked is worse than none. This is that check.
+    const declared = createNewFabricTheme().assets?.[0];
+    if (declared === undefined) throw new Error("no backdrop is declared");
+    const bytes = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "starter-backdrop.jpg"),
+    );
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+      declared.sha256,
+    );
+    // JPEG, and the first two bytes say so — the editor types the preview blob
+    // from the extension, and a mislabelled file would decode to nothing.
+    expect([...bytes.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+    expect(bytes.byteLength).toBeGreaterThan(1000);
   });
 
   it("binds only keys the vocabulary owns, and every value run resolves", () => {
@@ -463,10 +496,13 @@ describe("the new Fabric document", () => {
 
     // The panel is an ordinary card rectangle carrying the treatment the
     // inspector's glass control reads and writes — not a bespoke object kind.
+    // Its fill is `frost`, not `panel`: at `panel`'s 85 % alpha the backdrop
+    // behind this card reached the eye at 2.40/255 of contrast, measured, and
+    // a blur applied under an almost-opaque panel is a blur of nothing.
     const card = objectById(theme, "cpu-card");
     expect(card).toMatchObject({
       type: "Rect",
-      vigiliaPaint: { fill: "palette.panel", stroke: "palette.panelStroke" },
+      vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
       vigiliaGlass: { blurRadius: expect.any(Number) },
     });
     const treatment = card["vigiliaGlass"] as { blurRadius: number };
@@ -547,7 +583,7 @@ describe("the new Fabric document", () => {
     await canvas.dispose();
   });
 
-  it("revives the background gradient, the Lucide paths and every chart", async () => {
+  it("revives every card over a transparent artboard, and keeps the backdrop declared", async () => {
     const theme = createNewFabricTheme();
     const canvas = new StaticCanvas(undefined, {
       width: theme.artboard.width,
@@ -555,10 +591,16 @@ describe("the new Fabric document", () => {
     });
     await reviveThemeEnvelope(canvas, theme);
 
-    expect(
-      canvas.getObjects().find((object) => object.get("id") === "background")
-        ?.fill,
-    ).toMatchObject({ type: "linear" });
+    // The round trip is where a declaration is easiest to drop: it is
+    // `artboard` and `assets` data, not a Fabric object, so nothing on the
+    // canvas would complain if either were lost.
+    const saved = serialiseThemeEnvelope(canvas, theme);
+    expect(saved.artboard.backgroundMedia).toEqual({
+      assetId: "starter-backdrop",
+      fit: "cover",
+    });
+    expect(saved.artboard.background).toEqual({ ref: "palette.none" });
+    expect(saved.assets).toEqual(theme.assets);
 
     const chart = canvas
       .getObjects()
@@ -571,7 +613,6 @@ describe("the new Fabric document", () => {
     expect(
       canvas.getObjects().filter((object) => object instanceof VigiliaChart),
     ).toHaveLength(7);
-    const saved = serialiseThemeEnvelope(canvas, theme);
     const validation = validateFabricThemeEnvelope(saved);
     if (!validation.ok)
       throw new Error(

@@ -1157,6 +1157,113 @@ test.describe("a display fed by the real host", () => {
       .toMatch(/^\d{2}:\d{2}:\d{2}$/);
   });
 
+  test("the starter's frosted card shows its packaged photograph on the display, untainted", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
+    test.slow();
+
+    // **The whole route, end to end.** The editor packages the photograph, the
+    // host stores it and answers `/api/themes/<id>/assets/<path>`, and the
+    // player decodes that response. This is the mount where a cross-origin
+    // backdrop would have bitten: the display is the surface that captures
+    // thumbnails and that every pixel-reading guard measures.
+    await saveStarterThroughTheHost(page);
+    // **The artboard's own size, which is the reference read.** The host
+    // project's viewport is 1280x720, and at that size the same band reads
+    // 0.70 rather than 1.38 — the display's glass sampler loses contrast as
+    // the artboard is scaled down (see the editor-side probe, which reads
+    // 4.46 at its own 0.37 camera scale). 1672x941 is where the starter is
+    // designed to be read, and where the registered capture is taken.
+    await page.setViewportSize({ width: 1672, height: 941 });
+    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
+    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForFunction(
+      () => {
+        const image = document.querySelector<HTMLImageElement>(
+          "[data-vigilia-background-media] img",
+        );
+        return (
+          image !== null &&
+          image.complete &&
+          image.naturalWidth > 0 &&
+          image.naturalHeight > 0
+        );
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    // The photograph came off the host's own route, at the size it declared.
+    const delivered = await page.evaluate(
+      () =>
+        document
+          .querySelector<HTMLImageElement>(
+            "[data-vigilia-background-media] img",
+          )
+          ?.getAttribute("src") ?? "",
+    );
+    expect(delivered).toBe(
+      "/api/themes/vigilia-demo-dashboard/assets/starter-backdrop.jpg",
+    );
+
+    // The card's own contents are hidden while the band is read: `cpu-card` has
+    // no empty region, and a band crossing a glyph measures the glyph —
+    // identically with and without the blur, which is what the first version
+    // of the editor-side probe reported (peak 27.82 -> 27.82).
+    const bands = await starterCardBands(page, "cpu-card", {
+      left: 70,
+      top: 70,
+      width: 140,
+      height: 167,
+    });
+    const { blurred, sharp, clearBlurred, clearSharp } = bands;
+
+    // Measured on this machine, 2026-09-28, at 1672x941. The gradient this
+    // replaced has a mean luma step between adjacent columns of **0.00** at
+    // every scale, so a panel over it could not read above zero however wide
+    // the radius was; 1.0 is the floor that separates "a photograph is behind
+    // this" from "an even fill", with 38 % of margin on the measured 1.38.
+    // The editor's own reading of the same band is 4.46 — the two mounts do
+    // not agree, and `docs/evidence` names that as an open question rather
+    // than a threshold this test pretends to have settled.
+    expect(blurred.rows, "the band covers rows").toBeGreaterThan(20);
+    expect(
+      blurred.contrast,
+      "the display's frosted panel carries backdrop structure",
+    ).toBeGreaterThan(1);
+    // **And it is the glass that softened it.** The blur-off control is the
+    // same code path with `blurRadius: 0`, so the panel still composites and
+    // only the radius differs: 0.13 -> 0.04 is a 3x drop in step.
+    expect(
+      sharp.peak / blurred.peak,
+      "the sampled backdrop is genuinely blurred on the display too",
+    ).toBeGreaterThan(1.8);
+    // Softened, not flattened: 4.75 -> 4.75 blurred over a clear fill keeps
+    // essentially all of its range.
+    expect(
+      clearBlurred.contrast,
+      "the blur softens the backdrop rather than erasing it",
+    ).toBeGreaterThan(clearSharp.contrast * 0.85);
+
+    // **Taint.** The bytes are same-origin, so the display's canvas is not
+    // tainted, and the capture path that reads it back works. A CDN URL would
+    // have rendered the same picture and failed exactly here.
+    const taint = await page.evaluate(() => {
+      const element = document.querySelector<HTMLCanvasElement>(
+        'canvas[data-vigilia="artboard"]',
+      );
+      if (element === null) throw new Error("the display canvas is missing");
+      try {
+        element.getContext("2d")!.getImageData(0, 0, 1, 1);
+        return { read: "pixels", dataUrl: element.toDataURL().length };
+      } catch (error) {
+        return { read: `threw: ${String(error)}`, dataUrl: 0 };
+      }
+    });
+    expect(taint.read, "the display canvas is not tainted").toBe("pixels");
+    expect(taint.dataUrl, "and it encodes").toBeGreaterThan(10_000);
+  });
+
   test("plays the reference composition on the real host, for visual review", async ({
     page,
   }, testInfo) => {
@@ -1458,6 +1565,159 @@ function glyphCoverage(
  * blur off, so a reading of "soft" is a reading of the blur and not of a dark
  * panel.
  */
+/**
+ * A starter card read twice, with its own contents taken out of the picture.
+ *
+ * `panelBand` above addresses a panel through `calcTransformMatrix` and
+ * ±width/2, which is a **centre** origin. Every starter card is authored
+ * top-left (`rect()` in `new-fabric-theme-objects.ts`), so that arithmetic
+ * would read a region half a card away. `getBoundingRect` carries the origin
+ * with it, which is why this is a second helper rather than a call to the
+ * first.
+ *
+ * The contents are hidden for both readings and restored after, and both
+ * radii are read here in one call so the second cannot inherit the first's —
+ * which is how the editor-side probe's first version reported the same number
+ * twice. The control is the blur, not the card: `blurRadius: 0` leaves the
+ * treatment present, so the panel still composites and only the radius differs.
+ */
+function starterCardBands(
+  page: Page,
+  id: string,
+  inset: { left: number; top: number; width: number; height: number },
+): Promise<{
+  blurred: { peak: number; contrast: number; rows: number };
+  sharp: { peak: number; contrast: number; rows: number };
+  clearBlurred: { peak: number; contrast: number; rows: number };
+  clearSharp: { peak: number; contrast: number; rows: number };
+}> {
+  return page.evaluate(
+    ([objectId, box]) => {
+      type Obj = {
+        get(n: string): unknown;
+        set(n: string, v: unknown): void;
+        getObjects?(): Obj[];
+        getBoundingRect(): {
+          left: number;
+          top: number;
+          width: number;
+          height: number;
+        };
+      };
+      const canvas = (
+        window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: {
+                getObjects(): Obj[];
+                viewportTransform: number[];
+                lowerCanvasEl: HTMLCanvasElement;
+                renderAll(): void;
+                getRetinaScaling(): number;
+              };
+            };
+          };
+        }
+      ).vigilia?.handle.canvas;
+      if (canvas === undefined) throw new Error("the player has not mounted");
+      const find = (objects: Obj[]): Obj | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === objectId) return candidate;
+          const child = find(candidate.getObjects?.() ?? []);
+          if (child !== undefined) return child;
+        }
+        return undefined;
+      };
+      const objects = canvas.getObjects();
+      const card = find(objects);
+      if (card === undefined) throw new Error(`no object ${objectId}`);
+      const cardBox = card.getBoundingRect();
+      const inside = (object: Obj): boolean => {
+        const rect = object.getBoundingRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        return (
+          cx > cardBox.left &&
+          cx < cardBox.left + cardBox.width &&
+          cy > cardBox.top &&
+          cy < cardBox.top + cardBox.height
+        );
+      };
+      const restore = objects
+        .filter((object) => object !== card && inside(object))
+        .map((object) => [object, object.get("visible")] as const);
+      for (const [object] of restore) object.set("visible", false);
+
+      const vp = canvas.viewportTransform;
+      const retina = canvas.getRetinaScaling();
+      const toDevice = (x: number, y: number): readonly [number, number] => [
+        (x * vp[0]! + y * vp[2]! + vp[4]!) * retina,
+        (x * vp[1]! + y * vp[3]! + vp[5]!) * retina,
+      ];
+      const [x0, y0] = toDevice(cardBox.left + box.left, cardBox.top + box.top);
+      const [x1, y1] = toDevice(
+        cardBox.left + box.left + box.width,
+        cardBox.top + box.top + box.height,
+      );
+      const left = Math.max(0, Math.round(x0));
+      const top = Math.max(0, Math.round(y0));
+      const width = Math.max(
+        1,
+        Math.min(canvas.lowerCanvasEl.width, Math.round(x1)) - left,
+      );
+      const height = Math.max(
+        1,
+        Math.min(canvas.lowerCanvasEl.height, Math.round(y1)) - top,
+      );
+      const measure = (): {
+        peak: number;
+        contrast: number;
+        rows: number;
+      } => {
+        canvas.renderAll();
+        const data = canvas.lowerCanvasEl
+          .getContext("2d")!
+          .getImageData(left, top, width, height).data;
+        const means = new Array<number>(width).fill(0);
+        for (let y = 0; y < height; y += 1)
+          for (let x = 0; x < width; x += 1) {
+            const i = (y * width + x) * 4;
+            means[x]! +=
+              0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+          }
+        for (let x = 0; x < width; x += 1) means[x]! /= height;
+        let peak = 0;
+        for (let x = 1; x < width; x += 1)
+          peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
+        return {
+          peak: Math.round(peak * 100) / 100,
+          contrast:
+            Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
+          rows: height,
+        };
+      };
+
+      const authored = card.get("vigiliaGlass") as { blurRadius: number };
+      const authoredFill = card.get("fill") as string;
+      card.set("vigiliaGlass", authored);
+      const blurred = measure();
+      card.set("vigiliaGlass", { blurRadius: 0 });
+      const sharp = measure();
+      card.set("vigiliaGlass", authored);
+      card.set("fill", "rgba(8, 21, 35, 0)");
+      const clearBlurred = measure();
+      card.set("vigiliaGlass", { blurRadius: 0 });
+      const clearSharp = measure();
+      card.set("fill", authoredFill);
+      card.set("vigiliaGlass", authored);
+      for (const [object, visible] of restore) object.set("visible", visible);
+      canvas.renderAll();
+      return { blurred, sharp, clearBlurred, clearSharp };
+    },
+    [id, inset] as const,
+  );
+}
+
 function panelBand(
   page: Page,
   id: string,
