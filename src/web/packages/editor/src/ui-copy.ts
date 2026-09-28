@@ -189,6 +189,14 @@ export const uiCopy = {
     line: "Line",
     path: "Path",
   },
+  /**
+   * Artboard preset labels, shared by the inspector's controls and the
+   * new-document chooser. A ratio labels itself; an orientation and a
+   * resolution are words of their own, and `2K` is not the `2k` it is stored
+   * as.
+   */
+  artboardOrientations: { landscape: "Landscape", portrait: "Portrait" },
+  artboardResolutions: { "1080p": "1080p", "2k": "2K", "4k": "4K" },
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
@@ -247,6 +255,15 @@ export const uiCopy = {
     barColour: "Bar colour",
     family: "Family",
     size: "Size",
+    /** The three controls that choose an artboard size. They choose it
+        together; the width and height boxes stay because an author who wants a
+        size no preset names still types one. */
+    ratio: "Ratio",
+    orientation: "Orientation",
+    resolution: "Resolution",
+    /** Shown by all three when the document holds a size no preset names — an
+        author's own, or a hand-edited theme's. A reading, not a choice. */
+    customSize: "Custom",
     weight: "Weight",
     lineHeight: "Line height",
     letterSpacing: "Letter spacing",

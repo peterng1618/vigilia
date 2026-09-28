@@ -7,6 +7,14 @@ import {
   MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
+import {
+  ARTBOARD_ORIENTATIONS,
+  ARTBOARD_RATIOS,
+  ARTBOARD_RESOLUTIONS,
+  artboardPresetFor,
+  artboardSize,
+  DEFAULT_ARTBOARD_PRESET,
+} from "./artboard-presets.js";
 import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
 import { uiCopy } from "./ui-copy.js";
@@ -132,8 +140,46 @@ export function createArtboardPanel(
       submitArtboard(artboardWidth, artboardHeight);
     },
   });
+  /**
+   * The three controls choose a size together, so a change to any of them
+   * writes a whole derived size through `artboardSize`. The W and H boxes above
+   * stay, because an author who wants an exact size no preset names still
+   * types one — and then these three read that size as Custom rather than
+   * claiming a preset the document is not at.
+   */
+  const ratio = selectInput(uiCopy.panels.ratio, "vigiliaArtboardRatio");
+  const orientation = selectInput(
+    uiCopy.panels.orientation,
+    "vigiliaArtboardOrientation",
+  );
+  const resolution = selectInput(
+    uiCopy.panels.resolution,
+    "vigiliaArtboardResolution",
+  );
+  for (const entry of ARTBOARD_RATIOS) {
+    ratio.select.append(new Option(entry.id, entry.id));
+  }
+  for (const id of ARTBOARD_ORIENTATIONS) {
+    orientation.select.append(new Option(uiCopy.artboardOrientations[id], id));
+  }
+  for (const entry of ARTBOARD_RESOLUTIONS) {
+    resolution.select.append(
+      new Option(uiCopy.artboardResolutions[entry.id], entry.id),
+    );
+  }
+  // Disabled, because Custom is a reading of the document and not a size an
+  // author can ask for: selectable, it would either do nothing or strand them
+  // on a value that derives nothing.
+  for (const select of [ratio.select, orientation.select, resolution.select]) {
+    const custom = new Option(uiCopy.panels.customSize, "");
+    custom.disabled = true;
+    select.append(custom);
+  }
   const rows = [
     size.row,
+    ratio.row,
+    orientation.row,
+    resolution.row,
     fit.row,
     background.row,
     bars.row,
@@ -152,6 +198,9 @@ export function createArtboardPanel(
     options.onMetadataChange?.(next);
   };
   fit.select.addEventListener("change", submitFromSelects);
+  ratio.select.addEventListener("change", submitPreset);
+  orientation.select.addEventListener("change", submitPreset);
+  resolution.select.addEventListener("change", submitPreset);
   background.select.addEventListener("change", submitFromSelects);
   bars.select.addEventListener("change", submitFromSelects);
   media.select.addEventListener("change", submitFromSelects);
@@ -185,6 +234,33 @@ export function createArtboardPanel(
     submitArtboard(artboardWidth, artboardHeight);
   }
 
+  /** A Custom control is one the document's own size left unset, and choosing
+      any of the three means choosing all three — so the ones left Custom take
+      the default the chooser opens on rather than leaving a size the controls
+      then deny. */
+  function submitPreset(): void {
+    const chosen = {
+      ratio: presetId(ratio.select, DEFAULT_ARTBOARD_PRESET.ratio),
+      resolution: presetId(
+        resolution.select,
+        DEFAULT_ARTBOARD_PRESET.resolution,
+      ),
+      orientation: presetId(
+        orientation.select,
+        DEFAULT_ARTBOARD_PRESET.orientation,
+      ),
+    };
+    ratio.select.value = chosen.ratio;
+    resolution.select.value = chosen.resolution;
+    orientation.select.value = chosen.orientation;
+    const derived = artboardSize(
+      chosen.ratio,
+      chosen.resolution,
+      chosen.orientation,
+    );
+    submitArtboard(derived.width, derived.height);
+  }
+
   const render = (
     artboard: Artboard,
     metadata: ThemeMetadata | undefined = currentMetadata,
@@ -194,6 +270,10 @@ export function createArtboardPanel(
     size.setValues(artboard.width, artboard.height);
     artboardWidth = artboard.width;
     artboardHeight = artboard.height;
+    const matching = artboardPresetFor(artboard);
+    ratio.select.value = matching?.ratio ?? "";
+    resolution.select.value = matching?.resolution ?? "";
+    orientation.select.value = matching?.orientation ?? "";
     fit.select.value = artboard.fitMode ?? "contain";
     background.select.value = paletteReference(artboard.background);
     bars.select.value = paletteReference(artboard.barColor);
@@ -236,6 +316,13 @@ function fieldRow(field: {
 }
 
 let selectSeq = 0;
+
+/** A preset id read back from one of the three controls, or the default when
+    that control is showing the Custom reading. The options are this module's
+    own, so the value is an id it wrote or the empty reading. */
+function presetId<T extends string>(select: HTMLSelectElement, fallback: T): T {
+  return (select.value === "" ? fallback : select.value) as T;
+}
 
 function selectInput(
   text: string,

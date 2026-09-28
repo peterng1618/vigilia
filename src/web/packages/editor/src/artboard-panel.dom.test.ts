@@ -243,3 +243,135 @@ describe("artboard panel", () => {
     expect(language.value).toBe("cy");
   });
 });
+
+/** The preset controls, read the way the panel itself reads them. */
+function presets(root: HTMLElement): {
+  ratio: HTMLSelectElement;
+  orientation: HTMLSelectElement;
+  resolution: HTMLSelectElement;
+} {
+  return {
+    ratio: root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-artboard-ratio]",
+    )!,
+    orientation: root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-artboard-orientation]",
+    )!,
+    resolution: root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-artboard-resolution]",
+    )!,
+  };
+}
+
+describe("artboard presets in the panel", () => {
+  it("shows the preset the document's size came from", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1080, height: 2340, fitMode: "cover" });
+
+    expect(presets(panel.root)).toMatchObject({
+      ratio: expect.objectContaining({ value: "19.5:9" }),
+      orientation: expect.objectContaining({ value: "portrait" }),
+      resolution: expect.objectContaining({ value: "1080p" }),
+    });
+  });
+
+  it("derives the artboard size from a change to any of the three", () => {
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, change);
+    panel.render({ width: 1920, height: 1080, fitMode: "cover" });
+    const { ratio, orientation, resolution } = presets(panel.root);
+
+    resolution.value = "4k";
+    resolution.dispatchEvent(new Event("change"));
+    expect(change).toHaveBeenLastCalledWith({
+      width: 3840,
+      height: 2160,
+      fitMode: "cover",
+    });
+
+    orientation.value = "portrait";
+    orientation.dispatchEvent(new Event("change"));
+    expect(change).toHaveBeenLastCalledWith({
+      width: 2160,
+      height: 3840,
+      fitMode: "cover",
+    });
+
+    ratio.value = "4:3";
+    ratio.dispatchEvent(new Event("change"));
+    // Still portrait from the step above, so the ratio's long edge is now the
+    // short one: the three controls are read together, not one at a time.
+    expect(change).toHaveBeenLastCalledWith({
+      width: 2160,
+      height: 2880,
+      fitMode: "cover",
+    });
+  });
+
+  it("names a custom reading rather than a preset the document is not at", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1000, height: 700 });
+
+    for (const select of Object.values(presets(panel.root)))
+      expect(select.value).toBe("");
+  });
+
+  it("keeps the free size fields for a size no preset names", () => {
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, change);
+    panel.render({ width: 1000, height: 700 });
+
+    const width = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-artboard-width]",
+    )!;
+    width.value = "1600";
+    width.dispatchEvent(new Event("change"));
+
+    expect(change).toHaveBeenLastCalledWith({
+      width: 1600,
+      height: 700,
+      fitMode: "contain",
+    });
+  });
+
+  it("derives a whole preset from a custom size without leaving a control unset", () => {
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, change);
+    panel.render({ width: 1000, height: 700, fitMode: "cover" });
+    const { ratio, orientation, resolution } = presets(panel.root);
+
+    // Choosing one of the three means choosing all three — the other two were
+    // Custom, and leaving them so would show a size the controls deny.
+    ratio.value = "4:3";
+    ratio.dispatchEvent(new Event("change"));
+
+    expect(change).toHaveBeenLastCalledWith({
+      width: 1440,
+      height: 1080,
+      fitMode: "cover",
+    });
+    expect({
+      ratio: ratio.value,
+      orientation: orientation.value,
+      resolution: resolution.value,
+    }).toEqual({
+      ratio: "4:3",
+      orientation: "landscape",
+      resolution: "1080p",
+    });
+  });
+
+  it("leaves the custom reading unselectable", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1000, height: 700 });
+
+    // A reading, not a choice: an author cannot ask for a size that is not a
+    // preset, and cannot get stuck on one they chose by accident.
+    for (const select of Object.values(presets(panel.root))) {
+      const custom = Array.from(select.options).find(
+        (option) => option.value === "",
+      )!;
+      expect(custom.disabled).toBe(true);
+    }
+  });
+});

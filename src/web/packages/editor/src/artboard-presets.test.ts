@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARTBOARD_ORIENTATIONS,
   ARTBOARD_RATIOS,
   ARTBOARD_RESOLUTIONS,
+  artboardPresetFor,
   type ArtboardOrientation,
   type ArtboardRatioId,
   type ArtboardResolutionId,
@@ -82,6 +84,7 @@ describe("artboard presets", () => {
     expect(ARTBOARD_RESOLUTIONS.map((entry) => entry.id)).toEqual(
       RESOLUTION_IDS,
     );
+    expect(ARTBOARD_ORIENTATIONS).toEqual(ORIENTATIONS);
   });
 
   it("names a resolution by its short edge, not its long one", () => {
@@ -98,5 +101,40 @@ describe("artboard presets", () => {
     expect(() =>
       artboardSize("16:9", "8k" as ArtboardResolutionId, "landscape"),
     ).toThrow(RangeError);
+  });
+});
+
+describe("matching a document's size back to its preset", () => {
+  it("names the preset a derived size came from", () => {
+    expect(artboardPresetFor({ width: 1920, height: 1080 })).toEqual({
+      ratio: "16:9",
+      resolution: "1080p",
+      orientation: "landscape",
+    });
+    expect(artboardPresetFor({ width: 1080, height: 2340 })).toEqual({
+      ratio: "19.5:9",
+      resolution: "1080p",
+      orientation: "portrait",
+    });
+  });
+
+  it("has no answer for a size the author typed", () => {
+    expect(artboardPresetFor({ width: 1000, height: 700 })).toBeUndefined();
+    expect(artboardPresetFor({ width: 1920, height: 1079 })).toBeUndefined();
+  });
+
+  it("derives back to the very size it matched", () => {
+    for (const ratio of RATIO_IDS) {
+      for (const resolution of RESOLUTION_IDS) {
+        for (const orientation of ORIENTATIONS) {
+          const size = artboardSize(ratio, resolution, orientation);
+          expect(artboardPresetFor(size)).toEqual({
+            ratio,
+            resolution,
+            orientation,
+          });
+        }
+      }
+    }
   });
 });

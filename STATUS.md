@@ -11,7 +11,7 @@ hand is what finds the authoring control that is missing.
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md), executing in subagent mode. Phase 0 is three product changes; **Task 1 (artboard presets) is dispatched** and running against base `2ec936c`.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md), executing in subagent mode. Phase 0 is three product changes; **Task 1 (artboard presets) has landed** — the module and its unit test, then the inspector wiring.
 - **The rule that governs the whole pass:** fix what you find using what the repo already decides — owner, idiom, copy, existing control pattern — and move past it. A property not exposed, a misaligned layout, something hard to read, a non-Lucide icon: each is fixed, not noted. Only a genuine product unknown with no precedent is recorded and passed over. **Nothing waits on a human.**
 - **Product decisions, recorded in the plan:** minimal blank palette; starter stays a library template; artboard chooser over 16:9, 19.5:9 and 4:3, both orientations, at 1080p/2K/4K named on the **short edge**, driving the inspector's artboard controls too. The starter keeps its own 1672 × 941 — 16:9 is its *ratio*, and the presets are a separate list.
 - **[The 2026-09-24 author-journey plan](docs/superpowers/plans/2026-09-24-author-journey.md) is not dispatchable and is not the active plan.** Tasks 1–5 shipped, Task 2 mis-owns alignment/wrap/overflow, and the reference-theme surface is absent from it.
@@ -19,9 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **Four `Panel` selectors repaired for the shape group.** F1.9's shape group made the Add pane's "Panel" button a "Rectangle"; the surviving `getByRole` calls in `reference-theme.spec.ts` (3) and `host-player.spec.ts` (1) now name it, and match exactly one button in a real browser.
-- **A fifth, unlisted break was found and fixed:** the same file's "Line" *chart* click became a strict-mode violation once the "Line" *shape* joined it. Scoped to the panel's own buttons, since the chart families sit beside the shape group rather than inside it — the click produces a `vigiliachart`, verified live.
-- **The three remaining `name: "Panel"` hits are palette-token definitions**, not selectors, and were left alone; `snapping.spec.ts` never had one.
+- **The artboard's three preset controls now drive the size.** Ratio, Orientation and Resolution sit under the W/H row, and a change to any one writes a whole derived size through `artboardSize`; the free fields stay for an author who wants an exact size.
+- **A size no preset names reads "Custom" on all three** rather than claiming a preset the document is not at. The option is disabled — a reading, not a choice — and choosing one control from a Custom size fills the other two, so the controls can never deny the size they just set.
+- **The preset list is one owner.** `artboardPresetFor` answers "which preset is this document?" so the panel holds no size table of its own, and the orientation and resolution labels live in `ui-copy.ts` beside the ratio ids that already say themselves.
+- **Verified:** 1946 unit tests, typecheck, lint, format, and 6 artboard editor e2e; the artboard capture was regenerated and inspected. Red-without-fix took the 9 portrait assertions, then the custom-size derivation, down.
 
 ## Next
 
