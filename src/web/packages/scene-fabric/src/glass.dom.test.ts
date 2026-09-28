@@ -336,6 +336,30 @@ describe("glass composition", () => {
     expect(zero.draws[0]?.filter).toBe("none");
   });
 
+  it("clips the backdrop over the panel where a scaled viewport puts it", () => {
+    // **The matrix has to compose in the object's order, not the transpose of
+    // it.** The two agree while the viewport is an unscaled identity, which is
+    // what every other case in this file renders at, so a transposed product
+    // passed all of them: at zoom 2 this panel's centre belongs at device
+    // (281, 281) and the transposed derivation puts it at (141, 141), drawing
+    // the blur beside the panel rather than over it. The region's own geometry
+    // was already right, which is how the two disagreed.
+    const s = stage({ size: 600 });
+    s.canvas.add(panel({ left: 120, top: 120, width: 40, height: 40 }));
+    s.canvas.setViewportTransform([2, 0, 0, 2, 0, 0]);
+    s.canvas.renderAll();
+
+    expect(s.clips).toHaveLength(6);
+    const [a, , , d, e, f] = s.clips;
+    // The panel's own box is 40x40 at scene (120, 120); its centre is
+    // (140.5, 140.5), because Fabric's own matrix carries half the default 1px
+    // stroke. Twice that, through a 2x viewport, is 281.
+    expect(a).toBeCloseTo(2, 6);
+    expect(d).toBeCloseTo(2, 6);
+    expect(e).toBeCloseTo(281, 6);
+    expect(f).toBeCloseTo(281, 6);
+  });
+
   it("reads the authored radius again after a control changes it in place", () => {
     const s = stage({});
     const glassed = panel({ vigiliaGlass: { blurRadius: 8 } });

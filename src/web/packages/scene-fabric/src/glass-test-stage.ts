@@ -43,6 +43,12 @@ export interface Stage {
   readonly glass: GlassHandle;
   regions: DeviceRect[];
   paints: PaintCall[];
+  /** The transform in force at each `ctx.clip()`, flattened as
+   *  `a, b, c, d, e, f`. This is where a panel's own box is mapped onto the
+   *  surface, and `node-canvas` honours it exactly as a browser does — so a
+   *  mis-composed panel transform is observable here even though the blur it
+   *  carries is not. */
+  clips: number[];
   /** Writes to `ctx.filter` of the probe's own value, which is how many times
    *  the capability was actually asked. */
   filterProbes: number;
@@ -100,6 +106,7 @@ export function stage(options: {
   const canvas = new StaticCanvas(undefined, { width: size, height: size });
   const context = canvas.getContext() as CanvasRenderingContext2D;
   const draws: Draw[] = [];
+  const clips: number[] = [];
   // `node-canvas` has no `ctx.filter` at all: it is an ordinary data property
   // that starts undefined and echoes whatever is written. The seam reproduces
   // that exactly, and counts the probe by the one value no panel ever asks for.
@@ -133,6 +140,23 @@ export function stage(options: {
       });
     return (original as (...a: unknown[]) => unknown)(...args);
   }) as typeof original;
+  // The composite clips under the panel's own matrix, so recording the
+  // transform at each clip records where the panel decided it is.
+  const originalClip = context.clip.bind(context);
+  (context as unknown as { clip: typeof originalClip }).clip = ((
+    ...args: unknown[]
+  ) => {
+    const transform = context.getTransform();
+    clips.push(
+      transform.a,
+      transform.b,
+      transform.c,
+      transform.d,
+      transform.e,
+      transform.f,
+    );
+    return (originalClip as (...a: unknown[]) => unknown)(...args);
+  }) as typeof originalClip;
 
   if (options.texture !== false)
     for (const object of bars(size, size, 8, "#ffffff", "#000000"))
@@ -167,6 +191,7 @@ export function stage(options: {
     glass,
     regions,
     paints,
+    clips,
     get filterProbes() {
       return filterProbes;
     },

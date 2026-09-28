@@ -3,7 +3,11 @@ import { canvasProp } from "./canvas-probe.js";
 import { captureVisualReview } from "./editor-canvas.js";
 import {
   CLOCK_NODE_ID,
+  GROUPED_GROUP_ANGLE,
+  GROUPED_GROUP_ID,
+  GROUPED_PANEL_IDS,
   HOST_ENGLISH_THEME_ID,
+  HOST_GROUPED_THEME_ID,
   HOST_JAPANESE_THEME_ID,
   HOST_MISSING_THEME_ID,
   HOST_PORT,
@@ -1211,3 +1215,635 @@ test.describe("a display fed by the real host", () => {
     await captureVisualReview(page, testInfo, "player-reference");
   });
 });
+
+/* ------------------------------------------------------------------------ *
+ * The player's own acceptance surface: a second viewport, a second device
+ * pixel ratio, and glass under a group, a rotation and an intersection.
+ *
+ * These live here and not in `reference-theme.spec.ts` because this file is
+ * the one the config pins to `workers: 1` under the `desktop-host` project:
+ * every test below boots a real host whose stores are a directory on disk, and
+ * a spec outside that project would run beside `host-settings.spec.ts` in
+ * parallel. The editor's half of the same clause stays where it is.
+ * ------------------------------------------------------------------------ */
+
+/** The starter's own artboard, which both mounts below letterbox into a
+ *  viewport that is not its size. */
+const STARTER = { width: 1672, height: 941 } as const;
+
+/** `contain` fit of the starter into a viewport, to the pixel. */
+function expectContainFit(
+  actual: { scale: number; offsetX: number; offsetY: number },
+  viewport: { width: number; height: number },
+): void {
+  const scale = Math.min(
+    viewport.width / STARTER.width,
+    viewport.height / STARTER.height,
+  );
+  expect(actual.scale, "the artboard is fitted, not drawn at 1:1").toBeCloseTo(
+    scale,
+    2,
+  );
+  // A 1:1 view would carry no offset at all; these are the letterbox bars.
+  expect(
+    Math.abs(actual.offsetX) + Math.abs(actual.offsetY),
+    "the fitted view letterboxes on at least one axis",
+  ).toBeGreaterThan(0.5);
+}
+
+/** The player's own `StaticCanvas`, its fit and its backing store. */
+function playerSurface(page: Page): Promise<{
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  cssWidth: number;
+  backingWidth: number;
+  dpr: number;
+}> {
+  return page.evaluate(() => {
+    const canvas = (
+      window as unknown as {
+        vigilia?: {
+          handle: {
+            canvas: {
+              viewportTransform: number[];
+              lowerCanvasEl: HTMLCanvasElement;
+              renderAll(): void;
+            };
+          };
+        };
+      }
+    ).vigilia?.handle.canvas;
+    if (canvas === undefined) throw new Error("the player has not mounted");
+    canvas.renderAll();
+    const vp = canvas.viewportTransform;
+    return {
+      scale: vp[0] ?? 0,
+      offsetX: vp[4] ?? 0,
+      offsetY: vp[5] ?? 0,
+      cssWidth: canvas.lowerCanvasEl.getBoundingClientRect().width,
+      backingWidth: canvas.lowerCanvasEl.width,
+      dpr: window.devicePixelRatio,
+    };
+  });
+}
+
+/** A text object's own glyph coverage, with the box minus the text as the
+ *  control. A count of "non-background pixels" alone would pass on any lit
+ *  card, so the difference is what the glyphs contributed. */
+function glyphCoverage(
+  page: Page,
+  id: string,
+): Promise<{ covered: number; area: number; width: number; height: number }> {
+  return page.evaluate((objectId) => {
+    type Obj = {
+      get(n: string): unknown;
+      calcTransformMatrix(): number[];
+      visible: boolean;
+    };
+    const canvas = (
+      window as unknown as {
+        vigilia?: {
+          handle: {
+            canvas: {
+              getObjects(): Obj[];
+              viewportTransform: number[];
+              lowerCanvasEl: HTMLCanvasElement;
+              renderAll(): void;
+              getRetinaScaling(): number;
+            };
+          };
+        };
+      }
+    ).vigilia?.handle.canvas;
+    if (canvas === undefined) throw new Error("the player has not mounted");
+    const object = canvas
+      .getObjects()
+      .find((candidate) => candidate.get("id") === objectId);
+    if (object === undefined) throw new Error(`no object ${objectId}`);
+    const vp = canvas.viewportTransform;
+    const retina = canvas.getRetinaScaling();
+    const m = object.calcTransformMatrix();
+    // The object's own local units to the painted surface, so the band is the
+    // glyph's own box rather than an artboard rectangle that happens to be near
+    // it — the same composition `glass.ts` samples through.
+    const toDevice = (x: number, y: number): readonly [number, number] => [
+      (m[0]! * x + m[2]! * y + m[4]!) * (vp[0]! * retina) +
+        (m[1]! * x + m[3]! * y + m[5]!) * (vp[2]! * retina) +
+        vp[4]! * retina,
+      (m[0]! * x + m[2]! * y + m[4]!) * (vp[1]! * retina) +
+        (m[1]! * x + m[3]! * y + m[5]!) * (vp[3]! * retina) +
+        vp[5]! * retina,
+    ];
+    const halfWidth = Number(
+      (object as unknown as Record<string, unknown>)["width"],
+    );
+    const halfHeight = Number(
+      (object as unknown as Record<string, unknown>)["height"],
+    );
+    const corners = [
+      [-halfWidth / 2, -halfHeight / 2],
+      [halfWidth / 2, -halfHeight / 2],
+      [halfWidth / 2, halfHeight / 2],
+      [-halfWidth / 2, halfHeight / 2],
+    ].map(([x, y]) => toDevice(x!, y!));
+    const xs = corners.map((point) => point[0]);
+    const ys = corners.map((point) => point[1]);
+    const left = Math.max(0, Math.round(Math.min(...xs)));
+    const top = Math.max(0, Math.round(Math.min(...ys)));
+    const width = Math.max(
+      1,
+      Math.min(canvas.lowerCanvasEl.width, Math.round(Math.max(...xs))) - left,
+    );
+    const height = Math.max(
+      1,
+      Math.min(canvas.lowerCanvasEl.height, Math.round(Math.max(...ys))) - top,
+    );
+    const context = canvas.lowerCanvasEl.getContext("2d")!;
+    /** Pixels that are not the box's own fill. */
+    const inked = (): number => {
+      const data = context.getImageData(left, top, width, height).data;
+      const luma = (i: number): number =>
+        0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+      const every: number[] = [];
+      for (let i = 0; i < data.length; i += 4) every.push(luma(i));
+      const sorted = [...every].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+      let ink = 0;
+      for (const value of every) if (Math.abs(value - median) > 40) ink += 1;
+      return ink;
+    };
+    canvas.renderAll();
+    const withText = inked();
+    const was = object.visible;
+    object.visible = false;
+    canvas.renderAll();
+    const without = inked();
+    object.visible = was;
+    canvas.renderAll();
+    return { covered: withText - without, area: width * height, width, height };
+  }, id);
+}
+
+/**
+ * Band statistics inside a panel, on the player's own canvas.
+ *
+ * The band is the object's **own rotated box**, inset to stay inside a turned
+ * or grouped panel: the editor's helper offsets from the axis-aligned bounding
+ * rect, which for a 30° panel is mostly panel-free space. The blur radius can
+ * be overridden in place, which is the control — the same code path with the
+ * blur off, so a reading of "soft" is a reading of the blur and not of a dark
+ * panel.
+ */
+function panelBand(
+  page: Page,
+  id: string,
+  blurRadius?: number,
+): Promise<{ peak: number; contrast: number; width: number; height: number }> {
+  return page.evaluate(
+    ([objectId, radius]) => {
+      type Obj = {
+        get(n: string): unknown;
+        set(n: string, v: unknown): void;
+        getObjects?(): Obj[];
+        calcTransformMatrix(): number[];
+      };
+      const canvas = (
+        window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: {
+                getObjects(): Obj[];
+                viewportTransform: number[];
+                lowerCanvasEl: HTMLCanvasElement;
+                renderAll(): void;
+                getRetinaScaling(): number;
+              };
+            };
+          };
+        }
+      ).vigilia?.handle.canvas;
+      if (canvas === undefined) throw new Error("the player has not mounted");
+      // Groups walked: the panel this measures may be a group child, which is
+      // the whole point of the grouped case.
+      const find = (objects: Obj[]): Obj | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === objectId) return candidate;
+          const child = find(candidate.getObjects?.() ?? []);
+          if (child !== undefined) return child;
+        }
+        return undefined;
+      };
+      const object = find(canvas.getObjects());
+      if (object === undefined) throw new Error(`no object ${objectId}`);
+      if (typeof radius === "number")
+        object.set("vigiliaGlass", { blurRadius: radius });
+      const vp = canvas.viewportTransform;
+      const retina = canvas.getRetinaScaling();
+      // Local (centre-origin) -> scene -> device, in that order, which is the
+      // composition `sampleRegion` uses for the region it copies. Folding the
+      // viewport into the local step instead puts the band at a different
+      // address from the one the panel sampled, and the measurement then reads
+      // empty canvas. `calcTransformMatrix` already carries group ancestry, so
+      // a turned or grouped child needs no special case here.
+      const m = object.calcTransformMatrix();
+      const toDevice = (x: number, y: number): readonly [number, number] => {
+        const sceneX = m[0]! * x + m[2]! * y + m[4]!;
+        const sceneY = m[1]! * x + m[3]! * y + m[5]!;
+        return [
+          (vp[0]! * sceneX + vp[2]! * sceneY + vp[4]!) * retina,
+          (vp[1]! * sceneX + vp[3]! * sceneY + vp[5]!) * retina,
+        ];
+      };
+      const halfWidth = Number(
+        (object as unknown as Record<string, unknown>)["width"],
+      );
+      const halfHeight = Number(
+        (object as unknown as Record<string, unknown>)["height"],
+      );
+      // The panel's own untransformed corners, exactly the box `localPath`
+      // clips to inside `glass.ts`.
+      const corners = [
+        [-halfWidth / 2, -halfHeight / 2],
+        [halfWidth / 2, -halfHeight / 2],
+        [halfWidth / 2, halfHeight / 2],
+        [-halfWidth / 2, halfHeight / 2],
+      ].map(([x, y]) => toDevice(x!, y!));
+      const xs = corners.map((point) => point[0]);
+      const ys = corners.map((point) => point[1]);
+      const rawLeft = Math.min(...xs);
+      const rawTop = Math.min(...ys);
+      const rawRight = Math.max(...xs);
+      const rawBottom = Math.max(...ys);
+      // A quarter of the shorter side in, so the band is inside the panel even
+      // turned 30°; the rounded corners are further out still.
+      const inset = Math.round(
+        Math.min(rawRight - rawLeft, rawBottom - rawTop) / 4,
+      );
+      const left = Math.max(0, Math.round(rawLeft) + inset);
+      const top = Math.max(0, Math.round(rawTop) + inset);
+      const width = Math.max(
+        1,
+        Math.min(canvas.lowerCanvasEl.width, Math.round(rawRight) - inset) -
+          left,
+      );
+      const height = Math.max(
+        1,
+        Math.min(canvas.lowerCanvasEl.height, Math.round(rawBottom) - inset) -
+          top,
+      );
+      canvas.renderAll();
+      const data = canvas.lowerCanvasEl
+        .getContext("2d")!
+        .getImageData(left, top, width, height).data;
+      const means = new Array<number>(width).fill(0);
+      for (let y = 0; y < height; y += 1)
+        for (let x = 0; x < width; x += 1) {
+          const i = (y * width + x) * 4;
+          means[x] +=
+            0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+        }
+      for (let x = 0; x < width; x += 1) means[x]! /= height;
+      let peak = 0;
+      for (let x = 1; x < width; x += 1)
+        peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
+      return {
+        peak: Math.round(peak * 100) / 100,
+        contrast:
+          Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
+        width,
+        height,
+      };
+    },
+    [id, blurRadius] as const,
+  );
+}
+
+test.describe("the real player at the sizes and shapes it is read at", () => {
+  test("renders the reference composition at a fitted viewport and a second device pixel ratio", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "the reference composition is a desktop read",
+    );
+    test.slow();
+
+    // **The claim is pixels at two sizes the mount had never been read at.**
+    // The reference capture ran at 1672x941 and nothing else, so a fitted view
+    // and a retina view were both unmeasured on the player's own canvas.
+    await saveStarterThroughTheHost(page);
+
+    /**
+     * A ring that drew its arc, a bar that drew its fill, and a text run that
+     * drew its glyphs — read as fractions of their own areas, so one floor
+     * holds at whatever render scale the mount resolved.
+     *
+     * The gauge floor is the arc-less baseline of the reference measurement
+     * rescaled: `ram-gauge` read 219 coloured pixels with no arc and 553 with
+     * a datum of 0, on 436x436, and both scale with the chart's own area. 0.2 %
+     * of the area sits 1.7x above the first and 1.4x below the second, so an
+     * arc that vanished fails and a legitimately empty gauge still passes.
+     */
+    const readTheDisplay = async (
+      where: string,
+    ): Promise<{
+      surface: Awaited<ReturnType<typeof playerSurface>>;
+      arcs: Record<string, number>;
+      barInk: number;
+      barChroma: number;
+      wordmark: Awaited<ReturnType<typeof glyphCoverage>>;
+    }> => {
+      await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+      await expect(page.locator("pre")).toHaveCount(0);
+      // A gauge with no reading has no datum, and a datum is what the arc is
+      // made of; the reading is read before the ring is counted.
+      await expect
+        .poll(() => canvasProp(page, "ram-value", "text"), { timeout: 30_000 })
+        .toMatch(/^\d+%$/);
+      const surface = await playerSurface(page);
+      const charts = await chartPixels(page);
+      const ratio = (id: string, field: "chroma" | "ink"): number => {
+        const chart = charts.find((candidate) => candidate.id === id);
+        expect(chart, `${id} is on the display at ${where}`).toBeDefined();
+        return chart![field] / (chart!.w * chart!.h);
+      };
+      return {
+        surface,
+        arcs: {
+          "ram-gauge": ratio("ram-gauge", "chroma"),
+          "vram-gauge": ratio("vram-gauge", "chroma"),
+        },
+        barInk: ratio("storage-bar", "ink"),
+        barChroma: ratio("storage-bar", "chroma"),
+        wordmark: await glyphCoverage(page, "wordmark"),
+      };
+    };
+
+    // **A fitted viewport**, letterboxed on the horizontal axis, and not 1:1.
+    await page.setViewportSize({ width: 1600, height: 760 });
+    const fitted = await readTheDisplay("1600x760 @1x");
+    expectContainFit(fitted.surface, { width: 1600, height: 760 });
+    expect(fitted.surface.dpr, "the first read is at one device pixel").toBe(1);
+    for (const [id, share] of Object.entries(fitted.arcs))
+      expect(share, `${id} draws its arc at a fitted viewport`).toBeGreaterThan(
+        0.002,
+      );
+    expect(
+      fitted.barInk,
+      "the storage bar has fill at a fitted viewport",
+    ).toBeGreaterThan(0.01);
+    expect(
+      fitted.barChroma,
+      "the storage bar's fill is coloured, not a grey track",
+    ).toBeGreaterThan(0.005);
+    expect(
+      fitted.wordmark.covered / fitted.wordmark.area,
+      "the wordmark draws glyphs at a fitted viewport",
+    ).toBeGreaterThan(0.02);
+
+    // **A second device pixel ratio**, through the browser's own emulation, and
+    // a different viewport so the fit is re-derived rather than remembered.
+    const session = await page.context().newCDPSession(page);
+    await session.send("Emulation.setDeviceMetricsOverride", {
+      width: 1180,
+      height: 820,
+      deviceScaleFactor: 2,
+      mobile: false,
+    });
+    const retina = await readTheDisplay("1180x820 @2x");
+    expectContainFit(retina.surface, { width: 1180, height: 820 });
+    expect(
+      retina.surface.dpr,
+      "the browser really is at two device pixels",
+    ).toBe(2);
+    // The backing store followed the ratio, which is what makes the render at
+    // this DPR a different picture and not the same one labelled differently.
+    expect(
+      retina.surface.backingWidth / retina.surface.cssWidth,
+      "the artboard canvas is allocated at two device pixels per CSS pixel",
+    ).toBeCloseTo(2, 1);
+    for (const [id, share] of Object.entries(retina.arcs))
+      expect(share, `${id} draws its arc at two device pixels`).toBeGreaterThan(
+        0.002,
+      );
+    expect(
+      retina.barInk,
+      "the storage bar has fill at two device pixels",
+    ).toBeGreaterThan(0.01);
+    expect(
+      retina.barChroma,
+      "the bar's fill stays coloured at two device pixels",
+    ).toBeGreaterThan(0.005);
+    expect(
+      retina.wordmark.covered / retina.wordmark.area,
+      "the wordmark draws glyphs at two device pixels",
+    ).toBeGreaterThan(0.02);
+    await session.send("Emulation.clearDeviceMetricsOverride");
+  });
+
+  test("composites glass under a group, a rotation and an intersection on the real player", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "the grouped composition is a desktop read",
+    );
+
+    await page.setViewportSize({ width: 1280, height: 960 });
+    await page.goto(`${HOST}/?theme=${HOST_GROUPED_THEME_ID}`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect(page.locator("pre")).toHaveCount(0);
+
+    // **The composition is the one the fixture claims.** A panel that revived
+    // somewhere else would still produce a plausible band, so the shapes are
+    // read back before any pixel is counted.
+    const shape = await page.evaluate(
+      ([groupId]) => {
+        type Obj = {
+          get(n: string): unknown;
+          getObjects?(): Obj[];
+          getBoundingRect(): {
+            left: number;
+            top: number;
+            width: number;
+            height: number;
+          };
+          objectCaching: boolean;
+          angle: number;
+        };
+        const canvas = (
+          window as unknown as {
+            vigilia?: { handle: { canvas: { getObjects(): Obj[] } } };
+          }
+        ).vigilia?.handle.canvas;
+        const found: Record<
+          string,
+          { left: number; right: number; top: number; angle: number }
+        > = {};
+        const walk = (objects: Obj[] | undefined): void => {
+          for (const object of objects ?? []) {
+            const id = object.get("id");
+            if (typeof id === "string") {
+              const box = object.getBoundingRect();
+              found[id] = {
+                left: Math.round(box.left),
+                right: Math.round(box.left + box.width),
+                top: Math.round(box.top),
+                angle: Number(object.angle ?? 0),
+              };
+            }
+            walk(object.getObjects?.());
+          }
+        };
+        walk(canvas?.getObjects());
+        const group = canvas
+          ?.getObjects()
+          .find((object) => object.get("id") === groupId);
+        return {
+          found,
+          groupAngle: Number(group?.angle ?? 0),
+          groupCaching: group?.objectCaching ?? null,
+        };
+      },
+      [GROUPED_GROUP_ID] as const,
+    );
+
+    // The rotation is on the group, so the treated child's own angle is 0 and
+    // the turn comes from its ancestry — which is the case the glass handle's
+    // ancestor walk exists for.
+    expect(shape.groupAngle, "the fixture's group is turned").toBe(
+      GROUPED_GROUP_ANGLE,
+    );
+    expect(
+      shape.found[GROUPED_PANEL_IDS.grouped]?.angle,
+      "the turn is the group's, not the child's",
+    ).toBe(0);
+    // An upright 200x140 child is 200x140; turned 20° with its group its
+    // bounding box is 236x200. If the group had not taken, the rotation this
+    // test claims to cover would quietly be a flat panel.
+    expect(
+      (shape.found[GROUPED_PANEL_IDS.grouped]?.right ?? 0) -
+        (shape.found[GROUPED_PANEL_IDS.grouped]?.left ?? 0),
+      "the grouped panel is really turned on the display",
+    ).toBeGreaterThan(220);
+    // Fabric 7 leaves a group's caching off, so the guard in `glass.ts` is a
+    // backstop rather than the normal path. Recorded, not required.
+    expect(shape.groupCaching, "the mounted group does not cache").toBe(false);
+
+    const under = shape.found[GROUPED_PANEL_IDS.overlapUnder];
+    const over = shape.found[GROUPED_PANEL_IDS.overlapOver];
+    expect(
+      over?.left ?? 0,
+      "the two panels intersect rather than merely sitting near each other",
+    ).toBeLessThan(under?.right ?? 0);
+
+    /** A panel whose blur is real, and the same panel with the blur off. */
+    for (const id of [
+      GROUPED_PANEL_IDS.grouped,
+      GROUPED_PANEL_IDS.flat,
+      GROUPED_PANEL_IDS.overlapUnder,
+      GROUPED_PANEL_IDS.overlapOver,
+    ]) {
+      const blurred = await panelBand(page, id);
+      const control = await panelBand(page, id, 0);
+      // Back to the authored radius, so the next panel is not measured through
+      // the previous one's control.
+      await panelBand(page, id, 16);
+      expect(blurred.height, `${id} is big enough to measure`).toBeGreaterThan(
+        8,
+      );
+      // The backdrop reaches the panel at all: a flat wash would have neither
+      // detail nor a step to soften.
+      expect(
+        control.contrast,
+        `${id} has backdrop detail behind it`,
+      ).toBeGreaterThan(8);
+      expect(
+        control.peak,
+        `${id}'s unblurred backdrop is a real edge`,
+      ).toBeGreaterThan(40);
+      expect(
+        blurred.peak,
+        `${id} softens the backdrop it samples`,
+      ).toBeLessThan(control.peak * 0.5);
+      // And the detail survives the blur, so this is not a flat tint either.
+      expect(
+        blurred.contrast,
+        `${id} still carries the backdrop after blurring`,
+      ).toBeGreaterThan(8);
+    }
+
+    // **The panel behind the intersection is still compositing**, not covered.
+    const behind = await panelBand(page, GROUPED_PANEL_IDS.overlapUnder);
+    expect(
+      behind.peak,
+      "the panel under the intersection still composites",
+    ).toBeLessThan(40);
+
+    // **The ancestor-group guard, forced.** Fabric 7 leaves a group's
+    // `objectCaching` false, so the guard is a backstop rather than the normal
+    // path; turning caching on is what reaches it, and the panel must then
+    // report and leave its backdrop alone rather than sample its own cache.
+    // The player reports a skipped panel to the console, not to the DOM.
+    const warnings: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "warning") warnings.push(message.text());
+    });
+    expect(
+      await setGroupCaching(page, true),
+      "the control really did turn the group's caching on",
+    ).toBe(true);
+    const cached = await panelBand(page, GROUPED_PANEL_IDS.grouped);
+    expect(
+      cached.peak,
+      "a cached ancestor stops the panel from sampling its own cache",
+    ).toBeGreaterThan(40);
+    await expect
+      .poll(
+        () => warnings.some((text) => text.includes("caches its children")),
+        { timeout: 5_000 },
+      )
+      .toBe(true);
+
+    // Back to the authored state, and the real claim re-measured last so the
+    // test ends on the product's behaviour rather than on its control.
+    await setGroupCaching(page, false);
+    const restored = await panelBand(page, GROUPED_PANEL_IDS.grouped);
+    expect(
+      restored.peak,
+      "the grouped panel composites once its group caches again",
+    ).toBeLessThan(40);
+  });
+});
+
+/** The fixture's group's own caching, read back after the repaint that used it. */
+function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
+  return page.evaluate(
+    ([groupId, on]) => {
+      type Obj = { get(n: string): unknown; objectCaching: boolean };
+      const canvas = (
+        window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: {
+                getObjects(): Obj[];
+                lowerCanvasEl: HTMLCanvasElement;
+                renderAll(): void;
+              };
+            };
+          };
+        }
+      ).vigilia?.handle.canvas;
+      const group = canvas
+        ?.getObjects()
+        .find((object) => object.get("id") === groupId);
+      if (group === undefined) throw new Error("the fixture lost its group");
+      group.objectCaching = on as boolean;
+      canvas!.renderAll();
+      return group.objectCaching;
+    },
+    [GROUPED_GROUP_ID, caching] as const,
+  );
+}

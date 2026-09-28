@@ -1,6 +1,14 @@
 # Reference theme fidelity and frosted glass
 
-- **Status:** in progress — [implementation plan](../plans/2026-09-26-reference-theme-fidelity.md) written and queued; no implementation started.
+- **Status:** implementation complete but **acceptance not fully met** — 8 of 9
+  clauses hold outright and the ninth is two-thirds closed. Inspecting the *real
+  player* at a fitted viewport, at a second DPR and with grouped/rotated/
+  overlapping panels is now proved by pixels; **changing media on the player is
+  the open third**, blocked on
+  [#3](https://github.com/peterng1618/vigilia/issues/3). Closing that clause
+  found a real defect — the glass transform composed its matrices transposed, so
+  the blur was drawn beside the panel at any fitted viewport — now fixed. See the
+  plan's close-out, `827895d`, and `task-12b-report.md`.
 - **Date:** 2026-09-26
 - **Queue:** immediately after snapping fidelity; before previously queued work.
 

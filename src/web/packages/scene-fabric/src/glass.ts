@@ -425,18 +425,30 @@ export function createGlass(options: GlassOptions): GlassHandle {
   };
 }
 
-/** The object's own local units to the painted surface, including retina. */
+/**
+ * The object's own local units to the painted surface, including retina.
+ *
+ * The two compose in that order — `view · local`, not `local · view`. The
+ * products are transposes of each other, and they agree only while the viewport
+ * is an unscaled identity, which is what every earlier proof rendered at. Under
+ * a 2x `contain` fit a panel's centre lands at (281, 281) and this derivation
+ * put it at (140.5, 140.5), so the clip and the blurred backdrop were drawn
+ * beside the panel instead of over it; on the player the band's step measured
+ * 156 unsoftened against 3 once composed correctly. `planeMatrix` below is the
+ * same composition one factor in, and is what `sampleRegion` already measured
+ * with — the region and the panel it was copied for disagreed by exactly this.
+ */
 function deviceMatrix(object: FabricObject, canvas: StaticCanvas): Matrix {
   const local = object.calcTransformMatrix();
   const view = canvas.viewportTransform;
   const retina = canvas.getRetinaScaling();
   return [
-    (local[0] * view[0] + local[2] * view[1]) * retina,
-    (local[1] * view[0] + local[3] * view[1]) * retina,
-    (local[0] * view[2] + local[2] * view[3]) * retina,
-    (local[1] * view[2] + local[3] * view[3]) * retina,
-    (local[0] * view[4] + local[2] * view[5] + local[4]) * retina,
-    (local[1] * view[4] + local[3] * view[5] + local[5]) * retina,
+    (local[0] * view[0] + local[1] * view[2]) * retina,
+    (local[0] * view[1] + local[1] * view[3]) * retina,
+    (local[2] * view[0] + local[3] * view[2]) * retina,
+    (local[2] * view[1] + local[3] * view[3]) * retina,
+    (local[4] * view[0] + local[5] * view[2] + view[4]) * retina,
+    (local[4] * view[1] + local[5] * view[3] + view[5]) * retina,
   ];
 }
 
