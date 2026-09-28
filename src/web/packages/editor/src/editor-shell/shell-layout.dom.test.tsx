@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
+import { Canvas } from "fabric/es";
+import { act } from "react";
 import { expect, it, vi } from "vitest";
+import { createErrorManager } from "../error-manager/index.js";
 import { arrangeActions } from "../object-actions.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
@@ -108,6 +111,39 @@ it("keeps panel hosts mounted outside React's control", () => {
   expect(layout.hosts.style.parentElement).not.toBeNull();
 
   layout.destroy();
+});
+
+it("puts a diagnostic surface in the status line, and it reports a refusal", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const canvas = new Canvas(document.createElement("canvas"));
+  const bridge = bridgeStub({
+    editor: {
+      canvas,
+      viewport: { zoom: () => 1, onChange: () => () => undefined },
+    } as unknown as EditorShellBridge["editor"],
+  });
+  const logged = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+  const line = root.querySelector("#status");
+  // The footer already carries the free-running status text, so the refusal has
+  // to be its own element — the same node would be overwritten by either writer.
+  expect(line?.querySelector('[aria-label="Editor message"]')).not.toBeNull();
+  expect(line?.textContent).not.toContain("cannot be applied");
+
+  createErrorManager(canvas).warn(
+    "controls",
+    "That value cannot be applied to the selection.",
+  );
+  await act(async () => undefined);
+  expect(line?.textContent).toContain(
+    "Warning: That value cannot be applied to the selection.",
+  );
+
+  layout.destroy();
+  logged.mockRestore();
 });
 
 it("gives the Style tab a panel host instead of a placeholder sentence", () => {

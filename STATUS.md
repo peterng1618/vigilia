@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **The artboard's three preset controls now drive the size.** Ratio, Orientation and Resolution sit under the W/H row, and a change to any one writes a whole derived size through `artboardSize`; the free fields stay for an author who wants an exact size.
-- **A size no preset names reads "Custom" on all three** rather than claiming a preset the document is not at. The option is disabled — a reading, not a choice — and choosing one control from a Custom size fills the other two, so the controls can never deny the size they just set.
-- **The preset list is one owner.** `artboardPresetFor` answers "which preset is this document?" so the panel holds no size table of its own, and the orientation and resolution labels live in `ui-copy.ts` beside the ratio ids that already say themselves.
-- **Verified:** 1946 unit tests, typecheck, lint, format, and 6 artboard editor e2e; the artboard capture was regenerated and inspected. Red-without-fix took the 9 portrait assertions, then the custom-size derivation, down.
+- **A refused edit now says so.** `editor-shell/diagnostic-message.tsx` subscribes to the error manager's `editor:error`/`editor:warning` canvas events and puts them in the status line, so the number that snapped back has a reason beside it.
+- **One `role="status"` region, always mounted, beside the free-running status text** — two writers, two nodes. It persists until a newer diagnostic replaces it or a different document is open; no timer, because a message that leaves is the silence this fixes.
+- **Severity is a word and a Lucide mark, not a colour**: `OctagonAlert` + "Error" versus `TriangleAlert` + "Warning", with `data-severity`/`data-category` on the line. The category is not collapsed into the text; each site's own message already says what it refused.
+- **Verified:** 83 editor-shell unit tests, editor typecheck, lint, format; red-without-fix drops both new tests.
 
 ## Next
 

@@ -153,6 +153,14 @@ export const uiCopy = {
     "distribute-x": "Distribute horizontally",
     "distribute-y": "Distribute vertically",
   },
+  /** The status line's report of a refusal or a failure. The severity word
+   *  leads the message because the line outlives the moment it was written:
+   *  whoever reads it later cannot see which mark it was given. */
+  diagnostics: {
+    label: "Editor message",
+    error: "Error",
+    warning: "Warning",
+  },
   dock: { label: "Selected object actions" },
   /** The canvas context menu's accessible name. Its entries reuse the action
    * registry's labels and `chartFamilies`, so no entry copy lives here. */
