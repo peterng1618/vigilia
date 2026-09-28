@@ -127,6 +127,13 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 **Still open from that work:** `new-object-defaults.ts` is at 522 lines and `selection-inspector/panel.ts` at 636 — both over the "500 is a signal" line, and the implementer left them because the split candidate would export the shared commit/refuse plumbing across a module boundary. That is a real call to revisit, not a thing to wave through.
 
+### Found by looking at the landed work, not by reading it
+
+| # | Finding | Evidence | Fix owner |
+|---|---|---|---|
+| F1.16 | **A newly inserted closed shape is invisible** | Inserted all six non-rect shapes and screenshotted the stage: **only the polyline is visible** (it takes a light stroke, as open shapes should). The circle, ellipse, triangle, polygon and path are filled `#0c0e13` and read as nothing. Cause: `newShapeSurface` fills from `surfacePalette(globals, "panel")`, and `SURFACE_TOKENS` is `["background", "bars", "scene", "surface", "track"]` — **`panel` is not in the list**, so a shape is filled with the scene's own backdrop. That list is right for a chart track and wrong for a shape an author draws, and the doc comment directly above says the opposite of what the code does: *"a shape an author draws a card on must be as legible as a panel."* **The comment and the code disagree, and the code is what ships.** | `new-object-defaults.ts` |
+| F1.17 | **The chart chips lost their group when the shapes gained one** | Before F1.9 the Add pane was one flat list of six peers. Now it is `Text`, then a **SHAPE** legend over eight buttons, then **four unlabelled chart chips** below it. The charts were peers of Panel before and are now orphaned under a heading that is not about them, and `Line` appears twice with nothing on the second saying it is a chart. The fix follows the pattern F1.9 just established: group the charts the same way, so both sets are labelled. | `new-object-panel.ts` |
+
 ### P2 — data model
 
 | # | Finding | Why it is not a UI fix | Fix owner |
