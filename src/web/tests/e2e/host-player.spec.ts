@@ -1216,16 +1216,38 @@ test.describe("a display fed by the real host", () => {
       width: 140,
       height: 167,
     });
-    const { blurred, sharp, clearBlurred, clearSharp } = bands;
+    const { blurred, sharp, clearBlurred, clearSharp, photo } = bands;
 
-    // Measured on this machine, 2026-09-28, at 1672x941. The gradient this
+    // **The panel blurs the photograph, at this mount's scale.** The band is a
+    // rectangle in artboard units and `object-fit: cover` puts the whole file
+    // over the artboard, so the backdrop under the panel must measure what
+    // that rectangle of the photograph measures. Before 0012 the sampler took
+    // a pixel-for-pixel crop of the middle of the file sized by the device
+    // rect — the middle 71.8 % here where the element shows all of it — and
+    // this read 5.08 against the 7.45 below. The editor, at its 0.3744
+    // camera, read 16.54 against the same control. That was the
+    // 4.46-against-1.38 divergence the plan carried as an open question: the
+    // editor was the mount sampling elsewhere, and both mounts now read the
+    // same value off the same photograph.
+    expect(photo, "the photograph was read as a control").not.toBeNull();
+    expect(
+      Math.abs(clearSharp.contrast - photo!.contrast),
+      `the display's backdrop is the photograph (panel ${clearSharp.contrast} vs photo ${photo!.contrast})`,
+    ).toBeLessThan(photo!.contrast * 0.15);
+    expect(
+      Math.abs(clearSharp.meanLuma - photo!.meanLuma),
+      "and it is the same part of the photograph, not merely a similar range",
+    ).toBeLessThan(photo!.meanLuma * 0.08);
+
+    // Measured on this machine, 2026-09-28, at 1672x941: the photograph 7.45,
+    // the same backdrop under a clear fill 7.48 sharp / 5.68 blurred, and
+    // 1.64 as authored over `palette.frost` (72 % opaque, so 5.68 x 0.278 =
+    // 1.58, which is what it measures to within 0.06). The gradient this
     // replaced has a mean luma step between adjacent columns of **0.00** at
     // every scale, so a panel over it could not read above zero however wide
-    // the radius was; 1.0 is the floor that separates "a photograph is behind
-    // this" from "an even fill", with 38 % of margin on the measured 1.38.
-    // The editor's own reading of the same band is 4.46 — the two mounts do
-    // not agree, and `docs/evidence` names that as an open question rather
-    // than a threshold this test pretends to have settled.
+    // the radius was. **1.0 is the floor that separates "a photograph is
+    // behind this" from "an even fill"**, with 64 % of margin — and it is the
+    // *same* floor the editor's mount now uses, which is what 0012 bought.
     expect(blurred.rows, "the band covers rows").toBeGreaterThan(20);
     expect(
       blurred.contrast,
@@ -1233,17 +1255,18 @@ test.describe("a display fed by the real host", () => {
     ).toBeGreaterThan(1);
     // **And it is the glass that softened it.** The blur-off control is the
     // same code path with `blurRadius: 0`, so the panel still composites and
-    // only the radius differs: 0.13 -> 0.04 is a 3x drop in step.
+    // only the radius differs: 0.11 -> 0.04 is a 2.8x drop in step.
     expect(
       sharp.peak / blurred.peak,
       "the sampled backdrop is genuinely blurred on the display too",
     ).toBeGreaterThan(1.8);
-    // Softened, not flattened: 4.75 -> 4.75 blurred over a clear fill keeps
-    // essentially all of its range.
+    // Softened, not flattened: the blur takes 24 % off the range — 5.68 of
+    // 7.48 — while cutting the step by a factor of nearly three. 0.6 says the
+    // blur keeps most of the range; a flattened panel reads near zero.
     expect(
       clearBlurred.contrast,
       "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(clearSharp.contrast * 0.85);
+    ).toBeGreaterThan(clearSharp.contrast * 0.6);
 
     // **Taint.** The bytes are same-origin, so the display's canvas is not
     // tainted, and the capture path that reads it back works. A CDN URL would
@@ -1586,10 +1609,26 @@ function starterCardBands(
   id: string,
   inset: { left: number; top: number; width: number; height: number },
 ): Promise<{
-  blurred: { peak: number; contrast: number; rows: number };
-  sharp: { peak: number; contrast: number; rows: number };
-  clearBlurred: { peak: number; contrast: number; rows: number };
-  clearSharp: { peak: number; contrast: number; rows: number };
+  blurred: { peak: number; contrast: number; rows: number; meanLuma: number };
+  sharp: { peak: number; contrast: number; rows: number; meanLuma: number };
+  clearBlurred: {
+    peak: number;
+    contrast: number;
+    rows: number;
+    meanLuma: number;
+  };
+  clearSharp: {
+    peak: number;
+    contrast: number;
+    rows: number;
+    meanLuma: number;
+  };
+  photo: {
+    columns: number;
+    peak: number;
+    contrast: number;
+    meanLuma: number;
+  } | null;
 }> {
   return page.evaluate(
     ([objectId, box]) => {
@@ -1673,6 +1712,7 @@ function starterCardBands(
         peak: number;
         contrast: number;
         rows: number;
+        meanLuma: number;
       } => {
         canvas.renderAll();
         const data = canvas.lowerCanvasEl
@@ -1694,6 +1734,8 @@ function starterCardBands(
           contrast:
             Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
           rows: height,
+          meanLuma:
+            Math.round((means.reduce((a, b) => a + b, 0) / width) * 100) / 100,
         };
       };
 
@@ -1712,7 +1754,73 @@ function starterCardBands(
       card.set("vigiliaGlass", authored);
       for (const [object, visible] of restore) object.set("visible", visible);
       canvas.renderAll();
-      return { blurred, sharp, clearBlurred, clearSharp };
+
+      // **The photograph itself, with no product code in the path.** The band
+      // is a rectangle in artboard units and `object-fit: cover` puts the
+      // whole file over the artboard, so the band's source rectangle is its
+      // own scene fraction of the file. Read at this mount's own column
+      // count, because the count is what decides how much of the file each
+      // column averages.
+      const photo = (() => {
+        const image = document.querySelector<HTMLImageElement>(
+          "[data-vigilia-background-media] img",
+        );
+        if (image === null || !image.complete || image.naturalWidth === 0) {
+          return null;
+        }
+        const artboardWidth = 1672;
+        const artboardHeight = 941;
+        const u0 = (cardBox.left + box.left) / artboardWidth;
+        const u1 = (cardBox.left + box.left + box.width) / artboardWidth;
+        const v0 = (cardBox.top + box.top) / artboardHeight;
+        const v1 = (cardBox.top + box.top + box.height) / artboardHeight;
+        const columns = width;
+        const rows = Math.max(
+          2,
+          Math.round(
+            (columns * (v1 - v0) * artboardHeight) /
+              ((u1 - u0) * artboardWidth),
+          ),
+        );
+        const probe = document.createElement("canvas");
+        probe.width = columns;
+        probe.height = rows;
+        const context = probe.getContext("2d");
+        if (context === null) return null;
+        context.drawImage(
+          image,
+          u0 * image.naturalWidth,
+          v0 * image.naturalHeight,
+          (u1 - u0) * image.naturalWidth,
+          (v1 - v0) * image.naturalHeight,
+          0,
+          0,
+          columns,
+          rows,
+        );
+        const data = context.getImageData(0, 0, columns, rows).data;
+        const means = new Array<number>(columns).fill(0);
+        for (let y = 0; y < rows; y += 1)
+          for (let x = 0; x < columns; x += 1) {
+            const i = (y * columns + x) * 4;
+            means[x]! +=
+              0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+          }
+        for (let x = 0; x < columns; x += 1) means[x]! /= rows;
+        let peak = 0;
+        for (let x = 1; x < width; x += 1)
+          peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
+        return {
+          columns,
+          peak: Math.round(peak * 100) / 100,
+          contrast:
+            Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
+          meanLuma:
+            Math.round((means.reduce((a, b) => a + b, 0) / columns) * 100) /
+            100,
+        };
+      })();
+      return { blurred, sharp, clearBlurred, clearSharp, photo };
     },
     [id, inset] as const,
   );

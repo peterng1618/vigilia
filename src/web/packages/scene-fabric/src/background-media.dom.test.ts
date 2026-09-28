@@ -186,9 +186,10 @@ describe("background media as a glass backdrop", () => {
       deviceHeight: 400,
       region: { left: 0, top: 0, width: 800, height: 800 },
     });
-    // Cover takes the wider scale, crops the source symmetrically, and centres
-    // the overflow vertically: [sx, sy, sw, sh, dx, dy, dw, dh].
-    expect(covered).toEqual([-300, -150, 800, 400, -140, 20, 800, 400]);
+    // Cover crops the source to the device box's aspect — the middle 100x100 of
+    // a 200x100 file — and `drawImage` scales that into the whole box:
+    // [sx, sy, sw, sh, dx, dy, dw, dh].
+    expect(covered).toEqual([50, 0, 100, 100, 60, 20, 400, 400]);
 
     const contained = mediaDrawArgs({
       sourceWidth: 200,
@@ -201,7 +202,53 @@ describe("background media as a glass backdrop", () => {
       region: { left: 0, top: 0, width: 800, height: 800 },
     });
     // Contain letterboxes instead, and the bars stay where the element shows them.
-    expect(contained).toEqual([-100, -50, 400, 200, 60, 120, 400, 200]);
+    expect(contained).toEqual([0, 0, 200, 100, 60, 120, 400, 200]);
+  });
+
+  it("shows the whole source at every device scale, not a window of it", () => {
+    // The defect (0012): a source window sized by the *device* rect and drawn
+    // 1:1 is a pixel-for-pixel crop of the middle of the file, so a panel blurs
+    // a different photograph from the element at every scale but one. The
+    // property that distinguishes it is how much of the file the source rect
+    // covers, and that must not depend on the device rect.
+    const argsAt = (deviceWidth: number, deviceHeight: number) =>
+      mediaDrawArgs({
+        sourceWidth: 2330,
+        sourceHeight: 1311,
+        fit: "cover",
+        deviceLeft: 0,
+        deviceTop: 0,
+        deviceWidth,
+        deviceHeight,
+        region: { left: 0, top: 0, width: deviceWidth, height: deviceHeight },
+      });
+    // The player's reference viewport, and the editor's own 0.3744 camera over
+    // the same artboard.
+    const atSize = argsAt(1672, 941);
+    const zoomedOut = argsAt(626, 352);
+
+    // 2330x1311 is wider than the artboard's 1.7768 by 0.02 %, so the cover
+    // crop is a half-pixel off each side and vertical: both mounts take
+    // essentially the whole file, and the destination is the whole device rect.
+    // The only thing that differs between them is how much `drawImage` has to
+    // scale, which is the point.
+    for (const [args, deviceWidth, deviceHeight] of [
+      [atSize, 1672, 941],
+      [zoomedOut, 626, 352],
+    ] as const) {
+      expect(args[2], "the crop keeps the file's whole width").toBeGreaterThan(
+        2329,
+      );
+      expect(args[6]).toBe(deviceWidth);
+      expect(args[7]).toBe(deviceHeight);
+      expect(args[0], "a sliver of width is cropped symmetrically").toBeCloseTo(
+        (2330 - (args[2] ?? 0)) / 2,
+        6,
+      );
+    }
+    // The pre-fix value, named so a regression says what it replaced: a
+    // 626-px source window — 26.9 % of the file — drawn 1:1 into 626 device px.
+    expect(zoomedOut[2]).not.toBeCloseTo(626, 0);
   });
 
   it("keeps a source feature at the same place in the region it is sampled for", () => {

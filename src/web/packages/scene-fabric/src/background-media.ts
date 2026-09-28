@@ -175,6 +175,14 @@ export function mountBackgroundMedia(
  * a device-space region, offset by where the media layer actually sits.
  * `object-fit` is a CSS layout decision that `drawImage` does not apply, and
  * `object-position` is never authored, so the crop stays centred.
+ *
+ * The crop belongs on the **source** and the scale on the **destination**:
+ * `cover` takes the source rect whose aspect matches the device rect and lets
+ * `drawImage` scale it into the whole of it. Taking a source window sized by
+ * the *device* rect and drawing it 1:1 instead would show a pixel-for-pixel crop
+ * of the middle of the file — a different picture from the element's at every
+ * scale but the one where the artboard's device rect is the file's own size
+ * (0012).
  */
 export function mediaDrawArgs(input: {
   readonly sourceWidth: number;
@@ -187,21 +195,45 @@ export function mediaDrawArgs(input: {
   readonly region: DeviceRect;
 }): readonly [number, number, number, number, number, number, number, number] {
   const { sourceWidth, sourceHeight, deviceWidth, deviceHeight } = input;
-  const scale =
-    input.fit === "cover"
-      ? Math.max(deviceWidth / sourceWidth, deviceHeight / sourceHeight)
-      : Math.min(deviceWidth / sourceWidth, deviceHeight / sourceHeight);
-  const width = sourceWidth * scale;
-  const height = sourceHeight * scale;
+  const left = input.deviceLeft - input.region.left;
+  const top = input.deviceTop - input.region.top;
+  if (input.fit === "contain") {
+    // The whole source, at the size the element letterboxes it to.
+    const scale = Math.min(
+      deviceWidth / sourceWidth,
+      deviceHeight / sourceHeight,
+    );
+    const width = sourceWidth * scale;
+    const height = sourceHeight * scale;
+    return [
+      0,
+      0,
+      sourceWidth,
+      sourceHeight,
+      left + (deviceWidth - width) / 2,
+      top + (deviceHeight - height) / 2,
+      width,
+      height,
+    ];
+  }
+  // Cover: the largest source rect of the device rect's aspect, centred.
+  const cropWidth = Math.min(
+    sourceWidth,
+    (sourceHeight * deviceWidth) / deviceHeight,
+  );
+  const cropHeight = Math.min(
+    sourceHeight,
+    (sourceWidth * deviceHeight) / deviceWidth,
+  );
   return [
-    (sourceWidth - width) / 2,
-    (sourceHeight - height) / 2,
-    width,
-    height,
-    input.deviceLeft - input.region.left + (deviceWidth - width) / 2,
-    input.deviceTop - input.region.top + (deviceHeight - height) / 2,
-    width,
-    height,
+    (sourceWidth - cropWidth) / 2,
+    (sourceHeight - cropHeight) / 2,
+    cropWidth,
+    cropHeight,
+    left,
+    top,
+    deviceWidth,
+    deviceHeight,
   ];
 }
 

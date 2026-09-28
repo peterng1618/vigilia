@@ -1535,35 +1535,72 @@ test.describe("the reference composition, captured", () => {
     // starter now carries a packaged photograph, and this measures the change
     // in the mounted editor rather than in the source file.
     //
-    // Measured on this machine, 2026-09-28, and quoted in every threshold:
-    //   with the card's old 85 %-opaque `panel` fill   contrast 2.40  (invisible)
-    //   with `palette.frost` at 72 %                   contrast 4.46
-    //   the same backdrop under a clear fill           contrast 16.02 blurred / 16.54 sharp
+    // Measured on this machine, 2026-09-28, at this mount's 0.3744 camera, and
+    // quoted in every threshold below:
+    //   the photograph itself, read with no product code in the path
+    //                                              contrast 7.45, mean luma 111.4
+    //   the same backdrop under a clear fill       contrast 7.44 sharp / 5.69 blurred
+    //   as authored, over `palette.frost` (72 %)     contrast 1.62
+    //   with the old 85 %-opaque `panel` fill       contrast 0.85  (invisible)
     const reading = await starterBackdropBands(page);
 
-    // **The material reads.** 3.5 is between the 2.40 the old fill produced and
-    // the 4.46 this one does, so the threshold discriminates the two rather
-    // than passing both.
+    // **The panel blurs the photograph, at this mount's scale.** The band is
+    // a rectangle in artboard units and `object-fit: cover` puts the whole
+    // file over the artboard, so the band addresses one rectangle of the
+    // photograph — and the backdrop under the panel must measure what that
+    // rectangle measures. This is the assertion 0012 exists for: before the
+    // fix the sampler took a pixel-for-pixel crop of the middle of the file
+    // sized by the device rect, which at a 0.3744 camera is the middle 26.9 %
+    // of the photograph where the element shows all of it, and this read
+    // **16.54** against the 7.45 below.
+    expect(
+      reading.photo,
+      "the photograph was read as a control",
+    ).not.toBeNull();
+    expect(
+      Math.abs(reading.clearSharp.contrast - reading.photo!.contrast),
+      `the panel's backdrop is the photograph (panel ${reading.clearSharp.contrast} vs photo ${reading.photo!.contrast})`,
+    ).toBeLessThan(reading.photo!.contrast * 0.15);
+    // And the level, not only the range: a band from the right part of the
+    // file at the wrong zoom can match a range by accident; the mean luma is
+    // the second, independent reading of "where in the photograph".
+    expect(
+      Math.abs(reading.clearSharp.meanLuma - reading.photo!.meanLuma),
+      "and it is the same part of the photograph, not merely a similar range",
+    ).toBeLessThan(reading.photo!.meanLuma * 0.08);
+
+    // **The material reads.** The panel's contrast is the fraction of the
+    // blurred backdrop its own fill leaves through: `palette.frost` is 72 %
+    // opaque, so 5.69 x 0.278 = 1.58, and it measures 1.62 — the model to
+    // within 0.04, which is what makes 1.0 a floor with a stated reason
+    // rather than a number that happens to sit below the measurement.
+    //
+    // **What this floor does and does not separate.** The gradient the
+    // photograph replaced measures **0.00**, so it cannot pass at any scale —
+    // that is the discrimination being claimed. The card's *old* 85 %-opaque
+    // `panel` fill would read 7.44 x 0.149 = 1.11, which also passes, so this
+    // threshold does **not** discriminate the two fills and is not claimed to.
     expect(reading.blurred.rows, "the band covers rows").toBeGreaterThan(20);
     expect(
       reading.blurred.contrast,
       "the frosted panel carries backdrop structure, not an even fill",
-    ).toBeGreaterThan(3.5);
+    ).toBeGreaterThan(1.0);
 
     // **And the blur is what softened it.** Read on the backdrop alone, with
     // the panel's own tint removed, so this is a measurement of the glass
-    // rather than of a dark card: 1.02 -> 0.47 is a 2.2x drop in step.
+    // rather than of a dark card: 0.89 -> 0.22 is a 4.0x drop in step.
     expect(
       reading.clearSharp.peak / reading.clearBlurred.peak,
       "the sampled backdrop is genuinely blurred",
-    ).toBeGreaterThan(1.6);
-    // Softened, not flattened: the blur cuts the step by half and takes 3 %
-    // off the range. A panel that merely tinted its backdrop would move the
-    // second number a great deal and the first not at all.
+    ).toBeGreaterThan(2.5);
+    // Softened, not flattened: the blur takes 24 % off the range and cuts the
+    // step by a factor of four. A panel that merely tinted its backdrop would
+    // move the second number a great deal and the first not at all. 0.6 is
+    // "keeps most of the range"; a flattened panel reads near zero.
     expect(
       reading.clearBlurred.contrast,
       "the blur softens the backdrop rather than erasing it",
-    ).toBeGreaterThan(reading.clearSharp.contrast * 0.85);
+    ).toBeGreaterThan(reading.clearSharp.contrast * 0.6);
 
     // **Text and the chart's stroke stay sharp above the glass.** The measure
     // is the glyph band alone: the frame with the object minus the frame
@@ -1622,10 +1659,26 @@ test.describe("the reference composition, captured", () => {
  * number twice.
  */
 function starterBackdropBands(page: Page): Promise<{
-  blurred: { peak: number; contrast: number; rows: number };
-  sharp: { peak: number; contrast: number; rows: number };
-  clearBlurred: { peak: number; contrast: number; rows: number };
-  clearSharp: { peak: number; contrast: number; rows: number };
+  blurred: { peak: number; contrast: number; rows: number; meanLuma: number };
+  sharp: { peak: number; contrast: number; rows: number; meanLuma: number };
+  clearBlurred: {
+    peak: number;
+    contrast: number;
+    rows: number;
+    meanLuma: number;
+  };
+  clearSharp: {
+    peak: number;
+    contrast: number;
+    rows: number;
+    meanLuma: number;
+  };
+  photo: {
+    columns: number;
+    peak: number;
+    contrast: number;
+    meanLuma: number;
+  } | null;
   glyphs: { blurred: number; control: number; stroke: number };
   taint: { read: string };
   dataUrl: number;
@@ -1697,7 +1750,12 @@ function starterBackdropBands(page: Page): Promise<{
     const width = Math.max(1, Math.round(x1 - x0));
     const height = Math.max(1, Math.round(y1 - y0));
 
-    const measure = (): { peak: number; contrast: number; rows: number } => {
+    const measure = (): {
+      peak: number;
+      contrast: number;
+      rows: number;
+      meanLuma: number;
+    } => {
       canvas.renderAll();
       const data = canvas.lowerCanvasEl
         .getContext("2d")!
@@ -1718,6 +1776,8 @@ function starterBackdropBands(page: Page): Promise<{
         contrast:
           Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
         rows: height,
+        meanLuma:
+          Math.round((means.reduce((a, b) => a + b, 0) / width) * 100) / 100,
       };
     };
 
@@ -1834,6 +1894,79 @@ function starterBackdropBands(page: Page): Promise<{
     const underGpu = lumaUnder("gpu-card-caption");
     canvas.renderAll();
 
+    // **The photograph itself, with no product code in the path.** The band is
+    // a rectangle in *artboard* units, and `object-fit: cover` puts the whole
+    // file over the artboard, so the band's source rectangle is its own scene
+    // fraction of the file. Read at this mount's own column count, because the
+    // count is what decides how much of the file each column averages.
+    //
+    // This is the control that makes the rest of the reading mean something:
+    // it says what is *behind the panel*, independently of anything Vigilia
+    // does. Before 0012 the sampler took a pixel-for-pixel crop of the middle
+    // of the file sized by the device rect, so at this mount's 0.3744 camera
+    // it showed the middle 26.9 % of the photograph where the element showed
+    // all of it, and read 16.54 of contrast against this 7.45.
+    const photo = (() => {
+      const image = document.querySelector<HTMLImageElement>(
+        "[data-vigilia-background-media] img",
+      );
+      if (image === null || !image.complete || image.naturalWidth === 0) {
+        return null;
+      }
+      // The artboard's own size, from the media element's cover box, which is
+      // what `setBounds` laid the layer over.
+      const artboardWidth = 1672;
+      const artboardHeight = 941;
+      const u0 = (box.left + inset) / artboardWidth;
+      const u1 = (box.left + box.width - inset) / artboardWidth;
+      const v0 = (box.top + inset) / artboardHeight;
+      const v1 = (box.top + box.height - inset) / artboardHeight;
+      const columns = width;
+      const rows = Math.max(
+        2,
+        Math.round(
+          (columns * ((v1 - v0) * artboardHeight)) /
+            ((u1 - u0) * artboardWidth),
+        ),
+      );
+      const probe = document.createElement("canvas");
+      probe.width = columns;
+      probe.height = rows;
+      const context = probe.getContext("2d");
+      if (context === null) return null;
+      context.drawImage(
+        image,
+        u0 * image.naturalWidth,
+        v0 * image.naturalHeight,
+        (u1 - u0) * image.naturalWidth,
+        (v1 - v0) * image.naturalHeight,
+        0,
+        0,
+        columns,
+        rows,
+      );
+      const data = context.getImageData(0, 0, columns, rows).data;
+      const means = new Array<number>(columns).fill(0);
+      for (let y = 0; y < rows; y += 1)
+        for (let x = 0; x < columns; x += 1) {
+          const i = (y * columns + x) * 4;
+          means[x]! +=
+            0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
+        }
+      for (let x = 0; x < columns; x += 1) means[x]! /= rows;
+      let peak = 0;
+      for (let x = 1; x < columns; x += 1)
+        peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
+      return {
+        columns,
+        peak: Math.round(peak * 100) / 100,
+        contrast:
+          Math.round((Math.max(...means) - Math.min(...means)) * 100) / 100,
+        meanLuma:
+          Math.round((means.reduce((a, b) => a + b, 0) / columns) * 100) / 100,
+      };
+    })();
+
     // **Taint, stated rather than implied.** `drawImage` tolerates a tainted
     // canvas, so a composite that looks right proves nothing about the two
     // paths that read pixels back: `getImageData` and `toDataURL` both throw a
@@ -1852,6 +1985,7 @@ function starterBackdropBands(page: Page): Promise<{
       sharp,
       clearBlurred,
       clearSharp,
+      photo,
       glyphs: { blurred: titleBlurred, control: titleControl, stroke },
       taint: { read },
       dataUrl,
