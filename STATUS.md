@@ -11,25 +11,25 @@ hand is what finds the authoring control that is missing.
 
 ## Active work
 
-- **No plan is active.** The reference-theme plan is archived; the next scope is the [author journey proof](docs/superpowers/specs/2026-09-27-author-journey-proof-design.md), whose own gate requires an implementation plan written against the delivered surface before anything is dispatched.
-- **[The author-journey plan](docs/superpowers/plans/2026-09-24-author-journey.md) is not dispatchable.** Its Tasks 1–5 all landed; its Task 6 is marked stale in place and reassigned to the proof spec, which is where the executable scope now lives.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md) — reviewed and active; the spec was amended first so the plan is written against the delivered surface. Executing in subagent mode, one implementer and an independent reviewer per task.
+- **Task 1 is a product change, not a test.** `New` emits the finished composition today, so the blank state the proof needs does not exist; the user ruled that the first task makes it real, with the starter becoming an explicit template action. Select-all-and-delete was rejected as a starting point — a proof that begins with a workaround measures the workaround.
+- **[The 2026-09-24 author-journey plan](docs/superpowers/plans/2026-09-24-author-journey.md) is not dispatchable and is not the active plan.** Tasks 1–5 shipped, Task 2 mis-owns alignment/wrap/overflow, and the reference-theme surface is absent from it.
 - **The glass is changed and waiting on the user's eye.** They rejected the last attempt on sight, so the verdict is theirs; [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) carries the measurement behind every choice in it.
 - **Archived:** `2026-09-25-snapping-fidelity.md`, `2026-09-26-clock-and-theme-locale.md`, `2026-09-26-reference-theme-fidelity.md`, the GitHub-issues backlog. Open [#2](https://github.com/peterng1618/vigilia/issues/2) is delete inside a group.
 
 ## Last completed change
 
-- **Reference-theme fidelity is archived.** All 37 boxes are ticked, the State line records what landed after the tasks closed, and three open edges are named as not closed by it. It ran twelve tasks across four phases and closed its last acceptance clause on pixels in both mounts.
-- **The author-journey plan cannot be dispatched, and the check is why.** Tasks 1–5 shipped years ago in tree terms; Task 2 mis-owns alignment/wrap/overflow, which live in the run editor rather than on the object; and the entire surface reference-theme added — glass controls, panel material, the frost tokens, per-family chart settings, device captions, tracked type — is absent from it.
-- **The executable scope is the proof spec, and it has no plan.** It gates on one: written against the delivered surface, not inherited from any earlier draft.
-- **Frost is diffusion, grain, saturation and an edge, and the tint is 30 %.** Diffusion 16 → 40, a seeded 128 px grain tile at 1.5 % `overlay`, and `saturate(1.6)` in the blur's own filter list.
-- **The tint is floored by contrast, measured as WCAG luminance and not as luma distance.** 18 % put the CPU card's caption at 4.02:1, under AA; 30 % gives 5.1:1 and the panel still carries 1.08 of backdrop structure. An earlier note read a 0-255 luma distance as a ratio and called the same pair 5.4:1; the browser is the one that ships.
+- **Reference-theme fidelity is archived** as `78a653b`, all 37 boxes ticked, with the post-completion work and the three edges it did not close named in its State line.
+- **The proof spec was amended, not inherited.** It was written a day before the frosted material landed, so its refresh list gained `palette.frost` at 30 %, `frostInk`/`frostArea`, `saturate(1.6)` in the blur's filter list and `frostedCard()` — and the §73 point that the tint is a global token, so a rebuild edits a token and a missing tint control is a finding rather than a workaround.
+- **The author-journey plan was checked and found not dispatchable**, which is why the proof spec is the active scope rather than it. All six of its status-debt claims were verified: every spec still reads `in progress` with its feature in the tree.
+- **The proof plan is written against the delivered surface**, with the control inventory read from source on 2026-09-29 rather than carried over, and the rebuild's geometry deliberately left to be read off the target image.
+- **Its first task makes the blank state real**, because there was none: `New` emitted the finished composition, and the only route to blank was the workaround this pass exists to catch. The spec now says so rather than assuming a blank scene.
 
 ## Next
 
-1. Write the author-journey proof plan against the delivered surface, then activate it in `STATUS.md`.
-2. Dispatch it in subagent mode; the rebuild is one owner's hands and cannot be split across them.
-3. Look at the frosted card in both mounts and say whether it reads as glass — the proof rebuilds that card by hand and will show it again.
-4. Then the font trio catalogue, then the queued specs.
+1. Execute the proof plan in subagent mode; the rebuild is one author's hands and cannot be split across workers.
+2. Look at the frosted card in both mounts and say whether it reads as glass — the proof rebuilds that card by hand and will show it again.
+3. Then the font trio catalogue, then the queued specs.
 
 ## Blockers / unverified
 

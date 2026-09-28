@@ -1,6 +1,7 @@
 # Author journey proof
 
-- **Status:** queued spec; awaiting written-spec review. Plan: not yet written.
+- **Status:** reviewed 2026-09-29; active. Plan:
+  [`2026-09-29-author-journey-proof.md`](../plans/2026-09-29-author-journey-proof.md).
 - **Date:** 2026-09-27
 - **Queue:** after reference-theme fidelity; before the font trio catalogue.
 - **Plan refresh required when activated (2026-09-27).** Reference-theme fidelity is
@@ -9,6 +10,17 @@
   key vocabulary and the device-identity rules. **The plan must be written against the
   delivered surface, not inherited from any earlier draft of this scope.** The
   from-blank requirement below is not negotiable and does not expire with the refresh.
+- **Amended 2026-09-29, after the reference-theme plan was archived.** The frosted
+  material landed later than the list above was written (`a4cd444` and the commits
+  under it), so it joins the surface this spec proves: `palette.frost` at **30 %**,
+  the `frostInk` and `frostArea` chart tokens, `saturate(1.6)` composed into the
+  blur's own filter list, and `frostedCard()` as the theme's one card primitive.
+  A from-blank rebuild picks those tokens and sets that radius through the glass
+  controls, so the plan is written against them — see
+  [0013](../../decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md).
+  The tint is a **global token** by §73, so a rebuild varies it by editing a token
+  and never with a per-panel control; a control the rebuild needs and cannot find
+  is a finding, not something to work around.
 
 ## Intent
 
@@ -70,6 +82,16 @@ Why this and not a walkthrough: the composition exists because
 `createNewFabricTheme` emitted it. Code-only starter properties conceal missing
 authoring controls, which is the exact failure this pass exists to find. The
 reference plan proves one representative card; this proves the whole thing.
+
+**The blank state does not exist yet, and the pass is what shows that.** `New`
+emits the finished composition, so an author who opens the product is handed a
+dashboard they did not make, and the only route to a blank scene is to select
+everything and delete it. That is a workaround no author is expected to
+understand, and building the proof on it would measure the workaround rather
+than the surface. **The first task therefore makes the blank state real** —
+`New` produces a blank theme and the starter becomes an explicit template
+action — and the rebuild starts from that. This is the plan delivering the
+obligation above, not a workaround around it.
 
 Rules, all binding:
 
