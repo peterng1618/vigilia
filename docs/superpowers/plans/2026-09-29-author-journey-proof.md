@@ -53,11 +53,13 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 ### P0 — must land before the rebuild
 
-| # | Finding | Fix owner |
-|---|---|---|
-| F0.1 | `New` emits the finished composition; there is no blank state | Task 2 |
-| F0.2 | No artboard chooser — a new document's size is not the author's to pick | Task 1 |
-| F0.3 | The starter is what `New` means, so it cannot be left behind | Task 3 |
+| # | Finding | Fix owner | State |
+|---|---|---|---|
+| F0.1 | `New` emits the finished composition; there is no blank state | Task 2 | not started |
+| F0.2 | No artboard chooser — a new document's size is not the author's to pick | Task 1 | **dispatched once and lost** — see below |
+| F0.3 | The starter is what `New` means, so it cannot be left behind | Task 3 | not started |
+
+**The first F0.2 dispatch produced nothing.** The agent created no file, committed nothing and never reported — it was running alongside two others in one worktree and appears to have died silently. Its orphaned full-Playwright child was still burning CPU against a tree that changed twice underneath it, so it was stopped; its result would have meant nothing regardless. **Re-dispatched 2026-09-29.** Recorded because a silent loss is invisible to compaction, and the second one would have been too.
 
 ### P1 — ship defects found by hand, measured at 1920 × 1080
 
