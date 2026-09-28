@@ -9,6 +9,7 @@ import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
   return {
     snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
+    capture: () => undefined,
     can: () => true,
     target: () => ({ kind: "object", locked: false, memberCount: 1, isGroup: false }),
     canArrange: () => false,

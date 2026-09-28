@@ -12,6 +12,7 @@ import {
   applyObjectPalettePaints,
   applyObjectTypePresets,
   artboardPaintKey,
+  type BackdropMedia,
   type BackgroundMediaHandle,
   type BackgroundMediaSource,
   createGlass,
@@ -85,6 +86,12 @@ export interface EditorShell {
   ): void;
   setGlobals(globals: Globals | undefined): void;
   setFitMode(): void;
+  /**
+   * The artboard's background media, for the capture path. The layer is a DOM
+   * sibling the canvas cannot see, so the only thing that can put it in a
+   * picture is something holding the handle (0007).
+   */
+  backdrop(): BackdropMedia | undefined;
   /** Layer display names: editor metadata, not authored document content (§172). */
   layerNames(): Readonly<Record<string, string>>;
   setLayerNames(names: Readonly<Record<string, string>>): void;
@@ -468,6 +475,7 @@ export async function mountEditorShell({
         // player's crop of it, which the stage does not draw.
         editor.viewport.zoomToFit();
       },
+      backdrop: () => media?.backdrop(),
       destroy() {
         resize?.disconnect();
         glass.dispose();

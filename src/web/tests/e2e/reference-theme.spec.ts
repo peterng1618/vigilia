@@ -34,10 +34,12 @@ const EDITOR = "http://127.0.0.1:4174/";
  *    and the sharp-text claims are pixel measurements, and the thumbnails are
  *    looked at.
  *  - **A requirement the product does not meet is pinned, not written around.**
- *    `test.fail` marks the three gaps in "known gaps, pinned", so the suite
- *    stays runnable and still refuses to stay green once a gap closes. Only a
- *    gap that reproduces every time earns the marker: an intermittent one
- *    flaps, and the first version of the fourth marker did.
+ *    `test.fail` marks the gaps in "known gaps, pinned", so the suite stays
+ *    runnable and still refuses to stay green once a gap closes. The third
+ *    one, the round-capped gauge's missing progress arc, lives in
+ *    `host-player.spec.ts` because only the real host mounts it. Only a gap
+ *    that reproduces every time earns a marker: an intermittent one flaps,
+ *    and the first version of the fourth marker did.
  */
 
 const STARTER_WIDTH = 1672;
@@ -909,33 +911,39 @@ function captureOf(page: Page): Promise<{
   readonly height: number;
   readonly transparent: number;
   readonly png: string;
+  readonly zoom: number;
+  readonly retina: number;
 }> {
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const bridge = (
       window as unknown as {
         vigiliaEditorBridge: {
+          capture(): string | undefined;
           editor: {
             canvas: {
-              lowerCanvasEl: HTMLCanvasElement;
               renderAll(): void;
               getRetinaScaling(): number;
-              toCanvasElement(m: number): HTMLCanvasElement;
               getZoom(): number;
             };
           };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas;
-    bridge.renderAll();
-    // The product's own call: `captureThumbnail` is `toCanvasElement(scale)`
-    // with `scale = min(1, 640 / max(width, height))`. Computed here from the
-    // live canvas rather than restated, so a change to that constant does not
-    // silently stop being measured.
-    const element = bridge.lowerCanvasEl;
-    const scale = Math.min(1, 640 / Math.max(element.width, element.height));
-    const shot = bridge.toCanvasElement(scale);
+    ).vigiliaEditorBridge;
+    bridge.editor.canvas.renderAll();
+    // The product's own call, not a re-derivation of it. This file used to
+    // restate `toCanvasElement(min(1, 640 / max(w, h)))` here, which is how
+    // a change to the capture path stops being measured at all (0007).
+    const png = bridge.capture();
+    if (png === undefined) throw new Error("the capture produced no picture");
+    const image = new Image();
+    image.src = png;
+    await image.decode();
+    const shot = document.createElement("canvas");
+    shot.width = image.naturalWidth;
+    shot.height = image.naturalHeight;
     const context = shot.getContext("2d");
     if (context === null) throw new Error("no capture context");
+    context.drawImage(image, 0, 0);
     const data = context.getImageData(0, 0, shot.width, shot.height).data;
     let transparent = 0;
     for (let i = 3; i < data.length; i += 4)
@@ -944,18 +952,101 @@ function captureOf(page: Page): Promise<{
       width: shot.width,
       height: shot.height,
       transparent: transparent / (data.length / 4),
-      png: shot.toDataURL("image/png"),
-      zoom: bridge.getZoom(),
-      retina: bridge.getRetinaScaling(),
+      png,
+      zoom: bridge.editor.canvas.getZoom(),
+      retina: bridge.editor.canvas.getRetinaScaling(),
     };
-  }) as Promise<{
-    width: number;
-    height: number;
-    transparent: number;
-    png: string;
-    zoom: number;
-    retina: number;
-  }>;
+  });
+}
+
+/**
+ * The transparent fraction inside the artboard, in the product's own capture.
+ *
+ * `toCanvasElement` keeps the camera's zoom and pan and scales both by the
+ * export multiplier, so the artboard's corners are mapped the way the capture
+ * actually drew them rather than assumed to be its corners.
+ *
+ * `core` is the same measure over the middle half of the artboard. The
+ * fixture's media is a 16:9 image the theme fits `contain` into a 4:3
+ * artboard, so a quarter of the artboard is **correctly** empty: the
+ * whole-board number cannot separate "no media" from "letterboxed media", and
+ * the core can, because no fit leaves the middle of the board uncovered.
+ */
+function artboardTransparencyOfCapture(
+  page: Page,
+  [width, height]: readonly [number, number],
+): Promise<{
+  readonly clear: number;
+  readonly coreClear: number;
+  readonly w: number;
+  readonly h: number;
+}> {
+  return page.evaluate(
+    async ([artboardWidth, artboardHeight]) => {
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            capture(): string | undefined;
+            editor: {
+              canvas: {
+                width: number;
+                height: number;
+                renderAll(): void;
+                getZoom(): number;
+                viewportTransform: number[];
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      bridge.editor.canvas.renderAll();
+      const png = bridge.capture();
+      if (png === undefined) throw new Error("the capture produced no picture");
+      const image = new Image();
+      image.src = png;
+      await image.decode();
+      const shot = document.createElement("canvas");
+      shot.width = image.naturalWidth;
+      shot.height = image.naturalHeight;
+      const context = shot.getContext("2d");
+      if (context === null) throw new Error("no capture context");
+      context.drawImage(image, 0, 0);
+      const canvas = bridge.editor.canvas;
+      const scale = Math.min(1, 640 / Math.max(canvas.width, canvas.height));
+      const zoom = canvas.getZoom();
+      const vp = canvas.viewportTransform;
+      const map = (x: number, y: number): readonly [number, number] => [
+        (x * zoom + vp[4]!) * scale,
+        (y * zoom + vp[5]!) * scale,
+      ];
+      const [x0, y0] = map(0, 0);
+      const [x1, y1] = map(artboardWidth, artboardHeight);
+      const left = Math.max(0, Math.round(x0));
+      const top = Math.max(0, Math.round(y0));
+      const w = Math.min(shot.width - left, Math.max(1, Math.round(x1 - x0)));
+      const h = Math.min(shot.height - top, Math.max(1, Math.round(y1 - y0)));
+      const clearOf = (x: number, y: number, cw: number, ch: number) => {
+        const data = context.getImageData(x, y, cw, ch).data;
+        let clear = 0;
+        for (let i = 3; i < data.length; i += 4) if (data[i] === 0) clear += 1;
+        return clear / (data.length / 4);
+      };
+      const coreW = Math.max(1, Math.round(w * 0.5));
+      const coreH = Math.max(1, Math.round(h * 0.5));
+      return {
+        clear: clearOf(left, top, w, h),
+        coreClear: clearOf(
+          left + Math.round((w - coreW) / 2),
+          top + Math.round((h - coreH) / 2),
+          coreW,
+          coreH,
+        ),
+        w,
+        h,
+      };
+    },
+    [width, height] as const,
+  );
 }
 
 const FIXTURE_WITH_MEDIA = {
@@ -1226,21 +1317,11 @@ test.describe("the reference composition, captured", () => {
     page,
   }, testInfo) => {
     desktop(testInfo);
-    // **Known gap, pinned rather than written around.** Background media is a
-    // DOM sibling below the canvas (`scene-fabric/src/background-media.ts`), and
-    // Fabric's `toCanvasElement` re-renders the scene graph into a fresh
-    // canvas — so the media layer is not in the picture. Measured here on a
-    // theme whose only backdrop is a packaged image: the capture is transparent
-    // where the media is.
-    //
-    // `test.fail` so the requirement stays written down and the suite stays
-    // runnable, and so closing the gap turns this red until the marker is
-    // removed. Owner: `thumbnail-capture.ts` together with the media layer's
-    // owner, `scene-fabric/src/background-media.ts`.
-    test.fail(
-      true,
-      "background media is a DOM sibling and never reaches toCanvasElement",
-    );
+    // **The gap this pins is closed** (`thumbnail-capture.ts` composites the
+    // media through `BackdropMedia.paint`, 0007), so the marker is gone and the
+    // requirement is asserted. Background media is still a DOM sibling below
+    // the canvas; the capture now draws it underneath the scene it re-renders,
+    // rather than relying on Fabric to see it.
     await openCaptureFixture(page);
     const layer = await page.evaluate(() => {
       const element = document.querySelector<HTMLElement>(
@@ -1251,62 +1332,20 @@ test.describe("the reference composition, captured", () => {
         : { width: element.naturalWidth, height: element.naturalHeight };
     });
     expect(layer, "the media layer has pixels").not.toBeNull();
-    // **Measured where it matters.** The whole-canvas fraction is too blunt:
-    // the panels already cover most of the ink, so a threshold loose enough to
-    // be about the media also passes without it. This counts only the pixels
-    // *inside the artboard*, which is the region the media layer covers, and
-    // the fixture leaves most of it with nothing at all on the canvas.
-    const inside = await page.evaluate(
-      ([width, height]) => {
-        const bridge = (
-          window as unknown as {
-            vigiliaEditorBridge: {
-              editor: {
-                canvas: {
-                  lowerCanvasEl: HTMLCanvasElement;
-                  renderAll(): void;
-                  toCanvasElement(m: number): HTMLCanvasElement;
-                  getZoom(): number;
-                  viewportTransform: number[];
-                };
-              };
-            };
-          }
-        ).vigiliaEditorBridge.editor.canvas;
-        bridge.renderAll();
-        const element = bridge.lowerCanvasEl;
-        const scale = Math.min(
-          1,
-          640 / Math.max(element.width, element.height),
-        );
-        const shot = bridge.toCanvasElement(scale);
-        // `toCanvasElement` keeps the camera's zoom and pan and scales both by
-        // the multiplier, so the artboard's corners are mapped the way the
-        // capture actually drew them rather than assumed to be its corners.
-        const zoom = bridge.getZoom();
-        const vp = bridge.viewportTransform;
-        const map = (x: number, y: number): readonly [number, number] => [
-          (x * zoom + vp[4]!) * scale,
-          (y * zoom + vp[5]!) * scale,
-        ];
-        const [x0, y0] = map(0, 0);
-        const [x1, y1] = map(width, height);
-        const left = Math.max(0, Math.round(x0));
-        const top = Math.max(0, Math.round(y0));
-        const w = Math.min(shot.width - left, Math.max(1, Math.round(x1 - x0)));
-        const h = Math.min(shot.height - top, Math.max(1, Math.round(y1 - y0)));
-        const data = shot.getContext("2d")!.getImageData(left, top, w, h).data;
-        let clear = 0;
-        for (let i = 3; i < data.length; i += 4) if (data[i] === 0) clear += 1;
-        return { clear: clear / (data.length / 4), w, h };
-      },
-      [GLASS_ENVELOPE.artboard.width, GLASS_ENVELOPE.artboard.height] as const,
-    );
+    // **Measured where it matters, on the product's own capture.** The
+    // whole-canvas fraction is too blunt: the panels already cover most of the
+    // ink, so a threshold loose enough to be about the media also passes
+    // without it. This counts only the pixels *inside the artboard*, and then
+    // only its middle half, which is where a `contain`-fitted backdrop has to
+    // be. Measured: 0.81 of the artboard empty before the capture composited
+    // the media, and 0.24 after — the remaining quarter is the letterbox
+    // `contain` is supposed to leave.
+    const inside = await artboardTransparencyOfCapture(page, [
+      GLASS_ENVELOPE.artboard.width,
+      GLASS_ENVELOPE.artboard.height,
+    ]);
     expect(inside.w, "the artboard is inside the capture").toBeGreaterThan(50);
-    expect(
-      inside.clear,
-      "the media is in the capture: most of the artboard reads as empty",
-    ).toBeLessThan(0.2);
+    expect(inside.coreClear, "the media is in the capture").toBeLessThan(0.02);
   });
 
   test("text above a glass panel stays sharp through a real mount", async ({

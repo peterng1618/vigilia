@@ -36,6 +36,7 @@ function bridgeStub(
 ): EditorShellBridge {
   return {
     snapshot: () => ({ selectedCount: 0, locked: false, activeKind: "none" }),
+    capture: () => undefined,
     target: () => ({
       kind: "none",
       locked: false,

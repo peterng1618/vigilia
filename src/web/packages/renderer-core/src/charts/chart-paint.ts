@@ -13,11 +13,16 @@ export type ChartPaint =
       }[];
     };
 
-/** Resolve token references at the renderer boundary; persisted settings retain refs. */
+/**
+ * Resolve token references at the renderer boundary; persisted settings retain
+ * refs. `undefined` is a `palette.` reference with no entry: the paint is
+ * unavailable, and no builder may substitute a colour it did not resolve
+ * (`resolveStyleValue` already rules for the rest of the document — 0007).
+ */
 export function resolveChartPaint(
   paint: ChartPaint,
   palette: FabricPalette | undefined,
-): Fill {
+): Fill | undefined {
   if ("ref" in paint) return paletteFill(paint.ref, palette);
   if (
     paint.kind !== "thresholds" ||
@@ -25,14 +30,28 @@ export function resolveChartPaint(
     !("ref" in paint.bands[0]!)
   )
     return paint as Fill;
+  const colors = paint.bands.map((band) =>
+    solidColor("ref" in band ? band.ref : "", palette),
+  );
+  // One band with no colour would be a threshold the author never wrote, so
+  // the whole fill goes rather than renumbering the bands around it.
+  if (colors.some((color) => color === undefined)) return undefined;
   return {
     kind: "thresholds",
-    bands: paint.bands.map((band) => ({
+    bands: paint.bands.map((band, index) => ({
       offset: band.offset,
-      color: solidColor("ref" in band ? band.ref : "", palette),
+      color: colors[index]!,
     })),
   };
 }
+
+/**
+ * The engine's own "draw nothing", for a paint that is not the value — a track,
+ * a remainder, a slice whose colour failed to resolve. A value mark never uses
+ * it: it drops the value instead (0007).
+ */
+export const NO_INK = "transparent";
+export const NO_PAINT: Fill = { kind: "solid", color: NO_INK };
 
 /** Reassign token references without touching engine-only resolved fills. */
 export function reassignChartPaintReferences<T>(
@@ -60,17 +79,23 @@ export function reassignChartPaintReferences<T>(
     : value;
 }
 
-function paletteFill(ref: string, palette: FabricPalette | undefined): Fill {
+function paletteFill(
+  ref: string,
+  palette: FabricPalette | undefined,
+): Fill | undefined {
   const value = token(ref, palette)?.value;
   if (value?.kind === "solid") return { kind: "solid", color: value.color };
   if (value?.kind === "gradient")
     return { kind: "gradient", stops: value.stops };
-  return { kind: "solid", color: "transparent" };
+  return undefined;
 }
 
-function solidColor(ref: string, palette: FabricPalette | undefined): string {
+function solidColor(
+  ref: string,
+  palette: FabricPalette | undefined,
+): string | undefined {
   const value = token(ref, palette)?.value;
-  return value?.kind === "solid" ? value.color : "transparent";
+  return value?.kind === "solid" ? value.color : undefined;
 }
 
 function token(

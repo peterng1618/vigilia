@@ -2,7 +2,7 @@ import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { Fill, GaugeSettings, GradientStop, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import { type EngineAnimation, toEngineAnimation } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_PAINT, resolveChartPaint } from "./chart-paint.js";
 import {
   colorAt,
   type EngineColor,
@@ -62,6 +62,8 @@ export function buildGaugeOption(
   palette?: FabricPalette,
 ): GaugeOption {
   const plottable = hasPlottableValue(sample);
+  const track = resolveChartPaint(settings.track, palette);
+  const progress = resolveChartPaint(settings.progress, palette);
 
   // Clamp only the drawn arc; preserve the raw reading elsewhere (§83).
   const displayValue = plottable
@@ -82,22 +84,17 @@ export function buildGaugeOption(
           roundCap: settings.roundCap,
           lineStyle: {
             width: settings.thickness,
-            color: toColorSegments(
-              resolveChartPaint(settings.track, palette),
-              settings,
-            ),
+            color: toColorSegments(track ?? NO_PAINT, settings),
           },
         },
         progress: {
           // Missing samples show only the track, never a false zero (§83).
-          show: plottable,
+          // A paint that resolves to nothing is the same absence: an arc the
+          // author cannot see the value in would be a number with no ink (0007).
+          show: plottable && progress !== undefined,
           width: settings.thickness,
           roundCap: settings.roundCap,
-          ...progressItemStyle(
-            resolveChartPaint(settings.progress, palette),
-            settings,
-            displayValue,
-          ),
+          ...progressItemStyle(progress ?? NO_PAINT, settings, displayValue),
         },
         // Chart typography is rendered by shared text elements (§91).
         pointer: { show: false },

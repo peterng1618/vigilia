@@ -529,7 +529,11 @@ export class EditorSession {
       // that already has it on screen is the right place to make one. Failing to
       // capture must not fail the save: the theme is the thing that matters.
       try {
-        const png = await captureThumbnail(options.shell.editor.canvas);
+        const png = await captureThumbnail(
+          options.shell.editor.canvas,
+          undefined,
+          options.shell.backdrop(),
+        );
         if (png !== undefined && client.saveThumbnail !== undefined) {
           await client.saveThumbnail(current.id, png);
         }

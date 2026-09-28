@@ -1158,3 +1158,54 @@ describe("computeMaxLines", () => {
     expect(computeMaxLines(60, 20, -3)).toBe(2);
   });
 });
+
+// 0007: a chart's paint references resolve from the document's own globals, and
+// one that cannot is reported with the code `resolveStyleValue` already uses.
+describe("chart paint references in the plan", () => {
+  const paletteGlobals = {
+    palette: {
+      storage: {
+        name: "Storage",
+        value: { kind: "solid" as const, color: "#00b8d9" },
+      },
+    },
+  };
+
+  const storageBar = {
+    id: "bar",
+    type: "chart",
+    bindings: [{ id: "b", semanticKey: "disk.used" }],
+    content: {
+      family: "bar",
+      settings: { ...defaultBarSettings, fill: { ref: "palette.storage" } },
+    },
+  } as unknown as ThemeNode;
+
+  function storagePlan(withGlobals: boolean) {
+    return plan(
+      documentWith([storageBar], withGlobals ? paletteGlobals : undefined),
+      { source: storeWith({ "disk.used": ok(46.8) }) },
+    );
+  }
+
+  function barOf(result: ReturnType<typeof storagePlan>) {
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "chart" || content.family !== "bar") {
+      throw new Error("expected a bar chart");
+    }
+    return content;
+  }
+
+  it("resolves a bar fill from the document palette", () => {
+    expect(
+      barOf(storagePlan(true)).option.series[0].data[0]!.itemStyle.color,
+    ).toBe("#00b8d9");
+  });
+
+  it("leaves a bar whose paint reference the document does not define unpainted", () => {
+    // The datum is absent, not a transparent bar on a live number (0007).
+    expect(
+      barOf(storagePlan(false)).option.series[0].data[0]!.value,
+    ).toBeNull();
+  });
+});

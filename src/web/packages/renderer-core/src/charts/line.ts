@@ -6,7 +6,7 @@ import {
   type EngineAnimation,
   toEngineAnimation,
 } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_INK, resolveChartPaint } from "./chart-paint.js";
 import type { EngineColor, LinearGradientColor } from "./fill.js";
 import { clamp01, resolveThresholdColor, toLinearGradient } from "./fill.js";
 import { type CartesianGrid, cartesianGrid } from "./grid.js";
@@ -290,7 +290,11 @@ export function thresholdBands(
   }
 
   const fill = resolveChartPaint(paint, palette);
-  if (fill.kind !== "thresholds" || fill.bands.length === 0) {
+  if (
+    fill === undefined ||
+    fill.kind !== "thresholds" ||
+    fill.bands.length === 0
+  ) {
     return undefined;
   }
 
@@ -328,9 +332,13 @@ export function strokeFor(settings: LineSettings, index: number): ChartPaint {
  * is unavailable for one line series, so thresholds resolve to the top band (§85).
  */
 export function toEngineColor(
-  fill: Fill,
+  fill: Fill | undefined,
   usage: "stroke" | "area",
 ): EngineColor {
+  // A stroke that resolves to nothing draws no ink, so the series shows no
+  // number it cannot colour; the points and axes still say a series is there
+  // (0007).
+  if (fill === undefined) return NO_INK;
   switch (fill.kind) {
     case "solid":
       return fill.color;

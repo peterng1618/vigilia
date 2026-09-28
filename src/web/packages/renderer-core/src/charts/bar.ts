@@ -6,7 +6,7 @@ import {
   type EngineAnimation,
   toEngineAnimation,
 } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_INK, NO_PAINT, resolveChartPaint } from "./chart-paint.js";
 import {
   type EngineColor,
   normalizePosition,
@@ -174,7 +174,7 @@ export function toBarDataItem(
   if (!hasPlottableValue(input.sample)) {
     return {
       value: null,
-      itemStyle: { color: "transparent", borderRadius },
+      itemStyle: { color: NO_INK, borderRadius },
     };
   }
 
@@ -182,10 +182,14 @@ export function toBarDataItem(
   // Clamp only what is drawn; preserve the raw reading elsewhere (§83).
   const display = Math.min(Math.max(raw, settings.min), settings.max);
   const position = normalizePosition(raw, settings.min, settings.max);
+  const color = toBarColor(settings, position, palette);
 
+  // A bar whose paint resolved to nothing carries no value either: a bar of
+  // transparent ink over a live number is the one rendering that looks like
+  // data and is not (0007).
   return {
-    value: display,
-    itemStyle: { color: toBarColor(settings, position, palette), borderRadius },
+    value: color === undefined ? null : display,
+    itemStyle: { color: color ?? NO_INK, borderRadius },
   };
 }
 
@@ -194,8 +198,9 @@ export function toBarColor(
   settings: BarSettings,
   position: number,
   palette?: FabricPalette,
-): EngineColor {
+): EngineColor | undefined {
   const fill = resolveChartPaint(settings.fill, palette);
+  if (fill === undefined) return undefined;
   if (fill.kind === "gradient") {
     return toLinearGradient(
       fill.stops,
@@ -217,7 +222,7 @@ function toTrackColor(
     return "transparent";
   }
 
-  const resolved = resolveChartPaint(track, palette);
+  const resolved = resolveChartPaint(track, palette) ?? NO_PAINT;
   if (resolved.kind === "gradient") {
     return toLinearGradient(
       resolved.stops,

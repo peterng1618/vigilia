@@ -24,6 +24,111 @@ async function openRailPane(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name, exact: true }).click();
 }
 
+/** Save the editor's own document through the host's library route. */
+async function saveStarterThroughTheHost(page: Page): Promise<void> {
+  await page.goto(`${HOST}/editor/`);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Save to library" }).click();
+  await expect(page.locator("#status")).toContainText("Saved to library", {
+    timeout: 20_000,
+  });
+}
+
+/** The saved document on the display, with at least one live batch arrived. */
+async function openDisplayWithLiveData(page: Page): Promise<void> {
+  await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+  await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (
+              window as unknown as {
+                vigilia?: { live?: { batchCount?: number } };
+              }
+            ).vigilia?.live?.batchCount ?? 0,
+        ),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(0);
+}
+
+/**
+ * Every chart on the display, counted off its own ECharts canvas.
+ *
+ * `chroma` is saturation, not brightness, and it is the half that matters: a
+ * gauge's track is a dark grey ring with plenty of ink and no colour, so an
+ * ink count alone passes on a chart that shows nothing the author asked for.
+ */
+function chartPixels(page: Page): Promise<
+  {
+    readonly id: string;
+    readonly ink: number;
+    readonly chroma: number;
+    readonly w: number;
+    readonly h: number;
+  }[]
+> {
+  return page.evaluate(() => {
+    const canvas = (
+      window as unknown as {
+        vigilia?: {
+          handle: {
+            canvas: {
+              getObjects(): Array<{
+                get(name: string): unknown;
+                _element?: HTMLCanvasElement;
+              }>;
+            };
+          };
+        };
+      }
+    ).vigilia?.handle.canvas;
+    return (canvas?.getObjects() ?? [])
+      .filter((object) => object._element !== undefined)
+      .map((object) => {
+        const element = object._element!;
+        const context = element.getContext("2d");
+        if (context === null) {
+          return {
+            id: String(object.get("id")),
+            ink: -1,
+            chroma: -1,
+            w: 0,
+            h: 0,
+          };
+        }
+        const data = context.getImageData(
+          0,
+          0,
+          element.width,
+          element.height,
+        ).data;
+        let ink = 0;
+        let chroma = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3]! === 0) continue;
+          ink += 1;
+          const r = data[i]!;
+          const g = data[i + 1]!;
+          const b = data[i + 2]!;
+          if (Math.max(r, g, b) - Math.min(r, g, b) > 40) chroma += 1;
+        }
+        return {
+          id: String(object.get("id")),
+          ink,
+          chroma,
+          w: element.width,
+          h: element.height,
+        };
+      });
+  });
+}
+
 test.describe("hosted player over the real host", () => {
   test("serves the player, the editor and the API only over loopback", async ({
     request,
@@ -313,18 +418,100 @@ test.describe("hosted player over the real host", () => {
     expect((await readCard()).treatment).toEqual({ blurRadius: 16 });
 
     // And the reading is **live**, which is the claim this card was added for.
-    // A chart in this starter still throws inside ECharts here, and it is
-    // isolated to that chart: the throw no longer reaches the text repaint in
-    // the same callback, so the reading repaints with it. Polled because a
-    // reading arrives over SSE; a single read would be asserting the cadence
-    // rather than the card.
+    // Polled because a reading arrives over SSE; a single read would be
+    // asserting the cadence rather than the card.
     await expect
       .poll(async () => (await readCard()).reading, { timeout: 20_000 })
       .toMatch(/^\d+%$/);
 
-    // The player's failure path is a `<pre>`; an absent one is the claim. The
-    // throwing chart is reported, not surfaced, because the scene still works.
+    // The player's failure path is a `<pre>`; an absent one is the claim.
     await expect(page.locator("pre")).toHaveCount(0);
+  });
+
+  test("the display paints its charts in the theme's own palette", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+    // A host save, a player boot, a live batch and a settling window is well
+    // over the 30 s default on this machine; the same reason the long journey
+    // test carries one.
+    test.slow();
+
+    // **Counted, not read off an option string.** The player used to call
+    // `buildChartPlan` with no palette, so every `palette.` reference in a
+    // theme resolved to nothing and the bar carried `value: 46.8` with
+    // `itemStyle.color: "transparent"` — a plausible-looking string and zero
+    // ink on the display. The claim is pixels.
+    await saveStarterThroughTheHost(page);
+    await openDisplayWithLiveData(page);
+    // The trends series needs points before its stroke exists, so a single
+    // early read would measure an empty chart rather than a broken one.
+    await page.waitForTimeout(8000);
+
+    const charts = await chartPixels(page);
+
+    for (const id of ["storage-bar", "cpu-card-sparkline"]) {
+      const chart = charts.find((candidate) => candidate.id === id);
+      expect(chart, `${id} is on the display`).toBeDefined();
+      expect(chart!.w, `${id} has a real backing canvas`).toBeGreaterThan(50);
+      expect(chart!.ink, `${id} has ink on its own canvas`).toBeGreaterThan(
+        500,
+      );
+      expect(
+        chart!.chroma,
+        `${id} paints its value in a colour, not a grey track`,
+      ).toBeGreaterThan(500);
+    }
+    // And the whole display is not one chart quietly carrying the claim.
+    expect(charts.length, "the display's charts").toBeGreaterThan(2);
+  });
+
+  test("a gauge draws the progress arc the reference shows", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+    test.slow();
+
+    // **Known gap, pinned rather than written around, and it is a second
+    // defect of this task's own family.** The ring and its reading are
+    // rendered as separate objects, so a gauge can look complete while its
+    // coloured arc is missing: the track is grey ink and the reading is
+    // ordinary text. Measured on the same document in the same run — the
+    // editor's `ram-gauge` carries 2.7k–15.9k saturated pixels, the player's
+    // carries 219 — and the player's console says why:
+    //
+    //   Vigilia: Chart "ram-gauge" failed to draw and was left as it was.
+    //   Cannot read properties of undefined (reading '0')
+    //
+    // ECharts throws while rendering the round-capped gauge on the display
+    // and the per-chart guard in `hydrateCharts` turns that into a warning
+    // rather than a `pageerror`, which is why a run that watched for
+    // uncaught errors saw none. Owner: the gauge render, and the question is
+    // whether the throw is ours or ECharts 6.1.0's — see the task report.
+    test.fail(
+      true,
+      "ECharts throws while rendering a round-capped gauge on the display",
+    );
+
+    await saveStarterThroughTheHost(page);
+    await openDisplayWithLiveData(page);
+    await page.waitForTimeout(8000);
+
+    const gauge = (await chartPixels(page)).find(
+      (candidate) => candidate.id === "ram-gauge",
+    );
+    expect(gauge, "the ring is on the display").toBeDefined();
+    expect(gauge!.ink, "the ring has a track").toBeGreaterThan(500);
+    expect(
+      gauge!.chroma,
+      "the ring paints its progress arc in the theme's colour",
+    ).toBeGreaterThan(2000);
   });
 
   test("paints each caption from the host's own reading of that key", async ({
@@ -585,8 +772,8 @@ async function paintsIn(
       const sample = bridge?.live?.source?.latest("gpu.temp") as
         | { value?: number; unit?: string }
         | undefined;
-      const object = bridge?.handle?.canvas
-        ?.getObjects()
+      const object = bridge?.handle.canvas
+        .getObjects()
         .find((entry) => entry.get("id") === nodeId);
 
       if (sample?.value === undefined || object === undefined) {

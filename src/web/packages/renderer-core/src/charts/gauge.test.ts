@@ -296,3 +296,23 @@ describe("the progress arc colour", () => {
     expect(option.series[0].progress.itemStyle.color).toBe("#eeeeee");
   });
 });
+
+// 0007: the same gap, in the gauge's own vocabulary — `progress.show` is
+// already the no-value state a missing sample uses.
+describe("a gauge whose progress paint has no palette entry", () => {
+  const unresolved: GaugeSettings = {
+    ...defaultGaugeSettings,
+    progress: { ref: "palette.absent" },
+  };
+
+  it("draws no arc at all, so the ring shows no number it cannot colour", () => {
+    const option = buildGaugeOption(unresolved, sample(50), false, {});
+    expect(option.series[0].progress.show).toBe(false);
+    // The track still resolves, so the panel is visibly empty rather than
+    // showing a bar with no colour.
+    const track = defaultGaugeSettings.track as { readonly color: string };
+    expect(option.series[0].axisLine.lineStyle.color).toEqual([
+      [1, track.color],
+    ]);
+  });
+});

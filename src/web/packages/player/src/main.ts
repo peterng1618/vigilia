@@ -6,11 +6,13 @@ import {
   type ChartContent,
   createAssetResolver,
   createLiveSource,
+  type FabricPalette,
   type FabricThemeEnvelope,
   type LiveSourceHandle,
   type LiveSourceStatus,
   type MeasurementSystem,
   missingFontFamilies,
+  type PlanIssue,
   requiredSemanticKeys,
   SAMPLE_STREAM_PATH,
   type SampleSource,
@@ -311,6 +313,7 @@ async function startHostedTheme(
       handle.canvas.getObjects(),
       theme.bindings ?? {},
       liveHandle.source,
+      theme.globals?.palette,
     );
     // Revived text carries the authored runs, not the sampled readings: the
     // saved scene keeps placeholders, so every cadence re-resolves the runs
@@ -370,7 +373,9 @@ function hydrateCharts(
   objects: readonly { get(key: string): unknown }[],
   bindings: Readonly<Record<string, readonly Binding[]>>,
   source: SampleSource,
+  palette: FabricPalette | undefined,
 ): void {
+  const issues: PlanIssue[] = [];
   for (const object of objects) {
     if (object instanceof VigiliaChart) {
       const id = object.get("id");
@@ -395,8 +400,8 @@ function hydrateCharts(
             nowMs: Date.now(),
             animate: false,
           },
-          [],
-          undefined,
+          issues,
+          palette,
         );
         object.setOption(plan.option);
       } catch (error) {
@@ -408,7 +413,17 @@ function hydrateCharts(
       }
     }
   }
+  // One line per distinct cause: this runs on every refresh cadence, and a
+  // display repeating the same refusal every 30 s teaches nobody anything.
+  for (const issue of issues) {
+    const message = `Chart "${issue.nodeId}" ${issue.detail}`;
+    if (reportedChartIssues.has(message)) continue;
+    reportedChartIssues.add(message);
+    reportRepaintError(message);
+  }
 }
+
+const reportedChartIssues = new Set<string>();
 
 /** Logs frame issues while affected values remain visibly missing rather than fabricated. */
 function reportIssues(plan: ScenePlan): void {

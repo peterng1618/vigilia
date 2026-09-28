@@ -1,4 +1,5 @@
 import { type BarInput, buildBarOption } from "../charts/bar.js";
+import { resolveChartPaint } from "../charts/chart-paint.js";
 import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import { buildGaugeOption } from "../charts/gauge.js";
 import {
@@ -7,6 +8,7 @@ import {
   type SeriesInput,
 } from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
+import { chartPaintFieldsFor } from "../charts/settings-fields.js";
 import { describeSemanticKey } from "../data/semantic-keys.js";
 import type { SampleSource } from "../data/source.js";
 import type {
@@ -15,6 +17,7 @@ import type {
   ChartContent,
   ChartFamily,
   Globals,
+  PalettePaint,
   StyleMap,
   StyleValue,
   TextContent,
@@ -293,6 +296,7 @@ function planContent(
         node.bindings ?? [],
         context,
         issues,
+        chartPalette(globals),
       );
 
     case "image": {
@@ -581,6 +585,7 @@ export function buildChartPlan(
       });
     }
   }
+  reportUnresolvedChartPaint(nodeId, content, palette, issues);
 
   switch (content.family) {
     case "gauge": {
@@ -661,6 +666,39 @@ export function buildChartPlan(
         settings: content.settings,
         option: buildPieOption(content.settings, slices, animate, palette),
       };
+    }
+  }
+}
+
+/**
+ * A paint reference the document does not define draws no ink, which on the
+ * display is indistinguishable from no reading. Reported under the code
+ * `resolveStyleValue` already uses, so the two absences stay two facts (0007).
+ */
+function reportUnresolvedChartPaint(
+  nodeId: string,
+  content: ChartContent,
+  palette: import("../theme/fabric-envelope.js").FabricPalette | undefined,
+  issues: PlanIssue[],
+): void {
+  const settings = content.settings as unknown as Record<string, unknown>;
+  for (const field of chartPaintFieldsFor(content.family)) {
+    const declared = settings[field.property];
+    const paints =
+      field.multiple === true && Array.isArray(declared)
+        ? declared
+        : declared === undefined
+          ? []
+          : [declared];
+    for (const paint of paints) {
+      if (paint === undefined || resolveChartPaint(paint as never, palette))
+        continue;
+      const ref = (paint as { readonly ref?: string }).ref;
+      issues.push({
+        code: "unresolved-global",
+        nodeId,
+        detail: `Chart paint "${ref ?? field.property}" is not defined in this document.`,
+      });
     }
   }
 }
@@ -797,6 +835,41 @@ function isTypePreset(value: unknown): value is TypePreset {
       (typeof preset["lineHeight"] === "number" &&
         Number.isFinite(preset["lineHeight"]) &&
         preset["lineHeight"] > 0))
+  );
+}
+
+/**
+ * The chart builders take a `FabricPalette`; a document's `globals.palette` is
+ * the same map with an unvalidated `value`. An entry that is not palette paint
+ * is dropped rather than cast, so an unresolvable reference is a gap (0007).
+ */
+function chartPalette(
+  globals: Globals,
+): import("../theme/fabric-envelope.js").FabricPalette | undefined {
+  const entries = Object.entries(globals.palette ?? {}).filter(
+    (
+      entry,
+    ): entry is [
+      string,
+      import("../theme/fabric-envelope.js").FabricPaletteEntry,
+    ] => isPalettePaint(entry[1].value),
+  );
+  return entries.length === 0 ? undefined : Object.fromEntries(entries);
+}
+
+function isPalettePaint(value: unknown): value is PalettePaint {
+  if (typeof value !== "object" || value === null) return false;
+  const paint = value as Record<string, unknown>;
+  if (paint["kind"] === "solid") return typeof paint["color"] === "string";
+  return (
+    paint["kind"] === "gradient" &&
+    Array.isArray(paint["stops"]) &&
+    paint["stops"].every(
+      (stop) =>
+        typeof stop === "object" &&
+        stop !== null &&
+        typeof (stop as Record<string, unknown>)["color"] === "string",
+    )
   );
 }
 

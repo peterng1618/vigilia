@@ -318,3 +318,31 @@ describe("category order", () => {
     }
   });
 });
+
+// 0007: a value the renderer cannot colour is a gap, not a transparent bar
+// carrying a live number. `noValue` is the same datum shape a missing sample
+// produces, so the two absences stay distinguishable only through the issue
+// `buildChartPlan` reports.
+describe("a bar whose fill has no palette entry", () => {
+  const unresolved: BarSettings = {
+    ...defaultBarSettings,
+    fill: { ref: "palette.absent" },
+  };
+
+  it("draws no value rather than a transparent bar on a live number", () => {
+    const option = buildBarOption(unresolved, [
+      { sensorId: "disk.used", sample: sample(46.8) },
+    ]);
+    expect(option.series[0].data[0]!.value).toBeNull();
+  });
+
+  it("still resolves the track, which is not the value", () => {
+    const option = buildBarOption(
+      { ...unresolved, track: { ref: "palette.track" } },
+      [{ sensorId: "disk.used", sample: sample(46.8) }],
+      false,
+      { track: { name: "Track", value: { kind: "solid", color: "#2a2f3a" } } },
+    );
+    expect(option.series[0].backgroundStyle).toEqual({ color: "#2a2f3a" });
+  });
+});

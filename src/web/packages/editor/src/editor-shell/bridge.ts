@@ -8,8 +8,8 @@ import {
   type ObjectTarget,
 } from "../object-actions.js";
 import {
-  type LayerRow,
   findById,
+  type LayerRow,
   ownerOf,
   pathTo,
   projectLayers,
@@ -58,6 +58,12 @@ export interface EditorShellBridge {
   reorderLayer(id: string, beforeId: string): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
+  /**
+   * The product's own library picture, as a data URL. e2e measures this rather
+   * than re-deriving `toCanvasElement`, which is how a change to the capture
+   * would otherwise stop being measured (0007).
+   */
+  capture(): string | undefined;
   readonly session: EditorActionFacade;
   readonly editor: EditorInteraction;
   destroy(): void;
@@ -76,6 +82,8 @@ function activeKindOf(active: FabricObject | undefined): ActiveKind {
 export function createEditorShellBridge(input: {
   readonly editor: EditorInteraction;
   readonly session: EditorActionFacade;
+  /** The product's own library capture; see `EditorShellBridge.capture`. */
+  readonly capture: () => string | undefined;
 }): EditorShellBridge {
   const { canvas } = input.editor;
   const listeners = new Set<() => void>();
@@ -268,6 +276,7 @@ export function createEditorShellBridge(input: {
     reorderLayer,
     session: input.session,
     editor: input.editor,
+    capture: input.capture,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

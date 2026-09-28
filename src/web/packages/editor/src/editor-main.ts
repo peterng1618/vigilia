@@ -22,6 +22,7 @@ import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
+import { captureCanvas } from "./thumbnail-capture.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
 type ActiveEditor = {
@@ -167,6 +168,10 @@ async function start(): Promise<void> {
     const bridge = createEditorShellBridge({
       editor: shell.editor,
       session: extensions.actionFacade(),
+      capture: () =>
+        captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
+          "image/png",
+        ),
     });
     active?.bridge.destroy();
     delete (window as unknown as Record<string, unknown>).vigiliaEditorBridge;
