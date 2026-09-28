@@ -268,12 +268,6 @@ function deriveDiskUsed(sensors: readonly LhmSensor[]): number | undefined {
   return total === undefined || free === undefined ? undefined : total - free;
 }
 
-/**
- * First sensor that answers each key. Where a group has several instances (two
- * GPUs, several disks, several NICs), capacity and throughput sum, while a
- * percentage, temperature, power or clock takes the highest — which is what a
- * single figure for that key should mean.
- */
 /** A GPU this machine reports, so a consumer can choose between them. */
 export interface GpuDeviceReading {
   readonly deviceId: string;
@@ -345,6 +339,16 @@ export function diskDeviceReadings(
   return readings;
 }
 
+/**
+ * First sensor that answers each key. Where the set it is given holds several
+ * instances of one group, capacity and throughput sum while a percentage,
+ * temperature, power or clock takes the highest.
+ *
+ * That is the rule for whatever set reaches it. Which devices are in that set
+ * is `matchLhmSensorsAssigned`'s decision, and it is a selection, not a maximum
+ * (0004) — so an unassigned group here is one device's reading, not the
+ * busiest one's.
+ */
 export function matchLhmSensors(
   sensors: readonly LhmSensor[],
   semanticKeys: readonly string[],
@@ -456,9 +460,9 @@ export interface DeviceAssignment {
 
 /**
  * Readings limited to the assigned devices, so a two-GPU machine can show the
- * GPU the consumer chose under the theme's single `gpu.*` keys. A group with no
- * assignment keeps the default behaviour (highest reading, summed capacity), so
- * an unconfigured host behaves exactly as before.
+ * GPU the consumer chose under the theme's single `gpu.*` keys. An unassigned
+ * group answers from the first device the machine reports, not the busiest one
+ * (0004) — a caption that changes text every sample cannot be read.
  */
 /** The data-disk slot's keys. */
 const DATA_DISK_KEYS = [

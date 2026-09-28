@@ -459,6 +459,9 @@ export function samplesFromLibrary(
   pushText(
     "disk.name",
     readings.diskName,
+    // Two causes, one message: unassigned, the keys measure every volume and
+    // no one drive's name describes that sum; assigned but absent, they measure
+    // nothing. Neither is a name.
     "no drive is assigned, so these keys describe every volume at once; " +
       "choose one on the settings page",
   );
@@ -547,7 +550,8 @@ export class LibrarySensorProvider implements SensorProvider {
    * add a miss-triggers-rebuild check when that shows up as a real defect.
    */
   private drives: Promise<readonly DriveDevice[]> | undefined;
-  /** `si.cpu()` costs ~1.5 s for three strings that cannot change; see above. */
+  /** Read once like the drive index, but *not* refreshed by `describeDevices`:
+   * a CPU's identity cannot change while the host runs. */
   private cpu: Promise<CpuLike> | undefined;
 
   constructor(private readonly library?: LibraryModule) {}

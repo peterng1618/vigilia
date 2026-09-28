@@ -321,6 +321,13 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
+    // Waited on, not read once: the banner clears when the stream connects, which
+    // is before the first sample reaches the canvas, and until it does the clock
+    // correctly shows the no-reading gap. Reading it there is how this test went
+    // red under load while passing 24/24 in its own project.
+    await expect
+      .poll(() => shownClock(page), { timeout: 15_000 })
+      .not.toBe("—");
     const japanese = String(await canvasProp(page, CLOCK_NODE_ID, "text"));
 
     await page.goto(`${HOST}/?theme=${HOST_ENGLISH_THEME_ID}&data=live`);
@@ -328,6 +335,9 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
+    await expect
+      .poll(() => shownClock(page), { timeout: 15_000 })
+      .not.toBe("—");
     const english = String(await canvasProp(page, CLOCK_NODE_ID, "text"));
 
     // Same theme shape, binding, instant and literal. Only declared language differs.
@@ -505,10 +515,18 @@ test.describe("hosted player over the real host", () => {
     );
     expect(gauge, "the ring is on the display").toBeDefined();
     expect(gauge!.ink, "the ring has a track").toBeGreaterThan(500);
+    // The floor is the *no arc* baseline, not a share of memory. Measured on
+    // this option at the starter's 218x218 @ renderScale 2, chroma is
+    // `553 + 207 x value` px: 216 with no datum at all, 553 at value 0, 2,620 at
+    // 10%. A 2000 floor therefore read "RAM above ~7%", which is a statement
+    // about the host's memory rather than about the ring — and it went red on an
+    // idle machine that the fix had fixed. 500 is the floor this file already
+    // uses for the other charts, and it is 2.3x the arc-less baseline this test
+    // has to tell apart (219 on `ram-gauge`, 307 on `vram-gauge`).
     expect(
       gauge!.chroma,
       "the ring paints its progress arc in the theme's colour",
-    ).toBeGreaterThan(2000);
+    ).toBeGreaterThan(500);
   });
 
   test("paints each caption from the host's own reading of that key", async ({
@@ -1004,15 +1022,19 @@ test.describe("a display fed by the real host", () => {
       "the picture is not one flat colour",
     ).toBeGreaterThan(0.001);
 
-    // Kept as evidence, and looked at before it is kept.
-    await page.setContent(
-      `<body style="margin:0;background:#0c0e13"><img src="${dataUrl}" style="display:block;width:${census.width * 2}px;image-rendering:pixelated"></body>`,
-    );
-    await page.waitForTimeout(400);
-    await page.screenshot({
-      path: "../../docs/evidence/screenshots/host-theme-thumbnail-desktop-chromium.png",
-      fullPage: true,
-    });
+    // Kept as evidence, and looked at before it is kept. Gated like its two
+    // siblings: this file is tracked, and rewriting it on every desktop-host
+    // run left the working tree dirty with a picture nobody inspected.
+    if (process.env["VIGILIA_CAPTURE"] !== undefined) {
+      await page.setContent(
+        `<body style="margin:0;background:#0c0e13"><img src="${dataUrl}" style="display:block;width:${census.width * 2}px;image-rendering:pixelated"></body>`,
+      );
+      await page.waitForTimeout(400);
+      await page.screenshot({
+        path: "../../docs/evidence/screenshots/host-theme-thumbnail-desktop-chromium.png",
+        fullPage: true,
+      });
+    }
   });
 
   test("reconnects after the stream fails, and the reading resumes", async ({

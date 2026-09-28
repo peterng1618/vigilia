@@ -74,6 +74,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Samples/status | `renderer-core/src/types.ts` |
 | Live presentation buffer | `renderer-core/src/data/live-source.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
+| The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |
 | Published development schema | `schema/theme-document.schema.json` |
 | Wire protocol | `renderer-core/src/data/protocol.ts` |
@@ -88,6 +89,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Pure frame planning | `renderer-core/src/scene/plan.ts` |
 | ScenePlan reconciliation | `scene-fabric/src/adapter.ts` |
 | Canvas/artboard mount | `scene-fabric/src/scene.ts` |
+| Backdrop-glass composition, and its attach/dispose lifecycle | `scene-fabric/src/glass.ts` (editor Canvas and player StaticCanvas share it) |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
 | `VigiliaChart` lifecycle | `scene-fabric/src/chart-object.ts` |
 | Chart repaint cadence | `scene-fabric/src/chart-refresh.ts` |

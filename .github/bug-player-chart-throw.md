@@ -82,10 +82,12 @@ round-cap shape, and not the option being wrong.
   ok sample, a missing sample, a non-`ok` sample and an unresolvable paint.
 - Pixels, in the real host on the same build, saturation over the charts' own
   ECharts canvases: `ram-gauge` **219 → 12,601**, `vram-gauge` **307 → 4,021**
-  saturated pixels, track ink unchanged (21,065 → 21,085 and 27,592 → 27,609).
-  The editor's same-build rings read 21,072 and 27,694 ink, so the two mounts
-  agree to within 0.1%. Screenshot:
-  `docs/evidence/screenshots/player-reference-desktop-host.png`.
+  saturated pixels, each re-measured from a build with this fix re-disabled.
+  Ink is reported as unchanged (21,065 → 21,085 and 27,592 → 27,609) and is
+  **not** the evidence: ink is the track, which the fix does not touch, and the
+  editor/display ink agreement read 0.033%/0.370% before the fix against
+  0.062%/0.308% after, so it does not discriminate between the two builds.
+  Screenshot: `docs/evidence/screenshots/player-reference-desktop-host.png`.
 - The report: `.superpowers/sdd/2026-09-26-reference-theme-fidelity/task-11b-report.md`.
 
 **How to reproduce** (before the fix)

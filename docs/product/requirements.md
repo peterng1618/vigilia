@@ -157,8 +157,23 @@ never zero.
 
 A supported setting needs a property control, persisted authored representation
 and visual fixture. If ECharts cannot express a treatment, surface the gap and
-get product agreement before stabilising an approximation. **No chart engine
-gaps are open.**
+get product agreement before stabilising an approximation. **Three are open**,
+recorded by the reference-theme plan; each is a limit of what one engine option
+can say, not a defect:
+
+- **A line's area fill applies to the first series only**
+  (`renderer-core/src/charts/line.ts:254-255`). A theme wanting several filled
+  series cannot have them; the reference's three filled trend series are
+  therefore not expressible, and the starter draws strokes.
+- **A series `lineWidth` is a backing-pixel length, not an artboard unit**
+  (`0005`). The backing scale is derived per chart from its own area, so one
+  authored value renders at 1.305× on the starter's trends chart against its
+  sparklines. `shadowBlur` inherits the same unit, which is why the optional
+  chart glow is skipped.
+- **A gauge must carry no datum when it draws no arc** (`0008`). ECharts 6.1.0
+  reads its own previous progress element unguarded inside the data-diff update
+  callback, so a datum outliving `progress.show: false` throws inside the
+  engine. Worked around on our side of the boundary; unfixed upstream.
 
 - Gauge angular gradients: ECharts applies gauge progress colour across the
   swept arc, so the adapter expresses the gradient as arc segments.
