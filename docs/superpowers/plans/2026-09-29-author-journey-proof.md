@@ -74,7 +74,27 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 **F1.8's shape, decided.** The authored `id` stays the stable key and is what bindings and round-trips reference — it is not renamed. A new optional `name` rides on the object beside it, exactly as globals already carry a display name (§75). Absent means "fall back to the id", so a hand-authored scene that predates the field still opens. The layer list, the selection and any semantics that would otherwise print an id show the name when there is one.
 
-| F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope decided:** Panel gains a **shape** choice of **Rectangle, Ellipse, Triangle**. A circle is an ellipse with equal sides and a rounded rect is a rect with the corner radius the panel already exposes, so neither earns a separate option. **Consequence, stated rather than hidden:** glass and panel material stay **Rect-only** — `supportsGlass` asserts it at `glass.test.ts:85`, and the renderer's `localPath` draws `ctx.rect` and a rounded rect and knows nothing else. A non-rect shape therefore carries no frosted treatment and no material fields until those owners are widened and measured. That limitation is the honest state, not a silent one. | `new-object-defaults.ts`, the panel primitive, `renderer-core` schema |
+### F1.9's scope, decided
+
+**Authoring.** The Add pane's "Panel" becomes a shape list offering every primitive Fabric 7 ships: **Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path**. `Path` already exists as a type — the starter's nine icons are paths — but has no authoring entry, so it is a gap like the rest. No new dependency: all eight classes are in the installed package.
+
+**Their properties, in the selection inspector** — each shape exposes what is actually its own, and the general geometry fields stay as they are:
+
+| Shape | Shape-specific properties |
+|---|---|
+| Rect | corner radius (`rx`/`ry`) — the panel already exposes this |
+| Circle, Ellipse | none of their own; both derive from width and height |
+| Triangle | none of its own |
+| Polygon | side count and corner radius |
+| Polyline | its points |
+| Line | its two endpoints |
+| Path | the path data |
+
+**Material widens with the shapes.** `supportsPanelFields` is `object instanceof Rect` (`selection-inspector/panel.ts:57`), so today a shape can be placed and not coloured — which is not a shippable shape. Fill, stroke, border width, corner radius and shadow belong to every one of these classes, so the predicate widens to the primitive set and the same fields appear. One owner, one set of fields, no per-shape fork.
+
+**Glass does not, and that is stated rather than hidden.** `GLASS_OBJECT_TYPES` is `Rect | Group` and the published schema enforces exactly that — the `type` enum of `["Rect", "Group"]` applies only when `vigiliaGlass` is present, so the object definition is otherwise permissive and no schema widening is needed for the new shapes. The renderer is the real limit: `localPath` in `scene-fabric/src/glass.ts` draws `ctx.rect` and a rounded rect and knows nothing else, and Task 1 measured radii on rectangles only. **A non-rect shape therefore carries no frosted treatment** until `localPath` is taught the other paths and the budget is re-measured. That limitation is honest, and it is the reason this is one backlog item and not a silent half-feature.
+
+| F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope widened by the user (2026-09-29): all primitive Fabric shapes, and their properties.** Fabric 7 ships `Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path` — all present in the installed package, so this is authoring and material work, not a dependency. See the scope note below. | `new-object-defaults.ts`, the panel primitive, `selection-inspector/panel.ts` |
 
 ### P2 — data model
 
