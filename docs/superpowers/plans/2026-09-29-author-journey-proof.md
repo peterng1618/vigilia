@@ -85,12 +85,17 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 | Rect | corner radius (`rx`/`ry`) — the panel already exposes this |
 | Circle, Ellipse | none of their own; both derive from width and height |
 | Triangle | none of its own |
-| Polygon | side count and corner radius |
+| Polygon | **side count only** — see the correction below |
 | Polyline | its points |
 | Line | its two endpoints |
 | Path | the path data |
 
-**Material widens with the shapes.** `supportsPanelFields` is `object instanceof Rect` (`selection-inspector/panel.ts:57`), so today a shape can be placed and not coloured — which is not a shippable shape. Fill, stroke, border width, corner radius and shadow belong to every one of these classes, so the predicate widens to the primitive set and the same fields appear. One owner, one set of fields, no per-shape fork.
+**Two premises in this table were wrong, and the implementer corrected them rather than faking them (2026-09-29).** Verified in the installed package, not assumed:
+
+- **Fabric 7.4.0's `Polygon` has neither `numPoints` nor `cornerRadius`.** A polygon therefore takes a **side count** which is recomputed into the corners the scene stores — what Fabric 5's `numPoints` did — and gets **no** corner-radius field at all. A radius box that accepts an edit and applies none is the one thing `panel.ts`'s own doc comment forbids, so the absent field is the correct outcome, not a gap.
+- **`new Path({ path: "..." })` throws in Fabric 7.** `path` must be the command array; the Path default is authored as SVG data and normalised by Fabric's own parser.
+
+**Material widens with the shapes.** `supportsPanelFields` widens from `object instanceof Rect` to the primitive set, so fill, stroke, border width, corner radius and shadow appear on every one of them. One owner, one set of fields, no per-shape fork. Open shapes (polyline, line) take a **content** token as their stroke — a fill in the surface colour would be invisible.
 
 **Glass does not, and that is stated rather than hidden.** `GLASS_OBJECT_TYPES` is `Rect | Group` and the published schema enforces exactly that — the `type` enum of `["Rect", "Group"]` applies only when `vigiliaGlass` is present, so the object definition is otherwise permissive and no schema widening is needed for the new shapes. The renderer is the real limit: `localPath` in `scene-fabric/src/glass.ts` draws `ctx.rect` and a rounded rect and knows nothing else, and Task 1 measured radii on rectangles only. **A non-rect shape therefore carries no frosted treatment** until `localPath` is taught the other paths and the budget is re-measured. That limitation is honest, and it is the reason this is one backlog item and not a silent half-feature.
 
@@ -113,6 +118,14 @@ The host was started for the first time in this pass — `node packages/host/bin
 ### Player findings, found by running it (2026-09-29)
 
 The player had never been looked at as a user in this pass. It **works**: the dashboard renders live readings, the clock ticks, the rings and sparklines draw, and unsupplied values correctly paint a gap rather than a zero — which is the §97 behaviour the plan asks for and is **not** a finding.
+
+### Landed
+
+| # | Finding | Landed in | Proof |
+|---|---|---|---|
+| F1.9 | No shape surface; all primitive Fabric shapes and their properties | `9b47534` | 1908 unit tests green; red-without-fix took `panel.dom.test.ts` to **20 failed / 34 passed**; 3 Playwright specs pass; capture regenerated and inspected. **Glass did not widen**, as instructed. |
+
+**Still open from that work:** `new-object-defaults.ts` is at 522 lines and `selection-inspector/panel.ts` at 636 — both over the "500 is a signal" line, and the implementer left them because the split candidate would export the shared commit/refuse plumbing across a module boundary. That is a real call to revisit, not a thing to wave through.
 
 ### P2 — data model
 
