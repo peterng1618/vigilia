@@ -1,36 +1,35 @@
 # Vigilia status
 
-Updated: 2026-09-28
+Updated: 2026-09-29
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
 
-The plan's acceptance is met and the measurement it carried as open is closed.
-The frosted card has been rebuilt against the four glassmorphism behaviours the
-user named, and what is left is the one thing an agent cannot decide: whether it
-now reads as glass.
+Prove the author journey from blank to a finished theme by hand, through the UI
+alone. The composition exists because a generator emitted it; rebuilding it by
+hand is what finds the authoring control that is missing.
 
 ## Active work
 
-- **Active plan:** [reference theme fidelity](docs/superpowers/plans/2026-09-26-reference-theme-fidelity.md) — acceptance met, **ready to archive**; no task is open.
+- **No plan is active.** The reference-theme plan is archived; the next scope is the [author journey proof](docs/superpowers/specs/2026-09-27-author-journey-proof-design.md), whose own gate requires an implementation plan written against the delivered surface before anything is dispatched.
+- **[The author-journey plan](docs/superpowers/plans/2026-09-24-author-journey.md) is not dispatchable.** Its Tasks 1–5 all landed; its Task 6 is marked stale in place and reassigned to the proof spec, which is where the executable scope now lives.
 - **The glass is changed and waiting on the user's eye.** They rejected the last attempt on sight, so the verdict is theirs; [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) carries the measurement behind every choice in it.
-- **0012 landed earlier the same evening:** the sampler reproduces `object-fit` now, so a panel blurs the photograph the element beside it is showing — the editor's 16.54 and the player's 5.08 both fall to the photograph's own 7.45.
-- **Archived:** `2026-09-25-snapping-fidelity.md`, `2026-09-26-clock-and-theme-locale.md`, the GitHub-issues backlog. Open [#2](https://github.com/peterng1618/vigilia/issues/2) is delete inside a group.
+- **Archived:** `2026-09-25-snapping-fidelity.md`, `2026-09-26-clock-and-theme-locale.md`, `2026-09-26-reference-theme-fidelity.md`, the GitHub-issues backlog. Open [#2](https://github.com/peterng1618/vigilia/issues/2) is delete inside a group.
 
 ## Last completed change
 
-- **Frost is diffusion, grain, saturation and an edge, and the tint is 30 %.** Diffusion moved 16 → 40, a seeded 128 px grain tile composites `overlay` at 1.5 % inside the panel clip, and `saturate(1.6)` rides the blur's own filter list. Radius 0 gets no filter at all, so the blur-off control stays a control for the photograph.
-- **The tint is floored by contrast, measured as WCAG luminance and not as luma distance.** 18 % put the CPU card's field at 0.1874 and its caption at 4.02:1, under AA; 24 % gives 4.49, too thin a margin to hold; 30 % gives 0.135 and 5.1:1. The panel still transmits — 1.08 of backdrop structure against a 0.6 floor an even fill cannot reach. That lands on the far side of the ecosystem's *"past 0.25 the glass effect dies"*, which is where contrast put it rather than where the glass research did.
-- **An earlier note read a 0-255 luma distance as a contrast ratio** and called the same caption "5.4:1". The two do not agree, and the browser is the one that ships; ADR 0013 now carries both tables and says which question each answers.
-- **One card primitive.** `frostedCard()` is the only card the theme writes, and `card()` had no other caller, so it is gone rather than left exported. All seven cards are frosted.
-- **The video frame-callback proof ran, and it had never run.** It fails on a real bug the debug block was chasing: `this` inside a `requestVideoFrameCallback` callback is a `VideoFrameCallbackContext`, so re-arming through it threw and the withholding count stayed at zero. Confirmed red at `host-media.spec.ts:649` with `followFrames` disabled.
+- **Reference-theme fidelity is archived.** All 37 boxes are ticked, the State line records what landed after the tasks closed, and three open edges are named as not closed by it. It ran twelve tasks across four phases and closed its last acceptance clause on pixels in both mounts.
+- **The author-journey plan cannot be dispatched, and the check is why.** Tasks 1–5 shipped years ago in tree terms; Task 2 mis-owns alignment/wrap/overflow, which live in the run editor rather than on the object; and the entire surface reference-theme added — glass controls, panel material, the frost tokens, per-family chart settings, device captions, tracked type — is absent from it.
+- **The executable scope is the proof spec, and it has no plan.** It gates on one: written against the delivered surface, not inherited from any earlier draft.
+- **Frost is diffusion, grain, saturation and an edge, and the tint is 30 %.** Diffusion 16 → 40, a seeded 128 px grain tile at 1.5 % `overlay`, and `saturate(1.6)` in the blur's own filter list.
+- **The tint is floored by contrast, measured as WCAG luminance and not as luma distance.** 18 % put the CPU card's caption at 4.02:1, under AA; 30 % gives 5.1:1 and the panel still carries 1.08 of backdrop structure. An earlier note read a 0-255 luma distance as a ratio and called the same pair 5.4:1; the browser is the one that ships.
 
 ## Next
 
-1. Look at the frosted card in both mounts and say whether it reads as glass.
-2. If it does not, the tint is the only lever left, and it now costs more than it did — the caption's 5.1:1 has 0.6 of ratio in hand.
-3. Archive the plan, then the author-journey proof plan, then the font catalogue.
-4. Then the queued specs.
+1. Write the author-journey proof plan against the delivered surface, then activate it in `STATUS.md`.
+2. Dispatch it in subagent mode; the rebuild is one owner's hands and cannot be split across them.
+3. Look at the frosted card in both mounts and say whether it reads as glass — the proof rebuilds that card by hand and will show it again.
+4. Then the font trio catalogue, then the queued specs.
 
 ## Blockers / unverified
 

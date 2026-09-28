@@ -20,17 +20,29 @@ shell, Vitest, Playwright and Biome. No new dependency assumed.
 — 1672 × 941; RAM partial gauge, VRAM full ring. Documentation reference only,
 not a licensed asset to bundle in the product.
 
-**State:** Acceptance met; ready to archive. All twelve tasks are written,
-reviewed and committed, and the last open clause — *"Inspect editor and real
-player at target size, another fitted viewport and different DPR, including
-grouped/rotated/overlapping panels and changing media"* — is proved by pixels on
-both mounts. Changing media on the player, the part blocked on
+**State:** Complete. All twelve tasks are written, reviewed and committed, and
+the last open clause — *"Inspect editor and real player at target size, another
+fitted viewport and different DPR, including grouped/rotated/overlapping panels
+and changing media"* — is proved by pixels on both mounts. Changing media on the
+player, the part blocked on
 [#3](https://github.com/peterng1618/vigilia/issues/3), is closed in
 `task-12d-report.md`: a packaged video decodes on the player and the glass over
 it tracks the current frame, swapping a theme's background asset at runtime
 replaces what the display shows by pixel count, and the paired-display session
 that `75bff56` left unmeasured is now measured both ways. Task 1's probe and its
 findings are recorded below and in `task-1-report.md`.
+
+**Post-completion work landed after the tasks closed**, in `a4cd444` and the
+commits under it: the frosted material gained `saturate(1.6)` composed into the
+blur's own filter list, the grain fell to 1.5 %, the tint rose to 30 % because
+the CPU card's caption measured 4.02:1 at 18 %, and all seven cards became
+frosted through one `frostedCard()` primitive. Those follow
+[0013](../../../decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md),
+which records the measurements. Three open edges are carried in `STATUS.md` and
+were **not** closed by this plan: the frosted CPU card's `mr` handle does not
+track the pointer, Task 9's `Promise.allSettled` split frame, the POSIX
+drive→volume join proven only on Windows, and `storage-card-value` overrunning
+its card.
 
 ## Global Constraints
 
@@ -201,17 +213,17 @@ clipping and texture limits cannot be waved away. No new dependency or product
 patch merely to keep the probe. Native filtering first; installed/maintained
 alternatives only if the first option fails the specified behavior.
 
-- [ ] Read current owners and installed Fabric code; compare render-boundary
+- [x] Read current owners and installed Fabric code; compare render-boundary
   sampling with available native/installed filtering. Record why rejected paths
   miss scene order, media, capture or resource constraints.
-- [ ] Run the smallest browser probe in both Canvas and StaticCanvas with a
+- [x] Run the smallest browser probe in both Canvas and StaticCanvas with a
   detailed background, two overlapping panels, grouped/rotated glass, sharp text,
   a changing chart/video source, history-like revival and zoom/DPR changes.
   Check normal group opacity and flattened-versus-grouped backdrop behavior.
-- [ ] Measure enabled/disabled frame cost, dirty/static behavior and backing
+- [x] Measure enabled/disabled frame cost, dirty/static behavior and backing
   allocation at target size and higher DPR. Record hardware/browser/build,
   finite blur-radius and surface/memory limits, fallback diagnostics and cleanup.
-- [ ] Amend this plan with the proven hook/lifecycle, concrete bounds, benchmark
+- [x] Amend this plan with the proven hook/lifecycle, concrete bounds, benchmark
   budget and responsibility split. Request review of those results before Task 2.
   If no approach satisfies mandatory glass, stop rather than silently reduce scope.
 
@@ -238,11 +250,11 @@ Fabric subclass, record its serialized type before this task; do not replace
 unrelated Rect classes globally. Upper bounds come only from Task 1's approved
 record. Reject malformed treatment on unsupported object types before revival.
 
-- [ ] Pin invalid type/range/non-finite input, unsupported object kind and missing
+- [x] Pin invalid type/range/non-finite input, unsupported object kind and missing
   palette reference behavior with focused tests at actual import boundaries.
-- [ ] Add minimal pure contract, validation/schema and shared serialization/
+- [x] Add minimal pure contract, validation/schema and shared serialization/
   revival registration; test old scenes with no glass remain unchanged.
-- [ ] Prove nested objects, duplicate/history payloads and package round trips
+- [x] Prove nested objects, duplicate/history payloads and package round trips
   retain only authored properties. Inspect serialized output for leaked surfaces,
   resolved runtime colors, sampled readings or media state; none may appear.
 
@@ -264,11 +276,11 @@ when tokens change/delete/reassign. A stale inspector event cannot mutate the
 previous selection. Locked objects follow current edit policy. Unsupported
 selection types do not show working-looking panel controls.
 
-- [ ] Add failing tests for insert/select/style/undo plus invalid numbers, stale
+- [x] Add failing tests for insert/select/style/undo plus invalid numbers, stale
   selection events and palette reassignment on fill/stroke/shadow.
-- [ ] Wire accessible fields and creation defaults through existing owners;
+- [x] Wire accessible fields and creation defaults through existing owners;
   keep one history entry per committed edit and no selection-induced history.
-- [ ] Drive keyboard and pointer authoring in the real editor; save/reopen one
+- [x] Drive keyboard and pointer authoring in the real editor; save/reopen one
   styled panel. Move starter panel geometry/borders toward the latest target
   using these same supported properties, without pretending glass is finished.
 
@@ -289,13 +301,13 @@ Task 1, `scene.ts`, `persist.ts`; editor `editor-shell.ts`; player `main.ts`.
 **Produces:** One shared attach/update/dispose lifecycle called by editor/player;
 no DOM overlay scene, second editable tree or pixel-streaming transport.
 
-- [ ] Turn probe failures into focused regression cases for self/later-object
+- [x] Turn probe failures into focused regression cases for self/later-object
   exclusion, rounded padded edges, nested/overlapping glass, opacity and
   background-media fit. Include missing/unreadable source and oversized inputs.
-- [ ] Integrate composition at the approved boundary with bounded allocations,
+- [x] Integrate composition at the approved boundary with bounded allocations,
   correct group/viewport transforms and palette tint/stroke order. Preserve the
   existing asset resolver/session access rules; never fetch arbitrary paths.
-- [ ] Inspect identical authored scenes through real editor Canvas and player
+- [x] Inspect identical authored scenes through real editor Canvas and player
   StaticCanvas. Verify texture behind glass visibly softens while foreground
   text stays sharp; tint-only fallback must report failure and cannot pass.
   **Amended 2026-09-27:** the blur half is proved here, in the **editor** mount —
@@ -320,17 +332,17 @@ longer used, without a new always-running loop on static scenes.
 live-runtime/history events, player mount/disposal. Extend existing refresh hooks
 rather than invent another global scheduler.
 
-- [ ] Pin stale-backdrop cases: moving/resizing/rotating a panel, changing a lower
+- [x] Pin stale-backdrop cases: moving/resizing/rotating a panel, changing a lower
   object, changing z-order/group opacity, **video frame updates (measured broken —
   see the Task 1 result above)**, palette changes, zoom/DPR/fit and
   undo/revival replacing object identity. **Inherited from Task 4 (2026-09-27):**
   a ~14 px unexplained residual in the media-offset measurement — a symmetric blur
   should not shift a located feature, so this is not noise and must be explained,
   not closed.
-- [ ] Connect bounded invalidation and shared media lifetime. Dispose listeners,
+- [x] Connect bounded invalidation and shared media lifetime. Dispose listeners,
   video callbacks, surfaces and chart references on delete, replace and unmount.
   Hidden/disconnected rendering follows current policy and resumes accurately.
-- [ ] Profile Task 1's repeatable scenes against approved budgets. Verify idle
+- [x] Profile Task 1's repeatable scenes against approved budgets. Verify idle
   scenes incur no extra glass animation loop, repeated mount/unmount does not
   accumulate resources, and group/viewport operations remain responsive.
 
@@ -345,12 +357,12 @@ contains a working reference-like CPU card with live value and sparkline.
 **Owners:** `selection-inspector/`, `ui-copy.ts`, existing history/clipboard owners,
 `new-fabric-theme.ts`, focused browser tests and screenshot registry.
 
-- [ ] Test enabled/disabled/zero blur, finite upper bound rejection, locked/stale
+- [x] Test enabled/disabled/zero blur, finite upper bound rejection, locked/stale
   selection, undo/redo, duplicate/group, and token changes through UI.
-- [ ] Wire controls to Task 2 properties and Task 5 lifecycle; compose the CPU
+- [x] Wire controls to Task 2 properties and Task 5 lifecycle; compose the CPU
   card using the normal palette, text runs and line chart family. Other starter
   cards may remain incomplete, with differences recorded honestly.
-- [ ] Exercise save/reopen/export/import and player output of this slice; inspect
+- [x] Exercise save/reopen/export/import and player output of this slice; inspect
   real blur, sharp text and current data. Include ordinary and grouped panels so
   seeded defaults cannot hide an unusable authoring operation.
 
@@ -369,13 +381,13 @@ stacked Storage/Network panels, all with working available metric bindings.
 asset/font loading paths and theme globals. Split the oversized starter file by
 actual composition responsibility only if needed; no reusable widget framework.
 
-- [ ] Pin semantic binding correctness and required chart families; verify RAM
+- [x] Pin semantic binding correctness and required chart families; verify RAM
   keys use the actual vocabulary, not stale `memory.*` names. Gauges bind usage
   percentage; capacity labels are separate normal live-text objects.
-- [ ] Replace weather/quotes/unrelated demos, set target-size artboard/layout and
+- [x] Replace weather/quotes/unrelated demos, set target-size artboard/layout and
   compose imported/licensed icons. Preserve blank-authoring behavior if separately
   supported; do not overwrite existing saved themes. Keep all styling editable.
-- [ ] Render new starter in editor/player and inspect layout at 1672 × 941 and a
+- [x] Render new starter in editor/player and inspect layout at 1672 × 941 and a
   fitted viewport. Accept current chart rendering and history window; do not fake
   an hour axis, readings or device names while later tasks are incomplete.
 
@@ -390,13 +402,13 @@ clock/readings/gauge labels retain authored layout through refresh and reopening
 **Owners:** `scene-fabric/src/object-type.ts`, `fabric-text.ts`, `text-runs.ts`;
 editor type-preset/run/live-runtime owners; starter type presets.
 
-- [ ] Add regression cases showing current dropped spacing; cover single-run,
+- [x] Add regression cases showing current dropped spacing; cover single-run,
   mixed-run object-level limitations, preset reassignment, font readiness, changed
   digit width, locale/date length and center-aligned gauge capacity labels.
-- [ ] Apply tracking through the current v2 path on edit/revival/live update.
+- [x] Apply tracking through the current v2 path on edit/revival/live update.
   Use shared preset resolution and measured font size; do not add a legacy-only
   fix or pretend unsupported per-character tracking works. Expose clear limits.
-- [ ] Tune actual starter typography and compare rendered heading/clock/gauge
+- [x] Tune actual starter typography and compare rendered heading/clock/gauge
   text before and after refresh, undo and import. Keep fixed-box alignment,
   wrapping/overflow and packaged font behavior intact.
 
@@ -419,13 +431,13 @@ resolve caption and metrics from the same device selection. Do not select the
 first GPU's name while showing another GPU's readings or aggregate metrics under
 a single-volume label. No serial numbers or provider-instance IDs in the theme.
 
-- [ ] Inspect actual installed discovery APIs and current provider fallback;
+- [x] Inspect actual installed discovery APIs and current provider fallback;
   add deterministic tests for no devices, multiple GPUs/volumes, missing labels,
   fallback providers and assignment changes while a sample request is in flight.
-- [ ] Acquire/cache display metadata through existing discovery cadence, emit
+- [x] Acquire/cache display metadata through existing discovery cadence, emit
   requested text samples with honest status and discard obsolete assignment
   results. Share grouped acquisition; do not poll per card or add daily counters.
-- [ ] Bind starter captions through normal UI-supported semantics. Exercise
+- [x] Bind starter captions through normal UI-supported semantics. Exercise
   assignment/fallback with real host test wiring, including unavailable metadata,
   and inspect that captions change with adjacent readings rather than ahead of them.
 
@@ -443,14 +455,14 @@ or a documented skip leaves a finished, acceptable starter.
 **Owners:** Existing chart settings/descriptors/builders/validators and chart object
 backing/capture limits, only where evidence justifies changes.
 
-- [ ] Check current ECharts documentation and installed options for native
+- [x] Check current ECharts documentation and installed options for native
   line/bar shadow support; probe clipping and cost with existing chart backings.
   Record skip immediately if it needs duplicate series, extra render passes,
   new dependencies, custom shaders or a general effects stack.
-- [ ] If the cheap path works, add minimal typed setting/control with bounded
+- [x] If the cheap path works, add minimal typed setting/control with bounded
   blur/opacity and reuse series color. Keep defaults unchanged for other themes;
   raw engine options never enter the envelope. Test invalid settings and toggle.
-- [ ] Inspect enabled/disabled editor/player and round-trip behavior, including
+- [x] Inspect enabled/disabled editor/player and round-trip behavior, including
   edges and sharp foreground. Record included or skipped; neither gauge glow nor
   exact chart matching is a release gate.
 
@@ -466,18 +478,18 @@ preview mode or manually authored JSON.
 **Owners:** New `src/web/tests/e2e/reference-theme.spec.ts`, existing editor/display
 fixture and real-host setup, package/persistence boundaries; screenshot registry.
 
-- [ ] Drive insert/style/glass/bind/text operations, keyboard controls, save,
+- [x] Drive insert/style/glass/bind/text operations, keyboard controls, save,
   close/reopen, export/import and real-player execution. Validate new default
   versus saved user theme behavior and no runtime/cached fields in output.
   Inspect normal capture/thumbnail paths: glass and packaged assets must appear
   there too, with stable IDs and unchanged authored bounds.
-- [ ] Exercise reference-size/fitted/DPR views, nested/rotated/overlapping panels,
+- [x] Exercise reference-size/fitted/DPR views, nested/rotated/overlapping panels,
   background replacement/video, font failure, invalid import, disconnect/reconnect,
   missing sensors and device reassignment. Verify errors preserve recoverable work.
   **Also owns, from Task 4 (2026-09-27):** the sharp-foreground-text half of Task
   4's browser inspection — text above glass stays sharp through a real mount — which
   Task 4 could not prove because the container has no usable font.
-- [ ] Rebuild/capture/inspect affected registered actions. Compare latest target
+- [x] Rebuild/capture/inspect affected registered actions. Compare latest target
   side by side, record remaining discrepancies and fix required ones within their
   owners. Exempt background pixels, live data and fine chart treatment only;
   real blur and editable layout remain non-negotiable.
@@ -493,15 +505,15 @@ with no hidden performance/authoring failures or unclaimed test failures.
 **Owners:** Changed product/docs/tests, ownership map, current spec/plan,
 `STATUS.md`, evidence registry; no environment changes.
 
-- [ ] Request independent review of contract coverage, cross-owner lifecycle,
+- [x] Request independent review of contract coverage, cross-owner lifecycle,
   palette/preset persistence, security/resource bounds, provider identity and
   actual default-starter evidence. Resolve material findings; do not edit agent
   settings/process documents in response to review.
-- [ ] Run broad gates from `src/web/`: `npm test`, `npm run typecheck`,
+- [x] Run broad gates from `src/web/`: `npm test`, `npm run typecheck`,
   `npm run build`, `npm run format:check`, `npm run lint`, `npm run size`,
   `npm run test:e2e`, `npm run status:check`. Use JSON reports where output is
   compressed. Report exact failures/skips; inspect final real-host visuals.
-- [ ] Record performance evidence and supported/untested environments; update
+- [x] Record performance evidence and supported/untested environments; update
   ownership/current docs/schema/evidence together. Mark spec implemented only
   after acceptance is evidenced. Replace latest-change summary and hand off the
   remaining queue. Archive plan only when no active/queued dependency needs it.
