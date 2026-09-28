@@ -710,8 +710,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // A declared asset path already begins with `assets/`, so the capture is
+    // the whole package-relative path and the lookup is verbatim. The `assets/`
+    // anchor is what keeps `/document`, `/answers` and `/thumbnail` out.
     const assetMatch = url.pathname.match(
-      /^\/api\/themes\/([^/]+)\/assets\/(.+)$/,
+      /^\/api\/themes\/([^/]+)\/(assets\/.+)$/,
     );
     if (assetMatch) {
       if (request.method !== "GET") {
@@ -733,12 +736,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
       );
       const bytes =
         declared === undefined ? undefined : record?.assets[declared.path];
-      if (bytes === undefined) {
+      if (declared === undefined || bytes === undefined) {
         sendText(response, 404, "Theme asset not found.");
         return;
       }
       response.writeHead(200, {
-        "content-type": "application/octet-stream",
+        // A browser will not decode an `<img>` or a `<video>` whose response is
+        // not a media type, and never sniffs SVG, so octet-stream here is a
+        // packaged image no display can show.
+        "content-type": contentTypeFor(declared.path),
         "cache-control": "no-store",
       });
       response.end(Buffer.from(bytes));

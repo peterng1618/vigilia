@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { canvasProp } from "./canvas-probe.js";
 import { captureVisualReview } from "./editor-canvas.js";
 import {
+  BADGE_INK,
   CLOCK_NODE_ID,
   GROUPED_GROUP_ANGLE,
   GROUPED_GROUP_ID,
@@ -9,6 +10,7 @@ import {
   HOST_ENGLISH_THEME_ID,
   HOST_GROUPED_THEME_ID,
   HOST_JAPANESE_THEME_ID,
+  HOST_MEDIA_THEME_ID,
   HOST_MISSING_THEME_ID,
   HOST_PORT,
   HOST_TEMP_THEME_ID,
@@ -133,6 +135,42 @@ function chartPixels(page: Page): Promise<
   });
 }
 
+/**
+ * Pixels of the badge's own colour in the bytes the display actually decoded.
+ * Zero until it decodes, and zero forever if the host never served them — which
+ * a bare status check on the URL cannot tell apart from a 200 that is not an
+ * image.
+ */
+async function decodedBadgeInk(page: Page): Promise<number> {
+  return page.evaluate(({ r, g, b }) => {
+    const image = document.querySelector<HTMLImageElement>(
+      "[data-vigilia-background-media] img",
+    );
+    if (image === null || !image.complete || image.naturalWidth === 0) {
+      return 0;
+    }
+    const probe = document.createElement("canvas");
+    probe.width = image.naturalWidth;
+    probe.height = image.naturalHeight;
+    const context = probe.getContext("2d");
+    if (context === null) return -1;
+    context.drawImage(image, 0, 0);
+    const { data } = context.getImageData(0, 0, probe.width, probe.height);
+    let ink = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (
+        data[i + 3]! > 200 &&
+        Math.abs(data[i]! - r) <= 12 &&
+        Math.abs(data[i + 1]! - g) <= 12 &&
+        Math.abs(data[i + 2]! - b) <= 12
+      ) {
+        ink += 1;
+      }
+    }
+    return ink;
+  }, BADGE_INK);
+}
+
 test.describe("hosted player over the real host", () => {
   test("serves the player, the editor and the API only over loopback", async ({
     request,
@@ -157,15 +195,40 @@ test.describe("hosted player over the real host", () => {
     request,
   }) => {
     const asset = await request.get(
-      `${HOST}/api/themes/${HOST_THEME_ID}/assets/${encodeURIComponent("assets/badge.svg")}`,
+      `${HOST}/api/themes/${HOST_THEME_ID}/assets/badge.svg`,
     );
     expect(asset.status()).toBe(200);
     expect(await asset.text()).toContain("<svg");
 
     const undeclared = await request.get(
-      `${HOST}/api/themes/${HOST_THEME_ID}/assets/${encodeURIComponent("assets/nope.svg")}`,
+      `${HOST}/api/themes/${HOST_THEME_ID}/assets/nope.svg`,
     );
     expect(undeclared.status()).toBe(404);
+  });
+
+  test("a hosted theme's packaged media decodes on the display", async ({
+    page,
+  }) => {
+    await page.goto(`${HOST}/?theme=${HOST_MEDIA_THEME_ID}`);
+
+    // The media layer is a DOM sibling under the artboard, so the proof is the
+    // element itself: the URL the resolver built, the decoded size, and the
+    // pixels the served bytes actually paint. A 200 on its own would pass on an
+    // app shell served for an unknown path.
+    await expect
+      .poll(() => decodedBadgeInk(page), { timeout: 20_000 })
+      .toBeGreaterThan(200);
+
+    const media = await page
+      .locator("[data-vigilia-background-media] img")
+      .evaluate((element) => ({
+        src: (element as HTMLImageElement).src,
+        naturalWidth: (element as HTMLImageElement).naturalWidth,
+      }));
+    expect(media.src).toBe(
+      `${HOST}/api/themes/${HOST_MEDIA_THEME_ID}/assets/badge.svg`,
+    );
+    expect(media.naturalWidth).toBe(24);
   });
 
   test("refuses theme mutation from a non-loopback peer", async ({

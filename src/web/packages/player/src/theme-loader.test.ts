@@ -63,7 +63,7 @@ describe("loadHostedTheme", () => {
       loadHostedFontAssets("living-room", theme, fetcher),
     ).resolves.toEqual({ "assets/inter-400.woff2": new Uint8Array([1, 2]) });
     expect(fetcher).toHaveBeenCalledWith(
-      "/api/themes/living-room/assets/assets%2Finter-400.woff2",
+      "/api/themes/living-room/assets/inter-400.woff2",
     );
   });
 

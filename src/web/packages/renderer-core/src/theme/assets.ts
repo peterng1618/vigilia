@@ -5,7 +5,10 @@ import { ASSET_PATH_PATTERN, type AssetReference } from "./document.js";
 export type AssetResolver = (assetId: string) => string | undefined;
 
 export interface AssetResolverOptions {
-  /** URL prefix for package-relative asset paths. */
+  /**
+   * URL prefix the declared path is appended to, whole and verbatim — its
+   * `assets/` segment included. A base that already ends in `assets/` doubles it.
+   */
   readonly baseUrl: string;
 }
 

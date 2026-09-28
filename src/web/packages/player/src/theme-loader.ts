@@ -1,4 +1,5 @@
 import {
+  createAssetResolver,
   DEFAULT_MEASUREMENT_SYSTEM,
   type FabricThemeEnvelope,
   isMeasurementSystem,
@@ -61,12 +62,21 @@ export async function loadHostedFontAssets(
   theme: FabricThemeEnvelope,
   fetcher: typeof fetch,
 ): Promise<Readonly<Record<string, Uint8Array>>> {
+  // The resolver owns how a declared path becomes a URL, so a font and an
+  // image cannot end up asking the host for the same asset two different ways.
+  const resolve = createAssetResolver(theme.assets, {
+    baseUrl: `/api/themes/${encodeURIComponent(id)}/`,
+  });
   const fonts = (theme.assets ?? []).filter((asset) => asset.kind === "font");
   const entries = await Promise.all(
     fonts.map(async (asset) => {
-      const response = await fetcher(
-        `/api/themes/${encodeURIComponent(id)}/assets/${encodeURIComponent(asset.path)}`,
-      );
+      const url = resolve(asset.id);
+
+      if (url === undefined) {
+        throw new Error(`Font asset "${asset.id}" has no loadable path.`);
+      }
+
+      const response = await fetcher(url);
       if (!response.ok)
         throw new Error(
           `Could not load font asset "${asset.id}" (${response.status}).`,

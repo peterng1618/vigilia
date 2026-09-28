@@ -3,7 +3,10 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import {
+  createAssetResolver,
+  type FabricThemeEnvelope,
+} from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
@@ -310,7 +313,7 @@ describe("Host theme routes", () => {
     expect(new Uint8Array(rawRes.body)).toEqual(validEmptyAssetPackage);
   });
 
-  it("serves only declared package asset bytes", async () => {
+  it("serves the URL a display's asset resolver builds for a declared path", async () => {
     await request(
       hosted.server,
       "PUT",
@@ -318,14 +321,24 @@ describe("Host theme routes", () => {
       createPackageWithAsset("assets/inter-400.woff2", [1, 2]),
     );
 
-    const asset = await request(
-      hosted.server,
-      "GET",
-      "/api/themes/living-room/assets/assets%2Finter-400.woff2",
-    );
+    // The seam, exercised from both ends: the declarations the host publishes
+    // go through the resolver the player uses, and the URL it produces is the
+    // one the host has to answer. A route and a resolver that spell the
+    // request differently cannot both satisfy this.
+    const doc = (
+      await request(hosted.server, "GET", "/api/themes/living-room/document")
+    ).json() as FabricThemeEnvelope;
+    const resolve = createAssetResolver(doc.assets, {
+      baseUrl: "/api/themes/living-room/",
+    });
+    const url = resolve("inter-400");
+    expect(url).toBe("/api/themes/living-room/assets/inter-400.woff2");
+
+    const asset = await request(hosted.server, "GET", url ?? "");
     expect(asset.status).toBe(200);
     expect([...asset.body]).toEqual([1, 2]);
-    expect(asset.headers["content-type"]).toContain("application/octet-stream");
+    // A browser decodes an image only if the response says it is one.
+    expect(asset.headers["content-type"]).toBe("font/woff2");
   });
 
   it("refuses undeclared and traversal-like asset paths", async () => {
@@ -336,24 +349,25 @@ describe("Host theme routes", () => {
       createPackageWithAsset("assets/inter-400.woff2", [1, 2]),
     );
 
-    expect(
-      (
-        await request(
-          hosted.server,
-          "GET",
-          "/api/themes/living-room/assets/assets%2Fmissing.woff2",
-        )
-      ).status,
-    ).toBe(404);
-    expect(
-      (
-        await request(
-          hosted.server,
-          "GET",
-          "/api/themes/living-room/assets/%2e%2e%2Fsecret",
-        )
-      ).status,
-    ).toBe(404);
+    const status = (path: string): Promise<number> =>
+      request(hosted.server, "GET", path).then((res) => res.status);
+
+    // A well-formed package path the theme never declared.
+    await expect(
+      status("/api/themes/living-room/assets/assets/missing.woff2"),
+    ).resolves.toBe(404);
+    // `..` cannot walk out of the package: the lookup is by declared path, so a
+    // traversal decodes to something the theme does not declare.
+    await expect(
+      status("/api/themes/living-room/assets/assets/..%2F..%2Fsecret"),
+    ).resolves.toBe(404);
+    await expect(
+      status("/api/themes/living-room/assets/assets/..%2Fsecret"),
+    ).resolves.toBe(404);
+    // A `.` segment is refused the same way.
+    await expect(
+      status("/api/themes/living-room/assets/assets/.%2Fsecret"),
+    ).resolves.toBe(404);
   });
 
   it("forbids PUT from non-loopback addresses (§7)", async () => {

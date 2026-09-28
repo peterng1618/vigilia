@@ -34,6 +34,11 @@ export const HOST_MISSING_THEME_ID = "e2e-missing-sensor";
  * The editor proves all three; this is the same composition through the host
  * so the player's `StaticCanvas` mount is measured too. */
 export const HOST_GROUPED_THEME_ID = "e2e-grouped-glass";
+/** Packaged media and nothing else, so every light pixel on the artboard came
+ *  from the bytes the host served. The only place a theme's declared asset
+ *  reaches a display is the URL its asset resolver builds, so this is the
+ *  fixture that covers it. */
+export const HOST_MEDIA_THEME_ID = "e2e-media";
 export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
 
 /** The node a reading is painted into, by the id a test reads it back by. */
@@ -211,6 +216,47 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
   <circle cx="12" cy="12" r="10" fill="#e8ecf3" />
 </svg>
 `;
+
+/** The ink colour the badge paints, kept as a constant so a media test counts
+ *  pixels of the served bytes rather than of anything the theme draws. */
+export const BADGE_INK = { r: 232, g: 236, b: 243 } as const;
+
+/** A theme whose only content is a packaged image as the artboard's background.
+ *  An empty scene is deliberate: no authored node can contribute a light pixel,
+ *  so what a test sees on the artboard is the host's bytes and nothing else. */
+const mediaEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_MEDIA_THEME_ID,
+  metadata: { name: "E2E media", locale: "en" },
+  artboard: {
+    width: 640,
+    height: 360,
+    fitMode: "contain" as const,
+    background: { ref: "palette.bar" as const },
+    barColor: { ref: "palette.bar" as const },
+    backgroundMedia: { assetId: "badge", fit: "contain" as const },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+    },
+    typePresets: {},
+  },
+  assets: [
+    {
+      id: "badge",
+      kind: "svg" as const,
+      path: "assets/badge.svg",
+      license: { name: "MIT", attribution: "Vigilia test fixture." },
+    },
+  ],
+  scene: { version: "7.4.0" as const, objects: [] },
+};
 
 /** Artboard units per bar, alternating light and dark. Four times the widest
  *  blur the panels author, so a real blur flattens each bar's step and a tint
@@ -557,6 +603,7 @@ export async function seedHostTheme(): Promise<void> {
       format: "[日付 ]MMM ddd",
     }),
     groupedGlassEnvelope,
+    mediaEnvelope,
     // **A key nothing can report.** The envelope validator only checks that a
     // semantic key is a string of 1-120 characters, so this is a well-formed
     // package that a display must render as a gap.

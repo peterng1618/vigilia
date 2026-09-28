@@ -88,7 +88,6 @@ async function start(host: HTMLElement): Promise<void> {
     await startHostedTheme(
       host,
       await loadHostedTheme(requested, session.fetch),
-      parameters,
       session,
     );
   } catch (error) {
@@ -260,7 +259,6 @@ function startFixtureTheme(
 async function startHostedTheme(
   host: HTMLElement,
   theme: FabricThemeEnvelope,
-  parameters: URLSearchParams,
   session: DisplaySessionToken,
 ): Promise<void> {
   // Fetch before allocating live resources so a failed font request has nothing to release.
@@ -278,11 +276,7 @@ async function startHostedTheme(
       showConnectionState(status, keys.length, detail),
   });
   const resolveAsset = createAssetResolver(theme.assets, {
-    // Fabric fetches these itself, so the token rides in the URL: a paired
-    // phone could not load a packaged image or SVG without it.
-    baseUrl: session.withToken(
-      `/api/themes/${encodeURIComponent(parameters.get("theme") ?? "")}/`,
-    ),
+    baseUrl: `/api/themes/${encodeURIComponent(theme.id)}/`,
   });
   const handle = mountFabricScene({
     host,
@@ -291,7 +285,11 @@ async function startHostedTheme(
     assets: theme.assets ?? [],
     resolveAsset: (assetId) => {
       const url = resolveAsset(assetId);
-      return url === undefined ? undefined : { url };
+      // Fabric fetches these itself, so the token rides in the URL: a paired
+      // phone could not load a packaged image or SVG without it. It goes on the
+      // finished URL — a query belongs at the end of one, and the path this
+      // resolver appends has to come before it.
+      return url === undefined ? undefined : { url: session.withToken(url) };
     },
     onGlassError: reportGlassError,
   });
