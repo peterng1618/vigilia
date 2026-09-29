@@ -62,7 +62,10 @@ async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
         const x = rect.left + rect.width * fx;
         const y = rect.top + rect.height * fy;
         if (document.elementFromPoint(x, y) !== canvas) continue;
-        if (editorCanvas.findTarget({ clientX: x, clientY: y }).target !== undefined)
+        if (
+          editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
+          undefined
+        )
           continue;
         return { x, y };
       }
@@ -70,7 +73,9 @@ async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
     return null;
   });
   if (point === null)
-    throw new Error("No empty canvas point to right-click: the starter covers it.");
+    throw new Error(
+      "No empty canvas point to right-click: the starter covers it.",
+    );
   return point;
 }
 
@@ -90,13 +95,16 @@ async function readMenu(page: Page): Promise<{
   return page.evaluate(() => {
     const popup = Array.from(
       document.querySelectorAll<HTMLElement>(".editor-shell-menu-popup"),
-    ).find((element) => element.getAttribute("aria-label") === "Canvas actions");
+    ).find(
+      (element) => element.getAttribute("aria-label") === "Canvas actions",
+    );
     if (popup === undefined) throw new Error("The canvas menu did not open.");
     const items = Array.from(
       popup.querySelectorAll<HTMLElement>('[role="menuitem"]'),
     );
     const last = items[items.length - 1];
-    if (last === undefined) throw new Error("The canvas menu rendered no entries.");
+    if (last === undefined)
+      throw new Error("The canvas menu rendered no entries.");
     const rect = popup.getBoundingClientRect();
     const lastRect = last.getBoundingClientRect();
     return {
@@ -127,7 +135,9 @@ test("the last entry is reachable in a window too short to hold the menu", async
 
   const point = await emptyCanvasPoint(page);
   await page.mouse.click(point.x, point.y, { button: "right" });
-  await expect(page.getByRole("menu", { name: "Canvas actions" })).toBeVisible();
+  await expect(
+    page.getByRole("menu", { name: "Canvas actions" }),
+  ).toBeVisible();
 
   const opened = await readMenu(page);
   // The whole creation list, so this is the menu that overflows and not an
@@ -156,12 +166,14 @@ test("the last entry is reachable in a window too short to hold the menu", async
     .poll(async () => (await readMenu(page)).lastBottom, { timeout: 5_000 })
     .toBeLessThanOrEqual(opened.viewportHeight);
   const reached = await readMenu(page);
-  expect(reached.lastBottom, `${reached.lastLabel} is on screen`).toBeGreaterThan(
-    0,
-  );
-  expect(reached.scrollTop, "the menu scrolled to the last entry").toBeGreaterThan(
-    0,
-  );
+  expect(
+    reached.lastBottom,
+    `${reached.lastLabel} is on screen`,
+  ).toBeGreaterThan(0);
+  expect(
+    reached.scrollTop,
+    "the menu scrolled to the last entry",
+  ).toBeGreaterThan(0);
 
   // And it is a working entry rather than a reachable-looking one.
   await page.keyboard.press("Enter");
@@ -176,5 +188,8 @@ test("the last entry is reachable in a window too short to hold the menu", async
     ).vigiliaEditorBridge.editor.canvas.getObjects();
     return objects.length;
   });
-  expect(inserted, "Enter on the last entry inserted an object").toBeGreaterThan(0);
+  expect(
+    inserted,
+    "Enter on the last entry inserted an object",
+  ).toBeGreaterThan(0);
 });

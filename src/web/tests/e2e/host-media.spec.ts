@@ -725,7 +725,9 @@ test.describe("changing media on the real player", () => {
     await page.setViewportSize({ width: 1280, height: 960 });
     await page.goto(`${HOST}/?theme=${id}`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("pre")).toHaveCount(0);
+    // The player's failure page, not the `<pre>` it used to be: see the control
+    // of the same name in `host-player.spec.ts`, which pins the marker.
+    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
 
     // A video element that never decoded would be an element that exists, which
     // is the failure a `200` cannot see.

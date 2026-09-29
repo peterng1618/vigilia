@@ -187,6 +187,42 @@ test.describe("hosted player over the real host", () => {
     expect(themes.themes.map((entry) => entry.id)).toContain(HOST_THEME_ID);
   });
 
+  /**
+   * **The marker every "this display is up" assertion in this file names**, and
+   * the only place the failure page is itself the subject.
+   *
+   * A `?theme=` the host cannot serve replaces the display with a page saying so.
+   * Four assertions here, and one in `host-media.spec.ts`, check that a display
+   * *is* up by asking that this page is absent — which was the same thing as
+   * asking for no `<pre>` while the page was built from one. `b01b301` gave the
+   * page real markup and nothing noticed, because a `<pre>` is now absent from a
+   * display showing nothing but the failure: measured on this host,
+   * `preCount 0, failureCount 1`. The old assertion passed on a dead screen.
+   */
+  test("a theme it cannot serve says so as a page, and not as a bare error", async ({
+    page,
+  }) => {
+    await page.goto(`${HOST}/?theme=e2e-no-such-theme`);
+
+    await expect(page.locator("[data-vigilia-load-failure]")).toBeVisible();
+    // The host's own reason, kept and labelled, because the person who fixes
+    // this is not the one looking at the display.
+    await expect(
+      page.locator("[data-vigilia-load-failure-reason]"),
+    ).not.toBeEmpty();
+    // A reader with several displays open can tell which one broke.
+    await expect(page).toHaveTitle(/nothing to display/);
+    // And there is no artboard behind it — the page replaced the display rather
+    // than drawing over one, which is what keeps it from reading as a gap.
+    await expect(page.locator("#artboard canvas.lower-canvas")).toHaveCount(0);
+
+    // **The fact the old assertions rested on and no longer do.** Stated here so
+    // the next reader of `pre` learns it from a test rather than from a
+    // screenshot: this page contains no `<pre>`, so "no `<pre>`" is satisfied by
+    // a display that is showing nothing else.
+    await expect(page.locator("pre")).toHaveCount(0);
+  });
+
   test("serves declared package assets and refuses undeclared ones", async ({
     request,
   }) => {
@@ -295,8 +331,9 @@ test.describe("hosted player over the real host", () => {
     expect(status).toBe("loaded");
 
     // A failed font fetch would surface through the player's failure path; the
-    // connection banner is absent once live, so assert on the failure panel.
-    await expect(page.locator("pre")).toHaveCount(0);
+    // connection banner is absent once live, so assert on the failure page —
+    // the marker that page actually carries, named once above.
+    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
   });
 
   // Where the defect became visible, and where the witness belongs. It was
@@ -498,8 +535,8 @@ test.describe("hosted player over the real host", () => {
       .poll(async () => (await readCard()).reading, { timeout: 20_000 })
       .toMatch(/^\d+%$/);
 
-    // The player's failure path is a `<pre>`; an absent one is the claim.
-    await expect(page.locator("pre")).toHaveCount(0);
+    // The player's failure path is that page; an absent one is the claim.
+    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
   });
 
   test("the display paints its charts in the theme's own palette", async ({
@@ -1986,7 +2023,7 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
     }> => {
       await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-      await expect(page.locator("pre")).toHaveCount(0);
+      await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
       // A gauge with no reading has no datum, and a datum is what the arc is
       // made of; the reading is read before the ring is counted.
       await expect
@@ -2084,7 +2121,7 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
     await page.setViewportSize({ width: 1280, height: 960 });
     await page.goto(`${HOST}/?theme=${HOST_GROUPED_THEME_ID}`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("pre")).toHaveCount(0);
+    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
 
     // **The composition is the one the fixture claims.** A panel that revived
     // somewhere else would still produce a plausible band, so the shapes are

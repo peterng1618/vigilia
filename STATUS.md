@@ -19,9 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.42: the canvas context menu now scrolls, and the Insert menu gained the same fix.** Two CSS declarations on the class both already shared: `max-height: var(--available-height)` and `overflow-y: auto`.
-- **The mechanism was already in the library, not invented here.** Base UI measures the room on the popup's side and publishes it as `--available-height`, and a context menu is positioned with the collision avoidance its own source describes as "dropdowns that ... use `var(--available-height)` to limit their height". Its arrow handling scrolls the active entry into view, so the keyboard follows the scroll.
-- Measured in Chromium: at 1280×420 the menu capped at 410px of 468px of content, `End` scrolled 55px and brought *Pie* fully on screen; `Enter` then inserted it. At 1280×720 nothing changed — 470px, no scroll. The Insert menu had the identical 470px defect and is fixed by the same rule; the four short menus are untouched. Red without the fix: `scrollHeight 468 === clientHeight 468`.
+- **F1.43: five player assertions guarded a marker the failure path no longer uses, and one of them is now the control that pins the real one.** `pre` → `[data-vigilia-load-failure]`, four in `host-player.spec.ts` and one in `host-media.spec.ts`.
+- **The old assertion passed on a dead screen**, measured on a real host: a `?theme=` that cannot be served rendered the failure page with `preCount 0, failureCount 1`. The new assertion fails on exactly that display and passes on the happy path.
+- **Nothing in the browser suite tested the failure page at all** — it shipped with a jsdom test only. The new control asserts the page, its reason, the retitled document and the absence of an artboard behind it, and carries the `pre` fact as the thing the old assertions rested on.
+- 2102 unit tests green; `typecheck` and scoped `lint`/`format` on the four files I touched exit 0. The tree-wide `lint` is red on the rebuild agent's untracked `author-journey-rebuild.spec.ts`, not on this change.
 
 ## Next
 
