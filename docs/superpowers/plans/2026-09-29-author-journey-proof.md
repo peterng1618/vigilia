@@ -1743,6 +1743,34 @@ git commit -m "chore(gate): the author journey pass at the broad gate"
 
 **4. Review Focus.** Each of the five lines is discharged: (1) by the Task 7 rule that any state-writing `page.evaluate` is a defect; (2) by the persisted-envelope assertion in Tasks 4, 6 and 11; (3) by classification at observation time; (4) by the "fix inside its owner" rule in Task 4 Step 3; (5) by the saved-envelope assertion in Task 11 Step 2.
 
-### Fit: one control, not two (decided by the user, 2026-09-29)
+### Colour picker and gradient maker — the ecosystem search (2026-09-29)
+
+Searched, because "is there something to copy" is exactly the question the reuse gate exists to answer first.
+
+| Candidate | Gradient | Alpha | Primitive library | Note |
+|---|---|---|---|---|
+| **`devnax/color-zone`** | **linear + radial, multi-stop** | yes | **zero deps**, and a headless `useColorPicker` hook | Exports the converters outright — `parseColor`, `parseGradient`, `buildGradientString`, `toHexA` — and the hook lets the logic be taken **without** adopting its UI |
+| `@markoradak/color-picker` | linear, radial, conic, **mesh** | yes, with a checkerboard alpha track | **Radix** | Closest to the whole ask — picker, gradient editor, swatches, eyedropper, a `TokenList` — but built on **Radix**, and this product uses **Base UI** |
+| `react-color-pikr` | **none** | 8-digit hex, zero deps | none | Picker only |
+| Cladd `ColorEditor` | linear, **two stops only** | yes | Cladd | Two stops would not do; the palette's gradients carry more |
+| `@xsolla/xui-color-picker` | none | yes, checkerboard | own | "designed to be embedded in a popover, modal, or panel" — matches the modal ask exactly, but no gradient |
+
+**The wrinkle, and it decides the shape.** The candidate that covers the most ground — `markoradak/color-picker`, with a gradient editor, an alpha track, swatches *and* a token list — is built on **Radix**, while the product's shell is **Base UI** (`@base-ui/react@1.8.0`). Adopting its components means adding a **second headless-UI library** to a codebase that deliberately has one.
+
+So the shape that reuses without importing a second framework is: **take the colour and gradient *logic* from a zero-dependency source and build the *surface* in Base UI**, so the picker looks like the rest of the shell. `color-zone` is the one that gives both halves of that up front — multi-stop gradients matching the envelope's `stops` + `angle`, 8-digit hex throughout, and converters exported separately from its UI.
+
+**The one requirement that rules a candidate out:** the palette's colours **carry alpha** — `panel` is 85%, `frost` is 30%. A picker without a real alpha channel is not a picker, it is a way to lose the value. Every candidate above handles it; the browser's native `<input type="color">` does not, which is why it stays ruled out.
+
+### Token usage counts and references — the reuse answer is the repo (2026-09-29)
+
+The user wants back what the first homemade editor showed: **how many objects a token is linked to, and which ones**, so dead tokens can be found.
+
+**The traversal already exists and already counts.** `packages/scene-fabric/src/palette-references.ts` — `reassignObjectPaletteReferences` walks the whole scene recursively through groups, rewrites every `vigiliaPaint` reference, rewrites every text run's `style.color.ref`, **and returns `changes: number`**. It is the count, computed and thrown away.
+
+**And it is complete, which was worth checking.** A `TextRun` in the envelope carries `typePreset` and a `StyleMap` — no palette `token` field — so `vigiliaPaint` and `run.style.color` are the *only* two places a palette token can be referenced, and both are covered. So the count is accurate today, not approximate.
+
+**So this is not a new traversal.** It is the same walk collecting ids alongside the count, plus a per-token figure in the palette panel and a way to jump to an object — and it should live beside `palette-references.ts` rather than in the panel, so the number in the UI and the number that guards a deletion come from one place. That last part matters: the panel showing "3 uses" and the delete guard deciding "safe to remove" reading different walks is how a token gets deleted out from under a live object.
 
 ### A gradient editor, and bounded fields that clamp (2026-09-29)
+
+### Fit: one control, not two (decided by the user, 2026-09-29)
