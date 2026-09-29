@@ -110,7 +110,7 @@ describe("reassignPaletteToken", () => {
     };
 
     expect(
-      paletteTokenUsage(canvas, palette).old.map((use) => use.objectId),
+      paletteTokenUsage(canvas, palette)["old"]?.map((use) => use.objectId),
     ).toEqual(["inner"]);
 
     reassignPaletteToken(
@@ -121,7 +121,7 @@ describe("reassignPaletteToken", () => {
       "spare",
     );
 
-    expect(paletteTokenUsage(canvas, palette).old).toEqual([]);
+    expect(paletteTokenUsage(canvas, palette)["old"]).toEqual([]);
   });
 
   it("reports nothing for a token no object uses", () => {
@@ -130,6 +130,6 @@ describe("reassignPaletteToken", () => {
       old: { name: "Old", value: { kind: "solid", color: "#000" } as const },
     };
 
-    expect(paletteTokenUsage(canvas, palette).old).toEqual([]);
+    expect(paletteTokenUsage(canvas, palette)["old"]).toEqual([]);
   });
 });

@@ -1,4 +1,3 @@
-import { objectPaletteReferences } from "@vigilia/scene-fabric";
 import {
   type Artboard,
   type Binding,
@@ -43,7 +42,7 @@ import {
 import {
   createPalettePanel,
   type PalettePanel,
-  type PaletteTokenUse,
+  paletteTokenUsage,
   reassignPaletteToken,
 } from "./palette-manager/index.js";
 import { parseThemePackage, serializeThemePackage } from "./persist.js";
@@ -212,7 +211,11 @@ export class EditorSession {
       {
         // The same walk the delete uses, so the figure beside a token and the
         // references a deletion will move cannot disagree about the scene.
-        usage: () => this.#paletteTokenUsage(options.shell),
+        usage: () =>
+          paletteTokenUsage(
+            options.shell.editor.canvas,
+            this.#envelope.globals?.palette ?? {},
+          ),
       },
     );
     this.#palette.render(this.#envelope.globals?.palette);
@@ -754,28 +757,6 @@ export class EditorSession {
     this.#selection.setGlobals(this.#envelope.globals);
     this.#style.render();
     this.#palette.render(palette);
-  }
-
-  /**
-   * Every token's objects, read from the live scene.
-   *
-   * `objectPaletteReferences` is the traversal `reassignPaletteToken` deletes
-   * through, so the figure the author reads and the set a deletion moves come
-   * from one walk. A token reported unused here is unused in the sense the
-   * delete will act on.
-   */
-  #paletteTokenUsage(
-    shell: EditorShell,
-  ): Record<string, readonly PaletteTokenUse[]> {
-    const objects = shell.editor.canvas.getObjects();
-    const usage: Record<string, readonly PaletteTokenUse[]> = {};
-    for (const id of Object.keys(this.#envelope.globals?.palette ?? {})) {
-      usage[id] = objectPaletteReferences(
-        objects,
-        `palette.${id}` as `palette.${string}`,
-      );
-    }
-    return usage;
   }
 
   #deletePalette(shell: EditorShell, id: string, replacement: string): void {

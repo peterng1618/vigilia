@@ -5,8 +5,10 @@ import type {
 } from "@vigilia/renderer-core";
 import { uiCopy } from "../ui-copy.js";
 
-/** An object a token is linked to, as the panel shows it. */
+/** An object a token is linked to. The name is what the panel shows; the id
+    is the stable key the layer list and every binding use (§75). */
 export interface PaletteTokenUse {
+  readonly objectId: string;
   readonly name: string;
 }
 
