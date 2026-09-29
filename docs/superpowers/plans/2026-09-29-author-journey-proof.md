@@ -262,6 +262,18 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **It filed rather than guessed.** `reference-theme.spec.ts:365` fails — `Ctrl+N`'s discard prompt times out waiting for a `Discard` button. It stashed every file it touched, rebuilt, and reproduced it identically, so it is pre-existing with the cause not established: **issue #7**.
 
+| F1.39 | **The canvas context menu holds a third copy of the chart list** | Named by the F1.7 implementer, which consolidated the Insert menu and the Add pane into one `insertGroups()` owner and then found the third. The context menu reads `CHART_FAMILIES`, so it **cannot** drift on charts, and it has no shapes or panel by design. It is therefore not F1.7's defect — but it is a third place that knows what can be inserted, and the one that most needs the other two's rule. | `editor-shell/canvas-context-menu` |
+
+### F1.35 and F1.7 landed
+
+`1b948c0` and `d15c265`.
+
+**F1.35 went through the right owner.** `paintReferencesOf` reads a chart through `chartPaintFieldsFor` — the renderer's existing declaration of which settings hold paint — rather than adding a second rule beside it. The reference composition's `network-chart` now reads *"Stroke paint: palette.down → #22d3ee"*, *"Series paint 2: palette.gpu → #a98bff"*.
+
+**The useful half is what "not set" now means.** A chart inserted through the Add pane has never been styled, and it reads *"Track paint: palette.background"* / *"Progress paint: palette.text"* — it is painted from the moment it exists, because `createNewChartDefaults` gives it token references. So the line's "not set" is now genuinely "no reference", which is what a bare Fabric object is. It also stated the case it did **not** solve: a chart carrying *literal* colours — reachable only from hand-written JSON, since the editor never writes them — still reads "not set", and it declined to invent a second vocabulary for literals.
+
+**F1.7 deleted a duplicate rather than adding one.** `insertGroups()` in `new-object-panel.ts` is the only list, built from the two owners that already existed (`SHAPE_KINDS`, `CHART_FAMILIES`), and both surfaces render it. The session façade's text body was already a copy of the pane's; it is now the pane's.
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
