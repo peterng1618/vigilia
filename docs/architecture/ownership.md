@@ -20,7 +20,9 @@ If implementation moves an owner, update this map in the same change.
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
 | Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
-| Semantic layer projection and arrange actions | `editor/src/editor-shell/layer-tree.ts`, `editor/src/arrange.ts` |
+| Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
+| **Which object and arrange actions exist** — their ids, labels, icons and eligibility | `editor/src/object-actions.ts` |
+| Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
 | New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
