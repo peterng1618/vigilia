@@ -749,7 +749,15 @@ Both raised with the same instruction: **find something existing and easy.** Bot
 
 **The pain it removes is measured, not stylistic.** The user wrote: *"Took me a while to figure out blur only accepts 48 maximum."* The glass blur field does warn on rejection — it carries `onReject: refused` and `invalidMessage` — so the bound is discoverable **only by tripping it**. A slider beside the box makes the range visible **by construction**, and a bounded field should say its bound on the field rather than making the author find it.
 
-### Fit: one control, not two (decided by the user, 2026-09-29)
+### A gradient editor, and bounded fields that clamp (2026-09-29)
+
+**U27 — a UI for gradients, sharing the colour picker's parts.** The palette already accepts gradients — the Paint chooser offers *Linear gradient* and the palette manager has an angle and a stop list — but there is no editor for them; the stops are text fields. **The reuse answer is that the colour picker's swatch and stop list already *are* the gradient editor**: one component family where a solid is a single stop. So this is not two features that share a look, it is one feature used twice, and the gradient case is the case with more than one stop.
+
+**U28 — a rejected number reverts where it should clamp.** The user wrote: *"the input box just rejected the value but instead of clamping it to the closest accepted value, it just kept the original value. So I have to trial and errors to find out what the max value was."*
+
+**This corrects a claim in this plan.** I recorded earlier that the glass blur field "refuses through the field, which is what puts the box and the alert line back" — true as far as it goes, and it is exactly the behaviour being complained about. **Clamping teaches the bound; reverting hides it.** Type 60, get 48, and the maximum is known immediately; type 60, get the old value back and a warning, and the author has to bisect.
+
+**And the two fields with the same helper already disagree.** Opacity **clamps** — typing 500 lands on 100, the nearest accepted value, which is why that test reads *"snaps back to 100"*. Blur **reverts**. Both go through the same `numberField`, so the difference is per-field configuration rather than a deliberate rule anyone wrote down, and the result is that one bounded field teaches its bound and the other makes the author guess. **This is the same finding as U26 with a sharper fix:** clamp to the bound, and the value itself carries the information a slider would otherwise have to display.
 
 **The user's own misreading is the finding.** They had been reading *Preview fit* as "how the background media renders in the preview" — a stand-in for the lack of artboard zoom control. It is neither: it is the **artboard content's** fit. So a control named "Preview fit" sitting beside *Media fit*, in one panel, means something different from what it looks like it means. **That is the defect — not the existence of either.**
 
@@ -1687,3 +1695,5 @@ git commit -m "chore(gate): the author journey pass at the broad gate"
 **3. Type consistency.** `artboardSize`, `createBlankFabricTheme`, `openBlank`, `reloadEnvelope`, `insertPanel`, `setToken`, `addText`, `setRun` are produced once and consumed by name in later tasks; no task calls a helper a later task renames. Selector keys were read from source on 2026-09-29 and appear in exactly one table.
 
 **4. Review Focus.** Each of the five lines is discharged: (1) by the Task 7 rule that any state-writing `page.evaluate` is a defect; (2) by the persisted-envelope assertion in Tasks 4, 6 and 11; (3) by classification at observation time; (4) by the "fix inside its owner" rule in Task 4 Step 3; (5) by the saved-envelope assertion in Task 11 Step 2.
+
+### Fit: one control, not two (decided by the user, 2026-09-29)
