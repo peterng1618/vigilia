@@ -839,6 +839,14 @@ The user asked why it is difficult for the closed shapes, and whether teaching t
 
 **So the finding narrows sharply: the closed shapes are not a research question, they are a small dispatch, and only Line and Polyline are the awkward case** — where the user's own instinct was right, and for a better reason than "hard to draw": there is nothing to frost.
 
+#### Settled by the user (2026-09-30): show the limit, do not hide it
+
+**The glass control becomes visible on every object.** Where the shape supports it, it works as it does now. Where it does not, the checkbox is **present but not interactive, with a tooltip saying why** — so the author learns the rule at the point of use instead of inferring it from an absence. **No renderer change**: `GLASS_OBJECT_TYPES` stays `Rect | Group` and the closed shapes stay unfrosted. This converts U21 from "should the renderer widen?" into a disclosure, and it is the cheap honest option taken over the measured-cost one.
+
+**Tooltips need a central owner — and the repo shows it.** `canvas-dock.tsx` is the **only** place a tooltip exists, and it spells out `Tooltip.Root → Trigger → Portal → Positioner(side="top", sideOffset=8) → Popup` inline with its own `editor-shell-tooltip` class. A tooltip on the glass control would be the **second hand-rolled copy** of that composition. So: **extract the dock's composition into one shared tooltip component in the editor shell**, and give the glass control its reason through that — one owner, one class, one default placement, which is the repo's own rule rather than a new one.
+
+**The 16 default is confirmed by eye and stays.** The user tested it and called 16 right for a first frost, and 40 "really strong" for the reference cards. Worth recording that this is now a **tested** default rather than an arbitrary one, since the difference between 16 and 40 is exactly what an author is choosing when they edit the blur field.
+
 ### F1.11 landed, and it moved the number that decides it (`df9e725`)
 
 **Transmission went from 0.216 to 0.718.** Same script, same document, same photograph, only the glass checkbox differing:
