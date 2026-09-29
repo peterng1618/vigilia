@@ -55,7 +55,10 @@ export function createGroupingManager(
    * leaving restores an author's own locks instead of assuming the defaults.
    * `selectable`/`evented` are not in Fabric's `stateProperties`, so this never
    * reaches a save — unlike `opacity`, which is (§67). */
-  const reachabilityTaken = new Map<FabricObject, { selectable: boolean; evented: boolean }>();
+  const reachabilityTaken = new Map<
+    FabricObject,
+    { selectable: boolean; evented: boolean }
+  >();
 
   /** What this manager did to one object, or undefined if it did nothing. */
   const previousReachability = (

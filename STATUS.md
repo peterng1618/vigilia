@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **The composition is viewable — the last gap in the proof, closed.** All eight regions in one document, the backdrop imported through `Import asset`, saved by the header's own control, shown on a real host at 1920 × 1080 and 390 × 844. `author-journey-display.spec.ts`, on its own preview (4223) and its own host (4224).
-- **F2.12, the pass's headline: the frosted-glass control does not carry the frosted material.** It writes only `vigiliaGlass`, and a new card's fill is `palette.panel` at 85 %, so every glass card in the saved package is 85 % opaque — worse than the 72 % decision [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) already rejected. Deferred: `ownership.md` splits fill and treatment between two panels, and whether enabling a material should overwrite an author's fill has no precedent.
-- **The verdict, in pixels: the cards read as tinted panels, not glass.** The blur runs and the photograph shows through as a gradient, but at 85 % a card is mostly a fill. `player-desktop-frosted.png` is the same document with `palette.frost` (30 %) applied through the real Fill picker; both frames are kept because the difference is the evidence.
-- **Three defects only a display could find:** the strapline was truncated to "S Y S T E M   I N S I G" by a 300-wide box (now 520), `palette.dim` measured **2.11:1** on the photograph's sky (now `text`), and `rebuild-composition.ts` had never been executed by any spec — it would not even load.
-- `typecheck`, `lint`, `format:check` and 2110 unit tests all exit 0.
+- **U1: "Replace asset" only ever added.** It minted a new declaration and re-pointed whichever image happened to be selected on the canvas, so the asset the author chose in the dropdown kept its old bytes and the package grew by one file per press.
+- **`AssetManager.replace` swaps the bytes in place**, keeping the id and the path, so every object and every reference bound to that asset keeps working. A font keeps its curated family, weight, licence and source; a replacement that would change the declared file extension, or whose MIME type disagrees with it, is refused before anything is written.
+- **The panel now replaces, then rehydrates** — `hydrate` already walks into groups, so a replaced asset reaches an image inside one — and records exactly one history entry (§67).
+- **U2: "in use" meant a top-level object or the artboard's background, and it missed the rest.** `canvas.getObjects()` is the root only, so an image the author had grouped reported itself unused and its declaration was removed out from under a live object. `assetReferencedBy` walks the tree; the session's envelope-side check now also covers a type preset's font face.
+- Measured in the browser: replacing an 8×8 red with a 16×16 blue left the id `red8`, grew the list by nothing and put the new pixels on the canvas object; removal of an image nested inside a group is now refused where it previously deleted its bytes. 7 tests red before the fix; 877 editor tests green after.
 
 ## Next
 

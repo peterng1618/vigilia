@@ -291,7 +291,7 @@ export class EditorSession {
         this.#artboard.setAssets(this.#assets.declarations);
         this.#refreshBackgroundMedia(options.shell);
       },
-      (assetId) => this.#envelope.artboard.backgroundMedia?.assetId === assetId,
+      (assetId) => this.#holdsAsset(assetId),
     );
     this.#refreshBackgroundMedia(options.shell);
     this.#persistence = new PersistenceManager(
@@ -628,6 +628,26 @@ export class EditorSession {
       }
     }
     return true;
+  }
+
+  /**
+   * The envelope-side asset references, which no Fabric object carries.
+   *
+   * The artboard's background media is a DOM sibling of the canvas, and a type
+   * preset's face is a reference in `globals` — neither is an object, so the
+   * canvas walk the asset panel does cannot see either. A font whose bytes went
+   * away under a live preset would leave a theme that validates and renders
+   * nothing.
+   */
+  #holdsAsset(assetId: string): boolean {
+    if (this.#envelope.artboard.backgroundMedia?.assetId === assetId)
+      return true;
+    const presets = this.#envelope.globals?.typePresets as
+      | TypePresets
+      | undefined;
+    return Object.values(presets ?? {}).some(
+      (preset) => preset.value.face?.assetId === assetId,
+    );
   }
 
   #setArtboard(shell: EditorShell, artboard: Artboard): void {

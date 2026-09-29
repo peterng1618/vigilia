@@ -1,14 +1,12 @@
-import {
-  objectAssetReference,
-  setObjectAssetReference,
-} from "@vigilia/scene-fabric";
+import { setObjectAssetReference } from "@vigilia/scene-fabric";
 import { FabricImage } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
-import type {
-  AssetManager,
-  LocalAssetReference,
-  PlacedAssetReference,
+import {
+  type AssetManager,
+  assetReferencedBy,
+  type LocalAssetReference,
+  type PlacedAssetReference,
 } from "./index.js";
 
 /** Local-file controls; the editor continues to own canvas selection and history. */
@@ -43,9 +41,7 @@ export function createAssetPanel(
   const remove = action("vigiliaAssetRemove", uiCopy.panels.removeAsset, () => {
     const id = select.value;
     if (
-      [...editor.canvas.getObjects()].some(
-        (object) => objectAssetReference(object)?.assetId === id,
-      ) ||
+      assetReferencedBy(editor.canvas.getObjects(), id) ||
       isReferenced?.(id) === true
     ) {
       report(uiCopy.panels.assetReferenced);
@@ -118,6 +114,10 @@ export function createAssetPanel(
   };
 
   const add = async (file: File, replaceSelected: boolean): Promise<void> => {
+    if (replaceSelected) {
+      await replaceSelectedAsset(file);
+      return;
+    }
     let asset: LocalAssetReference;
     try {
       asset = await manager.import(file);
@@ -139,7 +139,7 @@ export function createAssetPanel(
       return;
     }
     try {
-      if (!(await place(asset, file, replaceSelected))) {
+      if (!(await place(asset, file))) {
         // The bytes are declared even when no object took them, so the pane
         // still redraws: an asset the author cannot see is worse than one they can.
         report(uiCopy.panels.assetImportFailed);
@@ -165,28 +165,51 @@ export function createAssetPanel(
     render();
   };
 
-  /** Puts the imported bytes on the canvas: onto the selection, or as a new
-      object. False means nothing took them, which is a refusal the author is
-      told about rather than a silent success. */
+  /**
+   * Swaps the chosen asset's bytes and re-points everything bound to it.
+   *
+   * This is what "Replace" always meant: the author picked an asset in the
+   * dropdown and chose a new file for *it*. Declaring a new asset and
+   * re-pointing the selected object left the chosen asset holding its old
+   * bytes and grew the package by one file per press.
+   */
+  const replaceSelectedAsset = async (file: File): Promise<void> => {
+    const id = select.value;
+    if (!manager.declarations.some((asset) => asset.id === id)) {
+      report(uiCopy.panels.assetImportFailed);
+      return;
+    }
+    try {
+      await manager.replace(id, file);
+      // Rehydration is what carries the new pixels to every object bound to
+      // this id, at whatever depth it sits.
+      await manager.hydrate(editor.canvas);
+    } catch (error) {
+      // `replace` validates before it writes, so a refused file leaves the
+      // package, the document and the preview exactly as they were.
+      report(uiCopy.panels.assetImportFailed);
+      editor.errorManager.error(
+        "image",
+        uiCopy.panels.assetImportFailed,
+        error,
+      );
+      return;
+    }
+    report("");
+    // One committed edit, §67.
+    editor.historyManager.saveState();
+    editor.canvas.requestRenderAll();
+    changed();
+    render();
+  };
+
+  /** Puts the imported bytes on the canvas as a new object. False means
+      nothing took them, which is a refusal the author is told about rather
+      than a silent success. */
   const place = async (
     asset: PlacedAssetReference,
     file: File,
-    replaceSelected: boolean,
   ): Promise<boolean> => {
-    const target = editor.canvas.getActiveObject();
-    if (
-      replaceSelected &&
-      target instanceof FabricImage &&
-      objectAssetReference(target) !== undefined
-    ) {
-      const url = manager.previewUrl(asset.id);
-      if (url === undefined) return false;
-      const image = await FabricImage.fromURL(url);
-      setObjectAssetReference(target, { assetId: asset.id, kind: asset.kind });
-      target.setElement(image.getElement());
-      target.setCoords();
-      return true;
-    }
     const imported = await editor.imageManager.importImage({
       source: file,
       scale: "image-contain",

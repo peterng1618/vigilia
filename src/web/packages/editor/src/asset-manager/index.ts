@@ -4,7 +4,12 @@ import type {
   FontAssetReference,
 } from "@vigilia/renderer-core";
 import { objectAssetReference } from "@vigilia/scene-fabric";
-import { FabricImage, Group, type StaticCanvas } from "fabric/es";
+import {
+  FabricImage,
+  Group,
+  type FabricObject,
+  type StaticCanvas,
+} from "fabric/es";
 import type { CuratedFontFace } from "../font-catalog.js";
 import { boundedImageElement } from "../image-manager/index.js";
 
@@ -111,6 +116,55 @@ export class AssetManager {
     if (asset !== undefined) delete this.#assets[asset.path];
     this.#revoke(assetId);
     return true;
+  }
+
+  /**
+   * Swaps an asset's bytes for another's, keeping the id and path.
+   *
+   * Replacing is not importing: the author picked an existing asset, so every
+   * object and every reference bound to that id keeps working and the package
+   * does not grow. The declaration keeps its curated metadata — a font's family
+   * and licence came from the catalogue, not from the file — and only the
+   * digest and the bytes change.
+   */
+  async replace(assetId: string, file: File): Promise<LocalAssetReference> {
+    const index = this.#declarations.findIndex((asset) => asset.id === assetId);
+    const existing = this.#declarations[index];
+    if (index < 0 || existing === undefined)
+      throw new Error(`No declared asset to replace: ${assetId}.`);
+
+    const extension = extensionOf(file.name);
+    if (extension === undefined)
+      throw new Error("Unsupported asset file type.");
+    const type = TYPES[extension];
+    if (file.type !== type.mime)
+      throw new Error("File MIME type does not match its extension.");
+    // A different extension would leave the declared path claiming bytes of a
+    // format the package's readers do not expect at that name.
+    if (extensionOf(existing.path) !== extension)
+      throw new Error("A replacement must keep the asset's file extension.");
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const previewBytes = extension === "svg" ? sanitisedSvg(bytes) : bytes;
+    this.#assets[existing.path] = bytes;
+    const { sha256: _drop, ...kept } = existing;
+    const next: LocalAssetReference = {
+      ...kept,
+      sha256: await sha256(bytes),
+    };
+    this.#declarations.splice(index, 1, next);
+    // The preview URL is a blob of the old bytes; keeping it would leave the
+    // pane showing the picture the author just replaced.
+    this.#revoke(assetId);
+    if (type.kind === "image" || type.kind === "svg") {
+      this.#previewUrls.set(
+        assetId,
+        URL.createObjectURL(
+          new Blob([previewBytes as unknown as BlobPart], { type: type.mime }),
+        ),
+      );
+    }
+    return next;
   }
 
   load(
@@ -291,9 +345,28 @@ async function sha256(bytes: Uint8Array): Promise<string> {
     .join("");
 }
 
-function* objectsOf(objects: readonly object[]): Generator<object> {
+function* objectsOf(objects: readonly FabricObject[]): Generator<FabricObject> {
   for (const object of objects) {
     yield object;
     if (object instanceof Group) yield* objectsOf(object.getObjects());
   }
+}
+
+/**
+ * Whether any object in the scene — at any depth — carries a reference to this
+ * asset.
+ *
+ * Depth is the whole point. `canvas.getObjects()` is the root only, so an image
+ * the author had grouped reported itself unused and its declaration was removed
+ * out from under a live object. `hydrate` above already walked with
+ * `objectsOf`; this is the same walk answering a different question.
+ */
+export function assetReferencedBy(
+  objects: readonly FabricObject[],
+  assetId: string,
+): boolean {
+  for (const object of objectsOf(objects)) {
+    if (objectAssetReference(object)?.assetId === assetId) return true;
+  }
+  return false;
 }

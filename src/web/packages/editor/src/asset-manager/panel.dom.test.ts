@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { FabricImage } from "fabric/es";
+import { setObjectAssetReference } from "@vigilia/scene-fabric";
+import { FabricImage, Group } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import { createAssetPanel } from "./panel.js";
@@ -76,6 +77,121 @@ describe("asset panel", () => {
     expect(panel.querySelector('[role="alert"]')?.textContent).toBe(
       uiCopy.panels.assetReferenced,
     );
+  });
+
+  it("refuses removal when a grouped object is the only reference", () => {
+    // U2: the check walked `canvas.getObjects()`, which is the root only, so an
+    // image the author had grouped reported itself unused — and removing the
+    // declaration deleted the bytes out from under a live object.
+    const remove = vi.fn(() => true);
+    const image = new FabricImage(document.createElement("img"), {
+      id: "image-1",
+    });
+    setObjectAssetReference(image, { assetId: "logo", kind: "image" });
+    const group = new Group([image]);
+    group.set("id", "group-1");
+
+    const panel = createAssetPanel(
+      document.body,
+      {
+        declarations: [{ id: "logo", kind: "image", path: "assets/logo.png" }],
+        previewUrl: () => "blob:logo",
+        remove,
+      } as never,
+      { canvas: { getObjects: () => [group] } } as never,
+      vi.fn(),
+    );
+    (
+      panel.querySelector("[data-vigilia-asset-remove]") as HTMLButtonElement
+    ).click();
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(panel.querySelector('[role="alert"]')?.textContent).toBe(
+      uiCopy.panels.assetReferenced,
+    );
+  });
+});
+
+describe("replacing an asset", () => {
+  const hero = { id: "hero", kind: "image", path: "assets/hero.png" };
+
+  it("swaps the selected asset's bytes rather than declaring a new asset", async () => {
+    // U1: "Replace" only ever *added*. It minted a new declaration and
+    // re-pointed whatever image happened to be selected on the canvas, so the
+    // asset the author chose in the dropdown kept its old bytes and the list
+    // grew by one every time.
+    const replace = vi.fn((_id: string, _file: File) =>
+      Promise.resolve({ ...hero, sha256: "new" }),
+    );
+    const hydrate = vi.fn(() => Promise.resolve());
+    const saveState = vi.fn();
+    const panel = createAssetPanel(
+      document.body,
+      {
+        declarations: [hero],
+        previewUrl: () => "blob:hero",
+        replace,
+        hydrate,
+        remove: vi.fn(() => true),
+      } as never,
+      editorWith({ saveState }) as never,
+      vi.fn(),
+    );
+
+    choose(panel, "[data-vigilia-asset-replace-input]");
+
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledOnce());
+    // The id the author chose is the one that gets replaced, so every object
+    // bound to it re-points at the new bytes.
+    expect(replace.mock.calls[0]?.[0]).toBe("hero");
+    // Hydration is what re-points the bound objects, and it already walks into
+    // groups — a replaced asset reaches an image inside one. One committed
+    // edit, §67.
+    await vi.waitFor(() => expect(saveState).toHaveBeenCalledOnce());
+    expect(hydrate).toHaveBeenCalledOnce();
+    expect(
+      [...panel.querySelectorAll("[data-vigilia-asset-select] option")].map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["hero.png"]);
+  });
+
+  it("refuses a replacement whose bytes do not decode", async () => {
+    const replace = vi.fn(() => Promise.reject(new Error("bad png")));
+    const error = vi.fn();
+    const saveState = vi.fn();
+    const panel = createAssetPanel(
+      document.body,
+      {
+        declarations: [hero],
+        previewUrl: () => "blob:hero",
+        replace,
+        remove: vi.fn(() => true),
+      } as never,
+      editorWith({ error, saveState }) as never,
+      vi.fn(),
+    );
+
+    choose(panel, "[data-vigilia-asset-replace-input]");
+
+    await vi.waitFor(() =>
+      expect(panel.querySelector('[role="alert"]')?.textContent).toBe(
+        uiCopy.panels.assetImportFailed,
+      ),
+    );
+    // Nothing was written, so the asset the author still has keeps the bytes
+    // it had and the document is untouched.
+    expect(error).toHaveBeenCalledWith(
+      "image",
+      uiCopy.panels.assetImportFailed,
+      expect.any(Error),
+    );
+    expect(saveState).not.toHaveBeenCalled();
+    expect(
+      [...panel.querySelectorAll("[data-vigilia-asset-select] option")].map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["hero.png"]);
   });
 });
 

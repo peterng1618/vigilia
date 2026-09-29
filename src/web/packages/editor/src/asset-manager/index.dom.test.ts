@@ -202,6 +202,105 @@ describe("AssetManager", () => {
     expect(element.height).toBe(2048);
     manager.destroy();
   });
+
+  it("replaces an asset's bytes in place, keeping its id and path", async () => {
+    // U1: "Replace" had no path that swapped bytes. It declared a *new* asset
+    // and re-pointed whichever object was selected, so the chosen asset kept
+    // the bytes it had and the package grew by one file per press.
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+    const replacement = new Uint8Array([137, 80, 78, 72]);
+
+    const next = await manager.replace(
+      original.id,
+      file(replacement, "other.png", "image/png"),
+    );
+
+    expect(next).toMatchObject({
+      id: "logo",
+      kind: "image",
+      path: "assets/logo.png",
+    });
+    expect(manager.declarations).toHaveLength(1);
+    expect(manager.assets["assets/logo.png"]).toEqual(replacement);
+    expect(manager.previewUrl("logo")).toBeDefined();
+  });
+
+  it("revokes the stale preview so the new bytes are what a preview shows", async () => {
+    const manager = new AssetManager();
+    const created = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValueOnce("blob:old")
+      .mockReturnValue("blob:new");
+    const revoke = vi.spyOn(URL, "revokeObjectURL");
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+    expect(manager.previewUrl("logo")).toBe("blob:old");
+
+    await manager.replace(
+      original.id,
+      file(new Uint8Array([1, 2, 3]), "logo.png", "image/png"),
+    );
+
+    expect(revoke).toHaveBeenCalledWith("blob:old");
+    expect(manager.previewUrl("logo")).toBe("blob:new");
+    created.mockRestore();
+  });
+
+  it("refuses to replace an asset it does not hold", async () => {
+    const manager = new AssetManager();
+
+    await expect(
+      manager.replace("missing", file(PNG, "logo.png", "image/png")),
+    ).rejects.toThrow(/missing/);
+  });
+
+  it("refuses a replacement whose MIME type does not match its extension", async () => {
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+
+    await expect(
+      manager.replace(original.id, file(PNG, "logo.jpg", "image/png")),
+    ).rejects.toThrow(/MIME/);
+    expect(manager.assets["assets/logo.png"]).toEqual(PNG);
+  });
+
+  it("refuses a replacement that would change the declared file extension", async () => {
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+
+    await expect(
+      manager.replace(original.id, file(PNG, "logo.jpg", "image/jpeg")),
+    ).rejects.toThrow(/extension/);
+    expect(manager.assets["assets/logo.png"]).toEqual(PNG);
+  });
+
+  it("replaces a font's bytes without touching its curated metadata", async () => {
+    const manager = new AssetManager();
+    const trio = fontTrio("minimal");
+    const face = trio?.faces[0];
+    if (trio === undefined || face === undefined)
+      throw new Error("the catalogue has no faces");
+    await manager.adoptFont(face, new Uint8Array([1]));
+    const other = { ...face, id: "other", family: "Other" };
+    await manager.adoptFont(other, new Uint8Array([9]));
+    const before = manager.declarations.length;
+
+    await manager.replace(
+      "other",
+      file(new Uint8Array([7, 7]), "other.woff2", "font/woff2"),
+    );
+
+    expect(manager.declarations).toHaveLength(before);
+    // The catalogue owns family, weight, licence and source; the file owns the
+    // bytes and the digest, and replacing the file must not rewrite the former.
+    expect(manager.declarations.find((a) => a.id === "other")).toMatchObject({
+      family: "Other",
+      license: face.license,
+    });
+    expect(manager.assets["assets/other.woff2"]).toEqual(
+      new Uint8Array([7, 7]),
+    );
+  });
 });
 
 /** jsdom reports zero natural size, so declare it the way a decode would. */

@@ -6,13 +6,20 @@ import { createGroupingManager } from "./index.js";
 /** The state the manager applies to the canvas while a group is entered. */
 const reachable = (canvas: Canvas): Record<string, boolean> =>
   Object.fromEntries(
-    canvas.getObjects().map((object) => [
-      object.id ?? object.type,
-      object.selectable === true,
-    ]),
+    canvas
+      .getObjects()
+      .map((object) => [
+        (object as { id?: string }).id ?? object.type,
+        object.selectable === true,
+      ]),
   );
 
-function scene(): { canvas: Canvas; group: Group; outsider: Rect; text: Textbox } {
+function scene(): {
+  canvas: Canvas;
+  group: Group;
+  outsider: Rect;
+  text: Textbox;
+} {
   const canvas = new Canvas(document.createElement("canvas"));
   const child = new Rect({ id: "child", width: 10, height: 10 });
   const group = new Group([child]);
@@ -39,7 +46,11 @@ describe("entering a group", () => {
 
     // U6: the layer panel already says only the group's own layers are reachable.
     // The artboard has to agree, or the panel is describing a fiction.
-    expect(reachable(canvas)).toEqual({ group: true, outsider: false, text: false });
+    expect(reachable(canvas)).toEqual({
+      group: true,
+      outsider: false,
+      text: false,
+    });
     expect(outsider.selectable).toBe(false);
     expect(outsider.evented).toBe(false);
     // The group's own children are the point of entering it, so they are untouched.
@@ -47,7 +58,11 @@ describe("entering a group", () => {
 
     grouping.exitGroup();
 
-    expect(reachable(canvas)).toEqual({ group: true, outsider: true, text: true });
+    expect(reachable(canvas)).toEqual({
+      group: true,
+      outsider: true,
+      text: true,
+    });
   });
 
   it("restores an author's own flags rather than assuming the defaults", () => {
@@ -68,18 +83,24 @@ describe("entering a group", () => {
     // U7: a text box's double-click enters inline editing, and `editor-shell`
     // routes every double-click here. Recording that as a group entry left the
     // panel dimmed for every other layer until Escape.
-    const { canvas, text, outsider } = scene();
+    const { canvas, text } = scene();
     const grouping = manager(canvas);
 
     grouping.enterGroup({ object: text });
 
     expect(grouping.groupContext()).toEqual([]);
-    expect(reachable(canvas)).toEqual({ group: true, outsider: true, text: true });
+    expect(reachable(canvas)).toEqual({
+      group: true,
+      outsider: true,
+      text: true,
+    });
   });
 
   it("records no context for an image that is not a group", () => {
     const canvas = new Canvas(document.createElement("canvas"));
-    const image = new FabricImage(document.createElement("img"), { id: "image-1" });
+    const image = new FabricImage(document.createElement("img"), {
+      id: "image-1",
+    });
     canvas.add(image);
     const grouping = manager(canvas);
 
@@ -103,7 +124,9 @@ describe("entering a group", () => {
 
   it("leaves the previous group when a different one is entered", () => {
     const { canvas, group, outsider } = scene();
-    const second = new Group([new Rect({ id: "child-2", width: 10, height: 10 })]);
+    const second = new Group([
+      new Rect({ id: "child-2", width: 10, height: 10 }),
+    ]);
     second.set("id", "group-2");
     canvas.add(second);
     const grouping = manager(canvas);
@@ -122,7 +145,9 @@ describe("entering a group", () => {
     grouping.enterGroup({ object: group });
 
     // `loadFromJSON` rebuilds the scene, so the manager's group instance is gone.
-    const revived = new Group([new Rect({ id: "child", width: 10, height: 10 })]);
+    const revived = new Group([
+      new Rect({ id: "child", width: 10, height: 10 }),
+    ]);
     revived.set("id", "group");
     canvas.remove(group);
     canvas.add(revived);
