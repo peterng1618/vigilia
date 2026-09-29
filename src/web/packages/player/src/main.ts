@@ -38,6 +38,7 @@ import {
   cropNoticeText,
   type SceneBox,
 } from "./artboard-crop.js";
+import { loadFailureView } from "./load-failure.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
@@ -118,6 +119,15 @@ function reportGlassError(message: string): void {
 /** A repaint that threw. Reported, not shown: the scene keeps rendering, so
  *  replacing it with a failure panel would hide a display that still works. */
 function reportRepaintError(message: string): void {
+  console.warn(`Vigilia: ${message}`);
+}
+
+/** A packaged face that would not load, or that declared no bytes. `loadFontAssets`
+ *  reports and carries on, so the scene is already mounted and drawing in a
+ *  fallback — the same case as `reportRepaintError`, and reported the same way.
+ *  It used to take the display down, which turned a wrong typeface into a blank
+ *  screen and a page that claims nothing is being shown. */
+function reportFontError(message: string): void {
   console.warn(`Vigilia: ${message}`);
 }
 
@@ -305,7 +315,7 @@ async function startHostedTheme(
   const releaseFonts = await loadFontAssets({
     assets: theme.assets ?? [],
     bytes: fontBytes,
-    onError: (message) => showFailure(host, message),
+    onError: reportFontError,
   });
   await reviveThemeEnvelope(handle.canvas, theme);
   // Every text object, bound or not, takes its box, its alignment and its
@@ -465,12 +475,10 @@ function reportMissingFonts(plan: ScenePlan): void {
 
 /** Shows a document-load failure on screen rather than leaving a blank display. */
 function showFailure(host: HTMLElement, message: string): void {
-  const panel = document.createElement("pre");
-  panel.textContent = uiCopy.loadFailure(message);
-  panel.style.cssText =
-    "position:absolute;inset:0;margin:0;padding:24px;color:#ff8f73;background:#14161c;" +
-    "font:14px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow:auto";
-  host.append(panel);
+  document.title = uiCopy.loadFailure.documentTitle;
+  host.replaceChildren(
+    loadFailureView(message, () => window.location.reload()),
+  );
 }
 
 /**

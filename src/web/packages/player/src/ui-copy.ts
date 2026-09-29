@@ -1,9 +1,29 @@
 /** Typed package-local visible player copy (§35). Authored theme text, telemetry
  * values and developer errors stay outside this module. */
 export const uiCopy = {
-  /** A theme that fails to load is the one user-visible failure the player owns. */
-  loadFailure: (message: string): string =>
-    `Vigilia could not load this theme.\n\n${message}`,
+  /** A theme that fails to load is the one user-visible failure the player
+   *  owns, and it is the only one that replaces the whole display. It is
+   *  written as a page rather than as a line, because the reader here is
+   *  looking at a wall or a phone and not at a log: two ways on from here, and
+   *  the host's own reason kept beside them.
+   *
+   *  It must not read like `connection` or `cropped` below, which describe a
+   *  *part* of a display that is otherwise working. A gap says "3 of 40
+   *  sensors have no reading" and leaves a chart on screen; this says the
+   *  screen is empty, because it is (§97's instinct, same shape). */
+  loadFailure: {
+    title: "This display has nothing to show",
+    lede: "Vigilia could not load the theme this display was pointed at.",
+    /** Labels the host's own words as the diagnostic they are, so the sentence
+     *  above is what a reader takes and this is what an owner is given. */
+    reasonLabel: "Reason",
+    retry: "Try again",
+    /** `/` on a host is its theme chooser, or whichever theme it holds — either
+     *  way the one place a reader can change what this display shows. */
+    host: "Go to the host",
+    /** A tab is how a reader with several displays open tells which one broke. */
+    documentTitle: "Vigilia — nothing to display",
+  },
   connection: {
     connecting: (keyCount: number): string =>
       `Connecting to the host — ${keyCount} sensors requested`,

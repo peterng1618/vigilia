@@ -19,10 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.32: the language sample says what it is, on screen.** It read as a bare date on a line of its own; it now reads "Sample | September Tuesday", in the same 72px label column as every other field.
-- This is the flip side of F1.19: `ad45667` gave the status region an `aria-label`, so a screen reader was told and a sighted author was not. The visible label and the announced name are both kept — `output` is labelable, so `for`/`id` names it like any field.
-- **Measured in Chromium:** label left edge x=1005, sample x=1083, same line — the column the panel's other fields use. Red without the fix: no `label[for]` finds the sample.
-- 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.14: a display that could not load now says so as a page, not a `<pre>`.** "This display has nothing to show", the host's reason kept as a labelled diagnostic, and the two ways on: **Try again** and **Go to the host**.
+- A bad `?theme=` is the product's face and a phone is the main display, and the old `<pre>` of monospace red left a reader with no retry, no link and no route onward.
+- **It cannot be mistaken for a gap:** a missing sensor and a crop are strips over a display still drawing; this replaces the whole screen. The page borrows the host's own `firstRunPage` colours, measure and pill, so it reads as the same product.
+- A packaged font that will not load is now a warning rather than a page takeover: `loadFontAssets` reports and carries on, so the display was already drawing in a fallback.
+- Measured in Chromium against a real host on a bad `?theme=`: the first Tab stop is the retry, Enter reloads, the link lands on the host's own page. Red without the fix: all six cases fail. 2076 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 
