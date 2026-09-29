@@ -19,10 +19,9 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F2.1, blocking: a text object could never carry more than one run, and a run's text had no field at all.** "32" and "%", "13.4 / 32 GB", "4.8 GHz │ 62 °C" — the composition is mostly multi-run, and the run editor had no control to add one, no control to remove one and nothing to type into.
-- **An in-place edit silently dropped the siblings.** `keepTypedText` wrote Fabric's flat string back as run 0 and dropped the rest. It now refuses a multi-run object, says so through the editor's own diagnostics, and the runtime repaints so the canvas is not left on text the document does not hold.
-- **F2.2, blocking: a chart could not be bound to a sensor.** The panel rendered one row per binding the chart already had and nothing declared the first, so a chart inserted from the Add pane had zero controls and every chart in the composition was unauthorable. An `Add a series` chooser and a per-series remove, both inside `chart-manager`.
-- The gauge's second series is refused rather than accepted, because `buildChartPlan` reads `bindings[0]` and ignores the rest. 2099 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red without each fix: 1 test apiece.
+- **F1.42: the canvas context menu now scrolls, and the Insert menu gained the same fix.** Two CSS declarations on the class both already shared: `max-height: var(--available-height)` and `overflow-y: auto`.
+- **The mechanism was already in the library, not invented here.** Base UI measures the room on the popup's side and publishes it as `--available-height`, and a context menu is positioned with the collision avoidance its own source describes as "dropdowns that ... use `var(--available-height)` to limit their height". Its arrow handling scrolls the active entry into view, so the keyboard follows the scroll.
+- Measured in Chromium: at 1280×420 the menu capped at 410px of 468px of content, `End` scrolled 55px and brought *Pie* fully on screen; `Enter` then inserted it. At 1280×720 nothing changed — 470px, no scroll. The Insert menu had the identical 470px defect and is fixed by the same rule; the four short menus are untouched. Red without the fix: `scrollHeight 468 === clientHeight 468`.
 
 ## Next
 

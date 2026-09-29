@@ -200,6 +200,17 @@ body,
 }
 .editor-shell-menu-popup {
   min-width: 190px;
+  /* A menu taller than the room it was given scrolls rather than running off the
+     bottom of the window. The canvas menu carries the Add pane's whole list —
+     13 entries under two headings, 470px — which fits 720px and not a shorter
+     window, and the last families were simply unreachable. Base UI measures the
+     space on the popup's chosen side and publishes it as `--available-height`,
+     and a context menu is positioned with the collision avoidance meant for
+     dropdowns that limit themselves to exactly that, so the two halves are the
+     library's own. Its arrow-key handling scrolls the active entry into view, so
+     the keyboard follows the scroll rather than walking off the end. */
+  max-height: var(--available-height);
+  overflow-y: auto;
   padding: 5px;
   border-radius: 8px;
   border: 1px solid var(--shell-edge);
