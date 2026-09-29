@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Plus,
   Settings as SettingsIcon,
+  SlidersHorizontal,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -45,6 +46,11 @@ const RAIL_ICONS: Readonly<Record<RailPane, LucideIcon>> = {
   assets: Images,
   settings: SettingsIcon,
 };
+
+/** The inspector's own mark, beside the rail for the same reason as the four
+ *  above: an icon is a component, and this one says "the selection's fields"
+ *  rather than naming a kind of object. */
+const INSPECTOR_ICON = SlidersHorizontal;
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Layers pane has no node here: the
@@ -140,6 +146,29 @@ class SelectionStore {
 
 function useSelection(store: SelectionStore): EditorShellSnapshot {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** The width at which the shell stops having room for two side regions beside a
+ *  canvas, and the one the stylesheet's own media query uses. It is named here
+ *  because the shell has to *act* on the crossing — a sheet covers a sheet
+ *  otherwise — while the layout itself stays CSS's. */
+const NARROW_SHELL = "(max-width: 980px)";
+
+/** Whether the shell is below that width, live across a resize. A narrow shell
+ *  shows one region at a time, because two 280px sheets over a 336px canvas
+ *  leave the author reading whichever one is on top. `matchMedia` is absent
+ *  under jsdom, which is a desktop surface for this purpose: the default
+ *  matches the stylesheet's own default of four columns. */
+function useNarrowShell(): boolean {
+  return useSyncExternalStore(
+    (onChange: () => void) => {
+      const query = window.matchMedia?.(NARROW_SHELL);
+      query?.addEventListener("change", onChange);
+      return () => query?.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia?.(NARROW_SHELL).matches === true,
+    () => false,
+  );
 }
 
 /** Arrange sits above the canvas because it needs a multi-selection, not one
@@ -330,6 +359,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [pane, setPane] = useState<RailPane>("layers");
     const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
+    const narrow = useNarrowShell();
+    // Open on a wide shell, which is where it has always been and where it is
+    // the right first paint: an author arrives to edit a selection. Closed on a
+    // narrow one, which is the F1.1 argument about the canvas applied to the
+    // surface that had no room for it at all. Read once, on mount: this is the
+    // default, not a rule — resizing does not override what the author has
+    // since chosen, and every width can reach the region from the rail.
+    const [inspectorOpen, setInspectorOpen] = useState(!narrow);
 
     const rail: readonly [RailPane, string][] = [
       ["layers", uiCopy.rail.layers],
@@ -348,6 +385,23 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       }
       setPane(id);
       setCollapsed(false);
+      // One region at a time when there is only room for one: a sheet over a
+      // sheet is not a wider panel, it is the top one hiding the bottom one.
+      if (narrow) setInspectorOpen(false);
+    };
+
+    /** The inspector collapses the same way the panel does, and for the same
+     *  reason: it is chrome around the canvas, so it goes when the author asks.
+     *  What differs is where it lands — a column on a wide shell, a sheet over
+     *  the stage on a narrow one, where a 280px column would leave the canvas
+     *  48px. The decision is CSS's; this only says which way it is. */
+    const toggleInspector = (): void => {
+      if (inspectorOpen) {
+        setInspectorOpen(false);
+        return;
+      }
+      setInspectorOpen(true);
+      if (narrow) setCollapsed(true);
     };
 
     return (
@@ -365,7 +419,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {uiCopy.file.savePackage}
           </button>
         </header>
-        <div className="editor-shell-body" data-collapsed={collapsed}>
+        <div
+          className="editor-shell-body"
+          data-collapsed={collapsed}
+          data-inspector={inspectorOpen}
+        >
           <nav
             className="editor-shell-rail editor-glass"
             aria-label="Editor areas"
@@ -381,7 +439,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   key={id}
                   type="button"
                   aria-label={label}
-                  title={`${closes ? uiCopy.rail.hidePanel : uiCopy.rail.showPanel} ${label}`}
+                  title={`${closes ? uiCopy.rail.hide : uiCopy.rail.show} ${label}`}
                   aria-pressed={pane === id}
                   aria-expanded={!collapsed}
                   onClick={() => choosePane(id)}
@@ -390,6 +448,19 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 </button>
               );
             })}
+            {/* The inspector is a region rather than a pane, so it carries
+                `aria-expanded` alone: there is no set of four to be pressed
+                against, and a pressed state would claim one. */}
+            <button
+              type="button"
+              className="editor-shell-rail-inspector"
+              aria-label={uiCopy.rail.inspect}
+              title={`${inspectorOpen ? uiCopy.rail.hide : uiCopy.rail.show} ${uiCopy.rail.inspect}`}
+              aria-expanded={inspectorOpen}
+              onClick={toggleInspector}
+            >
+              <INSPECTOR_ICON aria-hidden size={16} strokeWidth={1.75} />
+            </button>
           </nav>
           <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
             <div hidden={pane !== "layers"}>
@@ -441,7 +512,16 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 `contextmenu` listener, so it sits with the stage it listens to. */}
             <CanvasContextMenu bridge={store.bridge} />
           </main>
-          <aside className="editor-shell-inspector editor-glass">
+          {/* `hidden` rather than a CSS-only hide, for the reason the panel
+              uses it: a collapsed region leaves the accessibility tree instead
+              of sitting in it with no box, which a screen reader would still
+              read out and a finger still could not press. The tab panels stay
+              mounted either way, so reopening restores what the author left. */}
+          <aside
+            className="editor-shell-inspector editor-glass"
+            aria-label={uiCopy.rail.inspect}
+            hidden={!inspectorOpen}
+          >
             <Tabs.Root defaultValue="design">
               <Tabs.List className="editor-shell-tabs">
                 {(["design", "data", "style"] as const).map((tab) => (

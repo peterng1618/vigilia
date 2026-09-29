@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.6: no favicon, on the editor and the player.** Both documents left `<link rel="icon">` undeclared, so every load logged the implicit `/favicon.ico` 404. The editor's href is relative for the same reason its `base` is: the host mounts it under `/editor/`.
-- **No mark exists as a reusable asset, so the mark is the wordmark reduced** — its initial, in the "Wordmark" type preset's face and the shell's default `editorial` palette. Left as `<text>`, because the geometry belongs to the font and drawing a path would be inventing a logo.
-- **Found by the browser proof, not by the test:** the first file carried a CSS custom-property name in its XML comment, and a doubled hyphen is illegal there. It existed, contained `<svg>…</svg>`, 404'd nothing, and the browser refused to decode it — a blank tab. The test now checks the comment rule, and goes red on that exact defect.
-- **Verified served, headed** (headless Chromium never fetches favicons at all): editor `200 /favicon.svg`, player `200 /favicon.svg`, **zero console errors** on both. Legible at 16/32/64px.
-- **Left for the host's owner:** `library.html`, `settings.html` and `firstRunPage()` declare no icon and 404 the same way. `packages/host/` was not mine this pass.
+- **F1.29: the selection inspector exists on a phone.** It was `display: none` below 980px, so an author on a 412px Pixel 7 had no geometry, material, glass or runs at all — and its controls sat in the accessibility tree at 0×0, read out by a screen reader and unpressable by a finger.
+- **Chosen: a rail-toggled collapse that becomes a sheet.** "Inspect" is a fifth rail entry beside the four panes, carrying `aria-expanded` and no `aria-pressed` because it names a region rather than a member of a set. Closed = `hidden`, the mechanism F1.1 already settled for the panel.
+- **Below 980px both side regions leave the grid and overlay the stage, one at a time.** The old rule kept a 240px panel column and measured an **88px** canvas; the grid is now rail and stage, and the canvas is **336px at 412** whether a region is open or not. Two 280px sheets over a 336px canvas is the top one hiding the bottom one, so opening either closes the other.
+- **The guard was on both sides, which is why nothing was ever red:** the product hid the inspector and `panel-labels.spec.ts` skipped on a phone *naming the defect as its cause*. That skip is gone, so the accessible-name audit now runs on a phone too — 4 tests that were skipped are now green there.
+- **Found and fixed beside it, in the same rule:** the header did not wrap, so "Save package" sat at x=397 in a 412px viewport — 64 of its 79 pixels off-screen, on the one action that must never be out of reach. Desktop is byte-identical to before: 4 columns, inspector open, 280px.
 
 ## Next
 
