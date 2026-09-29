@@ -393,10 +393,10 @@ to give.
 **What it cost, against the estimate.** The plan budgets Tasks 7–11 as a
 sequence of small browser tasks; in practice the surface blocked twice over
 before any region could be laid out, and the pass was **more than half fixing
-the surface** rather than building. F2.1, F2.2, F2.4, F2.5, F2.8, F2.9 and
-F2.11 were all blocking, and the sequence was: measure, fix, red-without-fix,
-rebuild, re-measure — roughly half an hour each, eight times, before a single
-card looked like the target. The regions themselves were fast once the surface
+the surface** rather than building. F2.1, F2.2, F2.4, F2.5, F2.8, F2.9, F2.10
+and F2.11 were **all eight classified blocking**, and the sequence each time was
+measure, fix, red-without-fix, rebuild, re-measure — roughly half an hour,
+eight times over, before a single card looked like the target. The regions themselves were fast once the surface
 was honest: a card is an insert, six fields and a bind, and the whole eight
 build and pass in under two minutes. **The lesson the pass pays for:** the
 value of a proof like this is entirely in the first hour, and everything after
