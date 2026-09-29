@@ -747,6 +747,17 @@ The user asked for two things: expose the shortcut manager to the settings panel
 
 **U19 is therefore superseded**, and F1.41's spelling inconsistency goes with it: one control, named once.
 
+#### The rename goes into the data model, not just the label (2026-09-29)
+
+**"Content fit" is the right name, and the problem is worse than a UI string.** The persisted shape today is:
+
+- `artboard.fitMode: "contain" | "cover"` — the **content's** fit, in `schema/theme-document.schema.json:49`
+- `backgroundMedia.fit: "contain" | "cover"` — the **media's** fit, `:54`
+
+**Neither says what it fits.** `fitMode` on the artboard and `fit` on the background media are the same word twice, meaning two different things — so the confusion the user hit is in the **schema**, not the label. The rename therefore is `artboard.fitMode` → **`artboard.contentFit`**, labelled **"Content fit"**, which makes the pair read correctly at a glance: *artboard content fit* against *media fit*.
+
+Two consequences worth stating: it is a **persisted property rename in a published schema**, which AGENTS.md permits cleanly under the pre-release rule rather than needing compatibility glue; and `tests/e2e/editor.spec.ts:1290` and `:1658` drive `selectOption("cover")` on this control, so they move with it.
+
 ### Design tokens: a visible left tab (decided by the user, 2026-09-29)
 
 Tokens get a **visible tab beside Layers**, not Figma's no-selection fallback. The user chose the visible surface over the one Figma uses, which is the right call given Figma's own note that its variables modal is "not discover" — a token panel nobody finds is a token panel nobody uses. Selecting a token still shows its configuration in the standard Properties panel.
