@@ -264,11 +264,9 @@ export const uiCopy = {
   artboardOrientations: { landscape: "Landscape", portrait: "Portrait" },
   artboardResolutions: { "1080p": "1080p", "2k": "2K", "4k": "4K" },
   /**
-   * The two ways a picture can fill a box. The artboard's own fit and the
-   * background media's fit choose between the same two values, so they are one
-   * option group spelled once: the artboard used to title-case its options in
-   * markup while the media one printed the stored id, and a panel that spells
-   * the same word two ways is one an author reads as two things.
+   * The two ways a picture can fill a box, spelled once. Background media's fit
+   * is the only fit an author sets; the artboard's content fit is a guarantee
+   * of the model, so there is one control left to name them.
    */
   fitModes: { contain: "Contain", cover: "Cover" },
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
@@ -312,7 +310,6 @@ export const uiCopy = {
     /** Names the live sample under the language control, which is a status
      * region in its own right and announces itself when the choice changes. */
     languageSample: "Sample in the chosen language",
-    previewFit: "Preview fit",
     backgroundMedia: "Background media",
     mediaFit: "Media fit",
     releaseVersion: "Release version",

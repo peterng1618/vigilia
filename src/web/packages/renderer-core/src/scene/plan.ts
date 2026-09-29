@@ -131,7 +131,7 @@ export interface ScenePlan {
   readonly artboard: {
     readonly width: number;
     readonly height: number;
-    readonly fitMode: "contain" | "cover";
+    readonly contentFit: "contain" | "cover";
     readonly background: unknown;
     readonly barColor: unknown;
   };
@@ -186,7 +186,7 @@ export function buildScenePlan(context: PlanContext): ScenePlan {
     artboard: {
       width: artboard.width,
       height: artboard.height,
-      fitMode: artboard.fitMode ?? "contain",
+      contentFit: artboard.contentFit ?? "contain",
       background: resolveStyleValue(
         artboard.background,
         globals,

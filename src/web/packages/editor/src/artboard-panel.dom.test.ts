@@ -17,11 +17,7 @@ describe("artboard panel", () => {
     const change = vi.fn();
     const panel = createArtboardPanel(document.body, undefined, change);
 
-    panel.render({ width: 1280, height: 720, fitMode: "cover" });
-    const select = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-fit-mode]",
-    )!;
-    expect(select.value).toBe("cover");
+    panel.render({ width: 1280, height: 720 });
 
     const width = panel.root.querySelector<HTMLInputElement>(
       "[data-vigilia-artboard-width]",
@@ -31,15 +27,27 @@ describe("artboard panel", () => {
     expect(change).toHaveBeenCalledWith({
       width: 1000,
       height: 720,
-      fitMode: "cover",
     });
+  });
 
-    select.value = "contain";
-    select.dispatchEvent(new Event("change"));
+  it("carries the document's content fit through an edit rather than resetting it", () => {
+    // The panel does not own this value, so it must not decide it: a size
+    // change that rewrote it to contain would silently uncrop a cover theme
+    // whose author set the value by hand.
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, change);
+    panel.render({ width: 1280, height: 720, contentFit: "cover" });
+
+    const width = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-artboard-width]",
+    )!;
+    width.value = "1000";
+    width.dispatchEvent(new Event("change"));
+
     expect(change).toHaveBeenLastCalledWith({
       width: 1000,
       height: 720,
-      fitMode: "contain",
+      contentFit: "cover",
     });
   });
 
@@ -251,22 +259,24 @@ describe("artboard panel", () => {
     expect(label?.textContent).toBe("Description");
   });
 
-  it("names the two fit modes the same way wherever they are chosen", () => {
+  it("offers the media's fit and no fit control of its own", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1280, height: 720 });
+    panel.render({ width: 1280, height: 720, contentFit: "cover" });
 
-    // Both selects choose between the same two values, so they are the same
-    // option group and spell them the same way. They did not: Preview fit
-    // title-cased its own options in markup while Media fit printed the stored
-    // id, so one row read "Contain" and the row below it read "cover".
-    const spellings = (selector: string) =>
-      Array.from(
-        panel.root.querySelectorAll(`${selector} option`),
-        (option) => option.textContent,
-      );
-    expect(spellings("[data-vigilia-artboard-fit-mode]").sort()).toEqual(
-      spellings("[data-vigilia-background-media-fit]").sort(),
-    );
+    // The artboard's own fit is the *content's*, it is always contain, and an
+    // author cannot set it. Beside "Media fit" it was labelled "Preview fit",
+    // so one panel offered two controls choosing between the same two words for
+    // two different subjects — read as "how my picture looks in the preview",
+    // which it never was.
+    expect(
+      panel.root.querySelector("[data-vigilia-artboard-fit-mode]"),
+    ).toBeNull();
+    const mediaFit = panel.root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-background-media-fit]",
+    )!;
+    expect(
+      Array.from(mediaFit.options, (option) => option.textContent),
+    ).toEqual(["Cover", "Contain"]);
   });
 
   it("says on screen that the date is a sample of the chosen language", () => {
@@ -334,7 +344,7 @@ function presets(root: HTMLElement): {
 describe("artboard presets in the panel", () => {
   it("shows the preset the document's size came from", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1080, height: 2340, fitMode: "cover" });
+    panel.render({ width: 1080, height: 2340, contentFit: "cover" });
 
     expect(presets(panel.root)).toMatchObject({
       ratio: expect.objectContaining({ value: "19.5:9" }),
@@ -346,7 +356,7 @@ describe("artboard presets in the panel", () => {
   it("derives the artboard size from a change to any of the three", () => {
     const change = vi.fn();
     const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1920, height: 1080, fitMode: "cover" });
+    panel.render({ width: 1920, height: 1080, contentFit: "cover" });
     const { ratio, orientation, resolution } = presets(panel.root);
 
     resolution.value = "4k";
@@ -354,7 +364,7 @@ describe("artboard presets in the panel", () => {
     expect(change).toHaveBeenLastCalledWith({
       width: 3840,
       height: 2160,
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     orientation.value = "portrait";
@@ -362,7 +372,7 @@ describe("artboard presets in the panel", () => {
     expect(change).toHaveBeenLastCalledWith({
       width: 2160,
       height: 3840,
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     ratio.value = "4:3";
@@ -372,7 +382,7 @@ describe("artboard presets in the panel", () => {
     expect(change).toHaveBeenLastCalledWith({
       width: 2160,
       height: 2880,
-      fitMode: "cover",
+      contentFit: "cover",
     });
   });
 
@@ -398,14 +408,13 @@ describe("artboard presets in the panel", () => {
     expect(change).toHaveBeenLastCalledWith({
       width: 1600,
       height: 700,
-      fitMode: "contain",
     });
   });
 
   it("derives a whole preset from a custom size without leaving a control unset", () => {
     const change = vi.fn();
     const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1000, height: 700, fitMode: "cover" });
+    panel.render({ width: 1000, height: 700, contentFit: "cover" });
     const { ratio, orientation, resolution } = presets(panel.root);
 
     // Choosing one of the three means choosing all three — the other two were
@@ -416,7 +425,7 @@ describe("artboard presets in the panel", () => {
     expect(change).toHaveBeenLastCalledWith({
       width: 1440,
       height: 1080,
-      fitMode: "cover",
+      contentFit: "cover",
     });
     expect({
       ratio: ratio.value,

@@ -1285,16 +1285,13 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page
-      .locator("[data-vigilia-artboard-fit-mode]")
-      .selectOption("cover");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
     await page
       .locator("[data-vigilia-artboard-background]")
       .selectOption("palette.bars");
-    await expect(page.locator("[data-vigilia-artboard-fit-mode]")).toHaveValue(
-      "cover",
+    await expect(page.locator("[data-vigilia-artboard-width]")).toHaveValue(
+      "1000",
     );
     await expect(
       page.locator("[data-vigilia-artboard-background]"),
@@ -1654,8 +1651,8 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await page
-      .locator("[data-vigilia-artboard-fit-mode]")
-      .selectOption("cover");
+      .locator("[data-vigilia-background-media-fit]")
+      .selectOption("contain");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
     await page
@@ -1664,16 +1661,49 @@ test.describe("Fabric editor route", () => {
 
     const envelope = (await saveEnvelope(page)) as {
       artboard: {
-        fitMode?: string;
+        contentFit?: string;
         width: number;
         background?: { ref: string };
+        backgroundMedia?: { fit: string };
       };
       scene: { objects: Array<{ id?: string; left?: number }> };
     };
-    expect(envelope.artboard.fitMode).toBe("cover");
+    // The only fit an author sets is the media's. The artboard's own content
+    // fit is a guarantee of the model, so this asserts the control that does
+    // exist writes what it says and the one that does not is not invented.
+    expect(envelope.artboard.backgroundMedia?.fit).toBe("contain");
+    expect(envelope.artboard.contentFit ?? "contain").toBe("contain");
     expect(envelope.artboard.width).toBe(1000);
     expect(envelope.artboard.background).toEqual({ ref: "palette.bars" });
     expect(leftFor(envelope, "wordmark")).toBe(118);
+  });
+
+  test("offers no control for the artboard's own content fit", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    // The user read "Preview fit" as how their picture renders in the preview,
+    // because it sat above "Media fit" and chose between the same two words.
+    // It was the artboard content's fit, it is always contain, and no author
+    // sets it — so the panel must not offer it, and must still offer the media's.
+    await page.goto(EDITOR);
+    await openRailPane(page, "Settings");
+
+    await expect(page.locator("[data-vigilia-artboard-fit-mode]")).toHaveCount(
+      0,
+    );
+    const mediaFit = page.locator("[data-vigilia-background-media-fit]");
+    const settingsPanel = page.locator("section", {
+      has: mediaFit,
+    });
+    const labels = await settingsPanel.locator("label").allTextContents();
+    expect(labels).not.toContain("Preview fit");
+    // The control that does exist, still named and still choosing.
+    expect(labels).toContain("Media fit");
+    await expect(mediaFit).toHaveValue("cover");
+    await mediaFit.selectOption("contain");
+    await expect(mediaFit).toHaveValue("contain");
   });
 
   test("shows the Style tab's resolved appearance for a selection", async ({

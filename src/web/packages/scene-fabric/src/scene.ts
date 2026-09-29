@@ -116,7 +116,7 @@ export function mountFabricScene(
     const transform = computeArtboardTransform({
       artboard: { width: plan.artboard.width, height: plan.artboard.height },
       viewport: { width: host.clientWidth, height: host.clientHeight },
-      fitMode: plan.artboard.fitMode,
+      contentFit: plan.artboard.contentFit,
     });
 
     // Letterbox bars are host background, not artboard paint (§53).

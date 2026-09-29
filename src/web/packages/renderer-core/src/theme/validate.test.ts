@@ -18,7 +18,7 @@ function baseDocument(): Record<string, unknown> {
   return {
     schemaVersion: SUPPORTED_SCHEMA_VERSION,
     id: "demo-theme",
-    artboard: { width: 1920, height: 1080, fitMode: "contain" },
+    artboard: { width: 1920, height: 1080, contentFit: "contain" },
     nodes: [],
   };
 }
@@ -110,13 +110,25 @@ describe("artboard", () => {
     ).toContain("wrong-type");
   });
 
-  it("rejects an unknown fit mode", () => {
+  it("rejects an unknown content fit", () => {
     expect(
       codes({
         ...baseDocument(),
-        artboard: { width: 10, height: 10, fitMode: "stretch" },
+        artboard: { width: 10, height: 10, contentFit: "stretch" },
       }),
     ).toContain("invalid-enum");
+  });
+
+  it("refuses the superseded fitMode name rather than ignoring it", () => {
+    // Pre-release, so the old key dies with the rename instead of being read as
+    // a second, quieter way to say the same thing. A silent drop would let a
+    // theme that asks for a crop open letterboxed and blame the player.
+    expect(
+      codes({
+        ...baseDocument(),
+        artboard: { width: 10, height: 10, fitMode: "cover" },
+      }),
+    ).toContain("unknown-field");
   });
 });
 
@@ -1012,7 +1024,7 @@ describe("unknown fields", () => {
       artboard: {
         width: 100,
         height: 100,
-        fitMode: "cover",
+        contentFit: "cover",
         background: { ref: "palette.background" },
         barColor: { ref: "palette.bars" },
       },

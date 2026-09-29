@@ -380,7 +380,7 @@ function envelopePlan(theme: FabricThemeEnvelope): ScenePlan {
     artboard: {
       width: theme.artboard.width,
       height: theme.artboard.height,
-      fitMode: theme.artboard.fitMode ?? "contain",
+      contentFit: theme.artboard.contentFit ?? "contain",
       background: theme.artboard.background ?? "#000",
       barColor: theme.artboard.barColor ?? "#000",
     },

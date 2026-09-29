@@ -29,7 +29,6 @@ const CONTROLS = [
   "[data-vigilia-theme-language]",
   "[data-vigilia-theme-language-sample]",
   "[data-vigilia-theme-version]",
-  "[data-vigilia-artboard-fit-mode]",
   "[data-vigilia-artboard-ratio]",
   "[data-vigilia-artboard-orientation]",
   "[data-vigilia-artboard-resolution]",

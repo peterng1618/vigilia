@@ -95,6 +95,20 @@ describe("published Fabric theme schema", () => {
     expect(document.$defs["globalGroup"]).toBeUndefined();
   });
 
+  it("publishes the artboard's own fit under a name that says what it fits", () => {
+    // The artboard's fit and the background media's fit were both called "fit"
+    // in one panel and one document, meaning two different things — an author
+    // reading them together could not tell which was which. The published key is
+    // half the fix and the half a tool reads, so it moves with the code.
+    const artboard = schema().$defs["artboard"]!["properties"] as Record<
+      string,
+      Record<string, unknown>
+    >;
+
+    expect(artboard["contentFit"]).toEqual({ enum: ["contain", "cover"] });
+    expect(artboard["fitMode"]).toBeUndefined();
+  });
+
   it("publishes the glass treatment at the bound the runtime enforces", () => {
     // The measured cap is a renderer budget, so the published maximum is
     // compared against the same constant the validator refuses against. A

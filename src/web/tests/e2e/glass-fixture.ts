@@ -88,7 +88,7 @@ export const GLASS_ENVELOPE = {
   artboard: {
     width: GLASS_ARTBOARD.width,
     height: GLASS_ARTBOARD.height,
-    fitMode: "contain" as const,
+    contentFit: "contain" as const,
     // Transparent, or the artboard paint would hide the media layer the glass
     // has to sample, on screen and in the sampled region alike.
     background: { ref: "palette.none" as const },

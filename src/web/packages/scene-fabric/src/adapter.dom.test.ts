@@ -133,7 +133,7 @@ function plan(
     artboard: {
       width: 1920,
       height: 1080,
-      fitMode: "contain",
+      contentFit: "contain",
       background: "#101216",
       barColor: "#000",
       ...artboard,

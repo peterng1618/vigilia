@@ -47,7 +47,7 @@ const envelope = (id: string) => ({
   artboard: {
     width: ARTBOARD.width,
     height: ARTBOARD.height,
-    fitMode: "cover" as const,
+    contentFit: "cover" as const,
     background: { ref: "palette.none" as const },
     barColor: { ref: "palette.bar" as const },
     backgroundMedia: { assetId: "loop", fit: "cover" as const },
@@ -878,7 +878,7 @@ test.describe("changing media on the real player", () => {
         const artboard = {
           width: 640,
           height: 360,
-          fitMode: "cover",
+          contentFit: "cover",
           background: { ref: "palette.none" },
           barColor: { ref: "palette.bar" },
           backgroundMedia: { assetId: "badge", fit: "contain" },

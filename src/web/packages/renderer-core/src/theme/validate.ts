@@ -97,7 +97,7 @@ const KNOWN_KEYS = {
     "width",
     "height",
     "background",
-    "fitMode",
+    "contentFit",
     "barColor",
     "backgroundMedia",
   ],
@@ -436,12 +436,12 @@ function validateArtboard(issues: Issues, value: unknown): void {
     }
   }
 
-  if (value["fitMode"] !== undefined) {
+  if (value["contentFit"] !== undefined) {
     issues.enumValue(
-      value["fitMode"],
+      value["contentFit"],
       ["contain", "cover"] as const,
-      "/artboard/fitMode",
-      "fitMode",
+      "/artboard/contentFit",
+      "contentFit",
     );
   }
 }

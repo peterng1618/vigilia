@@ -62,7 +62,7 @@ const envelopeFor = (
   artboard: {
     width: 640,
     height: 360,
-    fitMode: "contain" as const,
+    contentFit: "contain" as const,
     background: { ref: "palette.bar" },
     barColor: { ref: "palette.bar" },
   },
@@ -232,7 +232,7 @@ const mediaEnvelope = {
   artboard: {
     width: 640,
     height: 360,
-    fitMode: "contain" as const,
+    contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
     barColor: { ref: "palette.bar" as const },
     backgroundMedia: { assetId: "badge", fit: "contain" as const },
@@ -314,7 +314,7 @@ const groupedGlassEnvelope = {
   artboard: {
     width: 640,
     height: 480,
-    fitMode: "contain" as const,
+    contentFit: "contain" as const,
     background: { ref: "palette.none" as const },
     barColor: { ref: "palette.bar" as const },
   },

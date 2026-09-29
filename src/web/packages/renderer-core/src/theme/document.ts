@@ -123,7 +123,12 @@ export interface Artboard {
   readonly width: number;
   readonly height: number;
   readonly background?: StyleValue;
-  readonly fitMode?: "contain" | "cover";
+  /**
+   * How the artboard's *content* fills the viewport. Not the background media's
+   * own `fit`, which is the only fit an author sets; this is a guarantee of the
+   * model rather than a choice, and absent means contain.
+   */
+  readonly contentFit?: "contain" | "cover";
   readonly barColor?: StyleValue;
   readonly backgroundMedia?: BackgroundMedia;
 }

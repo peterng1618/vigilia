@@ -42,7 +42,7 @@ function documentWith(
   return {
     schemaVersion: 1,
     id: "demo",
-    artboard: { width: 800, height: 480, fitMode: "contain" },
+    artboard: { width: 800, height: 480, contentFit: "contain" },
     ...(metadata === undefined ? {} : { metadata }),
     ...(globals === undefined ? {} : { globals }),
     nodes,
@@ -65,7 +65,7 @@ describe("artboard", () => {
     expect(result.artboard).toMatchObject({
       width: 800,
       height: 480,
-      fitMode: "contain",
+      contentFit: "contain",
     });
   });
 
@@ -76,7 +76,7 @@ describe("artboard", () => {
       artboard: { width: 100, height: 100 },
       nodes: [],
     };
-    expect(plan(document).artboard.fitMode).toBe("contain");
+    expect(plan(document).artboard.contentFit).toBe("contain");
   });
 
   it("resolves the background through globals", () => {

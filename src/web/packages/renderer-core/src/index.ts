@@ -6,7 +6,7 @@ export type {
   ArtboardSize,
   ArtboardTransform,
   ComputeArtboardTransformInput,
-  FitMode,
+  ContentFit,
   Point,
   ViewportSize,
 } from "./artboard.js";

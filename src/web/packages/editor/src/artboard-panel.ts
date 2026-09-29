@@ -70,13 +70,6 @@ export function createArtboardPanel(
   // the control's "Language" would leave two things in the row called Language.
   languageSample.setAttribute("aria-label", uiCopy.panels.languageSample);
   const language = selectInput(uiCopy.panels.language, "vigiliaThemeLanguage");
-  const fit = selectInput(uiCopy.panels.previewFit, "vigiliaArtboardFitMode");
-  for (const fitMode of ["contain", "cover"] as const) {
-    const option = document.createElement("option");
-    option.value = fitMode;
-    option.textContent = uiCopy.fitModes[fitMode];
-    fit.select.append(option);
-  }
   const background = selectInput(
     uiCopy.panels.background,
     "vigiliaArtboardBackground",
@@ -106,7 +99,6 @@ export function createArtboardPanel(
       ...current,
       width,
       height,
-      fitMode: fit.select.value === "cover" ? "cover" : "contain",
     };
     setPaletteReference(
       next,
@@ -224,7 +216,6 @@ export function createArtboardPanel(
     ratio.row,
     orientation.row,
     resolution.row,
-    fit.row,
     background.row,
     bars.row,
     media.row,
@@ -244,7 +235,6 @@ export function createArtboardPanel(
     currentMetadata = next;
     options.onMetadataChange?.(next);
   };
-  fit.select.addEventListener("change", submitFromSelects);
   ratio.select.addEventListener("change", submitPreset);
   orientation.select.addEventListener("change", submitPreset);
   resolution.select.addEventListener("change", submitPreset);
@@ -322,7 +312,6 @@ export function createArtboardPanel(
     ratio.select.value = matching?.ratio ?? "";
     resolution.select.value = matching?.resolution ?? "";
     orientation.select.value = matching?.orientation ?? "";
-    fit.select.value = artboard.fitMode ?? "contain";
     background.select.value = paletteReference(artboard.background);
     bars.select.value = paletteReference(artboard.barColor);
     media.select.value = artboard.backgroundMedia?.assetId ?? "";

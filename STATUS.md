@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **Eight of the ten design-review defects are fixed; two are filed with their cause established.** [#13](https://github.com/peterng1618/vigilia/issues/13) (U10, the artboard is not a clipping area) and [#14](https://github.com/peterng1618/vigilia/issues/14) (U3, the background media is declared as an asset and has no layer) each need a decision whose answer changes several existing owners, so they are recorded rather than guessed.
-- **U5, U6 and U7 were one bug** — the entered-group state reached the layer panel and nothing else. Entering a group now makes the objects outside it unselectable, and a double-click that is not a group records no context at all, so editing a text box no longer dims the tree.
-- **U1 and U2 were two halves of one ownership mistake.** "Replace" had no path that swapped bytes, and the in-use check read only the canvas root, so a grouped image reported itself unused and its bytes were deleted out from under it.
-- **U4 was a lifetime, not a missing call**: an imported image's persisted `src` is an object URL that was revoked the instant it decoded, so any history restore dropped the image and undo deleted the asset instead of the edit. **U8 and U9 were both a number quietly wrong** — a rail icon 9 px off its button, and a ceiling that made the documented 2× default untrue for the one chart a reader looks at.
-- Full gate green: `typecheck`, `lint`, `format:check` and **2132 unit tests across 165 files, exit 0** (a first run exited 1 on worker-startup starvation alone, with all 1830 tests that started passing).
+- **`artboard.fitMode` is now `artboard.contentFit`**, in the published schema, the envelope type, the validator, the plan, the mount, the scene, the player and the fake-source fixtures. Neither fit said what it fits, and both are in one panel.
+- **The artboard's own fit control is gone from the property panel.** Content is always `contain`; it was never an author choice, and beside *Media fit* it read as "how my picture looks in the preview". `backgroundMedia.fit` is untouched and still the only fit an author sets.
+- **Pre-release, so no migration**: the old key is refused as an unknown field rather than silently read as contain.
+- Two e2e tests that drove the removed control were rewritten onto the media fit, and the label audit no longer lists a control that cannot render.
+- Gate green: `typecheck`, `lint` and `format:check` tree-wide, **2152 unit tests, exit 0**, and 16 Playwright tests across the three affected specs on an isolated preview.
 
 ## Next
 

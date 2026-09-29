@@ -10,7 +10,7 @@ function plan(): ScenePlan {
     artboard: {
       width: 400,
       height: 300,
-      fitMode: "contain",
+      contentFit: "contain",
       background: "#000",
       barColor: "#000",
     },

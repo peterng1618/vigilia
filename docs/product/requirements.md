@@ -77,7 +77,9 @@ content, including background alignment, strokes, typography and shadows.
 ## §53 — Fit modes
 
 `contain`: show the whole artboard and fill bars. `cover`: fill viewport and
-crop. Editor preview matches player behaviour.
+crop. The artboard's own fit is the fit of its *content*, is not an author
+choice, and is always `contain`; background media carries the one fit an author
+sets (§55).
 
 ## §55 — Background media
 
