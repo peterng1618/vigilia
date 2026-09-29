@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.3: Description is a `textarea`, so its prose is readable.** The starter's own sentence is 130 characters; a single-line input in a 161px box showed the first twenty and truncated mid-word.
-- It follows the panel's existing idiom rather than a new one: a `.vigilia-field` row, `label`/`for` paired to the control, and the row's whole width — the same treatment `sizeNote` and the language sample already set from this file.
-- **Measured in Chromium, not asserted:** `TEXTAREA`, `rows=4`, 254px wide, `clientHeight === scrollHeight === 81` — the whole sentence on screen with nothing to scroll to.
-- Red without the fix: `expected 'INPUT' to be 'TEXTAREA'`. 2066 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.5: the type panel's labels are in a label column, not wrapped round their inputs.** All nine fields read as a row each: Name, Family, Size, Weight, Line height, Letter spacing, Font, Trio, Reassign to.
+- The cause was structural, not a style choice: `<label>Name<input></label>` is one box, so the shell's `label { display: block }` rule had nothing to put in a column. The artboard panel already solved this with `.vigilia-field`; the type panel now uses that same row, so the three panels line up.
+- **Association survived the move, which was the risk.** F1.19 paired these by `aria-label`; the `for`/`id` pairing is stronger and both the DOM audit and `accessible-names` tests confirm no control lost its name.
+- Red without the fix: the row test finds no `.vigilia-field` above the control. 2067 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 
