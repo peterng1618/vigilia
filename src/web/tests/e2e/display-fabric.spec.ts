@@ -663,9 +663,31 @@ test.describe("every fixture renders", () => {
   test("unknown hosted themes show a clear load failure", async ({ page }) => {
     await page.goto("/?theme=does-not-exist");
 
-    await expect(page.locator("#artboard")).toHaveText(
-      /Vigilia could not load this theme/,
-    );
+    // The failure is a **page**, not a line of text in the artboard: F1.14
+    // replaced a bare `<pre>` so a display that could not load cannot be read
+    // as a dashboard with a gap. This assertion was still reaching for the old
+    // copy, which `player/src` has not contained since, so it passed against
+    // nothing and failed against the real page. The control is the one the
+    // failure page carries.
+    const failure = page.locator("[data-vigilia-load-failure]");
+    await expect(failure).toBeVisible();
+    await expect(failure).toContainText("nothing to show");
+    // The reason is shown, not swallowed — a display that says only "nothing"
+    // tells a reader nothing actionable.
+    await expect(
+      page.locator("[data-vigilia-load-failure-reason]"),
+    ).toContainText("Reason:");
+    // Two ways out, because a display that cannot be left is a display that
+    // stays broken: a retry and the host.
+    await expect(
+      page.locator("[data-vigilia-load-failure-retry]"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-vigilia-load-failure-host]"),
+    ).toBeVisible();
+    // And no scene is drawn behind it, so the page cannot be mistaken for a
+    // dashboard that happens to be empty.
+    await expect(page.locator("#artboard canvas")).toHaveCount(0);
   });
 
   test("keeps invisible nodes in the scene without painting them", async ({
