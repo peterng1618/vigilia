@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **U9: the anti-aliasing default was already 2× — the memory ceiling silently overrode it.** `MAX_BACKING_PIXELS` was 486,000, so the shipped starter's 963 × 215 trends chart clamped to **1.53×** while every smaller chart got the full 2×. The one graph a reader actually looks at was the only aliased one on the board, and the default was untrue for the composition the product ships.
-- **The ceiling is now one 1920 × 1080 frame (2,073,600 px, 8.3 MB of RGBA).** A ceiling should catch the chart nobody planned for, not make the documented default false; a chart still past it at 1× is a layout problem, and the clamp still never undersamples below 1.
-- **The knob for all four families already exists and already covers all four**: `VigiliaChart.renderScale`, applied by the scene adapter to every family, bounded by `MAX_RENDER_SCALE` and this area ceiling. It is runtime-only and never persisted, which is §67 — putting a render resolution into the authored document would be the wrong fix.
-- **Measured in the browser**: the trends chart's backing store went 1500 × 329 → **1958 × 430** at the shipped default, and the crop shows the stair-stepping gone from the strokes and the axis labels legible. Forcing 3× produced no further visible gain over the new default.
-- 1 test red before the fix at exactly 1.5320952323249508; `typecheck`, `lint` and `format:check` all exit 0.
+- **Eight of the ten design-review defects are fixed; two are filed with their cause established.** [#13](https://github.com/peterng1618/vigilia/issues/13) (U10, the artboard is not a clipping area) and [#14](https://github.com/peterng1618/vigilia/issues/14) (U3, the background media is declared as an asset and has no layer) each need a decision whose answer changes several existing owners, so they are recorded rather than guessed.
+- **U5, U6 and U7 were one bug** — the entered-group state reached the layer panel and nothing else. Entering a group now makes the objects outside it unselectable, and a double-click that is not a group records no context at all, so editing a text box no longer dims the tree.
+- **U1 and U2 were two halves of one ownership mistake.** "Replace" had no path that swapped bytes, and the in-use check read only the canvas root, so a grouped image reported itself unused and its bytes were deleted out from under it.
+- **U4 was a lifetime, not a missing call**: an imported image's persisted `src` is an object URL that was revoked the instant it decoded, so any history restore dropped the image and undo deleted the asset instead of the edit. **U8 and U9 were both a number quietly wrong** — a rail icon 9 px off its button, and a ceiling that made the documented 2× default untrue for the one chart a reader looks at.
+- Full gate green: `typecheck`, `lint`, `format:check` and **2132 unit tests across 165 files, exit 0** (a first run exited 1 on worker-startup starvation alone, with all 1830 tests that started passing).
 
 ## Next
 
