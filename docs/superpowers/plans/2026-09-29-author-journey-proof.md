@@ -348,7 +348,9 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 **Then** delete the README rows whose capture no longer exists or documents v1 behaviour that is going away, and say which images were dropped rather than quietly emptying a directory.
 
-**Sequencing is a decision, and it is yours.** If this runs *before* v1 is removed, the captures that document v1 are regenerated now and become stale again the moment v1 goes. If it runs *after*, the cleanup is done once. The user should pick — and note that **capture runs write straight into `docs/evidence/screenshots/`, so this must not run concurrently with anything else holding a browser**, which is why it is queued rather than dispatched while the display proof is in flight.
+**Sequencing decided (the user, 2026-09-29): the v1 screenshots are deleted later, with v1.** Not now. Regenerating them today would make them stale again the instant v1 is removed, and deleting the rows early would leave a hole in the evidence table for a thing that still exists. So the spring clean has two passes: **now** for everything that is merely stale — the old starter theme, the pre-current editor shell — and **with v1's removal** for the captures whose subject is going away. Both are the same mechanical regenerate-and-diff; only the timing differs.
+
+**Capture runs write straight into `docs/evidence/screenshots/`**, so this must not run concurrently with anything else holding a browser. That is why it is queued rather than dispatched while the display proof is in flight.
 
 ### The rebuild finished — and what it did not do
 
