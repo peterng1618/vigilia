@@ -393,22 +393,31 @@ candidates written out:
 
 ### The broad gate, and what its five failures were
 
-`format:check`, `lint`, `typecheck`, `test` (2110) and `build` and `size` all
-exit 0. The full local Playwright suite is **206 passed, 143 skipped, 5 failed,
-exit 1** — and the five were read, not skimmed. **None is mine**, and each is
-accounted for:
+`typecheck`, `test` (2110) and `build` and `size` exit 0. `format:check` and
+`lint` are clean over **every path this pass touched** (183 files, "No fixes
+applied") but **red tree-wide**, on `tests/e2e/rebuild-composition.ts` — an
+untracked file another agent is writing against this pass's `rebuild-driver.ts`
+right now. It is not staged, not formatted and not touched: another agent is
+mid-flight in it, and a format pass over their half-written file is the same
+collision as the glass one below.
+
+The full local Playwright suite was run twice, alone, reading the exit code
+directly. **First run: 206 passed, 143 skipped, 5 failed, exit 1.** All five
+were read rather than skimmed, and **none was this pass's**; the one that was
+cleanly mine to fix is fixed and the suite was re-run. **Second run: 209
+passed, 143 skipped, 2 failed, exit 1.**
 
 | Failing test | Cause | Whose |
 |---|---|---|
 | `display-fabric.spec.ts:663` "unknown hosted themes show a clear load failure" — **×2** (desktop + phone) | **Stale assertion.** It expects `"Vigilia could not load this theme"`, a string `player/src` has not contained since **F1.14** (`b01b301`, which landed *before* this pass's first commit). F1.14 replaced the bare `<pre>` with a real page, so the test asserts copy that does not exist. **Fixed here** — the same class as F1.43 — re-pointed at the page the failure path actually renders, and it now asserts the reason and both ways out as well as the absence of a drawn scene. Red without the fix: 1 test red on the old text | F1.14's implementer left it; I fixed it |
-| `glass-authoring.spec.ts:171` "refuses a radius past the published bound" | Asserts `#status` is **exactly** `"Theme package saved"`, but the footer also carries `"Warning: That value cannot be applied to the selection."` — the **F1.15** refusal surface, whose copy is in `ui-copy.ts` from `9290bdd`, long before this pass | **Not touched**: `glass-authoring.spec.ts`, `glass.ts` and `glass.dom.test.ts` are all uncommitted in the shared worktree — another agent is editing that file right now |
+| `glass-authoring.spec.ts:171` "refuses a radius past the published bound" — **still red** | Asserts `#status` is **exactly** `"Theme package saved"`, but the footer also carries `"Warning: That value cannot be applied to the selection."` — the **F1.15** refusal surface, whose copy is in `ui-copy.ts` from `9290bdd`, long before this pass. An exact-`textContent` assertion on a footer that now legitimately carries a diagnostic | **Deliberately not touched.** `glass-authoring.spec.ts`, `glass.ts` and `glass.dom.test.ts` were uncommitted in the shared worktree on both runs — another agent is editing that file right now, and its fix will move underneath mine. The cause is established and the fix is one assertion; it belongs to whoever is in that file |
 | `reference-theme.spec.ts:365` "a new document is the reference composition" | The `Ctrl+N` **Discard** prompt timeout — **issue [#7](https://github.com/peterng1618/vigilia/issues/7)**, recorded as pre-existing with cause not established and reproduced at HEAD by its own implementer | Not mine, not fixed, already filed |
-| `host-player.spec.ts:542` "paints its charts in the theme's own palette" | A **chroma threshold**: measured 412 against a `> 500` bound, on the *reference* theme rendered by the *player*. Cause not established by me | Not mine; `packages/player` is **zero files** in this pass's diff |
+| `host-player.spec.ts:542` "paints its charts in the theme's own palette" | A **chroma threshold**: measured 412 against a `> 500` bound, on the *reference* theme rendered by the *player* | **Passed on the re-run**, so it is a rendering-threshold flake rather than a regression — which is the answer a single run could not have given. `packages/player` is **zero files** in this pass's diff either way |
 
-**Stated plainly because the gate is this pass's to run:** the suite is red, and
-the rebuild is not the reason. Two of the five are stale assertions left by
-landed work, one is a filed pre-existing bug, one belongs to an agent mid-edit
-in the shared tree, and one has no established cause.
+**Stated plainly because the gate is this pass's to run:** the suite is **red**,
+and the rebuild is not the reason. What remains is one stale assertion in a file
+another agent is editing, and one filed pre-existing bug whose cause is not
+established. Neither is a region of this pass, and neither was made worse by it.
 
 ### Where the rebuild stands
 
