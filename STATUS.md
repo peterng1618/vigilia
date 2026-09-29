@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.28: `openRailPane` reads the rail before it clicks.** The rail is a toggle, so the shared helper was closing the pane its caller had just opened; the failure surfaced as a timeout in an unrelated assertion. One owner now (`tests/e2e/editor-rail.ts`) reads `aria-pressed` + `aria-expanded` and clicks only when the pane is shut.
-- **20 call sites, not 11** — 19 `openRailPane` calls across three specs plus `panel-labels`' raw Settings click, and the helper had been *copied* into all three specs. The copies are gone.
-- **The helper's contract is a spec** (`editor-rail.spec.ts`): asking twice leaves it open, and asking for a shut pane still opens it. Both red against the old helper, on the right assertion.
-- **Found and fixed on the way:** `panel-labels` drove inspector controls that `editor-shell.css` drops below 980px, so it was red on phone at HEAD too — now skips with the sibling specs' `isDesktopSurface`.
-- **Verified:** 2004 unit tests, lint, format green; typecheck green for this work, red only in another agent's in-flight `document-favicon.test.ts`. All 5 affected specs: 104 passed, 96 skipped, exit 0.
+- **F1.27: the layer panel's twisties are icons, not glyphs.** `▸`/`▾` were literal text at `layer-panel.tsx:246` — the same class of defect as F1.2, and F1.2's `ui-copy.test.ts` guard could not see them because they were markup, not copy.
+- **`TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>>`** beside `KIND_ICONS`, the same shape and the same file; `ChevronRight` closed, `ChevronDown` open, at the row's own 13px/1.75.
+- **Nothing is lost to the icon:** `aria-expanded` still says the state and `aria-label` still names the action, so the control announces exactly as before.
+- **The proof the copy guard could not give:** a dom test asserts both states render the named Lucide icon, that `aria-expanded` reads true/false, and that no `▸`/`▾` reaches the panel. Red on the old markup.
+- **Verified in a browser:** a real theme opened through the editor's own Open control, collapsed and re-expanded — `lucide lucide-chevron-down` / `lucide lucide-chevron-right`, labels `Collapse grp` / `Expand grp`, zero console errors. Gates: 2010 unit tests, typecheck, lint, format all exit 0.
 
 ## Next
 

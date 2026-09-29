@@ -187,6 +187,32 @@ it("collapses and expands a group from its twisty", async () => {
   expect(setCollapsed).toHaveBeenCalledWith("group", true);
 });
 
+it("draws the twisty as an icon, in both states", async () => {
+  // The glyphs this replaces were markup rather than copy, so the copy table's
+  // pictograph guard never reached them: `▸`/`▾` are announced as a word of
+  // their own and cannot take a shell colour the way every icon beside them
+  // does. A Lucide icon carries the state in its own shape, so the two states
+  // must be distinguishable here and not only by the name.
+  const host = await renderPanel([
+    { id: "open", name: "Open", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false, collapsed: false },
+    { id: "shut", name: "Shut", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false, collapsed: true },
+  ]);
+  const twisty = (name: string): SVGSVGElement | null =>
+    host.querySelector(`[aria-label$=" ${name}"] svg`);
+  expect(twisty("Open")?.getAttribute("class")).toContain("lucide-chevron-down");
+  expect(twisty("Shut")?.getAttribute("class")).toContain("lucide-chevron-right");
+  // The state the glyph used to draw is still said out loud, not only shown.
+  expect(
+    host.querySelector('[aria-label="Collapse Open"]')?.getAttribute("aria-expanded"),
+  ).toBe("true");
+  expect(
+    host.querySelector('[aria-label="Expand Shut"]')?.getAttribute("aria-expanded"),
+  ).toBe("false");
+  expect(host.textContent).not.toMatch(/[▸▾]/u);
+});
+
 const rows = [
   { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
     hasChildren: true, visible: true, locked: false, selected: false },

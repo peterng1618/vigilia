@@ -1,5 +1,7 @@
 import {
   ChartColumn,
+  ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   Folder,
@@ -23,6 +25,15 @@ const KIND_ICONS: Readonly<Record<LayerKind, LucideIcon>> = {
   chart: ChartColumn,
   group: Folder,
   image: ImageIcon,
+};
+
+/** The twisty is a control like any other, so it is an icon and not a glyph:
+ * `▸`/`▾` were announced as words of their own and could not inherit a shell
+ * colour the way every icon beside them does (§35). The open/closed state
+ * stays on `aria-expanded`, and each chevron points the way the press goes. */
+const TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>> = {
+  collapsed: ChevronRight,
+  expanded: ChevronDown,
 };
 
 /** Selection is external mutable state and Fabric owns it, so the projection is
@@ -128,6 +139,7 @@ export function LayerPanel({
       <div role="tree" aria-label={uiCopy.panels.layers}>
         {rows.map((row, index) => {
           const Icon = KIND_ICONS[row.kind];
+          const Twisty = TWISTY_ICONS[row.collapsed ? "collapsed" : "expanded"];
           const twisty = row.collapsed ? uiCopy.panels.expand : uiCopy.panels.collapse;
           return (
             <div
@@ -243,7 +255,7 @@ export function LayerPanel({
                     store.mutate(() => bridge?.setCollapsed(row.id, !row.collapsed));
                   }}
                 >
-                  {row.collapsed ? "▸" : "▾"}
+                  <Twisty aria-hidden size={13} strokeWidth={1.75} />
                 </button>
               ) : (
                 <span aria-hidden className="vigilia-layer-twisty" />
