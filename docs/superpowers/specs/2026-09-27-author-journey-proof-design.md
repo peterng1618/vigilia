@@ -1,7 +1,10 @@
 # Author journey proof
 
-- **Status:** reviewed 2026-09-29; active. Plan:
-  [`2026-09-29-author-journey-proof.md`](../plans/2026-09-29-author-journey-proof.md).
+- **Status:** active; the from-blank rebuild has been driven once and its findings
+  fixed. Plan of record:
+  [`2026-09-29-author-journey-proof.md`](../plans/2026-09-29-author-journey-proof.md)
+  — its **Done** section is the checked-off list and its **Findings backlog** the
+  live queue. This spec states the obligation; the plan records the evidence.
 - **Date:** 2026-09-27
 - **Queue:** after reference-theme fidelity; before the font trio catalogue.
 - **Plan refresh required when activated (2026-09-27).** Reference-theme fidelity is
@@ -21,6 +24,28 @@
   The tint is a **global token** by §73, so a rebuild varies it by editing a token
   and never with a per-panel control; a control the rebuild needs and cannot find
   is a finding, not something to work around.
+- **Amended 2026-09-30, after the first rebuild — the obligation was not merely
+  unmet, it was unmeetable.** The composition existed because a generator emitted
+  it, and **no author could have produced it**: a chart could not be bound to a
+  sensor (a new chart showed zero binding controls, and the composition is mostly
+  charts), and a text object could not carry a second run, so `"62%"` plus a unit
+  had nowhere to live. Both are now fixed, and **once the surface was honest all
+  eight regions built in 1.9 minutes** — the first three took longer than the last
+  five combined, because the pass was more than half *fixing the surface* than
+  building on it.
+
+  Three further corrections belong on the record, because each was an error in
+  the pass's own reasoning rather than in the product:
+  - **The editor is desktop-only** (`tests/e2e/surface.ts` says so and eight specs
+    guard on it), while **a phone is the main display type** and the **player is
+    the product's face**. The pass held this backwards for hours and it cost a
+    false finding and a commit that had to be reverted.
+  - **Frosted glass read as a tint because the control wrote `palette.panel` at
+    85 %,** not `palette.frost` at 30 %; enabling glass did not change the fill.
+    Transmission over a real photograph went **0.216 → 0.718**.
+  - **The spec's "the authoring surface exists" premise was wrong for the whole
+    of the object-authoring half.** The inspector, palette and type panels were
+    real; the ability to *place and bind* the objects was not.
 
 ## Intent
 
