@@ -1,4 +1,28 @@
-import { uiCopy } from "./ui-copy.js";
+import { loadFailureReason, uiCopy } from "./ui-copy.js";
+
+/**
+ * Replaces the display with the load-failure page, for any cause.
+ *
+ * The one place a failure becomes words. It was `error.message` at the call
+ * site, which is how V8's parse error reached a wall display: the message of an
+ * exception thrown by something that is not this product is written for
+ * whoever debugs it, and this page is read by whoever is standing there.
+ *
+ * The raw error goes to the console instead of the screen. The page's own
+ * comment used to keep "the host's own reason" for the developer who fixes
+ * this; that is still true, and the console is where every other diagnostic in
+ * the player already goes (`reportRepaintError`, `reportGlassError`). A phone
+ * on the wall is reachable over a USB cable.
+ */
+export function showLoadFailure(host: HTMLElement, error: unknown): void {
+  // The error object, not a string of it: the stack is the part a developer
+  // needs and the part `String(error)` throws away.
+  console.warn("Vigilia: theme did not load.", error);
+  document.title = uiCopy.loadFailure.documentTitle;
+  host.replaceChildren(
+    loadFailureView(loadFailureReason(error), () => window.location.reload()),
+  );
+}
 
 /**
  * The page a reader gets when the theme would not load.
@@ -11,14 +35,17 @@ import { uiCopy } from "./ui-copy.js";
  *
  * Both ways on are here, and they are the two a reader actually has: ask again
  * (a host restarting, a network that blipped) and go to the host (the wrong id,
- * or the wrong theme). The host's own reason is kept, labelled, because the
- * person who fixes this is not looking at a phone.
+ * or the wrong theme). The reason is kept, labelled, because the person who
+ * fixes this is not looking at a phone.
+ *
+ * `reason` is a sentence chosen by the caller, not an exception's own words —
+ * see `showLoadFailure` above and `loadFailureReason` in `ui-copy.ts`.
  *
  * `retry` is passed rather than taken, so this module decides what the page
  * *says* and the caller owns what the browser does.
  */
 export function loadFailureView(
-  detail: string,
+  reason: string,
   retry: () => void,
 ): HTMLElement {
   styleOnce();
@@ -36,9 +63,9 @@ export function loadFailureView(
   const lede = document.createElement("p");
   lede.textContent = uiCopy.loadFailure.lede;
 
-  const reason = document.createElement("p");
-  reason.dataset["vigiliaLoadFailureReason"] = "";
-  reason.textContent = `${uiCopy.loadFailure.reasonLabel}: ${detail}`;
+  const reasonLine = document.createElement("p");
+  reasonLine.dataset["vigiliaLoadFailureReason"] = "";
+  reasonLine.textContent = `${uiCopy.loadFailure.reasonLabel}: ${reason}`;
 
   const again = document.createElement("button");
   again.type = "button";
@@ -57,7 +84,7 @@ export function loadFailureView(
   const actions = document.createElement("div");
   actions.append(again, host);
 
-  view.append(heading, lede, reason, actions);
+  view.append(heading, lede, reasonLine, actions);
   return view;
 }
 

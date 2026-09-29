@@ -38,12 +38,13 @@ import {
   cropNoticeText,
   type SceneBox,
 } from "./artboard-crop.js";
-import { loadFailureView } from "./load-failure.js";
+import { showLoadFailure } from "./load-failure.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
   loadHostedFontAssets,
   loadHostedTheme,
+  ThemeLoadError,
 } from "./theme-loader.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -85,7 +86,7 @@ async function start(host: HTMLElement): Promise<void> {
   }
 
   if (requested === null) {
-    showFailure(host, "A theme id is required.");
+    showLoadFailure(host, new ThemeLoadError("missing-id", "No ?theme=."));
     return;
   }
 
@@ -100,7 +101,7 @@ async function start(host: HTMLElement): Promise<void> {
       session,
     );
   } catch (error) {
-    showFailure(host, error instanceof Error ? error.message : String(error));
+    showLoadFailure(host, error);
     return;
   }
 }
@@ -471,14 +472,6 @@ function reportMissingFonts(plan: ScenePlan): void {
       );
     }
   });
-}
-
-/** Shows a document-load failure on screen rather than leaving a blank display. */
-function showFailure(host: HTMLElement, message: string): void {
-  document.title = uiCopy.loadFailure.documentTitle;
-  host.replaceChildren(
-    loadFailureView(message, () => window.location.reload()),
-  );
 }
 
 /**

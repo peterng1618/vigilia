@@ -1,3 +1,5 @@
+import { type ThemeLoadCode, ThemeLoadError } from "./theme-loader.js";
+
 /** Typed package-local visible player copy (§35). Authored theme text, telemetry
  * values and developer errors stay outside this module. */
 export const uiCopy = {
@@ -23,6 +25,42 @@ export const uiCopy = {
     host: "Go to the host",
     /** A tab is how a reader with several displays open tells which one broke. */
     documentTitle: "Vigilia — nothing to display",
+    /**
+     * The reason line, one sentence per cause the load boundary can name.
+     *
+     * A display is read at arm's length by someone who is not a developer, so
+     * this says what happened rather than what threw. Keyed by `ThemeLoadCode`
+     * rather than free-written per call site, so a new cause cannot reach the
+     * screen without a sentence existing for it: the mapping below is a
+     * lookup, and a code with no entry here does not compile.
+     *
+     * `detail` is the one token a sentence may name — an HTTP status a reader
+     * can quote to an owner, a validator code they can look up. A third
+     * party's words are never one of them.
+     */
+    reason: {
+      "missing-id": (): string => "A theme id is required.",
+      "invalid-id": (): string =>
+        "The theme id in this address is not one the host can be asked for.",
+      "not-found": withDetail("The host has no theme with that id"),
+      "host-failed": withDetail("The host could not produce that theme"),
+      // The measured defect: the host was not running, and V8's parse error
+      // said the theme file was corrupt. It names what actually arrived.
+      "not-a-theme": (): string =>
+        "The host did not answer with a theme — it may not be running.",
+      "invalid-theme": withDetail(
+        "The host answered with a theme this display cannot show",
+      ),
+      "font-unavailable": withDetail(
+        "The host could not supply this theme's font files",
+      ),
+    } satisfies Readonly<
+      Record<ThemeLoadCode, (detail: string | undefined) => string>
+    >,
+    /** A cause this build does not recognise — a bug here, or a browser that
+     *  refused something. A sentence is still owed to the reader, and what
+     *  actually happened is in the console, not here. */
+    unknown: "This display could not start, and the reason is not known.",
   },
   connection: {
     connecting: (keyCount: number): string =>
@@ -73,3 +111,25 @@ export const uiCopy = {
     top: "past the top edge",
   },
 } as const;
+
+/** A sentence, plus the one token that identifies which case it was. */
+function withDetail(sentence: string): (detail: string | undefined) => string {
+  return (detail) =>
+    detail === undefined ? sentence : `${sentence} (${detail}).`;
+}
+
+/**
+ * The sentence a reader is given, for a cause the player can name.
+ *
+ * Every failure on the load-failure page arrives as a `ThemeLoadError`, so
+ * this is a lookup rather than a judgement. Anything else is `unknown`'s
+ * sentence: this ran as `error.message` and printed V8's parse error on a wall
+ * for a host that was simply not running, and a display that shows a raw
+ * exception string has stopped being a display.
+ */
+export function loadFailureReason(error: unknown): string {
+  if (!(error instanceof ThemeLoadError)) {
+    return uiCopy.loadFailure.unknown;
+  }
+  return uiCopy.loadFailure.reason[error.code](error.detail);
+}

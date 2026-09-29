@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadFailureView } from "./load-failure.js";
 import { uiCopy } from "./ui-copy.js";
 
-const DETAIL = "Could not load theme (404).";
+const REASON = "The host has no theme with that id (404).";
 
 function mount(): { readonly view: HTMLElement; readonly retry: () => void } {
   const retry = vi.fn();
-  document.body.replaceChildren(loadFailureView(DETAIL, retry));
+  document.body.replaceChildren(loadFailureView(REASON, retry));
   return { view: document.querySelector<HTMLElement>("body > *")!, retry };
 }
 
@@ -30,13 +30,13 @@ describe("the player's load-failure page", () => {
     expect(view.textContent).toContain(uiCopy.loadFailure.lede);
   });
 
-  it("keeps the host's own reason, labelled as a reason", () => {
+  it("keeps the reason, labelled as a reason", () => {
     const { view } = mount();
     const reason = view.querySelector<HTMLElement>(
       "[data-vigilia-load-failure-reason]",
     );
 
-    expect(reason?.textContent).toContain(DETAIL);
+    expect(reason?.textContent).toContain(REASON);
     expect(reason?.textContent).toContain(uiCopy.loadFailure.reasonLabel);
   });
 
