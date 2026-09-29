@@ -439,6 +439,38 @@ The stale comment that called a centre origin "Fabric's own default" was wrong �
 Fabric's default is left/top; the centre was the editor's own — and is corrected
 where it was.
 
+### F2.5 — **BLOCKING: the Size fields on a text object stretched the type instead of sizing the box**
+
+The third of the family, and the one that made the composition impossible to
+lay out. Found by looking at the first device card rather than at its numbers.
+
+A `Rect`'s `width` is a natural size and scaling it is how the object changes
+size, which is why the inspector writes `scaleX`. **A `Textbox`'s `width` is the
+box its text wraps inside** — it is not a size to scale. Measured on a caption
+at the `24-400` preset (`fontSize` 32), asking for a 220 × 40 box:
+
+| | scaleX | scaleY | fontSize | result |
+|---|---|---|---|---|
+| before | 1 | 1 | 32 | a 64 × 91 one-line caption |
+| W = 220 | **3.448** | 1 | 32 | the type at 3.4× its width |
+| H = 40 | 3.448 | **0.439** | 32 | and squashed to 44 % of its height |
+
+The field says **Size**. On a text object it was a distortion control wearing a
+size field's label — and the composition is nothing *but* precisely-sized text
+boxes: a 300-wide clock, a 306-wide rule, a 220-wide caption.
+
+**Fixed in the owner `ownership.md` names** — "Selection geometry, appearance,
+runs and text layout", which is `selection-inspector/`. ADR 0003 already decided
+that `vigiliaText.box` owns a text object's box because a `Textbox` cannot hold
+one; the inspector was writing past that owner. It now writes the authored box
+and re-asserts it through `applyAuthoredText`, and reads it back so the field
+shows the box rather than whatever the text happens to measure. A shape still
+scales: the same field, the other kind of object.
+
+Re-measured after the fix: W = 220 gives `scaleX` **1**, `fontSize` **32**, the
+caption wrapped to two lines inside a 220-wide clip, and H = 40 gives a 40-tall
+clip.
+
 ### Found by the rebuild — fixed here
 
 | # | Finding | Class | Fix | Proof |
@@ -446,7 +478,10 @@ where it was.
 | F2.1 | A text object could never carry more than one run, a run's text had no field, and an in-place edit silently dropped the siblings | **blocking** — the journey cannot complete | `selection-inspector/runs.ts`, `text-manager/index.ts`, `editor-interaction.ts`, `editor-session.ts` | 5 new run tests + 1 new text-manager test. Red-without-fix: disabling the add control took 1 red; restoring the flattening took 1 red |
 | F2.2 | A chart could not be bound to a sensor from the UI, so every chart in the composition was unauthorable | **blocking** — the journey cannot complete | `chart-manager/panel.ts`, `chart-manager/index.ts` | 3 new panel tests. Red-without-fix: disabling the chooser's dispatch took 1 red |
 | F2.4 | The Add pane's Text produced a centred, un-wrappable `IText` — a different class from every text object the product authors — so X/Y meant something else than on a card and Wrap recorded an ask it did not honour | **blocking** — the composition cannot be laid out | `text-manager/index.ts`, `new-object-defaults.ts` | 3 new tests. Red-without-fix: `Textbox` → `IText` took 2 red; dropping the origin took 1 red |
+| F2.5 | The Size fields scaled a text object's type instead of sizing its box, so every precisely-sized label in the composition came back stretched or squashed | **blocking** — the composition cannot be laid out | `selection-inspector/index.ts` | 3 new tests. Red-without-fix: the write half took 1 red, the read half took 1 red |
 | F2.3 | The New chooser's replacement guard reads as an error | deferred | — | `Create` is followed by a `Save changes before opening another theme?` prompt on a document nobody edited. It is correct and it is what stops work being lost, so it stays; the chooser simply does not say the second step is coming |
+| F2.6 | A palette token's id says nothing about the token | deferred | — | A colour added through the panel is minted `colour`, `colour-2`, `colour-3`; the author types "CPU blue" and every picker *lists* it that way, while the reference the document carries is `palette.colour-3`. F1.18's class in reverse — here a token the author **named** wears an id that describes nothing. **Not fixed, and the reason is a decision, not an oversight:** re-keying an id breaks every reference to it, and deriving one from a name the author types *after* the click needs state that records "nobody references this yet", which the model has no place for. `palette-manager`'s doc comment states the current design deliberately. This is a genuine product question with no precedent in the repo for the alternative, which is what the plan says to record and pass over. |
+| F2.7 | A text object's Height field shows a measurement that is already stale | deferred | — | With no authored `box.height`, the field shows Fabric's measurement — and Fabric remeasures when the text rewraps without firing anything the panel listens for. Measured: after W = 220 wrapped a caption to two lines, the object measured **59** and the field read **91**. The width half of the same finding is fixed (F2.5); this one needs a "measured, not authored" state the field can show honestly, which is a product decision about what the field means before the author has touched it. |
 
 **The blank theme itself is sound.** Zero objects, ten palette tokens, thirteen
 type presets, all three inspector tabs populated, and the Add pane offering

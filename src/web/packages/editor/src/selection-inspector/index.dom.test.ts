@@ -568,3 +568,100 @@ describe("the selection inspector", () => {
     }
   });
 });
+
+describe("the size of a text object", () => {
+  /**
+   * Measured on the surface while placing the first card of the rebuild: a
+   * 24-400 caption asked for a 220 × 40 box came back at `scaleX 3.448` and
+   * `scaleY 0.439` — the type stretched to three and a half times its width
+   * and squashed to under half its height. The field says Size; on a `Textbox`
+   * the width *is* the box the text wraps inside, so there was nothing to
+   * scale.
+   */
+  function caption(): Textbox {
+    const text = new Textbox("AMD Ryzen 7 7800X3D", {
+      left: 0,
+      top: 0,
+      originX: "left",
+      originY: "top",
+      fontSize: 32,
+    });
+    text.set({
+      vigiliaText: {
+        runs: [
+          {
+            kind: "literal",
+            text: "AMD Ryzen 7 7800X3D",
+            typePreset: "typePresets.body",
+          },
+        ],
+      },
+    });
+    return text;
+  }
+
+  it("writes the authored box, and leaves the type at its preset's size", () => {
+    const text = caption();
+    const { host, history } = setup(text);
+
+    const width = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="width"]',
+    )!;
+    width.value = "220";
+    width.dispatchEvent(new Event("change"));
+    const height = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="height"]',
+    )!;
+    height.value = "40";
+    height.dispatchEvent(new Event("change"));
+
+    const authored = text.get("vigiliaText") as {
+      box: { width: number; height: number };
+    };
+    expect(authored.box).toEqual({ width: 220, height: 40 });
+    expect(text.scaleX).toBe(1);
+    expect(text.scaleY).toBe(1);
+    expect(text.fontSize).toBe(32);
+    // One committed edit each, matching every other field here.
+    expect(history.saveState).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the authored box back, not the measurement underneath it", () => {
+    // A `Textbox` derives its own width from its longest unbreakable run, so a
+    // re-read of the measurement reports what the text happens to measure —
+    // 64 here — where the author wrote 300. The box is the authored truth.
+    const text = caption();
+    text.set("vigiliaText", {
+      ...(text.get("vigiliaText") as Record<string, unknown>),
+      box: { width: 300, height: 90 },
+    });
+    const { inspector } = setup(text);
+
+    expect(
+      inspector.root.querySelector<HTMLInputElement>(
+        '[data-vigilia-geometry="width"]',
+      )?.value,
+    ).toBe("300");
+    expect(
+      inspector.root.querySelector<HTMLInputElement>(
+        '[data-vigilia-geometry="height"]',
+      )?.value,
+    ).toBe("90");
+  });
+
+  it("still scales a shape, whose width is a size rather than a box", () => {
+    // The same field, the other kind of object: a `Rect`'s width is a natural
+    // size, and scaling is how it changes.
+    const panel = new Rect({ left: 0, top: 0, width: 360, height: 200 });
+    const { host } = setup(panel);
+
+    const width = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="width"]',
+    )!;
+    width.value = "180";
+    width.dispatchEvent(new Event("change"));
+
+    expect(panel.scaleX).toBeCloseTo(0.5, 6);
+    expect(panel.get("vigiliaText")).toBeUndefined();
+  });
+});

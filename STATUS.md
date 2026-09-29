@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.43: five player assertions guarded a marker the failure path no longer uses, and one of them is now the control that pins the real one.** `pre` → `[data-vigilia-load-failure]`, four in `host-player.spec.ts` and one in `host-media.spec.ts`.
-- **The old assertion passed on a dead screen**, measured on a real host: a `?theme=` that cannot be served rendered the failure page with `preCount 0, failureCount 1`. The new assertion fails on exactly that display and passes on the happy path.
-- **Nothing in the browser suite tested the failure page at all** — it shipped with a jsdom test only. The new control asserts the page, its reason, the retitled document and the absence of an artboard behind it, and carries the `pre` fact as the thing the old assertions rested on.
-- 2102 unit tests green; `typecheck` and scoped `lint`/`format` on the four files I touched exit 0. The tree-wide `lint` is red on the rebuild agent's untracked `author-journey-rebuild.spec.ts`, not on this change.
+- **F2.4, F2.5, blocking: the text object the Add pane inserts was not the one the product authors, and the Size fields distorted it.** It was a centred `IText`; every text in a shipped theme is a `Textbox` with a left/top origin, so X/Y meant something else than on a card.
+- **Wrap recorded an ask it did not honour** — a caption asked to wrap at W=200 rendered 1193 wide with `vigiliaText.wrap` reading `true`. **And W/H scaled the type**: a 24-400 caption asked for 220×40 came back at `scaleX 3.448`, `scaleY 0.439`. `vigiliaText.box` is the owner (ADR 0003) and the inspector wrote past it. Re-measured after: scale 1, `fontSize` 32, the caption wrapped inside a 220-wide clip.
+- F2.1 and F2.2, also fixed this pass: a text object could never carry more than one run or have a run's text typed, and a chart could not be bound to a sensor at all.
+- The rebuild driver and its own Playwright config — the proof drives one preview on one port so it cannot race the suite's shared servers. 3 rebuild tests pass. Red without each fix: 1–2 tests apiece.
 
 ## Next
 

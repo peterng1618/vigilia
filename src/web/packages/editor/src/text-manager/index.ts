@@ -1,9 +1,9 @@
+import type { TextContent, TextRun } from "@vigilia/renderer-core";
 import {
-  VIGILIA_TEXT_PROPERTY,
   type PlanTextObject,
+  VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
 import { type Canvas, IText, Textbox } from "fabric/es";
-import type { TextContent, TextRun } from "@vigilia/renderer-core";
 import { uiCopy } from "../ui-copy.js";
 
 export interface TextManager {

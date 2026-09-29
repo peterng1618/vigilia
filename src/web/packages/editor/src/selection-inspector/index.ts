@@ -3,6 +3,7 @@ import type {
   FabricGlobals,
   SampleSource,
 } from "@vigilia/renderer-core";
+import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
@@ -57,12 +58,42 @@ const GEOMETRY_FIELDS: Readonly<Record<GeometryField["key"], GeometryField>> = {
 };
 
 /**
+ * The box a text object was authored with, when it has one.
+ *
+ * `vigiliaText.box` is the owner (ADR 0003): a `Textbox` cannot hold a box,
+ * because `width` re-enters `initDimensions` and widens the object to its
+ * longest run. So the Size fields below write this rather than a scale, and
+ * read it back, and the type stays the size its preset says it is.
+ */
+function authoredBoxOf(
+  object: FabricObject,
+  key: GeometryField["key"],
+): number | undefined {
+  if (key !== "width" && key !== "height") return undefined;
+  const authored = object.get("vigiliaText") as
+    | { readonly box?: { readonly width?: number; readonly height?: number } }
+    | undefined;
+  const value = authored?.box?.[key];
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+/** Whether the object is a text object, whose size is a box and not a scale. */
+function isTextObject(object: FabricObject): boolean {
+  const authored = object.get("vigiliaText");
+  return typeof authored === "object" && authored !== null;
+}
+
+/**
  * Fabric reports geometry in the object's own origin; these read whole artboard
  * units (§57). Position is the object's own `left`/`top` — its placement in the
  * artboard — not the drawn box, which also includes any stroke and the group
  * context, so the numbers an author types match what they placed.
  */
 function readField(object: FabricObject, key: GeometryField["key"]): number {
+  const box = authoredBoxOf(object, key);
+  if (box !== undefined) return box;
   if (key === "width") return object.width * object.scaleX;
   if (key === "height") return object.height * object.scaleY;
   if (key === "left") return object.left;
@@ -193,12 +224,43 @@ export function createSelectionInspector(
         object.set({ top: value });
         break;
       case "width": {
+        // A text object's width is the box its text wraps inside, not a scale
+        // on the type. Writing `scaleX` instead stretched every glyph: a 24px
+        // caption asked for a 220-unit box came back at 3.4× the size, and the
+        // H field squashed the same type to 0.44 of its height. The authored box
+        // is the owner, and the renderer re-asserts it.
+        if (isTextObject(object)) {
+          const authored = object.get("vigiliaText") as Record<string, unknown>;
+          const box = (authored["box"] ?? {}) as {
+            width?: number;
+            height?: number;
+          };
+          object.set("vigiliaText", {
+            ...authored,
+            box: { ...box, width: value },
+          });
+          applyAuthoredText(editor.canvas, globals);
+          break;
+        }
         // Scale rather than resize: a chart's own width is its raster size.
         const next = value / (object.width <= 0 ? 1 : object.width);
         object.set({ scaleX: next });
         break;
       }
       case "height": {
+        if (isTextObject(object)) {
+          const authored = object.get("vigiliaText") as Record<string, unknown>;
+          const box = (authored["box"] ?? {}) as {
+            width?: number;
+            height?: number;
+          };
+          object.set("vigiliaText", {
+            ...authored,
+            box: { ...box, height: value },
+          });
+          applyAuthoredText(editor.canvas, globals);
+          break;
+        }
         const next = value / (object.height <= 0 ? 1 : object.height);
         object.set({ scaleY: next });
         break;

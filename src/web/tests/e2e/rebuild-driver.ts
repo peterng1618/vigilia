@@ -239,6 +239,31 @@ export async function addColour(
   await fill(page, "[data-vigilia-palette-color]", hex);
 }
 
+/**
+ * Picks a token by the name the author gave it.
+ *
+ * The pickers list tokens by their display name and store `palette.<id>`, and
+ * the two are not the same string: a token added through the panel is minted
+ * `colour`, `colour-2`, `colour-3`. So the driver resolves the option a person
+ * reads and selects the value behind it, exactly as clicking it would.
+ */
+export async function chooseToken(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<void> {
+  const control = page.locator(selector).first();
+  await control.scrollIntoViewIfNeeded();
+  const value = await control
+    .locator("option")
+    .filter({ hasText: label })
+    .first()
+    .getAttribute("value");
+  if (value === null || value === "")
+    throw new Error(`no token named "${label}" in ${selector}`);
+  await control.selectOption(value);
+}
+
 /** A text object, placed, with its first run's words. */
 export async function addText(
   page: Page,
@@ -283,7 +308,7 @@ export async function addCard(
   if (card.radius !== undefined)
     await fill(page, "[data-vigilia-panel-radius]", card.radius);
   if (card.stroke !== undefined)
-    await choose(page, "[data-vigilia-panel-stroke]", card.stroke);
+    await chooseToken(page, "[data-vigilia-panel-stroke]", card.stroke);
   if (card.blur !== undefined) await frost(page, card.blur);
 }
 
@@ -310,18 +335,23 @@ export async function addChart(
   }
   for (const [index, token] of (chart.paint ?? []).entries()) {
     if (token === undefined) continue;
-    await choose(
+    const key = PAINT_KEY[chart.family];
+    await chooseToken(
       page,
-      `[data-vigilia-chart-paint="${PAINT_KEY[index] ?? ""}"]`,
+      `[data-vigilia-chart-paint="${key}${key === "palette" ? `.${index}` : ""}"]`,
       token,
     );
   }
 }
 
-/** The paint fields each family declares, in the order the panel renders them. */
-const PAINT_KEY: Readonly<Record<string, string | undefined>> = {
-  gauge: "track",
-  line: "stroke",
-  bar: "fill",
-  pie: "palette",
+/**
+ * The paint field each family paints its data through, as
+ * `chartPaintFieldsFor` declares it. A family's *series* palette is the one
+ * that repeats, so its key is the base and the index is the slot.
+ */
+const PAINT_KEY: Readonly<Record<string, string>> = {
+  Gauge: "progress",
+  Line: "stroke",
+  Bar: "fill",
+  Pie: "palette",
 };
