@@ -380,7 +380,7 @@ Twenty-five items from using the editor. Recorded verbatim in intent, triaged by
 | U11 | **"Stroke" and "Border width" are inconsistent language — pick one** | one owner, one word |
 | U12 | **The layer panel's bottom toolbar should always be visible**, not scroll with the list | |
 | U13 | **A blank theme's background should be white by default** | F1.37's 1.33:1 cost is part of why |
-| U14 | **A line should have two end handles** rather than a diagonal bounding box — the diagonal makes alignment and snapping useless and crops both ends when the border is thick | |
+| U14 | **A line should have two end handles *and a rotate handle***, not a diagonal bounding box — the diagonal makes alignment and snapping useless and crops both ends when the border is thick | **Corrected by the user, 2026-09-29.** Two end handles *alone* would leave a line unrotatable, because the diagonal box is what currently provides rotation — so this is a **complete transform set for Line**, not a reduction of one. It needs its own control renderer, and `controls-manager/renderers.ts` (which already owns `ROTATE_DIAMETER` and `ROTATE_BACKGROUND`) is the owner to extend rather than a second place to define handles. |
 | U15 | **A line's caps should have a corner radius** | |
 
 #### C — needs a design pass before code
