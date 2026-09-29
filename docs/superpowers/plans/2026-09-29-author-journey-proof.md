@@ -405,6 +405,21 @@ Twenty-five items from using the editor. Recorded verbatim in intent, triaged by
 | U21 | **Can glass apply to any geometric shape, except line?** | It cannot today, and the reason is concrete: `GLASS_OBJECT_TYPES` is `Rect \| Group`, and the renderer only knows `ctx.rect` and a rounded rect. Widening it is real renderer work plus a re-measured budget. Feasible; a decision plus a task. |
 | U22 | **Stroke types — solid, dashed, dotted — used to exist. Where did they go?** | **Investigate before answering.** The chart families still carry `dash` as a setting (`CHART_SETTINGS_FIELDS.line` has `dash` with solid/dashed/dotted), so the vocabulary exists for *chart strokes*. Whether a panel or text object's own stroke lost it is a separate question and may be a genuine regression. Do not guess. |
 
+### Hotkeys: the default audit, and the customisation panel (2026-09-29)
+
+The user asked for two things: expose the shortcut manager to the settings panel with customisable keys, and make the **defaults follow graphic-editor convention** so nobody is thrown off. The audit came first, because knowing what exists is the reuse half of the gate.
+
+**Sixteen of twenty defaults already match** Photoshop / Figma / Affinity / Canva: `Ctrl+N` new, `Ctrl+O` open, `Ctrl+S` save, `Ctrl+Z` undo, `Ctrl+C/X/D` copy/cut/duplicate, `Ctrl+G` and `Ctrl+Shift+G` group/ungroup, `Ctrl+A` select-all, `Delete`/`Backspace`, arrows to nudge, `Escape` to leave a group.
+
+**Two deviate, and the second is the one that will bite.**
+
+| # | Finding | Standard | Note |
+|---|---|---|---|
+| U23 | **Redo is on `Ctrl+Y`** | **`Ctrl+Shift+Z`** in Photoshop, Affinity and Figma today | `Ctrl+Y` is the *legacy* Windows redo. Someone arriving from any of the three named tools will press `Ctrl+Shift+Z` and get nothing. Figma accepts both, which is the cheap fix: **add `Ctrl+Shift+Z`, keep `Ctrl+Y`** as a secondary binding rather than replacing it and breaking anyone who learned it here. |
+| U24 | **Front/back are on bare `Ctrl+[` and `Ctrl+]`** | Bare `[` / `]` are *order* (backward/forward one step); **`Ctrl+Shift+[` / `Ctrl+Shift+]`** are *to front* / *to back* in all three named tools | The current pair is not a binding most users have in their fingers at all — it is a Ctrl-modified *character*, which is a browser/OS chord before it is a design-tool one. |
+
+**The customisation panel is a design pass, not a task** — like U16–U19 it needs its own spec, because a keybinding editor is a surface with its own conflicts-with-the-browser question, its own discoverability, and its own answer to "what happens when a user binds the same chord twice". It joins **group C**, and the two default corrections (U23, U24) are small enough to do first and independently.
+
 ### The rebuild finished — and what it did not do
 
 Nine tests, 1.9 minutes, all eight regions built from their own blank theme through the delivered UI. **Full Playwright: 206 passed, 143 skipped, 5 failed, exit 1** — and the agent read each of the five rather than counting them: two are stale assertions against landed work, one is filed issue #7, one sits in a file another agent was editing, and one is a player chroma threshold in a file it had not touched. It fixed the one that was cleanly its own: `display-fabric.spec.ts:663` still asserted a string `player/src` has not contained since F1.14, so it guarded nothing and could not pass.
