@@ -1,40 +1,58 @@
 # Vigilia status
 
-Updated: 2026-09-29
+Updated: 2026-09-30
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
 
-Prove the author journey from blank to a finished theme by hand, through the UI
-alone. The composition exists because a generator emitted it; rebuilding it by
-hand is what finds the authoring control that is missing.
+**Be the human author. Use the product, find what is wrong, write it down, and
+have it fixed. Repeat.**
+
+This is a standing instruction, not a phase. A fresh session picking this up
+should not be asking "what is the next task" — it should be opening the editor
+and the host, driving them as an author would, and finding the next thing that
+is broken. The backlog grows as a result; work is dispatched against it.
+
+The loop, in order:
+
+1. **Use the product** with Playwright MCP — the editor, the host, the player,
+   at a real screen size and at 390 px. Insert, select, type, resize, save,
+   reopen, play, fail. Do not read the source for a defect you can see.
+2. **Write it into the findings backlog** in
+   [the plan](docs/superpowers/plans/2026-09-29-author-journey-proof.md),
+   classified blocking or deferred, with the measurement that shows it.
+3. **Dispatch a subagent** to fix it, with the file set it owns and the files
+   it must not touch, plus a browser proof it cannot fake.
+4. **Verify the landed work yourself** by using it again. A passing agent report
+   is not evidence; a screenshot and a number are.
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md), executing in subagent mode. Phase 0 is three product changes; **Task 1 (artboard presets) has landed** — the module and its unit test, then the inspector wiring.
-- **The rule that governs the whole pass:** fix what you find using what the repo already decides — owner, idiom, copy, existing control pattern — and move past it. A property not exposed, a misaligned layout, something hard to read, a non-Lucide icon: each is fixed, not noted. Only a genuine product unknown with no precedent is recorded and passed over. **Nothing waits on a human.**
-- **Product decisions, recorded in the plan:** minimal blank palette; starter stays a library template; artboard chooser over 16:9, 19.5:9 and 4:3, both orientations, at 1080p/2K/4K named on the **short edge**, driving the inspector's artboard controls too. The starter keeps its own 1672 × 941 — 16:9 is its *ratio*, and the presets are a separate list.
-- **[The 2026-09-24 author-journey plan](docs/superpowers/plans/2026-09-24-author-journey.md) is not dispatchable and is not the active plan.** Tasks 1–5 shipped, Task 2 mis-owns alignment/wrap/overflow, and the reference-theme surface is absent from it.
-- **The glass verdict is still the user's to give.** [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) carries the measurement behind every choice in it; the proof will rebuild that card by hand.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete and the rebuild has run once; the Findings backlog is now the working queue and it is **live** — it grows and re-prioritises as things are found.
+- **How big the backlog is:** ~40 findings, 26 landed, 1 resolved as a side effect, 2 withdrawn, the rest queued or in a design pass. Groups **A** (defects) and **B** (decided) are dispatchable now; **C** wants a design pass first; **D** are questions.
+- **The frame that matters:** the editor is **desktop-only** (`tests/e2e/surface.ts`); a **phone is the main display type** and the **player is the product's face**. Weight player and phone work accordingly.
+- **The rule for the pass:** fix what you find using what the repo already decides — the owner in `ownership.md`, the surrounding idiom, the copy in `ui-copy.ts`, the pattern the existing controls set. Only a genuine product decision with no precedent gets recorded and passed over. **Nothing waits on a human.**
 
 ## Last completed change
 
-- **The frosted-glass control now carries the frosted surface** ([#11](https://github.com/peterng1618/vigilia/issues/11)). Enabling it moves a card off `palette.panel` at 85 % onto `palette.frost` at 30 %: at 85 % a blur is a blur of nothing, which is why a card the author had frosted read as a tint.
-- **A default follows the treatment; a choice survives it.** Nothing records which hand set a fill reference, so the only honest test is the surface a new shape is given right now — a token the author picked in the Fill picker is left alone, and a shape carrying no reference takes the frosted one.
-- **Measured over the author's own photograph, on a real host: the card interior went from 45.4 to 137.4 luma** against a photograph spanning 157–215, so it carries 0.718 of its backdrop instead of 0.216. Taken off the package the editor's own Save control wrote, not the live canvas.
-- **Nothing in [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) moved.** The tint is still 30 %, the grain 1.5 %, the radius still 40; the fix is which token the control writes, not the material it writes it in.
-- Gate green: `typecheck`, `lint`, `format:check` and **2152 unit tests across 165 files, exit 0**; the two new control tests red with the fix disabled, and the display spec's contradicting assertion propagated.
+- **A token now says how many objects use it, and which** (`b474563`). `objectPaletteReferences` sits beside `reassignObjectPaletteReferences`, which already walked the scene and **returned a count that was thrown away**; the panel takes an injected `usage()` so the number it shows and the number that guards a deletion come from one place.
+- **The frosted-glass control now carries the frosted surface** ([#11](https://github.com/peterng1618/vigilia/issues/11)) — `df9e725`. Measured over the author's own photograph on a real host, the card interior went **45.4 → 137.4 luma** against a photograph at 189.1: transmission **0.216 → 0.718**. At 85 % a blur is a blur of nothing.
+- **Three more landed:** `artboard.fitMode` → **`contentFit`** in schema, type, validator and geometry (`23b4e7f`), and the control is **gone** because content is always `contain`; redo and front/back now answer to the chords graphic editors use (`66264bc`).
+- **Three corrections agents made to my own findings** — the redo audit understated its bug (Ctrl+Shift+Z would have *undone*), the U4 "history" report described a different bug, and `frostedCard` was never the broken piece.
+- Gate green: `typecheck`, `lint`, `format:check`, **2167 unit tests across 165 files**. Playwright last ran **209 passed / 143 skipped / 2 failed**.
 
 ## Next
 
-1. Execute the proof plan in subagent mode; the rebuild is one author's hands and cannot be split across workers.
-2. Look at the frosted card in both mounts and say whether it reads as glass — the proof rebuilds that card by hand and will show it again.
-3. Then the font trio catalogue, then the queued specs.
+1. **Keep using the product.** The backlog is only as good as the last hour of driving it.
+2. Dispatch the largest untouched group from the user's review: **bounded number fields** — sliders (Base UI already ships `slider/`) and **clamping instead of reverting**, which is what teaches an author the bound.
+3. Group C still wants a design pass: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface.
+4. The screenshot spring clean — now for the merely-stale captures; the **v1 ones wait until v1 is removed**, as decided.
+5. Then the font trio catalogue and the queued specs.
 
 ## Blockers / unverified
 
-- [#7](https://github.com/peterng1618/vigilia/issues/7) is open against the active pass: the `Ctrl+N` discard prompt on a saved document, cause not established and pre-existing.
-- The frosted CPU card, twice: the glass verdict is unverified by definition (no agent can see whether a panel reads as glass, and the last human judgement came from a sampler cropping the wrong part of the photograph), and its own `mr` handle does not track the pointer — a resize aiming 10 units right landed 4.24 units left, where the same gesture on the un-frosted RAM card landed on the neighbouring edge. Task 5-shaped, open, in `task-7-report.md`.
-- Task 9's three open edges, named: the `Promise.allSettled` split frame, the POSIX drive→volume join proven only on Windows, and `storage-card-value`'s box ending 28 units past its card.
-- The video frame callback is now measured on the player and provably not load-bearing there — 92 render requests already became 40 renders with it removed. It is load-bearing in the editor, which nothing browser-tests.
-- The crop strip is measured once at mount, not per frame: Fabric does not move objects on a data refresh, and re-measuring every 30 s would only cost. A theme whose *authored* geometry changed under a running display would not re-notice — no such path exists today.
+- **Whether a person now calls the frosted card glass is still the user's call.** Transmission is measured; the verdict is not an agent's to make.
+- [#7](https://github.com/peterng1618/vigilia/issues/7): the `Ctrl+N` discard prompt on a saved document — cause not established, pre-existing. Also filed by agents: **#13** artboard clipping (Fabric has no scene-level clip), **#14** the layer panel's missing background-media row, **#8–#10** rebuild questions.
+- **Agents die silently and leave finished work uncommitted** — three times now. Check `git status` after each notification, verify the tree (`typecheck` + `npm test`) and commit what is good rather than losing it.
+- **The Playwright MCP browser and the host ports are shared**, so two agents got a screenshot of someone else's document; and an agent's own test can be a **false green** — `press("Control+Shift+]")` is not that chord, because Playwright synthesises by key name and never applies the shift-to-character mapping. Give each agent its own port and browser, **build the bundles before looking at anything** — a stale bundle cost this pass a wrong conclusion — and dispatch chords over CDP.
+- The frosted CPU card's `mr` handle does not track the pointer, and Task 9's three open edges (the `Promise.allSettled` split frame, the POSIX drive→volume join proven only on Windows, `storage-card-value` overrunning its card) are all still open.
