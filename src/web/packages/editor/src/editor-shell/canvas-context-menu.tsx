@@ -1,7 +1,7 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
-import { CHART_FAMILIES } from "@vigilia/renderer-core";
 import { useEffect, useMemo, useState } from "react";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
+import { insertGroups, type InsertableObject } from "../new-object-panel.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -20,23 +20,85 @@ interface MenuEntry {
   readonly run: () => void;
 }
 
-/** Empty-canvas entries. They route through the session facade and deliberately
- * never enter `OBJECT_ACTIONS`, which owns object commands only. */
-function creationEntries(session: EditorActionFacade): readonly MenuEntry[] {
-  return [
-    { id: "text", label: uiCopy.panels.text, run: () => session.addText() },
-    ...CHART_FAMILIES.map((family) => ({
-      id: family,
-      label: uiCopy.chartFamilies[family],
-      run: () => session.addChart(family),
+/** A heading's worth of them, or `undefined` for an entry that stands alone. */
+interface MenuGroup {
+  readonly label: string | undefined;
+  readonly entries: readonly MenuEntry[];
+}
+
+/**
+ * Empty-canvas entries, in the Add pane's own groups and order.
+ *
+ * **The third surface, folded into the first.** This used to read
+ * `CHART_FAMILIES` itself — so it could not drift on charts, which is why it
+ * was never F1.7's defect — but it was still a third place that knew what can
+ * be inserted, and the one that most needed the other two's rule. It offered
+ * five of the thirteen things the product inserts, with no shape in it, so a
+ * right-click on empty canvas was a strictly poorer version of the Insert menu
+ * one gesture away. Now it is that menu's list: `insertGroups()` is the owner
+ * it already declared itself to be, and the group headings are what keep
+ * "Line" from meaning whichever of the two things the reader saw first.
+ *
+ * The entries route through the session façade and deliberately never enter
+ * `OBJECT_ACTIONS`, which owns object commands only.
+ */
+function creationGroups(session: EditorActionFacade): readonly MenuGroup[] {
+  return insertGroups().map((group) => ({
+    label: group.label,
+    entries: group.objects.map((object) => ({
+      // A key only has to be unique inside its own group, and each of the
+      // pane's groups spells its objects once — the same reasoning the Insert
+      // menu and the Add pane already rest on.
+      id: object.label,
+      label: object.label,
+      run: () => {
+        switch (object.kind) {
+          case "text":
+            session.addText();
+            return;
+          case "shape":
+            session.addShape(object.shape);
+            return;
+          case "chart":
+            session.addChart(object.family);
+        }
+      },
     })),
-  ];
+  }));
+}
+
+/** One entry. `aria-label` and the text agree, so the name is the same whether
+ *  a screen reader reads the row or the reader looks at it. */
+function entryItem(entry: MenuEntry): React.JSX.Element {
+  return (
+    <ContextMenu.Item
+      key={entry.id}
+      aria-label={entry.label}
+      onClick={entry.run}
+    >
+      {entry.label}
+    </ContextMenu.Item>
+  );
+}
+
+function groupItems(group: MenuGroup): React.JSX.Element {
+  if (group.label === undefined) {
+    return <>{group.entries.map(entryItem)}</>;
+  }
+  return (
+    <ContextMenu.Group key={group.label}>
+      <ContextMenu.GroupLabel className="editor-shell-menu-label">
+        {group.label}
+      </ContextMenu.GroupLabel>
+      {group.entries.map(entryItem)}
+    </ContextMenu.Group>
+  );
 }
 
 /**
  * The canvas's context menu. Object entries are the dock's own registry answer,
  * so the two surfaces cannot advertise different commands for one selection;
- * empty canvas offers creation instead.
+ * empty canvas offers the Add pane's own creation list.
  *
  * There is deliberately no `ContextMenu.Trigger`: Fabric binds its own
  * `contextmenu` listener on `upperCanvasEl` and stops propagation, which would
@@ -91,18 +153,21 @@ export function CanvasContextMenu({
     [menu],
   );
 
-  const entries: readonly MenuEntry[] =
-    menu === undefined || bridge === undefined
+  const objectEntries: readonly MenuEntry[] =
+    menu === undefined || bridge === undefined || !menu.onObject
       ? []
-      : menu.onObject
-        ? OBJECT_ACTIONS.filter((action) =>
-            actionEnabled(bridge, action.id),
-          ).map((action) => ({
-            id: action.id,
-            label: action.label,
-            run: () => bridge.run(action.id),
-          }))
-        : creationEntries(bridge.session);
+      : OBJECT_ACTIONS.filter((action) =>
+          actionEnabled(bridge, action.id),
+        ).map((action) => ({
+          id: action.id,
+          label: action.label,
+          run: () => bridge.run(action.id),
+        }));
+
+  const creation =
+    menu !== undefined && bridge !== undefined && !menu.onObject
+      ? creationGroups(bridge.session)
+      : [];
 
   return (
     <ContextMenu.Root
@@ -120,15 +185,8 @@ export function CanvasContextMenu({
             className="editor-shell-menu-popup"
             aria-label={uiCopy.canvasMenu.label}
           >
-            {entries.map((entry) => (
-              <ContextMenu.Item
-                key={entry.id}
-                aria-label={entry.label}
-                onClick={entry.run}
-              >
-                {entry.label}
-              </ContextMenu.Item>
-            ))}
+            {objectEntries.map(entryItem)}
+            {creation.map(groupItems)}
           </ContextMenu.Popup>
         </ContextMenu.Positioner>
       </ContextMenu.Portal>

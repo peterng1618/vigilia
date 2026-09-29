@@ -3,6 +3,7 @@ import type { FabricObject } from "fabric/es";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vitest";
 import { OBJECT_ACTIONS, type ObjectTarget } from "../object-actions.js";
+import { insertGroups } from "../new-object-panel.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
@@ -64,6 +65,7 @@ function facadeStub(): EditorActionFacade {
 interface Opened {
   readonly items: readonly HTMLElement[];
   readonly labels: readonly (string | null)[];
+  readonly groupLabels: readonly (string | null)[];
   readonly event: MouseEvent;
   readonly setActiveObject: ReturnType<typeof vi.fn>;
   readonly run: ReturnType<typeof vi.fn>;
@@ -126,6 +128,10 @@ async function openMenu(options: {
   return {
     items,
     labels: items.map((item) => item.getAttribute("aria-label")),
+    groupLabels: Array.from(
+      document.body.querySelectorAll<HTMLElement>(".editor-shell-menu-label"),
+      (label) => label.textContent,
+    ),
     event,
     setActiveObject,
     run,
@@ -173,24 +179,61 @@ it("dispatches the clicked entry through the bridge's own run", async () => {
   await opened.close();
 });
 
-it("offers creation actions and no object actions on empty canvas", async () => {
+it("offers the Add pane's own list on empty canvas, and no object actions", async () => {
   const opened = await openMenu({ target: NO_TARGET });
-  expect(opened.labels).toEqual([
-    uiCopy.panels.text,
-    uiCopy.chartFamilies.gauge,
-    uiCopy.chartFamilies.line,
-    uiCopy.chartFamilies.bar,
-    uiCopy.chartFamilies.pie,
-  ]);
+
+  // The pane's list, flattened — read from the owner rather than restated, so
+  // a third copy of "what can be inserted" cannot take root here. The menu used
+  // to hold exactly that: text and the four chart families, with no shapes and
+  // no panel, which is a surface an author cannot insert half the things the
+  // product offers.
+  const expected = insertGroups().flatMap((group) => group.objects);
+  expect(expected.length).toBeGreaterThan(0);
+  expect(opened.labels).toEqual(expected.map((object) => object.label));
+
+  // And in the pane's groups, so "Line" — a chart and a shape — is told apart
+  // by the heading above it here as it is in the pane and the Insert menu.
+  expect(opened.groupLabels).toEqual(
+    insertGroups()
+      .map((group) => group.label)
+      .filter((label): label is string => label !== undefined),
+  );
+
   // The registry is the object menu's owner: nothing from it may appear here.
   expect(opened.labels).not.toContain(uiCopy.actions.duplicate);
   expect(opened.setActiveObject).not.toHaveBeenCalled();
+  await opened.close();
+});
 
-  const byLabel = (label: string) =>
-    opened.items.find((item) => item.getAttribute("aria-label") === label);
-  byLabel(uiCopy.panels.text)?.click();
+it("routes every creation entry through the façade the way its kind says", async () => {
+  const opened = await openMenu({ target: NO_TARGET });
+
+  /** The entry `label` under the heading `group`, which is what tells the two
+   *  "Line"s apart. Addressing one by its label alone finds whichever came
+   *  first — which is the ambiguity the headings exist to remove. */
+  const inGroup = (group: string, label: string): HTMLElement | undefined => {
+    const heading = Array.from(
+      document.body.querySelectorAll<HTMLElement>(".editor-shell-menu-label"),
+    ).find((element) => element.textContent === group);
+    return Array.from(
+      heading?.parentElement?.querySelectorAll<HTMLElement>('[role="menuitem"]') ??
+        [],
+    ).find((item) => item.getAttribute("aria-label") === label);
+  };
+
+  const text = opened.items.find(
+    (item) => item.getAttribute("aria-label") === uiCopy.panels.text,
+  );
+  text?.click();
   expect(opened.session.addText).toHaveBeenCalled();
-  byLabel(uiCopy.chartFamilies.gauge)?.click();
+
+  // The two the old menu could not name at all.
+  inGroup(uiCopy.panels.shapes, uiCopy.shapeKinds.line)?.click();
+  expect(opened.session.addShape).toHaveBeenCalledWith("line");
+  inGroup(uiCopy.panels.charts, uiCopy.chartFamilies.line)?.click();
+  expect(opened.session.addChart).toHaveBeenCalledWith("line");
+
+  inGroup(uiCopy.panels.charts, uiCopy.chartFamilies.gauge)?.click();
   expect(opened.session.addChart).toHaveBeenCalledWith("gauge");
   await opened.close();
 });

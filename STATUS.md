@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.38: the New-theme chooser opens on the shape of the document it would replace.** Portrait stays portrait; a typed size keeps its ratio and orientation at the nearest resolution the table names.
-- `artboard-presets.ts` grew `nearestArtboardPreset` beside `artboardPresetFor`, not instead of it: a control showing the current document must not claim a preset it is not at, and a chooser offering the next one must not answer "no idea" and hand back landscape.
-- **The test caught a real bug before the browser did.** A portrait document's aspect is the reciprocal of the ratio it would be named for, so 1280 × 2778 measured 0.46 against a 19.5:9 entry of 2.17 and matched 4:3. The ratio is now matched long-over-short.
-- Driven in Chromium on a built editor: document at 1080 × 2340, **File → New theme**, chooser on 19.5:9 / Portrait / 1080p / `1080 × 2340`, and the document it creates is 1080 × 2340. Red without the fix: both chooser cases fail. 2089 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.39: the canvas context menu is no longer a third copy of the chart list — it is now the Add pane's own list.** All 13 entries, in the pane's groups, so the two "Line" rows are told apart by their heading.
+- **Folded in, deliberately.** It read `CHART_FAMILIES`, so it could not drift on charts and was never F1.7's defect — but it was a third place that knew what can be inserted, and it offered five of thirteen with no shape in it. A right-click on empty canvas was a poorer version of the Insert menu one gesture away.
+- The list is one owner; the *dispatch* — which façade call a kind maps to — is still a six-line switch in each of the three surfaces, because the owner cannot know whether a surface holds a façade or the editor.
+- Measured in Chromium on a blank document: Text, then **Shape** (8), then **Chart** (4), 470px tall in a 720px viewport, not clipped. Red without the fix: both creation cases fail. 2090 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 
