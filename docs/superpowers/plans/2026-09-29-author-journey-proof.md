@@ -780,6 +780,25 @@ Fixed: `enterGroup` records nothing unless the entry really is a `Group`; enteri
 
 **Also:** 2132 tests green. The first `npm test` exited 1 on 18 worker-fork start-up timeouts under load from concurrent agents, and passed on re-run — an honest environment note, not a code one.
 
+### Two more landed, and both found more than they were asked for (2026-09-29)
+
+**`contentFit` (`23b4e7f`).** The rename reached seven layers — published schema, envelope type, validator, the artboard model (taken down to the geometry layer so `mount.ts` reads `contentFit` rather than `fitMode: plan.artboard.contentFit`), plan/mount/scene/player, fixtures and tests. **The drift guard never named the key, so it caught nothing**; a case was added asserting `contentFit` is the right enum *and* `fitMode` is absent, and it went red for the right reason. The code-side half is the one that matters at a trust boundary: `fitMode` is now **refused as an unknown field** rather than silently read as `contain`.
+
+**It found a test that would never have gone red.** `panel-labels.spec.ts:32` listed `[data-vigilia-artboard-fit-mode]` in its audit — but the audit *skips selectors with count 0* and the `>= 30` floor still held at 36, so it would have sat there naming a control that can no longer render, green throughout. That is the same failure shape as everything else this pass has found: a passing test guarding nothing.
+
+It also caught that **§53 ("Editor preview matches player behaviour") became false** once the control was gone, and rewrote it — and that a `...current` spread is what stops an author-set cover being silently uncropped when the size changes. **It resolved one thing rather than asking:** the label "Content fit" has no control to label, so `uiCopy.panels.previewFit` was deleted rather than left as dead copy. Flagged, and correctly.
+
+**Hotkeys (`66264bc`).** Two findings that change the record:
+
+- **The audit understated the redo bug.** `edit.undo`'s binding is shift-*agnostic* — it has no `shift` field — so an appended `Ctrl+Shift+Z` would be **swallowed by undo and the standard redo chord would undo.** The audit said a user "gets nothing"; the truth is they get the opposite of what they asked for. Ordering is load-bearing, not cosmetic, and the new binding is placed **before** the plain form for that reason.
+- **A new front/back binding keyed on `[` and `]` matches nothing.** A browser reports the *shifted character*, so `Ctrl+Shift+]` arrives as `key: "}"`. The bindings are keyed on `}` and `{`.
+
+**And its first browser test passed against the unfixed table — a false green.** `page.keyboard.press("Control+Shift+]")` is not the chord it looks like: Playwright synthesises the key by name and never applies the shift-to-character mapping a real layout does, so it dispatched `key: "]" shift=true` where a real key gives `key: "}"`. It measured `event.key` in the page to find that, and the committed test presses the chords over CDP instead. Its own words: *"a false green, which is exactly the failure mode a browser test exists to catch."*
+
+Meta is covered — `modifier: true` computes `ctrlKey || metaKey`, confirmed by dispatch rather than by reading — so macOS gets `Cmd+Shift+Z` for free. Unverified: a real macOS run of those chords.
+
+**Also found and left:** `EditorShell.setFitMode()` has **no callers** and had none before — now unambiguously dead, and not that agent's file. Queued.
+
 ### The display proof — the glass does not read as glass, and the reason is not the tint (2026-09-29)
 
 **The cards read as tinted panels, not glass.** Measured rather than judged: card interiors sit at **35–50 luma** where the photograph behind them spans **50–196**. The clock card sits on sky at 140.8 and measures **34.5** — and `0.851 × 21 + 0.149 × 140.8` predicts **38.9**, so the card is 85% fill and 15% of what is behind it.
