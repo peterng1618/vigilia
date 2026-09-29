@@ -13,6 +13,7 @@ import {
   chooseAssetFile,
   clientOfScene,
 } from "./editor-canvas.js";
+import { openRailPane } from "./editor-rail.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -254,10 +255,6 @@ async function waitForMedia(page: Page): Promise<void> {
     ).vigiliaEditorBridge;
     bridge?.editor?.canvas?.renderAll();
   });
-}
-
-async function openRailPane(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name, exact: true }).click();
 }
 
 async function typeInto(

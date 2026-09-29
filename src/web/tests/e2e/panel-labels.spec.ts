@@ -1,4 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openRailPane } from "./editor-rail.js";
+import { isDesktopSurface } from "./surface.js";
 
 /**
  * Every control the theme-settings, palette and type-preset panels render has
@@ -70,10 +72,18 @@ async function accessibleName(page: Page, selector: string): Promise<string> {
 }
 
 test.describe("the settings panels name every control", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    // The panels live in the inspector, which the shell's own CSS drops below
+    // 980px, so on a phone these controls have no box to be pressed at and the
+    // audit would be reporting on a panel no author can reach. Measured: the
+    // panel opens at 240px wide and the select inside it is 0x0.
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "the settings panels are hidden below 980px",
+    );
     await page.goto(EDITOR);
     await page.waitForSelector("[data-vigilia-panel]");
-    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await openRailPane(page, "Settings");
     // The gradient and delete branches render controls a solid token does not,
     // so the audit has to open the same branches an author opens. A token with
     // other tokens to reassign to is what puts the delete row on screen.

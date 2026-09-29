@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { canvasProp } from "./canvas-probe.js";
 import { captureVisualReview } from "./editor-canvas.js";
+import { openRailPane } from "./editor-rail.js";
 import {
   BADGE_INK,
   CLOCK_NODE_ID,
@@ -24,11 +25,6 @@ import { isDesktopSurface } from "./surface.js";
  * end. `vite preview` cannot cover any of it. */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
-
-/** The editor's rail owns one pane per area; panels sit behind it. */
-async function openRailPane(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name, exact: true }).click();
-}
 
 /** Save the editor's own document through the host's library route. */
 async function saveStarterThroughTheHost(page: Page): Promise<void> {

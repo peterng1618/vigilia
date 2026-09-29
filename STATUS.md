@@ -19,10 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.17: the chart chips have their own group.** They were peers of Panel before the primitives arrived; F1.9 left four unlabelled chips under a legend that is not about them, and two buttons both named "Line". A `<fieldset><legend>Chart</legend>` matches the shape list, so each list is a `group` with its own name and the visual orphaning and the ambiguity are one fix.
-- **F1.18: a shape's id names its own kind.** `panel-${uuid}` was hardcoded for all eight; an ellipse was keyed `panel-…`. The kind is the prefix, as `chart-`, `text-`, `image-` and the clipboard's `${object.type}-` already do. F1.8 gave the *display* the right name, which is why an author never saw it — the key is what everyone reading the document sees.
-- **Verified:** 2004 unit tests, typecheck, lint, format green. Red-without-fix: 8 chart tests and 8 id tests, each naming the defect. **Browser proof:** both groups measured in Chromium, the two "Line" buttons resolving 1 each within their group, all eight shapes inserted and the stage screenshotted.
-- **Not mine, and it is now red:** F1.1's rail toggle made `openRailPane(page, "Add")` *close* the pane when Add is already showing, which breaks 11 call sites in the e2e specs. Proven by stashing this work and reproducing the identical failure at HEAD.
+- **F1.28: `openRailPane` reads the rail before it clicks.** The rail is a toggle, so the shared helper was closing the pane its caller had just opened; the failure surfaced as a timeout in an unrelated assertion. One owner now (`tests/e2e/editor-rail.ts`) reads `aria-pressed` + `aria-expanded` and clicks only when the pane is shut.
+- **20 call sites, not 11** — 19 `openRailPane` calls across three specs plus `panel-labels`' raw Settings click, and the helper had been *copied* into all three specs. The copies are gone.
+- **The helper's contract is a spec** (`editor-rail.spec.ts`): asking twice leaves it open, and asking for a shut pane still opens it. Both red against the old helper, on the right assertion.
+- **Found and fixed on the way:** `panel-labels` drove inspector controls that `editor-shell.css` drops below 980px, so it was red on phone at HEAD too — now skips with the sibling specs' `isDesktopSurface`.
+- **Verified:** 2004 unit tests, lint, format green; typecheck green for this work, red only in another agent's in-flight `document-favicon.test.ts`. All 5 affected specs: 104 passed, 96 skipped, exit 0.
 
 ## Next
 

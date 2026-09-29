@@ -16,6 +16,7 @@ import {
   objectHandleScenePoint,
   sceneToClient,
 } from "./editor-canvas.js";
+import { openRailPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Clicks one primitive in the Add pane's shape group. */
@@ -3878,11 +3879,6 @@ async function setUncheckedThemePackage(
     mimeType: "application/octet-stream",
     buffer: Buffer.from(buffer),
   });
-}
-
-/** Shell navigation the inspector/rail now mediates; panels moved behind it. */
-async function openRailPane(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name, exact: true }).click();
 }
 
 async function openInspectorTab(page: Page, name: string): Promise<void> {
