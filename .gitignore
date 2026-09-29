@@ -65,3 +65,6 @@ docs/evidence/screenshots/**/raw/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Agents leave scratch in the tree; it is never a deliverable.
+src/web/.agent-scratch/
