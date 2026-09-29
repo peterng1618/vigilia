@@ -25,8 +25,14 @@ describe("palette token usage", () => {
 
   afterEach(() => document.body.replaceChildren());
 
-  const usage = (): Readonly<Record<string, readonly { name: string }[]>> => ({
-    accent: [{ name: "Card title" }, { name: "Header" }, { name: "RAM gauge" }],
+  const usage = (): Readonly<
+    Record<string, readonly { objectId: string; name: string }[]>
+  > => ({
+    accent: [
+      { objectId: "card", name: "Card title" },
+      { objectId: "header", name: "Header" },
+      { objectId: "gauge", name: "RAM gauge" },
+    ],
     unused: [],
   });
 
