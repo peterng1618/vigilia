@@ -61,7 +61,12 @@ export function createPalettePanel(
     draw();
   };
   const paletteFields = (entry: FabricPaletteEntry): HTMLElement[] => {
-    const name = field("Name", "vigiliaPaletteName", entry.name, "text");
+    const name = field(
+      uiCopy.panels.name,
+      "vigiliaPaletteName",
+      entry.name,
+      "text",
+    );
     name.input.addEventListener("change", () => {
       const next = name.input.value.trim();
       if (next.length === 0) return draw();
@@ -76,7 +81,7 @@ export function createPalettePanel(
     for (const value of ["solid", "gradient"] as const) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = value === "solid" ? "Solid" : "Linear gradient";
+      option.textContent = uiCopy.panels.paintKinds[value];
       kind.append(option);
     }
     kind.value = entry.value.kind;
@@ -132,7 +137,7 @@ export function createPalettePanel(
     palette = {
       ...palette,
       [selected]: {
-        name: "New colour",
+        name: uiCopy.panels.newColour,
         value: { kind: "solid", color: "#ffffff" },
       },
     };
@@ -153,7 +158,12 @@ function solidFields(
   value: Extract<PalettePaint, { readonly kind: "solid" }>,
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
-  const color = field("Colour", "vigiliaPaletteColor", value.color, "text");
+  const color = field(
+    uiCopy.panels.colour,
+    "vigiliaPaletteColor",
+    value.color,
+    "text",
+  );
   color.input.addEventListener("change", () => {
     const next = color.input.value.trim();
     if (next.length === 0) return;
@@ -168,7 +178,7 @@ function gradientFields(
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
   const angle = field(
-    "Angle",
+    uiCopy.panels.angle,
     "vigiliaPaletteAngle",
     String(value.angle),
     "number",
@@ -181,7 +191,7 @@ function gradientFields(
   const fields: HTMLElement[] = [angle.label, angle.input];
   for (const [index, stop] of value.stops.entries()) {
     const offset = field(
-      `Stop ${index + 1} position`,
+      uiCopy.panels.stopPosition(index + 1),
       "vigiliaPaletteStopOffset",
       String(stop.offset),
       "number",
@@ -190,7 +200,7 @@ function gradientFields(
     offset.input.max = "1";
     offset.input.step = "0.01";
     const color = field(
-      `Stop ${index + 1} colour`,
+      uiCopy.panels.stopColour(index + 1),
       "vigiliaPaletteStopColor",
       stop.color,
       "text",

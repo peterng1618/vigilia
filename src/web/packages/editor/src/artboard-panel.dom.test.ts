@@ -251,6 +251,24 @@ describe("artboard panel", () => {
     expect(label?.textContent).toBe("Description");
   });
 
+  it("names the two fit modes the same way wherever they are chosen", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1280, height: 720 });
+
+    // Both selects choose between the same two values, so they are the same
+    // option group and spell them the same way. They did not: Preview fit
+    // title-cased its own options in markup while Media fit printed the stored
+    // id, so one row read "Contain" and the row below it read "cover".
+    const spellings = (selector: string) =>
+      Array.from(
+        panel.root.querySelectorAll(`${selector} option`),
+        (option) => option.textContent,
+      );
+    expect(spellings("[data-vigilia-artboard-fit-mode]").sort()).toEqual(
+      spellings("[data-vigilia-background-media-fit]").sort(),
+    );
+  });
+
   it("keeps a declared language that is outside the list", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
     panel.render(

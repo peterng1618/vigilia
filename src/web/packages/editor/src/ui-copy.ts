@@ -238,6 +238,14 @@ export const uiCopy = {
    */
   artboardOrientations: { landscape: "Landscape", portrait: "Portrait" },
   artboardResolutions: { "1080p": "1080p", "2k": "2K", "4k": "4K" },
+  /**
+   * The two ways a picture can fill a box. The artboard's own fit and the
+   * background media's fit choose between the same two values, so they are one
+   * option group spelled once: the artboard used to title-case its options in
+   * markup while the media one printed the stored id, and a panel that spells
+   * the same word two ways is one an author reads as two things.
+   */
+  fitModes: { contain: "Contain", cover: "Cover" },
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
@@ -273,6 +281,9 @@ export const uiCopy = {
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
     language: "Language",
+    /** The sample's own row label, one word because it shares the 72px label
+     * column every other field on this panel uses. */
+    sampleLabel: "Sample",
     /** Names the live sample under the language control, which is a status
      * region in its own right and announces itself when the choice changes. */
     languageSample: "Sample in the chosen language",
@@ -286,6 +297,18 @@ export const uiCopy = {
         read as a number or fell outside the field's range. */
     invalidNumber: "That value cannot be applied. Enter a number in range.",
     palette: "Palette",
+    /** A palette token's own two paint kinds, as the Paint chooser names them.
+     * `linearGradient` is not the `gradient` it is stored as. */
+    paintKinds: { solid: "Solid", gradient: "Linear gradient" },
+    /** A gradient's angle, and the two fields of each of its stops. The stop
+     *  number is one-based, because it is what the author counts. */
+    angle: "Angle",
+    stopPosition: (stop: number) => `Stop ${stop} position`,
+    stopColour: (stop: number) => `Stop ${stop} colour`,
+    /** The name a freshly added token or preset carries until it is renamed.
+     *  It is authored theme data the author goes on to edit, not a message. */
+    newColour: "New colour",
+    newType: "New type",
     /** Each pane's own chooser, named by what it lists rather than by the pane
      * it sits in — the section heading already says Palette or Type presets. */
     colourToken: "Colour token",
@@ -313,6 +336,8 @@ export const uiCopy = {
     heightMark: "H",
     background: "Background",
     barColour: "Bar colour",
+    /** A paint's own colour, as against the token it is chosen from. */
+    colour: "Colour",
     family: "Family",
     size: "Size",
     /** The three controls that choose an artboard size. They choose it

@@ -244,7 +244,7 @@ export function createTypePresetPanel(
     presets = {
       ...presets,
       [selected]: {
-        name: "New type",
+        name: uiCopy.panels.newType,
         value: { family: "Segoe UI, sans-serif", size: 16 },
       },
     };

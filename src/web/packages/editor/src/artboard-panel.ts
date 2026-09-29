@@ -66,7 +66,7 @@ export function createArtboardPanel(
   for (const fitMode of ["contain", "cover"] as const) {
     const option = document.createElement("option");
     option.value = fitMode;
-    option.textContent = fitMode[0]!.toUpperCase() + fitMode.slice(1);
+    option.textContent = uiCopy.fitModes[fitMode];
     fit.select.append(option);
   }
   const background = selectInput(
@@ -83,7 +83,7 @@ export function createArtboardPanel(
     "vigiliaBackgroundMediaFit",
   );
   for (const fit of ["cover", "contain"] as const)
-    mediaFit.select.append(new Option(fit, fit));
+    mediaFit.select.append(new Option(uiCopy.fitModes[fit], fit));
   refreshMediaOptions(media.select, options.assets);
   refreshPaletteOptions(background.select, globals);
   refreshPaletteOptions(bars.select, globals);

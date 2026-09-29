@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.5: the type panel's labels are in a label column, not wrapped round their inputs.** All nine fields read as a row each: Name, Family, Size, Weight, Line height, Letter spacing, Font, Trio, Reassign to.
-- The cause was structural, not a style choice: `<label>Name<input></label>` is one box, so the shell's `label { display: block }` rule had nothing to put in a column. The artboard panel already solved this with `.vigilia-field`; the type panel now uses that same row, so the three panels line up.
-- **Association survived the move, which was the risk.** F1.19 paired these by `aria-label`; the `for`/`id` pairing is stronger and both the DOM audit and `accessible-names` tests confirm no control lost its name.
-- Red without the fix: the row test finds no `.vigilia-field` above the control. 2067 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.25: the panels' labels live in `ui-copy.ts`, and a net keeps them there.** Ten strings moved with their words unchanged: Name, Family, Angle, Colour, Solid, Linear gradient, `Stop N position`, `Stop N colour`, New colour, New type.
+- **The type panel needed no new copy at all** — every one of its eight labels was already in `ui-copy.panels`, which is what the project memory's "probe existing copy first" rule is for. The palette's paint kinds and the two default names are genuinely new entries.
+- **Found while sweeping, and fixed:** Preview fit spelled its options "Contain"/"Cover" while Media fit spelled the same two values "cover"/"contain". One option group, one spelling, now `uiCopy.fitModes`.
+- The new test is the net: it renders all three panels and fails on any label the table does not hold. Red without the fix on all seven named strings. 2069 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 
