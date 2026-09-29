@@ -51,6 +51,37 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 **Standing instruction (2026-09-29):** this plan's scope is whatever it takes to ship. Finding something broken, missing, misaligned, hard to read, or inconsistent with the repo's own conventions means it enters this backlog and gets done — not that it gets noted for later.
 
+---
+
+## START HERE — the next session's queue, in order
+
+Dispatched work, both settled and ready. Nothing below needs a decision first.
+
+**1 — The glass control shows its own limit, and tooltips get one owner.**
+
+*Both settled by the user on 2026-09-30. Dispatched once and stood down before it began, for a fresh session.*
+
+- **The control becomes visible on every object.** Where the shape supports the treatment it works as now; where it does not, the checkbox is **present, not interactive, with a tooltip saying why.** The author learns the rule at the point of use instead of inferring it from an absence. **No renderer change** — `GLASS_OBJECT_TYPES` stays `Rect | Group` and the closed shapes stay unfrosted. This is disclosure, not capability, and it is the cheap honest option taken over the measured-cost one.
+- **`supportsGlassControl` answers two questions and must split.** "Does this object support glass" and "should the control render" are no longer the same predicate, or the fix lands back where it started.
+- **A disabled control's reason must be reachable by keyboard, not hover only.** Otherwise the disclosure exists for the mouse and not for everyone else — the mirror of the absence this replaces.
+- **Extract the shared tooltip first.** `canvas-dock.tsx` is the only tooltip in the editor, spelling out `Root → Trigger → Portal → Positioner(side="top", sideOffset=8) → Popup` inline with its own class. A second hand-rolled copy is the thing to avoid; the third tooltip should be a third of nothing. `@base-ui/react` already ships `tooltip/`.
+- Owns: `selection-inspector/glass.ts`, a new shared tooltip component, `canvas-dock.tsx`. **Not** `number-field.ts`, `palette-manager/`, `artboard-panel.ts` or `ui-copy.ts`.
+
+**2 — Bounded number fields clamp instead of reverting, and get a slider.**
+
+*Findings U26 and U28, from the user's own review.*
+
+- **The defect:** typing an over-bound value rejects and keeps the old one, so an author has to trial-and-error to learn the maximum. *"Took me a while to figure out blur only accepts 48 maximum."* **The two fields sharing one helper already disagree** — opacity **clamps** (500 lands on 100), blur **reverts**. Nobody wrote that rule down.
+- **Clamping wins**: it carries the information. Type 60, get 48, and the maximum is known. Settle the inconsistency either way, but the brief's judgment is clamping.
+- **Put the bound on the field**, so it is visible before it is tripped.
+- **A slider beside the box**, for fields that have a range. `@base-ui/react@1.8.0` already ships `slider/`. **Not** on a free field — a slider implies a bound, which would be a lie of the same kind as "Preview fit".
+- **The 16 default stays** — confirmed by eye, with 40 "really strong" for the reference cards. Recorded as *tested*, not arbitrary.
+- Owns: `selection-inspector/number-field.ts` and the inspector controls. **Not** `ui-copy.ts` or `artboard-panel.ts`.
+
+**Run both with an isolated preview, an isolated `--output`, and `--maxWorkers=4`** — the costs of not doing so are written up under "Standing instructions" below.
+
+---
+
 ### P0 — must land before the rebuild
 
 | # | Finding | Fix owner | State |
