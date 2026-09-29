@@ -183,8 +183,17 @@ The player had never been looked at as a user in this pass. It **works**: the da
 |---|---|---|---|
 | — | *No P2 items. F2.1 was escalated to **F1.8** on the evidence: an object cannot be named at all.* | | |
 
-### P3 — withdrawn, recorded so they are not re-raised
+### Verification sweep — do the landed fixes coexist?
 
+Seventeen findings have landed across five packages and several shared files. A single rebuild-and-look at `1280943` confirms they compose rather than merely coexist in the log:
+
+- **All eight shapes insert, are keyed correctly and are visible.** ids `rect-`, `circle-`, `ellipse-`, `triangle-`, `polygon-`, `polyline-`, `line-`, `path-`; the six closed ones filled `#081523d9`, the two open ones stroked `#ecf5ff` with no fill. Spread across the stage and looked at: each reads as a distinct dark card against the sunset, where five of them read as **nothing** before F1.16.
+- The Add pane carries `SHAPE` (8) and `CHART` (4) as separate fieldsets.
+- The rail's four entries each hold one `<svg>`, with empty text and their `aria-label` (`Layers`, `Add`, `Assets`, `Settings`) and `aria-expanded` intact.
+
+That last group is the point: F1.2 deleted the glyphs and F1.1 added state to the same four buttons, and the names survived both.
+
+### P3 — withdrawn, recorded so they are not re-raised
 | # | Finding | Why it was withdrawn |
 |---|---|---|
 | W1 | "The canvas gets only 35% of the viewport" | Measured in a 1008px-wide window. At 1920 × 1080 it is **66%**, and View offers "Zoom to fit". The panel being non-collapsible is F1.1; the share was an artifact of the window. |
