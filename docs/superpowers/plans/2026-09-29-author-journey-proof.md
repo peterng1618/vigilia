@@ -2,6 +2,66 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Done — landed and checked off
+
+Everything the pass has shipped. **Read the one-line "what it proved" beside each; the reasoning is in the section named there.**
+
+### Phase 0 — the blank state (complete)
+
+- [x] **F0.4** — an author can reach Import/Replace asset. *Proved:* a fully tested feature that **no human could reach**, since the file inputs were `display:none` with no trigger. → `ce80354` `a36c5fb` `c8590fe`
+- [x] **F0.2** — the artboard chooser, as a derived owner. *Proved:* 16:9/19.5:9/4:3 × landscape/portrait × 1080p/2K/4K, short-edge, one `artboardSize`. → `1f3fa9c` `a29f8bc`
+- [x] **F0.1** — `New` is a blank theme at a chosen size. *Proved:* the premise of the whole pass; a blank theme is **ten palette tokens and zero objects**, and the editor's own global changes instance with it. → `a4824fe`
+- [x] **F0.3** — the starter is a template, reachable and undeletable. *Proved:* a template is never stored, so it cannot be deleted by construction. → `a4824fe` `4b7f5f5` `9c96043` `7708e5b`
+
+### The rebuild — the composition, by hand
+
+- [x] **F2.1** — a text object can carry a second run, and a run has text. *Proved:* `"32"` + `"%"` had nowhere to live; the run editor had **zero** buttons. → `e82033f`
+- [x] **F2.2** — a chart can be bound to a sensor. *Proved:* a new chart showed **zero** binding controls, so every chart in the composition was unauthorable. → with F2.1
+- [x] **F2.4** — the Add pane's Text is a wrap-capable `Textbox`, not a centred `IText`. *Proved:* a caption asked to wrap at W=200 rendered **1193** wide. → with F2.1
+- [x] **F2.5** — W/H no longer scales a text object's type. *Proved:* `scaleX 3.448`, `scaleY 0.439` for a 220×40 box. → `578e242`
+- [x] **F2.8** — a path sized before it was drawn. *Proved:* 14 units of data rendered **1×3 units**. → with F2.5
+- [x] **F2.9** — X/Y are the chart's corner, not its centre. *Proved:* a gauge placed (1069, 258) drew at (969, 158). → with F2.5
+- [x] **F2.10** — the Format field names its vocabulary. *Proved:* a date painted its own pattern, `EEE, Sep d, yyyy`. → with F2.5
+- [x] **F2.11** — a series brings its own colour. *Proved:* one `Series paint` for three lines. → `5795a02`
+- [x] **The envelope is proved**, not just the DOM. *Proved:* Save package → unzip the download → read `theme.json`; the 220×60 box, both runs, the declared binding, `blurRadius 40`, and every paint a `palette.*` reference with no hex in the chart settings. → `4f32fca`
+
+### Editor chrome and authoring (the user's own review)
+
+- [x] **F1.5/U5–U7** — group entry, as one bug. *Proved:* the group context was read by **the layer panel only**, and every double-click entered one, so editing a text box dimmed the list. 51/51 objects selectable → **1/51**. → `56af977`
+- [x] **F1.2/U4** — undo across an image. *Proved:* the image's `src` was an object URL revoked at decode, so Fabric could not enliven it on restore and one Ctrl+Z deleted the asset. → `5b25307`
+- [x] **F1.1/U1** — Replace replaces. → `5d20774`
+- [x] **F1.8** — rail icons, 9px off their buttons. *Proved:* `display:block` put the inline SVG at the line-box start. → `5b25307`
+- [x] **F1.35/U9** — the trends chart's aliasing. *Proved:* `MAX_BACKING_PIXELS` clamped the **largest** chart to 1.53× while every smaller one got 2×, so the only aliased graph was the one a reader looks at. → `de57743`
+- [x] **F1.6** — the favicon, editor and player. → `7708e5b`
+- [x] **F1.10** — a token says how many objects use it, and which. *Proved:* the traversal already walked the scene and **returned a count that was thrown away**; and my completeness claim was wrong — charts name tokens in `settings` and carry no `vigiliaPaint`. → `4a647f9` `b474563` `4c42793` `658721f` `9696760`
+- [x] **F1.3 / F1.5 / F1.25 / F1.32** — Description is a textarea, the type panel has a label column, the panels' copy moved to `ui-copy.ts`, the language sample says what it is. → `9280099` `c1b5f18` `dbc8bff` `3f8f7ad`
+- [x] **F1.12–F1.15** — the host's chooser and editor link, the device name, the grouped banner, refusals made visible, and a stale refusal no longer outlives its cause. → `e245138` `074be0b` `845bd3e` `36251be`
+- [x] **F1.16–F1.21** — every primitive visible, the material controls widened, `contentFit` renamed and the control removed, the Insert menu shares one owner. → `1b948c0` `d15c265` `db351bc` `23b4e7f`
+- [x] **F1.22 / F1.27** — the library picker is a real dialog; the layer twisties are Lucide. *Proved:* F1.22 needed no task at all — F0.1's work had already fixed it. → `a958d1d` `4b7f5f5`
+- [x] **F1.24** — provider messages are redacted at the source, and in one vocabulary with the player's. → `9c96043`
+- [x] **F1.23 / F1.26** — the two strips stack instead of overdrawing. → `a34b838`
+- [x] **F1.9** — every card is frosted, and **F1.11** — the control now carries it. *Proved:* transmission over a real photograph **0.216 → 0.718**. → `9b47534` `df9e725`
+- [x] **F1.13 / F1.30** — the grouped banner, the host's favicon. → `a34b838` `7708e5b`
+- [x] **U23 / U24** — redo and front/back answer to the chords graphic editors use. *Proved:* and the audit **understated** its own bug — Ctrl+Shift+Z would have undone. → `66264bc`
+
+### Withdrawn, and why — recorded so they are not re-raised
+
+- [x] ~~F1.29 / F1.31~~ — **withdrawn.** The editor is desktop-only (`tests/e2e/surface.ts`); the hidden inspector and the unreachable phone Save were correct. It cost a commit before it was caught. → reverted in `6d2ec2a`
+- [x] ~~F1.22~~ — **resolved as a side effect** of `a4824fe`. Checking before dispatching saved an agent.
+- [x] ~~The "canvas gets 35% of the viewport"~~ — **an artifact of a small window.** 66% at 1920.
+
+### Filed rather than guessed
+
+- [x] **#7** `Ctrl+N` discard prompt · **#13** artboard clipping · **#14** the layer panel's missing background-media row · **#11** glass carrying the wrong surface *(closed by `df9e725`)* · **#8 #9 #10** rebuild questions · **#12** §97's gap glyph at 108 px
+
+### Known dead, not yet removed
+
+- [ ] `EditorShell.setFitMode()` — no callers, and had none before `23b4e7f`
+
+---
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
 **Goal:** Give an author a blank theme they can actually start from, then rebuild the whole reference composition from that blank state by hand, through the UI alone, and record every gap, friction point and visual-quality problem the rebuild exposes.
 
 **Architecture:** Three product changes first, because without them the proof has to begin with a workaround and would measure the workaround rather than the surface: a blank theme `New`, an artboard chooser, and the starter as an explicit template. After that no new code path is built — the work is a Playwright driver exercising the real editor's real controls, and a Findings table that is the durable record of what the surface could not do.
@@ -50,8 +110,6 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 **This section is live and grows.** The pass is driven by using the product, and every gap found is either fixed here or recorded. Priorities are re-ordered as new findings arrive — a P1 becomes P0 if it blocks the rebuild, and finished items move to the archived tail rather than disappearing.
 
 **Standing instruction (2026-09-29):** this plan's scope is whatever it takes to ship. Finding something broken, missing, misaligned, hard to read, or inconsistent with the repo's own conventions means it enters this backlog and gets done — not that it gets noted for later.
-
----
 
 ## START HERE — the next session's queue, in order
 
