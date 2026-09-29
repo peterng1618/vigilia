@@ -5,6 +5,25 @@ import type {
 } from "@vigilia/renderer-core";
 import { uiCopy } from "../ui-copy.js";
 
+/** An object a token is linked to, as the panel shows it. */
+export interface PaletteTokenUse {
+  readonly name: string;
+}
+
+export interface PalettePanelOptions {
+  /**
+   * The objects each token is linked to, or `undefined` when the panel has no
+   * scene to read. A function, not a record, because the scene changes under
+   * the panel and the figure has to be re-read on every draw rather than
+   * frozen at construction.
+   *
+   * The count beside a token and the guard that decides whether a token may be
+   * deleted come from this one source, so a token is never reported unused
+   * while an object is painted with it.
+   */
+  readonly usage?: () => Readonly<Record<string, readonly PaletteTokenUse[]>>;
+}
+
 export interface PalettePanel {
   readonly root: HTMLElement;
   render(palette: FabricPalette | undefined): void;
@@ -15,6 +34,7 @@ export function createPalettePanel(
   host: HTMLElement,
   onChange: (palette: FabricPalette) => void,
   onDelete?: (id: string, replacement: string) => void,
+  options: PalettePanelOptions = {},
 ): PalettePanel {
   const root = document.createElement("section");
   const heading = document.createElement("h2");
@@ -34,17 +54,33 @@ export function createPalettePanel(
   add.type = "button";
   add.textContent = uiCopy.panels.addColour;
   const fields = document.createElement("div");
-  root.append(heading, tokenRow, add, fields);
+  const users = document.createElement("ul");
+  users.dataset["vigiliaPaletteUsers"] = "";
+  const usersHeading = document.createElement("h3");
+  // The count is a measurement, so a token with no scene behind it gets no
+  // list at all rather than a fabricated zero — the same rule as a gap in
+  // telemetry (§97).
+  if (options.usage !== undefined) {
+    usersHeading.textContent = uiCopy.panels.layers;
+    root.append(heading, tokenRow, add, fields, usersHeading, users);
+  } else root.append(heading, tokenRow, add, fields);
   host.append(root);
 
   let palette: FabricPalette = {};
   let selected = "";
   const draw = (): void => {
+    // Read once per draw: the scene can change between two tokens, and a
+    // figure that mixed two moments would be a measurement of nothing.
+    const usage = options.usage?.();
     select.replaceChildren();
     for (const [id, entry] of Object.entries(palette)) {
       const option = document.createElement("option");
       option.value = id;
-      option.textContent = entry.name;
+      // The figure rides the option so a token nothing uses is visible without
+      // selecting it first, which is the whole point of showing it.
+      const uses = usage?.[id];
+      option.textContent =
+        uses === undefined ? entry.name : `${entry.name} · ${uses.length}`;
       select.append(option);
     }
     if (palette[selected] === undefined)
@@ -53,6 +89,12 @@ export function createPalettePanel(
     fields.replaceChildren();
     const entry = palette[selected];
     if (entry !== undefined) fields.append(...paletteFields(entry));
+    users.replaceChildren();
+    for (const use of usage?.[selected] ?? []) {
+      const item = document.createElement("li");
+      item.textContent = use.name;
+      users.append(item);
+    }
   };
   const commit = (entry: FabricPaletteEntry): void => {
     if (selected === "none") return;

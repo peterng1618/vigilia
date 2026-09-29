@@ -58,7 +58,11 @@ export {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,
 } from "./object-type.js";
-export { reassignObjectPaletteReferences } from "./palette-references.js";
+export {
+  objectPaletteReferences,
+  type PaletteReference,
+  reassignObjectPaletteReferences,
+} from "./palette-references.js";
 export type { SerialisedScene } from "./persist.js";
 export {
   assertFabricThemeEnvelopeCompatible,
