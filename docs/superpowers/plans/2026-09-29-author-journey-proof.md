@@ -343,6 +343,19 @@ Then, as an author: a **Rectangle** and two **charts** all insert with palette-b
 
 **The premise holds**: an author can start from nothing, put something on it, and every control they touch resolves.
 
+### Filed, because a decision nobody can read is a decision lost
+
+The three deferred findings above are product questions with no precedent in the
+repo, which the Global Constraints say to record and pass over. They are also
+exactly the shape that a plan cannot carry alone, so each is an issue with its
+candidates written out:
+
+| Issue | Finding | The open question |
+|---|---|---|
+| [#8](https://github.com/peterng1618/vigilia/issues/8) | F2.6 | keep minting token ids, or derive one from the name at creation |
+| [#9](https://github.com/peterng1618/vigilia/issues/9) | F2.7 | what the Height field means before the author has authored a height |
+| [#10](https://github.com/peterng1618/vigilia/issues/10) | F2.11's limit | whether a series' colour belongs to a slot or to a binding — a format change, or nothing at all |
+
 ### Where the rebuild stands
 
 **Eight regions, each built from its own blank theme, every step a pointer or a
