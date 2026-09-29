@@ -4,6 +4,27 @@ Canonical map of which module owns each cross-cutting concept. Check this before
 adding a new owner, parallel abstraction, registry, persistence path or manager.
 If implementation moves an owner, update this map in the same change.
 
+**A concept has exactly one owner, and the owner's membership is not a second
+module's decision.** Naming a member to *read* it — `IDS[0]`, `for (const id of
+IDS)`, a type derived from it — is a consumer, and the rule working. Re-spelling
+the set, or a subset of it, somewhere else is a **second owner**, and it fails
+quietly: the two agree until someone adds a member, and then the new one is
+simply never seen by whoever re-spelled it. That is not drift and is not fixed
+by making one list read the other; it is fixed by deleting the second decision.
+
+**This map is the first half of that rule, and a gap in it is a hole in the
+rule.** A module that owns a vocabulary but appears nowhere below is invisible
+here, so nothing warns a reader not to decide the membership elsewhere —
+`object-actions.ts` was exactly that, and the Arrange menu picking two of its
+eight actions is what it cost. **If you add a module that owns an enumeration,
+add the row in the same change.**
+
+`npm run ownership:sweep` checks the rule mechanically and reports candidates,
+not verdicts: it finds every module exporting an id vocabulary and reports any
+other module re-spelling two or more of those ids. **Adjudicate every hit** — a
+consumer and a second owner look the same to it, and roughly half of what it
+finds is a consumer. Its self-test runs in `npm run gates:self-test`.
+
 ## Editor
 
 | Concept | Owner |
