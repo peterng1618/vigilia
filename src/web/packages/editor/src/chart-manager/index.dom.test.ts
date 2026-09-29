@@ -332,9 +332,7 @@ describe("a chart's series paint", () => {
     const { manager, panelHost, objects } = harness();
     manager.addChart("line");
     const palette = (): unknown =>
-      (objects[0]?.settings as unknown as Record<string, unknown>)[
-        "palette"
-      ];
+      (objects[0]?.settings as unknown as Record<string, unknown>)["palette"];
     expect(Array.isArray(palette()) && (palette() as unknown[]).length).toBe(1);
 
     for (const semanticKey of ["cpu.load", "gpu.load", "ram.used.percent"]) {
