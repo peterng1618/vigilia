@@ -64,6 +64,22 @@ export const uiCopy = {
     unresolved: "no longer resolves",
     runs: "Runs",
     runPreset: "Type preset",
+    /** What one run says, for a run that is prose. Distinct from the Add pane's
+        "Text" button, which inserts an object rather than naming a field. */
+    runText: "Run text",
+    addRun: "Add run",
+    /** Shown when an in-place edit would have to drop the runs it cannot place. */
+    multiRunRefused:
+      "This text has more than one run, and typing over the whole object would drop the others. Edit each run's text in the run editor.",
+    /** A chart's bindings are its series, which is the word the panel already
+        uses for the axis. Named once so the chooser and the refusal agree. */
+    runSeries: "Add a series",
+    runSeriesFull: (family: string) =>
+      `A ${family} chart draws one reading, so it takes one series.`,
+    removeSeries: (key: string) => `Remove the series reading ${key}`,
+    /** Numbered, so three rows do not offer three identical buttons — the same
+        ambiguity F1.17 found in the Add pane, where "Line" was two things. */
+    removeRun: (position: number) => `Remove run ${position}`,
     /** Shown when a run after the first asks for tracking the object cannot
         carry: Fabric measures spacing once, from the object. The interpolation
         is the run's own preset reference, as the run list above names it. */

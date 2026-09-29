@@ -448,6 +448,105 @@ describe("what a run cannot carry", () => {
   });
 });
 
+describe("how many runs a text object has", () => {
+  const globals = {
+    typePresets: {
+      "60-600": { name: "Reading", value: { family: "Inter", size: 60 } },
+      "20-400": { name: "Unit", value: { family: "Inter", size: 20 } },
+    },
+    palette: {
+      text: { name: "Text", value: { kind: "solid", color: "#fff" } },
+    },
+  } as unknown as FabricGlobals;
+
+  const readingAndUnit: readonly TextRun[] = [
+    { kind: "value", bindingId: "load", typePreset: "typePresets.60-600" },
+    { kind: "literal", text: "%", typePreset: "typePresets.20-400" },
+  ];
+
+  it("appends a run that looks the way the one before it does", () => {
+    // "32" and "%" are one card, not two objects: the number is a reading and
+    // the sign is prose, and only a second run on the same object can say so.
+    const box = harness(literalClock, undefined, globals);
+
+    box.pick<HTMLButtonElement>("[data-vigilia-run-add]").click();
+
+    expect(box.runs()).toHaveLength(2);
+    expect(box.runs()[1]).toMatchObject({
+      kind: "literal",
+      text: "",
+      typePreset: "typePresets.70-300",
+    });
+    return box.dispose();
+  });
+
+  it("carries the text a prose run says, and offers none for a reading", () => {
+    const box = harness(
+      readingAndUnit,
+      undefined,
+      globals,
+      ["cpu.load"],
+      [{ id: "load", semanticKey: "cpu.load" }],
+    );
+
+    // A value run has no words of its own, so a field over one would accept an
+    // edit and persist nothing.
+    expect(box.host.querySelector('[data-vigilia-run-text="0"]')).toBeNull();
+    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    expect(field.value).toBe("%");
+    field.value = " %";
+    field.dispatchEvent(new Event("change"));
+
+    expect(box.runs()[1]).toMatchObject({ kind: "literal", text: " %" });
+    return box.dispose();
+  });
+
+  it("removes a run, and the reading only it was bound to", () => {
+    const box = harness(
+      readingAndUnit,
+      undefined,
+      globals,
+      ["cpu.load"],
+      [{ id: "load", semanticKey: "cpu.load" }],
+    );
+
+    box.pick<HTMLButtonElement>('[data-vigilia-run-remove="0"]').click();
+
+    expect(box.runs()).toHaveLength(1);
+    // Nothing else can be reading it, and a binding no run can paint is one
+    // the document declares and no reader resolves.
+    expect(box.stored()).toEqual([]);
+    return box.dispose();
+  });
+
+  it("will not offer to remove the last run", () => {
+    // A text object with no runs paints nothing at all, so the control that
+    // could reach that state is the control that empties the canvas.
+    const box = harness(literalClock, undefined, globals);
+    expect(box.host.querySelector("[data-vigilia-run-remove]")).toBeNull();
+    return box.dispose();
+  });
+
+  it("numbers the remove buttons, so three rows are not one name", () => {
+    const box = harness(
+      [
+        ...readingAndUnit,
+        { kind: "literal", text: " of 4", typePreset: "typePresets.20-400" },
+      ],
+      undefined,
+      globals,
+      ["cpu.load"],
+      [{ id: "load", semanticKey: "cpu.load" }],
+    );
+
+    const names = [
+      ...box.host.querySelectorAll("[data-vigilia-run-remove]"),
+    ].map((button) => button.textContent);
+    expect(new Set(names).size).toBe(3);
+    return box.dispose();
+  });
+});
+
 describe("which binding a value run carries", () => {
   const bound: readonly TextRun[] = [
     { kind: "value", bindingId: "load", typePreset: "typePresets.60-600" },

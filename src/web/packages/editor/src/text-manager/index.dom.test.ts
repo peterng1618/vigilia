@@ -226,3 +226,49 @@ describe("a width the author dragged", () => {
     text.destroy();
   });
 });
+
+describe("typing over an object that carries more than one run", () => {
+  /**
+   * A value and its unit: the shape a card is built from, and the shape Fabric
+   * cannot edit. It hands back one flat string and no way to say which run each
+   * character came from, so the only write available would drop the siblings.
+   */
+  function twoRuns(): Textbox {
+    const object = new Textbox("42%", { id: "cpu-value", left: 40, top: 30 });
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [
+        { kind: "value" as const, bindingId: "load" },
+        { kind: "literal" as const, text: "%" },
+      ],
+    });
+    return object;
+  }
+
+  it("keeps both runs and says why, rather than flattening the object", () => {
+    const object = twoRuns();
+    const canvas = scene(object);
+    const save = vi.fn();
+    const warn = vi.fn();
+    const text = createTextManager(canvas, save, warn);
+    let repainted = 0;
+    text.setRepaint(() => {
+      repainted += 1;
+    });
+    canvas.setActiveObject(object);
+    canvas.fire("mouse:dblclick", { target: object } as never);
+
+    object.set("text", "typed over");
+    object.exitEditing();
+
+    const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
+      runs: readonly { kind: string }[];
+    };
+    expect(authored.runs).toHaveLength(2);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("more than one run"),
+    );
+    // The canvas must not be left standing on text the document does not hold.
+    expect(repainted).toBe(1);
+    text.destroy();
+  });
+});

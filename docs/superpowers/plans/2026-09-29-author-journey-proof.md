@@ -331,6 +331,85 @@ Then, as an author: a **Rectangle** and two **charts** all insert with palette-b
 
 ---
 
+## The rebuild — the composition, built from blank by hand
+
+Started 2026-09-29 against the tree at `594021f`. Every step below is a pointer
+or keyboard gesture against a delivered control; the driver reads the scene
+through the editor handle and **writes nothing to it**. The two regions below
+were blocked outright, and the fixes are in the *Found by the rebuild* table.
+
+### F2.1 — **BLOCKING: a text object could never have more than one run, and a run's text could not be typed at all**
+
+**The composition is mostly multi-run objects.** "32" is a reading and "%" is
+prose; "13.4 / 32 GB" is two readings and a unit; "4.8 GHz │ 62 °C" is three runs.
+None of it exists without a second run on one object.
+
+Measured on a blank theme at `594021f`:
+
+- `new-object-defaults.ts:378` gives a new text object a **tuple of exactly one
+  literal run**, and `createNewObjectPanel` inserts nothing else.
+- `selection-inspector/runs.ts` renders one row per existing run and has **no
+  control that adds or removes one** — the run editor's button count is `0`.
+- It has **no field for a run's own text** either. `sourceField` can turn a run
+  into a reading or back into prose, but the prose it produces is always `""`.
+  So the only route to any text at all was in-place editing on the canvas.
+
+**And in-place editing could not be the answer.** `keepTypedText`
+(`text-manager/index.ts:38`) writes `object.text` back as run 0 and **drops
+every other run**. For a one-run object that is the documented, intended
+behaviour. Once a second run exists it is silent data loss: a value run becomes
+prose and its sibling vanishes, with no record that either happened.
+
+**Fixed in the pass** — the run editor is the owner (`ownership.md`: "Selection
+geometry, appearance, runs and text layout"). An `Add run` control that inherits
+the previous run's preset and colour, a per-row `Remove run N` (withheld on the
+last run, because a run-less text object paints nothing), and a `Run text` field
+for a prose run — none for a value run, which has no words of its own. Removing a
+value run releases the binding only it could read, for the reason the source
+field already gives. The refusal belongs to `text-manager`, which is the §67
+owner of the write-back: `keepTypedText` now answers `"refused"` for a
+multi-run object, the editor's own diagnostics say why, and the runtime repaints
+so the canvas is not left standing on text the document does not hold.
+
+### F2.2 — **BLOCKING: a chart could not be bound to a sensor, so no chart in the composition was authorable**
+
+`chart-manager/panel.ts` renders one row per binding **the chart already has**.
+Nothing declares the first one. Measured on a blank theme: a `Line` chart
+inserted from the Add pane shows **0** `[data-vigilia-binding]` controls, and
+`ChartManager.addChart` creates no binding.
+
+`buildChartPlan` (`renderer-core/src/scene/plan.ts:615`) makes a line series, a
+bar and a slice one binding each. So the CPU and GPU sparklines, the three-series
+trends chart and the two-series network chart were **all unauthorable** — the
+sparkline could not be bound to the same key as the reading beside it, which is
+Review Focus #3's exact failure: a card able to show a percentage and a waveform
+for two different moments.
+
+**Fixed in the pass**, inside the owner `ownership.md` names for it
+("Chart selection/settings/bindings"). A `Add a series` chooser of semantic keys —
+one control, because a binding cannot exist without the key it names, so asking
+for both at once removes the state where a chart holds one the panel must repair
+— plus a per-series remove, withheld on the last. The gauge is capped at one
+because `buildChartPlan` reads `bindings[0]` and ignores the rest: a second there
+would be a control that accepts an edit and applies none, so the chooser is
+disabled and the panel says why. All three binding writes now go through one
+`#writeBindings`, so the envelope, the redraw and the panel cannot disagree.
+
+### Found by the rebuild — fixed here
+
+| # | Finding | Class | Fix | Proof |
+|---|---|---|---|---|
+| F2.1 | A text object could never carry more than one run, a run's text had no field, and an in-place edit silently dropped the siblings | **blocking** — the journey cannot complete | `selection-inspector/runs.ts`, `text-manager/index.ts`, `editor-interaction.ts`, `editor-session.ts` | 5 new run tests + 1 new text-manager test. Red-without-fix: disabling the add control took 1 red; restoring the flattening took 1 red |
+| F2.2 | A chart could not be bound to a sensor from the UI, so every chart in the composition was unauthorable | **blocking** — the journey cannot complete | `chart-manager/panel.ts`, `chart-manager/index.ts` | 3 new panel tests. Red-without-fix: disabling the chooser's dispatch took 1 red |
+| F2.3 | The New chooser's replacement guard reads as an error | deferred | — | `Create` is followed by a `Save changes before opening another theme?` prompt on a document nobody edited. It is correct and it is what stops work being lost, so it stays; the chooser simply does not say the second step is coming |
+
+**The blank theme itself is sound.** Zero objects, ten palette tokens, thirteen
+type presets, all three inspector tabs populated, and the Add pane offering
+`Text`, `Shape` (8) and `Chart` (4). Nothing on that screen reads "not set"
+except the two artboard paint fields, which are correct.
+
+---
+
 ## The delivered surface, as found
 
 Written 2026-09-29 against the tree, not inherited. Every key below was read from source; the rebuild drives **these** and nothing else.

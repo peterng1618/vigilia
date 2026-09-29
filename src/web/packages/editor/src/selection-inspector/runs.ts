@@ -384,6 +384,57 @@ export function createRunEditor(
   };
 
   /**
+   * What a prose run says.
+   *
+   * `change`, not per keystroke, like the format field below: a half-typed
+   * sentence is not an edit, and re-painting the canvas on every character
+   * would be a history entry per character.
+   */
+  const runTextField = (
+    run: Extract<TextRun, { readonly kind: "literal" }>,
+    index: number,
+  ): HTMLElement => {
+    const wrapper = document.createElement("label");
+    wrapper.textContent = uiCopy.inspectorFields.runText;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.dataset["vigiliaRunText"] = String(index);
+    input.value = run.text;
+    input.addEventListener("change", () =>
+      commit(index, { ...run, text: input.value }),
+    );
+    wrapper.append(input);
+    return wrapper;
+  };
+
+  /**
+   * Drops a run, and the binding it was the only reader of.
+   *
+   * The binding goes with it for the reason the source field gives when a run
+   * returns to prose: nothing else can be reading it, and a binding left behind
+   * is one the document declares and no run can paint.
+   */
+  const removeRun = (index: number): void => {
+    const gone = runs[index];
+    object.set(TEXT_PROPERTY, {
+      ...(object.get(TEXT_PROPERTY) as Record<string, unknown> | undefined),
+      runs: runs.filter((_, at) => at !== index),
+    });
+    const port = bindingPort;
+    const bindingId =
+      gone?.kind === "value" && port !== undefined ? gone.bindingId : undefined;
+    if (bindingId !== undefined && port !== undefined) {
+      port.setBindings(
+        port.bindings().filter((binding) => binding.id !== bindingId),
+      );
+    }
+    applyAuthoredText(editor.canvas, globals);
+    editor.canvas.requestRenderAll();
+    editor.historyManager.saveState();
+    onChange();
+  };
+
+  /**
    * How an instant reading is written out. A clock is design, so the author owns
    * its tokens; showing the reading they produce is the difference between
    * guessing at `dddd DD MMMM` and choosing it.
@@ -502,6 +553,14 @@ export function createRunEditor(
     label.textContent = describeRun(run);
     row.append(label);
 
+    // What a prose run says. A value run has no text of its own — the panel
+    // below says where its reading comes from instead — and a field over one
+    // would accept an edit and persist nothing, which is the one thing this
+    // panel's doc comment rules out.
+    if (run.kind === "literal") {
+      row.append(runTextField(run, index));
+    }
+
     // Preset reference, per run.
     const presetLabel = document.createElement("label");
     presetLabel.textContent = uiCopy.inspectorFields.runPreset;
@@ -572,7 +631,47 @@ export function createRunEditor(
     }
 
     root.append(row);
+
+    // Removed from the row rather than the foot of the panel so the author
+    // reads which run they are deleting. Offered only when something would
+    // remain: a text object with no runs paints nothing at all, so a control
+    // that could reach that state is a control that can empty the canvas.
+    if (runs.length > 1) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.dataset["vigiliaRunRemove"] = String(index);
+      remove.textContent = uiCopy.inspectorFields.removeRun(index + 1);
+      remove.addEventListener("click", () => removeRun(index));
+      row.append(remove);
+    }
   });
+
+  /**
+   * A new run, looking the way the one before it does.
+   *
+   * Inheriting is the only default that is never wrong: a unit appended to a
+   * reading wants the reading's colour and a smaller preset, and a run that
+   * arrived in a different face reads as a mistake before the author has
+   * chosen its own. The id is the same shape the source field mints, so the
+   * two ways a run becomes a reading stay one convention.
+   */
+  const add = document.createElement("button");
+  add.type = "button";
+  add.dataset["vigiliaRunAdd"] = "";
+  add.textContent = uiCopy.inspectorFields.addRun;
+  add.addEventListener("click", () => {
+    const last = runs.at(-1);
+    const inherited = last === undefined ? {} : lookOf(last);
+    object.set(TEXT_PROPERTY, {
+      ...(object.get(TEXT_PROPERTY) as Record<string, unknown> | undefined),
+      runs: [...runs, { kind: "literal", text: "", ...inherited }],
+    });
+    applyAuthoredText(editor.canvas, globals);
+    editor.canvas.requestRenderAll();
+    editor.historyManager.saveState();
+    onChange();
+  });
+  root.append(add);
 
   for (const gap of presetGaps(globals, runs)) {
     const note = document.createElement("p");

@@ -4,6 +4,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { type Canvas, IText } from "fabric/es";
 import type { TextContent, TextRun } from "@vigilia/renderer-core";
+import { uiCopy } from "../ui-copy.js";
 
 export interface TextManager {
   addText(options?: Readonly<Record<string, unknown>>): IText;
@@ -14,6 +15,9 @@ export interface TextManager {
    * passed.
    */
   setAuthoringView(paint: (object: IText) => void): void;
+  /** Paints the object's authored runs over what Fabric left behind, which is
+      how a refused in-place edit puts back what it would have dropped. */
+  setRepaint(paint: (object: IText) => void): void;
   destroy(): void;
 }
 
@@ -34,10 +38,18 @@ function authoredOf(object: PlanTextObject): TextContent | undefined {
  * *and* the words: typing over one replaces it with a literal, keeping the type
  * preset and colour it was painted with. The run editor turns it back into a
  * reading when the author wants one.
+ *
+ * Refused outright once the object carries more than one run. Fabric hands back
+ * one flat string and no way to say which run each character came from, so the
+ * only write available here drops the siblings — and an object that was "32" and
+ * "%" would come back as one run of whatever was typed, with the reading gone
+ * and no record that it had been. The run editor owns each run's text, and it
+ * can refuse nothing: this says so rather than losing the work.
  */
-function keepTypedText(object: PlanTextObject): void {
+function keepTypedText(object: PlanTextObject): "written" | "refused" {
   const authored = authoredOf(object);
-  if (authored === undefined) return;
+  if (authored === undefined) return "written";
+  if (authored.runs.length > 1) return "refused";
 
   const first = authored.runs[0] as TextRun | undefined;
   object.set(VIGILIA_TEXT_PROPERTY, {
@@ -53,6 +65,7 @@ function keepTypedText(object: PlanTextObject): void {
       },
     ],
   });
+  return "written";
 }
 
 /**
@@ -95,8 +108,13 @@ function isText(value: unknown): value is PlanTextObject & {
 export function createTextManager(
   canvas: Canvas,
   save: () => void,
+  /** How a refused edit reaches the author; the shell's diagnostics own it. */
+  warn?: (message: string) => void,
 ): TextManager {
   let showAuthoringView: (object: IText) => void = () => {};
+  /** Repaints the authored runs, so a refused edit does not leave un-authored
+      text standing on the canvas as though it had been kept. */
+  let repaint: (object: IText) => void = () => {};
 
   const onDoubleClick = (event: { target?: unknown }): void => {
     const target = event.target;
@@ -152,7 +170,16 @@ export function createTextManager(
       if (target.text === painted) {
         return;
       }
-      keepTypedText(target);
+      if (keepTypedText(target) === "refused") {
+        warn?.(uiCopy.inspectorFields.multiRunRefused);
+        // Fabric has already left editing, so the object's own text is the only
+        // thing standing where the authored runs should be. Putting them back
+        // is what makes the refusal honest rather than a warning the author
+        // watches scroll away from text that was never kept.
+        repaint(target);
+        canvas.requestRenderAll();
+        return;
+      }
       save();
     });
   };
@@ -189,6 +216,9 @@ export function createTextManager(
     },
     setAuthoringView(paint) {
       showAuthoringView = paint;
+    },
+    setRepaint(paint) {
+      repaint = paint;
     },
     destroy() {
       canvas.off("mouse:dblclick" as never, onDoubleClick as never);

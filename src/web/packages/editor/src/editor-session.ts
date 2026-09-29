@@ -240,6 +240,10 @@ export class EditorSession {
     options.shell.editor.textManager.setAuthoringView((object) =>
       this.#runtime.showAuthoringView(object),
     );
+    // A refused in-place edit left Fabric's flat text standing where the
+    // authored runs belong. The runtime owns what an object paints, so the
+    // put-back goes through it rather than a second repaint path here.
+    options.shell.editor.textManager.setRepaint(() => this.#runtime.refresh());
     this.#style = createStylePanel(options.panelHosts.style, {
       editor: options.shell.editor,
       // Pulled, not held: the panel is mounted for the session and read-only, so

@@ -92,6 +92,26 @@ export class ChartManager {
       (id, binding) =>
         this.#updateBinding(id, binding, options.onBindingsChange),
       (id, ratio) => this.#resizeToAspect(id, ratio),
+      (id, semanticKey) =>
+        this.#writeBindings(
+          id,
+          [
+            ...(this.#bindings[id] ?? []),
+            // Minted here rather than in the panel: the id is what the run
+            // editor's bindings are keyed by, so one shape for both keeps a
+            // document's two kinds of reference legible together.
+            { id: `binding-${crypto.randomUUID()}`, semanticKey },
+          ],
+          options.onBindingsChange,
+        ),
+      (id, bindingId) =>
+        this.#writeBindings(
+          id,
+          (this.#bindings[id] ?? []).filter(
+            (binding) => binding.id !== bindingId,
+          ),
+          options.onBindingsChange,
+        ),
     );
     this.#editor.canvas.on("selection:created", this.#drawPanel);
     this.#editor.canvas.on("selection:updated", this.#drawPanel);
@@ -222,10 +242,27 @@ export class ChartManager {
       | ((id: string, bindings: readonly Binding[]) => void)
       | undefined,
   ): void {
-    const current = this.#bindings[id] ?? [];
-    const bindings = current.map((binding) =>
-      binding.id === nextBinding.id ? nextBinding : binding,
+    this.#writeBindings(
+      id,
+      (this.#bindings[id] ?? []).map((binding) =>
+        binding.id === nextBinding.id ? nextBinding : binding,
+      ),
+      onBindingsChange,
     );
+  }
+
+  /**
+   * The one place a chart's binding list is written: the key chooser, the key
+   * picker and the remove button all end here, so the envelope, the redraw and
+   * the panel cannot disagree about what a chart reads.
+   */
+  #writeBindings(
+    id: string,
+    bindings: readonly Binding[],
+    onBindingsChange:
+      | ((id: string, bindings: readonly Binding[]) => void)
+      | undefined,
+  ): void {
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#chartFor(id);
     if (chart instanceof VigiliaChart) this.#applyChart(id, chart);

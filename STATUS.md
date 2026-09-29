@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.39: the canvas context menu is no longer a third copy of the chart list — it is now the Add pane's own list.** All 13 entries, in the pane's groups, so the two "Line" rows are told apart by their heading.
-- **Folded in, deliberately.** It read `CHART_FAMILIES`, so it could not drift on charts and was never F1.7's defect — but it was a third place that knew what can be inserted, and it offered five of thirteen with no shape in it. A right-click on empty canvas was a poorer version of the Insert menu one gesture away.
-- The list is one owner; the *dispatch* — which façade call a kind maps to — is still a six-line switch in each of the three surfaces, because the owner cannot know whether a surface holds a façade or the editor.
-- Measured in Chromium on a blank document: Text, then **Shape** (8), then **Chart** (4), 470px tall in a 720px viewport, not clipped. Red without the fix: both creation cases fail. 2090 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F2.1, blocking: a text object could never carry more than one run, and a run's text had no field at all.** "32" and "%", "13.4 / 32 GB", "4.8 GHz │ 62 °C" — the composition is mostly multi-run, and the run editor had no control to add one, no control to remove one and nothing to type into.
+- **An in-place edit silently dropped the siblings.** `keepTypedText` wrote Fabric's flat string back as run 0 and dropped the rest. It now refuses a multi-run object, says so through the editor's own diagnostics, and the runtime repaints so the canvas is not left on text the document does not hold.
+- **F2.2, blocking: a chart could not be bound to a sensor.** The panel rendered one row per binding the chart already had and nothing declared the first, so a chart inserted from the Add pane had zero controls and every chart in the composition was unauthorable. An `Add a series` chooser and a per-series remove, both inside `chart-manager`.
+- The gauge's second series is refused rather than accepted, because `buildChartPlan` reads `bindings[0]` and ignores the rest. 2099 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red without each fix: 1 test apiece.
 
 ## Next
 

@@ -1,6 +1,7 @@
 import {
   type Binding,
   type ChartContent,
+  type ChartFamily,
   chartPaintFieldsFor,
   type FabricPalette,
   SEMANTIC_KEYS,
@@ -22,11 +23,26 @@ export interface ChartPropertyPanel {
   ): void;
 }
 
+/**
+ * How many readings a family draws, per `buildChartPlan`: a line series, a bar
+ * and a slice are one binding each, and a gauge reads `bindings[0]` and nothing
+ * else. So the gauge's second binding would be a control that accepts an edit
+ * and applies none — the outcome `panel.ts`'s own doc comment rules out.
+ */
+const MAX_BINDINGS: Readonly<Record<ChartFamily, number>> = {
+  gauge: 1,
+  line: Number.POSITIVE_INFINITY,
+  bar: Number.POSITIVE_INFINITY,
+  pie: Number.POSITIVE_INFINITY,
+};
+
 export function createChartPropertyPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent["settings"]) => void,
   onBindingChange: (id: string, binding: Binding) => void,
   onAspectChange: (id: string, ratio: number) => void,
+  onAddBinding: (id: string, semanticKey: string) => void,
+  onRemoveBinding: (id: string, bindingId: string) => void,
 ): ChartPropertyPanel {
   const root = document.createElement("section");
   host.prepend(root);
@@ -57,6 +73,50 @@ export function createChartPropertyPanel(
         }
         root.append(aspect);
       }
+
+      /**
+       * The control that declares the *first* binding, which is what a chart
+       * arrives without. A chooser of keys rather than a button: a binding
+       * cannot exist without the key it names, so asking for both at once
+       * removes the state where a chart holds one the panel would then have to
+       * refuse or repair.
+       */
+      const series = uiCopy.inspectorFields.runSeries;
+      const seriesLabel = document.createElement("label");
+      const add = document.createElement("select");
+      add.dataset["vigiliaChartBindingAdd"] = "";
+      const prompt = document.createElement("option");
+      prompt.value = "";
+      prompt.textContent = series;
+      add.append(prompt);
+      for (const descriptor of SEMANTIC_KEYS) {
+        const option = document.createElement("option");
+        option.value = descriptor.key;
+        option.textContent = descriptor.label;
+        add.append(option);
+      }
+      add.addEventListener("change", () => {
+        const key = add.value;
+        // Reset first: a chooser that held its choice would create a second
+        // series on every re-render of the panel.
+        add.value = "";
+        if (key !== "") onAddBinding(chart.id, key);
+      });
+      seriesLabel.textContent = series;
+      seriesLabel.htmlFor = add.id = "vigilia-chart-series";
+      const full = chart.bindings.length >= MAX_BINDINGS[chart.content.family];
+      add.disabled = full;
+      root.append(seriesLabel, add);
+      if (full) {
+        const note = document.createElement("p");
+        note.className = "vigilia-run-note";
+        note.dataset["vigiliaChartBindingFull"] = "";
+        note.textContent = uiCopy.inspectorFields.runSeriesFull(
+          chart.content.family,
+        );
+        root.append(note);
+      }
+
       for (const binding of chart.bindings) {
         const label = document.createElement("label");
         label.textContent = `Binding: ${binding.id}`;
@@ -81,6 +141,11 @@ export function createChartPropertyPanel(
         root.append(
           label,
           select,
+          ...removeBindingControl(
+            binding,
+            (id) => onRemoveBinding(chart.id, id),
+            chart.bindings.length > 1,
+          ),
           ...bindingNumber(
             binding.id,
             "precision",
@@ -206,6 +271,26 @@ export function createChartPropertyPanel(
       }
     },
   };
+}
+
+/**
+ * Removes one series. Withheld on the last binding for the reason the add
+ * control is disabled at the gauge's limit: a chart with nothing bound draws
+ * its frame and no data, and a control that reaches that state is a control
+ * that can empty a card.
+ */
+function removeBindingControl(
+  binding: Binding,
+  onRemove: (id: string) => void,
+  moreThanOne: boolean,
+): readonly HTMLElement[] {
+  if (!moreThanOne) return [];
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset["vigiliaChartBindingRemove"] = binding.id;
+  button.textContent = uiCopy.inspectorFields.removeSeries(binding.semanticKey);
+  button.addEventListener("click", () => onRemove(binding.id));
+  return [button];
 }
 
 function paintPicker(

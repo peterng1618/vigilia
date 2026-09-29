@@ -27,6 +27,12 @@ export interface EditorInteraction {
      * shell that creates the manager has no session yet.
      */
     setAuthoringView(paint: (object: IText) => void): void;
+    /**
+     * Installs what puts an object's authored runs back after an in-place edit
+     * was refused. The runtime owns what an object paints, so the put-back is
+     * asked for rather than done here.
+     */
+    setRepaint(paint: (object: IText) => void): void;
   };
   readonly layerManager: {
     bringToFront(object?: FabricObject): void;

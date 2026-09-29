@@ -206,7 +206,9 @@ function createNativeEditor(input: {
   const errors = createErrorManager(canvas);
   const deletion = createDeletionManager(canvas, save);
   const images = createImageManager(canvas, save);
-  const text = createTextManager(canvas, save);
+  const text = createTextManager(canvas, save, (message) =>
+    errors.warn("controls", message),
+  );
 
   const grouping = createGroupingManager({
     canvas,

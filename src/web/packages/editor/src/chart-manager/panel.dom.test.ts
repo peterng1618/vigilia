@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createChartPropertyPanel } from "./panel.js";
+import { type ChartPropertyPanel, createChartPropertyPanel } from "./panel.js";
 
 describe("chart property panel", () => {
   it("offers line aspect presets and visible history", () => {
@@ -10,6 +10,8 @@ describe("chart property panel", () => {
       vi.fn(),
       vi.fn(),
       resize,
+      vi.fn(),
+      vi.fn(),
     );
     panel.render({
       id: "trend",
@@ -55,6 +57,8 @@ describe("chart property panel", () => {
       document.body,
       change,
       bindingChange,
+      vi.fn(),
+      vi.fn(),
       vi.fn(),
     );
     const content = {
@@ -145,5 +149,124 @@ describe("chart property panel", () => {
       semanticKey: "cpu.load",
       offset: -4,
     });
+  });
+});
+
+describe("the series a chart reads", () => {
+  const trend = (
+    bindings: readonly { id: string; semanticKey: string }[],
+  ): Parameters<ChartPropertyPanel["render"]>[0] => ({
+    id: "trends",
+    content: {
+      family: "line",
+      settings: {
+        lineWidth: 2,
+        interpolation: "smooth",
+        stroke: { kind: "solid", color: "#0af" },
+        showMarkers: false,
+        markerSize: 4,
+        windowSeconds: 60,
+        maxPoints: 600,
+        showAxes: false,
+      },
+    },
+    bindings,
+  });
+
+  it("declares the first series, which is what a chart arrives without", () => {
+    // The panel could only ever edit a binding the document already declared,
+    // and a chart inserted through the Add pane declares none — so the whole
+    // family was unauthorable from the surface.
+    const add = vi.fn();
+    const panel = createChartPropertyPanel(
+      document.body,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      add,
+      vi.fn(),
+    );
+    panel.render(trend([]));
+
+    const chooser = panel.root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-chart-binding-add]",
+    )!;
+    chooser.value = "cpu.load";
+    chooser.dispatchEvent(new Event("change"));
+
+    expect(add).toHaveBeenCalledWith("trends", "cpu.load");
+    // The choice is consumed rather than held, so re-rendering the panel cannot
+    // create the same series a second time.
+    expect(chooser.value).toBe("");
+  });
+
+  it("removes a series, but never the last one", () => {
+    const remove = vi.fn();
+    const panel = createChartPropertyPanel(
+      document.body,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      remove,
+    );
+
+    panel.render(trend([{ id: "a", semanticKey: "cpu.load" }]));
+    expect(
+      panel.root.querySelector("[data-vigilia-chart-binding-remove]"),
+    ).toBeNull();
+
+    panel.render(
+      trend([
+        { id: "a", semanticKey: "cpu.load" },
+        { id: "b", semanticKey: "gpu.load" },
+      ]),
+    );
+    panel.root
+      .querySelector<HTMLButtonElement>(
+        '[data-vigilia-chart-binding-remove="b"]',
+      )!
+      .click();
+    expect(remove).toHaveBeenCalledWith("trends", "b");
+  });
+
+  it("says a gauge takes one reading rather than accepting a second", () => {
+    // `buildChartPlan` reads `bindings[0]` for a gauge and ignores the rest, so
+    // a second one would be a control that accepts an edit and applies none.
+    const add = vi.fn();
+    const panel = createChartPropertyPanel(
+      document.body,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      add,
+      vi.fn(),
+    );
+    panel.render({
+      id: "ram-gauge",
+      content: {
+        family: "gauge",
+        settings: {
+          startAngle: 90,
+          endAngle: -270,
+          min: 0,
+          max: 100,
+          thickness: 10,
+          track: { kind: "solid", color: "#000" },
+          progress: { kind: "solid", color: "#fff" },
+          roundCap: true,
+        },
+      },
+      bindings: [{ id: "a", semanticKey: "ram.used.percent" }],
+    });
+
+    const chooser = panel.root.querySelector<HTMLSelectElement>(
+      "[data-vigilia-chart-binding-add]",
+    )!;
+    expect(chooser.disabled).toBe(true);
+    expect(
+      panel.root.querySelector("[data-vigilia-chart-binding-full]")!
+        .textContent,
+    ).toContain("gauge");
   });
 });
