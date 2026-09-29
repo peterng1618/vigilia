@@ -15,6 +15,7 @@ import type {
   SensorDescriptor,
   SensorProvider,
 } from "./provider.js";
+import { redactForBrowser } from "./provider.js";
 
 /**
  * Hardware metrics come from `systeminformation` rather than a collector Vigilia
@@ -762,7 +763,13 @@ export class LibrarySensorProvider implements SensorProvider {
         nowMs,
       );
     } catch (error) {
-      this.failure = error instanceof Error ? error.message : String(error);
+      // `systeminformation` shells out, so its errors quote the command and
+      // the machine's own paths. This message reaches every display on the
+      // network, so the string is cleaned where it is composed rather than on
+      // arrival — the contract at `ProviderHealth` says these are redacted.
+      this.failure = redactForBrowser(
+        error instanceof Error ? error.message : String(error),
+      );
       const timestamp = new Date(nowMs).toISOString();
 
       return owned.map((semanticKey) => ({

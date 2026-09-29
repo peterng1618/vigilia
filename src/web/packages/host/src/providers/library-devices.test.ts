@@ -464,6 +464,32 @@ describe("a library that cannot be read at all", () => {
     expect(sampleOf(entries, "gpu.name")).toMatchObject({ status: "missing" });
     expect(provider.health()).toMatchObject({ available: false });
   });
+
+  it("does not pass a third-party error string through to a browser verbatim", async () => {
+    // `systeminformation` shells out and its errors quote the command and the
+    // machine's own paths. The sample message reaches every display on the
+    // network, so whatever that library says is not what a display is shown.
+    const machine = fakeMachine();
+    const provider = new LibrarySensorProvider({
+      ...machine,
+      graphics: async () => {
+        throw new Error(
+          "spawn C:\\Windows\\System32\\wbem\\WMIC.exe ENOENT after querying http://192.168.1.5:5985/wbem",
+        );
+      },
+    });
+
+    const message =
+      sampleOf(await provider.sample(["gpu.temp"], 0), "gpu.temp")?.message ??
+      "";
+
+    expect(message).not.toContain("WMIC.exe");
+    expect(message).not.toContain("192.168.1.5");
+    // The cause still survives, because "a sensor has no reading" with no
+    // reason is a gap a person cannot act on.
+    expect(message).toContain("system information is unavailable");
+    expect(message).toContain("ENOENT");
+  });
 });
 
 describe("nothing but a caption is asked for", () => {

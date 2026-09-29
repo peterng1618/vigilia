@@ -18,6 +18,7 @@ import type {
   SensorDescriptor,
   SensorProvider,
 } from "./provider.js";
+import { redactForBrowser } from "./provider.js";
 
 /**
  * LibreHardwareMonitor as an optional external program (§97): Vigilia reads the
@@ -198,14 +199,18 @@ export class LhmSensorProvider implements SensorProvider {
       this.failure = undefined;
     } catch (error) {
       // Absent LHM is ordinary: the registry falls back and the display sees a
-      // gap with a reason, never an invented reading.
-      this.failure = error instanceof Error ? error.message : String(error);
+      // gap with a reason, never an invented reading. The reason is redacted
+      // where it is composed, because this message reaches every display on
+      // the network and the transport address is the host's, not the reader's.
+      this.failure = redactForBrowser(
+        error instanceof Error ? error.message : String(error),
+      );
       return owned.map((semanticKey) => ({
         semanticKey,
         sample: missing(
           `${LHM_PROVIDER_ID}:${semanticKey}`,
           timestamp,
-          `LibreHardwareMonitor is not reachable at ${this.baseUrl}: ${this.failure}`,
+          `LibreHardwareMonitor is not reachable at its configured address: ${this.failure}`,
         ),
       }));
     }

@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.36: the host serves the template, so `/` lists it.** `SHIPPED_TEMPLATES` (`themes/templates.ts`) travels beside the stored themes on `/api/themes` and `/api/themes/active`, and the row owner that `e245138` put in `theme-list.js` draws it — **Templates** above **Your themes**, so a template never reads as a theme the author saved.
-- **The row is a link to `/editor/`, not a button**, because a template is not stored: `PUT /api/themes/active` still 404s it, and the picture is the hatched stand-in drawn directly rather than an `<img>` that would 404 on every load.
-- **The first-run page named it too** — it told a new PC to "build one" while the product ships a finished dashboard, and it is the page a new PC actually sees.
-- **Proven in a browser** at 1920×1080 on a real host: the chooser and `/settings` each list the template above the saved themes, 0 console errors on both. 2049 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: `body.templates` was `undefined` on both routes.
+- **F1.24: a provider's reason is redacted where it is composed.** `redactForBrowser` sits in `provider.ts` — the file whose `ProviderHealth` comment already said *"messages may reach a browser and must be redacted"* — and both providers call it before the string becomes a message. Decision note [0014](docs/decisions/0014-a-provider-reason-is-redacted-where-it-is-composed.md).
+- **What it removes is the machine, not the diagnosis.** A URL, a `host:port` and a filesystem path become *"its configured address"* — the exact phrase `a34b838`'s player net already substitutes, so the two layers cannot disagree. `connect ECONNREFUSED` and `ENOENT` stay: a display that says only "no reading" has learned nothing a person can act on.
+- **The sentence is unchanged, so the player's grouping is untouched.** `lhm.ts` still composes one reason per cause; the player's seven tests pass unmodified and its net stays as the net it was written to be.
+- **Probed each real error string** rather than assuming: LHM gives `connect ECONNREFUSED 127.0.0.1:8085` and host-authored `LHM answered 500`; `systeminformation` gives `spawn C:\Windows\System32\wbem\WMIC.exe ENOENT`. A `\b` does not work before a `/`, so the anchor is a lookbehind — which also leaves `2026/09/29` alone, and `2340:1080` and `19.5:9` are a test, not a hope. 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: the sample message carried `127.0.0.1` and `WMIC.exe`.
 
 ## Next
 
