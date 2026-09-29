@@ -302,6 +302,25 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **It also named F1.41**, above: *Preview fit* said "Contain"/"Cover" while *Media fit* said "cover"/"contain" for the same two values, in one panel.
 
+| F1.42 | **The canvas context menu cannot scroll** | Measured by the F1.39 implementer: the context menu fits at 1280 × 720 and does not fit a shorter editor window, and it has no scroll. A 13-item menu on a short window would simply be clipped at the bottom, with the last item unreachable. The editor is desktop-only, so the window can still be short. | `editor-shell/canvas-context-menu` |
+| F1.43 | **A happy-path assertion got weaker** | `host-player.spec.ts:504` asserts no `<pre>` in the player happy path. After `b01b301` replaced the failure `<pre>` with a real page, that assertion still passes but now **guards a marker the failure path no longer uses** — it would not notice the failure page coming back as a `<pre>`. Re-point it at `[data-vigilia-load-failure]`. | `tests/e2e/host-player.spec.ts` |
+
+### F1.14, F1.38 and F1.39 landed; F1.41 verified, not fixed
+
+`b01b301`, `b861302`, `4df697c`. **F1.41 needed no commit** — both fit fields already read `uiCopy.fitModes`; the implementer proved that rather than assuming it, by sabotaging the media-fit spelling back to the raw id and watching the test go red.
+
+**A display that could not load now says so as a page, not a strip** — so it cannot be read as a gap:
+
+> **This display has nothing to show** — Vigilia could not load the theme this display was pointed at. `Reason: Could not load theme (404).` **[Try again]** *Go to the host*
+
+`document.title` becomes *Vigilia — nothing to display*, so a reader with several displays open can tell which one broke. The link is underlined rather than boxed because the host's own stylesheet says a link is the only control that leaves the page.
+
+**And the new page made an old behaviour a lie, which it fixed.** A packaged font that would not load used to call `showFailure` — but `loadFontAssets` never rejects; it reports per face and carries on. So a display **drawing correctly in a fallback** was covered by a page claiming nothing was shown. It is now a warning.
+
+**F1.39's argument is the one to keep.** The context menu *could not* drift on charts, and that was true — but it offered **5 of 13** insertables with no shape in it, so a right-click on empty canvas was a strictly poorer version of the Insert menu one gesture away. A third surface hand-rolling a list contradicts `insertGroups()` calling itself the one owner. It now renders that list flattened, in the pane's order under the pane's headings — which is also what separates the two "Line" rows.
+
+**A real bug its own test caught before the browser did.** A portrait document's aspect is the *reciprocal* of the ratio it would be named for, so a typed 1280 × 2778 measured **0.46** against a 19.5:9 entry of 2.17, matched nothing, and landed on 4:3 — the same stranding in a different hat. Ratios are matched long-over-short now.
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
