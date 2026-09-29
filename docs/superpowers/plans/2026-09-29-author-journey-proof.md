@@ -411,7 +411,16 @@ Twenty-five items from using the editor. Recorded verbatim in intent, triaged by
 own preview on 4223, its own real host on 4224, its own themes directory, its own
 `--output`). All eight regions in **one** document, the backdrop imported through
 `Import asset`, saved by the header's own control, then shown on a real host at
-1920 × 1080 and 390 × 844. 1 passed, 3.6 min.
+1920 × 1080 and 390 × 844, with the editor reading the same package back and the
+material asserted. **1 passed, 6.1 min, exit 0.**
+
+**Three captures, and what each is for.** `player-desktop.png` and
+`player-phone.png` are the display; `editor-desktop.png` is the same package
+reopened through `File ▸ Open package`, so the round trip is compared rather than
+assumed. The wait for the host is **not** swallowed: an earlier version caught the
+failure and carried on, and the screenshot it took was a dashboard of em-dashes
+that cost an hour of diagnosis (F2.18). A capture that cannot show live data
+fails the test instead.
 
 **The gap is closed: the composition is authorable, it persists, and it is
 viewable.** The player renders every region, the sensor gaps are gaps rather than
