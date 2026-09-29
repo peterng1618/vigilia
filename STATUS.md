@@ -28,8 +28,8 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete and the rebuild has run once; the Findings backlog is now the working queue and it is **live** — it grows and re-prioritises as things are found.
-- **How big the backlog is:** ~40 findings, 26 landed, 1 resolved as a side effect, 2 withdrawn, the rest queued or in a design pass. Groups **A** (defects) and **B** (decided) are dispatchable now; **C** wants a design pass first; **D** are questions.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and the Findings backlog is the working queue — **~40 findings, 28 landed**, 1 resolved as a side effect, 2 withdrawn, the rest queued or in a design pass.
+- **Start at "START HERE" at the top of that backlog.** Two settled tasks are written out in order, with the parts that are easy to get wrong spelled out. Both were dispatched and stood down unstarted at the user's ask, so the tree is clean and the next session begins from a known point.
 - **The frame that matters:** the editor is **desktop-only** (`tests/e2e/surface.ts`); a **phone is the main display type** and the **player is the product's face**. Weight player and phone work accordingly.
 - **The rule for the pass:** fix what you find using what the repo already decides — the owner in `ownership.md`, the surrounding idiom, the copy in `ui-copy.ts`, the pattern the existing controls set. Only a genuine product decision with no precedent gets recorded and passed over. **Nothing waits on a human.**
 
@@ -43,8 +43,8 @@ The loop, in order:
 
 ## Next
 
-1. **Keep using the product.** The backlog is only as good as the last hour of driving it.
-2. Dispatch the largest untouched group from the user's review: **bounded number fields** — sliders (Base UI already ships `slider/`) and **clamping instead of reverting**, which is what teaches an author the bound.
+1. **Work the "START HERE" queue at the top of the plan's findings backlog.** Both entries are settled, dispatched-spec'd and waiting; neither needs a decision first: (1) the glass control shows its own limit and tooltips get one shared owner, (2) bounded number fields clamp instead of reverting, and get a slider.
+2. **Keep using the product.** The backlog is only as good as the last hour of driving it.
 3. Group C still wants a design pass: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface.
 4. The screenshot spring clean — now for the merely-stale captures; the **v1 ones wait until v1 is removed**, as decided.
 5. Then the font trio catalogue and the queued specs.
