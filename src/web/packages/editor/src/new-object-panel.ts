@@ -78,8 +78,12 @@ export function createNewObjectPanel(
     button.dataset["vigiliaPanelAdd"] = kind;
     button.addEventListener("click", () =>
       constructing(() => {
+        // The id is the stable key bindings, the schema path and the envelope
+        // carry, so it names the kind the button made. F1.8 gave the *display*
+        // the right name and an author never sees the id, which is exactly why
+        // a circle keyed `panel-…` survived: nobody reading the screen sees it.
         const inserted = createNewShape(
-          `panel-${crypto.randomUUID()}`,
+          `${kind}-${crypto.randomUUID()}`,
           currentGlobals,
           kind,
         );
@@ -92,7 +96,18 @@ export function createNewObjectPanel(
     return button;
   });
   shapes.append(shapesLegend, ...shapeButtons);
-  const charts = (
+  /**
+   * The chart families, in the group the shape list already established. They
+   * were peers of Panel before the primitives arrived, and leaving them as
+   * chips under a legend that is not about them orphaned them *and* left two
+   * buttons called "Line" with nothing to tell them apart — a screen reader
+   * hears the same word twice, and a test cannot address either one. Same
+   * fix as above, for the same reason.
+   */
+  const charts = document.createElement("fieldset");
+  const chartsLegend = document.createElement("legend");
+  chartsLegend.textContent = uiCopy.panels.charts;
+  const chartButtons = (
     [
       [uiCopy.chartFamilies.gauge, "gauge"],
       [uiCopy.chartFamilies.line, "line"],
@@ -108,7 +123,8 @@ export function createNewObjectPanel(
     );
     return button;
   });
-  root.append(heading, text, shapes, ...charts);
+  charts.append(chartsLegend, ...chartButtons);
+  root.append(heading, text, shapes, charts);
   host.append(root);
   return {
     root,
