@@ -1,6 +1,7 @@
 /* eslint-disable no-use-before-define -- the public controller sits above its internal checks. */
-import { ActiveSelection } from "fabric/es";
+
 import type { Canvas, FabricObject, TPointerEvent, Transform } from "fabric/es";
+import { ActiveSelection } from "fabric/es";
 import type { ObjectBounds } from "../bounds.js";
 import {
   collectSnapSources,
@@ -12,9 +13,9 @@ import type { GuideLine } from "../types.js";
 import {
   createRectangularScaleGestureProjection,
   createRectangularScaleProjectionModes,
-  resolveRectangularScaleMovingEdges,
   type RectangularScaleGestureProjection,
   type RectangularScalePoint,
+  resolveRectangularScaleMovingEdges,
 } from "./rectangular-scale-gesture-projection.js";
 import {
   applyRectangularScalePlan,

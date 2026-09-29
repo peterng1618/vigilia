@@ -84,10 +84,10 @@ describe("EditorSession", () => {
         requestRenderAll: vi.fn(),
       },
       textManager: {
-          addText: vi.fn(),
-          setAuthoringView: vi.fn(),
-          setRepaint: vi.fn(),
-        },
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
     };
     const onOpenPackage = vi.fn();
     const onSaved = vi.fn();
@@ -153,10 +153,10 @@ describe("EditorSession", () => {
             requestRenderAll: vi.fn(),
           },
           textManager: {
-          addText: vi.fn(),
-          setAuthoringView: vi.fn(),
-          setRepaint: vi.fn(),
-        },
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
         },
         scene: {},
         snapshot: vi.fn(() => envelope),
@@ -213,10 +213,10 @@ describe("EditorSession", () => {
             requestRenderAll: vi.fn(),
           },
           textManager: {
-          addText: vi.fn(),
-          setAuthoringView: vi.fn(),
-          setRepaint: vi.fn(),
-        },
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
         },
         scene: {},
         snapshot: vi.fn(() => envelope),

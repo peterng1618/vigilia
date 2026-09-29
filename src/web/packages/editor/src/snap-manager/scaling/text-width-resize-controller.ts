@@ -1,7 +1,8 @@
 // Ported: fork 9efdd78a src/editor/text-manager/scaling/text-width-resize-interaction-controller.ts
 // (fork coupling stripped — plain `fabric/es` Textbox; guides are returned, not published)
-import { Point, Textbox } from "fabric/es";
+
 import type { Canvas, TPointerEvent, Transform } from "fabric/es";
+import { Point, Textbox } from "fabric/es";
 
 import { getObjectExactBounds, type ObjectBounds } from "../bounds.js";
 import {
@@ -11,13 +12,13 @@ import {
 } from "../index.js";
 import type { GuideLine } from "../types.js";
 import { createScaleSnapCandidates } from "./scale-snap-candidates.js";
-import { ScaleSnappingRuntime } from "./scale-snapping-runtime.js";
 import {
   createScaleGestureBaseline,
   type FinalScaleGeometry,
   type ScaleSnapPlan,
   type VerifiedScaleGuide,
 } from "./scale-snapping-resolver.js";
+import { ScaleSnappingRuntime } from "./scale-snapping-runtime.js";
 import {
   applyTextboxWidth,
   createTextWidthResizeMeasurer,

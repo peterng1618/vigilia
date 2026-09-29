@@ -1,6 +1,6 @@
 import {
-  glassTreatment,
   type GlassTreatment,
+  glassTreatment,
   VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
 import { type FabricObject, Rect } from "fabric/es";

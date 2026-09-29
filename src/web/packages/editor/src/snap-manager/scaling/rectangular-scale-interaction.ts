@@ -1,9 +1,9 @@
 // Ported: fork 9efdd78a src/editor/snapping-manager/scaling/rectangular-scale-interaction.ts
 /* eslint-disable no-use-before-define -- the public operations sit above their internal calculations. */
 import {
-  Point,
   type Canvas,
   type FabricObject,
+  Point,
   type TPointerEvent,
   type Transform,
 } from "fabric/es";
@@ -11,12 +11,12 @@ import {
 import { getObjectExactBounds, type ObjectBounds } from "../bounds.js";
 import {
   createRectangularScaleValues,
-  resolveRectangularScaleMultipliers,
-  resolveRectangularScalePointerMultipliers,
   type RectangularScaleGestureMode,
   type RectangularScaleGestureProjection,
   type RectangularScaleMultipliers,
   type RectangularScalePoint,
+  resolveRectangularScaleMultipliers,
+  resolveRectangularScalePointerMultipliers,
 } from "./rectangular-scale-gesture-projection.js";
 import type {
   FinalScaleGeometry,

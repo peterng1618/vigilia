@@ -1,5 +1,5 @@
-import { Textbox } from "fabric/es";
 import type { ActiveSelection, FabricObject } from "fabric/es";
+import { Textbox } from "fabric/es";
 
 // Ported: fork 9efdd78a src/editor/snapping-manager/movement/movement-snapping-controller.ts:180-197
 // Dropped clause: the fork's per-child kind allow-list. The fork needed it because

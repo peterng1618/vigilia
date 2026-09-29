@@ -1,4 +1,8 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+// The rail pane's toggle rule has one owner and one guard: this file grew a
+// second copy of it while the rebuild was being written, which is F1.28's
+// class again.
+import { openRailPane } from "./editor-rail.js";
 
 /**
  * Driving the editor the way an author does.
@@ -122,20 +126,6 @@ export async function openBlank(
   const discard = page.getByRole("button", { name: "Discard", exact: true });
   if (await discard.isVisible().catch(() => false)) await discard.click();
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
-}
-
-/** The rail pane an author opens, clicked only when it is not already showing. */
-export async function openRailPane(page: Page, pane: string): Promise<void> {
-  const button = page.getByRole("button", { name: pane, exact: true });
-  // The active entry closes the panel, so a helper that always clicked would
-  // make the pane untestable — the defect F1.28's agent found in the suite.
-  if (
-    (await button.getAttribute("aria-expanded")) !== "false" &&
-    (await button.getAttribute("aria-pressed")) === "true"
-  )
-    return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 export async function openTab(page: Page, tab: string): Promise<void> {

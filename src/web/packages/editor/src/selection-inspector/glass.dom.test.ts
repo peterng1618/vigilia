@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Rect, Group, Textbox } from "fabric/es";
+import { Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
 

@@ -1,15 +1,16 @@
 // Ported: fork 9efdd78a src/editor/snapping-manager/scaling/scale-snapping-resolver.ts
 /* eslint-disable no-use-before-define -- the public contracts sit above the internal calculations. */
-import { SNAP_THRESHOLD, SPACING_SNAP_HOLD_MARGIN } from "../constants.js";
+
 import type { ObjectBounds } from "../bounds.js";
+import { SNAP_THRESHOLD, SPACING_SNAP_HOLD_MARGIN } from "../constants.js";
 import {
   createScaleProjection,
   getScaleProjectionCorrectionMagnitude,
   getScaleProjectionEdge,
+  type ProjectedScaleEdgePositions,
   projectScaleEdgePositions,
   resolveScaleProjection,
   resolveScaleSceneEdgeAxis,
-  type ProjectedScaleEdgePositions,
   type ScaleProjection,
   type ScaleProjectionConstraint,
   type ScaleProjectionInput,

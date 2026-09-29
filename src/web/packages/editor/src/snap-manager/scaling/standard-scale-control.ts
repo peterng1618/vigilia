@@ -1,7 +1,7 @@
 // Ported: fork 9efdd78a src/editor/snapping-manager/scaling/standard-scale-control.ts
 import {
-  controlsUtils,
   type Control,
+  controlsUtils,
   type FabricObject,
   type TPointerEvent,
   type Transform,

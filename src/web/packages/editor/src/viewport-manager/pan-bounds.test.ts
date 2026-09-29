@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PAN_OVERSCROLL_MARGIN, clampPan } from "./pan-bounds.js";
+import { clampPan, PAN_OVERSCROLL_MARGIN } from "./pan-bounds.js";
 
 const viewport = { width: 1000, height: 800 };
 const artboard = { width: 1280, height: 720 };

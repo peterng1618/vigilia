@@ -1,7 +1,7 @@
 import {
   isObjectName,
-  validateFabricThemeEnvelope,
   VIGILIA_GLASS_PROPERTY,
+  validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
   SCENE_PERSISTED_PROPERTIES,

@@ -1,20 +1,20 @@
-import { Point, Rect, type FabricObject } from "fabric/es";
-import { type Mock, describe, expect, it, vi } from "vitest";
+import { type FabricObject, Point, Rect } from "fabric/es";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import type { ObjectBounds } from "../bounds.js";
 import {
   createRectangularScaleGestureProjection,
   createRectangularScaleProjectionModes,
   createRectangularScaleValues,
   projectRectangularScaleBounds,
-  resolveRectangularScaleModeProjection,
-  resolveRectangularScaleMovingEdges,
-  resolveRectangularScaleMultipliers,
-  resolveRectangularScalePointerMultipliers,
   type RectangularScaleControlKey,
   type RectangularScaleGestureMode,
   type RectangularScaleGestureTransform,
   type RectangularScaleMultipliers,
   type RectangularScalePoint,
+  resolveRectangularScaleModeProjection,
+  resolveRectangularScaleMovingEdges,
+  resolveRectangularScaleMultipliers,
+  resolveRectangularScalePointerMultipliers,
 } from "./rectangular-scale-gesture-projection.js";
 
 // The gesture fixture is ported from the fork's own unit fixture

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { Canvas, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
-import { createSnapManager } from "./index.js";
 import { IGNORED_IDS } from "./excluded-objects.js";
+import { createSnapManager } from "./index.js";
 
 function setup() {
   const canvas = new Canvas(document.createElement("canvas"));

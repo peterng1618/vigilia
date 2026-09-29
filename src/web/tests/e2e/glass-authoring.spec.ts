@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
-import { clientOfScene, captureVisualReview } from "./editor-canvas.js";
+import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
 import {
   AUTHORING_PANEL_ID,
   GLASS_ARTBOARD,

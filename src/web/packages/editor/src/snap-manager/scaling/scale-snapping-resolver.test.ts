@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { ObjectBounds } from "../bounds.js";
 import type { ScaleSceneEdge } from "./scale-projection.js";
 import {
-  FREE_SCALE_HOLD_STATE,
+  createScaleGestureBaseline,
+  createScaleProjectionConstraints,
   type FinalScaleGeometry,
+  FREE_SCALE_HOLD_STATE,
+  refineScaleSnapPlan,
+  resolveScaleSnapPlan,
   type ScaleGestureBaseline,
   type ScaleRawIntent,
   type ScaleScenePoint,
   type ScaleSnapCandidateInput,
-  createScaleGestureBaseline,
-  createScaleProjectionConstraints,
-  refineScaleSnapPlan,
-  resolveScaleSnapPlan,
   verifyScaleSnapPlan,
 } from "./scale-snapping-resolver.js";
 

@@ -1,10 +1,10 @@
 // Ported: fork 9efdd78a src/editor/snapping-manager/scaling/scale-snapping-runtime.ts
 /* eslint-disable no-use-before-define -- the public runtime sits above its internal checks. */
 import {
+  type FinalScaleGeometry,
   FREE_SCALE_HOLD_STATE,
   refineScaleSnapPlan,
   resolveScaleSnapPlan,
-  type FinalScaleGeometry,
   type ScaleGestureBaseline,
   type ScaleHoldState,
   type ScaleRawIntent,

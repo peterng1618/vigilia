@@ -2,7 +2,7 @@
 
 import { Canvas, Point } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_ZOOM, MIN_ZOOM, createViewportManager } from "./index.js";
+import { createViewportManager, MAX_ZOOM, MIN_ZOOM } from "./index.js";
 
 // jsdom cannot drawImage an undecoded img inside Fabric's render pass; a proxy
 // over a real context forwards everything, no-ops only drawImage, and swallows

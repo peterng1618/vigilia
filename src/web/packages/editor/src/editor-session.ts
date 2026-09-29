@@ -10,7 +10,7 @@ import {
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { artboardSize, type ArtboardSize } from "./artboard-presets.js";
+import { type ArtboardSize, artboardSize } from "./artboard-presets.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { createAssetPanel } from "./asset-manager/panel.js";
 import {
@@ -39,7 +39,6 @@ import {
   insertNewText,
   type NewObjectPanel,
 } from "./new-object-panel.js";
-import { promptThemeSelection } from "./theme-library-dialog.js";
 import {
   createPalettePanel,
   type PalettePanel,
@@ -65,6 +64,7 @@ import {
   createThemeLibraryClient,
   type ThemeLibraryClient,
 } from "./theme-library-client.js";
+import { promptThemeSelection } from "./theme-library-dialog.js";
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,

@@ -1,6 +1,6 @@
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
-import { uiCopy } from "./ui-copy.js";
 import type { ThemeLibraryEntry } from "./theme-library-client.js";
+import { uiCopy } from "./ui-copy.js";
 
 /** What the author picked, and which kind of thing it is. A template and a
  *  saved theme are opened by different routes — one is built here, the other

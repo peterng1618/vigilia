@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { createScaleSnapCandidates } from "./scale-snap-candidates.js";
 import {
   createScaleProjection,
   getScaleProjectionCorrectionMagnitude,
@@ -8,6 +7,7 @@ import {
   resolveScaleProjection,
   resolveScaleSceneEdgeAxis,
 } from "./scale-projection.js";
+import { createScaleSnapCandidates } from "./scale-snap-candidates.js";
 
 // A 200x100 object at (100, 100), modelled the way the fork's text-width path
 // models it: the variable is the width itself, so `baselineValues` carries the

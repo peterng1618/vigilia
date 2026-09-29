@@ -11,8 +11,8 @@ import {
   vramCard,
 } from "./new-fabric-theme-cards.js";
 import {
-  starterPalette,
   type StarterPaletteId,
+  starterPalette,
   starterTypePresets,
 } from "./new-fabric-theme-globals.js";
 import { label } from "./new-fabric-theme-objects.js";
