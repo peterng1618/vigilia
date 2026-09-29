@@ -374,4 +374,31 @@ describe("artboard presets in the panel", () => {
       expect(custom.disabled).toBe(true);
     }
   });
+
+  it("states that a size change does not move content, beside the controls that change it", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1672, height: 941 });
+
+    // The one-click ratio change is the whole of F1.33: the author picks a
+    // ratio and content silently falls outside the new frame. The panel owns
+    // what a size means, so it says so where the control is — before the click,
+    // not after. It cannot count what is outside, because the scene is not its
+    // to read, so it states the rule and never a number it has not measured.
+    const note = panel.root.querySelector("[data-vigilia-artboard-note]");
+    expect(note?.textContent).toBe(
+      "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
+    );
+    expect(note?.getAttribute("role")).toBe("note");
+  });
+
+  it("describes the width box with that note, so it reaches a screen reader too", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render({ width: 1672, height: 941 });
+
+    const width = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-artboard-width]",
+    )!;
+    const note = panel.root.querySelector("[data-vigilia-artboard-note]")!;
+    expect(width.getAttribute("aria-describedby")).toBe(note.id);
+  });
 });

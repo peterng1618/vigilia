@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F0.1: `New` is a blank theme at a size the author picks.** `createBlankFabricTheme` builds from the starter with the scene, assets and bindings emptied, and opens a chooser *before* the document mounts: ratio × orientation × resolution off `artboard-presets.ts`, default 16:9 landscape 1080p, with the derived size stated live. The palette is the nine the decision names, narrowed **by id** from `starterPalette` so no colour is restated — plus `none`, which the validator requires of any palette.
-- **F0.3: the starter is a template, not what `New` means.** `New from starter` restores it verbatim, and the library chooser lists it under **Templates** beside **Your themes**. It is not in the host's store, so there is nothing to delete and it cannot enter a count of the author's themes — the editor serves it, the host never sees it.
-- **The page token is `chartTrack`, measured, not chosen.** It is the only one of the nine where every ink clears AA on it (`text` 12.1, `dim` 6.9, `rule` 6.5, `frostInk` 10.9); `panel` makes a card 1.02:1 and `dim` puts text at 1.74:1.
-- **Found by the test, fixed in the pass:** `SURFACE_TOKENS` never looked for `chartTrack`, so a blank theme's new gauge arrived with its track painted in the colour of its own data and drew nothing. One token added to the list that names surfaces.
-- **Found by the browser, fixed in the pass:** the chooser and the replace-confirm both landed in the top-left corner, over the menu that opened them — Tailwind's preflight zeroes the `margin: auto` a modal dialog is centred by. Both are named, centred and styled now.
+- **F1.34: the player says what the artboard does not contain.** `artboard-crop.ts` measures the mounted canvas and, when objects fall outside the artboard rect, a full-width strip names the proportion and the side — *"27 of 52 objects are outside this artboard and are not shown — past the right edge"*. It names the **side**, not the objects: a wall reader is not the author, and the layer list is where object ids are looked up. Slate, not the amber of the sensor notice, because §97 requires a gap in the *composition* not to read as a gap in the *data*. Told once and left — no reading arriving brings a cropped panel back.
+- **F1.33: the artboard panel states what a size costs, beside the controls that set one.** A one-click ratio change writes a whole new size and moves nothing, so the panel now carries *"Objects are not moved or resized. Anything outside the artboard is not shown on a display."* under the W/H pair, `aria-describedby` all five size controls. It states the rule and **no count**: the scene is not the panel's to read, and a number it has not measured would be a guess.
+- **The two top strips stack in one column** rather than each being `position: fixed; top: 0`. A theme can be both short of a reading and cropped, and two fixed strips at the same offset draw over one another.
+- **Proven on a phone at 390 × 844**, before and after, from the real starter saved at 19.5:9 portrait: 27 of 52 objects outside, the Storage and Network panels gone and the RAM card sliced at the edge, previously with nothing said. Rescaling is untouched — `reference-theme.spec.ts`'s pin still holds.
+- **Found and filed, not mine:** [#7](https://github.com/peterng1618/vigilia/issues/7) — `reference-theme.spec.ts`'s `Ctrl+N` discard prompt times out waiting for a `Discard` button. Reproduces identically with this work stashed, so it is pre-existing; cause not established.
 
 ## Next
 
@@ -33,7 +33,8 @@ hand is what finds the authoring control that is missing.
 
 ## Blockers / unverified
 
+- [#7](https://github.com/peterng1618/vigilia/issues/7) is open against the active pass: the `Ctrl+N` discard prompt on a saved document, cause not established and pre-existing.
 - The frosted CPU card, twice: the glass verdict is unverified by definition (no agent can see whether a panel reads as glass, and the last human judgement came from a sampler cropping the wrong part of the photograph), and its own `mr` handle does not track the pointer — a resize aiming 10 units right landed 4.24 units left, where the same gesture on the un-frosted RAM card landed on the neighbouring edge. Task 5-shaped, open, in `task-7-report.md`.
 - Task 9's three open edges, named: the `Promise.allSettled` split frame, the POSIX drive→volume join proven only on Windows, and `storage-card-value`'s box ending 28 units past its card.
 - The video frame callback is now measured on the player and provably not load-bearing there — 92 render requests already became 40 renders with it removed. It is load-bearing in the editor, which nothing browser-tests.
-- `library.ts` is 785 lines and its extraction into `library-devices.ts` is required before any future selection work; the `line` family applies `areaStyle` to the first series only (`charts/line.ts:254`).
+- The crop strip is measured once at mount, not per frame: Fabric does not move objects on a data refresh, and re-measuring every 30 s would only cost. A theme whose *authored* geometry changed under a running display would not re-notice — no such path exists today.

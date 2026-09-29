@@ -23,6 +23,7 @@ import {
 } from "@vigilia/renderer-core";
 import {
   applyAuthoredText,
+  type FabricSceneHandle,
   loadFontAssets,
   mountFabricScene,
   refreshBoundText,
@@ -30,7 +31,13 @@ import {
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { type FabricObject, Group } from "fabric/es";
 import { availabilityNoticeText } from "./availability-notice.js";
+import {
+  type ArtboardSize,
+  cropNoticeText,
+  type SceneBox,
+} from "./artboard-crop.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
@@ -179,6 +186,7 @@ function startFixtureTheme(
 
   reportIssues(first);
   reportMissingFonts(first);
+  showCropNotice(handle, theme.artboard);
 
   if (fake === undefined) {
     showConnectionState("connecting", requiredSemanticKeys(theme).length);
@@ -332,6 +340,9 @@ async function startHostedTheme(
   };
 
   refresh();
+  // Measured after revival and the first text pass: before them the boxes on
+  // the canvas are the saved ones, not the ones the display will draw.
+  showCropNotice(handle, theme.artboard);
   showConnectionState("connecting", keys.length);
   const chartRefresh = startChartRefresh(refresh, 30, undefined, {
     onError: reportRepaintError,
@@ -491,9 +502,82 @@ function showAvailabilityNotice(
   notice.dataset["vigiliaAvailability"] = "";
   notice.textContent = text;
   notice.style.cssText =
-    "position:fixed;left:0;right:0;top:0;z-index:9;padding:6px 12px;text-align:center;" +
+    "padding:6px 12px;text-align:center;" +
     "background:#3a2a00;color:#ffce6a;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
-  document.body.append(notice);
+  topNotices().append(notice);
+}
+
+/**
+ * The full-width strips along the display's top edge, stacked.
+ *
+ * A column rather than a `position: fixed` strip per notice: a theme can be
+ * both short of a reading and holding objects the artboard does not contain,
+ * and two fixed strips at `top: 0` would draw over one another. Section 97
+ * wants those two gaps to look different, not to hide one another.
+ */
+function topNotices(): HTMLElement {
+  const id = "vigilia-notices";
+  const existing = document.getElementById(id);
+  if (existing !== null) return existing;
+
+  const column = document.createElement("div");
+  column.id = id;
+  column.style.cssText =
+    "position:fixed;left:0;right:0;top:0;z-index:9;display:flex;flex-direction:column";
+  document.body.append(column);
+  return column;
+}
+
+/**
+ * Says what this artboard does not contain, and that it is not being shown.
+ *
+ * The other notices here all describe the *transport* — a sensor with no
+ * reading, a host that went away. This one describes the *composition*, and it
+ * is told once and left: no reading arriving will bring a cropped panel back,
+ * and a strip that came and went would read as a fault the display recovered
+ * from. Only a re-saved theme can change it.
+ */
+function showCropNotice(
+  handle: FabricSceneHandle,
+  artboard: ArtboardSize,
+): void {
+  document.getElementById("vigilia-crop")?.remove();
+
+  const text = cropNoticeText(sceneBoxes(handle.canvas.getObjects()), artboard);
+  if (text === undefined) return;
+
+  const notice = document.createElement("div");
+  notice.id = "vigilia-crop";
+  notice.dataset["vigiliaCrop"] = "";
+  notice.textContent = text;
+  // Slate rather than the amber of `showAvailabilityNotice`: a missing reading
+  // is this instant's news and a crop is a standing property of the theme, and
+  // §97 requires the two gaps not to read as the same kind of gap.
+  notice.style.cssText =
+    "padding:6px 12px;text-align:center;" +
+    "background:#1d2230;color:#c3cde3;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
+  topNotices().append(notice);
+}
+
+/** Each object on the canvas, in artboard units. Fabric's `getBoundingRect` is
+ *  in the scene plane, which is the artboard's own units before the viewport
+ *  transform — the numbers the artboard is measured in. Recursed into groups,
+ *  because a group placed half off the artboard takes its children with it and
+ *  a reader is missing every one of them. */
+function sceneBoxes(objects: readonly FabricObject[]): SceneBox[] {
+  return objects.flatMap((object) => {
+    const rect = object.getBoundingRect();
+    const box: SceneBox = {
+      visible: object.visible,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    return object instanceof Group
+      ? [box, ...sceneBoxes(object.getObjects())]
+      : [box];
+  });
 }
 
 /** Persistent disclosure that displayed values are synthetic. */

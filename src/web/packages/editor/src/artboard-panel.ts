@@ -181,6 +181,36 @@ export function createArtboardPanel(
     custom.disabled = true;
     select.append(custom);
   }
+  /**
+   * What a size costs, said once, next to the controls that set one.
+   *
+   * Every control here writes a size and nothing else: choosing 19.5:9
+   * portrait from a 1672 × 941 composition is one click, and it leaves the
+   * objects where they were, so a third of a dashboard ends up outside the
+   * frame with the artboard still showing where that frame is. The panel owns
+   * what a size means, and the scene is not its to read — so it states the
+   * rule and no count, which is the one thing here it can say truthfully.
+   */
+  const sizeNote = document.createElement("p");
+  sizeNote.dataset["vigiliaArtboardNote"] = "";
+  sizeNote.id = `vigilia-artboard-note-${++fieldSeq}`;
+  sizeNote.setAttribute("role", "note");
+  sizeNote.textContent = uiCopy.panels.artboardSizeNote;
+  // The row is a wrapping flex line, so the note takes a line of its own the
+  // way the shell's own error line does. Styled here rather than in the shell
+  // stylesheet because the panel is this module's own markup, and this is the
+  // idiom `languageSample` already sets from the same file.
+  sizeNote.style.cssText =
+    "flex-basis:100%;margin:0;color:var(--shell-muted);font-size:12px";
+  for (const control of [
+    size.first,
+    size.second,
+    ratio.select,
+    orientation.select,
+    resolution.select,
+  ]) {
+    control.setAttribute("aria-describedby", sizeNote.id);
+  }
   const rows = [
     size.row,
     ratio.row,
@@ -192,6 +222,9 @@ export function createArtboardPanel(
     media.row,
     mediaFit.row,
   ];
+  // On the size row, because the width and height boxes are where an author
+  // types a size of their own; the row wraps, so it takes a line of its own.
+  size.row.append(sizeNote);
   const submitMetadata = (): void => {
     const next = compactMetadata({
       ...currentMetadata,

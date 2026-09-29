@@ -34,4 +34,22 @@ export const uiCopy = {
     /** Stands in for the transport address a provider named in its reason. */
     address: "its configured address",
   },
+  /** Objects the artboard does not contain, so the display never painted
+   *  them. Distinct from `availability` on purpose (§97): a missing sensor is
+   *  a gap in the *data*, a crop is a gap in the *composition*, and a reader
+   *  who cannot tell them apart is told neither.
+   *
+   *  `edges` names the sides the content ran off, not the objects. Whoever
+   *  reads a display is not the author, and "past the right edge" says what is
+   *  wrong and what to do about it; a list of object ids says neither, and the
+   *  layer list is where an author looks those up. */
+  cropped: (outside: number, total: number, edges: readonly string[]): string =>
+    `${outside} of ${total} objects are outside this artboard and are not shown` +
+    (edges.length === 0 ? "" : ` — ${edges.join(" and ")}`),
+  croppedEdges: {
+    right: "past the right edge",
+    bottom: "past the bottom edge",
+    left: "past the left edge",
+    top: "past the top edge",
+  },
 } as const;

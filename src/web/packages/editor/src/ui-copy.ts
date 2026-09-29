@@ -324,6 +324,12 @@ export const uiCopy = {
     /** Shown by all three when the document holds a size no preset names — an
         author's own, or a hand-edited theme's. A reading, not a choice. */
     customSize: "Custom",
+    /** The consequence of every size control on this panel, stated where they
+        are. Changing the ratio is one click and it never moves anything, so an
+        author narrowing a dashboard by hand is told the rule before the click
+        rather than after the content has gone. */
+    artboardSizeNote:
+      "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
     weight: "Weight",
     lineHeight: "Line height",
     letterSpacing: "Letter spacing",
