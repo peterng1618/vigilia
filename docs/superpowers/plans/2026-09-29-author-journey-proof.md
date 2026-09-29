@@ -1045,6 +1045,25 @@ one branch and does not in the other, which is what makes it an oversight rather
 than a missing feature. Owner: `player/src/main.ts` plus the reason vocabulary
 in `host/src/providers/browser-reason.ts`. **Queued.**
 
+**U33 — every unmatched host path serves the player.** `server.ts:1017` falls
+through to the player unconditionally, with nothing checking the path *is* the
+player. Measured: `/player?theme=…` → 200 (correct), and **`/play?theme=…` and
+`/display?theme=…` → 200 with a rendered canvas.** A display operator who
+mistypes a URL gets a working-looking dashboard instead of an error, and has no
+way to know the configured path is wrong — which is worse than a 404, because a
+404 would have told them. It also leaves the player's real route undiscoverable,
+and keeps stale bookmarks rendering. **Fix: serve the player at its own path and
+404 the rest.** The host already owns a 404 vocabulary — `firstRunPage()` and
+`sendText(…, 404, "The theme chooser is missing from this installation.")` — so
+the shape is decided and precedent exists. One owner, `host/src/server.ts`, on
+the reuse-gate watchlist, so a decision note comes first. **Queued.**
+
+*Also confirmed healthy this session, so neither is re-raised:* the host's
+primary flow works end to end (choose a theme → `/?theme=…&data=live` → live
+canvas; **Open the editor** reaches `/editor/`), and **F1.10's placeholder fix
+landed** — the chooser draws the same hatched thumbnails `/settings` does rather
+than the bare list it used to.
+
 **U31 — the shipped reference theme's objects are unnamed in the data.** F1.8
 added object naming and it works: typing a name writes it, the layer list shows
 it, and it round-trips. But **all 28 text objects in the reference document read
@@ -1066,7 +1085,6 @@ the layer list falls back to those today, which is why it is *almost* readable.
 own word. **Queued.**
 
 ### Rulings from the user, 2026-09-30 — three questions closed
-
 **Glass on the closed shapes — decided, and this supersedes the F1.9 note
 above.** **Circle, Ellipse, Triangle and Polygon get real frosted treatment.
 Polyline, Path and Line are skipped**, because they have no closed area to
