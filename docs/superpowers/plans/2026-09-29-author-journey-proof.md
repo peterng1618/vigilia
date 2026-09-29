@@ -683,6 +683,21 @@ The user asked for two things: expose the shortcut manager to the settings panel
 
 **The reasoning the user gave for moving tokens left, which is the load-bearing part:** a token is *like a layer* — it is not a visual object you can move, transform or arrange on the dashboard — **but selecting one shows its configuration in the same standard Properties panel.** So the left column holds *what exists* (layers and tokens, both non-spatial) and the right holds *what the selection is*. That is a cleaner rule than "left is spatial, right is not", because Layers and tokens turn out to share a property the eye missed.
 
+#### What Figma does (checked against Figma's own help docs, 2026-09-29)
+
+**The principle agrees with the user; the placement does not.**
+
+- **Left navigation panel.** The **File tab** gives you **layers and pages** — what exists in the file. The **Assets tab** gives you local components and libraries. So Figma's left column is already *"what exists"*, and it already carries a second, non-spatial tab beside Layers.
+- **Right properties panel.** Tabs are **Design** and **Prototype**. With a layer selected you get its properties — layout, position, corner radius, constraints, fill, stroke, effects, text, export. **With nothing selected, the same panel shows local styles and variables.** Figma's words: *"When you don't have anything selected, you can view local resources, like color or text styles."*
+- A styled layer shows *"only the style name and icon"* in the right panel — the style is referenced, not inlined, exactly as §73 requires here.
+
+**So Figma puts tokens on the *right*, in the no-selection fallback — not on the left.** Two things follow.
+
+1. **The user's instinct is corroborated by the principle, and by Figma's own left-column shape.** Figma already has Layers and a non-spatial Assets tab side by side on the left; adding a Tokens tab there is the same pattern, not a new idea. And Figma independently arrived at *"the properties panel is for the selection; document-level things appear when nothing is selected"* — the same rule the user's four-panel split rests on.
+2. **There is a discoverability cost Figma has already paid and named.** Its own UI3 notes say the **variables modal is "not discover"**. A token surface nobody finds is a token surface nobody uses — which is an argument *for* the left column, where a tab is visible rather than a fallback you have to know exists.
+
+**Open for the design pass:** whether tokens get a visible **left tab beside Layers** (visible, follows Figma's Assets precedent, costs a second non-spatial tab) or Figma's **no-selection fallback in Properties** (one surface, already corroborated — and already known to be hard to find). The design pass should decide with the user's "left, because it's like a layer" reasoning on the table, and the honest counter that Figma chose the other one.
+
 ### The player on a phone — decided by the user, 2026-09-29
 
 **No new presentation mode. The existing background-media fit is the mechanism**, and it already covers this: a background image either stays at its original size and letterboxes against the background colour, or scales to fill the screen entirely with no letterbox — and **the content fits the edge rather than being cropped**. That is what handles *the same orientation at a slightly different ratio*, which is the real case: a 19.5:9 theme on a 19.5:9 phone, or a 16:9 one on a 16:10.
