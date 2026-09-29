@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import type { Artboard } from "@vigilia/renderer-core";
 import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
-import { Canvas, Rect, Shadow } from "fabric/es";
+import { Canvas, Group, Rect, Shadow } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { reassignPaletteToken } from "./index.js";
+import { paletteTokenUsage, reassignPaletteToken } from "./index.js";
 
 describe("reassignPaletteToken", () => {
   it("rewrites canvas paint refs, artboard refs and drops the palette entry", () => {
@@ -90,5 +90,46 @@ describe("reassignPaletteToken", () => {
     );
 
     expect(result.artboard.barColor).toEqual({ ref: "palette.other" });
+  });
+
+  it("reports the same objects the delete moves, at any depth", () => {
+    // The guard and the panel number are one walk. A token reported unused
+    // while an object is painted with it is the bug this pairing prevents, so
+    // the assertion is that the reported set is emptied by the delete itself.
+    const canvas = new Canvas(document.createElement("canvas"));
+    const inner = new Rect({ id: "inner" });
+    inner.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.old" });
+    const group = new Group([inner]);
+    canvas.add(group);
+    const palette = {
+      old: { name: "Old", value: { kind: "solid", color: "#000" } as const },
+      spare: {
+        name: "Spare",
+        value: { kind: "solid", color: "#fff" } as const,
+      },
+    };
+
+    expect(
+      paletteTokenUsage(canvas, palette).old.map((use) => use.objectId),
+    ).toEqual(["inner"]);
+
+    reassignPaletteToken(
+      canvas,
+      { width: 10, height: 10 },
+      palette,
+      "old",
+      "spare",
+    );
+
+    expect(paletteTokenUsage(canvas, palette).old).toEqual([]);
+  });
+
+  it("reports nothing for a token no object uses", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const palette = {
+      old: { name: "Old", value: { kind: "solid", color: "#000" } as const },
+    };
+
+    expect(paletteTokenUsage(canvas, palette).old).toEqual([]);
   });
 });
