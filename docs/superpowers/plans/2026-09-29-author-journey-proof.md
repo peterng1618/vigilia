@@ -1112,6 +1112,56 @@ validate **at the write**, and the empty case shows the current code has no
 notion of "not yet typed" at all. The alpha requirement stands unchanged. Owner:
 `editor/src/palette-manager/`. **Queued.**
 
+### U35 — a one-owner sweep of the whole base, and the map gap that made it necessary
+
+**The Arrange menu was a one-owner violation, not drift.** The user's reframing
+is the correct one and it changes the fix. `ownership.md` gave arrange actions
+to `layer-tree.ts` and `arrange.ts`; `shell-layout.tsx` then chose **two of the
+eight** by hand. That is a second module deciding the membership of a set it does
+not own. Drift is fixed by making one list read the other; **a second owner is
+fixed by deleting the decision** — which is what the user ruled when they removed
+the menu. There was no disagreement to reconcile: the menu's two items were
+*correct*, just not the owner's to pick.
+
+**The cause is a hole in the map, and that is the part worth keeping.**
+`object-actions.ts` holds `ARRANGE_ICONS` and is what decides what the arrange
+actions *are* — and it appears **nowhere** in `ownership.md`. The map named
+`arrange.ts` (which applies them) and `layer-tree.ts` (which projects layer
+state), and skipped the owner of the vocabulary. **A maintainer reading the map
+has no way to learn `object-actions.ts` is an owner, so nothing tells them not to
+decide the membership elsewhere.** The map did not merely fail to catch the
+violation; its gap is why the violation was available. Fixed: the row is added,
+and arrange's single row is split so the vocabulary and its application are
+named separately.
+
+**Landed: `scripts/ownership-sweep.mjs`, wired into `npm run gates:self-test`.**
+It parses the map, finds every module exporting an id vocabulary (an array or an
+id-keyed record), and reports any other module re-spelling two or more of those
+ids. Over **211** source files it returns one candidate — and it is real:
+`host/src/server.ts:305` re-declares the device-group union inline as
+`"gpu" | "system-disk" | "data-disk"` where `settings/devices.ts` owns
+`ASSIGNABLE_GROUPS`. It type-checks today only because the two happen to agree;
+**add a fourth group and it compiles fine, and that group silently stops being
+published to consumers.** One line fixes it — `(typeof ASSIGNABLE_GROUPS)[number]`.
+
+**Two things recorded because the next person will otherwise repeat them.** The
+first version of the script counted any shared string and scored a theme's own
+field names **53** between a validator and a serialiser — a document's vocabulary
+in its own machinery, not a second owner. Thrown away; tightened to kebab-case
+discriminators and a subset threshold, because the Arrange case was a *subset* of
+its owner's list. And the sweep **missed the Arrange case entirely**, for the
+reason above: a detector can only check what the map declares, so the map's gaps
+are the detector's gaps. `main.ts` is the matching false positive — it indexes
+`ASSIGNABLE_GROUPS` members rather than owning them — which is the rate to expect
+and why the script reports candidates, never verdicts.
+
+**The deep sweep this implies is not a one-off.** The detector covers the shape
+that has produced a finding; it does not cover a second module *implementing* an
+owner's rule, or a rule stated in two places in prose, or an owner that exists
+with no export to anchor it. Those need a reading pass over the map — 92 rows,
+each checked for whether the named module is the one that actually decides.
+**Queued as its own piece of work, not folded into a fix.**
+
 ### Rulings from the user, 2026-09-30 — three questions closed
 
 **Glass on the closed shapes — decided, and this supersedes the F1.9 note
