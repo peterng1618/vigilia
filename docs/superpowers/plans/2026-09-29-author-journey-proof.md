@@ -1084,7 +1084,34 @@ the layer list falls back to those today, which is why it is *almost* readable.
 **One owner:** the theme builders, writing `name` beside `id`, reusing the id's
 own word. **Queued.**
 
+**U34 — the palette colour field accepts anything, and persists it.** U25
+records that the palette's colour control is a free-text field; driving it shows
+what that costs. `[data-vigilia-palette-color]` accepts `#123456`,
+**`rebeccapurple`**, and an empty string, with **no alert and no diagnostic** in
+every case. Then, decisively: **save the package and `rebeccapurple` is
+persisted** — `globals.palette.panel.value.color` reads it straight back out of
+`theme.json`, so the published validator accepts it — **and reopening that
+package loads it** with no error. A theme authored in this editor can therefore
+produce a file outside the published schema, which is the one thing the envelope
+validator exists to prevent.
+
+*I predicted the wrong consequence and corrected it here rather than in a fix.*
+I expected the object to vanish, on the reasoning that canvas discards
+unparseable colours. It does not: Fabric hands the string to `ctx.fillStyle`,
+`rebeccapurple` is a valid CSS keyword, and the card renders **purple** — as do
+the letterbox bars, since `barColor` resolves through the same token. The failure
+is not a missing object; it is an unvalidated value silently becoming a
+document-wide colour, which is harder to notice and easier to ship.
+
+**This is upstream of U25 and of the shadcn ruling, and it changes what that
+work has to be.** A picker with validation does not fix it, because the field is
+a text input and the write path does not check. Whatever replaces it must
+validate **at the write**, and the empty case shows the current code has no
+notion of "not yet typed" at all. The alpha requirement stands unchanged. Owner:
+`editor/src/palette-manager/`. **Queued.**
+
 ### Rulings from the user, 2026-09-30 — three questions closed
+
 **Glass on the closed shapes — decided, and this supersedes the F1.9 note
 above.** **Circle, Ellipse, Triangle and Polygon get real frosted treatment.
 Polyline, Path and Line are skipped**, because they have no closed area to
