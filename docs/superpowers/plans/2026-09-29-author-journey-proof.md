@@ -149,6 +149,8 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | F1.26 | **The chooser now requires the admin bundle** | Consequence of `e245138`, named by the implementer in its commit body because it would not fit `STATUS.md`'s five bullets. `/` is now `public/library.html`, served by the same admin bundle as `/settings`. A host started **without** `bundles.admin` — which only tests do, since `main.ts` always sets it — gets a **404 naming the missing page at `/`**, where before that path worked. Real for any minimal or embedded host, and the failure reads as a broken product rather than a missing build. | host packaging |
 
+| F1.27 | **The layer panel's twisties are still raw glyph text** | `layer-panel.tsx:246` renders `▸`/`▾` as literal text — the same class of defect as F1.2, in the file F1.2's implementer did not own and flagged rather than touched. F1.2's `ui-copy.test.ts` now fails on Unicode in the **copy table**, but these are in markup rather than copy, so the guard does not reach them. | `editor-shell/layer-panel.tsx` |
+
 ### Landed
 
 | # | Finding | Landed in | Proof |
