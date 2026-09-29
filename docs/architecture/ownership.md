@@ -25,6 +25,37 @@ other module re-spelling two or more of those ids. **Adjudicate every hit** — 
 consumer and a second owner look the same to it, and roughly half of what it
 finds is a consumer. Its self-test runs in `npm run gates:self-test`.
 
+## Uniqueness is necessary, not sufficient
+
+**One owner does not mean the right owner.** A row can be perfectly unique and
+still be shortsighted: `panel.ts` can faithfully enforce a rule that ought to live
+somewhere else, and nothing above will notice, because the sweep proves
+*uniqueness* and says nothing about *correctness*. **A green sweep is a warrant
+for one decider, not for this decider.** As features grow, the assignments made
+early are the ones most likely to have been made without the whole architecture
+in view.
+
+So the two questions are separate and both are real:
+
+| question | who answers it |
+|---|---|
+| Does this concept have exactly one decider? | `npm run ownership:sweep` — mechanical, in the gate |
+| Is that decider the right one? | **a person, reading.** No script can answer it |
+
+`scripts/ownership-enforcement.mjs` is a starting point for the second question
+and **is deliberately not wired into any gate**: it takes each concept's
+distinctive words and reports the modules the map does not name, which flags 77
+of 92 rows. In this codebase a concept's vocabulary and its enforcement are the
+same words — `glass.ts` says `fill` and `shadow` because it paints things — so
+presence cannot separate an owner from a consumer. **A gate that flags 84% of
+rows trains people to ignore it.**
+
+**What would actually answer it, and is enumerable by hand:** for each row, find
+the code that would *reject* a wrong value for that concept — the guard, the
+validator, the `refuse` — and ask whether it lives in the module the map names.
+A guard in an unnamed module is a missing row or a wrong owner, and telling those
+two apart is the judgement the map cannot make for itself.
+
 ## Editor
 
 | Concept | Owner |
