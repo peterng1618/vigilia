@@ -153,6 +153,24 @@ export class EditorSession {
     );
     this.#onBindingsChange = options.onBindingsChange;
 
+    /**
+     * An undo rebuilds the scene from JSON, and an imported image's persisted
+     * `src` is the object URL `image-manager` revoked the moment it decoded.
+     * The revived image therefore has nothing to draw and drops out of the
+     * document — which is what made undo "remove the asset outright" instead
+     * of undoing the transform, the move or the restack the author asked for.
+     *
+     * The package bytes are the authority, and `AssetManager.hydrate` is
+     * already how a revived image is given them: the session ran it once, on
+     * open, and never again.
+     */
+    options.shell.editor.canvas.on(
+      "editor:history-state-loaded" as never,
+      (() => {
+        void this.hydrateAssets(options.shell).catch(() => undefined);
+      }) as never,
+    );
+
     // The File menu dispatches these through `actionFacade`; the section that
     // used to hold the buttons is gone.
     this.#options = options;

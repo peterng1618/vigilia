@@ -18,6 +18,7 @@ export interface EditorInteraction {
       readonly withoutAdding?: boolean;
       readonly withoutSave?: boolean;
     }): Promise<{ readonly image: FabricObject } | null>;
+    destroy(): void;
   };
   readonly textManager: {
     addText(options?: Readonly<Record<string, unknown>>): FabricObject;

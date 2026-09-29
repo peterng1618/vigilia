@@ -19,12 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **The composition is viewable — the last gap in the proof.** All eight regions in one document, the backdrop imported through `Import asset`, saved by the header's own control, shown on a real host at 1920 × 1080 and 390 × 844. `author-journey-display.spec.ts`, its own preview on 4223 and its own host on 4224.
-- **Two blocking findings, both filed.** [#11](https://github.com/peterng1618/vigilia/issues/11): the frosted-glass control writes only `vigiliaGlass`, and a new card's fill is `palette.panel` at 85 %, so every glass card is 85 % opaque — further past the glass than the 72 % [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) rejected. [#12](https://github.com/peterng1618/vigilia/issues/12): `unitDisplay` is a binding field only the chart manager exposes, so a reading and its literal unit print the unit twice — the display reads **`95.4%%`** and **`1%%`**.
-- **The verdict, in pixels: the cards read as tinted panels, not glass.** The blur runs and the photograph shows through as a gradient, but at 85 % a card is mostly a fill. The material is reachable in one select through the Fill picker, so the defect is that the control named for it does not carry it.
-- **F2.18, corrected: it is not a clip, it is the §97 gap.** I wrote this up as an 85 px type clipped by its box; the crop shows two em-dashes at 108 px that **merge into what looks like a divider**, so a missing reading on the largest type in the composition is indistinguishable from a rule. The box was still too small and is fixed; the real finding is that §97 is correct and not legible at that size.
-- **A 16:9 artboard uses 26.1 % of a phone screen** (220 px of 844, 312 px of black above and below) — the document's own choice, one click from the 19.5:9 preset, and the first number anyone has for it.
-- Full Playwright **209 passed / 143 skipped / 2 failed, exit 1**. One is a stale `#status` assertion I fixed and verified (4 passed); the other is filed issue #7, pre-existing, cause not established. `typecheck`, `lint`, `format:check` and 2110 unit tests exit 0.
+- **U4: history did cover transform, movement and restacking — one undo that crossed an image deleted it.** An imported image's persisted `src` is the object URL `image-manager` revoked the moment decode finished, so Fabric could not enliven it on a restore and dropped the object. The author saw their asset vanish instead of their edit reverse.
+- **`image-manager` now holds each object URL for the session**, revoked on `destroy()` and on a decode that failed. A history entry outlives the image instance, so removal is not the end of a URL's life — tying it to the image broke redo.
+- **The session re-hydrates declared image bytes after every history restore**, the call it already made once on open. The package bytes are the authority; the persisted URL is not.
+- **U8: every left-rail icon sat 9 px left of its button.** The buttons were `display: block`, so the inline SVG sat at the start of the line box. They are now the centred flex box the layer panel's own action buttons already use; measured 9 px → 0 px on all four entries.
+- Measured in the browser: an imported image now survives undo **and** redo, with the angle reverting 30 → 0 and returning, and a nudge 0 → 3 → 0. 4 tests red before each fix; 880 editor tests, `typecheck`, `lint` and `format:check` all exit 0.
 
 ## Next
 

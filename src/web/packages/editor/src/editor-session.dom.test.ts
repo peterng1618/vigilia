@@ -42,6 +42,7 @@ vi.mock("./shortcut-manager/index.js", () => ({
 }));
 
 import { EditorSession } from "./editor-session.js";
+import { AssetManager } from "./asset-manager/index.js";
 import { fontTrio } from "./font-catalog.js";
 
 /** What the chooser answered, per test. The chooser is a modal dialog with no
@@ -634,6 +635,64 @@ describe("EditorSession", () => {
     });
     expect(shell.editor.historyManager.saveState).not.toHaveBeenCalled();
     extensions.destroy();
+  });
+
+  it("re-hydrates declared image bytes after an undo rebuilds the scene", async () => {
+    // U4: an undo crossed an image and the image never came back, because the
+    // persisted `src` is an object URL `image-manager` already revoked. The
+    // author saw their asset deleted rather than their transform reverted.
+    const listeners = new Map<string, (() => void)[]>();
+    const editor = {
+      canvas: {
+        on: vi.fn((event: string, handler: () => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler]);
+        }),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+    };
+    const hydrate = vi.spyOn(AssetManager.prototype, "hydrate");
+    const extensions = new EditorSession({
+      shell: {
+        editor,
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    // Several owners listen on this one event, so every handler runs — the
+    // mock is a single-handler map in some other test, and it hid this one.
+    expect(listeners.get("editor:history-state-loaded")).toBeDefined();
+    expect(hydrate).not.toHaveBeenCalled();
+
+    for (const handler of listeners.get("editor:history-state-loaded") ?? [])
+      handler();
+
+    await vi.waitFor(() => expect(hydrate).toHaveBeenCalledOnce());
+
+    extensions.destroy();
+    hydrate.mockRestore();
   });
 });
 

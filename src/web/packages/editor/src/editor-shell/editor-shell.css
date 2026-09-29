@@ -284,10 +284,17 @@ body,
   padding: 8px;
   overflow: visible;
 }
+/* The rail is a column of icon controls, and an icon is the whole label.
+   Without an explicit centring box the button stayed `display: block` and the
+   inline SVG sat at the start of the line, 9px left of the button's centre on
+   every entry — which is what made the rail read as misaligned. */
 .editor-shell-rail button {
   min-height: 38px;
   font-size: 16px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .editor-shell-rail button,
 .editor-shell-inspector button,
