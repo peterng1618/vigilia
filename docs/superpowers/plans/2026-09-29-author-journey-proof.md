@@ -799,6 +799,29 @@ Meta is covered — `modifier: true` computes `ctrlKey || metaKey`, confirmed by
 
 **Also found and left:** `EditorShell.setFitMode()` has **no callers** and had none before — now unambiguously dead, and not that agent's file. Queued.
 
+### Token usage landed, and my completeness claim was wrong (`4a647f9`)
+
+**I verified that the token traversal was complete and it was not.** I checked that an envelope `TextRun` carries `typePreset` and a `StyleMap` and no palette `token` — true, **but I only checked text.** A `VigiliaChart` names tokens in its `settings` (track, progress, a series palette, threshold bands) and carries **no `vigiliaPaint` at all**. The old walk would report a token **dead while a gauge was painted with it** — precisely the false negative this feature exists to prevent. The implementer read chart settings in and left the *rewrite* to `ChartManager`, which owns the engine re-apply, and said so.
+
+Hand-checked in a browser: `frost` → 8 (the eight cards, all eight in the layer tree), `cpu` → 5 **including `trends-chart`** — the chart case, structurally invisible before.
+
+**`objectsOf()` was deliberately not shared.** It is a private generator over `FabricObject[]`; this walk must read paint, runs *and* chart settings per object, and the recursion is four lines. Sharing would move a private helper across a package boundary to deduplicate a `for` loop, while the thing that actually broke — depth — is now covered by tests on both walks.
+
+Also flagged: **`editor-session.ts` is 847 lines, over the 800 stop.** It was already over before this work.
+
+### The glass question, answered by using it: 7 of 8 shapes cannot be frosted, and nothing says so
+
+Driving all eight primitives through the Add pane and reading the inspector for each:
+
+| Shape | Glass toggle | Blur field | Panel mentions glass |
+|---|---|---|---|
+| **Rectangle** | **yes** | (with the toggle) | no |
+| Ellipse, Circle, Triangle, Polygon, Polyline, Line, Path | **no** | no | **no** |
+
+**This is U21's answer, partly known and now concrete.** `GLASS_OBJECT_TYPES` is `Rect | Group` and the renderer's `localPath` only draws `ctx.rect` and a rounded rect, so the renderer genuinely cannot frost a circle. **But the author sees a list of eight shapes and no message on seven of them** — no control, no hint, no reason. That is the same failure this pass has found repeatedly: a correct limit with no way to see it exists. The product's glass story lives entirely on one shape the author can put on anything.
+
+The decision the user deferred — *investigate before deciding* — now has its terms: either the renderer learns more clip paths and the budget is re-measured, or **the product says glass is rectangles-only** and the author finds out at the point of use instead of by inference. The second is cheap and honest; the first is real work with a measured cost.
+
 ### F1.11 landed, and it moved the number that decides it (`df9e725`)
 
 **Transmission went from 0.216 to 0.718.** Same script, same document, same photograph, only the glass checkbox differing:
