@@ -6,8 +6,10 @@ import {
   type ArtboardPresetChoice,
   type ArtboardRatioId,
   type ArtboardResolutionId,
+  type ArtboardSize,
   artboardSize,
   DEFAULT_ARTBOARD_PRESET,
+  nearestArtboardPreset,
 } from "./artboard-presets.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -21,13 +23,20 @@ export type { ArtboardPresetChoice } from "./artboard-presets.js";
  * properly: the same three controls the inspector carries, off the same preset
  * lists, so the two cannot describe different sizes.
  *
+ * It opens on the shape of the document it would replace, when there is one.
+ * An author who has settled on 19.5:9 portrait and presses **New theme**
+ * again has answered the size question already, and the dialog asking it a
+ * second time — by resetting to 1920 × 1080 landscape — is the chooser
+ * throwing away a decision rather than confirming it. The derived size is on
+ * screen, so confirming the answer costs one glance.
+ *
  * This is a `<dialog>` because that is what the editor already uses for the
  * decisions it interrupts with (`confirmDocumentReplacement`, the library
  * chooser), and what gives keyboard dismissal, focus containment and the top
  * layer for free. Every control is a native labelled control for the same
  * reason.
  */
-export function newDocumentChooser(): HTMLDialogElement {
+export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   const dialog = document.createElement("dialog");
   dialog.className = "vigilia-dialog";
   dialog.setAttribute("aria-label", uiCopy.newDocument.chooseSize);
@@ -39,11 +48,7 @@ export function newDocumentChooser(): HTMLDialogElement {
   heading.className = "vigilia-dialog-lead";
   heading.textContent = uiCopy.newDocument.chooseSize;
 
-  const chosen = { ...DEFAULT_ARTBOARD_PRESET } as {
-    ratio: ArtboardRatioId;
-    resolution: ArtboardResolutionId;
-    orientation: ArtboardOrientation;
-  };
+  const chosen = { ...nearestArtboardPreset(current) };
 
   const ratio = selectControl("ratio", uiCopy.panels.ratio, (value) => {
     chosen.ratio = value as ArtboardRatioId;
@@ -135,11 +140,15 @@ export function newDocumentChooser(): HTMLDialogElement {
  * Asks for the artboard, and resolves the choice — or `undefined` when the
  * author dismissed it, which is how a `New` pressed by accident leaves the open
  * document alone.
+ *
+ * `current` is the artboard of the document about to be replaced; the dialog
+ * opens on the preset that size is nearest, so a settled shape is offered back
+ * rather than reset.
  */
-export function chooseArtboardPreset(): Promise<
-  ArtboardPresetChoice | undefined
-> {
-  const dialog = newDocumentChooser();
+export function chooseArtboardPreset(
+  current?: ArtboardSize,
+): Promise<ArtboardPresetChoice | undefined> {
+  const dialog = newDocumentChooser(current);
   let done = false;
 
   return new Promise((resolve) => {

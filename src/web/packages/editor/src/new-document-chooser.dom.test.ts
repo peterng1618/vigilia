@@ -42,7 +42,7 @@ describe("the new-document chooser", () => {
     }
   });
 
-  it("opens on 16:9 landscape at 1080p, and derives that size", async () => {
+  it("opens on 16:9 landscape at 1080p with no document to carry over, and derives that size", async () => {
     const pending = chooseArtboardPreset();
     const dialog = document.querySelector("dialog");
     if (dialog === null) throw new Error("the chooser did not open");
@@ -71,6 +71,71 @@ describe("the new-document chooser", () => {
       orientation: "landscape",
     });
     expect(document.querySelector("dialog")).toBeNull();
+  });
+
+  it("opens on the shape of the document it would replace", async () => {
+    // The finding, verbatim: a document already at 19.5:9 portrait, a second
+    // **New theme**, and a dialog that reset the author to 1920 × 1080.
+    const pending = chooseArtboardPreset({ width: 1080, height: 2340 });
+    const dialog = document.querySelector("dialog");
+    if (dialog === null) throw new Error("the chooser did not open");
+
+    const read = (marker: string): string => {
+      const select = dialog.querySelector<HTMLSelectElement>(
+        `[data-vigilia-new-document-${marker}]`,
+      );
+      if (select === null) throw new Error(`no ${marker} control`);
+      return select.value;
+    };
+    expect({
+      ratio: read("ratio"),
+      orientation: read("orientation"),
+      resolution: read("resolution"),
+    }).toEqual({
+      ratio: "19.5:9",
+      orientation: "portrait",
+      resolution: "1080p",
+    });
+    // And the size it would actually produce, so the carry-over is visible
+    // rather than something the author has to infer from three dropdowns.
+    expect(dialog.textContent).toContain("1080 × 2340");
+    expect(dialog.textContent).not.toContain("1920 × 1080");
+
+    dialog
+      .querySelector<HTMLButtonElement>("[data-vigilia-new-document-create]")
+      ?.click();
+    await expect(pending).resolves.toEqual({
+      ratio: "19.5:9",
+      resolution: "1080p",
+      orientation: "portrait",
+    });
+  });
+
+  it("carries a typed size's shape over, at the nearest resolution the table names", async () => {
+    // 1280 × 2778 is a phone screen, not a preset. Answering "no preset" would
+    // put the author back on the 16:9 landscape default — the same stranding.
+    const pending = chooseArtboardPreset({ width: 1280, height: 2778 });
+    const dialog = document.querySelector("dialog");
+    if (dialog === null) throw new Error("the chooser did not open");
+
+    const read = (marker: string): string =>
+      dialog.querySelector<HTMLSelectElement>(
+        `[data-vigilia-new-document-${marker}]`,
+      )?.value ?? "";
+
+    expect({
+      ratio: read("ratio"),
+      orientation: read("orientation"),
+      resolution: read("resolution"),
+    }).toEqual({
+      ratio: "19.5:9",
+      orientation: "portrait",
+      resolution: "2k",
+    });
+    document
+      .querySelector<HTMLButtonElement>("[data-vigilia-new-document-cancel]")
+      ?.click();
+    await expect(pending).resolves.toBeUndefined();
   });
 
   it("follows the three controls together, swapping the edges for portrait", async () => {

@@ -593,7 +593,9 @@ export class EditorSession {
     // The chooser first, then the replacement question: an author who opens
     // `New` and then thinks better of it must not be asked to confirm
     // discarding their work on the way to deciding they wanted none of it.
-    const preset = await chooseArtboardPreset();
+    // It opens on the artboard being replaced, so a document already settled
+    // on portrait is not thrown back to landscape without being asked.
+    const preset = await chooseArtboardPreset(this.#envelope.artboard);
     if (preset === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
     await options.onNew(

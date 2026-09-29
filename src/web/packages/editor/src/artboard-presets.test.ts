@@ -8,6 +8,8 @@ import {
   type ArtboardRatioId,
   type ArtboardResolutionId,
   artboardSize,
+  DEFAULT_ARTBOARD_PRESET,
+  nearestArtboardPreset,
 } from "./artboard-presets.js";
 
 /** The whole table, in full. The rule here is arithmetic, so the test is the
@@ -136,5 +138,89 @@ describe("matching a document's size back to its preset", () => {
         }
       }
     }
+  });
+});
+
+describe("the preset a new document should open on", () => {
+  it("is the preset the current document is already at", () => {
+    // The whole finding: an author settled on 19.5:9 portrait pressed New
+    // again and was handed 1920 × 1080 landscape without being asked.
+    expect(nearestArtboardPreset({ width: 1080, height: 2340 })).toEqual({
+      ratio: "19.5:9",
+      resolution: "1080p",
+      orientation: "portrait",
+    });
+  });
+
+  it("keeps the shape of a size the author typed, at the nearest resolution", () => {
+    // A 720p document is not a preset, and 1280 × 2778 is a phone screen. Both
+    // would otherwise land on the 16:9 landscape default and undo the choice.
+    expect(nearestArtboardPreset({ width: 1280, height: 720 })).toEqual({
+      ratio: "16:9",
+      resolution: "1080p",
+      orientation: "landscape",
+    });
+    expect(nearestArtboardPreset({ width: 1280, height: 2778 })).toEqual({
+      ratio: "19.5:9",
+      resolution: "2k",
+      orientation: "portrait",
+    });
+  });
+
+  it("picks the closest ratio rather than the first one that fits", () => {
+    // 5:4 is nearer 4:3 (1.25) than 16:9 (1.78), and a square is nearer
+    // neither — both are still answered, and neither is the default's ratio.
+    expect(nearestArtboardPreset({ width: 1200, height: 960 }).ratio).toBe(
+      "4:3",
+    );
+    expect(nearestArtboardPreset({ width: 1000, height: 1000 }).ratio).toBe(
+      "4:3",
+    );
+  });
+
+  it.each([
+    [{ width: 1280, height: 2778 }, "19.5:9", "portrait"],
+    [{ width: 2000, height: 920 }, "19.5:9", "landscape"],
+    [{ width: 960, height: 1280 }, "4:3", "portrait"],
+    [{ width: 1024, height: 768 }, "4:3", "landscape"],
+    [{ width: 1000, height: 1000 }, "4:3", "landscape"],
+  ])(
+    "reads %o as %s %s, landscape ratio or portrait reciprocal",
+    (size, ratio, orientation) => {
+      // A portrait document's aspect is the reciprocal of the ratio it would
+      // be named for: 1280 × 2778 is 0.46 against a 19.5:9 entry of 2.17.
+      // Measured that way it matches nothing and lands on 4:3.
+      expect(nearestArtboardPreset(size)).toMatchObject({ ratio, orientation });
+    },
+  );
+
+  it("agrees with the exact match wherever one exists", () => {
+    for (const ratio of RATIO_IDS) {
+      for (const resolution of RESOLUTION_IDS) {
+        for (const orientation of ORIENTATIONS) {
+          const size = artboardSize(ratio, resolution, orientation);
+          expect(nearestArtboardPreset(size)).toEqual(artboardPresetFor(size));
+        }
+      }
+    }
+  });
+
+  it("is a preset the table can name, whatever the size", () => {
+    // The chooser has no "custom" entry to offer, so a guess that is not in
+    // the table would print a size its own controls deny.
+    for (const size of [
+      { width: 1, height: 4000 },
+      { width: 4000, height: 3 },
+      { width: 1170, height: 2532 },
+    ]) {
+      const choice = nearestArtboardPreset(size);
+      expect(ARTBOARD_RATIOS.map((r) => r.id)).toContain(choice.ratio);
+      expect(RESOLUTION_IDS).toContain(choice.resolution);
+      expect(ORIENTATIONS).toContain(choice.orientation);
+    }
+  });
+
+  it("falls back to the default when there is no document to carry over", () => {
+    expect(nearestArtboardPreset()).toEqual(DEFAULT_ARTBOARD_PRESET);
   });
 });

@@ -19,11 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.14: a display that could not load now says so as a page, not a `<pre>`.** "This display has nothing to show", the host's reason kept as a labelled diagnostic, and the two ways on: **Try again** and **Go to the host**.
-- A bad `?theme=` is the product's face and a phone is the main display, and the old `<pre>` of monospace red left a reader with no retry, no link and no route onward.
-- **It cannot be mistaken for a gap:** a missing sensor and a crop are strips over a display still drawing; this replaces the whole screen. The page borrows the host's own `firstRunPage` colours, measure and pill, so it reads as the same product.
-- A packaged font that will not load is now a warning rather than a page takeover: `loadFontAssets` reports and carries on, so the display was already drawing in a fallback.
-- Measured in Chromium against a real host on a bad `?theme=`: the first Tab stop is the retry, Enter reloads, the link lands on the host's own page. Red without the fix: all six cases fail. 2076 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.38: the New-theme chooser opens on the shape of the document it would replace.** Portrait stays portrait; a typed size keeps its ratio and orientation at the nearest resolution the table names.
+- `artboard-presets.ts` grew `nearestArtboardPreset` beside `artboardPresetFor`, not instead of it: a control showing the current document must not claim a preset it is not at, and a chooser offering the next one must not answer "no idea" and hand back landscape.
+- **The test caught a real bug before the browser did.** A portrait document's aspect is the reciprocal of the ratio it would be named for, so 1280 × 2778 measured 0.46 against a 19.5:9 entry of 2.17 and matched 4:3. The ratio is now matched long-over-short.
+- Driven in Chromium on a built editor: document at 1080 × 2340, **File → New theme**, chooser on 19.5:9 / Portrait / 1080p / `1080 × 2340`, and the document it creates is 1080 × 2340. Red without the fix: both chooser cases fail. 2089 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 

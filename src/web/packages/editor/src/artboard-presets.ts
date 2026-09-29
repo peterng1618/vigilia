@@ -108,3 +108,67 @@ export function artboardPresetFor(
     orientation: match.orientation,
   };
 }
+
+/**
+ * The preset a new document should open on, given the document it replaces.
+ *
+ * **A different question from `artboardPresetFor`, in the same module.** That
+ * one asks what a size *is* and answers `undefined` when it is not a preset,
+ * because a control showing the current document must not claim a preset the
+ * document is not at. This one asks what to *offer next*, and for that the
+ * nearest answer is the right one: a 1280 × 2778 phone screen is not a preset,
+ * and answering "no idea" would hand the author back the 16:9 landscape
+ * default — the exact stranding the new-document chooser exists to avoid.
+ *
+ * The chooser has no "custom" entry and the size it derives is on screen, so
+ * a guess it cannot name would be a size its own controls deny; the fallback
+ * is the default, which they can.
+ */
+export function nearestArtboardPreset(
+  size?: ArtboardSize,
+): ArtboardPresetChoice {
+  if (size === undefined) return DEFAULT_ARTBOARD_PRESET;
+  const exact = artboardPresetFor(size);
+  if (exact !== undefined) return exact;
+
+  const closest = nearestBy(ARTBOARD_RATIOS, (entry) =>
+    // `ARTBOARD_RATIOS` holds landscape ratios, and a portrait document's
+    // aspect is the reciprocal of the one it would be named for — 1080 × 2340
+    // is 0.46 against a 19.5:9 entry of 2.17. Long-over-short, or a portrait
+    // document is matched as square and lands on 4:3.
+    Math.abs(
+      entry.ratio -
+        Math.max(size.width, size.height) / Math.min(size.width, size.height),
+    ),
+  );
+  const nearest = nearestBy(ARTBOARD_RESOLUTIONS, (entry) =>
+    Math.abs(entry.shortEdge - Math.min(size.width, size.height)),
+  );
+  if (closest === undefined || nearest === undefined) {
+    return DEFAULT_ARTBOARD_PRESET;
+  }
+
+  return {
+    ratio: closest.id,
+    resolution: nearest.id,
+    // Taller than wide is portrait; a square is not taller, and a square is
+    // not a shape this table names either way.
+    orientation: size.height > size.width ? "portrait" : "landscape",
+  };
+}
+
+function nearestBy<T>(
+  candidates: ReadonlyArray<T>,
+  distance: (candidate: T) => number,
+): T | undefined {
+  let best: T | undefined;
+  let closest = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const span = distance(candidate);
+    if (span < closest) {
+      best = candidate;
+      closest = span;
+    }
+  }
+  return best;
+}
