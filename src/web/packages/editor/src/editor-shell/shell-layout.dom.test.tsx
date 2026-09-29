@@ -96,6 +96,37 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   layout.destroy();
 });
 
+/** The rail entry for a pane, found by the accessible name it carries. */
+function railEntry(root: HTMLElement, label: string): HTMLButtonElement {
+  return root.querySelector<HTMLButtonElement>(
+    `.editor-shell-rail button[aria-label="${label}"]`,
+  )!;
+}
+
+it("names every rail entry by its label and draws an icon, not a glyph", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const entries = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-rail button"),
+  );
+  expect(entries.map((entry) => entry.getAttribute("aria-label"))).toEqual([
+    "Layers",
+    "Add",
+    "Assets",
+    "Settings",
+  ]);
+
+  for (const entry of entries) {
+    // The name is `aria-label` and never the content, so swapping a stored
+    // glyph for a Lucide icon cannot strip it.
+    expect(entry.textContent?.trim()).toBe("");
+    expect(entry.querySelector("svg")).not.toBeNull();
+  }
+
+  layout.destroy();
+});
+
+
 it("keeps panel hosts mounted outside React's control", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);

@@ -1,5 +1,12 @@
 import { Menu } from "@base-ui/react/menu";
 import { Tabs } from "@base-ui/react/tabs";
+import {
+  Images,
+  Layers,
+  type LucideIcon,
+  Plus,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -28,6 +35,16 @@ import type { EditorViewControls } from "./session-facade.js";
 /** Rail entries own one pane each; the inspector keeps the document panels. */
 export type RailPane = "layers" | "add" | "assets" | "settings";
 export type InspectorTab = "design" | "data" | "style";
+
+/** One icon per rail entry. An icon is a component, not copy (§35), so it lives
+ *  beside the rail rather than in `ui-copy.ts`; the label it stands for is the
+ *  button's `aria-label`, which is why the marks it replaces can simply go. */
+const RAIL_ICONS: Readonly<Record<RailPane, LucideIcon>> = {
+  layers: Layers,
+  add: Plus,
+  assets: Images,
+  settings: SettingsIcon,
+};
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Layers pane has no node here: the
@@ -319,6 +336,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       ["assets", uiCopy.rail.assets],
       ["settings", uiCopy.rail.settings],
     ];
+
     return (
       <div className="editor-shell">
         <header className="editor-shell-header editor-glass">
@@ -339,18 +357,21 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             className="editor-shell-rail editor-glass"
             aria-label="Editor areas"
           >
-            {rail.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-label={label}
-                title={label}
-                aria-pressed={pane === id}
-                onClick={() => setPane(id)}
-              >
-                {uiCopy.railMark[id]}
-              </button>
-            ))}
+            {rail.map(([id, label]) => {
+              const Icon = RAIL_ICONS[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  aria-pressed={pane === id}
+                  onClick={() => setPane(id)}
+                >
+                  <Icon aria-hidden size={16} strokeWidth={1.75} />
+                </button>
+              );
+            })}
           </nav>
           <aside className="editor-shell-panel editor-glass">
             <div hidden={pane !== "layers"}>

@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **A newly inserted closed shape is filled with a card, not with the scene.** F1.16: `newShapeSurface` drew from `SURFACE_TOKENS`, which has no `panel`, so every rect, circle, ellipse, triangle, polygon and path came out filled `#0c0e13` — the backdrop it sits on.
-- **The comment above that call said the opposite of what the code did.** It claimed a shape must be "as legible as a panel"; the code took the first surface token the palette had, which is the backdrop. The code now matches the comment.
-- **One owner, two vocabularies.** `surfacePalette` takes its candidate list from the caller: a card leads with `panel`/`frost`, a chart track keeps the plain surfaces. The open-shape rule (content token as stroke) is unchanged and now has its own test.
-- **Verified:** 1988 unit tests, typecheck, lint, format green. Red-without-fix: reverting the candidate list took 7 tests red — the 6 closed kinds plus the panel dom test. Browser proof: the stage with all eight shapes inserted, screenshotted.
-- **Flagged, not split:** `new-object-defaults.ts` is 548 lines, further past the "500 is a signal" line it was already over at 522.
+- **F1.2: the rail's four icons are Lucide components, not glyphs in `ui-copy.ts`.** `railMark` (`▤ + ▣ ⚙`) is deleted, not restyled; `RAIL_ICONS` sits beside the rail, as `KIND_ICONS` does.
+- **The accessible name was never the glyph.** Each entry's name is its `aria-label`, so removing the mark could not strip it — measured in Chromium before and after, and asserted in the rail test.
+- **The rule is now a test.** `ui-copy.test.ts` fails on any Unicode symbol in the copy table, so an icon cannot be stored as copy again.
+- **Verified:** typecheck, lint, format, 2004 unit tests green; 4 editor Playwright specs pass. Red-without-fix: putting the glyph back took the copy test and the rail test red.
+- **Carried in from a concurrent agent, uncommitted at the time:** `uiCopy.panels.charts` and the Add-pane fieldset comment (F1.17's chart group). Preserved, not authored here.
 
 ## Next
 

@@ -3,18 +3,14 @@
 export const uiCopy = {
   brand: "Vigilia",
   editor: "Editor",
+  /** The rail's four panes. An entry's icon is a component beside the rail, not
+   *  a mark in this table: a glyph stored as a translatable string is announced
+   *  as a word of its own and cannot inherit a shell colour. */
   rail: {
     layers: "Layers",
     add: "Add",
     assets: "Assets",
     settings: "Settings",
-  },
-  /** Compact rail marks; the accessible name is the full label. */
-  railMark: {
-    layers: "▤",
-    add: "+",
-    assets: "▣",
-    settings: "⚙",
   },
   inspector: { design: "Design", data: "Data", style: "Style" },
   /** Selection inspector field labels. */
@@ -220,10 +216,11 @@ export const uiCopy = {
     add: "Add",
     text: "Text",
     panel: "Panel",
-    /** The Add pane's shape list legend. A group rather than eight more chips
-        beside the four chart families: "Line" is both, and a flat list would put
-        the same word on two buttons. */
+    /** The Add pane's two construction lists, each a group. A flat chip list
+        would put the word "Line" on two buttons with nothing to tell them
+        apart — once for the primitive and once for the chart family. */
     shapes: "Shape",
+    charts: "Chart",
     assets: "Assets",
     /** The Assets pane's controls. `import` and `replace` are the two actions
         the pane can take on a local file, so they are named as actions; the
