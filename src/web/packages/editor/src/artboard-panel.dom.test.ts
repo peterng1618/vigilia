@@ -227,6 +227,30 @@ describe("artboard panel", () => {
     expect(sample).not.toContain(spell("en", { month: "long" }));
   });
 
+  it("gives the description a multi-line field, so its prose can be read", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    // The starter's own sentence, at its real length. A single-line input in a
+    // 161px box shows the first twenty characters of it and nothing else.
+    const description =
+      "The reference composition: a clock, two usage cards, two memory rings, a performance chart and stacked storage and network panels.";
+    panel.render({ width: 1672, height: 941 }, { name: "Before", description });
+
+    const field = panel.root.querySelector<HTMLTextAreaElement>(
+      "[data-vigilia-theme-description]",
+    )!;
+    expect(field.tagName).toBe("TEXTAREA");
+    expect(field.value).toBe(description);
+    // The whole sentence on screen at once, rather than a box an author has to
+    // scroll sideways through to read the end of.
+    expect(field.rows).toBeGreaterThan(1);
+    expect(field.style.gridColumn).toBe("1 / -1");
+    // F1.19's work: the visible label is still the name a screen reader reads.
+    const label = panel.root.querySelector<HTMLLabelElement>(
+      `label[for="${field.id}"]`,
+    );
+    expect(label?.textContent).toBe("Description");
+  });
+
   it("keeps a declared language that is outside the list", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
     panel.render(

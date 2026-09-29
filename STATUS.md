@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.30: the host's own three pages name the icon they serve.** `library.html`, `settings.html` and `firstRunPage()` each carry `<link rel="icon" href="/settings/favicon.svg">` — the file `8e0c452` already made for the editor and the player, **copied byte for byte**, not authored again.
-- **The href is absolute, and the host needs no relative care.** The editor's `./favicon.svg` is relative because it is mounted at `/editor/`, where an absolute path resolves against the player's dist. The host's pages are served at `/` and `/settings` — two different directories — so a relative href would resolve against whichever one served the document; `/settings/favicon.svg` is the same path for all three.
-- **Proven headed, because headless proves nothing here.** Headless Chromium never fetches a favicon, so a headless assertion passes with or without the fix — the same trap `8e0c452` recorded. Headed on a real host: both pages declare the icon, both fetch it with **200**, and both log **zero** console errors. Red without the fix, headed: no `<link>` declared and `/` logged the `/favicon.ico` 404.
-- `document-favicon.test.ts` also asserts the host's copy is byte-identical to the editor's, which is what notices when one of the three drifts. 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.3: Description is a `textarea`, so its prose is readable.** The starter's own sentence is 130 characters; a single-line input in a 161px box showed the first twenty and truncated mid-word.
+- It follows the panel's existing idiom rather than a new one: a `.vigilia-field` row, `label`/`for` paired to the control, and the row's whole width — the same treatment `sizeNote` and the language sample already set from this file.
+- **Measured in Chromium, not asserted:** `TEXTAREA`, `rows=4`, 254px wide, `clientHeight === scrollHeight === 81` — the whole sentence on screen with nothing to scroll to.
+- Red without the fix: `expected 'INPUT' to be 'TEXTAREA'`. 2066 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 

@@ -45,7 +45,7 @@ export function createArtboardPanel(
   heading.textContent = uiCopy.panels.themeSettings;
   const name = textInput(uiCopy.panels.name, "vigiliaThemeName");
   const author = textInput(uiCopy.panels.author, "vigiliaThemeAuthor");
-  const description = textInput(
+  const description = textArea(
     uiCopy.panels.description,
     "vigiliaThemeDescription",
   );
@@ -379,13 +379,36 @@ function selectInput(
 
 function textInput(
   text: string,
-  data: "vigiliaThemeName" | "vigiliaThemeAuthor" | "vigiliaThemeDescription",
+  data: "vigiliaThemeName" | "vigiliaThemeAuthor",
 ): { readonly label: HTMLLabelElement; readonly input: HTMLInputElement } {
   const label = document.createElement("label");
   label.textContent = text;
   const input = document.createElement("input");
   input.dataset[data] = "";
   label.htmlFor = input.id = `vigilia-text-${++fieldSeq}`;
+  return { label, input };
+}
+
+/** A description is prose, so it is a `textarea` and not a one-line field: the
+    starter's own sentence is 130 characters, which a 280px pane's single-line
+    input shows the first twenty of. It takes the row's whole width the way the
+    size note and the language sample do, because wrapped prose in a 72px label
+    column's remaining sliver is still unreadable. */
+function textArea(
+  text: string,
+  data: "vigiliaThemeDescription",
+): {
+  readonly label: HTMLLabelElement;
+  readonly input: HTMLTextAreaElement;
+} {
+  const label = document.createElement("label");
+  label.textContent = text;
+  const input = document.createElement("textarea");
+  input.dataset[data] = "";
+  input.rows = 4;
+  label.htmlFor = input.id = `vigilia-text-${++fieldSeq}`;
+  label.style.gridColumn = "1 / -1";
+  input.style.gridColumn = "1 / -1";
   return { label, input };
 }
 
