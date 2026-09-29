@@ -158,7 +158,8 @@ Dispatched work, both settled and ready. Nothing below needs a decision first.
 
 *Both settled by the user on 2026-09-30. Dispatched once and stood down before it began, for a fresh session.*
 
-- **The control becomes visible on every object.** Where the shape supports the treatment it works as now; where it does not, the checkbox is **present, not interactive, with a tooltip saying why.** The author learns the rule at the point of use instead of inferring it from an absence. **No renderer change** — `GLASS_OBJECT_TYPES` stays `Rect | Group` and the closed shapes stay unfrosted. This is disclosure, not capability, and it is the cheap honest option taken over the measured-cost one.
+- **The control becomes visible on every object.** Where the shape supports the treatment it works as now; where it does not, the checkbox is **present, not interactive, with a tooltip saying why.** The author learns the rule at the point of use instead of inferring it from an absence.
+- **Ruled 2026-09-30: the four closed shapes get real glass.** Circle, Ellipse, Triangle and Polygon join Rect; **Polyline, Path and Line are skipped**, because they have no closed area to sample and there is nothing to frost. This widens `GLASS_OBJECT_TYPES` and therefore the published schema, and the schema-drift guard against `GLASS_TYPES` must move with both. So the disclosure above is still right — it is what covers the three skipped shapes — but it is no longer the whole answer for the other four. `ctx.ellipse` is already in `localPath`, so a circle is roughly one line; see the investigation below.
 - **`supportsGlassControl` answers two questions and must split.** "Does this object support glass" and "should the control render" are no longer the same predicate, or the fix lands back where it started.
 - **A disabled control's reason must be reachable by keyboard, not hover only.** Otherwise the disclosure exists for the mouse and not for everyone else — the mirror of the absence this replaces.
 - **Extract the shared tooltip first.** `canvas-dock.tsx` is the only tooltip in the editor, spelling out `Root → Trigger → Portal → Positioner(side="top", sideOffset=8) → Popup` inline with its own class. A second hand-rolled copy is the thing to avoid; the third tooltip should be a third of nothing. `@base-ui/react` already ships `tooltip/`.
@@ -240,7 +241,7 @@ Dispatched work, both settled and ready. Nothing below needs a decision first.
 
 **Material widens with the shapes.** `supportsPanelFields` widens from `object instanceof Rect` to the primitive set, so fill, stroke, border width, corner radius and shadow appear on every one of them. One owner, one set of fields, no per-shape fork. Open shapes (polyline, line) take a **content** token as their stroke — a fill in the surface colour would be invisible.
 
-**Glass does not, and that is stated rather than hidden.** `GLASS_OBJECT_TYPES` is `Rect | Group` and the published schema enforces exactly that — the `type` enum of `["Rect", "Group"]` applies only when `vigiliaGlass` is present, so the object definition is otherwise permissive and no schema widening is needed for the new shapes. The renderer is the real limit: `localPath` in `scene-fabric/src/glass.ts` draws `ctx.rect` and a rounded rect and knows nothing else, and Task 1 measured radii on rectangles only. **A non-rect shape therefore carries no frosted treatment** until `localPath` is taught the other paths and the budget is re-measured. That limitation is honest, and it is the reason this is one backlog item and not a silent half-feature.
+**Glass now widens with them — ruled 2026-09-30.** This note originally said glass does not widen, and the user has since ruled that it does. `GLASS_OBJECT_TYPES` becomes `Rect | Circle | Ellipse | Triangle | Polygon | Group`. **Polyline, Path and Line are excluded** — they have no closed area to sample, which is the same reason an open shape takes a content token as its stroke rather than a fill. `localPath` in `scene-fabric/src/glass.ts` is the renderer limit and it is a small one: **`ctx.ellipse` is already in that file**, building the rounded rect's four corners, so a circle is roughly one line and `ctx.clip()` already works on any path. Triangle and Polygon are the same shape of work — build the path, clip it. **The published schema widens with `GLASS_TYPES`**, and the schema-drift guard that compares them is what will fail if only one moves; that guard is doing its job and must not be relaxed to make this pass.
 
 | F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope widened by the user (2026-09-29): all primitive Fabric shapes, and their properties.** Fabric 7 ships `Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path` — all present in the installed package, so this is authoring and material work, not a dependency. See the scope note below. | `new-object-defaults.ts`, the panel primitive, `selection-inspector/panel.ts` |
 
@@ -1016,9 +1017,7 @@ This is the finding F1.16 half-solved: that fix made a plain shape visible by gi
 
 **U27 — a UI for gradients, sharing the colour picker's parts.** The palette already accepts gradients — the Paint chooser offers *Linear gradient* and the palette manager has an angle and a stop list — but there is no editor for them; the stops are text fields. **The reuse answer is that the colour picker's swatch and stop list already *are* the gradient editor**: one component family where a solid is a single stop. So this is not two features that share a look, it is one feature used twice, and the gradient case is the case with more than one stop.
 
-### U29, U30 — found 2026-09-30 by driving the product, both measured
-
-**U29 — every new object lands on top of the last one.** On a blank 1920×1080
+### U29, U30 — found 2026-09-30 by driving the product, both measured**U29 — every new object lands on top of the last one.** On a blank 1920×1080
 theme, six objects inserted in a row: rect, circle and triangle all at
 **(40, 40)**, both charts at **(120, 80)**. Three shapes give three layer rows
 and **one** visible shape on the canvas. The artboard is 1920×1080 and a new
@@ -1045,6 +1044,61 @@ required." in the no-query branch** — so it knows how to say this properly in
 one branch and does not in the other, which is what makes it an oversight rather
 than a missing feature. Owner: `player/src/main.ts` plus the reason vocabulary
 in `host/src/providers/browser-reason.ts`. **Queued.**
+
+**U31 — the shipped reference theme's objects are unnamed in the data.** F1.8
+added object naming and it works: typing a name writes it, the layer list shows
+it, and it round-trips. But **all 28 text objects in the reference document read
+`undefined` for their name**, and the layer list falls back to the id. The source
+says why in one line — `new-fabric-theme-objects.ts:129` returns
+`{ type, id, left, top, width, … }` and never writes `name`, and the same is true
+of `rect()`, `frostedCard()`, `path()` and `chart()`. The property is not
+namespaced (`VIGILIA_NAME_PROPERTY` is the bare string `"name"`), so the field was
+always available.
+
+**This matters more than a cosmetic gap.** The layer list is the author's only
+way to find an object, and on the showcase theme it is 52 rows of
+`text-7363db18-…` — which is exactly what F1.8 called "the most author-facing gap
+found so far". The fix landed on the editor's control and not on the theme that
+demonstrates it. **The names already exist**: every object is built with a
+readable id beside it (`cpu-card`, `ram-gauge`, `storage-bar`, `time-rule`), and
+the layer list falls back to those today, which is why it is *almost* readable.
+**One owner:** the theme builders, writing `name` beside `id`, reusing the id's
+own word. **Queued.**
+
+### Rulings from the user, 2026-09-30 — three questions closed
+
+**Glass on the closed shapes — decided, and this supersedes the F1.9 note
+above.** **Circle, Ellipse, Triangle and Polygon get real frosted treatment.
+Polyline, Path and Line are skipped**, because they have no closed area to
+sample. So `GLASS_OBJECT_TYPES` widens to `Rect | Circle | Ellipse | Triangle |
+Polygon | Group`, the published schema widens with `GLASS_TYPES`, and the
+schema-drift guard comparing the two must move with both — it will fail if only
+one does, and that is the guard working, not a nuisance to relax. The
+investigation that got us here is below and it holds: `ctx.ellipse` is already in
+`localPath`, a circle is roughly one line, `ctx.clip()` already works on any path.
+**Re-measure the per-frame cost on the new shapes** — Task 1's radius sweep was
+flat across rectangles, which is what makes this a re-measure rather than a known
+regression.
+
+**The colour picker — the previous search answered the wrong ecosystem.** U25
+reports that `@base-ui/react` ships no colour picker, which is true and beside
+the point: the standing intent is **Base UI + shadcn/ui + Tailwind**, and
+**shadcn/ui has a colour picker**. Rungs 4 and 5 of the reuse gate need reworking
+against shadcn rather than re-deciding from scratch. **The alpha trap in U25 is
+unaffected and still binding** — `panel` is `#081523d9` at 85% and `frost` is 30%,
+so a bare `<input type="color">` cannot represent the part that matters. Whatever
+is adopted must carry an alpha channel, and that is the first thing to check.
+
+**The Arrange menu is redundant and is removed.** The arrange toolbar above the
+canvas already carries all 8 actions with icons and correct gating; the top-bar
+menu offered 2 of them. This was diagnosed as U32 — "F1.7's pattern, two surfaces
+drifted" — and **that diagnosis was plausible and wrong: the surface should not
+have existed.** Before treating "two surfaces disagree" as drift, check whether
+one of them is redundant. The Insert menu keeps its parity with the Add pane
+because both are insertion points an author needs; the Arrange menu had a toolbar
+doing the identical job 200px away. A dispatch to make the menu offer all 8 was
+written and **killed before it committed anything**, so there is nothing to
+revert.
 
 **U28 — a rejected number reverts where it should clamp.** The user wrote: *"the input box just rejected the value but instead of clamping it to the closest accepted value, it just kept the original value. So I have to trial and errors to find out what the max value was."*
 
