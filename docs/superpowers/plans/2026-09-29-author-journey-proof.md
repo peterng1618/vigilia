@@ -187,7 +187,17 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | F1.30 | **The host's own pages still have no favicon** | Scope note from the F1.6 implementer, which fixed the editor and player but not the host: `packages/host/public/library.html`, `settings.html` and `firstRunPage()` declare no icon and 404 the same way. The host's *player* surface is covered because it serves the player bundle. The fix is one `<link>` in each. | `packages/host/public/` |
 
-### Verification sweep — do the landed fixes coexist?
+| F1.31 | **A phone author could not save** | Found and fixed inside `ad45667`. The header put **467px of content in a 396px box**, landing "Save package" at x=397 with **64 of its 79 pixels off-screen**. Not a nudge — the primary action, unreachable, on the surface the artboard presets (F0.2) exist to serve. It now wraps. A separate `panel-labels.spec.ts` skip carried the comment *"the settings panels are hidden below 980px"* — **F1.29 quoted as its own cause**; the skip is removed and those four tests now run on a phone. |
+
+### F1.29 landed
+
+`ad45667`. **A rail-toggled collapse that becomes a sheet below 980px** — "Inspect" is a fifth rail entry carrying `aria-expanded` and no `aria-pressed`, because it names a region rather than a member of a set. A sheet was the only option the existing layout supports (the shell already positions the dock, arrange toolbar and zoom readout as absolute glass over the stage), and a pure collapse was rejected as *"the F1.29 defect with an extra tap"* — so the collapse is the state and the sheet is where a narrow shell puts it.
+
+**The 980px rule never achieved its own purpose.** It came in with the original React shell as a canvas budget, and it kept the budget by *deleting a region*: 52 + 240 + gaps + padding left the canvas **88px** at 412px. The grid below the breakpoint is now rail and stage, and the canvas is **336px**.
+
+Measured at 412×915 and 390×844: sheet 280×753 / 280×651, stage 336 / 314, artboard field 59×30, and **0 of 35 controls at 0 × 0**. Red without the fix: exactly 7 failed, all on `phone-chromium`.
+
+**Its own bug, caught by measuring rather than looking:** the narrow grid rule omitted `[data-inspector="false"]`, so the phone's default fell through to a 3-track rule and measured a **48px stage**. It had screenshotted past that twice.
 
 Seventeen findings have landed across five packages and several shared files. A single rebuild-and-look at `1280943` confirms they compose rather than merely coexist in the log:
 
