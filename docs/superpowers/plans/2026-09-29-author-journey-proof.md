@@ -147,6 +147,8 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | F1.25 | **Hand-authored label copy lives in the panels, not `ui-copy.ts`** | Found by the F1.19 implementer while working in exactly those panels, and predating it: the theme-settings, palette and type-preset panels carry their field labels as string literals — `"Name"`, `"Colour"`, `"Angle"`, `` `Stop ${n} position` ``, `"Solid"`, `"Linear gradient"`, `"Family"`. §35 says UI copy belongs in `editor/src/ui-copy.ts`, and the project-wide memory says to probe `Intl` and existing copy before writing a new string table. The only strings the implementer introduced went to `ui-copy.ts`; it did not sweep the pre-existing ones, which is a different task. | the three panels' copy |
 
+| F1.26 | **The chooser now requires the admin bundle** | Consequence of `e245138`, named by the implementer in its commit body because it would not fit `STATUS.md`'s five bullets. `/` is now `public/library.html`, served by the same admin bundle as `/settings`. A host started **without** `bundles.admin` — which only tests do, since `main.ts` always sets it — gets a **404 naming the missing page at `/`**, where before that path worked. Real for any minimal or embedded host, and the failure reads as a broken product rather than a missing build. | host packaging |
+
 ### Landed
 
 | # | Finding | Landed in | Proof |
