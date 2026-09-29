@@ -421,11 +421,9 @@ export function createRunEditor(
       runs: runs.filter((_, at) => at !== index),
     });
     const port = bindingPort;
-    const bindingId =
-      gone?.kind === "value" && port !== undefined ? gone.bindingId : undefined;
-    if (bindingId !== undefined && port !== undefined) {
+    if (port !== undefined && gone?.kind === "value") {
       port.setBindings(
-        port.bindings().filter((binding) => binding.id !== bindingId),
+        port.bindings().filter((binding) => binding.id !== gone.bindingId),
       );
     }
     applyAuthoredText(editor.canvas, globals);

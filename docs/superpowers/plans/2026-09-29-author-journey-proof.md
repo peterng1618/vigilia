@@ -166,7 +166,12 @@ The player had never been looked at as a user in this pass. It **works**: the da
 | F0.2 | No artboard chooser | `1f3fa9c`, `a29f8bc` | 1946 unit tests green; red-without-fix took 9 portrait assertions red and 1 custom-fallback red. The implementer **corrected the plan**, which pointed Step 7 at `editor-shell/` while `ownership.md:22` names `artboard-panel.ts`. |
 | — | Four e2e selectors broken by F1.9, plus a fifth live ambiguity | `e5b52d6` | reference-theme 15 passed, host-player 22 passed. A blanket replace would have missed the fifth. |
 
-**Still open from that work:** `new-object-defaults.ts` is at 522 lines and `selection-inspector/panel.ts` at 636 — both over the "500 is a signal" line, and the implementer left them because the split candidate would export the shared commit/refuse plumbing across a module boundary. That is a real call to revisit, not a thing to wave through.
+**Still open from that work, and grown since:** `new-object-defaults.ts` is at
+522 lines, `selection-inspector/panel.ts` at **659** and
+`selection-inspector/runs.ts` at **694** — F2.1, F2.5 and F2.8 took `runs.ts`
+past 500 for the first time. None is near the 800 stop, and each has a stated
+reason for the shape it is in, but two of the three are now large enough that
+the split is worth taking rather than noting. — both over the "500 is a signal" line, and the implementer left them because the split candidate would export the shared commit/refuse plumbing across a module boundary. That is a real call to revisit, not a thing to wave through.
 
 ### Found by looking at the landed work, not by reading it
 
