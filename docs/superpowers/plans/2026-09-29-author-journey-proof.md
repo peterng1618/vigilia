@@ -246,6 +246,20 @@ The five failure modes this pass implies that no single task's tests exercise:
 4. **A blocking finding "fixed" by a second control that describes the same thing.** A fix that adds a second owner is a new defect; the fix must sit inside the one owner named in `docs/architecture/ownership.md`.
 5. **Save that loses authored work on the way.** The proof touches every authored surface in one document. A fix that makes a control work by dropping or coercing what the author wrote is worse than the gap.
 
+### F1.33 and F1.34 landed
+
+`2f0223f`. The player now carries a persistent strip when content falls outside the artboard:
+
+> **27 of 52 objects are outside this artboard and are not shown — past the right edge**
+
+**It names the side, not the objects, and that came from looking.** Its first version listed object names, and the browser screenshot showed `ram-card-icon, ram-card-title, +24 more` — internal ids, because the starter predates the name field. Its reasoning: *a wall reader is not the author, and the layer list is where ids are looked up.* And "past the right edge" is itself the diagnosis — the frame is too narrow, not the content wrong.
+
+**Slate, not amber, and this closes F1.23 as a consequence.** The sensor-gap notice is amber at the same edge, and §97 requires a dashboard gap and a sensor gap not to look alike — a theme can be both at once. Both strips were `position: fixed; top: 0` drawing over each other; they now stack in one column.
+
+The artboard controls carry, via `aria-describedby` on all five size controls: *"Objects are not moved or resized. Anything outside the artboard is not shown on a display."* **No count** — the panel cannot see the scene, so a number there would be a guess. The player owns the measurement, which is the split the ownership map asks for.
+
+**It filed rather than guessed.** `reference-theme.spec.ts:365` fails — `Ctrl+N`'s discard prompt times out waiting for a `Discard` button. It stashed every file it touched, rebuilt, and reproduced it identically, so it is pre-existing with the cause not established: **issue #7**.
+
 ---
 
 ## The delivered surface, as found
