@@ -758,6 +758,28 @@ Both raised with the same instruction: **find something existing and easy.** Bot
 
 **The pain it removes is measured, not stylistic.** The user wrote: *"Took me a while to figure out blur only accepts 48 maximum."* The glass blur field does warn on rejection — it carries `onReject: refused` and `invalidMessage` — so the bound is discoverable **only by tripping it**. A slider beside the box makes the range visible **by construction**, and a bounded field should say its bound on the field rather than making the author find it.
 
+### U1–U10: seven fixed, two filed with cause, one was a different animal (2026-09-29)
+
+**U5, U6 and U7 were one bug, as suspected — and the mechanism is worse than the symptoms.** "You are inside a group" lives in `grouping-manager`'s `context` array and **only the layer panel ever read it**; the artboard ignored it. Worse, `editor-shell.ts:236` routes **every** `mouse:dblclick`** into `enterGroup`, so double-clicking a text box to *edit it* recorded a group context. That is U7 verbatim: dimmed rows, Escape to clear, nothing actually grouped. Entering a real group measured **51 of 51 objects still selectable** — U6, and the panel describing a fiction the canvas contradicted.
+
+Fixed: `enterGroup` records nothing unless the entry really is a `Group`; entering takes everything outside it off the artboard with `selectable: false, evented: false`; leaving **restores the values it replaced, not Fabric's defaults**. After: **1 of 51**.
+
+**It rejected the obvious fix, for a reason this pass has been enforcing all day.** The tempting change was to dim the artboard with opacity. `opacity` is in Fabric's `stateProperties`, so that dim **gets serialised into the next save** — §67 says view state is never a Fabric write. It used `selectable`/`evented`, which are not persisted and are `object-lock-manager`'s own idiom. The artboard now *agrees* with the panel rather than being dimmed.
+
+**U4 was corrected outright.** Transform, movement and layer ordering **all recorded correctly** — measured, not assumed: angle 0→25 undo→0, nudge 84→87 undo→84, bring-to-front fired a commit. What U4 actually was: **any undo crossing an image deleted it.** An imported image's persisted `src` is the object URL `image-manager` revoked in its `finally` the instant decode finished; Fabric could not enliven it on restore and `loadFromJSON` dropped the object. So one Ctrl+Z removed the asset — **which is exactly what "undo removes the asset outright" feels like while being a completely different bug.** Its first fix tied revocation to image removal, which fixed undo and **broke redo**, because a history entry outlives the image instance.
+
+**U2, what "in use" meant.** A top-level `canvas.getObjects()` entry with that `assetId`, or `artboard.backgroundMedia` naming it. The agent could not construct a false positive — every refusal it provoked was genuine — so it did not widen the check to silence the message. It found where it *was* wrong: **it was shallow** (`getObjects()` is root-only, so a **grouped** image reported itself unused and removing the declaration deleted bytes out from under a live object — while `objectsOf()`, already recursive and used by `hydrate`, was never called), and **it was partial** (a type preset's font face is a reference in the envelope and no Fabric object at all).
+
+**U9 was not ECharts.** `renderScale` was already 2×, but `MAX_BACKING_PIXELS = 486_000` clamped **the trends chart** — the largest, and the one a reader actually looks at — to **1.53×**, while every smaller chart got the full 2×. So the only aliased graph was the important one. Raising the ceiling to one 1080p frame gives a 1958 × 430 backing store. The "one knob for all four" already existed: `VigiliaChart.renderScale`, applied to every family, and runtime-only per §67.
+
+**U8** was a layout bug worth nine pixels: every rail icon's centre sat **9 px left** of its button, because the buttons were `display: block` and the inline SVG sat at the start of the line box. Now 0 px on all four.
+
+**Filed, with cause established rather than guessed:**
+- **#13 (U10, artboard clipping)** — Fabric has **no scene-level clip**. Wrapping the scene in a `Group` re-parents every object, and `canvas.getObjects()` is the layer tree's, `findById`'s, arrange's, deletion's and the asset walk's accessor. Per-object `absolutePositioned` clip overwrites `clipPath` on exactly the objects that already own one — the authored per-image **crop** clip and the derived text-box clip. Both repairs cost something real.
+- **#14 (U3, layer panel)** — the layer projection is **faithful**; canvas-object count and row count agreed at every step including undo and redo. The one image that never gets a row is the **background media**, because `mountBackgroundMedia` mounts it as a **DOM sibling of the canvas** so glass can sample it and video can be framed by it. Making it a row would invent a layer that isn't one, and its removal route is U18 — group C, explicitly not this agent's.
+
+**Also:** 2132 tests green. The first `npm test` exited 1 on 18 worker-fork start-up timeouts under load from concurrent agents, and passed on re-run — an honest environment note, not a code one.
+
 ### The display proof — the glass does not read as glass, and the reason is not the tint (2026-09-29)
 
 **The cards read as tinted panels, not glass.** Measured rather than judged: card interiors sit at **35–50 luma** where the photograph behind them spans **50–196**. The clock card sits on sky at 140.8 and measures **34.5** — and `0.851 × 21 + 0.149 × 140.8` predicts **38.9**, so the card is 85% fill and 15% of what is behind it.
