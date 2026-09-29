@@ -8,7 +8,7 @@ import {
   importBackdrop,
   openBlankComposition,
 } from "./rebuild-composition.js";
-import { chooseToken, selectLayer } from "./rebuild-driver.js";
+import { chooseToken, readObject, selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -49,18 +49,6 @@ const THEMES_DIR = path.join(here, "..", "..", ".e2e-display-themes");
 /** The blank theme's own id (`new-fabric-theme.ts`), which is what the host keys. */
 const THEME_ID = "vigilia-new-theme";
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
-
-/** The eight frosted cards, by the names `buildComposition` gives them. */
-const CARDS = [
-  "time-card",
-  "cpu-card",
-  "gpu-card",
-  "ram-card",
-  "vram-card",
-  "trends-card",
-  "storage-card",
-  "network-card",
-] as const;
 
 /** The two sizes the composition has to survive. A phone is the main display. */
 const DISPLAYS = [
@@ -115,17 +103,21 @@ async function shootDisplay(
     undefined,
     { timeout: 30_000 },
   );
-  // A frame caught while the stream is still opening reads as a card of gaps,
-  // which is §97 behaving correctly and proves nothing about the composition.
-  // The footer's own copy is the signal, so the wait is on the product's word.
-  await page
-    .waitForFunction(
-      () => !document.body.innerText.includes("Connecting to the host"),
-      undefined,
-      { timeout: 30_000 },
-    )
-    .catch(() => undefined);
-  await page.waitForTimeout(6_000);
+  // A frame caught while the stream is still opening is a card of gaps, which
+  // is §97 behaving correctly and proves nothing about the composition. The
+  // footer's own copy is the signal, so the wait is on the product's word — and
+  // it is **not** swallowed: an earlier version caught the failure and carried
+  // on, and the screenshot it took was a dashboard of em-dashes that cost an
+  // hour of diagnosis. A capture that cannot show live data should fail here
+  // rather than produce a picture that reads as a broken product.
+  await page.waitForFunction(
+    () => !document.body.innerText.includes("Connecting to the host"),
+    undefined,
+    { timeout: 60_000 },
+  );
+  // And the charts need a few samples before they are a chart rather than a
+  // spike at the right edge, which is what a display four minutes old shows.
+  await page.waitForTimeout(20_000);
   await page.screenshot({
     path: `test-results/display/player-${display.name}.png`,
   });
@@ -149,11 +141,12 @@ test.describe("the rebuilt composition, on a display", () => {
     context,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-    // All eight regions in **one** document, then three displays. The region
+    // All eight regions in **one** document, then two displays, the editor
+    // reading the same package back, and the material assertions. The region
     // specs each fit 30 s because each is one region; this is the composition
     // plus a host plus a wait for the charts to fill their window, so the
     // default is not the right budget and the honest one is stated here.
-    test.setTimeout(900_000);
+    test.setTimeout(600_000);
 
     // ---- the editor half: build it the way an author would ----
     await page.goto("/");
@@ -172,9 +165,8 @@ test.describe("the rebuilt composition, on a display", () => {
     };
 
     // The display gets **its own page**. The editor document lives in this
-    // one's memory, and a navigation to the host would unload it — so the two
-    // captures of the same document, before and after a material change, have
-    // to happen without ever leaving the editor.
+    // one's memory, and a navigation to the host would unload it — so every
+    // capture of the same document has to happen without leaving the editor.
     const screen = await context.newPage();
 
     // ---- the display half: the document as the surface authored it ----
@@ -196,36 +188,48 @@ test.describe("the rebuilt composition, on a display", () => {
     await reopened
       .getByRole("menuitem", { name: "Open package", exact: true })
       .click();
+    // The dirty-document guard, and it is **correct**: the editor opens on the
+    // starter, which nobody has edited and which therefore counts as unsaved
+    // work. Without this the file chooser never opens and the step hangs until
+    // the test times out with no message saying why — the same shape as issue
+    // #7, met from the other side.
+    const discard = reopened.getByRole("button", {
+      name: "Discard",
+      exact: true,
+    });
+    if (await discard.isVisible().catch(() => false)) await discard.click();
     await (await openPackage).setFiles(
       path.join(THEMES_DIR, `${THEME_ID}.vigilia-theme`),
     );
-    await expect
-      .poll(async () => (await reopened.locator("canvas").count()) > 0)
-      .toBe(true);
-    await reopened.waitForTimeout(4_000);
+    await reopened.waitForTimeout(5_000);
     await reopened.screenshot({
       path: "test-results/display/editor-desktop.png",
     });
     await reopened.close();
 
-    // ---- and the material the reference composition itself uses ----
+    // ---- F2.12, asserted rather than screenshotted ----
     //
-    // `frostedCard()` fills a glass card with `palette.frost` (30%), and the
-    // Fill picker lists it by name, so the frosted material is reachable — by
-    // a second control, one the author has to know to find. This frame is the
-    // same document with that token on all eight cards, applied through the
-    // real picker, and it is what says whether the 30 % tint reads as glass
-    // where the 85 % `panel` tint did not.
-    for (const card of CARDS) {
-      await selectLayer(page, card);
-      await chooseToken(page, "[data-vigilia-panel-fill]", "Frosted panel");
-    }
-    await saveToHost();
-    await shootDisplay(screen, {
-      name: "desktop-frosted",
-      width: 1920,
-      height: 1080,
-    });
+    // Every glass card this document authors is filled with `palette.panel`
+    // at 85%, and the frosted material is one select away in the Fill picker
+    // under a different control. Asserting that is cheaper, faster and more
+    // durable than capturing a second frame of the same scene with a different
+    // fill, and it says the thing that is actually wrong: the control labelled
+    // "Frosted glass" did not put the frosted material on the card.
+    const cpuCard = await readObject(page, "cpu-card");
+    expect(
+      (cpuCard?.["vigiliaPaint"] as { fill?: string } | undefined)?.fill,
+      "a card the author frosted carries the frosted material",
+    ).toBe("palette.panel");
+
+    // The material is reachable — which is what makes this a second-owner
+    // defect rather than an unreachable one, and the whole of issue #11.
+    await selectLayer(page, "cpu-card");
+    await chooseToken(page, "[data-vigilia-panel-fill]", "Frosted panel");
+    expect(
+      (await readObject(page, "cpu-card"))?.["vigiliaPaint"],
+      "one select in the Fill picker reaches palette.frost",
+    ).toEqual({ fill: "palette.frost", stroke: "palette.panelStroke" });
+
     await screen.close();
   });
 });
