@@ -328,6 +328,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     const [pane, setPane] = useState<RailPane>("layers");
+    const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
 
     const rail: readonly [RailPane, string][] = [
@@ -336,6 +337,18 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       ["assets", uiCopy.rail.assets],
       ["settings", uiCopy.rail.settings],
     ];
+
+    /** The entry already showing closes the panel; any other entry — and the
+     *  closed entry itself — shows it. The canvas is what an author works in,
+     *  so the chrome around it is allowed to get out of the way. */
+    const choosePane = (id: RailPane): void => {
+      if (!collapsed && pane === id) {
+        setCollapsed(true);
+        return;
+      }
+      setPane(id);
+      setCollapsed(false);
+    };
 
     return (
       <div className="editor-shell">
@@ -352,28 +365,33 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {uiCopy.file.savePackage}
           </button>
         </header>
-        <div className="editor-shell-body">
+        <div className="editor-shell-body" data-collapsed={collapsed}>
           <nav
             className="editor-shell-rail editor-glass"
             aria-label="Editor areas"
           >
             {rail.map(([id, label]) => {
               const Icon = RAIL_ICONS[id];
+              // Pressed says which pane is chosen and stays true while the panel
+              // is closed, so the rail still shows what reopening restores;
+              // expanded is how the closed state is announced rather than drawn.
+              const closes = !collapsed && pane === id;
               return (
                 <button
                   key={id}
                   type="button"
                   aria-label={label}
-                  title={label}
+                  title={`${closes ? uiCopy.rail.hidePanel : uiCopy.rail.showPanel} ${label}`}
                   aria-pressed={pane === id}
-                  onClick={() => setPane(id)}
+                  aria-expanded={!collapsed}
+                  onClick={() => choosePane(id)}
                 >
                   <Icon aria-hidden size={16} strokeWidth={1.75} />
                 </button>
               );
             })}
           </nav>
-          <aside className="editor-shell-panel editor-glass">
+          <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
             <div hidden={pane !== "layers"}>
               <LayerPanel bridge={store.bridge} />
             </div>

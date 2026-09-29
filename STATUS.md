@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.2: the rail's four icons are Lucide components, not glyphs in `ui-copy.ts`.** `railMark` (`▤ + ▣ ⚙`) is deleted, not restyled; `RAIL_ICONS` sits beside the rail, as `KIND_ICONS` does.
-- **The accessible name was never the glyph.** Each entry's name is its `aria-label`, so removing the mark could not strip it — measured in Chromium before and after, and asserted in the rail test.
-- **The rule is now a test.** `ui-copy.test.ts` fails on any Unicode symbol in the copy table, so an icon cannot be stored as copy again.
-- **Verified:** typecheck, lint, format, 2004 unit tests green; 4 editor Playwright specs pass. Red-without-fix: putting the glyph back took the copy test and the rail test red.
-- **Carried in from a concurrent agent, uncommitted at the time:** `uiCopy.panels.charts` and the Add-pane fieldset comment (F1.17's chart group). Preserved, not authored here.
+- **F1.1: the left panel collapses.** The rail entry for the visible pane closes it; that entry again, or any other one, brings it back. Measured at 1920×1080: the stage goes 1268 → 1556px, 288px reclaimed.
+- **The collapsed state is announced, not only drawn.** `aria-expanded` on every entry goes false, the aside is `hidden` so it leaves the accessibility tree, and `aria-pressed` stays on the pane reopening restores. The tooltip names the action: `Hide Layers` / `Show Assets`.
+- **The grid drops the column, it does not narrow it.** The aside being `hidden` makes it no longer a grid item, so the three remaining tracks are rail, stage and inspector — one rule, and the 980px breakpoint has the matching one.
+- **Verified:** typecheck, lint, format, 2004 unit tests green; 4 editor Playwright specs pass. Red-without-fix: stubbing the toggle took exactly the two collapse tests red and nothing else.
+- **Browser proof, both states screenshotted and inspected.** The whole composition still paints after the collapse — the charts re-render at the new width — so the earlier bare-backdrop capture was an unsettled page, not a lost scene.
 
 ## Next
 

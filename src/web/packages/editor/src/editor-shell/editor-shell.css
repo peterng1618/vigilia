@@ -252,6 +252,13 @@ body,
   flex: 1;
   padding: 8px;
 }
+/* Collapsing the panel drops its column rather than narrowing it. The aside is
+   `hidden`, so it is no longer a grid item and the three remaining tracks are
+   the rail, the stage and the inspector — the panel's width and one gap both go
+   back to the canvas. */
+.editor-shell-body[data-collapsed="true"] {
+  grid-template-columns: 52px minmax(0, 1fr) 280px;
+}
 .editor-shell-rail,
 .editor-shell-panel,
 .editor-shell-inspector {
@@ -317,10 +324,11 @@ body,
   display: block;
   margin-top: 12px;
 }
-/* The Add pane's shape list is a group, because "Line" is both a chart and a
-   shape and a flat chip list would put the same word on two buttons. The UA
-   groove border and legend are the only things reset: the shell's own 1px edge
-   and muted caps are what the rest of the panel is drawn in. */
+/* The Add pane's two construction lists are groups, because "Line" is both a
+   chart family and a shape and a flat chip list would put the same word on two
+   buttons. The UA groove border and legend are the only things reset: the
+   shell's own 1px edge and muted caps are what the rest of the panel is drawn
+   in. */
 .editor-shell-panel fieldset {
   margin: 12px 0 0;
   padding: 2px 6px 4px;
@@ -732,6 +740,9 @@ body,
 @media (max-width: 980px) {
   .editor-shell-body {
     grid-template-columns: 52px 240px minmax(0, 1fr);
+  }
+  .editor-shell-body[data-collapsed="true"] {
+    grid-template-columns: 52px minmax(0, 1fr);
   }
   .editor-shell-inspector {
     display: none;

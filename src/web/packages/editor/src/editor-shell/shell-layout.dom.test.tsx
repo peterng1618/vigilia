@@ -126,6 +126,79 @@ it("names every rail entry by its label and draws an icon, not a glyph", () => {
   layout.destroy();
 });
 
+it("collapses the panel when the rail entry for the visible pane is clicked again", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
+  const body = root.querySelector<HTMLElement>(".editor-shell-body")!;
+  const layers = railEntry(root, "Layers");
+
+  expect(panel.hidden).toBe(false);
+  expect(layers.getAttribute("aria-pressed")).toBe("true");
+  expect(layers.getAttribute("aria-expanded")).toBe("true");
+
+  await act(async () => layers.click());
+
+  // Both halves matter: a hidden panel takes no pixels, and a collapsed one
+  // leaves the accessibility tree, because a pane an author cannot reach is
+  // worse than one that is merely narrow. The rail keeps saying which pane it
+  // is, and `aria-expanded` is how the closed state is announced.
+  expect(panel.hidden).toBe(true);
+  expect(body.dataset["collapsed"]).toBe("true");
+  expect(layers.getAttribute("aria-expanded")).toBe("false");
+  expect(layers.getAttribute("aria-pressed")).toBe("true");
+
+  await act(async () => layers.click());
+
+  expect(panel.hidden).toBe(false);
+  expect(body.dataset["collapsed"]).toBe("false");
+  expect(layers.getAttribute("aria-expanded")).toBe("true");
+
+  layout.destroy();
+});
+
+it("brings the collapsed panel back on whichever pane is asked for", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
+
+  await act(async () => railEntry(root, "Layers").click());
+  expect(panel.hidden).toBe(true);
+
+  await act(async () => railEntry(root, "Assets").click());
+
+  // Reopening brings the pane that was asked for, not the one it closed on.
+  expect(panel.hidden).toBe(false);
+  expect(layout.hosts.assets.parentElement?.hidden).toBe(false);
+  expect(layout.hosts.add.parentElement?.hidden).toBe(true);
+
+  layout.destroy();
+});
+
+it("switches panes without closing when the panel is already open", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
+
+  await act(async () => railEntry(root, "Add").click());
+
+  expect(panel.hidden).toBe(false);
+  expect(layout.hosts.add.parentElement?.hidden).toBe(false);
+  expect(railEntry(root, "Add").getAttribute("aria-pressed")).toBe("true");
+
+  layout.destroy();
+});
+
+it("tells a hovering author what the rail entry will do to the panel", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  // The one that closes says so; the three that open say what they open.
+  expect(railEntry(root, "Layers").title).toBe("Hide Layers");
+  expect(railEntry(root, "Assets").title).toBe("Show Assets");
+
+  layout.destroy();
+});
 
 it("keeps panel hosts mounted outside React's control", () => {
   const root = document.createElement("div");
