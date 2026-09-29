@@ -274,6 +274,20 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **F1.7 deleted a duplicate rather than adding one.** `insertGroups()` in `new-object-panel.ts` is the only list, built from the two owners that already existed (`SHAPE_KINDS`, `CHART_FAMILIES`), and both surfaces render it. The session façade's text body was already a copy of the pane's; it is now the pane's.
 
+| F1.40 | **The template catalogue is a hand-copied second list** | Named by the F1.36 implementer, with a `ponytail:` comment. The host's `SHIPPED_TEMPLATES` (`packages/host/src/themes/templates.ts`) duplicates the editor's `STARTER_TEMPLATE`, and **nothing enforces agreement across the package boundary**. One rename makes the chooser offer a template the editor cannot produce, or the editor one the host cannot serve. It is the right trade for now — a cross-package contract is a bigger decision — but it is a duplication that exists and is named. | `packages/host/src/themes/templates.ts` vs the editor |
+
+### F1.36, F1.24 and F1.30 landed
+
+`4b7f5f5`, `9c96043`, `7708e5b`.
+
+**F1.36 — the row is a link, not a button, and that is the whole design.** A template has no package, so `PUT /api/themes/active` still 404s it; a button would *promise a choice the host cannot keep*. It is an underlined link to `/editor/`, with the hatched stand-in drawn directly rather than an `<img>` at a thumbnail route with no entry, which would 404 on every clean load. It extended the shared row owner from `e245138` rather than writing a second list. And it fixed the page a new PC actually sees: `firstRunPage()` said "build one" while the product ships a finished dashboard — it now names the template from the same catalogue.
+
+**F1.24 — one redaction vocabulary, not two.** `redactForBrowser` lives in `provider.ts` — the file whose own comment said messages must be redacted — and produces *"its configured address"*, the exact phrase the player's net already substitutes, so the two layers cannot disagree. `connect ECONNREFUSED` and `ENOENT` are deliberately **kept**: a display saying only "no reading" tells a reader nothing actionable. It probed its patterns against real error strings rather than assuming — a `\b` cannot precede a `/`, so the anchor is a lookbehind, which leaves `2026/09/29` alone, and `2340:1080` and `19.5:9` are test cases rather than hopes. Decision note `0014` with all seven rungs.
+
+**F1.30 — the host needs the opposite of the editor's care.** The editor's `./favicon.svg` is relative because it is mounted under `/editor/`, where absolute resolves against the *player's* dist. The host serves `/` **and** `/settings` — two directories — so relative would resolve against whichever served it. One absolute path is correct for all three. Asset copied byte-for-byte, md5 verified.
+
+**It corrected itself twice rather than papering over it.** The three `<link>` elements were already in the tree and got swept into its F1.36 commit, so F1.30's message originally claimed them; it amended the message to say where they actually are. And a grep of its own reported the links missing when they were present — **the rtk trap again** — so it re-verified instead of "fixing" a non-bug.
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
