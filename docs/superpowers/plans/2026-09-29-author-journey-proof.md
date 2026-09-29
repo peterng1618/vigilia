@@ -737,6 +737,18 @@ The user asked for two things: expose the shortcut manager to the settings panel
 - **U19 is withdrawn as a design ask.** "Preview fit is no longer needed" is not right — it is the *content's* fit, it must stay `contain`, and removing it would remove the guarantee that content is never cropped. What survives is a **naming** question: the product has two fit controls — *Preview fit* for the artboard in the editor, *Media fit* for the backdrop — and F1.41 already found them spelled inconsistently. Two controls called "fit" meaning different things, in one panel, is the actual defect.
 - **A phone in the wrong orientation is an authoring answer, not a rendering one**, and the New chooser now makes the right shape one control away.
 
+### A colour picker, and sliders for bounded numbers (2026-09-29)
+
+Both raised with the same instruction: **find something existing and easy.** Both were searched before being written down.
+
+**U25 — a colour picker for paint.** Searched: `@base-ui/react@1.8.0` is the only headless dependency and it **ships no colour picker** — the package has accordion, alert-dialog, autocomplete, avatar, button, checkbox, combobox, context-menu, dialog, drawer, field, fieldset, form, input, popover, select, slider, tabs, toast, toolbar, tooltip and more, but nothing for colour. The editor itself has **no colour affordance at all** today; the only one is the palette manager's **free-text** field.
+
+**The trap, which decides the shape.** This product's palette colours **carry alpha** — `panel` is `#081523d9` at 85% and `frost` is 30%. The browser's native `<input type="color">` is **RGB only and cannot represent alpha**, so reaching for it would silently drop the one part of these colours that matters. And the picker must write to a **palette token**, never onto the object directly, or §73 is broken. So: a small custom picker, or native plus a separate alpha control — and the free-text field it replaces is what proves the value shape.
+
+**U26 — bounded numbers get a slider beside the box.** `@base-ui/react@1.8.0` **does ship `slider/`**, so this is the *already-installed* dependency and the same idiom the shell's Menu, Dialog, Select and Popover already use. No new dependency and no new convention.
+
+**The pain it removes is measured, not stylistic.** The user wrote: *"Took me a while to figure out blur only accepts 48 maximum."* The glass blur field does warn on rejection — it carries `onReject: refused` and `invalidMessage` — so the bound is discoverable **only by tripping it**. A slider beside the box makes the range visible **by construction**, and a bounded field should say its bound on the field rather than making the author find it.
+
 ### Fit: one control, not two (decided by the user, 2026-09-29)
 
 **The user's own misreading is the finding.** They had been reading *Preview fit* as "how the background media renders in the preview" — a stand-in for the lack of artboard zoom control. It is neither: it is the **artboard content's** fit. So a control named "Preview fit" sitting beside *Media fit*, in one panel, means something different from what it looks like it means. **That is the defect — not the existence of either.**
