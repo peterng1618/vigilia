@@ -2,6 +2,35 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ## This plan is unconventional, and that is the design
+>
+> **Its scope is expected to keep growing, and its task sequence is expected to
+> keep changing.** Do not read a stale task number as a defect in the plan.
+>
+> Every other plan in this directory has a fixed scope written down before the
+> work starts. **This one is driven by using the product.** The agent's role is
+> that of a human author: open the editor, the host and the player, insert,
+> select, type, resize, save, reopen, play, and fail — then record what was wrong,
+> reorder the queue, and dispatch it. So:
+>
+> - **The Findings backlog is the queue.** The tasks below are the work as it was
+>   understood at writing; the backlog is what is actually next, and findings
+>   outrank planned work when they are more urgent.
+> - **"Done" above is the only record of what shipped**, with the number that
+>   proved it. A task checked off without evidence is a claim, not a result.
+> - **A finding is added the moment it is observed**, not batched to the end.
+>   If a session ends, the backlog is still accurate.
+> - **The spec's Definition of done is a floor, not a ceiling.** The pass closes
+>   when nothing is left that using the product can find — not when the list is
+>   exhausted.
+> - **Anything found is fixed using what the repo already decides** (see the
+>   verdict rule below). Only a genuine product decision with no precedent is
+>   recorded and passed over, and nothing waits on a human.
+>
+> The cost of this shape is that the plan is never "finished" in the ordinary
+> sense. The cost of the ordinary shape would have been shipping a dashboard
+> nobody can author, which is what nearly happened.
+
 ## Done — landed and checked off
 
 Everything the pass has shipped. **Read the one-line "what it proved" beside each; the reasoning is in the section named there.**

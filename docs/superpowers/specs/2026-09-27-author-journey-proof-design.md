@@ -5,6 +5,12 @@
   [`2026-09-29-author-journey-proof.md`](../plans/2026-09-29-author-journey-proof.md)
   — its **Done** section is the checked-off list and its **Findings backlog** the
   live queue. This spec states the obligation; the plan records the evidence.
+- **This is an unconventional spec, and its scope is expected to keep growing.**
+  It is validated by **using the product as a human author**, not by executing a
+  fixed list, so findings are added as they are observed and the task sequence is
+  re-ordered around them. **Definition of done below is a floor, not a ceiling:**
+  the pass ends when nothing is left that using the product can find. Do not read
+  its growing scope as drift, and do not close it because a list ran out.
 - **Date:** 2026-09-27
 - **Queue:** after reference-theme fidelity; before the font trio catalogue.
 - **Plan refresh required when activated (2026-09-27).** Reference-theme fidelity is

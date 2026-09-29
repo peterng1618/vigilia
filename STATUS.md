@@ -13,6 +13,14 @@ should not be asking "what is the next task" — it should be opening the editor
 and the host, driving them as an author would, and finding the next thing that
 is broken. The backlog grows as a result; work is dispatched against it.
 
+**The scope is expected to keep growing and the task sequence to keep changing.
+That is the design, not drift.** This spec and plan are the one unconventional
+pair in the repo: every other plan has a fixed scope written down before the
+work starts, and this one is driven by finding things the list did not know to
+ask for. A stale task number is the plan working. **Definition of done is a
+floor, not a ceiling** — the pass ends when nothing is left that using the
+product can find, not when the list runs out.
+
 The loop, in order:
 
 1. **Use the product** with Playwright MCP — the editor, the host, the player,
