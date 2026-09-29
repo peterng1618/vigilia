@@ -159,9 +159,11 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
   // gone, which no editor assertion would have caught.
   //
   // `text`, not `dim`: this line sits directly on the photograph with no card
-  // behind it, and measured there `#a8bed0` reads **2.11:1** against the sky.
-  // That is the same ink-versus-field pricing `0013` did for the frosted cards,
-  // on a field the frosted cards were protecting.
+  // behind it, and measured there `#a8bed0` reads **2.11:1** against the sky —
+  // the same ink-versus-field pricing `0013` did for the frosted cards, on a
+  // field the frosted cards were protecting. `text` takes it to 3.53:1, which
+  // is the most any token in this palette can do on a saturated mid-cyan and is
+  // still short of AA. The remaining gap is the photograph, not the ink.
   await addText(page, {
     name: "strapline",
     text: "S Y S T E M   I N S I G H T S",

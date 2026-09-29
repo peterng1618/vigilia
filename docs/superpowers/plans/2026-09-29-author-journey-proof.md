@@ -417,7 +417,7 @@ own preview on 4223, its own real host on 4224, its own themes directory, its ow
 viewable.** The player renders every region, the sensor gaps are gaps rather than
 zeros (§97 intact), and nothing is clipped at either size.
 
-#### F2.12 — **BLOCKING, deferred: the frosted-glass control does not carry the frosted material**
+#### F2.12 — **BLOCKING, filed: [#11](https://github.com/peterng1618/vigilia/issues/11) — the frosted-glass control does not carry the frosted material**
 
 **This is the pass's headline finding, and it is the one the whole pass was
 waiting to see in pixels.**
@@ -454,9 +454,11 @@ the fine structure is gone either way.
 
 **The material is reachable — through a second control, which is the other half
 of the defect.** The Fill picker lists tokens by name, so `palette.frost` is
-right there as **"Frosted panel"**. The capture `player-desktop-frosted.png` is
-the same document with that token applied to all eight cards through the real
-picker, kept beside the 85 % frame precisely so the difference is the evidence.
+right there as **"Frosted panel"**, and one select moves a card from
+`{"fill": "palette.panel"}` to `{"fill": "palette.frost"}` — measured, not
+assumed. So the frosted material exists, is reachable, and is **not** what the
+control labelled "Frosted glass" gives you, and nothing tells the author to go and
+find it.
 
 **Not fixed here, and the reason is a genuine unknown.** `ownership.md` splits
 this field in two: *Shape material fields (fill, stroke, border, shadow, radius)*
@@ -466,7 +468,8 @@ Review Focus #4's exact trap — a second owner for one property. And the questi
 of **whether enabling a material should overwrite a fill the author chose** has no
 precedent in the repo: a chart painted blue, then frosted, would lose its blue.
 That is a product decision, it is the user's, and the plan's rule for those is
-record and move on.
+record and move on. Filed as **[#11](https://github.com/peterng1618/vigilia/issues/11)**
+with the three candidate behaviours written out.
 
 #### F2.13 — **blocking, fixed: `Background media` is on the Design tab, and the wrong tab is a ten-minute timeout**
 
@@ -498,6 +501,49 @@ caught it because **no spec imported it** — `buildComposition` and
 inline. A file of finished work that had never run is the exact thing the
 screenshot spring clean and this pass both exist to surface.
 
+#### F2.16 — **BLOCKING, filed: [#12](https://github.com/peterng1618/vigilia/issues/12) — a value run cannot be told not to print its unit, so a value and its unit print the unit twice**
+
+The CPU card reads **`95.4%%`** and the GPU card **`1%%`** on a real display.
+
+`unitDisplay` is a field on a `Binding` — `"none"`, `"short"`, `"long"` — and the
+reference composition uses it: `new-fabric-theme-cards.ts:70` sets
+`unitDisplay: "none"` on exactly the cards that follow their reading with a
+literal `%`. **Only the chart manager exposes it.** `chart-manager/panel.ts:365`
+renders a picker per binding; `selection-inspector/runs.ts` — the run editor, the
+surface a *text* run is authored through — has no control for it at all, and
+`grep -rn unitDisplay packages/` finds the field in the chart panel and the card
+builders and nowhere else.
+
+So the sequence the composition needs is unauthorable: bind the reading, turn its
+unit off, add a second run for the `%` in the card's own type and colour. F2.1
+made the second run possible; this is what it is for, and the unit fights it. The
+saved package shows it exactly — the CPU card's binding is
+`{"id": "binding-b127ad23…", "semanticKey": "cpu.load"}` with no `unitDisplay`,
+and its second run is a literal `%`.
+
+**Every editor assertion passes.** The envelope is valid, the binding is
+declared, both runs persist, and `cpu.load` is the right key. The defect is
+visible only in the rendered number, which is why nothing in the region specs
+could have found it.
+
+**Deferred, not fixed.** `ownership.md` puts a text run's fields in
+`selection-inspector/` and a binding's in `chart-manager/`, and a text run's
+binding is reached through the former while its `unitDisplay` belongs to the
+latter — the same two-owner split as F2.12, and the same reason.
+
+#### F2.17 — deferred: a 16:9 artboard uses **26 %** of a phone screen
+
+Not a defect, and recorded because it is the first number anyone has for it. At
+390 × 844 the 1920 × 1080 artboard letterboxes to **220 px of 844 — 26.1 % of the
+screen height**, 312 px of black above and 312 below, and the whole composition
+sits in a band across the middle.
+
+This is the document's own choice and the presets exist for it: a **19.5:9
+portrait** artboard is one click away in the chooser, and it is what a phone
+display wants. What the measurement adds is that a desktop-shaped theme on a
+phone is not a degraded view — it is a quarter of the screen, and the reader sees
+black where they expect a dashboard.
+
 #### The verdict, stated plainly
 
 **The cards read as tinted panels, not as glass.** Not "neither", and not a
@@ -515,6 +561,52 @@ is the value the surface hands an author by default. 0013's 30 % was not a
 compromise against the glass — it was the measurement, taken from the contrast
 requirement, and the frosted capture is what that looks like against a real
 photograph.
+
+#### What the two displays look like, and what differs between them and the target
+
+**At 1920 × 1080** the backdrop is the whole artboard, edge to edge, `cover` on a
+16:9 image in a 16:9 artboard — the city fills the frame with the sunset band
+behind the top row of cards and the water under the bottom row. The wordmark and
+strapline sit on open sky at top left. Five cards run across the upper half
+(clock, CPU, GPU, RAM, VRAM) and three across the lower (trends, storage,
+network). Live readings throughout: **20:54 PM**, **Tue, Sep 29, 2026**, CPU
+95.4 %, GPU 1 %, RAM 83.2 %, VRAM 14.9 %. The RAM and VRAM rings draw their arcs
+in teal and magenta; the CPU and GPU sparklines are drawing; the trends panel has
+three series but only a few samples of each.
+
+**At 390 × 844** the same document letterboxes into a 220 px band — see F2.17.
+The composition is legible and nothing is lost off the edge, but the cards are
+small enough that the doubled `%` of F2.16 is visible even here.
+
+**Editor against player, for one theme: they agree.** The reopened package shows
+the same eight cards in the same places with the same names, and the readings
+paint from the same bindings. The one difference is the one the surface is *for* —
+the editor draws the selection chrome, the handles and the inspector that the
+player has no word for. Nothing is clipped in one and not the other, and no
+object the editor draws is missing from the display.
+
+**Against the target** (`2026-09-26-reference-theme-target.png`): the layout, the
+five-plus-three card arrangement, the ring positions, the legend and the type
+hierarchy all follow the picture. Three differences are real.
+
+1. **The backdrop is a different photograph at the top left.** The target's
+   top-left corner is dark — a window frame and interior — where the committed
+   photograph is bright sky. That is why the strapline needed `text` rather than
+   `dim` (F. below): the same layout lands small type on a bright field.
+2. **The target's cards carry visible blurred city structure** through the top
+   row; the rebuild's do not, for the reason F2.12 gives.
+3. **The target's charts are full of history**; a display that has been up for
+   four minutes has three or four samples, so the trends panel reads as an empty
+   card with a spike at its right edge. That is correct behaviour and a fair
+   difference — a wall display runs for days, a test display for seconds.
+
+**One more thing only a display could find.** The clock reads **`20:54`** with
+the bottom of the digits sliced off by the rule beneath, and Storage reads
+**`5  6  %`** with the digits spaced as three glyphs. Both are authored boxes
+that fit in the editor's inspector and do not fit the type they were given — the
+clock's 108 px preset in a 90-unit box, the storage value in a box too narrow for
+its own reading. Neither an envelope assertion nor a canvas-object count could
+see it.
 
 ### Hotkeys: the default audit, and the customisation panel (2026-09-29)
 
@@ -609,6 +701,31 @@ passed, 143 skipped, 2 failed, exit 1.**
 and the rebuild is not the reason. What remains is one stale assertion in a file
 another agent is editing, and one filed pre-existing bug whose cause is not
 established. Neither is a region of this pass, and neither was made worse by it.
+
+### The full suite again, after the display pass (2026-09-29)
+
+**209 passed, 143 skipped, 2 failed, exit 1**, 18.8 min, `--workers=1`, exit code
+read directly. `typecheck`, `lint`, `format:check` and `npm test` (**2110**) all
+exit 0 — and `lint` and `format:check` are now clean **tree-wide**, because
+`rebuild-composition.ts` is no longer another agent's untracked half-written file.
+
+| Failing test | Verdict |
+|---|---|
+| `glass-authoring.spec.ts:171` "refuses a radius past the published bound" | **Fixed and verified — 4 passed, exit 0.** The deferral above is lifted: the file's owner finished and committed, so the file was clean and the collision was over. The helper asserted `#status` **equals** its text, but that footer is F1.15's diagnostic surface and the radius test's *own* refusal is on it — the test's next three lines assert exactly that refusal. Contains, not equals. A stale assertion, not a defect |
+| `reference-theme.spec.ts:365` "a new document is the reference composition" | **Still red, still filed, still not established.** The `Ctrl+N` **Discard** prompt timeout — issue [#7](https://github.com/peterng1618/vigilia/issues/7), reproduced at HEAD by its own implementer. Not mine, not fixed, cause not established |
+| ~~`display-fabric.spec.ts:663` ×2~~ | Closed earlier in this pass — the stale `"Vigilia could not load this theme"` string F1.14 removed. Green in this run |
+| ~~`host-player.spec.ts:542`~~ | Green in this run, as on the re-run before it. The chroma threshold does not reproduce |
+
+**So: of the five the pass inherited, four are closed and one remains**, and the
+one that remains is a filed, pre-existing, cause-not-established bug in a test
+this pass does not own. The suite is still red, and the display work did not make
+it redder — the two failures were both red before it.
+
+**What the display pass did to the suite: nothing, and that is the finding worth
+stating.** `author-journey-display.spec.ts` is excluded from the shared config
+for the reason the rebuild is — it needs its own preview and its own host — so
+adding it changed no shared test. The gate it *does* answer is the one no suite
+answered: a composition on a display, which is where F2.12 and F2.16 came from.
 
 ### Where the rebuild stands
 
