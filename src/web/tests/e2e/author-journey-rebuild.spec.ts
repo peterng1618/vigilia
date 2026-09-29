@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import {
   addCard,
@@ -16,6 +17,7 @@ import {
   selectLayer,
   setName,
 } from "./rebuild-driver.js";
+import { isDesktopSurface } from "./surface.js";
 
 /**
  * The reference composition, rebuilt from a blank theme by hand.
@@ -48,7 +50,11 @@ const DEVICE_COLOURS = [
 ] as const;
 
 test.describe("the reference composition, built from blank", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    // The shared config runs every spec on every project, and the editor is a
+    // desktop surface — `surface.ts` says so in its own doc comment, and this is
+    // the guard its callers use.
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto("/");
     await page.waitForSelector("#canvas-host canvas");
   });
@@ -401,7 +407,8 @@ async function reading(
 }
 
 test.describe("the rest of the composition", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto("/");
     await page.waitForSelector("#canvas-host canvas");
     await openBlank(page);
@@ -838,5 +845,175 @@ test.describe("the rest of the composition", () => {
     expect((await readScene(page)).map((object) => object.name)).toEqual(
       expect.arrayContaining(["network-card", "network-chart"]),
     );
+  });
+});
+
+/**
+ * Task 11's second half: the **persisted envelope**, not the live DOM.
+ *
+ * Reading the live scene proves the control repainted. Only reading the saved
+ * package proves save — which is Review Focus #2, and the one thing this file
+ * could not claim from the region tests alone.
+ */
+test("what the rebuild authored survives the save", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  // Its own document: a top-level test rather than a region, so it navigates
+  // for itself instead of inheriting a describe's `beforeEach`.
+  await page.goto("/");
+  await page.waitForSelector("#canvas-host canvas");
+  await openBlank(page);
+  for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+
+  // The CPU card: the richest region. A frosted panel, a stroked path, a
+  // two-run reading and a bound sparkline — every kind of authored state the
+  // document carries.
+  await addCard(page, {
+    name: "cpu-card",
+    x: 420,
+    y: 182,
+    w: 280,
+    h: 305,
+    radius: 14,
+    stroke: "Panel outline",
+    blur: 40,
+  });
+  await glyph(
+    page,
+    "cpu-card-icon",
+    { x: 452, y: 218, w: 28, h: 28 },
+    chip(28, 3),
+    "CPU blue",
+  );
+  await addText(page, {
+    name: "cpu-card-value",
+    text: "00",
+    x: 448,
+    y: 262,
+    w: 220,
+    h: 60,
+    preset: "typePresets.60-600",
+    colour: "text",
+  });
+  await selectLayer(page, "cpu-card-value");
+  await page.locator('[data-vigilia-run-source="0"]').selectOption("cpu.load");
+  await page.locator("[data-vigilia-run-add]").click();
+  await fill(page, '[data-vigilia-run-text="1"]', "%");
+  await page
+    .locator('[data-vigilia-run-preset="1"]')
+    .selectOption("typePresets.32-400");
+  await page
+    .locator('[data-vigilia-run-colour="1"]')
+    .selectOption("palette.dim");
+  await addChart(page, {
+    family: "Line",
+    name: "cpu-card-sparkline",
+    x: 436,
+    y: 386,
+    w: 248,
+    h: 62,
+    series: ["cpu.load"],
+    paint: ["CPU blue"],
+  });
+
+  // The header's own Save control, and the package it writes.
+  const download = page.waitForEvent("download");
+  await page.locator("[data-vigilia-save-package]").click();
+  const file = await (await download).path();
+  expect(file, "Save package should write a package").not.toBeNull();
+
+  const envelope = JSON.parse(
+    execFileSync("unzip", ["-p", file!, "theme.json"], {
+      encoding: "utf8",
+    }),
+  ) as {
+    readonly artboard: { readonly width: number; readonly height: number };
+    readonly bindings: Readonly<
+      Record<string, readonly { semanticKey: string }[]>
+    >;
+    readonly globals: { readonly palette: Readonly<Record<string, unknown>> };
+    readonly scene: {
+      readonly objects: readonly {
+        readonly id: string;
+        readonly name?: string;
+        readonly vigiliaText?: {
+          readonly runs: readonly {
+            readonly kind: string;
+            readonly text?: string;
+            readonly bindingId?: string;
+            readonly typePreset?: string;
+          }[];
+          readonly box?: { readonly width: number; readonly height: number };
+        };
+        readonly vigiliaPaint?: Readonly<Record<string, string>>;
+        readonly vigiliaGlass?: { readonly blurRadius: number };
+        readonly settings?: Readonly<Record<string, unknown>>;
+      }[];
+    };
+  };
+
+  const byName = (name: string) =>
+    envelope.scene.objects.find((object) => object.name === name);
+
+  // The artboard the chooser was asked for, not the one the document opened at.
+  expect(envelope.artboard).toMatchObject({ width: 1920, height: 1080 });
+
+  // F2.5: the box the author typed, persisted as the box.
+  expect(byName("cpu-card-value")?.vigiliaText?.box).toMatchObject({
+    width: 220,
+    height: 60,
+  });
+
+  // F2.1: two runs, the first a reading and the second its unit.
+  expect(byName("cpu-card-value")?.vigiliaText?.runs).toEqual([
+    expect.objectContaining({
+      kind: "value",
+      typePreset: "typePresets.60-600",
+    }),
+    expect.objectContaining({
+      kind: "literal",
+      text: "%",
+      typePreset: "typePresets.32-400",
+    }),
+  ]);
+
+  // F2.2: the binding the run names is declared, and the chart's own too.
+  const declared = Object.values(envelope.bindings).flat();
+  expect(declared.map((binding) => binding.semanticKey)).toEqual(
+    expect.arrayContaining(["cpu.load"]),
+  );
+
+  // The card's material, the icon's stroke, and the chart's own paint: all
+  // references, never literals, or §73 is broken in a document nobody hand-wrote.
+  expect(byName("cpu-card")?.vigiliaGlass?.blurRadius).toBe(40);
+  expect(byName("cpu-card")?.vigiliaPaint?.["fill"]).toMatch(/^palette\./);
+  expect(byName("cpu-card-icon")?.vigiliaPaint?.["stroke"]).toMatch(
+    /^palette\./,
+  );
+  expect(JSON.stringify(byName("cpu-card-sparkline")?.settings)).not.toMatch(
+    /#[0-9a-f]{6}/i,
+  );
+  expect(JSON.stringify(byName("cpu-card-sparkline")?.settings)).toContain(
+    "palette.",
+  );
+
+  // F1.8: the name an author gave rides beside the id rather than replacing
+  // it, so the layer list and the document both read "cpu-card" and the stable
+  // key is still what a binding and a schema path address.
+  const card = byName("cpu-card");
+  expect(card?.name).toBe("cpu-card");
+  expect(card?.id).not.toBe("cpu-card");
+  expect(envelope.scene.objects.map((object) => object.name)).toEqual([
+    "cpu-card",
+    "cpu-card-icon",
+    "cpu-card-value",
+    "cpu-card-sparkline",
+  ]);
+
+  await testInfo.attach("rebuild-envelope.json", {
+    body: JSON.stringify(envelope, null, 2),
+    contentType: "application/json",
   });
 });

@@ -343,6 +343,64 @@ Then, as an author: a **Rectangle** and two **charts** all insert with palette-b
 
 **The premise holds**: an author can start from nothing, put something on it, and every control they touch resolves.
 
+### Where the rebuild stands
+
+**Eight regions, each built from its own blank theme, every step a pointer or a
+keystroke.** `tests/e2e/author-journey-rebuild.spec.ts`, run on its own config
+and its own preview so it cannot race the suite's shared servers. The scene is
+read through the editor handle and never written: no `page.evaluate` in the file
+sets a value a click would set.
+
+| Region | What it needed that the surface did not have |
+|---|---|
+| Wordmark, strapline, clock card | F2.4 (a text object that is placed by its middle and does not wrap), F2.5 (a size field that scales the type), F2.8 (a hairline is a path, and a path could not be sized before it was drawn) |
+| Live clock and date | F2.1 (the day period is a second run), F2.10 (the Format field's vocabulary) |
+| CPU card | F2.1 (reading + unit on one object), F2.2 (the sparkline bound to the same key as the reading) |
+| GPU card | as the CPU card, with a second palette token |
+| Both memory rings | F2.2 (a gauge bound to a sensor at all), F2.9 (a chart placed by its centre) |
+| Trends panel | F2.2 — three series on one chart, which was unauthorable in every family |
+| Storage bar | F2.1 (the value and its unit), F2.2 (a bar bound to a sensor) |
+| Network panel | F2.2 — two series, two keys, two tokens |
+
+**Not built, and the reason.** The full-bleed sunset backdrop is an artboard
+*Background media* choice, and the only photograph in the repository is the
+starter's own `starter-backdrop.jpg`. Importing the shipped asset to prove the
+control works would be using a starter file, which the Global Constraints
+forbid — so the backdrop is **absent from the rebuild and unverified**, and
+every card is therefore frosted over a flat colour rather than over a
+photograph. That is the same condition F1.37 records from the other side: glass
+over nothing is a blur of nothing, and the frosted-card verdict stays the user's
+to give.
+
+**The envelope, proved.** Task 11's second half — the *persisted package* rather
+than the live DOM — is covered by one test that builds the CPU card, presses the
+header's **Save package**, unzips the file the browser downloaded and reads
+`theme.json` out of it. Asserted on the saved document, not the screen: the
+artboard is the 1920 × 1080 the chooser was asked for; the value object's
+`vigiliaText.box` is the 220 × 60 the author typed; its two runs are a value run
+and a `%` literal; `cpu.load` is **declared in the envelope's bindings**; the
+card's `vigiliaGlass.blurRadius` is 40; the card's fill, the icon's stroke and
+the chart's settings are all `palette.*` references and the chart's settings
+contain **no hex literal at all**; and the four objects carry the names the
+author gave, with the stable key still separate — F1.8's shape, asserted.
+
+**Not run, and why.** Two things remain, and both are stated rather than
+implied:
+
+- **Nothing has been seen on a display.** Every region is proved in the editor.
+  Task 11's first half — open the saved theme on a real host and compare the
+  player against the editor — is **not done**, and a dashboard that renders
+  differently on a player than in an editor is exactly the finding that pass
+  exists to catch.
+- **The full-bleed backdrop is absent**, so every card is frosted over a flat
+  colour rather than a photograph. See above.
+
+The spec takes the repo's own desktop guard (`surface.ts`, in a `beforeEach` with
+`testInfo`, the form `panel-labels.spec.ts` uses), because the shared
+`playwright.config.ts` runs every spec on every project and the editor is not a
+phone surface.
+
+
 ---
 
 ## The rebuild — the composition, built from blank by hand
