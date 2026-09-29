@@ -623,14 +623,44 @@ three series but only a few samples of each.
 The composition is legible and nothing is lost off the edge, but the cards are
 small enough that the doubled `%` of F2.16 is visible even here.
 
-**Editor against player: not compared side by side, and this is a real gap in
-this record.** The composition was built in the editor and the *saved package* is
-what the player drew — so the round trip is proved by the package carrying all
-eight cards, their names, their bindings and their backdrop, and by the player
-painting every one of them. But the editor was never captured showing the same
-document beside the player's frame, and this section does not claim otherwise.
-The step is in `author-journey-display.spec.ts` and is the first thing to run
-when the display host is next free.
+**Editor against player, for one theme.** Both frames now exist:
+`editor-desktop.png` is the package reopened through `File ▸ Open package`, and
+`player-desktop.png` is the same package served by a real host. **They agree on
+the document** — every one of the eight cards, every name F1.8 gave it, the
+backdrop, and the readings painting from the same bindings. The round trip
+carries the whole composition, and `name` survives it: the reopened layer list
+reads `network-card`, `storage-bar`, `trends-chart`, `vram-gauge`, `ram-value`,
+`cpu-card-icon` and so on, not ids.
+
+**The editor's own reading is livelier than the display's, and that is a
+difference worth naming.** The editor frame shows VRAM at **39.3 %** and the
+three-series trends chart drawing **three coloured waves** — blue, violet and
+teal, which is F2.11's fix visible on a surface it was never measured against.
+The player frames caught the display between stream connections, so their
+readings are §97 gaps. The mechanism is visible in both: the player's own footer
+reads *Connecting to the host — 16 sensors requested*, and the display
+re-enters that state after connecting rather than staying connected. **A display
+that oscillates between connected and connecting is its own finding**, and it is
+recorded here rather than claimed as a pass.
+
+**One difference in the material, and it is the backdrop.** The player honours
+*Media fit: Cover* and draws the photograph full-bleed behind every card. The
+editor draws the same photograph as a **locked object in the layer list** —
+`image-442f454c-3ca4-43f…`, sitting above `network-card` and every other layer —
+rather than as a background layer beneath them. So the author sees the backdrop
+as a thing they can select, reorder and lock, while a display shows it as
+something behind the composition.
+
+**Its extent on the stage is not established, and the attempt to measure it
+failed informatively.** A saturation heuristic over the editor frame returned
+1.53 against the file's 1.78, which is the heuristic catching the cards' own
+edges rather than the photograph — the pale sky at the top of the frame fails a
+saturation test that the water at the bottom passes. **The number was discarded
+rather than reported**, because a number from a detector that has just been shown
+to be measuring the wrong thing is worse than no number. Whether the editor's
+backdrop covers the artboard exactly as the player's `cover` does is **cause not
+established**, and it is adjacent to the user's own **U10** (*"the artboard is not
+a clipping area"*), so it belongs beside that item rather than beside this pass.
 
 **Against the target** (`2026-09-26-reference-theme-target.png`): the layout, the
 five-plus-three card arrangement, the ring positions, the legend and the type
@@ -707,7 +737,19 @@ The user asked for two things: expose the shortcut manager to the settings panel
 - **U19 is withdrawn as a design ask.** "Preview fit is no longer needed" is not right — it is the *content's* fit, it must stay `contain`, and removing it would remove the guarantee that content is never cropped. What survives is a **naming** question: the product has two fit controls — *Preview fit* for the artboard in the editor, *Media fit* for the backdrop — and F1.41 already found them spelled inconsistently. Two controls called "fit" meaning different things, in one panel, is the actual defect.
 - **A phone in the wrong orientation is an authoring answer, not a rendering one**, and the New chooser now makes the right shape one control away.
 
-### The rebuild finished — and what it did not do
+### Fit: one control, not two (decided by the user, 2026-09-29)
+
+**The user's own misreading is the finding.** They had been reading *Preview fit* as "how the background media renders in the preview" — a stand-in for the lack of artboard zoom control. It is neither: it is the **artboard content's** fit. So a control named "Preview fit" sitting beside *Media fit*, in one panel, means something different from what it looks like it means. **That is the defect — not the existence of either.**
+
+- **Content is always `contain`.** Not an author choice, and **not exposed in the property panel at all.** Removing it also removes the false impression that content can be cropped, which is the guarantee worth stating plainly.
+- **The only author-facing choice is background-media fit.** The author sets their intent while designing the theme.
+- **The end user can override it when selecting the theme** — a per-theme override at selection time, a genuinely new surface belonging with the host's theme selection rather than the editor.
+
+**U19 is therefore superseded**, and F1.41's spelling inconsistency goes with it: one control, named once.
+
+### Design tokens: a visible left tab (decided by the user, 2026-09-29)
+
+Tokens get a **visible tab beside Layers**, not Figma's no-selection fallback. The user chose the visible surface over the one Figma uses, which is the right call given Figma's own note that its variables modal is "not discover" — a token panel nobody finds is a token panel nobody uses. Selecting a token still shows its configuration in the standard Properties panel.
 
 ### Glass on non-rect shapes — investigate before deciding (2026-09-29)
 
