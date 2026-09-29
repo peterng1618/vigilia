@@ -8,17 +8,74 @@
  * second copy of all three, and the copy that arrives second is the one
  * without the picture.
  *
+ * A template is the same row with a different truth behind it: the product
+ * offers it, the PC has not saved it, and it cannot be chosen as what the
+ * displays show. It is listed beside the saved themes and says so, because a
+ * flattened list would read the starter as the author's own work — the claim
+ * F0.3 withdrew — and a row that only says "Opens in the editor" says where a
+ * template actually is.
+ *
  * Dependency-free source, like the pages that load it: the host serves these
  * files itself, so they must not need a build step or a network fetch.
  */
 
+/** Reserved space with nothing in it, for a row with no picture to draw. */
+function placeholder() {
+  const box = document.createElement("div");
+  box.className = "theme-shot";
+  box.dataset.placeholder = "";
+  return box;
+}
+
+/** The name beside the picture, and anything said under it. */
+function rowText(name, sub) {
+  const text = document.createElement("span");
+  text.className = "theme-text";
+  text.append(name);
+  if (sub !== undefined) {
+    const by = document.createElement("span");
+    by.className = "by";
+    by.textContent = sub;
+    text.append(by);
+  }
+  return text;
+}
+
+function groupLabel(label) {
+  const heading = document.createElement("p");
+  heading.className = "theme-group-label";
+  heading.textContent = label;
+  return heading;
+}
+
 /**
  * @param {readonly {readonly id: string, readonly name?: string, readonly author?: string}[]} themes
- * @param {{readonly active?: string | null, readonly onChoose: (id: string) => void}} options
+ * @param {{readonly active?: string | null, readonly onChoose: (id: string) => void, readonly templates?: readonly {readonly id: string, readonly name: string}[]}} options
  * @returns {DocumentFragment}
  */
-export function themeList(themes, { active = null, onChoose }) {
+export function themeList(themes, { active = null, onChoose, templates = [] }) {
   const fragment = document.createDocumentFragment();
+
+  if (templates.length > 0) {
+    fragment.append(groupLabel("Templates"));
+  }
+
+  for (const template of templates) {
+    // A template has no stored package, so the thumbnail route cannot answer
+    // for it and the reserved space is drawn directly — asking would be a 404,
+    // and a 404 on a clean load is a console error.
+    const row = document.createElement("a");
+    row.className = "theme-option";
+    row.dataset.template = template.id;
+    row.href = "/editor/";
+    row.append(placeholder(), rowText(template.name, "Opens in the editor"));
+    fragment.append(row);
+  }
+
+  // With nothing saved, the empty group would be a heading over no rows.
+  if (templates.length > 0 && themes.length > 0) {
+    fragment.append(groupLabel("Your themes"));
+  }
 
   for (const theme of themes) {
     const row = document.createElement("button");
@@ -36,27 +93,20 @@ export function themeList(themes, { active = null, onChoose }) {
     // for one of the same size, because an `<img>` whose source failed keeps
     // drawing the browser's own broken-image glyph over the space.
     shot.addEventListener("error", () => {
-      const placeholder = document.createElement("div");
-      placeholder.className = "theme-shot";
-      placeholder.dataset.placeholder = "";
-      shot.replaceWith(placeholder);
+      shot.replaceWith(placeholder());
     });
     row.append(shot);
 
-    const text = document.createElement("span");
-    text.className = "theme-text";
     const named = theme.name ?? theme.id;
     // Two themes can share a display name; the id tells them apart.
     const shared =
       themes.filter((other) => (other.name ?? other.id) === named).length > 1;
-    text.append(shared ? `${named} (${theme.id})` : named);
-    if (theme.author !== undefined) {
-      const by = document.createElement("span");
-      by.className = "by";
-      by.textContent = theme.author;
-      text.append(by);
-    }
-    row.append(text);
+    row.append(
+      rowText(
+        shared ? `${named} (${theme.id})` : named,
+        theme.author,
+      ),
+    );
 
     // The chosen theme is stated in words too, so the state does not rest on
     // a border weight alone.

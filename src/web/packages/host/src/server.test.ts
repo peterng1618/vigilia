@@ -667,6 +667,86 @@ describe("Host theme routes", () => {
     expect(res.text()).toContain("Open the editor");
     expect(res.text()).toContain('href="/editor/"');
   });
+
+  it("names the template on the first-run page, which is where it matters most", async () => {
+    const text = (await request(hosted.server, "GET", "/")).text();
+
+    // With nothing saved, the chooser never renders — this page is what a new
+    // PC sees, and "build one" is the wrong instruction for a product that
+    // ships a finished dashboard. The name comes from the same catalogue the
+    // chooser reads, so the two cannot disagree about what it is called.
+    expect(text).toContain("Starter — System dashboard");
+    expect(text).not.toContain("Open the editor to build one");
+  });
+});
+
+/** A template the product ships, and the list the host's pages read it from. */
+describe("The templates the host serves", () => {
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-templates-"));
+    const store = createThemeStore(tmpDir);
+    await store.write(
+      "living-room",
+      createValidPackage("living-room", "Living Room"),
+    );
+    await store.write("studio", createValidPackage("studio", "Studio"));
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir, admin: ADMIN_DIR },
+      themeStore: store,
+      activeTheme: createActiveThemeStore(tmpDir),
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("names the template beside the saved themes, from the chooser's own route", async () => {
+    const res = await request(hosted.server, "GET", "/api/themes/active");
+    const body = res.json() as {
+      templates: readonly { id: string; name: string }[];
+      themes: readonly { id: string }[];
+    };
+
+    // The chooser draws both kinds of row from this one response, so a host
+    // that serves templates nowhere but the editor's own library shows an
+    // empty list of what the product offers.
+    expect(body.templates).toEqual([
+      { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+    ]);
+    // A template is not a stored theme, so it stays out of the author's own.
+    expect(body.themes.map((theme) => theme.id)).toEqual([
+      "living-room",
+      "studio",
+    ]);
+  });
+
+  it("serves the same list to the library route, so the editor could read it", async () => {
+    const res = await request(hosted.server, "GET", "/api/themes");
+    const body = res.json() as { templates: readonly { id: string }[] };
+
+    expect(body.templates.map((template) => template.id)).toEqual([
+      "vigilia-starter-template",
+    ]);
+  });
+
+  it("cannot be chosen as the active theme, because it is not stored", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "vigilia-starter-template" }),
+    );
+
+    // Only a theme with a file can be displayed. Accepting the id here would
+    // point every display at a package that does not exist.
+    expect(res.status).toBe(404);
+  });
 });
 
 /** The host's own pages, served from source with no build step. */

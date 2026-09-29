@@ -31,6 +31,7 @@ import {
   isValidThemeId,
   type ThemeStore,
 } from "./themes/store.js";
+import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
 import { SseConnection } from "./transport/sse.js";
 
@@ -150,6 +151,11 @@ function firstRunPage(): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>Vigilia</title>
+    <!-- The host's own pages are separate documents from the two bundles, so
+         they need their own copy of the mark: without a link the browser
+         probes \`/favicon.ico\` and logs a 404 on every load. The same file the
+         editor and the player keep, taken rather than authored. -->
+    <link rel="icon" type="image/svg+xml" href="/settings/favicon.svg" />
     <style>
       html, body { margin: 0; height: 100%; }
       body {
@@ -180,7 +186,8 @@ function firstRunPage(): string {
       <h1>No dashboard yet</h1>
       <p>
         This PC has no saved theme, so there is nothing to display. Open the
-        editor to build one, then save it to this PC's library.
+        editor to start from the ${SHIPPED_TEMPLATES[0]?.name ?? "template"},
+        or build one of your own, then save it to this PC's library.
       </p>
       <a href="/editor/">Open the editor</a>
     </main>
@@ -558,7 +565,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 405, "Only GET is supported.");
         return;
       }
-      sendJson(response, 200, { themes: await themeStore.list() });
+      // Templates travel beside the stored themes and are kept out of them: a
+      // template has no file, so counting it among the author's own would be
+      // counting something the PC does not have.
+      sendJson(response, 200, {
+        themes: await themeStore.list(),
+        templates: SHIPPED_TEMPLATES,
+      });
       return;
     }
 
@@ -590,6 +603,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendJson(response, 200, {
           active: chosen,
           themes: available,
+          templates: SHIPPED_TEMPLATES,
           requiredDevices: requiredDeviceGroups(record?.envelope),
         });
         return;

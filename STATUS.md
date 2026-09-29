@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.7: the Insert menu and the Add pane are one list.** The menu held its own copy — five flat entries, no panel and no shape — and had already lost the object the composition is mostly made of. `insertGroups()` in `new-object-panel.ts` is now the only list, and both surfaces render it: Text alone, then **SHAPE** (eight primitives) and **CHART** (four families).
-- **The groups are the pane's**, so "Line" is the primitive in one group and the family in the other, in the menu as it already was in the pane.
-- **The construction is shared too**: `insertNewText` and `insertNewShape` are the Add pane's own actions, and the menu reaches them through a new `addShape` on the session façade, so the two cannot insert different objects under one name.
-- **Proven in the browser** at 1600×1000: the menu open beside the Add pane, the same thirteen entries in the same three groups, and a Rectangle and a Gauge inserted from it land in the layer list as the pane's would. 2042 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: the menu read as five flat items against the pane's three groups.
+- **F1.36: the host serves the template, so `/` lists it.** `SHIPPED_TEMPLATES` (`themes/templates.ts`) travels beside the stored themes on `/api/themes` and `/api/themes/active`, and the row owner that `e245138` put in `theme-list.js` draws it — **Templates** above **Your themes**, so a template never reads as a theme the author saved.
+- **The row is a link to `/editor/`, not a button**, because a template is not stored: `PUT /api/themes/active` still 404s it, and the picture is the hatched stand-in drawn directly rather than an `<img>` that would 404 on every load.
+- **The first-run page named it too** — it told a new PC to "build one" while the product ships a finished dashboard, and it is the page a new PC actually sees.
+- **Proven in a browser** at 1920×1080 on a real host: the chooser and `/settings` each list the template above the saved themes, 0 console errors on both. 2049 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: `body.templates` was `undefined` on both routes.
 
 ## Next
 

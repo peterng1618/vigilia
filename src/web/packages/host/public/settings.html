@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>Vigilia — devices</title>
+    <!-- The host's own pages are separate documents from the two bundles, so
+         they need their own copy of the mark: without a link the browser
+         probes `/favicon.ico` and logs a 404 on every load. The same file the
+         editor and the player keep, taken rather than authored. -->
+    <link rel="icon" type="image/svg+xml" href="/settings/favicon.svg" />
     <!-- The host's own pages share this stylesheet and the theme rows below,
          so the chooser at `/` draws its themes the way this page does. -->
     <link rel="stylesheet" href="/settings/vigilia-page.css" />
@@ -110,6 +115,9 @@
 
       let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
       let themes = [];
+      // The product's templates, which are not saved on this PC and so are
+      // never chosen here — only listed, beside the author's own.
+      let templates = [];
       let activeTheme = null;
       // The device slots the chosen theme reads; empty means "ask about none".
       let requiredDevices = [];
@@ -125,7 +133,9 @@
               ? "The only saved theme is shown on every display."
               : "Pick the theme your displays should show.";
 
-        if (themes.length === 0) return;
+        // A template is worth listing even with nothing saved, so the empty
+        // state still shows what the product offers.
+        if (themes.length === 0 && templates.length === 0) return;
 
         const list = document.createElement("div");
         list.className = "theme-list";
@@ -133,6 +143,7 @@
           themeList(themes, {
             active: activeTheme,
             onChoose: chooseTheme,
+            templates,
           }),
         );
         themesHost.append(list);
@@ -252,6 +263,7 @@
         if (!response.ok) return;
         const body = await response.json();
         themes = body.themes ?? [];
+        templates = body.templates ?? [];
         activeTheme = body.active ?? null;
         renderThemes();
         await loadQuestions();

@@ -141,3 +141,24 @@ a {
     color-mix(in srgb, var(--muted) 18%, transparent) 12px
   );
 }
+/* A template is a thing the product offers rather than one this PC saved, so
+   the list names which group a row is in. A heading with no rows under it is
+   why the empty group is not drawn at all. */
+.theme-group-label {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.theme-group-label:first-child {
+  margin-top: 0;
+}
+/* A template row leaves the page — the editor is where a template lives — so
+   it is underlined like every other link here rather than drawn as a second
+   button. The underline is the tell that it is not a choice of what the
+   displays show. */
+.theme-option[data-template] {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

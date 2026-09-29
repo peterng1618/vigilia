@@ -5,9 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>Vigilia — choose a theme</title>
+    <!-- The host's own pages are separate documents from the two bundles, so
+         they need their own copy of the mark: without a link the browser
+         probes `/favicon.ico` and logs a 404 on every load. The same file the
+         editor and the player keep, taken rather than authored. -->
+    <link rel="icon" type="image/svg+xml" href="/settings/favicon.svg" />
     <!-- The settings page's own assets, absolute because this page is served
          at `/`. Sharing them is the point: the rows below are drawn by the
-         module that draws the settings page's, so both show a picture. -->
+         module that draws the settings page's, so both show a picture. The
+         icon is absolute for the same reason and the same hazard: `/` and
+         `/settings` are different directories, so a relative href would
+         resolve against whichever this document was served from. -->
     <link rel="stylesheet" href="/settings/vigilia-page.css" />
     <style>
       /* One decision, so one column of choices and no navigation. */
@@ -30,7 +38,7 @@
       <h1>Choose a theme</h1>
       <p class="lead">
         This PC has several saved themes. Pick the one your displays should
-        show.
+        show, or start from the template the product ships.
       </p>
       <div id="themes"></div>
       <p class="elsewhere">
@@ -53,12 +61,13 @@
           return;
         }
         const body = await response.json();
-        render(body.themes ?? []);
+        render(body.themes ?? [], body.templates ?? []);
       }
 
-      function render(themes) {
+      function render(themes, templates) {
         themesHost.replaceChildren(
           themeList(themes, {
+            templates,
             onChoose: async (id) => {
               status.textContent = "Saving…";
               const saved = await fetch("/api/themes/active", {

@@ -90,3 +90,61 @@ describe("a saved theme as one row", () => {
     expect(labels).toEqual(["Living Room", "Studio"]);
   });
 });
+
+const TEMPLATES = [
+  { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+];
+
+/** A template is not a stored theme, so it is offered beside the stored ones
+ *  and never inside the count of what this PC has saved. */
+describe("a template the product ships, beside the saved themes", () => {
+  const withTemplate = (): HTMLElement =>
+    mount(themeList(THEMES, { onChoose, templates: TEMPLATES }));
+
+  it("lists the template, and says which kind of row it is", () => {
+    const host = withTemplate();
+    const groups = [...host.querySelectorAll(".theme-group-label")].map(
+      (label) => label.textContent,
+    );
+
+    expect(groups).toEqual(["Templates", "Your themes"]);
+    // Two kinds of thing in one list, so the row says which it is rather than
+    // letting a template read as a theme the author saved.
+    expect(host.querySelector("[data-template]")?.textContent).toContain(
+      "Starter — System dashboard",
+    );
+  });
+
+  it("takes the consumer to the editor, because that is where a template lives", () => {
+    const row = withTemplate().querySelector("[data-template]");
+
+    // A template is not stored, so it cannot be chosen as the active theme;
+    // the only honest action is to open it. An anchor is focusable and follows
+    // the link, so the row needs no key handler of its own.
+    expect(row?.tagName).toBe("A");
+    expect(row?.getAttribute("href")).toBe("/editor/");
+    // A screen reader reads the link's purpose from its name, not from where
+    // the pointer is, so the row has to say where it goes.
+    expect(row?.textContent).toContain("Opens in the editor");
+  });
+
+  it("asks for no picture, because a template has none to serve", () => {
+    const host = withTemplate();
+
+    // A thumbnail route is keyed by theme id and a template is not stored, so
+    // asking for one is a 404 — a console error on a clean page load, which is
+    // the failure a favicon link exists to remove. The reserved space is drawn
+    // directly instead.
+    expect(host.querySelectorAll("img")).toHaveLength(THEMES.length);
+    expect(
+      host.querySelector("[data-template] [data-placeholder]"),
+    ).not.toBeNull();
+  });
+
+  it("draws exactly as it did before, when the product ships no template", () => {
+    const host = mount(themeList(THEMES, { onChoose }));
+
+    expect(host.querySelector(".theme-group-label")).toBeNull();
+    expect(host.querySelector("[data-template]")).toBeNull();
+  });
+});
