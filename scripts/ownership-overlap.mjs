@@ -94,8 +94,15 @@ if (process.argv.includes("--self-test")) {
   const kw = (c) => new Set(keywordsOf(c));
   const sharedOf = (x, y) => [...kw(x)].filter((k) => kw(y).has(k));
   const checks = [
-    ["stopwords are dropped", kw("The canvas and the data").size === 0],
-    ["distinctive words survive", kw("Frosted-glass control").includes("frosted") || kw("Frosted-glass control").includes("glass")],
+    // Prose and grammar are dropped. Note what is NOT asserted: `canvas` and
+    // `data` survive, because in this codebase they are domain words and two
+    // rows about them overlapping is exactly the signal worth having.
+    ["grammar words are dropped", (() => {
+      const k = kw("The canvas and the data with their own values");
+      return !k.has("the") && !k.has("and") && !k.has("with") && !k.has("their") && !k.has("own");
+    })()],
+    ["domain words survive the stoplist", kw("The canvas and the data").has("canvas")],
+    ["distinctive words survive", kw("Frosted-glass control").has("frosted") || kw("Frosted-glass control").has("glass")],
     ["a genuine overlap is found", sharedOf("artboard size and preview fit", "artboard preview fit and paint").length >= 2],
     ["unrelated concepts are not", sharedOf("Palette token reassignment", "Per-image crop session").length === 0],
     ["the real map scan produced pairs", overlaps.length > 0],
