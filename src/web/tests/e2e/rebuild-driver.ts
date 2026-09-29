@@ -157,10 +157,31 @@ export async function insert(page: Page, label: string): Promise<void> {
     .toBeGreaterThan(before);
 }
 
-/** Selects an object by clicking its row in the layer list. */
+/**
+ * Selects an object by clicking its row in the layer list.
+ *
+ * **On the name element, not on the row's text.** `hasText` matches anywhere in
+ * the row, and a card owns rows that carry its name — `cpu-card` sits beside
+ * `cpu-card-icon`, `-title`, `-value` and `-sparkline` — so a substring match
+ * returns the first of five, and DOM order puts the card itself *last*. The
+ * display pass hung on it: it clicked the sparkline and then waited for a fill
+ * control a chart does not have.
+ *
+ * `.vigilia-layer-name` is the one element in a row that holds the name and
+ * nothing else; the row also carries a twisty, a visibility toggle and a lock,
+ * so matching the row's own text is matching all of those too.
+ */
 export async function selectLayer(page: Page, name: string): Promise<void> {
   await openRailPane(page, "Layers");
-  await page.getByRole("treeitem").filter({ hasText: name }).first().click();
+  await page
+    .locator(".vigilia-layer-name")
+    // Anchored, because `hasText` is a substring match and `cpu-card` would
+    // otherwise take `cpu-card-icon` whenever the icon's row came first.
+    .filter({
+      hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+    })
+    .first()
+    .click();
 }
 
 /** Types into a control the way an author does, and commits it on blur. */
