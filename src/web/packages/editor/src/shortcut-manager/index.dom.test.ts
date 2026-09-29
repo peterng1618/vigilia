@@ -94,6 +94,82 @@ describe("ShortcutManager", () => {
     manager.destroy();
   });
 
+  it("dispatches Ctrl+Shift+Z to redo and keeps Ctrl+Y", () => {
+    // The standard redo in Photoshop, Affinity and Figma. It has to *not* fall
+    // through to undo: `edit.undo`'s binding has no `shift` field, so a table
+    // without the shift-qualified redo in front of it turns the one chord every
+    // arriving author knows into an undo.
+    const manager = new ShortcutManager();
+    const undo = vi.fn();
+    const redo = vi.fn();
+    manager.register("edit.undo", undo);
+    manager.register("edit.redo", redo);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Z",
+        ctrlKey: true,
+        shiftKey: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(redo).toHaveBeenCalledOnce();
+    expect(undo).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "y",
+        ctrlKey: true,
+        cancelable: true,
+      }),
+    );
+    expect(redo).toHaveBeenCalledTimes(2);
+    manager.destroy();
+  });
+
+  it("routes Meta+Shift+Z to redo, so macOS is not left behind", () => {
+    const manager = new ShortcutManager();
+    const redo = vi.fn();
+    manager.register("edit.redo", redo);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Z",
+        metaKey: true,
+        shiftKey: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(redo).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("leaves redo to a focused text field on the standard chord too", () => {
+    // `edit.redo` is in `MODIFIED_KEY_DEFERRED_ACTION_IDS` by action id, so the
+    // new binding inherits the deferral. Ctrl+Shift+Z inside a rename field is
+    // that field's own redo of its text.
+    const manager = new ShortcutManager();
+    const redo = vi.fn();
+    manager.register("edit.redo", redo);
+    const input = document.createElement("input");
+    document.body.append(input);
+    const event = new KeyboardEvent("keydown", {
+      key: "Z",
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+
+    expect(redo).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+    input.remove();
+    manager.destroy();
+  });
+
   it("does not steal undo from an editable field", () => {
     const manager = new ShortcutManager();
     const undo = vi.fn();
@@ -160,6 +236,67 @@ describe("ShortcutManager unmodified keys", () => {
 
     expect(group).toHaveBeenCalledOnce();
     expect(ungroup).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("sends the standard chords to front and back, and keeps the bare ones", () => {
+    // `event.key` under Shift is the shifted character, not the bracket: a
+    // browser reports `{` and `}` for Ctrl+Shift+[ and Ctrl+Shift+]. Binding the
+    // shifted characters is what makes the standard chord work at all.
+    const manager = new ShortcutManager();
+    const front = vi.fn();
+    const back = vi.fn();
+    manager.register("canvas.front", front);
+    manager.register("canvas.back", back);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "}",
+        ctrlKey: true,
+        shiftKey: true,
+        cancelable: true,
+      }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "{",
+        ctrlKey: true,
+        shiftKey: true,
+        cancelable: true,
+      }),
+    );
+    expect(front).toHaveBeenCalledOnce();
+    expect(back).toHaveBeenCalledOnce();
+
+    // The existing pair still works — additive, not a replacement.
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "]", ctrlKey: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "[", ctrlKey: true }),
+    );
+    expect(front).toHaveBeenCalledTimes(2);
+    expect(back).toHaveBeenCalledTimes(2);
+    manager.destroy();
+  });
+
+  it("routes Meta+Shift+] and Meta+] to front, so macOS is not left behind", () => {
+    const manager = new ShortcutManager();
+    const front = vi.fn();
+    manager.register("canvas.front", front);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "}",
+        metaKey: true,
+        shiftKey: true,
+      }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "]", metaKey: true }),
+    );
+
+    expect(front).toHaveBeenCalledTimes(2);
     manager.destroy();
   });
 

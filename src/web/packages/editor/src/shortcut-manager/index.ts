@@ -32,7 +32,13 @@ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "n", modifier: true, action: "file.new" },
   { key: "o", modifier: true, action: "file.open" },
   { key: "s", modifier: true, action: "file.save" },
+  // Shift-qualified first, or `edit.undo`'s shift-agnostic binding below would
+  // take Ctrl+Shift+Z and turn the standard redo chord into an undo. `edit.undo`
+  // stays shift-agnostic because Cmd/Ctrl+Z is the only undo there is.
+  { key: "z", modifier: true, shift: true, action: "edit.redo" },
   { key: "z", modifier: true, action: "edit.undo" },
+  // Kept alongside the standard chord rather than replaced by it: Ctrl+Y is
+  // Figma's redo too, and removing it would break anyone who learned it here.
   { key: "y", modifier: true, action: "edit.redo" },
   { key: "c", modifier: true, action: "edit.copy" },
   { key: "x", modifier: true, action: "edit.cut" },
@@ -40,6 +46,11 @@ const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "g", modifier: true, shift: true, action: "edit.ungroup" },
   { key: "g", modifier: true, action: "edit.group" },
   { key: "a", modifier: true, action: "canvas.select-all" },
+  // A browser reports the *shifted* character under Shift, so Ctrl+Shift+] and
+  // Ctrl+Shift+[ arrive as `}` and `{`. The bare chords stay bound: they are
+  // learnable here, and dropping them would remove a working key.
+  { key: "}", modifier: true, shift: true, action: "canvas.front" },
+  { key: "{", modifier: true, shift: true, action: "canvas.back" },
   { key: "]", modifier: true, action: "canvas.front" },
   { key: "[", modifier: true, action: "canvas.back" },
   { key: "delete", modifier: false, action: "edit.delete" },

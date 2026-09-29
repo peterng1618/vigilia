@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **`artboard.fitMode` is now `artboard.contentFit`**, in the published schema, the envelope type, the validator, the plan, the mount, the scene, the player and the fake-source fixtures. Neither fit said what it fits, and both are in one panel.
-- **The artboard's own fit control is gone from the property panel.** Content is always `contain`; it was never an author choice, and beside *Media fit* it read as "how my picture looks in the preview". `backgroundMedia.fit` is untouched and still the only fit an author sets.
-- **Pre-release, so no migration**: the old key is refused as an unknown field rather than silently read as contain.
-- Two e2e tests that drove the removed control were rewritten onto the media fit, and the label audit no longer lists a control that cannot render.
-- Gate green: `typecheck`, `lint` and `format:check` tree-wide, **2152 unit tests, exit 0**, and 16 Playwright tests across the three affected specs on an isolated preview.
+- **Redo and front/back now answer the chords Photoshop, Figma, Affinity and Canva use** (U23, U24). `Ctrl+Shift+Z` is added as redo *beside* `Ctrl+Y`, not in place of it, so nobody who learned the old key loses it.
+- **`Ctrl+Shift+]` and `Ctrl+Shift+[` now send to front and to back**, with the bare `Ctrl+[` / `Ctrl+]` kept working. The binding is keyed on `}` and `{`, which is what a browser actually reports under Shift.
+- **The e2e proof presses the chords over CDP, because `page.keyboard.press("Control+Shift+]")` is not the same event**: it dispatches `key: "]"`, having never applied the shift-to-character mapping a real layout does. Verified by reading `event.key` in the page; the obvious press would have passed against a table that is wrong.
+- **The shift-qualified redo must precede `edit.undo`**, whose binding is shift-agnostic — without the ordering the standard chord becomes an *undo*, which is worse than the nothing the audit found.
+- Gate green: `typecheck`, `lint`, `format:check` and **2152 unit tests across 165 files, exit 0**; 7 Playwright tests across the three affected specs, each red without its fix.
 
 ## Next
 

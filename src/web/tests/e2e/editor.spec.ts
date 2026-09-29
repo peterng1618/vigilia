@@ -3850,6 +3850,147 @@ test.describe("Fabric editor route", () => {
     // background off the artboard.
     expect(ids).not.toContain("background");
   });
+
+  test("reorders and redoes on the graphic-editor's own chords", async ({
+    page,
+  }, testInfo) => {
+    // **The chords, not the table.** A binding can sit in `PRODUCT_SHORTCUTS` and
+    // still never reach the wire — a browser reports the *shifted* character for
+    // Ctrl+Shift+[ and Ctrl+Shift+], so a table written against `[` and `]`
+    // alone matches nothing. Only pressing the real keys proves the binding.
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
+    await installFixedClock(page);
+    await page.goto(EDITOR);
+
+    const paintOrder = (): Promise<Array<string | undefined>> =>
+      page.evaluate(() => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getObjects(): Array<{ id?: string }>;
+                  getActiveObject(): { id?: string } | undefined;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas.getObjects().map((object) => object.id);
+      });
+    const selectThroughBridge = (id: string): Promise<void> =>
+      page.evaluate((layerId) => {
+        (
+          window as unknown as {
+            vigiliaEditorBridge: { selectLayer(id: string): void };
+          }
+        ).vigiliaEditorBridge.selectLayer(layerId);
+      }, id);
+
+    /**
+     * Presses a chord **as a physical keyboard delivers it**, over CDP.
+     *
+     * `page.keyboard.press("Control+Shift+]")` looks like the same gesture and is
+     * not: it dispatches `key: "]"`, because Playwright synthesises the key by
+     * name and never applies the shift-to-character mapping a real layout does.
+     * A US keyboard with Shift held reports `key: "}"`. So the obvious press
+     * exercises a *different event* from the one an arriving author generates,
+     * and a binding keyed on the shifted character — the correct one — fails
+     * under it. Verified by reading `event.key` in the page: `press` gave
+     * `key="]" shift=true`, the CDP dispatch below gives `key="}" shift=true`.
+     *
+     * `page.keyboard.press` is still right for the plain chords below, which
+     * produce the same event either way.
+     */
+    const cdp = await page.context().newCDPSession(page);
+    const pressChord = async (
+      key: string,
+      code: string,
+      virtualKey: number,
+    ): Promise<void> => {
+      await cdp.send("Input.dispatchKeyEvent", {
+        type: "rawKeyDown",
+        key,
+        code,
+        windowsVirtualKeyCode: virtualKey,
+        // 2 = Ctrl, 8 = Shift.
+        modifiers: 10,
+      });
+    };
+
+    // **The subject is whichever object the starter paints second**, read rather
+    // than assumed: the starter's absolute order is the fixture's business, and
+    // the full-artboard `background` rect is in `getObjects()` but is not
+    // selectable, so a hardcoded "first layer" would be a guess about both.
+    const start = await paintOrder();
+    const subject = start[1];
+    if (subject === undefined)
+      throw new Error("starter painted too few objects");
+    await selectThroughBridge(subject);
+
+    // **To front, on the standard chord**: Ctrl+Shift+], arriving as `}`.
+    await pressChord("}", "BracketRight", 221);
+    const afterFront = await paintOrder();
+    expect(afterFront.at(-1)).toBe(subject);
+    expect(afterFront).not.toEqual(start);
+
+    // **To back, on the standard chord**: Ctrl+Shift+[, arriving as `{`.
+    // Sending the *second* object to the back swaps it with the first, so the
+    // order is the one-rotation of `start`, not `start` itself — comparing
+    // against the full start would be arithmetic about the starter's order
+    // rather than evidence about the binding.
+    await pressChord("{", "BracketLeft", 219);
+    const afterBack = await paintOrder();
+    expect(afterBack[0]).toBe(subject);
+    expect(afterBack.slice(1)).toEqual(start.filter((id) => id !== subject));
+
+    // **The bare pair still works** — additive, not a replacement. Without this
+    // the test only ever proves the new chords fire, and a regression that
+    // deleted the old ones would pass.
+    await page.keyboard.press("Control+]");
+    expect((await paintOrder()).at(-1)).toBe(subject);
+    await page.keyboard.press("Control+[");
+    expect(await paintOrder()).toEqual(afterBack);
+
+    // **Redo, on the standard chord.** The discriminator: after the redo below
+    // the history holds no later entry, so a *second* Ctrl+Shift+Z that was
+    // really an undo would step back to `before` and fail this assertion.
+    const left = (): Promise<number | undefined> =>
+      page.evaluate((id) => {
+        const b = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                canvas: {
+                  getObjects(): Array<{ id?: string; left?: number }>;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return b.editor.canvas.getObjects().find((object) => object.id === id)
+          ?.left;
+      }, subject);
+    const before = await left();
+    if (typeof before !== "number")
+      throw new Error(`${subject} is missing from the canvas`);
+    await page.keyboard.press("ArrowRight");
+    expect(await left()).toBe(before + 1);
+    await page.keyboard.press("Control+z");
+    expect(await left()).toBe(before);
+
+    await page.keyboard.press("Control+Shift+z");
+    expect(await left()).toBe(before + 1);
+    await page.keyboard.press("Control+Shift+z");
+    expect(await left()).toBe(before + 1);
+
+    // **Ctrl+Y is still redo**, which is why the new chord was added beside it
+    // rather than in place of it.
+    await page.keyboard.press("Control+z");
+    expect(await left()).toBe(before);
+    await page.keyboard.press("Control+y");
+    expect(await left()).toBe(before + 1);
+  });
 });
 
 async function saveEnvelope(page: Page): Promise<unknown> {
