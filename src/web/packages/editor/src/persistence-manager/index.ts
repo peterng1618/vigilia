@@ -1,5 +1,6 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { fileNameFor, serializeThemePackage } from "../persist.js";
+import { uiCopy } from "../ui-copy.js";
 
 export type Downloader = (name: string, bytes: Uint8Array) => void;
 
@@ -58,12 +59,45 @@ export class PersistenceManager {
   destroy(): void {}
 }
 
+/** Asks before a document is replaced. A prompt the author reads on the way to
+ *  losing their work, so it is named, centred and keyboard-dismissable like the
+ *  other two: an unclassed `<dialog>` picked up no margin from the preflight
+ *  reset and landed over the very menu it was opened from, asking its question
+ *  in the corner of the screen. */
 export async function confirmDocumentReplacement(): Promise<
   "save" | "discard" | "cancel"
 > {
   const dialog = document.createElement("dialog");
-  dialog.innerHTML =
-    '<form method="dialog"><p>Save changes before opening another theme?</p><button value="save">Save</button><button value="discard">Discard</button><button value="cancel">Cancel</button></form>';
+  dialog.className = "vigilia-dialog";
+  dialog.setAttribute("aria-label", uiCopy.replaceDocument.question);
+
+  const form = document.createElement("div");
+  form.className = "vigilia-dialog-form";
+  const lead = document.createElement("p");
+  lead.className = "vigilia-dialog-lead";
+  lead.textContent = uiCopy.replaceDocument.question;
+  const actions = document.createElement("div");
+  actions.className = "vigilia-dialog-actions";
+
+  // Discard last among the answers, because it is the one that loses work and
+  // Cancel sits beside it, where a slip lands on Cancel and not on Discard.
+  for (const [value, text] of [
+    ["save", uiCopy.replaceDocument.save],
+    ["cancel", uiCopy.replaceDocument.cancel],
+    ["discard", uiCopy.replaceDocument.discard],
+  ] as const) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.value = value;
+    button.textContent = text;
+    button.addEventListener("click", () => {
+      dialog.close(value);
+    });
+    actions.append(button);
+  }
+
+  form.append(lead, actions);
+  dialog.append(form);
   document.body.append(dialog);
 
   return new Promise((resolve) => {

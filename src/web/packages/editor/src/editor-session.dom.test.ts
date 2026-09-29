@@ -44,6 +44,19 @@ vi.mock("./shortcut-manager/index.js", () => ({
 import { EditorSession } from "./editor-session.js";
 import { fontTrio } from "./font-catalog.js";
 
+/** What the chooser answered, per test. The chooser is a modal dialog with no
+    jsdom implementation, so it is stubbed here and driven where it is real. */
+const chooserMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    ratio: "16:9" as const,
+    resolution: "1080p" as const,
+    orientation: "landscape" as const,
+  })),
+);
+vi.mock("./new-document-chooser.js", () => ({
+  chooseArtboardPreset: () => chooserMock(),
+}));
+
 const envelope: FabricThemeEnvelope = {
   schemaVersion: 2,
   fabricVersion: "7.4.0",
@@ -99,6 +112,7 @@ describe("EditorSession", () => {
       },
       libraryClient: mockClient,
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onOpenPackage,
       onSaved,
     });
@@ -118,6 +132,106 @@ describe("EditorSession", () => {
 
     await session.saveLibrary();
     expect(mockClient.save).toHaveBeenCalled();
+
+    extensions.destroy();
+  });
+
+  it("New creates at the size the chooser answered, and a dismissal creates nothing", async () => {
+    const onNew = vi.fn(async () => undefined);
+    const extensions = new EditorSession({
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew,
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+    const session = extensions.actionFacade();
+
+    chooserMock.mockResolvedValueOnce({
+      ratio: "4:3",
+      resolution: "2k",
+      orientation: "portrait",
+    } as never);
+    await session.newDocument();
+    // The three ids the author picked, resolved into the size they mean: 4:3
+    // portrait at 2K is 1440 wide by 1920 high, the short edge being the width
+    // once the orientation swaps. The chooser owns that arithmetic, so the
+    // session must not restate it.
+    expect(onNew).toHaveBeenCalledWith({ width: 1440, height: 1920 });
+
+    // A chooser dismissed resolves nothing, and a New that creates nothing must
+    // not be a New: the open document is untouched.
+    onNew.mockClear();
+    chooserMock.mockResolvedValueOnce(undefined as never);
+    await session.newDocument();
+    expect(onNew).not.toHaveBeenCalled();
+
+    extensions.destroy();
+  });
+
+  it("New from starter creates the composition, and does not ask for a size", async () => {
+    const onNewFromStarter = vi.fn(async () => undefined);
+    const extensions = new EditorSession({
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          textManager: { addText: vi.fn(), setAuthoringView: vi.fn() },
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter,
+      onSaved: vi.fn(),
+    });
+
+    chooserMock.mockClear();
+    await extensions.actionFacade().newFromStarter();
+
+    // The starter is what it always was, at its own 1672x941: a template is
+    // not resized to a preset the new-document list happens to offer.
+    expect(onNewFromStarter).toHaveBeenCalled();
+    expect(chooserMock).not.toHaveBeenCalled();
 
     extensions.destroy();
   });
@@ -155,6 +269,7 @@ describe("EditorSession", () => {
         style: document.body,
       },
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
     });
 
@@ -235,6 +350,7 @@ describe("EditorSession", () => {
         style: document.body,
       },
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
     });
 
@@ -318,6 +434,7 @@ describe("EditorSession", () => {
         style: document.body,
       },
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
     });
 
@@ -395,6 +512,7 @@ describe("EditorSession", () => {
         style: document.body,
       },
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
     });
 
@@ -471,6 +589,7 @@ describe("EditorSession", () => {
         style: document.body,
       },
       onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
     });
 

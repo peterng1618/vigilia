@@ -450,6 +450,41 @@ body,
   }
 }
 
+/* The chooser `New` opens before its document exists, so it is the first thing
+   an author sees in a blank theme and has to read on its own: the shell's own
+   surface and type, sized for a dialog rather than a panel.
+
+   `margin: auto` is stated rather than inherited because Tailwind's preflight
+   zeroes it, and the UA's centring of a modal dialog is exactly that margin.
+   Without it the dialog lands in the top-left corner — over the File menu it was
+   opened from. */
+.vigilia-dialog {
+  margin: auto;
+  min-width: 340px;
+  padding: 20px 24px 18px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 12px;
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  box-shadow: 0 18px 44px #0006;
+}
+.vigilia-dialog::backdrop {
+  background: #0009;
+}
+.vigilia-dialog .vigilia-dialog-lead {
+  margin: 0;
+  font-weight: 600;
+}
+.vigilia-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.vigilia-dialog .vigilia-dialog-size {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Opt-in density primitives: a panel chooses a dense row rather than the shell
    forcing every control onto its own full-width line. */
 .vigilia-field {

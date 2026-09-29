@@ -8,6 +8,7 @@ import {
   loadFontAssets,
   startChartRefresh,
 } from "@vigilia/scene-fabric";
+import type { ArtboardSize } from "./artboard-presets.js";
 import { EditorSession } from "./editor-session.js";
 import {
   createEditorShellBridge,
@@ -18,7 +19,10 @@ import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
 import { createEditorSource } from "./live-source.js";
-import { createNewFabricTheme } from "./new-fabric-theme.js";
+import {
+  createBlankFabricTheme,
+  createNewFabricTheme,
+} from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
@@ -144,14 +148,24 @@ async function start(): Promise<void> {
       },
       libraryClient,
       onBindingsChange: replaceSource,
-      onNew: async () => {
+      onNew: async (artboard: ArtboardSize) => {
+        const fresh = createBlankFabricTheme(artboard);
+        await mount({
+          input: envelopeInputFor(fresh),
+          envelope: fresh,
+        });
+        status.textContent = "New theme";
+      },
+      // The reference composition, reachable as what it is: a template the
+      // product ships, not what a new document means.
+      onNewFromStarter: async () => {
         const fresh = createNewFabricTheme();
         await mount({
           input: envelopeInputFor(fresh),
           envelope: fresh,
           assets: await starterAssets(),
         });
-        status.textContent = "New Fabric theme";
+        status.textContent = "New theme from the starter";
       },
       onOpenPackage: () => picker.click(),
       onOpenTheme: async (

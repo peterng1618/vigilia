@@ -448,7 +448,20 @@ export function createNewChartDefaults(
  * surface, then anything that is not the transparent fallback.
  */
 const CONTENT_TOKENS = ["text", "ink", "foreground", "primary", "accent"];
-const SURFACE_TOKENS = ["background", "bars", "scene", "surface", "track"];
+/** `charttrack` is here because a palette that has it was naming that job: the
+    token exists to be a chart's track. Without it, a palette whose only surface
+    is `chartTrack` falls through to the first entry — which for the blank
+    theme's palette is `text` — and a new gauge arrives with its track painted
+    in the colour of its own data, so it draws nothing. The lookup lowercases
+    both sides, so the candidate is spelled in lower case. */
+const SURFACE_TOKENS = [
+  "background",
+  "bars",
+  "scene",
+  "surface",
+  "track",
+  "charttrack",
+];
 
 /** The surfaces a *card* takes, ahead of the scene's own: a shape filled with
     the backdrop is that backdrop again, and nothing an author can select. */

@@ -1,7 +1,9 @@
 export interface ThemeLibraryEntry {
   readonly id: string;
   readonly name: string;
-  readonly updatedAt: string;
+  /** The host store's own mtime. A template is not a stored file and has none,
+   *  which is what keeps it out of a count of the author's saved themes. */
+  readonly updatedAt?: string;
 }
 
 export interface ThemeLibraryClient {

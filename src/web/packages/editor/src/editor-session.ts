@@ -10,6 +10,7 @@ import {
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+import { artboardSize, type ArtboardSize } from "./artboard-presets.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { createAssetPanel } from "./asset-manager/panel.js";
 import {
@@ -32,10 +33,12 @@ import {
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
 import { createNewTextDefaults } from "./new-object-defaults.js";
+import { chooseArtboardPreset } from "./new-document-chooser.js";
 import {
   createNewObjectPanel,
   type NewObjectPanel,
 } from "./new-object-panel.js";
+import { promptThemeSelection } from "./theme-library-dialog.js";
 import {
   createPalettePanel,
   type PalettePanel,
@@ -60,7 +63,6 @@ import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
   createThemeLibraryClient,
   type ThemeLibraryClient,
-  type ThemeLibraryEntry,
 } from "./theme-library-client.js";
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
@@ -92,7 +94,12 @@ export interface EditorSessionOptions {
   readonly assets?: Readonly<Record<string, Uint8Array>>;
   readonly panelHosts: EditorPanelHosts;
   readonly libraryClient?: ThemeLibraryClient;
-  readonly onNew: () => Promise<void>;
+  /** Creates a blank document at the artboard the author chose. The chooser
+   *  itself is the session's, so the size is asked before the open document is
+   *  even offered up for replacement. */
+  readonly onNew: (artboard: ArtboardSize) => Promise<void>;
+  /** Creates a document from the reference composition, as a template. */
+  readonly onNewFromStarter: () => Promise<void>;
   readonly onOpen?: () => void;
   readonly onOpenPackage?: () => void;
   readonly onOpenTheme?: (
@@ -388,6 +395,7 @@ export class EditorSession {
     const editor = options.shell.editor;
     return {
       newDocument: () => this.#new(options),
+      newFromStarter: () => this.#newFromStarter(options),
       openPackage: () => this.#open(options),
       savePackage: () => this.#save(options),
       releasePackage: () => this.#release(options),
@@ -553,14 +561,16 @@ export class EditorSession {
     if (!(await this.#confirmReplacement(options))) return;
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
-      const themes = await client.list();
-      if (themes.length === 0) {
-        options.onError?.("No themes in host library.");
+      const choice = await promptThemeSelection(await client.list());
+      if (choice === undefined) return;
+      // A template is not a stored theme: it is not in the host's library, so
+      // there is nothing to fetch and nothing the author could have deleted.
+      // The editor already holds it, which is why it is offered at all.
+      if (choice.kind === "template") {
+        await options.onNewFromStarter();
         return;
       }
-      const selectedId = await promptThemeSelection(themes);
-      if (selectedId === undefined) return;
-      const bytes = await client.open(selectedId);
+      const bytes = await client.open(choice.id);
       const parsed = parseThemePackage(bytes);
       if (!parsed.ok) {
         options.onError?.(`Could not open theme: ${parsed.message}`);
@@ -584,8 +594,20 @@ export class EditorSession {
   }
 
   async #new(options: EditorSessionOptions): Promise<void> {
+    // The chooser first, then the replacement question: an author who opens
+    // `New` and then thinks better of it must not be asked to confirm
+    // discarding their work on the way to deciding they wanted none of it.
+    const preset = await chooseArtboardPreset();
+    if (preset === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
-    await options.onNew();
+    await options.onNew(
+      artboardSize(preset.ratio, preset.resolution, preset.orientation),
+    );
+  }
+
+  async #newFromStarter(options: EditorSessionOptions): Promise<void> {
+    if (!(await this.#confirmReplacement(options))) return;
+    await options.onNewFromStarter();
   }
 
   async #confirmReplacement(options: {
@@ -772,39 +794,4 @@ export class EditorSession {
         : { assets: this.#assets.declarations }),
     });
   }
-}
-
-export async function promptThemeSelection(
-  themes: readonly ThemeLibraryEntry[],
-): Promise<string | undefined> {
-  const dialog = document.createElement("dialog");
-  const select = document.createElement("select");
-  for (const t of themes) {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = `${t.name} (${t.id})`;
-    select.append(opt);
-  }
-  dialog.innerHTML =
-    '<form method="dialog"><p>Open from library:</p><div class="theme-select-container"></div><button value="open">Open</button><button value="cancel">Cancel</button></form>';
-  dialog.querySelector(".theme-select-container")?.append(select);
-  document.body.append(dialog);
-
-  return new Promise((resolve) => {
-    dialog.addEventListener(
-      "close",
-      () => {
-        const value = dialog.returnValue === "open" ? select.value : undefined;
-        dialog.remove();
-        resolve(value);
-      },
-      { once: true },
-    );
-    if (typeof dialog.showModal === "function") {
-      dialog.showModal();
-    } else {
-      dialog.returnValue = "open";
-      dialog.dispatchEvent(new Event("close"));
-    }
-  });
 }

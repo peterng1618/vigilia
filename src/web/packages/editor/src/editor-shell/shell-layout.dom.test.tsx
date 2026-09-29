@@ -12,6 +12,7 @@ import type { EditorActionFacade } from "./session-facade.js";
 function facade(): EditorActionFacade {
   return {
     newDocument: vi.fn(async () => undefined),
+    newFromStarter: vi.fn(async () => undefined),
     openPackage: vi.fn(),
     savePackage: vi.fn(async () => undefined),
     releasePackage: vi.fn(async () => undefined),

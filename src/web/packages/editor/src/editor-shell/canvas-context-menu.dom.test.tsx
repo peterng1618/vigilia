@@ -39,6 +39,7 @@ const NO_TARGET: ObjectTarget = {
 function facadeStub(): EditorActionFacade {
   return {
     newDocument: vi.fn(async () => undefined),
+    newFromStarter: vi.fn(async () => undefined),
     openPackage: vi.fn(),
     savePackage: vi.fn(async () => undefined),
     releasePackage: vi.fn(async () => undefined),

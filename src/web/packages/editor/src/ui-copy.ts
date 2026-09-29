@@ -109,12 +109,44 @@ export const uiCopy = {
     view: "View",
   },
   file: {
-    newDocument: "New",
+    newDocument: "New theme",
+    /** The reference composition, offered as what it is: a template the
+     *  product ships. `New` is the author's own blank document; this is the one
+     *  they can open a copy of. */
+    newFromStarter: "New from starter",
     openPackage: "Open package",
     savePackage: "Save package",
     releasePackage: "Release package",
     openLibrary: "Open library",
     saveLibrary: "Save to library",
+  },
+  /** The chooser `New` opens before the document exists. Its three control
+   *  labels are the artboard panel's own — one preset list, two uses — so only
+   *  the words this surface adds are here. */
+  newDocument: {
+    chooseSize: "Choose an artboard size",
+    create: "Create",
+    cancel: "Cancel",
+  },
+  /** The library chooser. Its two groups say which kind of thing a row is: a
+   *  template the product offers, or a theme the author made and can delete. */
+  library: {
+    choose: "Open a theme",
+    /** The control's own name. Distinct from `choose`, which titles the
+     *  dialog; a label repeating the title printed over the control. */
+    themeField: "Theme",
+    templates: "Templates",
+    yourThemes: "Your themes",
+    open: "Open",
+    cancel: "Cancel",
+  },
+  /** The prompt before a document is replaced, which the author reads on the
+   *  way to losing their work. */
+  replaceDocument: {
+    question: "Save changes before opening another theme?",
+    save: "Save",
+    discard: "Discard",
+    cancel: "Cancel",
   },
   view: {
     dataSource: "Data source",

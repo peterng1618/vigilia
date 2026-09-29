@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.6: no favicon, on the editor and the player.** Both documents left `<link rel="icon">` undeclared, so every load logged the implicit `/favicon.ico` 404. The editor's href is relative for the same reason its `base` is: the host mounts it under `/editor/`.
-- **No mark exists as a reusable asset, so the mark is the wordmark reduced** — its initial, in the "Wordmark" type preset's face and the shell's default `editorial` palette. Left as `<text>`, because the geometry belongs to the font and drawing a path would be inventing a logo.
-- **Found by the browser proof, not by the test:** the first file carried a CSS custom-property name in its XML comment, and a doubled hyphen is illegal there. It existed, contained `<svg>…</svg>`, 404'd nothing, and the browser refused to decode it — a blank tab. The test now checks the comment rule, and goes red on that exact defect.
-- **Verified served, headed** (headless Chromium never fetches favicons at all): editor `200 /favicon.svg`, player `200 /favicon.svg`, **zero console errors** on both. Legible at 16/32/64px.
-- **Left for the host's owner:** `library.html`, `settings.html` and `firstRunPage()` declare no icon and 404 the same way. `packages/host/` was not mine this pass.
+- **F0.1: `New` is a blank theme at a size the author picks.** `createBlankFabricTheme` builds from the starter with the scene, assets and bindings emptied, and opens a chooser *before* the document mounts: ratio × orientation × resolution off `artboard-presets.ts`, default 16:9 landscape 1080p, with the derived size stated live. The palette is the nine the decision names, narrowed **by id** from `starterPalette` so no colour is restated — plus `none`, which the validator requires of any palette.
+- **F0.3: the starter is a template, not what `New` means.** `New from starter` restores it verbatim, and the library chooser lists it under **Templates** beside **Your themes**. It is not in the host's store, so there is nothing to delete and it cannot enter a count of the author's themes — the editor serves it, the host never sees it.
+- **The page token is `chartTrack`, measured, not chosen.** It is the only one of the nine where every ink clears AA on it (`text` 12.1, `dim` 6.9, `rule` 6.5, `frostInk` 10.9); `panel` makes a card 1.02:1 and `dim` puts text at 1.74:1.
+- **Found by the test, fixed in the pass:** `SURFACE_TOKENS` never looked for `chartTrack`, so a blank theme's new gauge arrived with its track painted in the colour of its own data and drew nothing. One token added to the list that names surfaces.
+- **Found by the browser, fixed in the pass:** the chooser and the replace-confirm both landed in the top-left corner, over the menu that opened them — Tailwind's preflight zeroes the `margin: auto` a modal dialog is centred by. Both are named, centred and styled now.
 
 ## Next
 

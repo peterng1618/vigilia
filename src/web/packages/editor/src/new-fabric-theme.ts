@@ -1,4 +1,5 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { ArtboardSize } from "./artboard-presets.js";
 import {
   clockCard,
   cpuCard,
@@ -11,25 +12,40 @@ import {
 } from "./new-fabric-theme-cards.js";
 import {
   starterPalette,
+  type StarterPaletteId,
   starterTypePresets,
 } from "./new-fabric-theme-globals.js";
 import { label } from "./new-fabric-theme-objects.js";
 import { starterBackdrop } from "./starter-backdrop.js";
 
 /**
- * The default scene a new theme starts from: the reference composition at the
- * reference's artboard size, with every card's reading bound to a key a
- * provider actually owns.
+ * The starter as the library offers it: a template the product ships.
  *
- * Nothing here is created by saving this document. `onNew` builds one and mounts
- * it; `onOpenTheme` mounts the envelope a saved file already holds, so a change
- * here reaches a new theme and never rewrites a user's own.
+ * A template is not a theme the author made, so it is not in the host's
+ * library store — it has no file, no id in a themes directory and nothing to
+ * delete, which is what "your themes" is counted over. It is offered from the
+ * editor, which already holds `createNewFabricTheme`, rather than fetched over
+ * the library API the way an author's own themes are.
+ */
+export const STARTER_TEMPLATE = {
+  id: "vigilia-starter-template",
+  name: "Starter — System dashboard",
+} as const;
+
+/** The starter envelope's own id, which is the host library's name for the
+    reference theme and is referenced by the e2e suite and the host fixtures. */
+export const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
+
+/**
+ * The reference composition, kept whole so it can be reached as what it now is
+ * — a template, offered by `New from starter` and listed in the library as one.
+ * It is not what `New` means; see `createBlankFabricTheme`.
  */
 export function createNewFabricTheme(): FabricThemeEnvelope {
   return {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
-    id: "vigilia-demo-dashboard",
+    id: STARTER_ENVELOPE_ID,
     metadata: {
       name: "System dashboard",
       author: "Vigilia",
@@ -196,5 +212,92 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         ...networkCard(),
       ],
     },
+  };
+}
+
+/**
+ * The tokens a blank theme starts from: the ink, the panel materials and the
+ * two chart surfaces, and nothing else.
+ *
+ * The starter palette also carries the reference composition's device colours —
+ * `cpu`, `gpu`, `ram`, `vram`, `down` — and those are not a starting set. A
+ * theme opened on a machine with no GPU should not arrive holding a GPU token,
+ * and one that does says something about the author's display that they never
+ * chose. Product decision, recorded 2026-09-29.
+ */
+const BLANK_PALETTE_IDS = [
+  "none",
+  "text",
+  "dim",
+  "panel",
+  "frost",
+  "panelStroke",
+  "rule",
+  "chartTrack",
+  "frostInk",
+  "frostArea",
+] as const satisfies readonly StarterPaletteId[];
+
+/**
+ * A new document: the starter's envelope with the composition taken out, at the
+ * artboard the author chose.
+ *
+ * Built **from** `createNewFabricTheme` rather than beside it, so the parts a
+ * blank document still has — the type presets, the `schemaVersion`, the envelope
+ * shape — are one author's decision in one place. A second hand-built envelope
+ * would be a second place the schema version and the preset vocabulary are
+ * decided, and the two would drift.
+ *
+ * The palette is narrowed **by token id**, never by restating a colour. A
+ * second copy of `#ecf5ff` is how the frosted tint once reached three literals
+ * (`docs/decisions/0013`); taking the starter's own entry means a change to the
+ * starter's palette reaches a blank theme and there is no copy left to forget.
+ */
+export function createBlankFabricTheme(
+  artboard: ArtboardSize,
+): FabricThemeEnvelope {
+  const starter = createNewFabricTheme();
+  const palette = Object.fromEntries(
+    BLANK_PALETTE_IDS.map((id) => [id, starterPalette[id]]),
+  ) as NonNullable<NonNullable<FabricThemeEnvelope["globals"]>["palette"]>;
+
+  return {
+    ...starter,
+    // The starter's id names the starter; a blank theme that kept it would
+    // overwrite the reference in the library the first time it was saved.
+    id: "vigilia-new-theme",
+    metadata: {
+      name: "New theme",
+      author: "Vigilia",
+      description: "",
+      locale: "en",
+    },
+    artboard: {
+      width: artboard.width,
+      height: artboard.height,
+      // A blank theme has no backdrop, so the artboard paints itself, and the
+      // page it paints is a choice the palette has to earn. Measured against
+      // the stage the canvas sits on (#26241f), `chartTrack` is the only token
+      // in the minimal set that reads as a page *and* keeps every ink legible
+      // on it: `text` 12.1:1, `dim` 6.9:1, `rule` 6.5:1, `frostInk` 10.9:1.
+      // `panel` is a card material and makes a card on the page 1.02:1 —
+      // invisible; `dim` puts `text` on the page at 1.74:1, unreadable.
+      //
+      // `panel` is the letterbox instead, which is what it is good at: a
+      // surround the page reads against. `backgroundMedia` is dropped with the
+      // assets — a declaration pointing at bytes this document does not carry
+      // is a theme the validator refuses and the player renders nothing behind.
+      background: { ref: "palette.chartTrack" },
+      barColor: { ref: "palette.panel" },
+    },
+    globals: {
+      palette,
+      ...(starter.globals?.typePresets === undefined
+        ? {}
+        : { typePresets: starter.globals.typePresets }),
+    },
+    assets: [],
+    bindings: {},
+    scene: { version: starter.scene["version"] ?? "7.4.0", objects: [] },
   };
 }

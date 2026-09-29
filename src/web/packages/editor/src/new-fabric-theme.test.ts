@@ -15,8 +15,16 @@ import {
 } from "@vigilia/scene-fabric";
 import { StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { createNewFabricTheme } from "./new-fabric-theme.js";
+import {
+  createBlankFabricTheme,
+  createNewFabricTheme,
+} from "./new-fabric-theme.js";
 import { cpuCard } from "./new-fabric-theme-cards.js";
+import { starterPalette } from "./new-fabric-theme-globals.js";
+import {
+  createNewChartDefaults,
+  createNewPanelDefaults,
+} from "./new-object-defaults.js";
 import { STARTER_BACKDROP_PATH } from "./starter-backdrop.js";
 
 type ObjectJson = Readonly<Record<string, unknown>>;
@@ -635,5 +643,124 @@ describe("the new Fabric document", () => {
       );
     expect(validation).toMatchObject({ ok: true });
     await canvas.dispose();
+  });
+});
+
+describe("the blank Fabric document", () => {
+  /** The nine the product decision names, plus `none` — which the validator
+      requires of any palette (`paletteNone`, `fabric-envelope-validate.ts`) and
+      which `new-object-defaults.ts` filters out before choosing a surface, so it
+      is not one of the tokens a new object can be painted with. */
+  const BLANK_PALETTE_IDS = [
+    "none",
+    "text",
+    "dim",
+    "panel",
+    "frost",
+    "panelStroke",
+    "rule",
+    "chartTrack",
+    "frostInk",
+    "frostArea",
+  ] as const;
+  /** What the decision rules out, and `none` with it: the reference
+      composition's device colours are not a starting vocabulary. */
+  const BLANK_PALETTE_ABSENT = [
+    "cpu",
+    "gpu",
+    "ram",
+    "vram",
+    "down",
+    "sparkArea",
+    "storageFill",
+    "bars",
+    "background",
+  ] as const;
+
+  it("is a valid document at the artboard it was given, not the starter's", () => {
+    const blank = createBlankFabricTheme({ width: 1920, height: 1080 });
+
+    expect(validateFabricThemeEnvelope(blank)).toEqual({
+      ok: true,
+      envelope: blank,
+    });
+    expect(blank.artboard).toMatchObject({ width: 1920, height: 1080 });
+    expect(blank.artboard).not.toMatchObject({
+      width: createNewFabricTheme().artboard.width,
+    });
+  });
+
+  it("is empty: no scene objects, no assets, no bindings", () => {
+    const blank = createBlankFabricTheme({ width: 1920, height: 1080 });
+
+    // An author who opens the product is handed a dashboard they did not make.
+    // "Blank" that still carries the reference composition is the defect itself,
+    // so each of these is asserted separately: a theme could be emptied of
+    // objects and still carry the backdrop it declared.
+    expect(blank.scene["objects"]).toEqual([]);
+    expect(blank.assets).toEqual([]);
+    expect(blank.bindings).toEqual({});
+    // The backdrop is a packaged asset, so dropping the objects has to drop it
+    // too — a declaration without bytes is a theme the player renders nothing
+    // behind and the validator refuses.
+    expect(blank.artboard["backgroundMedia"]).toBeUndefined();
+  });
+
+  it("starts from exactly the minimal token set, taken by id from the starter", () => {
+    const blank = createBlankFabricTheme({ width: 1920, height: 1080 });
+    const palette = blank.globals?.palette ?? {};
+
+    expect(Object.keys(palette).sort()).toEqual([...BLANK_PALETTE_IDS].sort());
+    // The reference palette's device colours are not a starting set: an author
+    // who has no CPU has a theme with a CPU token in it.
+    for (const absent of BLANK_PALETTE_ABSENT) {
+      expect(palette[absent], absent).toBeUndefined();
+    }
+    // Narrowed by id, never restated: the entries are the starter's own, so a
+    // change to the starter's tint reaches a blank theme instead of leaving a
+    // second literal behind to drift.
+    for (const id of BLANK_PALETTE_IDS) {
+      expect(palette[id], id).toBe(starterPalette[id]);
+    }
+  });
+
+  it("paints its artboard from tokens the blank palette actually has", () => {
+    const blank = createBlankFabricTheme({ width: 1920, height: 1080 });
+    const palette = blank.globals?.palette ?? {};
+    const ids = (value: unknown): string[] =>
+      value === undefined ? [] : [String((value as { ref: string }).ref)];
+
+    for (const ref of [
+      ...ids(blank.artboard.background),
+      ...ids(blank.artboard.barColor),
+    ]) {
+      expect(ref.startsWith("palette."), ref).toBe(true);
+      expect(palette[ref.slice("palette.".length)], ref).toBeDefined();
+    }
+  });
+
+  it("gives a new panel and a new chart tokens that exist and differ", () => {
+    const blank = createBlankFabricTheme({ width: 1920, height: 1080 });
+    const globals = blank.globals;
+    const palette = globals?.palette ?? {};
+    const token = (ref: string | undefined): string =>
+      (ref ?? "").replace(/^palette\./, "");
+
+    // A card filled with the page, or a gauge whose track and data are one
+    // colour, is an object the author cannot see — which is what the
+    // surface-token rules in `new-object-defaults.ts` exist to prevent, and
+    // they only hold if the blank palette names the surfaces they reach for.
+    const card = createNewPanelDefaults(globals);
+    const chart = createNewChartDefaults(globals, "gauge");
+    const cardFill = token(card.vigiliaPaint?.fill);
+    const track = token((chart.track as { ref?: string } | undefined)?.ref);
+    const progress = token((chart.progress as { ref?: string }).ref);
+    const page = token((blank.artboard.background as { ref?: string }).ref);
+
+    for (const id of [cardFill, track, progress]) {
+      expect(palette[id], id).toBeDefined();
+    }
+    expect(cardFill, "a card is not the page it sits on").not.toBe(page);
+    expect(track, "a gauge's track is not its data").not.toBe(progress);
   });
 });

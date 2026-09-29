@@ -233,6 +233,7 @@ function ShellMenuBar({
     <nav className="editor-shell-menubar" aria-label="Editor menus">
       <MenuGroup label={uiCopy.menus.file}>
         {item(uiCopy.file.newDocument, () => void session?.newDocument())}
+        {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
         {item(uiCopy.file.openPackage, () => session?.openPackage())}
         {item(uiCopy.file.savePackage, () => void session?.savePackage())}
         {item(uiCopy.file.releasePackage, () => void session?.releasePackage())}

@@ -6,6 +6,8 @@ import type { RunDisplayMode } from "../run-placeholder.js";
  * an existing owner; the façade adds reachability, never logic. */
 export interface EditorActionFacade {
   newDocument(): Promise<void>;
+  /** The reference composition as a template, not what `New` means. */
+  newFromStarter(): Promise<void>;
   openPackage(): void;
   savePackage(): Promise<void>;
   releasePackage(): Promise<void>;
