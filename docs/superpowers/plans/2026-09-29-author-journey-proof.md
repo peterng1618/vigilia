@@ -151,6 +151,8 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | F1.27 | **The layer panel's twisties are still raw glyph text** | `layer-panel.tsx:246` renders `▸`/`▾` as literal text — the same class of defect as F1.2, in the file F1.2's implementer did not own and flagged rather than touched. F1.2's `ui-copy.test.ts` now fails on Unicode in the **copy table**, but these are in markup rather than copy, so the guard does not reach them. | `editor-shell/layer-panel.tsx` |
 
+| F1.28 | **The panel collapse broke 11 e2e call sites** | A regression from **our own** F1.1 work, found by the F1.16–18 implementer and not by us. `openRailPane(page, "Add")` now **closes** the pane when Add is already the showing one, so `reference-theme.spec.ts:541` times out. It proved the fault was not its own by stashing all of its work and reproducing the identical failure at HEAD — which is the right way to establish that in a shared worktree. The helper must only click when the pane is **not** already open, or the collapse is untestable and every caller re-learns this. | the `openRailPane` helper and its call sites |
+
 ### Landed
 
 | # | Finding | Landed in | Proof |
