@@ -14,7 +14,7 @@ import {
   createOpacityField,
   createResolutionLine,
   createTypePresetReveal,
-  paintReferenceOf,
+  paintReferencesOf,
   resolveToken,
   resolveTypePreset,
   typePresetOf,
@@ -375,14 +375,26 @@ export function createSelectionInspector(
       });
       if (glassFields !== undefined) appearance.append(glassFields);
     }
-    const reference = paintReferenceOf(object);
-    appearance.append(
-      createResolutionLine(
-        uiCopy.inspectorFields.paint,
-        reference,
-        resolveToken(context().globals, reference),
-      ),
-    );
+    const references = paintReferencesOf(object);
+    if (references.length === 0) {
+      appearance.append(
+        createResolutionLine(
+          uiCopy.inspectorFields.paint,
+          undefined,
+          undefined,
+        ),
+      );
+    } else {
+      for (const { label, ref } of references) {
+        appearance.append(
+          createResolutionLine(
+            label,
+            ref,
+            resolveToken(context().globals, ref),
+          ),
+        );
+      }
+    }
 
     // Type belongs to a text object; a shape has none, so it gets no line.
     const preset = typePresetOf(object);

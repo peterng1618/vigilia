@@ -1,10 +1,12 @@
 import {
+  chartPaintFieldsFor,
   type FabricGlobals,
   type FabricPalette,
   isObjectName,
   objectName,
   type TypePreset,
 } from "@vigilia/renderer-core";
+import { VigiliaChart } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
@@ -26,17 +28,78 @@ export interface AppearanceContext {
   readonly globals: FabricGlobals | undefined;
 }
 
-/** The object's own palette reference, if it carries one. */
-export function paintReferenceOf(
+/** A palette reference, and the name its own owner gives that paint. */
+export interface PaintReference {
+  readonly label: string;
+  readonly ref: `palette.${string}`;
+}
+
+/**
+ * Every palette reference the selection is painted with.
+ *
+ * A box or a text run keeps one, in `vigiliaPaint`. A chart keeps its paint in
+ * the settings its family owns, so it is read from there under the field
+ * descriptor's own name — otherwise the resolution line reported every chart in
+ * every theme as unpainted while it was painted.
+ */
+export function paintReferencesOf(
   object: FabricObject,
-): `palette.${string}` | undefined {
+): readonly PaintReference[] {
+  if (object instanceof VigiliaChart) {
+    return chartPaintReferencesOf(object);
+  }
+
   const paint = object.get(PAINT_PROPERTY) as
     | { readonly fill?: unknown; readonly stroke?: unknown }
     | undefined;
-  const ref = paint?.fill ?? paint?.stroke;
+  const ref = paletteRef(paint?.fill ?? paint?.stroke);
 
-  return typeof ref === "string" && ref.startsWith("palette.")
-    ? (ref as `palette.${string}`)
+  return ref === undefined
+    ? []
+    : [{ label: uiCopy.inspectorFields.paint, ref }];
+}
+
+function chartPaintReferencesOf(
+  chart: VigiliaChart,
+): readonly PaintReference[] {
+  const settings = chart.settings as unknown as Record<string, unknown>;
+  const references: PaintReference[] = [];
+
+  for (const field of chartPaintFieldsFor(chart.family)) {
+    const declared = settings[field.property];
+    const entries = Array.isArray(declared)
+      ? declared
+      : declared === undefined
+        ? []
+        : [declared];
+
+    for (const [index, entry] of entries.entries()) {
+      const ref = paletteRef(paintRef(entry));
+      if (ref !== undefined) {
+        references.push({
+          label:
+            field.multiple === true
+              ? `${field.label} ${index + 1}`
+              : field.label,
+          ref,
+        });
+      }
+    }
+  }
+
+  return references;
+}
+
+/** A chart's persisted paint is a `ChartPaint`: a reference or a literal fill. */
+function paintRef(paint: unknown): unknown {
+  return typeof paint === "object" && paint !== null
+    ? (paint as { readonly ref?: unknown }).ref
+    : undefined;
+}
+
+function paletteRef(value: unknown): `palette.${string}` | undefined {
+  return typeof value === "string" && value.startsWith("palette.")
+    ? (value as `palette.${string}`)
     : undefined;
 }
 

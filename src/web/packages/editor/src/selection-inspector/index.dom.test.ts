@@ -1,9 +1,32 @@
 // @vitest-environment jsdom
-import type { Binding } from "@vigilia/renderer-core";
-import { instantIn, MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
+import type {
+  Binding,
+  ChartContent,
+  ChartFamily,
+} from "@vigilia/renderer-core";
+import {
+  defaultGaugeSettings,
+  defaultPieSettings,
+  instantIn,
+  MAX_OBJECT_NAME_LENGTH,
+} from "@vigilia/renderer-core";
+import { VigiliaChart } from "@vigilia/scene-fabric";
 import { IText, Rect, Textbox } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uiCopy } from "../ui-copy.js";
 import { createSelectionInspector } from "./index.js";
+
+/** A chart with settings but no live ECharts behind it: what the inspector
+    reads is the object, not the engine that paints it. */
+function chartOf(
+  family: ChartFamily,
+  settings: ChartContent["settings"],
+): VigiliaChart {
+  const chart = Object.create(VigiliaChart.prototype) as VigiliaChart;
+  chart.family = family;
+  chart.settings = settings;
+  return chart;
+}
 
 /** A canvas stub that answers selection and history like the editor's. */
 function canvasWith(active: unknown) {
@@ -324,6 +347,44 @@ describe("the selection inspector", () => {
 
     expect(
       host.querySelector("[data-vigilia-resolution]")?.textContent,
+    ).toContain("no longer resolves");
+  });
+
+  it("names the paint a chart keeps in its own settings", () => {
+    const chart = chartOf("gauge", {
+      ...defaultGaugeSettings,
+      track: { ref: "palette.track" },
+      progress: { ref: "palette.ink" },
+    });
+    const { host } = setup(chart);
+
+    // `vigiliaPaint` is where a box or a text run keeps its colour; a chart
+    // keeps it in the settings its family owns, so reading only the former
+    // reported every chart in every theme as unpainted.
+    const progress = host.querySelector(
+      '[data-vigilia-resolution="Progress paint"]',
+    );
+    expect(progress?.textContent).toContain("palette.ink");
+    expect(progress?.textContent).toContain("#e8ecf3");
+    expect(host.textContent).not.toContain(uiCopy.inspectorFields.notSet);
+  });
+
+  it("names each of a chart's own paints, and reports one that no longer resolves", () => {
+    const chart = chartOf("pie", {
+      ...defaultPieSettings,
+      palette: [{ ref: "palette.ink" }, { ref: "palette.gone" }],
+    });
+    const { host } = setup(chart);
+
+    // One line per entry, under the field descriptor that owns its name, so a
+    // pie's slices are told apart from its remainder.
+    expect(
+      host.querySelector('[data-vigilia-resolution="Slice paint 1"]')
+        ?.textContent,
+    ).toContain("palette.ink");
+    expect(
+      host.querySelector('[data-vigilia-resolution="Slice paint 2"]')
+        ?.textContent,
     ).toContain("no longer resolves");
   });
 

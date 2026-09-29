@@ -3,7 +3,7 @@ import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
 import {
-  paintReferenceOf,
+  paintReferencesOf,
   resolveToken,
   resolveTypePreset,
   typePresetOf,
@@ -103,11 +103,8 @@ export function createStylePanel(
       return;
     }
 
-    const paint = paintReferenceOf(active);
-    if (paint !== undefined) {
-      root.append(
-        line(uiCopy.inspectorFields.paint, paint, resolveToken(globals, paint)),
-      );
+    for (const { label, ref } of paintReferencesOf(active)) {
+      root.append(line(label, ref, resolveToken(globals, ref)));
     }
 
     const preset = typePresetOf(active);

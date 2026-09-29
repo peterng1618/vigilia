@@ -19,11 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.34: the player says what the artboard does not contain.** `artboard-crop.ts` measures the mounted canvas and, when objects fall outside the artboard rect, a full-width strip names the proportion and the side — *"27 of 52 objects are outside this artboard and are not shown — past the right edge"*. It names the **side**, not the objects: a wall reader is not the author, and the layer list is where object ids are looked up. Slate, not the amber of the sensor notice, because §97 requires a gap in the *composition* not to read as a gap in the *data*. Told once and left — no reading arriving brings a cropped panel back.
-- **F1.33: the artboard panel states what a size costs, beside the controls that set one.** A one-click ratio change writes a whole new size and moves nothing, so the panel now carries *"Objects are not moved or resized. Anything outside the artboard is not shown on a display."* under the W/H pair, `aria-describedby` all five size controls. It states the rule and **no count**: the scene is not the panel's to read, and a number it has not measured would be a guess.
-- **The two top strips stack in one column** rather than each being `position: fixed; top: 0`. A theme can be both short of a reading and cropped, and two fixed strips at the same offset draw over one another.
-- **Proven on a phone at 390 × 844**, before and after, from the real starter saved at 19.5:9 portrait: 27 of 52 objects outside, the Storage and Network panels gone and the RAM card sliced at the edge, previously with nothing said. Rescaling is untouched — `reference-theme.spec.ts`'s pin still holds.
-- **Found and filed, not mine:** [#7](https://github.com/peterng1618/vigilia/issues/7) — `reference-theme.spec.ts`'s `Ctrl+N` discard prompt times out waiting for a `Discard` button. Reproduces identically with this work stashed, so it is pre-existing; cause not established.
+- **F1.35: a chart's inspector names the paint it actually carries.** `paintReferenceOf` read only `vigiliaPaint`, which is where a box or a text run keeps its colour, so every chart in every theme read *"Paint: not set"* while painted. It is now `paintReferencesOf`: a chart is read from the settings its family owns, through `chartPaintFieldsFor`, one line per entry under that field's own name — *"Stroke paint: palette.down → #22d3ee"*, *"Series paint 2: palette.gpu → #a98bff"*.
+- **The Style tab reads the same list**, so the two surfaces cannot disagree about what a selection is made of.
+- **Proven in the browser** on the real reference composition and on a gauge inserted through the Add pane: the lines above, and no "not set" anywhere in the inspector.
+- 2041 unit tests green; `typecheck`, `lint` and `format:check` exit 0. Red-without-fix: the two new tests fail, `Progress paint` and `Slice paint 1` are null.
 
 ## Next
 
