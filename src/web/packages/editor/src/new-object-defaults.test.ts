@@ -16,6 +16,7 @@ import {
   createNewPanelDefaults,
   createNewShape,
   createNewTextDefaults,
+  frostedShapeFill,
   NEW_OBJECT_INSET,
   newObjectName,
   SHAPE_KINDS,
@@ -62,6 +63,18 @@ const cardGlobals = {
 const CLOSED_KINDS = SHAPE_KINDS.filter(
   (kind) => kind !== "polyline" && kind !== "line",
 );
+
+/** The same palette plus the frosted surface: the pair a glass card needs. */
+const frostGlobals = {
+  ...cardGlobals,
+  palette: {
+    ...cardGlobals.palette,
+    frost: {
+      name: "Frosted panel",
+      value: { kind: "solid" as const, color: "#0815234d" },
+    },
+  },
+};
 
 describe("new object defaults", () => {
   it("derives a non-transparent palette reference for a new paintable object", () => {
@@ -209,14 +222,17 @@ function saved(object: FabricObject): Record<string, unknown> {
 }
 
 /** The smallest envelope the published validator accepts, around one object. */
-function envelopeWith(object: Record<string, unknown>): unknown {
+function envelopeWith(
+  object: Record<string, unknown>,
+  document: unknown = globals,
+): unknown {
   return {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "theme",
     metadata: { locale: "en" },
     artboard: { width: 1920, height: 1080 },
-    globals,
+    globals: document,
     scene: { version: "7.4.0", objects: [object] },
   };
 }
@@ -320,6 +336,81 @@ describe("new shape defaults", () => {
         "palette token",
       );
     }
+  });
+});
+
+describe("the surface a shape takes once it is frosted", () => {
+  it("carries the frosted surface, because the card surface is 85 % opaque", () => {
+    // The defect this rule exists for: `panel` is opaque enough that a blur
+    // beneath it is a blur of nothing, so a card the author frosted through the
+    // control read as a tint over a smooth gradient rather than as glass. The
+    // treatment and the surface are one decision, and only one of the two
+    // carried it.
+    const shape = createNewShape("glass-1", frostGlobals, "rect");
+
+    expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      fill: "palette.panel",
+    });
+    expect(frostedShapeFill(frostGlobals, "palette.panel")).toBe(
+      "palette.frost",
+    );
+  });
+
+  it("fills a shape that carries no reference, which is no reference at all", () => {
+    // A shape saved before it carried a reference, or one written by hand, has
+    // no token to have chosen — so it takes the frosted surface rather than
+    // staying whatever colour it was last painted.
+    expect(frostedShapeFill(frostGlobals, undefined)).toBe("palette.frost");
+  });
+
+  it("leaves a fill the author chose, because a choice is not a default", () => {
+    for (const chosen of [
+      "palette.text",
+      "palette.ink",
+      "palette.background",
+    ] as const) {
+      expect(frostedShapeFill(frostGlobals, chosen), chosen).toBeUndefined();
+    }
+  });
+
+  it("leaves a shape already carrying the frosted surface alone", () => {
+    expect(frostedShapeFill(frostGlobals, "palette.frost")).toBeUndefined();
+  });
+
+  it("changes nothing when the palette has no frosted surface of its own", () => {
+    // One surface cannot become another: without a `frost` token the frosted
+    // default resolves to the card surface, and a swap would be a no-op written
+    // over the author's scene.
+    expect(frostedShapeFill(cardGlobals, "palette.panel")).toBeUndefined();
+  });
+
+  it("changes nothing when the shape could not be given a surface at all", () => {
+    expect(frostedShapeFill(undefined, "palette.panel")).toBeUndefined();
+  });
+
+  it("a frosted shape's surface survives the persisted envelope", async () => {
+    // The fill reference is what a save keeps; the resolved colour is what the
+    // author sees. Both have to come back, or the material is one reload from
+    // being a flat tint again.
+    const shape = createNewShape("glass-2", frostGlobals, "rect");
+    shape.set(VIGILIA_PAINT_PROPERTY, {
+      fill: frostedShapeFill(
+        frostGlobals,
+        "palette.panel",
+      ) as `palette.${string}`,
+    });
+    shape.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+
+    const revived = await revive(saved(shape));
+    const after = saved(revived);
+
+    expect(
+      validateFabricThemeEnvelope(envelopeWith(after, frostGlobals)).ok,
+    ).toBe(true);
+    expect(revived.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      fill: "palette.frost",
+    });
+    expect(revived.get(VIGILIA_GLASS_PROPERTY)).toEqual({ blurRadius: 16 });
   });
 });
 

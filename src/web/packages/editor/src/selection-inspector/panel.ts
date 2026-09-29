@@ -86,8 +86,10 @@ export function supportsPanelFields(object: FabricObject): boolean {
 }
 
 /** The object's own stored references. Only `writeRef` writes, and it spreads
-    first, so nothing here can mutate the object behind the validator. */
-function paintRefs(object: FabricObject): FabricPaintRefs {
+    first, so nothing here can mutate the object behind the validator. Exported
+    for the same reason `writeRef` is: the frosted-glass control reads this
+    object's fill before it decides whether to move it. */
+export function paintRefs(object: FabricObject): FabricPaintRefs {
   const value = object.get(VIGILIA_PAINT_PROPERTY);
   return typeof value === "object" && value !== null
     ? (value as FabricPaintRefs)
@@ -98,8 +100,12 @@ function paintRefs(object: FabricObject): FabricPaintRefs {
  * Sets one property's reference and leaves the others alone. Palette identity
  * is per property: choosing a fill must not re-point a border or a shadow the
  * author already set, and clearing one must not clear the rest.
+ *
+ * Exported because the frosted-glass control writes this object's fill too, and
+ * a second copy of the spread would be a second place that decides what a paint
+ * reference set means.
  */
-function writeRef(
+export function writeRef(
   object: FabricObject,
   property: PaintProperty,
   ref: `palette.${string}` | undefined,

@@ -209,26 +209,27 @@ test.describe("the rebuilt composition, on a display", () => {
 
     // ---- F2.12, asserted rather than screenshotted ----
     //
-    // Every glass card this document authors is filled with `palette.panel`
-    // at 85%, and the frosted material is one select away in the Fill picker
-    // under a different control. Asserting that is cheaper, faster and more
-    // durable than capturing a second frame of the same scene with a different
-    // fill, and it says the thing that is actually wrong: the control labelled
-    // "Frosted glass" did not put the frosted material on the card.
+    // Every glass card this document authors was frosted through the control,
+    // and the control now carries the frosted surface with it. `palette.panel`
+    // is 85 % opaque, so a blur beneath it is a blur of nothing and the card
+    // read as a tint — which is what the display proof measured, at 34.5 luma
+    // over a sky at 140.8. Asserting the token is cheaper and more durable than
+    // a second frame of the same scene, and the luma is proved over a
+    // photograph in the glass proof rather than here.
     const cpuCard = await readObject(page, "cpu-card");
     expect(
       (cpuCard?.["vigiliaPaint"] as { fill?: string } | undefined)?.fill,
       "a card the author frosted carries the frosted material",
-    ).toBe("palette.panel");
+    ).toBe("palette.frost");
 
-    // The material is reachable — which is what makes this a second-owner
-    // defect rather than an unreachable one, and the whole of issue #11.
+    // The other half of the rule: a fill the author chose is theirs, and a
+    // treatment is layered over it rather than overwriting it.
     await selectLayer(page, "cpu-card");
-    await chooseToken(page, "[data-vigilia-panel-fill]", "Frosted panel");
+    await chooseToken(page, "[data-vigilia-panel-fill]", "Panel");
     expect(
       (await readObject(page, "cpu-card"))?.["vigiliaPaint"],
-      "one select in the Fill picker reaches palette.frost",
-    ).toEqual({ fill: "palette.frost", stroke: "palette.panelStroke" });
+      "a fill the author picked is left alone",
+    ).toEqual({ fill: "palette.panel", stroke: "palette.panelStroke" });
 
     await screen.close();
   });

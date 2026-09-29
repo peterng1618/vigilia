@@ -130,7 +130,10 @@ const PLACED = {
 function newShapeSurface(
   globals: FabricGlobals | undefined,
 ): Omit<NewPanelDefaults, "width" | "height" | "rx" | "ry" | "name"> {
-  const [id, entry] = surfacePalette(globals, "shape", CARD_SURFACE_TOKENS);
+  const selected = surfacePalette(globals, CARD_SURFACE_TOKENS);
+  if (selected === undefined)
+    throw new Error("A new shape requires a palette token.");
+  const [id, entry] = selected;
   const fill = fabricArtboardPaint(
     entry.value,
     NEW_PANEL_SIZE.width,
@@ -415,9 +418,9 @@ export function createNewChartDefaults(
   family: ChartFamily,
 ): ChartContent["settings"] {
   const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
-  const surface = surfacePalette(globals, "chart", SURFACE_TOKENS);
+  const surface = surfacePalette(globals, SURFACE_TOKENS);
 
-  if (paint === undefined) {
+  if (paint === undefined || surface === undefined) {
     throw new Error("New charts require a palette reference.");
   }
 
@@ -473,26 +476,64 @@ const SURFACE_TOKENS = [
     the backdrop is that backdrop again, and nothing an author can select. */
 const CARD_SURFACE_TOKENS = ["panel", "frost", ...SURFACE_TOKENS];
 
+/**
+ * A *frosted* card takes the frosted surface first, and the plain one after it.
+ *
+ * The two are not one surface at two strengths. `panel` is 85 % opaque, so a
+ * blur beneath it is a blur of nothing and the card reads as a tint; glass is a
+ * diffusion, a grain and a saturation over a tint that transmits, so a shape
+ * carrying the treatment has to carry the surface that transmits with it.
+ */
+const GLAZED_SURFACE_TOKENS = ["frost", ...CARD_SURFACE_TOKENS];
+
+/**
+ * The fill a shape should carry once it is frosted, or `undefined` when the one
+ * it holds is the author's own.
+ *
+ * **A default follows the treatment; a choice survives it.** The two are told
+ * apart by asking this module, which wrote them: a reference is a default
+ * exactly when it is the reference a new shape is given right now, and
+ * anything else — a token the author picked, or a shape saved before it carried
+ * a reference at all — is left as it is. Nothing records which hand set a
+ * reference, so the current default is the only honest test; a stored flag would
+ * be a second model for "was this chosen", and it would have to stay true across
+ * every undo.
+ */
+export function frostedShapeFill(
+  globals: FabricGlobals | undefined,
+  current: `palette.${string}` | undefined,
+): `palette.${string}` | undefined {
+  const plain = surfacePalette(globals, CARD_SURFACE_TOKENS);
+  const glazed = surfacePalette(globals, GLAZED_SURFACE_TOKENS);
+  // One surface cannot become another, and a document with no palette has
+  // nothing to draw a card with — so there is no edit to make either way.
+  if (plain === undefined || glazed === undefined) return undefined;
+  if (glazed[0] === plain[0]) return undefined;
+  if (current !== undefined && current !== `palette.${plain[0]}`)
+    return undefined;
+  return `palette.${glazed[0]}`;
+}
+
 /** The token for a surface an object draws on: a chart track, a card fill.
-    `what` names the object in the refusal, so a palette-less panel is not told
-    it needed a chart. `candidates` is that job's surface vocabulary — a card
-    and a chart track are not the same surface, and the caller owns which. */
+    `candidates` is that job's surface vocabulary — a card and a chart track are
+    not the same surface, and the caller owns which. A document with no palette
+    at all is `undefined` rather than a throw: a caller creating an object has
+    nothing to create it from and refuses by name, and a caller repairing one
+    only ever has an edit to skip. */
 function surfacePalette(
   globals: FabricGlobals | undefined,
-  what: string,
   candidates: readonly string[],
-): readonly [string, NonNullable<FabricGlobals["palette"]>[string]] {
+):
+  | readonly [string, NonNullable<FabricGlobals["palette"]>[string]]
+  | undefined {
   const entries = Object.entries(globals?.palette ?? {}).filter(
     ([id]) => id !== "none",
   );
-  const selected =
+  return (
     candidates
       .map((name) => entries.find(([id]) => id.toLowerCase() === name))
-      .find((entry) => entry !== undefined) ?? entries[0];
-
-  if (selected === undefined)
-    throw new Error(`A new ${what} requires a palette token.`);
-  return selected;
+      .find((entry) => entry !== undefined) ?? entries[0]
+  );
 }
 
 function firstPalette(

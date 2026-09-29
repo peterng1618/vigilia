@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
 import { Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
@@ -10,6 +11,10 @@ const globals = {
   palette: {
     none: { name: "None", value: { kind: "solid", color: "transparent" } },
     panel: { name: "Panel", value: { kind: "solid", color: "#081523d9" } },
+    frost: {
+      name: "Frosted panel",
+      value: { kind: "solid", color: "#0815234d" },
+    },
   },
 } as never;
 
@@ -89,6 +94,14 @@ function setup(active: unknown) {
 
 function panel(): Rect {
   return new Rect({ id: "panel", left: 0, top: 0, width: 360, height: 200 });
+}
+
+/** A panel as the Add pane makes it: the card surface it hands every new shape. */
+function newPanel(): Rect {
+  const rect = panel();
+  rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.panel" });
+  rect.set("fill", "#081523d9");
+  return rect;
 }
 
 function tick(field: HTMLInputElement, checked: boolean): void {
@@ -309,6 +322,75 @@ describe("the glass control in the selection inspector", () => {
 
     expect(host.querySelector("[data-vigilia-glass-enabled]")).toBeNull();
     expect(host.querySelector("[data-vigilia-panel-fill]")).toBeNull();
+  });
+
+  it("gives a new card the frosted surface, not the opaque one", () => {
+    // The control named for glass did not carry it. A card the author frosted
+    // kept `panel` at 85 % — opaque enough that the blur beneath it is a blur of
+    // nothing, so the card read as a tint over a smooth gradient and the
+    // photograph behind it was one select away in a control called "Fill".
+    const rect = newPanel();
+    const { history, refreshGlass, field } = setup(rect);
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      fill: "palette.frost",
+    });
+    // Resolved, not only referenced: a reference nothing re-resolves would leave
+    // the card painted in the colour it had a frame earlier.
+    expect(rect.get("fill")).toBe("#0815234d");
+    // The treatment and the surface are one edit, so one undo takes both back.
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(refreshGlass).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the frosted surface in the fill picker, not only on the canvas", () => {
+    const { host, field } = setup(newPanel());
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(
+      host.querySelector<HTMLSelectElement>("[data-vigilia-panel-fill]")?.value,
+    ).toBe("palette.frost");
+  });
+
+  it("leaves a fill the author chose, because glass is not the author", () => {
+    // The other half of the rule: a token the author picked in the Fill picker
+    // is a choice, and a treatment layered over it must not overwrite it. There
+    // is no record of which hand set a reference, so the current card default is
+    // the only honest test for "a default" — and anything else is left alone.
+    const rect = newPanel();
+    rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.none" });
+    const { history, field } = setup(rect);
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(rect.get("vigiliaGlass")).toEqual({
+      blurRadius: expect.any(Number),
+    });
+    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.none" });
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a card that already carries the frosted surface alone", () => {
+    const rect = newPanel();
+    rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.frost" });
+    const { field } = setup(rect);
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.frost" });
+  });
+
+  it("does not put a surface on a shape the treatment cannot reach", () => {
+    // A group is refused a treatment outright, so it has no backdrop to
+    // diffuse; the editor offers it no control and there is nothing to write.
+    const group = new Group([new Rect({ width: 40, height: 40 })]);
+    const { host } = setup(group);
+
+    expect(host.querySelector("[data-vigilia-glass-enabled]")).toBeNull();
+    expect(group.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
   });
 
   it("either authors glass for every kind the schema allows, or names the ones it does not", () => {

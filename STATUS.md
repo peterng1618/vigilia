@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **Redo and front/back now answer the chords Photoshop, Figma, Affinity and Canva use** (U23, U24). `Ctrl+Shift+Z` is added as redo *beside* `Ctrl+Y`, not in place of it, so nobody who learned the old key loses it.
-- **`Ctrl+Shift+]` and `Ctrl+Shift+[` now send to front and to back**, with the bare `Ctrl+[` / `Ctrl+]` kept working. The binding is keyed on `}` and `{`, which is what a browser actually reports under Shift.
-- **The e2e proof presses the chords over CDP, because `page.keyboard.press("Control+Shift+]")` is not the same event**: it dispatches `key: "]"`, having never applied the shift-to-character mapping a real layout does. Verified by reading `event.key` in the page; the obvious press would have passed against a table that is wrong.
-- **The shift-qualified redo must precede `edit.undo`**, whose binding is shift-agnostic — without the ordering the standard chord becomes an *undo*, which is worse than the nothing the audit found.
-- Gate green: `typecheck`, `lint`, `format:check` and **2152 unit tests across 165 files, exit 0**; 7 Playwright tests across the three affected specs, each red without its fix.
+- **The frosted-glass control now carries the frosted surface** ([#11](https://github.com/peterng1618/vigilia/issues/11)). Enabling it moves a card off `palette.panel` at 85 % onto `palette.frost` at 30 %: at 85 % a blur is a blur of nothing, which is why a card the author had frosted read as a tint.
+- **A default follows the treatment; a choice survives it.** Nothing records which hand set a fill reference, so the only honest test is the surface a new shape is given right now — a token the author picked in the Fill picker is left alone, and a shape carrying no reference takes the frosted one.
+- **Measured over the author's own photograph, on a real host: the card interior went from 45.4 to 137.4 luma** against a photograph spanning 157–215, so it carries 0.718 of its backdrop instead of 0.216. Taken off the package the editor's own Save control wrote, not the live canvas.
+- **Nothing in [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) moved.** The tint is still 30 %, the grain 1.5 %, the radius still 40; the fix is which token the control writes, not the material it writes it in.
+- Gate green: `typecheck`, `lint`, `format:check` and **2152 unit tests across 165 files, exit 0**; the two new control tests red with the fix disabled, and the display spec's contradicting assertion propagated.
 
 ## Next
 

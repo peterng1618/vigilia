@@ -3,10 +3,13 @@ import {
   glassTreatment,
   VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
+import { applyObjectPalettePaints } from "@vigilia/scene-fabric";
 import { type FabricObject, Rect } from "fabric/es";
 import { numberField } from "../editor-shell/controls/number-field.js";
+import { frostedShapeFill } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import type { AppearanceContext } from "./appearance.js";
+import { paintRefs, writeRef } from "./panel.js";
 
 /**
  * The authored frosted-glass treatment: an enable and a blur radius, both on
@@ -95,6 +98,25 @@ function writeTreatment(
   return false;
 }
 
+/**
+ * Puts the frosted surface on a card that is carrying the default one, and
+ * resolves the paint so the canvas shows it this frame rather than the next.
+ *
+ * Nothing here is a second copy of the surface rule: `new-object-defaults`
+ * wrote the default this is compared against, and `panel.ts` owns both how a
+ * paint reference is read and how it is written. What is left is the decision
+ * to apply the answer, which belongs to the control the author used.
+ */
+function frostTheSurface(
+  context: AppearanceContext,
+  object: FabricObject,
+): void {
+  const frost = frostedShapeFill(context.globals, paintRefs(object).fill);
+  if (frost === undefined) return;
+  writeRef(object, "fill", frost);
+  applyObjectPalettePaints(context.editor.canvas, context.globals);
+}
+
 /** The panel's glass fields, or nothing when it cannot carry a treatment. */
 export function createGlassFields(
   context: AppearanceContext,
@@ -133,12 +155,24 @@ export function createGlassFields(
   enabled.dataset["vigiliaGlassEnabled"] = "";
   enabled.checked = treatmentOf(object) !== undefined;
   enabled.addEventListener("change", () => {
-    commit(() =>
-      writeTreatment(
-        object,
-        enabled.checked ? DEFAULT_GLASS_BLUR_RADIUS : undefined,
-      ),
-    );
+    commit(() => {
+      if (
+        !writeTreatment(
+          object,
+          enabled.checked ? DEFAULT_GLASS_BLUR_RADIUS : undefined,
+        )
+      )
+        return false;
+      // Turning glass **on** also puts the frosted surface on the card. The
+      // treatment and the surface are one decision — a blur under a fill this
+      // opaque is a blur of nothing, and the card reads as a tint rather than
+      // as glass — and a default follows the treatment while a fill the author
+      // chose is left alone. Turning it off restores nothing: what it would
+      // restore is the author's own default, and overwriting that is the same
+      // edit in reverse.
+      if (enabled.checked) frostTheSurface(context, object);
+      return true;
+    });
   });
   row.append(label, enabled);
   root.append(row);
