@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **U4: history did cover transform, movement and restacking — one undo that crossed an image deleted it.** An imported image's persisted `src` is the object URL `image-manager` revoked the moment decode finished, so Fabric could not enliven it on a restore and dropped the object. The author saw their asset vanish instead of their edit reverse.
-- **`image-manager` now holds each object URL for the session**, revoked on `destroy()` and on a decode that failed. A history entry outlives the image instance, so removal is not the end of a URL's life — tying it to the image broke redo.
-- **The session re-hydrates declared image bytes after every history restore**, the call it already made once on open. The package bytes are the authority; the persisted URL is not.
-- **U8: every left-rail icon sat 9 px left of its button.** The buttons were `display: block`, so the inline SVG sat at the start of the line box. They are now the centred flex box the layer panel's own action buttons already use; measured 9 px → 0 px on all four entries.
-- Measured in the browser: an imported image now survives undo **and** redo, with the angle reverting 30 → 0 and returning, and a nudge 0 → 3 → 0. 4 tests red before each fix; 880 editor tests, `typecheck`, `lint` and `format:check` all exit 0.
+- **U9: the anti-aliasing default was already 2× — the memory ceiling silently overrode it.** `MAX_BACKING_PIXELS` was 486,000, so the shipped starter's 963 × 215 trends chart clamped to **1.53×** while every smaller chart got the full 2×. The one graph a reader actually looks at was the only aliased one on the board, and the default was untrue for the composition the product ships.
+- **The ceiling is now one 1920 × 1080 frame (2,073,600 px, 8.3 MB of RGBA).** A ceiling should catch the chart nobody planned for, not make the documented default false; a chart still past it at 1× is a layout problem, and the clamp still never undersamples below 1.
+- **The knob for all four families already exists and already covers all four**: `VigiliaChart.renderScale`, applied by the scene adapter to every family, bounded by `MAX_RENDER_SCALE` and this area ceiling. It is runtime-only and never persisted, which is §67 — putting a render resolution into the authored document would be the wrong fix.
+- **Measured in the browser**: the trends chart's backing store went 1500 × 329 → **1958 × 430** at the shipped default, and the crop shows the stair-stepping gone from the strokes and the axis labels legible. Forcing 3× produced no further visible gain over the new default.
+- 1 test red before the fix at exactly 1.5320952323249508; `typecheck`, `lint` and `format:check` all exit 0.
 
 ## Next
 
