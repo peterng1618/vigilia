@@ -183,6 +183,8 @@ The player had never been looked at as a user in this pass. It **works**: the da
 |---|---|---|---|
 | — | *No P2 items. F2.1 was escalated to **F1.8** on the evidence: an object cannot be named at all.* | | |
 
+| F1.29 | **The selection inspector is hidden below 980px** | Found by the F1.28 implementer while fixing a pre-existing phone-project failure it proved was not its own (stash, reproduce, restore). `editor-shell.css:747` sets `.editor-shell-inspector` to `display: none` below 980px, so on a 412px Pixel 7 the inspector panel opens 240px wide while the select inside it measures **0 × 0**. The agent's correct move was to skip the spec with the `isDesktopSurface` guard every sibling already uses — but the underlying fact is that **an author on a phone-width screen has no selection inspector at all**: no geometry, no material, no glass, no runs. The inspector is the whole authoring surface, and Phase 0 is building more of it. The suite has never caught this because the guard is applied on both sides. | editor-shell layout + CSS |
+
 ### Verification sweep — do the landed fixes coexist?
 
 Seventeen findings have landed across five packages and several shared files. A single rebuild-and-look at `1280943` confirms they compose rather than merely coexist in the log:
