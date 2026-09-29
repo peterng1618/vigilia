@@ -71,7 +71,8 @@ two apart is the judgement the map cannot make for itself.
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | Chart selection/settings/bindings | `editor/src/chart-manager/` |
-| Theme metadata, artboard size/preview fit/paint/media | `editor/src/artboard-panel.ts` |
+| **The artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop | `renderer-core/src/artboard.ts` |
+| Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels, icons and eligibility | `editor/src/object-actions.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
