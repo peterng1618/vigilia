@@ -56,8 +56,16 @@ export function createArtboardPanel(
   // `output` is a labelable element, so the same pairing the editable fields
   // use names a value the author reads but never types.
   versionLabel.htmlFor = version.id = `vigilia-output-${++fieldSeq}`;
+  const sampleLabel = document.createElement("label");
+  sampleLabel.textContent = uiCopy.panels.sampleLabel;
   const languageSample = document.createElement("output");
   languageSample.dataset["vigiliaThemeLanguageSample"] = "";
+  languageSample.id = `vigilia-output-${++fieldSeq}`;
+  // `output` is labelable, so the same pairing every editable field uses names
+  // a value the author reads and never types. The visible label is one word
+  // because it has to fit the 72px column; the status region keeps the longer
+  // `aria-label` a screen reader announces, which says what the sample is of.
+  sampleLabel.htmlFor = languageSample.id;
   // A status region announces itself, so it needs a name of its own: sharing
   // the control's "Language" would leave two things in the row called Language.
   languageSample.setAttribute("aria-label", uiCopy.panels.languageSample);
@@ -262,8 +270,10 @@ export function createArtboardPanel(
     fieldRow({ label: versionLabel, input: version }),
     ...rows,
   );
-  languageSample.style.gridColumn = "1 / -1";
-  language.row.append(languageSample);
+  // The sample takes the language row's second line rather than a field of its
+  // own: it is a reading of the control above it, not an independent setting,
+  // and the author changes it by changing the language.
+  language.row.append(sampleLabel, languageSample);
   host.append(root);
 
   /** A select change carries no dimensions, so it re-commits the pair's

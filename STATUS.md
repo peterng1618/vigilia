@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.25: the panels' labels live in `ui-copy.ts`, and a net keeps them there.** Ten strings moved with their words unchanged: Name, Family, Angle, Colour, Solid, Linear gradient, `Stop N position`, `Stop N colour`, New colour, New type.
-- **The type panel needed no new copy at all** — every one of its eight labels was already in `ui-copy.panels`, which is what the project memory's "probe existing copy first" rule is for. The palette's paint kinds and the two default names are genuinely new entries.
-- **Found while sweeping, and fixed:** Preview fit spelled its options "Contain"/"Cover" while Media fit spelled the same two values "cover"/"contain". One option group, one spelling, now `uiCopy.fitModes`.
-- The new test is the net: it renders all three panels and fails on any label the table does not hold. Red without the fix on all seven named strings. 2069 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
+- **F1.32: the language sample says what it is, on screen.** It read as a bare date on a line of its own; it now reads "Sample | September Tuesday", in the same 72px label column as every other field.
+- This is the flip side of F1.19: `ad45667` gave the status region an `aria-label`, so a screen reader was told and a sighted author was not. The visible label and the announced name are both kept — `output` is labelable, so `for`/`id` names it like any field.
+- **Measured in Chromium:** label left edge x=1005, sample x=1083, same line — the column the panel's other fields use. Red without the fix: no `label[for]` finds the sample.
+- 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 

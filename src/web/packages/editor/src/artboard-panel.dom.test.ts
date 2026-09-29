@@ -269,6 +269,32 @@ describe("artboard panel", () => {
     );
   });
 
+  it("says on screen that the date is a sample of the chosen language", () => {
+    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+    panel.render(
+      { width: 1280, height: 720 },
+      { name: "Before", locale: "vi" },
+    );
+
+    // It has said so to a screen reader since ad45667 gave it an aria-label,
+    // which is the whole of the problem: the panel printed "September Tuesday"
+    // on a line of its own and told a sighted author nothing. A label the
+    // author can see is what the F1.19 pairing already made the name.
+    const sample = panel.root.querySelector<HTMLOutputElement>(
+      "[data-vigilia-theme-language-sample]",
+    )!;
+    const label = panel.root.querySelector<HTMLLabelElement>(
+      `label[for="${sample.id}"]`,
+    );
+    expect(label?.textContent).toBe("Sample");
+    // The sample keeps the status-region name a screen reader announces, which
+    // is longer than the column a visible label has to fit in.
+    expect(sample.getAttribute("aria-label")).toBe(
+      "Sample in the chosen language",
+    );
+    expect(sample.id).not.toBe("");
+  });
+
   it("keeps a declared language that is outside the list", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
     panel.render(
