@@ -191,13 +191,20 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
   // the words. The run editor is where a run stops being prose: choosing an
   // instant key brings a Format and a Zone with it, which is where the
   // clock's own design lives.
+  // **140, not 90.** A text object's overflow defaults to `"clip"`
+  // (`renderer-core/src/scene/plan.ts:369`) and `applyClip` builds the clip at
+  // exactly the authored box, so 108 px of type in a 90-unit box keeps the
+  // middle of every digit — and a row of digits with their middles kept is a
+  // solid bar. It rendered as one on the display, and the editor showed a Height
+  // of 90 the whole time, which is the number the author typed rather than a
+  // warning. See F2.18 in the plan; the product half is issue #9.
   await addText(page, {
     name: "time",
     text: "00:00",
     x: 72,
     y: 244,
     w: 300,
-    h: 90,
+    h: 140,
     preset: "typePresets.108-300",
     colour: "text",
   });

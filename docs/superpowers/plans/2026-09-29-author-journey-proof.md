@@ -544,6 +544,37 @@ display wants. What the measurement adds is that a desktop-shaped theme on a
 phone is not a degraded view — it is a quarter of the screen, and the reader sees
 black where they expect a dashboard.
 
+#### F2.18 — **blocking, fixed in the rebuild, and the product half is [#9](https://github.com/peterng1618/vigilia/issues/9): a text box smaller than its own type clips the type into a bar, and the editor does not say so**
+
+The clock card's reading renders as a **solid white horizontal bar**. Not a
+missing reading — §97 paints a gap, and a gap is what the date below it shows.
+The glyphs are there and are being cut.
+
+The composition gives the clock `h: 90` with `typePresets.108-300`, and
+`renderer-core/src/scene/plan.ts:369` defaults a text object's overflow to
+`"clip"`. `applyClip` (`scene-fabric/src/authored-box.ts:208`) then builds a
+`clipPath` at exactly the authored box. 108 px of type in a 90-unit box keeps the
+middle 90 units of each digit, and a row of digits with their middles kept is a
+bar.
+
+**Nothing tells the author.** The Height field shows 90, the number they typed,
+and the stage shows a bar. The one cue the surface offers is the **Overflow**
+control — and its default is the one that clips.
+
+**What this is, precisely.** It is issue **#9** (F2.7, *"what the Height field
+means before the author has authored a height"*) arriving in a different hat:
+F2.7 is the field showing a stale measurement, and this is the field's value
+being taken literally as a clip. Both are the same missing state — *measured, not
+authored* — and both are the same filed question. The rebuild half is fixed here:
+the clock's box is now 140, which fits 108 px of type with room for the descender.
+
+**The general form is worth stating, because it is not about the clock.** Any
+text object whose authored box is smaller than its preset's line height renders
+as a band of its own glyphs, and the composition has several: the CPU and GPU
+readings are 60 tall at 60 px, the RAM and VRAM readings likewise. They are not
+clipped *yet* because the line height happens to fit, which is luck rather than
+a rule.
+
 #### The verdict, stated plainly
 
 **The cards read as tinted panels, not as glass.** Not "neither", and not a
