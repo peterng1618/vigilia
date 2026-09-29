@@ -758,7 +758,23 @@ Both raised with the same instruction: **find something existing and easy.** Bot
 
 **The pain it removes is measured, not stylistic.** The user wrote: *"Took me a while to figure out blur only accepts 48 maximum."* The glass blur field does warn on rejection — it carries `onReject: refused` and `invalidMessage` — so the bound is discoverable **only by tripping it**. A slider beside the box makes the range visible **by construction**, and a bounded field should say its bound on the field rather than making the author find it.
 
-### A gradient editor, and bounded fields that clamp (2026-09-29)
+### The display proof — the glass does not read as glass, and the reason is not the tint (2026-09-29)
+
+**The cards read as tinted panels, not glass.** Measured rather than judged: card interiors sit at **35–50 luma** where the photograph behind them spans **50–196**. The clock card sits on sky at 140.8 and measures **34.5** — and `0.851 × 21 + 0.149 × 140.8` predicts **38.9**, so the card is 85% fill and 15% of what is behind it.
+
+**So the tint tension resolves against the fear — but not in the direction anyone expected.** `frost` is `#0815234d`, **30%**, and that is the value ADR 0013 landed on. **85% is what is past "past 0.25 the glass effect dies" — and 85% is what every glass card in the saved package actually carries.** They carry `palette.panel` (`#081523d9`), not `palette.frost`.
+
+**Which means: turning on glass does not change the fill.** The treatment is a per-card toggle layered over whatever the fill already is, and the fill's default is `panel` at 85%. So an author who enables frosted glass gets a blur *under an 85% fill* — the blur runs and the photograph shows through as a smooth gradient, which is precisely the "tinted panel" reading. **`frost` is one select away in the Fill picker, and the defect is that the control named for glass does not carry it.** Filed as **issue #11**.
+
+This is the finding F1.16 half-solved: that fix made a plain shape visible by giving it `panel`, which is right for an unglazed shape and wrong for a glazed one. **A shape carrying glass should take `frost`; one without should take `panel`.** The two surfaces want different defaults and were given one.
+
+**The phone.** At 390 × 844 the document letterboxes into a **220 px band — 26.1% of the screen height** — with 312 px of black above and below, and three lines of `position: fixed` strip over the top. F1.13's grouping and F1.24's redaction are visibly working; the strip is not phone-shaped. U19's answer holds and the `contentFit` work still stands.
+
+**The five failures are now two.** **209 passed / 143 skipped / 2 failed** in 18.8 min. Four of the inherited five are closed; one was a stale exact-`#status` assertion, fixed and verified. The survivor is `reference-theme.spec.ts:365`, the `Ctrl+N` discard timeout — **issue #7, pre-existing, cause not established.**
+
+**Also found:** three driver defects that had never been caught because `rebuild-composition.ts` was imported by nothing (an unexported import, `Background media` read from the wrong tab, a hardcoded `backdrop.jpg`); and **§97's gap glyph is illegible at 108 px**, where it reads as a divider rather than a missing value. The agent got that one wrong first — attributing it to clipping — then corrected itself on re-measurement, which is the discipline working.
+
+**Not verified:** the editor's backdrop extent (cause not established, and it discarded its own number rather than report a measurement it did not trust), and the frosted material as a screenshot — replaced by assertions after the capture step hung.
 
 **U27 — a UI for gradients, sharing the colour picker's parts.** The palette already accepts gradients — the Paint chooser offers *Linear gradient* and the palette manager has an angle and a stop list — but there is no editor for them; the stops are text fields. **The reuse answer is that the colour picker's swatch and stop list already *are* the gradient editor**: one component family where a solid is a single stop. So this is not two features that share a look, it is one feature used twice, and the gradient case is the case with more than one stop.
 
@@ -1706,3 +1722,5 @@ git commit -m "chore(gate): the author journey pass at the broad gate"
 **4. Review Focus.** Each of the five lines is discharged: (1) by the Task 7 rule that any state-writing `page.evaluate` is a defect; (2) by the persisted-envelope assertion in Tasks 4, 6 and 11; (3) by classification at observation time; (4) by the "fix inside its owner" rule in Task 4 Step 3; (5) by the saved-envelope assertion in Task 11 Step 2.
 
 ### Fit: one control, not two (decided by the user, 2026-09-29)
+
+### A gradient editor, and bounded fields that clamp (2026-09-29)
