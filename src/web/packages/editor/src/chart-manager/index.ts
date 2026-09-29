@@ -3,6 +3,7 @@ import {
   buildChartPlan,
   type ChartContent,
   type ChartFamily,
+  chartPaintFieldsFor,
   type FabricGlobals,
   reassignChartPaintReferences,
   type SampleSource,
@@ -15,6 +16,39 @@ import {
   newObjectName,
 } from "../new-object-defaults.js";
 import { createChartPropertyPanel } from "./panel.js";
+
+/**
+ * The family's per-series paint, with one entry per series.
+ *
+ * `buildChartPlan` makes a line series, a bar and a slice one binding each, and
+ * `chartPaintFieldsFor` declares the paint that repeats as `multiple` — so the
+ * two are the same length by definition and the editor keeps them so. A new
+ * entry repeats the last one, which is what an author extending a chart means:
+ * the same look, once more, until they choose otherwise. A gauge's paints are
+ * not per-series and are left alone.
+ */
+function seriesPaintFor(
+  family: ChartFamily,
+  settings: ChartContent["settings"],
+  series: number,
+): ChartContent["settings"] {
+  const field = chartPaintFieldsFor(family).find((entry) => entry.multiple);
+  if (field === undefined) return settings;
+  const current = (settings as unknown as Record<string, unknown>)[
+    field.property
+  ];
+  if (!Array.isArray(current)) return settings;
+  const wanted = Math.max(1, series);
+  if (current.length === wanted) return settings;
+  const last = current.at(-1);
+  return {
+    ...settings,
+    [field.property]: Array.from(
+      { length: wanted },
+      (_, index) => current[index] ?? last,
+    ),
+  } as ChartContent["settings"];
+}
 
 function newChart(
   family: ChartFamily,
@@ -274,7 +308,18 @@ export class ChartManager {
   ): void {
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#chartFor(id);
-    if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
+    if (chart instanceof VigiliaChart) {
+      // A per-series paint is one entry per series, and a series is a binding.
+      // Without this a chart inserted from the Add pane declares one series
+      // colour and keeps it however many sensors are bound to it, so a
+      // three-series trends chart has three lines and **one** colour control —
+      // measured, and the reason the target's blue/violet/teal is unreachable.
+      chart.set(
+        "settings",
+        seriesPaintFor(chart.family, chart.settings, bindings.length),
+      );
+      this.#applyChart(id, chart);
+    }
     this.#editor.canvas.requestRenderAll();
     onBindingsChange?.(id, bindings);
     this.#drawPanel();

@@ -20,10 +20,11 @@ hand is what finds the authoring control that is missing.
 ## Last completed change
 
 - **F2.8, F2.9, F2.10: three more places the composition could not be built in.** A path sized before it was drawn came out at 1 unit instead of 14 — absolute coordinates multiplied by the *previous* drawing's scale. X and Y were the centre on a chart and the corner on everything else, so every chart landed half its own size away. And the Format field never named its vocabulary, so a date painted `EEE, Sep d, yyyy` on the canvas.
-- **The rebuild now covers all eight regions**: wordmark, strapline, live clock and date, the CPU and GPU cards, both memory rings, the trends panel, the storage bar and the network panel — 8 tests, each from its own blank theme, every step a pointer or a keystroke.
+- **F2.11: a three-series chart had one series colour.** A new chart declares `palette: [one]` and nothing extended it when a binding arrived, so the trends panel showed one `Series paint` and three lines drew in it. The Data panel now reconciles the family's per-series paint with the number of series, reading which field repeats from `chartPaintFieldsFor`.
+- **The rebuild covers all eight regions**: wordmark, strapline, live clock and date, the CPU and GPU cards, both memory rings, the trends panel, the storage bar and the network panel — 8 tests, each from its own blank theme, every step a pointer or a keystroke.
 - The clock and date are **live readings**, not typed words: `time.now` with `HH:mm` plus a second run for the day period, `date.today` with `ddd, MMM D, YYYY` painting `Tue, Sep 29, 2026`.
 - **The persisted envelope is proved, not the DOM.** Save package, unzip the browser's download, read `theme.json`: the 220 × 60 box, both runs, the declared `cpu.load` binding, `blurRadius 40`, and every paint a `palette.*` reference with no hex in the chart settings.
-- 2108 unit tests green; `typecheck`, `lint`, `format:check` exit 0 on the paths touched. Red without each fix: 1–3 tests apiece, measured.
+- 2110 unit tests green and 9 rebuild tests green; `typecheck`, `lint`, `format:check`, `build` and `size` all exit 0. Red without each fix: 1–3 tests apiece, measured.
 
 ## Next
 

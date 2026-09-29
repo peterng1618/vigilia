@@ -345,12 +345,14 @@ export async function addChart(
   }
   for (const [index, token] of (chart.paint ?? []).entries()) {
     if (token === undefined) continue;
-    const key = PAINT_KEY[chart.family];
-    await chooseToken(
-      page,
-      `[data-vigilia-chart-paint="${key}${key === "palette" ? `.${index}` : ""}"]`,
-      token,
-    );
+    // A line's data colour is its *series* paint, one entry per series; a
+    // gauge's and a bar's is a single field. `chartPaintFieldsFor` is what says
+    // which, and the panel's own attribute is what the author clicks.
+    const key =
+      chart.family === "Line" || chart.family === "Pie"
+        ? `palette.${index}`
+        : PAINT_KEY[chart.family];
+    await chooseToken(page, `[data-vigilia-chart-paint="${key}"]`, token);
   }
 }
 
@@ -361,7 +363,5 @@ export async function addChart(
  */
 const PAINT_KEY: Readonly<Record<string, string>> = {
   Gauge: "progress",
-  Line: "stroke",
   Bar: "fill",
-  Pie: "palette",
 };

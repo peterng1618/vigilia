@@ -613,6 +613,32 @@ itself, using the class the run editor's other notes already carry. Copy in
 `ui-copy.ts`. The vocabulary is now named where the pattern is typed. Authoring
 `ddd, MMM D, YYYY` instead paints **`Tue, Sep 29, 2026`**, verified on the canvas.
 
+### F2.11 — **BLOCKING: a three-series chart had one series colour**
+
+Found by looking at the trends panel rather than at the binding list, which is
+the only reason it was found at all — the assertions passed.
+
+F2.2 made three series on one line chart reachable. The **colours** were still
+one: the Data panel showed a single **Series paint 1**, and all three lines drew
+in it. A new chart declares `palette: [one entry]`, the panel renders one picker
+per entry in that array, and **nothing extended the array when a binding
+arrived**. The target's trends panel is blue, violet and teal.
+
+**Fixed in the owner** — `chart-manager`, which `ownership.md` names for
+"Chart selection/settings/bindings". `seriesPaintFor` reconciles the family's
+`multiple` paint with the number of bindings, reading *which* field repeats from
+`chartPaintFieldsFor` rather than restating it, so a line's series paint and a
+pie's slice paint are the same rule and a gauge — whose track and progress are
+not per-series — is left alone. A new entry repeats the last one, which is what
+an author extending a chart means.
+
+**Its own limit, stated.** The two arrays are coupled **by index**, and the
+remove control removes a binding by id. Adding and removing the *last* keeps
+them aligned; removing a middle binding shifts the colours that follow it. Not
+fixed here, because the alternative is a re-ordering rule the model does not
+express and a colour would have to be a property of a binding rather than of a
+slot — a format change, and a product decision.
+
 ### Found by the rebuild — fixed here
 
 | # | Finding | Class | Fix | Proof |
@@ -624,6 +650,7 @@ itself, using the class the run editor's other notes already carry. Copy in
 | F2.8 | A path sized before it was drawn came out at a hundredth of its size, because the scale belonged to the previous data | **blocking** — no icon in the composition can be drawn | `selection-inspector/panel.ts` | 2 new tests. Red-without-fix: dropping the scale reset took 2 red |
 | F2.9 | X and Y were the centre on a chart and the corner on everything else, so every chart landed half its own size from where it was put | **blocking** — no chart can be placed | `chart-manager/index.ts` | The existing four `addChart` cases now pin the origin. Red-without-fix: reverting to centre took 3 red |
 | F2.10 | The Format field never named the vocabulary, and the formatter's "a typo is visible" rule makes the mistake visible on a display rather than in the editor | **blocking** — the date line painted its own format string | `selection-inspector/runs.ts`, `ui-copy.ts` | 1 new test. The vocabulary is named beside the field; `ddd, MMM D, YYYY` now paints `Tue, Sep 29, 2026` on the canvas |
+| F2.11 | A chart's per-series paint was never extended when a series was added, so a three-series trends chart had three lines and one colour | **blocking** — the target's three trend colours are unreachable | `chart-manager/index.ts` | 2 new tests. Red-without-fix: dropping the reconciliation took 1 red |
 | F2.3 | The New chooser's replacement guard reads as an error | deferred | — | `Create` is followed by a `Save changes before opening another theme?` prompt on a document nobody edited. It is correct and it is what stops work being lost, so it stays; the chooser simply does not say the second step is coming |
 | F2.6 | A palette token's id says nothing about the token | deferred | — | A colour added through the panel is minted `colour`, `colour-2`, `colour-3`; the author types "CPU blue" and every picker *lists* it that way, while the reference the document carries is `palette.colour-3`. F1.18's class in reverse — here a token the author **named** wears an id that describes nothing. **Not fixed, and the reason is a decision, not an oversight:** re-keying an id breaks every reference to it, and deriving one from a name the author types *after* the click needs state that records "nobody references this yet", which the model has no place for. `palette-manager`'s doc comment states the current design deliberately. This is a genuine product question with no precedent in the repo for the alternative, which is what the plan says to record and pass over. |
 | F2.7 | A text object's Height field shows a measurement that is already stale | deferred | — | With no authored `box.height`, the field shows Fabric's measurement — and Fabric remeasures when the text rewraps without firing anything the panel listens for. Measured: after W = 220 wrapped a caption to two lines, the object measured **59** and the field read **91**. The width half of the same finding is fixed (F2.5); this one needs a "measured, not authored" state the field can show honestly, which is a product decision about what the field means before the author has touched it. |
