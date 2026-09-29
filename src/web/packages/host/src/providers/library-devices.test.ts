@@ -6,7 +6,15 @@ import {
   LibrarySensorProvider,
   type LibraryModule,
 } from "./library.js";
-import type { BlockDeviceLike, DriveLayoutLike } from "./library-devices.js";
+import {
+  type BlockDeviceLike,
+  drivesFrom,
+  driveFor,
+  type DriveDevice,
+  type DriveLayoutLike,
+  type VolumeLike,
+  volumesOf,
+} from "./library-devices.js";
 const GB = 1024 ** 3;
 
 /** Two cards whose busiest figures belong to different devices on purpose. */
@@ -376,6 +384,87 @@ describe("the volume caption", () => {
     expect(textOf(await provider.sample(["disk.name"], 0), "disk.name")).toBe(
       "ST4000DM004-2CV104",
     );
+  });
+});
+
+/** A POSIX machine's reports: a device path in `fs`, a mount point in `mount`. */
+const posixRoot: VolumeLike = {
+  mount: "/",
+  size: 500 * GB,
+  used: 305 * GB,
+};
+
+const posixData: VolumeLike = {
+  mount: "/data",
+  size: 2000 * GB,
+  used: 900 * GB,
+};
+
+const posixLayout: readonly DriveLayoutLike[] = [
+  { device: "/dev/nvme0n1", name: "Samsung SSD 990 PRO" },
+];
+
+const posixVolumes: readonly BlockDeviceLike[] = [
+  { mount: "/", device: "/dev/nvme0n1", label: "" },
+  { mount: "/data", device: "/dev/nvme0n1", label: "Data" },
+];
+
+describe("a volume on POSIX", () => {
+  /** The drive these reports describe, which must exist for the join to mean. */
+  const posixDrive = (): DriveDevice => {
+    const drive = driveFor(
+      drivesFrom(posixLayout, posixVolumes),
+      "samsung-ssd-990-pro",
+    );
+    if (drive === undefined) {
+      throw new Error("the POSIX fixture must report a drive to join against");
+    }
+    return drive;
+  };
+
+  it("joins its own device when it is the root volume", () => {
+    // The root is the volume macOS and Linux report first and most often.
+    // Normalising `/` to the empty string drops it out of every drive, so a
+    // whole platform's storage card reads empty with nothing to show for it.
+    expect(volumesOf([posixRoot], posixDrive())).toEqual([posixRoot]);
+  });
+
+  it("joins its own device alongside a volume on a data mount", () => {
+    expect(volumesOf([posixRoot, posixData], posixDrive())).toEqual([
+      posixRoot,
+      posixData,
+    ]);
+  });
+
+  it("reaches a storage key instead of reporting the drive as empty", async () => {
+    const provider = new LibrarySensorProvider(
+      fakeMachine({
+        filesystems: [posixRoot],
+        layout: posixLayout,
+        blockDevices: posixVolumes,
+      }),
+    );
+    provider.setAssignment({ systemDisk: "samsung-ssd-990-pro" });
+
+    const entries = await provider.sample(DISK_KEYS, 0);
+
+    expect(sampleOf(entries, "disk.total")?.value).toBeCloseTo(500, 0);
+    expect(sampleOf(entries, "disk.used")?.value).toBeCloseTo(305, 0);
+    expect(textOf(entries, "disk.name")).toBe("Samsung SSD 990 PRO");
+  });
+
+  it("still compares a trailing slash equal, which is what the strip is for", () => {
+    // A trailing slash is not a different mount, and dropping it is not the
+    // bug: normalising `/` *into* the empty string is.
+    const drives = drivesFrom(posixLayout, [
+      { mount: "/data/", device: "/dev/nvme0n1", label: "Data" },
+    ]);
+    const drive = driveFor(drives, "samsung-ssd-990-pro");
+    if (drive === undefined) {
+      throw new Error("the POSIX fixture must report a drive to join against");
+    }
+
+    expect(volumesOf([posixData], drive)).toEqual([posixData]);
   });
 });
 

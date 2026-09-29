@@ -17,10 +17,13 @@ import { displayNameFor } from "../settings/devices.js";
  */
 
 export interface VolumeLike {
-  /** Drive letter or mount point, e.g. `C:`. */
+  /**
+   * Drive letter or mount point, e.g. `C:` or `/` — the one name `fsSize`
+   * and `blockDevices` agree on, so it is what the join compares. `fsSize`'s
+   * `fs` is the device path (`/dev/sda1`), which no other provider spells the
+   * same way, so it identifies nothing here.
+   */
   readonly mount?: string;
-  /** The device path the volume sits on, as `fsSize` spells it. */
-  readonly fs?: string;
   readonly size?: number;
   readonly used?: number;
 }
@@ -41,6 +44,7 @@ export interface BlockDeviceLike {
 export interface DriveDevice {
   readonly deviceId: string;
   readonly name: string;
+  /** Its volumes' mount points as `mountKey` spells them. */
   readonly mounts: readonly string[];
 }
 
@@ -48,9 +52,18 @@ function named(value: string | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/** The volume's own path, which is what `fsSize` reports it under. */
-function pathOf(volume: VolumeLike): string {
-  return (volume.fs ?? volume.mount ?? "").replace(/\/$/, "");
+/**
+ * The one form a mount point is compared in, on both sides of the join.
+ *
+ * A trailing slash is not a different mount, but the root is: stripping `/`
+ * leaves `""`, and no root volume then belongs to any drive. Not
+ * `path.normalize` — these are provider-supplied mount strings, not paths
+ * being opened, and it would resolve `.` and `..` into mounts that do not
+ * exist.
+ */
+function mountKey(mount: string): string {
+  const stripped = mount.replace(/\/+$/, "");
+  return stripped === "" ? mount : stripped;
 }
 
 /**
@@ -70,11 +83,12 @@ export function drivesFrom(
       continue;
     }
 
+    const key = mountKey(volume.mount);
     const existing = mountsOf.get(volume.device);
     if (existing === undefined) {
-      mountsOf.set(volume.device, [volume.mount]);
-    } else if (!existing.includes(volume.mount)) {
-      existing.push(volume.mount);
+      mountsOf.set(volume.device, [key]);
+    } else if (!existing.includes(key)) {
+      existing.push(key);
     }
   }
 
@@ -115,8 +129,9 @@ export function volumesOf(
   filesystems: readonly VolumeLike[],
   drive: DriveDevice,
 ): readonly VolumeLike[] {
-  return filesystems.filter((entry) =>
-    drive.mounts.some((mount) => mount === pathOf(entry)),
+  return filesystems.filter(
+    (entry) =>
+      named(entry.mount) && drive.mounts.includes(mountKey(entry.mount)),
   );
 }
 
