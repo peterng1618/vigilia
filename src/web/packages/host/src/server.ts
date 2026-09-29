@@ -142,85 +142,6 @@ function sendJson(
  * The dashboard's first-run state. Plain HTML with no build step and no
  * dependency, matching the settings page.
  */
-/**
- * Several themes are saved and none is chosen. The consumer's next step is to
- * pick one, so the dashboard leads there rather than picking for them.
- */
-function libraryPage(
-  themes: readonly { readonly id: string; readonly name: string }[],
-): string {
-  const counts = new Map<string, number>();
-  for (const theme of themes) {
-    counts.set(theme.name, (counts.get(theme.name) ?? 0) + 1);
-  }
-
-  const items = themes
-    .map((theme) => {
-      // Two themes can share a display name; the id is what tells them apart.
-      const label =
-        (counts.get(theme.name) ?? 0) > 1
-          ? `${theme.name} (${theme.id})`
-          : theme.name;
-      return `<li><button type="button" data-theme="${theme.id}">${label}</button></li>`;
-    })
-    .join("");
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <title>Vigilia — choose a theme</title>
-    <style>
-      html, body { margin: 0; height: 100%; }
-      body {
-        display: grid;
-        place-items: center;
-        background: #14161c;
-        color: #e8ecf3;
-        font: 15px/1.6 system-ui, sans-serif;
-        padding: 24px;
-      }
-      main { max-width: 32em; text-align: center; }
-      h1 { font-size: 22px; margin: 0 0 8px; }
-      p { color: #8a97ab; margin: 0 0 20px; }
-      ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-      button {
-        width: 100%;
-        padding: 12px 16px;
-        border-radius: 8px;
-        border: 1px solid #2a3242;
-        background: #1d2530;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
-      button:hover { border-color: #e8ecf3; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Choose a theme</h1>
-      <p>This PC has several saved themes. Pick the one your displays should show.</p>
-      <ul>${items}</ul>
-    </main>
-    <script type="module">
-      for (const button of document.querySelectorAll("button[data-theme]")) {
-        button.addEventListener("click", async () => {
-          await fetch("/api/themes/active", {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ id: button.dataset.theme }),
-          });
-          location.reload();
-        });
-      }
-    </script>
-  </body>
-</html>`;
-}
-
 function firstRunPage(): string {
   return `<!doctype html>
 <html lang="en">
@@ -1044,11 +965,29 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (theme === undefined) {
         // Nothing to show: either a first run, or a choice to make. Both lead
         // the consumer somewhere they can act rather than to an error.
-        sendHtml(
-          response,
-          200,
-          available.length === 0 ? firstRunPage() : libraryPage(available),
-        );
+        if (available.length > 0) {
+          // Several themes and none chosen. The chooser is one of the host's
+          // own pages, sharing the settings page's theme rows, so both show a
+          // thumbnail; a second list here would be the copy without one.
+          if (bundles.admin !== undefined) {
+            await serveStatic(
+              response,
+              bundles.admin,
+              "/library.html",
+              "The theme chooser is missing from this installation.",
+            );
+            return;
+          }
+
+          sendText(
+            response,
+            404,
+            "The theme chooser is missing from this installation.",
+          );
+          return;
+        }
+
+        sendHtml(response, 200, firstRunPage());
         return;
       }
       url.searchParams.set("theme", theme);

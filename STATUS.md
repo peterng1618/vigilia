@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **Every control in the theme-settings, palette and type-preset panels has the name a screen reader reads.** F1.19 and F1.4, one cause: a `<label>` with no `for`. 15 controls paired `label.htmlFor` with the control's `id`, the idiom `selection-inspector` already uses.
-- **More than the seven the finding named.** The audit opened the gradient and delete branches too and found 15: the palette's Angle, both stop positions and both stop colours, the `Paint` and `Reassign to` selects and the language sample were unnamed as well. `vigiliaPaletteToken` was **not** fixed by `ce80354` as the plan recorded.
-- **Release version is a named status.** `output` is labelable, so it takes the same pairing and Chromium computes `status "Release version"`; it also moved into the panel's own `.vigilia-field` row, where it lines up with the fields above it.
-- **Verified:** 1969 unit tests, typecheck, lint, format green; 4 new Playwright tests and 11 existing editor specs pass. Red-without-fix: with the two pairings removed, 6 controls read unnamed in Chromium and 4 unit tests go red. **Browser proof measured, not asserted** — `ariaSnapshot` over all 35 controls of the Settings pane, 0 unnamed.
-- **Not fixed, found while there:** F1.5 — the type panel's wrapped labels render as `Name` jammed against its own input; F1.3 — Description is still a single-line input. Separate backlog rows, not bundled here.
+- **A newly inserted closed shape is filled with a card, not with the scene.** F1.16: `newShapeSurface` drew from `SURFACE_TOKENS`, which has no `panel`, so every rect, circle, ellipse, triangle, polygon and path came out filled `#0c0e13` — the backdrop it sits on.
+- **The comment above that call said the opposite of what the code did.** It claimed a shape must be "as legible as a panel"; the code took the first surface token the palette had, which is the backdrop. The code now matches the comment.
+- **One owner, two vocabularies.** `surfacePalette` takes its candidate list from the caller: a card leads with `panel`/`frost`, a chart track keeps the plain surfaces. The open-shape rule (content token as stroke) is unchanged and now has its own test.
+- **Verified:** 1988 unit tests, typecheck, lint, format green. Red-without-fix: reverting the candidate list took 7 tests red — the 6 closed kinds plus the panel dom test. Browser proof: the stage with all eight shapes inserted, screenshotted.
+- **Flagged, not split:** `new-object-defaults.ts` is 548 lines, further past the "500 is a signal" line it was already over at 522.
 
 ## Next
 
@@ -33,8 +33,7 @@ hand is what finds the authoring control that is missing.
 
 ## Blockers / unverified
 
-- The glass verdict is unverified by definition: no agent can see whether a panel reads as glass, and the last human judgement of it was made against a sampler that was cropping the wrong part of the photograph.
-- The frosted CPU card's own `mr` handle does not track the pointer: a resize aiming 10 units right landed 4.24 units left, where the same gesture on the un-frosted RAM card landed on the neighbouring edge. Task 5-shaped, open, in `task-7-report.md`.
+- The frosted CPU card, twice: the glass verdict is unverified by definition (no agent can see whether a panel reads as glass, and the last human judgement came from a sampler cropping the wrong part of the photograph), and its own `mr` handle does not track the pointer — a resize aiming 10 units right landed 4.24 units left, where the same gesture on the un-frosted RAM card landed on the neighbouring edge. Task 5-shaped, open, in `task-7-report.md`.
 - Task 9's three open edges, named: the `Promise.allSettled` split frame, the POSIX drive→volume join proven only on Windows, and `storage-card-value`'s box ending 28 units past its card.
 - The video frame callback is now measured on the player and provably not load-bearing there — 92 render requests already became 40 renders with it removed. It is load-bearing in the editor, which nothing browser-tests.
 - `library.ts` is 785 lines and its extraction into `library-devices.ts` is required before any future selection work; the `line` family applies `areaStyle` to the first series only (`charts/line.ts:254`).

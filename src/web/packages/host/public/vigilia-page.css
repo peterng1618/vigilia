@@ -1,0 +1,143 @@
+/* Chrome shared by the host's own pages: the chooser it serves at `/` and
+   `/settings`. Each page keeps the controls it alone owns. Deliberately
+   dependency-free: these files are served by the host itself, so they must
+   not need a build step or a network fetch. */
+:root {
+  --ink: #14120e;
+  --paper: #f5f1e8;
+  --line: #14120e;
+  --muted: #5a5449;
+  --accent: #8a5a2b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8ecf3;
+    --paper: #14161c;
+    --line: #2a3242;
+    --muted: #8a97ab;
+    --accent: #ffab00;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    15px / 1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  margin: 0 0 4px;
+}
+h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+  letter-spacing: 0.02em;
+}
+p.lead {
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+section {
+  margin-bottom: 28px;
+}
+/* A link is the only control on these pages that leaves them, so it is
+   styled like text and told apart by its underline rather than by a box that
+   would read as a second button. */
+a {
+  color: inherit;
+}
+.elsewhere {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 16px 0 24px;
+}
+.elsewhere a {
+  color: var(--ink);
+}
+/* Every control keeps a focus ring: a keyboard user has to see where they
+   are, and a page that never removes the ring never has to restore it. */
+:where(a, button, select, input, summary):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.theme-list {
+  display: grid;
+  gap: 8px;
+}
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.theme-option[aria-pressed="true"] {
+  border-width: 2px;
+  border-color: var(--ink);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.theme-option:hover {
+  border-color: var(--ink);
+}
+/* The chosen theme is stated in words too, so the state does not rest on a
+   visual difference alone. */
+.theme-option .current {
+  margin-left: auto;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.theme-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.theme-option .by {
+  color: var(--muted);
+  font-size: 13px;
+}
+.theme-shot {
+  flex: none;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+}
+.theme-shot[data-placeholder] {
+  /* Reserved space with nothing in it, so the entry still reads as whole. */
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    color-mix(in srgb, var(--muted) 18%, transparent) 6px,
+    color-mix(in srgb, var(--muted) 18%, transparent) 12px
+  );
+}

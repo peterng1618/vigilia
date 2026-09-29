@@ -121,6 +121,8 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Measurement conversion for display, and which families convert | `renderer-core/src/scene/measurement.ts` |
 | The preference a display reads at load | `player/src/theme-loader.ts` (`loadDisplayPreferences`) |
 | Consumer device-selection page | `host/public/settings.html` |
+| The theme chooser the dashboard falls back to | `host/public/library.html` |
+| A saved theme as one row in a list, and the host pages' chrome | `host/public/theme-list.js`, `host/public/vigilia-page.css` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |
 | systeminformation-backed baseline provider | `host/src/providers/library.ts` |

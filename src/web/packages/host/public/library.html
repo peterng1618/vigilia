@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vigilia — choose a theme</title>
+    <!-- The settings page's own assets, absolute because this page is served
+         at `/`. Sharing them is the point: the rows below are drawn by the
+         module that draws the settings page's, so both show a picture. -->
+    <link rel="stylesheet" href="/settings/vigilia-page.css" />
+    <style>
+      /* One decision, so one column of choices and no navigation. */
+      main {
+        max-width: 30em;
+      }
+      .theme-shot {
+        width: 128px;
+      }
+      #status {
+        margin-top: 16px;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Choose a theme</h1>
+      <p class="lead">
+        This PC has several saved themes. Pick the one your displays should
+        show.
+      </p>
+      <div id="themes"></div>
+      <p class="elsewhere">
+        Building a theme, or changing one? <a href="/editor/">Open the editor</a>.
+      </p>
+      <div id="status"></div>
+    </main>
+    <script type="module">
+      import { themeList } from "/settings/theme-list.js";
+
+      const themesHost = document.querySelector("#themes");
+      const status = document.querySelector("#status");
+
+      async function load() {
+        const response = await fetch("/api/themes/active");
+        if (!response.ok) {
+          themesHost.append(
+            "The saved themes could not be read. Reload to try again.",
+          );
+          return;
+        }
+        const body = await response.json();
+        render(body.themes ?? []);
+      }
+
+      function render(themes) {
+        themesHost.replaceChildren(
+          themeList(themes, {
+            onChoose: async (id) => {
+              status.textContent = "Saving…";
+              const saved = await fetch("/api/themes/active", {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ id }),
+              });
+              if (!saved.ok) {
+                status.textContent = `Could not save: ${await saved.text()}`;
+                return;
+              }
+              // The host now resolves `/` to this theme, so the reload lands
+              // on the dashboard the consumer just chose.
+              location.reload();
+            },
+          }),
+        );
+      }
+
+      await load();
+    </script>
+  </body>
+</html>
