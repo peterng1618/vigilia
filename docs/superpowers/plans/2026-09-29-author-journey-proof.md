@@ -354,6 +354,52 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 | F1.44 | **System disk and Data disk offer identical options** | Found by auditing the host's `/settings`, a page this pass had only glanced at. The two fieldsets render **byte-identical option lists** — the same four drives, in the same order, `st4000dm004-2cv104`, `wd-my-passport-259f-usb-device`, `lexar-500gb-ssd`, `wd-game-drive-usb-device` — and both read **"Automatic (every drive, combined)"**. So an author setting both has nothing on screen telling them what choosing differently would do, and both resolve to every drive. **The honest ambiguity:** the cause could be that the distinction is not modelled (in which case two fieldsets is the defect), or that it is modelled and the options simply fail to express it (in which case the copy and the lists are the defect). Investigate before fixing. | host `/settings` |
 
+### The user's design review, 2026-09-29
+
+Twenty-five items from using the editor. Recorded verbatim in intent, triaged by whether the answer is a fix, a decision, or a question. **These come from the person who has been living with the product, so they outrank anything this pass inferred.**
+
+#### A — defects, unambiguous, dispatched
+
+| # | Finding | Owner |
+|---|---|---|
+| U1 | **"Replace asset" does not replace** — it inserts a new asset | `asset-manager` |
+| U2 | **"Remove asset" throws "in use" for assets nothing uses** as background media | `asset-manager` |
+| U3 | **Some image assets appear in the layer panel, some do not** | layer tree |
+| U4 | **History does not cover asset transform, movement or layer order** — undo just removes the asset | history manager |
+| U5 | **Entering a group dims other layers in the panel but not on the artboard** | group entry |
+| U6 | **Entering a group does not make other artboard objects unselectable** | group entry |
+| U7 | **Exiting a text box leaves other layers dimmed as if still typing**; needs Esc to recover | text editing / group state |
+| U8 | **Left rail icons are misaligned** | shell CSS |
+| U9 | **The graph is visibly aliased** — needs an anti-aliasing property, default 2× | charts |
+| U10 | **The artboard is not a clipping area** — an asset half outside should be clipped, with only its selection/handles fully shown | artboard / scene rendering |
+
+#### B — decided, need implementing
+
+| # | Decision | Note |
+|---|---|---|
+| U11 | **"Stroke" and "Border width" are inconsistent language — pick one** | one owner, one word |
+| U12 | **The layer panel's bottom toolbar should always be visible**, not scroll with the list | |
+| U13 | **A blank theme's background should be white by default** | F1.37's 1.33:1 cost is part of why |
+| U14 | **A line should have two end handles** rather than a diagonal bounding box — the diagonal makes alignment and snapping useless and crops both ends when the border is thick | |
+| U15 | **A line's caps should have a corner radius** | |
+
+#### C — needs a design pass before code
+
+| # | Question | Why it is not a task |
+|---|---|---|
+| U16 | **The right sidebar needs a wholesale rethink.** Theme settings should not live inside the selection panel; *Selection* should be *Properties*; Palette and Type Presets are in the same boat; the Data tab is rarely used for charts; the Style tab displays paint and type as plain text and its purpose is unclear. How should the right side be split, structured and arranged? | This changes what three panels are for. It is a design decision with a dozen consequences, not a fix — it wants its own spec and its own review. |
+| U17 | **Redesign the zoom control** as a toolbar — `−  65%  +`, zoom to fit, zoom to full, zoom to selection, and possibly a full-screen button that hides the editor layout and shows only the theme as the player would | Same: a new surface and a set of decisions about it |
+| U18 | **Assets should not be their own panel.** Import → the Add pane and the Insert menu; Remove → normal layer delete; Replace → the dock toolbar and the right-click context menu | Follows from U16's reasoning; the same restructure |
+| U19 | **"Preview fit" is no longer needed**, since there is full zoom control | A removal, so it needs the replacement named first |
+
+#### D — questions, to be answered rather than built
+
+| # | Question | Likely answer |
+|---|---|---|
+| U20 | **Why does glass blur stop at 48?** | `MAX_GLASS_BLUR_RADIUS = 48`, and it is a **measured** bound, not a preference: Task 1's sweep held 2.5–3.7 ms per frame across 0–64 px and first clearly rose at 128 px (6.44 ms), so 48 sits inside the flat band while bounding the worst case. Worth telling the user this is already answered and measured — and asking whether the frame budget should be revisited now that fewer panels are frosted. |
+| U21 | **Can glass apply to any geometric shape, except line?** | It cannot today, and the reason is concrete: `GLASS_OBJECT_TYPES` is `Rect \| Group`, and the renderer only knows `ctx.rect` and a rounded rect. Widening it is real renderer work plus a re-measured budget. Feasible; a decision plus a task. |
+| U22 | **Stroke types — solid, dashed, dotted — used to exist. Where did they go?** | **Investigate before answering.** The chart families still carry `dash` as a setting (`CHART_SETTINGS_FIELDS.line` has `dash` with solid/dashed/dotted), so the vocabulary exists for *chart strokes*. Whether a panel or text object's own stroke lost it is a separate question and may be a genuine regression. Do not guess. |
+
 ### The rebuild finished — and what it did not do
 
 Nine tests, 1.9 minutes, all eight regions built from their own blank theme through the delivered UI. **Full Playwright: 206 passed, 143 skipped, 5 failed, exit 1** — and the agent read each of the five rather than counting them: two are stale assertions against landed work, one is filed issue #7, one sits in a file another agent was editing, and one is a player chroma threshold in a file it had not touched. It fixed the one that was cleanly its own: `display-fabric.spec.ts:663` still asserted a string `player/src` has not contained since F1.14, so it guarded nothing and could not pass.
