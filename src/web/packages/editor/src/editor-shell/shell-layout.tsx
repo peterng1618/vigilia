@@ -12,6 +12,7 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
+import { insertGroups, type InsertableObject } from "../new-object-panel.js";
 import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
@@ -31,6 +32,7 @@ import {
   type RunDisplayMode,
 } from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
+import type { EditorActionFacade } from "./session-facade.js";
 
 /** Rail entries own one pane each; the inspector keeps the document panels. */
 export type RailPane = "layers" | "add" | "assets" | "settings";
@@ -203,6 +205,33 @@ function MenuGroup({
   );
 }
 
+/** One item per insertable object, dispatching the construction its owner
+    holds. The menu reaches it through the session façade, as every other menu
+    action does. */
+function insertItem(
+  object: InsertableObject,
+  session: EditorActionFacade | undefined,
+): React.JSX.Element {
+  const run = (): void => {
+    switch (object.kind) {
+      case "text":
+        session?.addText();
+        return;
+      case "shape":
+        session?.addShape(object.shape);
+        return;
+      case "chart":
+        session?.addChart(object.family);
+    }
+  };
+
+  return (
+    <Menu.Item key={object.label} onClick={run}>
+      {object.label}
+    </Menu.Item>
+  );
+}
+
 function ShellMenuBar({
   store,
   getView,
@@ -257,11 +286,23 @@ function ShellMenuBar({
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.insert}>
-        {item(uiCopy.panels.text, () => session?.addText())}
-        {item(uiCopy.chartFamilies.gauge, () => session?.addChart("gauge"))}
-        {item(uiCopy.chartFamilies.line, () => session?.addChart("line"))}
-        {item(uiCopy.chartFamilies.bar, () => session?.addChart("bar"))}
-        {item(uiCopy.chartFamilies.pie, () => session?.addChart("pie"))}
+        {/* The Add pane's own list, not a second copy of it: this menu had
+            drifted to five flat entries with no panel and no shape in it, and
+            "Line" meant whichever of the two things the reader happened to see
+            first. The groups are the pane's, so the word is as unambiguous
+            here as it is there. */}
+        {insertGroups().map((group) =>
+          group.label === undefined ? (
+            group.objects.map((object) => insertItem(object, session))
+          ) : (
+            <Menu.Group key={group.label}>
+              <Menu.GroupLabel className="editor-shell-menu-label">
+                {group.label}
+              </Menu.GroupLabel>
+              {group.objects.map((object) => insertItem(object, session))}
+            </Menu.Group>
+          ),
+        )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.arrange}>
         {item(

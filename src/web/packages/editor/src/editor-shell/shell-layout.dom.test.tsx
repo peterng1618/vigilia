@@ -3,11 +3,24 @@ import { Canvas } from "fabric/es";
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { createErrorManager } from "../error-manager/index.js";
+import { createNewObjectPanel } from "../new-object-panel.js";
 import { arrangeActions } from "../object-actions.js";
+import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { createShellLayout } from "./shell-layout.js";
 import type { EditorActionFacade } from "./session-facade.js";
+
+// Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
+// its anchor, and the popup waits for its own open transition before reporting
+// itself open. Without them the Insert menu never mounts, which is the one
+// surface this file's last test reads.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
 
 function facade(): EditorActionFacade {
   return {
@@ -19,6 +32,7 @@ function facade(): EditorActionFacade {
     openLibrary: vi.fn(async () => undefined),
     saveLibrary: vi.fn(async () => undefined),
     addText: vi.fn(),
+    addShape: vi.fn(),
     addChart: vi.fn(),
     arrange: vi.fn(() => true),
     canArrange: vi.fn(() => true),
@@ -102,6 +116,85 @@ function railEntry(root: HTMLElement, label: string): HTMLButtonElement {
   return root.querySelector<HTMLButtonElement>(
     `.editor-shell-rail button[aria-label="${label}"]`,
   )!;
+}
+
+/** The menubar trigger for a menu, found by the text it carries. */
+function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
+  const entry = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-menubar button"),
+  ).find((button) => button.textContent === label);
+  if (entry === undefined) throw new Error(`No "${label}" menu.`);
+  return entry;
+}
+
+/** The open menu's own groups, as the headings and labels an author reads.
+    `data-open` rather than the class: the zoom readout's popup is kept mounted
+    and closed, so the class alone is not the menu an author has open. */
+function insertMenuGroups(): readonly (readonly [string | null, readonly string[]])[] {
+  return [
+    [
+      null,
+      menuItems()
+        .filter((item) => item.closest("[role=group]") === null)
+        .map((item) => item.textContent ?? ""),
+    ],
+    ...Array.from(openPopup().querySelectorAll<HTMLElement>("[role=group]")).map(
+      (group): readonly [string | null, readonly string[]] => [
+        document.getElementById(group.getAttribute("aria-labelledby") ?? "")
+          ?.textContent ?? null,
+        menuItems()
+          .filter((item) => item.closest("[role=group]") === group)
+          .map((item) => item.textContent ?? ""),
+      ],
+    ),
+  ];
+}
+
+/** The Add pane's own groups, read the same way: the lone button, then each
+    fieldset with its legend. */
+function paneGroups(pane: HTMLElement): readonly (readonly [string | null, readonly string[]])[] {
+  return [
+    [
+      null,
+      Array.from(pane.children)
+        .filter((child) => child.tagName === "BUTTON")
+        .map((button) => button.textContent ?? ""),
+    ],
+    ...Array.from(pane.querySelectorAll<HTMLElement>("fieldset")).map(
+      (group): readonly [string | null, readonly string[]] => [
+        group.querySelector("legend")?.textContent ?? null,
+        Array.from(group.querySelectorAll("button")).map(
+          (button) => button.textContent ?? "",
+        ),
+      ],
+    ),
+  ];
+}
+
+function openPopup(): HTMLElement {
+  const popup = document.querySelector<HTMLElement>(
+    ".editor-shell-menu-popup[data-open]",
+  );
+  if (popup === null) throw new Error("No menu is open.");
+  return popup;
+}
+
+function menuItems(): readonly HTMLElement[] {
+  return Array.from(openPopup().querySelectorAll<HTMLElement>("[role=menuitem]"));
+}
+
+/** The item's label inside a named group. */
+function insertMenuEntry(
+  group: string,
+  label: string,
+): HTMLElement | undefined {
+  return menuItems().find(
+    (item) =>
+      item.textContent === label &&
+      document.getElementById(
+        item.closest("[role=group]")?.getAttribute("aria-labelledby") ?? "",
+      )?.textContent === group,
+  );
 }
 
 it("names every rail entry by its label and draws an icon, not a glyph", () => {
@@ -400,6 +493,50 @@ it("routes the inspector to tabs on selection and back to document panels", asyn
   dataTab?.click();
   await Promise.resolve();
   expect(layout.hosts.chart.parentElement).not.toBeNull();
+
+  layout.destroy();
+});
+
+it("inserts the same objects from the Insert menu as the Add pane offers", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const session = facade();
+  layout.setBridge(bridgeStub({ session }), undefined);
+  const pane = createNewObjectPanel(
+    layout.hosts.add,
+    {
+      canvas: { add: vi.fn(), setActiveObject: vi.fn(), requestRenderAll: vi.fn() },
+      textManager: { addText: vi.fn() },
+      historyManager: { saveState: vi.fn() },
+      errorManager: { warn: vi.fn(), error: vi.fn() },
+    } as never,
+    undefined,
+  );
+  await Promise.resolve();
+
+  // `act` is not used around the menu: Base UI's popup store keeps re-rendering
+  // itself in jsdom, and awaiting its effects never settles. The click is the
+  // same one an author makes, and the popup is read straight after.
+  menubarEntry(root, uiCopy.menus.insert).click();
+  await Promise.resolve();
+  expect(document.querySelector(".editor-shell-menu-popup[data-open]")).not.toBeNull();
+
+  // Read from both surfaces' own DOM: two lists that must agree and did not is
+  // what left a panel — the object this composition is mostly made of — out of
+  // the menu entirely.
+  expect(insertMenuGroups()).toEqual(paneGroups(pane.root));
+
+  // "Line" is both a primitive and a chart family. The group is what tells them
+  // apart, in the menu as it already did in the pane.
+  const shape = insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.line);
+  const chart = insertMenuEntry(uiCopy.panels.charts, uiCopy.chartFamilies.line);
+  expect(shape).not.toBeUndefined();
+  expect(chart).not.toBeUndefined();
+  expect(shape?.closest("[role=group]")).not.toBe(chart?.closest("[role=group]"));
+
+  // And the menu runs the same construction rather than a second one.
+  insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
+  expect(session.addShape).toHaveBeenCalledWith("rect");
 
   layout.destroy();
 });

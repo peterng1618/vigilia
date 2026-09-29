@@ -1,9 +1,14 @@
-import type { ChartFamily, FabricGlobals } from "@vigilia/renderer-core";
+import {
+  CHART_FAMILIES,
+  type ChartFamily,
+  type FabricGlobals,
+} from "@vigilia/renderer-core";
 import type { EditorInteraction } from "./editor-interaction.js";
 import {
   createNewShape,
   createNewTextDefaults,
   SHAPE_KINDS,
+  type ShapeKind,
 } from "./new-object-defaults.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -14,6 +19,111 @@ export interface NewObjectPanel {
 
 export interface NewObjectActions {
   readonly addChart: (family: ChartFamily) => void;
+}
+
+/** One object an author can insert, named as the control that inserts it. */
+export type InsertableObject =
+  | { readonly kind: "text"; readonly label: string }
+  | {
+      readonly kind: "shape";
+      readonly label: string;
+      readonly shape: ShapeKind;
+    }
+  | {
+      readonly kind: "chart";
+      readonly label: string;
+      readonly family: ChartFamily;
+    };
+
+/** One heading's worth of them. A heading is what makes "Line" unambiguous. */
+export interface InsertGroup {
+  /** The heading, or undefined for an object that stands on its own. */
+  readonly label: string | undefined;
+  readonly objects: readonly InsertableObject[];
+}
+
+/**
+ * Everything an author can insert, grouped as the Add pane shows it. **The one
+ * owner of that list:** the pane's fieldsets and the shell's Insert menu both
+ * render this, because two lists that must agree and do not is how a panel —
+ * the object this composition is mostly made of — came to be missing from the
+ * menu while the pane had it.
+ */
+export function insertGroups(): readonly InsertGroup[] {
+  const objects: readonly InsertableObject[] = [
+    { kind: "text", label: uiCopy.panels.text },
+    ...SHAPE_KINDS.map((shape) => ({
+      kind: "shape" as const,
+      label: uiCopy.shapeKinds[shape],
+      shape,
+    })),
+    ...CHART_FAMILIES.map((family) => ({
+      kind: "chart" as const,
+      label: uiCopy.chartFamilies[family],
+      family,
+    })),
+  ];
+
+  const groups: InsertGroup[] = [];
+  for (const object of objects) {
+    const label = groupOf(object);
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.label === label) {
+      groups[groups.length - 1] = { label, objects: [...last.objects, object] };
+    } else {
+      groups.push({ label, objects: [object] });
+    }
+  }
+
+  return groups;
+}
+
+function groupOf(object: InsertableObject): string | undefined {
+  switch (object.kind) {
+    case "text":
+      return undefined;
+    case "shape":
+      return uiCopy.panels.shapes;
+    case "chart":
+      return uiCopy.panels.charts;
+  }
+}
+
+/** A text object, placed and named as a new one always is. */
+export function insertNewText(
+  editor: EditorInteraction,
+  globals: FabricGlobals | undefined,
+): void {
+  const content = "New text";
+  editor.textManager.addText({
+    text: content,
+    ...createNewTextDefaults(globals, content),
+  });
+}
+
+/**
+ * A shape, added through the canvas as one history entry and left selected.
+ * Shared with the Insert menu so the two surfaces cannot insert different
+ * objects under the same name.
+ */
+export function insertNewShape(
+  editor: EditorInteraction,
+  globals: FabricGlobals | undefined,
+  kind: ShapeKind,
+): void {
+  // The id is the stable key bindings, the schema path and the envelope carry,
+  // so it names the kind the button made. F1.8 gave the *display* the right
+  // name and an author never sees the id, which is exactly why a circle keyed
+  // `panel-…` survived: nobody reading the screen sees it.
+  const inserted = createNewShape(
+    `${kind}-${crypto.randomUUID()}`,
+    globals,
+    kind,
+  );
+  editor.canvas.add(inserted);
+  editor.canvas.setActiveObject(inserted);
+  editor.historyManager.saveState();
+  editor.canvas.requestRenderAll();
 }
 
 /** Vigilia creates semantic text while the editor retains generic construction and history. */
@@ -49,82 +159,51 @@ export function createNewObjectPanel(
       );
     }
   };
-  const text = document.createElement("button");
-  text.type = "button";
-  text.textContent = uiCopy.panels.text;
-  text.addEventListener("click", () =>
-    constructing(() => {
-      const content = "New text";
-      editor.textManager.addText({
-        text: content,
-        ...createNewTextDefaults(currentGlobals, content),
-      });
-    }),
-  );
+
   /**
-   * The primitives, in a labelled group rather than eight more chips beside
-   * the four chart families: "Line" is both a chart and a shape, and a flat
-   * list would put the same word on two buttons. One construction each — the
+   * The primitives and the chart families, in a labelled group rather than
+   * twelve more chips: "Line" is both a chart and a shape, and a flat list
+   * would put the same word on two buttons. One construction each — the
    * defaults module owns what a new shape is, and the canvas and history the
    * editor already exposes own where it lands and how it is recorded.
    */
-  const shapes = document.createElement("fieldset");
-  const shapesLegend = document.createElement("legend");
-  shapesLegend.textContent = uiCopy.panels.shapes;
-  const shapeButtons = SHAPE_KINDS.map((kind) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = uiCopy.shapeKinds[kind];
-    button.dataset["vigiliaPanelAdd"] = kind;
-    button.addEventListener("click", () =>
+  const button = (object: InsertableObject): HTMLButtonElement => {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.textContent = object.label;
+    if (object.kind === "shape") {
+      control.dataset["vigiliaPanelAdd"] = object.shape;
+    }
+    control.addEventListener("click", () =>
       constructing(() => {
-        // The id is the stable key bindings, the schema path and the envelope
-        // carry, so it names the kind the button made. F1.8 gave the *display*
-        // the right name and an author never sees the id, which is exactly why
-        // a circle keyed `panel-…` survived: nobody reading the screen sees it.
-        const inserted = createNewShape(
-          `${kind}-${crypto.randomUUID()}`,
-          currentGlobals,
-          kind,
-        );
-        editor.canvas.add(inserted);
-        editor.canvas.setActiveObject(inserted);
-        editor.historyManager.saveState();
-        editor.canvas.requestRenderAll();
+        switch (object.kind) {
+          case "text":
+            insertNewText(editor, currentGlobals);
+            return;
+          case "shape":
+            insertNewShape(editor, currentGlobals, object.shape);
+            return;
+          case "chart":
+            actions?.addChart(object.family);
+        }
       }),
     );
-    return button;
-  });
-  shapes.append(shapesLegend, ...shapeButtons);
-  /**
-   * The chart families, in the group the shape list already established. They
-   * were peers of Panel before the primitives arrived, and leaving them as
-   * chips under a legend that is not about them orphaned them *and* left two
-   * buttons called "Line" with nothing to tell them apart — a screen reader
-   * hears the same word twice, and a test cannot address either one. Same
-   * fix as above, for the same reason.
-   */
-  const charts = document.createElement("fieldset");
-  const chartsLegend = document.createElement("legend");
-  chartsLegend.textContent = uiCopy.panels.charts;
-  const chartButtons = (
-    [
-      [uiCopy.chartFamilies.gauge, "gauge"],
-      [uiCopy.chartFamilies.line, "line"],
-      [uiCopy.chartFamilies.bar, "bar"],
-      [uiCopy.chartFamilies.pie, "pie"],
-    ] as const
-  ).map(([label, family]) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.addEventListener("click", () =>
-      constructing(() => actions?.addChart(family)),
-    );
-    return button;
-  });
-  charts.append(chartsLegend, ...chartButtons);
-  root.append(heading, text, shapes, charts);
+    return control;
+  };
+
+  for (const group of insertGroups()) {
+    if (group.label === undefined) {
+      root.append(...group.objects.map(button));
+      continue;
+    }
+
+    const fieldset = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = group.label;
+    fieldset.append(legend, ...group.objects.map(button));
+    root.append(fieldset);
+  }
+
   host.append(root);
   return {
     root,

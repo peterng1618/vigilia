@@ -28,6 +28,7 @@ function facadeStub(): EditorActionFacade {
     openLibrary: vi.fn(async () => undefined),
     saveLibrary: vi.fn(async () => undefined),
     addText: vi.fn(),
+    addShape: vi.fn(),
     addChart: vi.fn(),
     arrange: vi.fn(() => true),
     canArrange: vi.fn(() => false),

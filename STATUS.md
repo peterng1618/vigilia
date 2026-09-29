@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.35: a chart's inspector names the paint it actually carries.** `paintReferenceOf` read only `vigiliaPaint`, which is where a box or a text run keeps its colour, so every chart in every theme read *"Paint: not set"* while painted. It is now `paintReferencesOf`: a chart is read from the settings its family owns, through `chartPaintFieldsFor`, one line per entry under that field's own name — *"Stroke paint: palette.down → #22d3ee"*, *"Series paint 2: palette.gpu → #a98bff"*.
-- **The Style tab reads the same list**, so the two surfaces cannot disagree about what a selection is made of.
-- **Proven in the browser** on the real reference composition and on a gauge inserted through the Add pane: the lines above, and no "not set" anywhere in the inspector.
-- 2041 unit tests green; `typecheck`, `lint` and `format:check` exit 0. Red-without-fix: the two new tests fail, `Progress paint` and `Slice paint 1` are null.
+- **F1.7: the Insert menu and the Add pane are one list.** The menu held its own copy — five flat entries, no panel and no shape — and had already lost the object the composition is mostly made of. `insertGroups()` in `new-object-panel.ts` is now the only list, and both surfaces render it: Text alone, then **SHAPE** (eight primitives) and **CHART** (four families).
+- **The groups are the pane's**, so "Line" is the primitive in one group and the family in the other, in the menu as it already was in the pane.
+- **The construction is shared too**: `insertNewText` and `insertNewShape` are the Add pane's own actions, and the menu reaches them through a new `addShape` on the session façade, so the two cannot insert different objects under one name.
+- **Proven in the browser** at 1600×1000: the menu open beside the Add pane, the same thirteen entries in the same three groups, and a Rectangle and a Gauge inserted from it land in the layer list as the pane's would. 2042 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: the menu read as five flat items against the pane's three groups.
 
 ## Next
 

@@ -32,10 +32,11 @@ import {
   type IndicatorManager,
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
-import { createNewTextDefaults } from "./new-object-defaults.js";
 import { chooseArtboardPreset } from "./new-document-chooser.js";
 import {
   createNewObjectPanel,
+  insertNewShape,
+  insertNewText,
   type NewObjectPanel,
 } from "./new-object-panel.js";
 import { promptThemeSelection } from "./theme-library-dialog.js";
@@ -401,13 +402,8 @@ export class EditorSession {
       releasePackage: () => this.#release(options),
       openLibrary: () => this.#openLibrary(options),
       saveLibrary: () => this.#saveLibrary(options),
-      addText: () => {
-        const content = "New text";
-        editor.textManager.addText({
-          text: content,
-          ...createNewTextDefaults(this.#envelope.globals, content),
-        });
-      },
+      addText: () => insertNewText(editor, this.#envelope.globals),
+      addShape: (kind) => insertNewShape(editor, this.#envelope.globals, kind),
       addChart: (family) => this.charts.addChart(family),
       arrange: (action) => applyArrange(editor, action),
       canArrange: (action) => canArrange(editor, action),

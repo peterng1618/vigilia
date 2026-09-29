@@ -1,5 +1,6 @@
 import type { ChartFamily } from "@vigilia/renderer-core";
 import type { ArrangeAction } from "../arrange.js";
+import type { ShapeKind } from "../new-object-defaults.js";
 import type { RunDisplayMode } from "../run-placeholder.js";
 
 /** Document-level editor actions the shell dispatches. Every method delegates to
@@ -14,6 +15,9 @@ export interface EditorActionFacade {
   openLibrary(): Promise<void>;
   saveLibrary(): Promise<void>;
   addText(): void;
+  /** The Insert menu's route to a primitive; the Add pane's own buttons call
+      the same construction rather than a second copy of it. */
+  addShape(kind: ShapeKind): void;
   addChart(family: ChartFamily): void;
   arrange(action: ArrangeAction): boolean;
   canArrange(action: ArrangeAction): boolean;
