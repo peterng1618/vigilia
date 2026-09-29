@@ -822,6 +822,23 @@ Driving all eight primitives through the Add pane and reading the inspector for 
 
 The decision the user deferred — *investigate before deciding* — now has its terms: either the renderer learns more clip paths and the budget is re-measured, or **the product says glass is rectangles-only** and the author finds out at the point of use instead of by inference. The second is cheap and honest; the first is real work with a measured cost.
 
+#### The investigation, done (2026-09-30) — the "difficult" framing was wrong
+
+The user asked why it is difficult for the closed shapes, and whether teaching the renderer more clip paths means recreating `ctx.rect` by hand. **It does not, and the difficulty was mine, not the renderer's.**
+
+**`ctx.ellipse` is already in `localPath`.** It builds a rounded rectangle out of `ctx.moveTo` / `lineTo` / `ctx.ellipse` / `closePath`, through a `corner()` helper. So the file is *already* hand-building paths from canvas primitives, and the primitive the user named is the one doing the corners today. Adding a circle is roughly one line: `ctx.ellipse(0, 0, rx, ry, 0, 0, 2π)` in place of the four corners, and `ctx.clip()` works on any path — the mechanism already generalises. **The question per shape is only how to build the path, not whether the renderer can clip one.**
+
+**One hypothesis I had was wrong, and it is worth recording so nobody repeats it.** I expected the answer to be *"ask Fabric for the object's own outline"* — every shape could describe itself and the renderer would need no per-shape knowledge. It checked out as false in the installed **7.4.0**: `fabric.util.joinPath` **is** exported, but `.path` is `undefined` on a fresh `Circle`, `Ellipse` and `Triangle`, and `toObject().path` is absent for all of them, so there is no public outline to ask for. That avenue is closed, and the honest work is a **small dispatch on class using primitives already in the file**:
+
+| Shape | What the path needs |
+|---|---|
+| Circle, Ellipse | one `ctx.ellipse` — replacing the four corners |
+| Triangle | a three-point path |
+| Polygon | iterate its own `points` |
+| Line, Polyline | genuinely different — an open stroke, not an area. A frosted *line* has no interior to frost. |
+
+**So the finding narrows sharply: the closed shapes are not a research question, they are a small dispatch, and only Line and Polyline are the awkward case** — where the user's own instinct was right, and for a better reason than "hard to draw": there is nothing to frost.
+
 ### F1.11 landed, and it moved the number that decides it (`df9e725`)
 
 **Transmission went from 0.216 to 0.718.** Same script, same document, same photograph, only the glass checkbox differing:
