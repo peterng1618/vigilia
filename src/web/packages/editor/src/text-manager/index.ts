@@ -2,12 +2,13 @@ import {
   VIGILIA_TEXT_PROPERTY,
   type PlanTextObject,
 } from "@vigilia/scene-fabric";
-import { type Canvas, IText } from "fabric/es";
+import { type Canvas, IText, Textbox } from "fabric/es";
 import type { TextContent, TextRun } from "@vigilia/renderer-core";
 import { uiCopy } from "../ui-copy.js";
 
 export interface TextManager {
-  addText(options?: Readonly<Record<string, unknown>>): IText;
+  /** A `Textbox`, so the run editor's Wrap and Overflow mean what they say. */
+  addText(options?: Readonly<Record<string, unknown>>): Textbox;
   /**
    * Who paints an object's authoring view when the author starts editing it.
    * The session owns the run display that painting comes from, and the shell
@@ -205,7 +206,13 @@ export function createTextManager(
 
   return {
     addText(options = {}) {
-      const text = new IText(
+      // A `Textbox`, not an `IText`. Two of the three controls the run editor
+      // offers a text object — Wrap and Overflow — are `Textbox` behaviour, and
+      // an `IText` accepts both, records both, and does neither: the text runs
+      // past the box the author set instead of wrapping inside it. It is also
+      // the class every text object in a shipped theme is authored as, so this
+      // is the editor making the same object the scene does.
+      const text = new Textbox(
         typeof options["text"] === "string" ? options["text"] : "",
         { id: `text-${crypto.randomUUID()}`, ...options },
       );

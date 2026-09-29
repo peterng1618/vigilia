@@ -71,6 +71,16 @@ describe("new object defaults", () => {
     expect(defaults[VIGILIA_PAINT_PROPERTY]).toEqual({ fill: "palette.ink" });
   });
 
+  it("places new text by its edges, as it places every other object", () => {
+    // Measured on the surface: a text inserted from the Add pane arrived with
+    // Fabric's centre origin, so the inspector's X and Y were the middle of the
+    // object. A card is placed by its left edge, and a label that cannot be
+    // placed by the same edge cannot be lined up with one.
+    const defaults = createNewTextDefaults(globals, "New text");
+
+    expect(defaults).toMatchObject({ originX: "left", originY: "top" });
+  });
+
   it("derives per-run palette and type-preset references for new text", () => {
     const defaults = createNewTextDefaults(globals, "New text");
 

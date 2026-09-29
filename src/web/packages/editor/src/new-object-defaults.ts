@@ -40,6 +40,10 @@ export interface NewTextDefaults extends NewPaintDefaults {
   /** Placement, so a new object does not straddle the artboard corner. */
   readonly left: number;
   readonly top: number;
+  /** Artboard coordinates, as `NewPanelDefaults` already sets them, so the
+      inspector's X and Y are the text's own edges rather than its middle. */
+  readonly originX: "left";
+  readonly originY: "top";
   readonly fontFamily: string;
   readonly fontSize: number;
   readonly fontWeight?: string | number;
@@ -364,11 +368,13 @@ export function createNewTextDefaults(
   return {
     ...paint,
     name: newObjectName("text"),
-    // Fabric's own default is (0,0) with a centre origin, which puts a new
-    // object half off the artboard corner where it is awkward to select. Charts
-    // already start inset; text must too.
+    // Fabric's own default is (0,0), which puts a new object on the artboard
+    // corner where it is awkward to select. Charts already start inset; text
+    // must too.
     left: NEW_OBJECT_INSET,
     top: NEW_OBJECT_INSET,
+    originX: "left",
+    originY: "top",
     fontFamily: preset.family,
     fontSize: preset.size,
     ...(preset.weight === undefined ? {} : { fontWeight: preset.weight }),

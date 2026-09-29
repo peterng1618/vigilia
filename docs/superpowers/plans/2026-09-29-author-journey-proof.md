@@ -395,12 +395,57 @@ would be a control that accepts an edit and applies none, so the chooser is
 disabled and the panel says why. All three binding writes now go through one
 `#writeBindings`, so the envelope, the redraw and the panel cannot disagree.
 
+### F2.4 — **BLOCKING: the text object the Add pane inserts is not the text object the product authors**
+
+Found the moment the first object had to be *placed*, because the composition is
+alignment-critical: a wordmark's left edge at 120, a card's left edge at 40, a
+reading centred in its card. Two measurements, both on the live surface.
+
+**X and Y meant two different things on the same field.** `TextManager.addText`
+built a Fabric `IText` with Fabric's **centre** origin; a `Rect` is created with
+`originX: "left", originY: "top"` (`NewPanelDefaults` says so in its own comment:
+*"so the inspector's X and Y are the panel's edges"*). Measured:
+
+| | originX / originY | X = 120 puts the… |
+|---|---|---|
+| Text from the Add pane | `center` / `center` | **middle** at 120 |
+| Rectangle from the Add pane | `left` / `top` | **left edge** at 120 |
+
+`selection-inspector/index.ts:59` claims *"the numbers an author types match what
+they placed"*. For a text object they did not. A label could not be lined up with
+a card at all.
+
+**Wrap accepted an edit and did the opposite.** The run editor offers Align, Wrap
+and Overflow to every object carrying `vigiliaText`. Two of the three are
+`Textbox` behaviour and an `IText` has none of it. Measured, with a 57-character
+caption, Wrap **on**, and W typed as 200:
+
+> `width 749`, rendered **1193** — one line, straight past the box, and
+> `vigiliaText.wrap` reads `true`, so the document records the ask.
+
+The 200 is then gone: the object is 1193 wide and the W field will say 1193. A
+starter `textbox` with the same content reports 262 and honours it.
+
+**Both fixed, and they are one fix.** `text-manager` owns text creation, and
+`new-object-defaults` owns placement:
+
+- `addText` builds a **`Textbox`** — the class every text object in a shipped
+  theme is authored as (`new-fabric-theme-objects.ts:130` emits `type: "Textbox"`,
+  `originX: "left"`), and the only one that wraps.
+- `createNewTextDefaults` sets `originX: "left", originY: "top"`, beside the
+  `NewPanelDefaults` that already does, so one rule covers both.
+
+The stale comment that called a centre origin "Fabric's own default" was wrong —
+Fabric's default is left/top; the centre was the editor's own — and is corrected
+where it was.
+
 ### Found by the rebuild — fixed here
 
 | # | Finding | Class | Fix | Proof |
 |---|---|---|---|---|
 | F2.1 | A text object could never carry more than one run, a run's text had no field, and an in-place edit silently dropped the siblings | **blocking** — the journey cannot complete | `selection-inspector/runs.ts`, `text-manager/index.ts`, `editor-interaction.ts`, `editor-session.ts` | 5 new run tests + 1 new text-manager test. Red-without-fix: disabling the add control took 1 red; restoring the flattening took 1 red |
 | F2.2 | A chart could not be bound to a sensor from the UI, so every chart in the composition was unauthorable | **blocking** — the journey cannot complete | `chart-manager/panel.ts`, `chart-manager/index.ts` | 3 new panel tests. Red-without-fix: disabling the chooser's dispatch took 1 red |
+| F2.4 | The Add pane's Text produced a centred, un-wrappable `IText` — a different class from every text object the product authors — so X/Y meant something else than on a card and Wrap recorded an ask it did not honour | **blocking** — the composition cannot be laid out | `text-manager/index.ts`, `new-object-defaults.ts` | 3 new tests. Red-without-fix: `Textbox` → `IText` took 2 red; dropping the origin took 1 red |
 | F2.3 | The New chooser's replacement guard reads as an error | deferred | — | `Create` is followed by a `Save changes before opening another theme?` prompt on a document nobody edited. It is correct and it is what stops work being lost, so it stays; the chooser simply does not say the second step is coming |
 
 **The blank theme itself is sound.** Zero objects, ten palette tokens, thirteen

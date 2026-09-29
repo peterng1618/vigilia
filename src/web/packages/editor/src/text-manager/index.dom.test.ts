@@ -272,3 +272,38 @@ describe("typing over an object that carries more than one run", () => {
     text.destroy();
   });
 });
+
+describe("what a text object an author inserts can do", () => {
+  /**
+   * Both of these were measured on the surface, not read off the source: a text
+   * inserted from the Add pane came out as an `IText` with a centre origin, so
+   * its X and Y were the middle of the object, and Wrap and Overflow recorded
+   * an ask and did nothing — a 57-character caption asked to wrap at 200 units
+   * rendered 1193 wide.
+   */
+  it("is the class that wraps, so Wrap and Overflow are not a promise", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const manager = createTextManager(canvas, vi.fn());
+
+    const text = manager.addText({ text: "New text" });
+
+    expect(text).toBeInstanceOf(Textbox);
+    manager.destroy();
+  });
+
+  it("wraps inside the box the author set", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const manager = createTextManager(canvas, vi.fn());
+    const text = manager.addText({ text: "New text" });
+    canvas.setActiveObject(text);
+    text.set("width", 200);
+    text.set(
+      "text",
+      "AMD Ryzen 7 7800X3D sixteen core thirty two thread processor",
+    );
+
+    expect(text.width).toBeLessThanOrEqual(200);
+    expect(text.height).toBeGreaterThan(36);
+    manager.destroy();
+  });
+});
