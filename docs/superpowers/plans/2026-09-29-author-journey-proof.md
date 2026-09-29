@@ -247,7 +247,8 @@ The five failure modes this pass implies that no single task's tests exercise:
 4. **A blocking finding "fixed" by a second control that describes the same thing.** A fix that adds a second owner is a new defect; the fix must sit inside the one owner named in `docs/architecture/ownership.md`.
 5. **Save that loses authored work on the way.** The proof touches every authored surface in one document. A fix that makes a control work by dropping or coercing what the author wrote is worse than the gap.
 
-### F1.33 and F1.34 landed
+| F1.38 | **The New-theme chooser ignores the current artboard** | Found by driving the blank-theme flow. The chooser opens on its own defaults — 16:9, Landscape, 1080p, 1920 × 1080 — even when the document is already 19.5:9 Portrait at 1080 × 2340. An author who has settled on portrait and clicks **New theme** again is thrown back to landscape without being asked. A new-document chooser should open on the shape you were last working in. | the New chooser |
+| ~~F1.22~~ | **RESOLVED as a side effect — the library picker is a real dialog now**
 
 `2f0223f`. The player now carries a persistent strip when content falls outside the artboard:
 
@@ -260,6 +261,14 @@ The five failure modes this pass implies that no single task's tests exercise:
 The artboard controls carry, via `aria-describedby` on all five size controls: *"Objects are not moved or resized. Anything outside the artboard is not shown on a display."* **No count** — the panel cannot see the scene, so a number there would be a guess. The player owns the measurement, which is the split the ownership map asks for.
 
 **It filed rather than guessed.** `reference-theme.spec.ts:365` fails — `Ctrl+N`'s discard prompt times out waiting for a `Discard` button. It stashed every file it touched, rebuilt, and reproduced it identically, so it is pre-existing with the cause not established: **issue #7**.
+
+### The blank theme works, end to end — the plan's premise, verified
+
+Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
+
+Then, as an author: a **Rectangle** and two **charts** all insert with palette-backed defaults, and the selection inspector shows a **Name** field (F1.8), geometry, opacity, and the chart's own paint — *"Stroke paint: palette.text → #ecf5ff"*, *"Series paint 1: palette.text → #ecf5ff"* — which is **F1.35 already fixed** in a live build.
+
+**The premise holds**: an author can start from nothing, put something on it, and every control they touch resolves.
 
 ---
 
@@ -296,7 +305,7 @@ Written 2026-09-29 against the tree, not inherited. Every key below was read fro
 
 Measured 2026-09-29, so the driver does not rediscover these:
 
-- The editor's global is **`window["vigilia-fabric-editor-1"]`**, holding `{ canvas, viewport, historyManager, textManager, imageManager, layerManager, objectLockManager, errorManager, cropManager, deletionManager, clipboardManager, groupingManager, destroy }`. **`window.vigilia` is the player's, not the editor's** — reaching for it finds nothing and looks like a broken app.
+- The editor's global is **`window["vigilia-fabric-editor-N"]`**, holding `{ canvas, viewport, historyManager, textManager, imageManager, layerManager, objectLockManager, errorManager, cropManager, deletionManager, clipboardManager, groupingManager, destroy }`. **`window.vigilia` is the player's, not the editor's** — reaching for it finds nothing and looks like a broken app. **The `N` is per instance and is not stable:** creating a document tears the editor down and the global becomes `-2`, with the old name removed rather than left stale. **Resolve it at use — `Object.values(window).find(v => v?.canvas && v.historyManager)` — and never cache it across a `New`.** A cached handle reads as a live document after it is gone, which is the worst kind of wrong.
 - `canvas.viewportTransform` is a **property**. There is no `getViewportTransform()` method; calling it throws.
 - The artboard controls exist and are `vigiliaArtboardWidth` / `vigiliaArtboardHeight`, in the Data tab under Theme Settings.
 - The View menu offers `Zoom to fit`, `Zoom to selection` and `100 %`, plus `Data source`, `Chart refresh` and `Value runs` toggles.
