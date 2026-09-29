@@ -455,10 +455,19 @@ the fine structure is gone either way.
 **The material is reachable — through a second control, which is the other half
 of the defect.** The Fill picker lists tokens by name, so `palette.frost` is
 right there as **"Frosted panel"**, and one select moves a card from
-`{"fill": "palette.panel"}` to `{"fill": "palette.frost"}` — measured, not
-assumed. So the frosted material exists, is reachable, and is **not** what the
-control labelled "Frosted glass" gives you, and nothing tells the author to go and
-find it.
+`{"fill": "palette.panel"}` to `{"fill": "palette.frost"}` — asserted in
+`author-journey-display.spec.ts` rather than eyeballed, because that is the whole
+of issue #11: the material exists, is reachable, and is **not** what the control
+labelled "Frosted glass" gives you, and nothing tells the author to go and find
+it.
+
+**Why it is asserted and not screenshotted.** The first attempt captured a second
+frame with the token applied to all eight cards. It was replaced, because a test
+that walks eight layers and rewrites eight fills to make a picture is a slow test
+that asserts a photograph, and the thing worth asserting is the defect itself:
+*the card the author frosted carries the opaque fill, and one select in another
+control moves it.* Two assertions say that in a second. The pixels were gathered
+once, by eye, and the numbers above are the record.
 
 **Not fixed here, and the reason is a genuine unknown.** `ownership.md` splits
 this field in two: *Shape material fields (fill, stroke, border, shadow, radius)*
@@ -544,36 +553,41 @@ display wants. What the measurement adds is that a desktop-shaped theme on a
 phone is not a degraded view — it is a quarter of the screen, and the reader sees
 black where they expect a dashboard.
 
-#### F2.18 — **blocking, fixed in the rebuild, and the product half is [#9](https://github.com/peterng1618/vigilia/issues/9): a text box smaller than its own type clips the type into a bar, and the editor does not say so**
+#### F2.18 — **CORRECTED, and the correction is the finding: a §97 gap at large type reads as a solid rule, not as a gap**
 
-The clock card's reading renders as a **solid white horizontal bar**. Not a
-missing reading — §97 paints a gap, and a gap is what the date below it shows.
-The glyphs are there and are being cut.
+**I recorded this one wrong first, and the wrongness is worth keeping.** The
+clock card's reading was captured as a **solid white horizontal bar**, and I
+wrote it up as a clip: a 108 px type in the 90-unit box the composition gave it,
+`plan.ts:369` defaulting overflow to `"clip"`, the middle of every digit kept, a
+row of digits with their middles kept being a bar. The mechanism was real and the
+measurement was not.
 
-The composition gives the clock `h: 90` with `typePresets.108-300`, and
-`renderer-core/src/scene/plan.ts:369` defaults a text object's overflow to
-`"clip"`. `applyClip` (`scene-fabric/src/authored-box.ts:208`) then builds a
-`clipPath` at exactly the authored box. 108 px of type in a 90-unit box keeps the
-middle 90 units of each digit, and a row of digits with their middles kept is a
-bar.
+**It is not a clip. It is a missing reading.** The crop shows two em-dashes at
+108 px and weight 300 — the §97 gap glyph every other card on the same display
+also shows, at 32 px where it reads as `——`. At 108 px the two dashes are long
+enough and heavy enough to meet, and **a gap becomes indistinguishable from a
+divider**. The card carries a rule where a reading should be, and nothing on a
+wall display says which it is.
 
-**Nothing tells the author.** The Height field shows 90, the number they typed,
-and the stage shows a bar. The one cue the surface offers is the **Overflow**
-control — and its default is the one that clips.
+So the finding survives, and it is a better one than the wrong version: **§97 is
+correct and it is not legible at the largest type in the composition.** The
+honest measure is the crop — `crop-clock2.png` beside `crop-storage.png`, the
+same gap at 32 px reading unmistakably as a gap.
 
-**What this is, precisely.** It is issue **#9** (F2.7, *"what the Height field
-means before the author has authored a height"*) arriving in a different hat:
-F2.7 is the field showing a stale measurement, and this is the field's value
-being taken literally as a clip. Both are the same missing state — *measured, not
-authored* — and both are the same filed question. The rebuild half is fixed here:
-the clock's box is now 140, which fits 108 px of type with room for the descender.
+**The clock's box was still wrong, and is still fixed.** `h: 90` under
+`typePresets.108-300` is a box smaller than its own line height, which clips
+when there *is* a reading — visible on the 20:54 frame, where the digits' lower
+halves were cut by the rule beneath. That observation is real and it is separate.
+The box is now 140.
 
-**The general form is worth stating, because it is not about the clock.** Any
-text object whose authored box is smaller than its preset's line height renders
-as a band of its own glyphs, and the composition has several: the CPU and GPU
-readings are 60 tall at 60 px, the RAM and VRAM readings likewise. They are not
-clipped *yet* because the line height happens to fit, which is luck rather than
-a rule.
+**What this cost, stated because it is the pass's own lesson.** An hour of the
+budget went into a write-up whose cause was guessed from a picture. The rule the
+plan already states — *"a guess recorded as a cause sends the next person to the
+wrong subsystem"* — is in `AGENTS.md`, and the thing that would have caught it
+was reading **one more card** before concluding: the CPU card beside it showed
+the same shape at a size where it was obviously a gap. The evidence for "this is
+a clip" was a single frame, and a single frame of a *gap* is not evidence of a
+clip.
 
 #### The verdict, stated plainly
 
@@ -609,12 +623,14 @@ three series but only a few samples of each.
 The composition is legible and nothing is lost off the edge, but the cards are
 small enough that the doubled `%` of F2.16 is visible even here.
 
-**Editor against player, for one theme: they agree.** The reopened package shows
-the same eight cards in the same places with the same names, and the readings
-paint from the same bindings. The one difference is the one the surface is *for* —
-the editor draws the selection chrome, the handles and the inspector that the
-player has no word for. Nothing is clipped in one and not the other, and no
-object the editor draws is missing from the display.
+**Editor against player: not compared side by side, and this is a real gap in
+this record.** The composition was built in the editor and the *saved package* is
+what the player drew — so the round trip is proved by the package carrying all
+eight cards, their names, their bindings and their backdrop, and by the player
+painting every one of them. But the editor was never captured showing the same
+document beside the player's frame, and this section does not claim otherwise.
+The step is in `author-journey-display.spec.ts` and is the first thing to run
+when the display host is next free.
 
 **Against the target** (`2026-09-26-reference-theme-target.png`): the layout, the
 five-plus-three card arrangement, the ring positions, the legend and the type
@@ -653,6 +669,29 @@ The user asked for two things: expose the shortcut manager to the settings panel
 | U24 | **Front/back are on bare `Ctrl+[` and `Ctrl+]`** | Bare `[` / `]` are *order* (backward/forward one step); **`Ctrl+Shift+[` / `Ctrl+Shift+]`** are *to front* / *to back* in all three named tools | The current pair is not a binding most users have in their fingers at all — it is a Ctrl-modified *character*, which is a browser/OS chord before it is a design-tool one. |
 
 **The customisation panel is a design pass, not a task** — like U16–U19 it needs its own spec, because a keybinding editor is a surface with its own conflicts-with-the-browser question, its own discoverability, and its own answer to "what happens when a user binds the same chord twice". It joins **group C**, and the two default corrections (U23, U24) are small enough to do first and independently.
+
+### The right sidebar — decided by the user, 2026-09-29
+
+**Four panels, each with one job, and the tokens move left.**
+
+| Panel | Job |
+|---|---|
+| **Properties** | Whatever is selected — geometry, material, glass, runs, **and a chart's settings when a chart is selected** |
+| **Bindings** | Mapping a sensor source to a data token, and formatting it |
+| **Theme settings** | The document's own metadata |
+| **Design tokens** | **Moved to the left**, beside Layers — paint and type presets |
+
+**The reasoning the user gave for moving tokens left, which is the load-bearing part:** a token is *like a layer* — it is not a visual object you can move, transform or arrange on the dashboard — **but selecting one shows its configuration in the same standard Properties panel.** So the left column holds *what exists* (layers and tokens, both non-spatial) and the right holds *what the selection is*. That is a cleaner rule than "left is spatial, right is not", because Layers and tokens turn out to share a property the eye missed.
+
+### The player on a phone — decided by the user, 2026-09-29
+
+**No new presentation mode. The existing background-media fit is the mechanism**, and it already covers this: a background image either stays at its original size and letterboxes against the background colour, or scales to fill the screen entirely with no letterbox — and **the content fits the edge rather than being cropped**. That is what handles *the same orientation at a slightly different ratio*, which is the real case: a 19.5:9 theme on a 19.5:9 phone, or a 16:9 one on a 16:10.
+
+**So U19 (remove "Preview fit") is withdrawn as a design ask and becomes a naming question** — whether two similarly-named fits exist in two places, which is a small copy decision rather than a removal. And a landscape theme on a portrait phone is still the author authoring for the wrong shape; the New chooser now makes the right shape one control away.
+
+### Glass on non-rect shapes — investigate before deciding (2026-09-29)
+
+Rungs 4 and 5 first: how the ecosystem frosts non-rectangular shapes and what it costs them. No renderer change until that answer is in.
 
 ### The rebuild finished — and what it did not do
 
