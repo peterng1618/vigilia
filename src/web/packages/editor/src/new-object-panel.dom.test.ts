@@ -36,12 +36,14 @@ function editorStub() {
   };
 }
 
-/** The chart buttons sit outside the shape group, so "Line" names two
-    different things in this panel and only one of them is a chart. */
+/** The chart buttons live in their own group, so "Line" names two different
+    things in this panel and the group is what tells them apart. */
 function chartButton(root: HTMLElement, label: string): HTMLButtonElement {
   return [...root.querySelectorAll("button")].find(
     (button) =>
-      button.textContent === label && button.closest("fieldset") === null,
+      button.textContent === label &&
+      button.closest("fieldset")?.querySelector("legend")?.textContent ===
+        uiCopy.panels.charts,
   )!;
 }
 
@@ -249,10 +251,63 @@ describe("new object panel", () => {
     // the same word on two buttons and leave the author to guess which is which.
     expect(
       chartButton(root, uiCopy.chartFamilies.line).closest("fieldset"),
-    ).toBeNull();
+    ).not.toBe(
+      root
+        .querySelector('[data-vigilia-panel-add="line"]')
+        ?.closest("fieldset"),
+    );
     expect(
       root.querySelector('[data-vigilia-panel-add="line"]')?.textContent,
     ).toBe(uiCopy.shapeKinds.line);
+  });
+
+  it("groups the chart families as their own list rather than strays under Shape", () => {
+    const { root } = createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+    );
+
+    // The charts were peers of Panel before the shapes arrived, and F1.9 left
+    // four unlabelled chips under a legend that is not about them: the visual
+    // orphaning and the "Line" ambiguity are one defect, and the group's name
+    // is what resolves both — for a screen reader and for a test.
+    const groups = [...root.querySelectorAll("fieldset")];
+    expect(
+      groups.map((group) => group.querySelector("legend")?.textContent),
+    ).toEqual([uiCopy.panels.shapes, uiCopy.panels.charts]);
+
+    for (const family of ["gauge", "line", "bar", "pie"] as const) {
+      const button = chartButton(root, uiCopy.chartFamilies[family]);
+      expect(
+        button.closest("fieldset")?.querySelector("legend")?.textContent,
+        family,
+      ).toBe(uiCopy.panels.charts);
+    }
+  });
+
+  it("leaves the two Line buttons in groups a screen reader can tell apart", () => {
+    const { root } = createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+    );
+
+    // Neither button's own name changes — the group is the difference, and it
+    // is what an author navigating by group hears before the name.
+    const lines = [...root.querySelectorAll("button")].filter(
+      (button) => button.textContent === uiCopy.shapeKinds.line,
+    );
+    expect(lines).toHaveLength(2);
+    const groups = new Set(
+      lines.map(
+        (button) =>
+          button.closest("fieldset")?.querySelector("legend")?.textContent,
+      ),
+    );
+    expect(groups).toEqual(
+      new Set([uiCopy.panels.shapes, uiCopy.panels.charts]),
+    );
   });
 
   it.each([
@@ -283,6 +338,33 @@ describe("new object panel", () => {
     expect(editor.canvas.setActiveObject).toHaveBeenCalledWith(inserted);
     expect(editor.historyManager.saveState).toHaveBeenCalledTimes(1);
   });
+
+  it.each([...SHAPE_KINDS])(
+    "gives an inserted %s an id that names its own kind",
+    (kind) => {
+      const editor = editorStub();
+      const { root } = createNewObjectPanel(
+        document.body,
+        editor as never,
+        palette as never,
+      );
+
+      root
+        .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+        .click();
+
+      // The id is the stable key bindings, the schema path and the envelope all
+      // carry, so a circle keyed `panel-…` misleads everyone who reads the
+      // document rather than the screen. Same shape as F1.8 caught in reverse:
+      // an object wearing another kind's identity. F1.8 gave the *display* the
+      // right name, which is why an author never sees this — the key is what
+      // everyone else reads.
+      expect(
+        (editor.canvas.add.mock.calls[0]?.[0] as { id?: string }).id,
+        kind,
+      ).toMatch(new RegExp(`^${kind}-[0-9a-f]{8}-`));
+    },
+  );
 
   it.each([...SHAPE_KINDS])(
     "names the %s button for a screen reader",

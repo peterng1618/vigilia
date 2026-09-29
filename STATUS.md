@@ -19,11 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.1: the left panel collapses.** The rail entry for the visible pane closes it; that entry again, or any other one, brings it back. Measured at 1920×1080: the stage goes 1268 → 1556px, 288px reclaimed.
-- **The collapsed state is announced, not only drawn.** `aria-expanded` on every entry goes false, the aside is `hidden` so it leaves the accessibility tree, and `aria-pressed` stays on the pane reopening restores. The tooltip names the action: `Hide Layers` / `Show Assets`.
-- **The grid drops the column, it does not narrow it.** The aside being `hidden` makes it no longer a grid item, so the three remaining tracks are rail, stage and inspector — one rule, and the 980px breakpoint has the matching one.
-- **Verified:** typecheck, lint, format, 2004 unit tests green; 4 editor Playwright specs pass. Red-without-fix: stubbing the toggle took exactly the two collapse tests red and nothing else.
-- **Browser proof, both states screenshotted and inspected.** The whole composition still paints after the collapse — the charts re-render at the new width — so the earlier bare-backdrop capture was an unsettled page, not a lost scene.
+- **F1.17: the chart chips have their own group.** They were peers of Panel before the primitives arrived; F1.9 left four unlabelled chips under a legend that is not about them, and two buttons both named "Line". A `<fieldset><legend>Chart</legend>` matches the shape list, so each list is a `group` with its own name and the visual orphaning and the ambiguity are one fix.
+- **F1.18: a shape's id names its own kind.** `panel-${uuid}` was hardcoded for all eight; an ellipse was keyed `panel-…`. The kind is the prefix, as `chart-`, `text-`, `image-` and the clipboard's `${object.type}-` already do. F1.8 gave the *display* the right name, which is why an author never saw it — the key is what everyone reading the document sees.
+- **Verified:** 2004 unit tests, typecheck, lint, format green. Red-without-fix: 8 chart tests and 8 id tests, each naming the defect. **Browser proof:** both groups measured in Chromium, the two "Line" buttons resolving 1 each within their group, all eight shapes inserted and the stage screenshotted.
+- **Not mine, and it is now red:** F1.1's rail toggle made `openRailPane(page, "Add")` *close* the pane when Add is already showing, which breaks 11 call sites in the e2e specs. Proven by stashing this work and reproducing the identical failure at HEAD.
 
 ## Next
 

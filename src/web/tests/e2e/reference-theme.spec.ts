@@ -540,12 +540,12 @@ test.describe("the reference composition, authored", () => {
     // `<nodeId>.<bindingId>`, so the node is read back rather than guessed.
     await openRailPane(page, "Add");
     // The "Line" *chart*, not the "Line" shape that now shares the word. The
-    // chart families sit beside the shape group rather than inside it, so
-    // scoping to the panel's own buttons is what tells the two apart.
+    // chart families are their own group, so scoping to it is what tells the
+    // two apart — a structural fact, not a DOM position that can move.
     await page
       .locator('[data-vigilia-panel="add"]')
-      .locator(":scope > button")
-      .and(page.getByRole("button", { name: "Line", exact: true }))
+      .getByRole("group", { name: "Chart" })
+      .getByRole("button", { name: "Line", exact: true })
       .click();
     const chartId = (await activeId(page)) ?? "";
     expect(

@@ -869,8 +869,12 @@ test.describe("Fabric editor route", () => {
       .locator('[data-vigilia-panel="add"]')
       .getByRole("group", { name: "Shape" });
     await expect(shapes.getByRole("button")).toHaveCount(8);
-    // Grouped, because the shape "Line" and the "Line" chart are the same
-    // word beside each other otherwise.
+    // Both lists are groups, so neither is orphaned under the other's legend
+    // and the two "Line" buttons are told apart by the group they sit in.
+    const charts = page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("group", { name: "Chart" });
+    await expect(charts.getByRole("button")).toHaveCount(4);
     await expect(
       page
         .locator('[data-vigilia-panel="add"]')
