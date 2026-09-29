@@ -19,10 +19,9 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F2.4, F2.5, blocking: the text object the Add pane inserts was not the one the product authors, and the Size fields distorted it.** It was a centred `IText`; every text in a shipped theme is a `Textbox` with a left/top origin, so X/Y meant something else than on a card.
-- **Wrap recorded an ask it did not honour** — a caption asked to wrap at W=200 rendered 1193 wide with `vigiliaText.wrap` reading `true`. **And W/H scaled the type**: a 24-400 caption asked for 220×40 came back at `scaleX 3.448`, `scaleY 0.439`. `vigiliaText.box` is the owner (ADR 0003) and the inspector wrote past it. Re-measured after: scale 1, `fontSize` 32, the caption wrapped inside a 220-wide clip.
-- F2.1 and F2.2, also fixed this pass: a text object could never carry more than one run or have a run's text typed, and a chart could not be bound to a sensor at all.
-- The rebuild driver and its own Playwright config — the proof drives one preview on one port so it cannot race the suite's shared servers. 3 rebuild tests pass. Red without each fix: 1–2 tests apiece.
+- **F1.40 investigated and left duplicated, with the reason measured rather than asserted.** The id is **inert** across the boundary: the chooser row carries it as `data-template` and links to `/editor/`, the editor's template branch calls `onNewFromStarter()` without reading `choice.id`, and no URL, route or dispatch resolves it.
+- **So the stated failure cannot happen today** — a rename leaves a label the two surfaces spell differently, a copy defect, not a broken link. That margin is what the *second* entry spends: a chooser that can only open one starter has no way to say which.
+- **The owner when that arrives is `renderer-core`, not a new package** — both sides already depend on it and it already carries product content (`MEASUREMENT_SYSTEMS`), so one line there adds no edge. A test *can* cross the boundary today (probed), but it would drag the whole starter composition and `?url` assets into the host's Node test run to compare two strings.
 
 ## Next
 
