@@ -38,9 +38,11 @@ const SHOT = (name: string) => `test-results/rebuild/${name}.png`;
 
 /**
  * The four device colours the composition is painted with. The blank theme's ten
- * tokens are a minimal surface set and carry no accents, so the author adds
- * these through the palette — which is a finding in its own right, recorded
- * below, and not a reason to copy the reference palette.
+ * tokens are the minimal set the plan's Product decisions chose — surfaces, a
+ * rule and a text, no accents — so an author paints a device-coloured dashboard
+ * by adding four tokens through the palette. That is the decision working, not
+ * a gap, and these are this rebuild's own choices rather than the reference
+ * theme's.
  */
 const DEVICE_COLOURS = [
   ["CPU blue", "#3b9dff"],
