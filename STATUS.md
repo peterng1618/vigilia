@@ -35,11 +35,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **A token now says how many objects use it, and which** (`b474563`). `objectPaletteReferences` sits beside `reassignObjectPaletteReferences`, which already walked the scene and **returned a count that was thrown away**; the panel takes an injected `usage()` so the number it shows and the number that guards a deletion come from one place.
-- **The frosted-glass control now carries the frosted surface** ([#11](https://github.com/peterng1618/vigilia/issues/11)) — `df9e725`. Measured over the author's own photograph on a real host, the card interior went **45.4 → 137.4 luma** against a photograph at 189.1: transmission **0.216 → 0.718**. At 85 % a blur is a blur of nothing.
-- **Three more landed:** `artboard.fitMode` → **`contentFit`** in schema, type, validator and geometry (`23b4e7f`), and the control is **gone** because content is always `contain`; redo and front/back now answer to the chords graphic editors use (`66264bc`).
-- **Three corrections agents made to my own findings** — the redo audit understated its bug (Ctrl+Shift+Z would have *undone*), the U4 "history" report described a different bug, and `frostedCard` was never the broken piece.
-- Gate green: `typecheck`, `lint`, `format:check`, **2167 unit tests across 165 files**. Playwright last ran **209 passed / 143 skipped / 2 failed**.
+- **A token says how many objects use it, and which** (`b474563`, `658721f`, `4c42793`). `objectPaletteReferences` sits beside `reassignObjectPaletteReferences`, which already walked the scene and **returned a count that was thrown away**; the panel takes an injected `usage()` so the number it shows and the number that guards a deletion come from one walk.
+- **The completeness claim was wrong, and the gap was charts.** A `VigiliaChart` names its tokens in `settings` and carries no `vigiliaPaint`, so the walk that "only has two places" called a token dead while a gauge was painted with it. The read now covers it; the *rewrite* stays in `ChartManager`, which owns the engine re-apply.
+- **One entry per object, not per reference** — a panel whose fill, stroke and shadow all name a token is one object to look at, and the figure says so.
+- **Measured in a browser on the reference document**: all **19** tokens — the printed count equals the objects listed, and every one of those names is a row in the layer list. `Frosted panel · 8` names the eight cards; `CPU · 5` includes `trends-chart`, which is the chart case the old walk could not see.
+- Red without the fix, individually: root-only walk (4 fail), charts unread (3 fail), count dropped from the option (2 fail). Gate green: `typecheck`, `lint`, `format:check`, **2169 unit tests across 167 files**.
 
 ## Next
 
