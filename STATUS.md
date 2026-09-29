@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.27: the layer panel's twisties are icons, not glyphs.** `▸`/`▾` were literal text at `layer-panel.tsx:246` — the same class of defect as F1.2, and F1.2's `ui-copy.test.ts` guard could not see them because they were markup, not copy.
-- **`TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>>`** beside `KIND_ICONS`, the same shape and the same file; `ChevronRight` closed, `ChevronDown` open, at the row's own 13px/1.75.
-- **Nothing is lost to the icon:** `aria-expanded` still says the state and `aria-label` still names the action, so the control announces exactly as before.
-- **The proof the copy guard could not give:** a dom test asserts both states render the named Lucide icon, that `aria-expanded` reads true/false, and that no `▸`/`▾` reaches the panel. Red on the old markup.
-- **Verified in a browser:** a real theme opened through the editor's own Open control, collapsed and re-expanded — `lucide lucide-chevron-down` / `lucide lucide-chevron-right`, labels `Collapse grp` / `Expand grp`, zero console errors. Gates: 2010 unit tests, typecheck, lint, format all exit 0.
+- **F1.6: no favicon, on the editor and the player.** Both documents left `<link rel="icon">` undeclared, so every load logged the implicit `/favicon.ico` 404. The editor's href is relative for the same reason its `base` is: the host mounts it under `/editor/`.
+- **No mark exists as a reusable asset, so the mark is the wordmark reduced** — its initial, in the "Wordmark" type preset's face and the shell's default `editorial` palette. Left as `<text>`, because the geometry belongs to the font and drawing a path would be inventing a logo.
+- **Found by the browser proof, not by the test:** the first file carried a CSS custom-property name in its XML comment, and a doubled hyphen is illegal there. It existed, contained `<svg>…</svg>`, 404'd nothing, and the browser refused to decode it — a blank tab. The test now checks the comment rule, and goes red on that exact defect.
+- **Verified served, headed** (headless Chromium never fetches favicons at all): editor `200 /favicon.svg`, player `200 /favicon.svg`, **zero console errors** on both. Legible at 16/32/64px.
+- **Left for the host's owner:** `library.html`, `settings.html` and `firstRunPage()` declare no icon and 404 the same way. `packages/host/` was not mine this pass.
 
 ## Next
 

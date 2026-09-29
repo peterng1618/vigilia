@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>Vigilia — editor</title>
+    <!-- Relative for the same reason the bundle's own base is: the host mounts
+         this document under `/editor/`, where an absolute path would resolve
+         against the player's dist and 404. Without a link the browser probes
+         `/favicon.ico` instead and logs the 404 on every load. -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <style>
       /* Pre-shell paint only: `editor-shell.css` owns every panel/control
          token once React mounts. These keep the first frame from flashing. */

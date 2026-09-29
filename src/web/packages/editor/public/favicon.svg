@@ -1,0 +1,35 @@
+<!--
+  Vigilia's mark, at the smallest size that still reads.
+
+  There is no logo file in this repository to reuse: the wordmark is a Fabric
+  text object in the reference theme (new-fabric-theme.ts), and the only SVGs
+  under public/ are theme fixture artwork. So this is the wordmark reduced
+  rather than designed: its initial, in the wordmark's own declared face (the
+  "Wordmark" type preset) and the shell's default editorial palette
+  (background and edge). The letter is left as text rather than drawn as a
+  path, because the geometry belongs to the font, and hand-authoring it would
+  be inventing the mark instead of reducing it.
+
+  The system-ui and sans-serif fallbacks matter: a favicon renders with no
+  document fonts, so a face the reader's OS lacks must still draw a V rather
+  than nothing.
+
+  No doubled hyphens above: XML forbids them inside a comment, and a file that
+  breaks the rule still exists, still contains an <svg> element, and still
+  404s nothing. The browser just refuses to decode it, which is a blank tab
+  and a silent regression. The comment cannot even name the rule.
+
+  Kept in step by hand with packages/player/public/favicon.svg.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Vigilia">
+  <rect width="32" height="32" fill="#f5f1e8" />
+  <text
+    x="16"
+    y="24"
+    text-anchor="middle"
+    font-family="'Segoe UI', system-ui, sans-serif"
+    font-size="28"
+    font-weight="500"
+    fill="#14120e"
+  >V</text>
+</svg>
