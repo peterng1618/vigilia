@@ -597,3 +597,56 @@ describe("shape material and a shape's own fields", () => {
     },
   );
 });
+
+describe("a shape whose geometry the author retypes", () => {
+  /**
+   * Measured on the surface while drawing the device icons: a path sized to
+   * 28 × 28 and then given 14 × 14 of new data drew **1 × 3 units**. Its
+   * commands are absolute coordinates in its own space, so the scale the
+   * earlier size wrote belonged to a drawing that no longer exists — and
+   * insert-then-size-then-draw is the order every icon in a dashboard is built
+   * in.
+   */
+  it("drops the scale the previous geometry left behind", () => {
+    const path = new Path("M 0 0 L 360 0 L 360 150 L 0 150 Z", {
+      id: "icon",
+      left: 100,
+      top: 100,
+    });
+    path.set({ scaleX: 28 / 360, scaleY: 28 / 150 });
+    const { host } = setup(path);
+
+    const data = host.querySelector<HTMLTextAreaElement>(
+      "[data-vigilia-shape-path]",
+    )!;
+    data.value = "M 7 7 L 21 7 L 21 21 L 7 21 Z";
+    data.dispatchEvent(new Event("change"));
+
+    expect(path.scaleX).toBe(1);
+    expect(path.scaleY).toBe(1);
+    // 14 units of square data, drawn as 14 units.
+    expect(path.width).toBeCloseTo(14, 1);
+    expect(path.width * path.scaleX).toBeCloseTo(14, 1);
+  });
+
+  it("does the same for a polyline's points", () => {
+    const line = new Polyline(
+      [
+        { x: 0, y: 200 },
+        { x: 360, y: 0 },
+      ],
+      { id: "spark", left: 0, top: 0 },
+    );
+    line.set({ scaleX: 0.5, scaleY: 0.5 });
+    const { host } = setup(line);
+
+    const points = host.querySelector<HTMLTextAreaElement>(
+      "[data-vigilia-shape-points]",
+    )!;
+    points.value = "10, 20\n30, 40";
+    points.dispatchEvent(new Event("change"));
+
+    expect(line.scaleX).toBe(1);
+    expect(line.scaleY).toBe(1);
+  });
+});

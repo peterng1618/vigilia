@@ -489,7 +489,16 @@ export function createRunEditor(
       onChange();
     });
 
-    wrapper.append(input, preview);
+    // The vocabulary, because a token the formatter does not know renders
+    // itself — visible in this preview, and visible on a wall display too, where
+    // the author never was.
+    const hint = document.createElement("p");
+    // The class the run editor's other notes already use, so this reads as one.
+    hint.className = "vigilia-run-note";
+    hint.dataset["vigiliaRunFormatHint"] = String(index);
+    hint.textContent = uiCopy.inspectorFields.runFormatTokens;
+
+    wrapper.append(input, preview, hint);
     return wrapper;
   };
 

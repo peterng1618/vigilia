@@ -485,6 +485,76 @@ Re-measured after the fix: W = 220 gives `scaleX` **1**, `fontSize` **32**, the
 caption wrapped to two lines inside a 220-wide clip, and H = 40 gives a 40-tall
 clip.
 
+### F2.8 — **BLOCKING: a Path's data field could not draw anything an author had already sized**
+
+Found by looking at the device cards and asking where the chip icons were.
+
+**A polygon's points, a polyline's points and a path's commands are all absolute
+coordinates in the object's own space**, so any `scaleX`/`scaleY` on the object
+is a scale from a *different drawing*. Measured:
+
+| | scaleX | scaleY | own size | drawn |
+|---|---|---|---|---|
+| a path as inserted | 1 | 1 | 360 × 150 | 360 × 150 |
+| after W = 28, H = 28 | 0.0778 | 0.1867 | 360 × 150 | 28 × 28 |
+| after 14 × 14 of **new** data | 0.0778 | 0.1867 | 14 × 14 | **1 × 3** |
+
+The author drew a 28-unit icon and got a one-unit speck — and **insert, size,
+then draw is the order every icon in a dashboard is built in**, because the size
+is what the author knows before they know the path data. The polygon's branch
+already kept half the rule (*"the points remain the only persisted truth"*); it
+re-measured but left the scale belonging to the old points.
+
+**Fixed in the owner** — `selection-inspector/panel.ts`, which `ownership.md`
+gives "each shape's own geometry". One `adoptGeometry` for all three kinds:
+re-measure, and take the scale back to 1, so the data wins and the W and H
+fields mean what they mean everywhere else.
+
+### F2.9 — **BLOCKING: X and Y were still the centre on a chart**
+
+F2.4's defect, one object kind later, and the reason the gauge could not be put
+in its card. `newChart` never set an origin, so a `VigiliaChart` arrived with
+Fabric's **centre** origin — while a `Rect`, a `Path`, a shape and (after
+F2.4) a text object were all corner-anchored. Measured, a 200 × 200 gauge:
+
+| | placed at | drawn at |
+|---|---|---|
+| `getBoundingRect` before | (1069, 258) | **(969, 158)** |
+| after the fix | (1069, 258) | **(1069, 258)** |
+
+Exactly half its own size away on each axis. A chart is the object a dashboard's
+layout is most sensitive to — six of them, each sitting in a card — and this was
+the last kind where the inspector's X and Y did not mean what the field says.
+
+Fixed in `chart-manager`, which `ownership.md` makes the owner of chart
+creation. `boxFrom` (`authored-box.ts:42`) already converts between the two
+origins on the way out — *"so a v2 document's left/top-corner text and the plan
+path's centred text share one owner"* — so a saved chart is unaffected either
+way, and this is an authoring-surface fix, not a format change.
+
+### F2.10 — the Format field never said which tokens it accepts
+
+Found by reading the clock card rather than the code: the date line painted
+**`EEE, Sep d, yyyy`** — its own format string, on the canvas.
+
+**The formatter is right and the field was silent.** `format.ts` documents a
+deliberately small vocabulary (`YYYY YY MMMM MMM MM M dddd ddd DD D HH H hh h
+mm ss A a`) and states the rule: *"An unrecognised token renders literally
+rather than blanking the value, so a typo is visible."* My pattern was the ICU
+one — `EEE`, `d`, `yyyy` — and the product said so by echoing it.
+
+That rule is right for a formatter and **wrong for a wall display**, which is
+where the echo lands. The author is not looking at the display. Nothing in the
+panel listed the vocabulary: the field's `placeholder` is the key's own default
+pattern, and the live preview beside it is the only place a mistake shows — which
+is discoverable, but only if the author happens to read a preview they did not
+ask for.
+
+**Fixed in the owner** — `selection-inspector/runs.ts`, beside the format field
+itself, using the class the run editor's other notes already carry. Copy in
+`ui-copy.ts`. The vocabulary is now named where the pattern is typed. Authoring
+`ddd, MMM D, YYYY` instead paints **`Tue, Sep 29, 2026`**, verified on the canvas.
+
 ### Found by the rebuild — fixed here
 
 | # | Finding | Class | Fix | Proof |
@@ -493,6 +563,9 @@ clip.
 | F2.2 | A chart could not be bound to a sensor from the UI, so every chart in the composition was unauthorable | **blocking** — the journey cannot complete | `chart-manager/panel.ts`, `chart-manager/index.ts` | 3 new panel tests. Red-without-fix: disabling the chooser's dispatch took 1 red |
 | F2.4 | The Add pane's Text produced a centred, un-wrappable `IText` — a different class from every text object the product authors — so X/Y meant something else than on a card and Wrap recorded an ask it did not honour | **blocking** — the composition cannot be laid out | `text-manager/index.ts`, `new-object-defaults.ts` | 3 new tests. Red-without-fix: `Textbox` → `IText` took 2 red; dropping the origin took 1 red |
 | F2.5 | The Size fields scaled a text object's type instead of sizing its box, so every precisely-sized label in the composition came back stretched or squashed | **blocking** — the composition cannot be laid out | `selection-inspector/index.ts` | 3 new tests. Red-without-fix: the write half took 1 red, the read half took 1 red |
+| F2.8 | A path sized before it was drawn came out at a hundredth of its size, because the scale belonged to the previous data | **blocking** — no icon in the composition can be drawn | `selection-inspector/panel.ts` | 2 new tests. Red-without-fix: dropping the scale reset took 2 red |
+| F2.9 | X and Y were the centre on a chart and the corner on everything else, so every chart landed half its own size from where it was put | **blocking** — no chart can be placed | `chart-manager/index.ts` | The existing four `addChart` cases now pin the origin. Red-without-fix: reverting to centre took 3 red |
+| F2.10 | The Format field never named the vocabulary, and the formatter's "a typo is visible" rule makes the mistake visible on a display rather than in the editor | **blocking** — the date line painted its own format string | `selection-inspector/runs.ts`, `ui-copy.ts` | 1 new test. The vocabulary is named beside the field; `ddd, MMM D, YYYY` now paints `Tue, Sep 29, 2026` on the canvas |
 | F2.3 | The New chooser's replacement guard reads as an error | deferred | — | `Create` is followed by a `Save changes before opening another theme?` prompt on a document nobody edited. It is correct and it is what stops work being lost, so it stays; the chooser simply does not say the second step is coming |
 | F2.6 | A palette token's id says nothing about the token | deferred | — | A colour added through the panel is minted `colour`, `colour-2`, `colour-3`; the author types "CPU blue" and every picker *lists* it that way, while the reference the document carries is `palette.colour-3`. F1.18's class in reverse — here a token the author **named** wears an id that describes nothing. **Not fixed, and the reason is a decision, not an oversight:** re-keying an id breaks every reference to it, and deriving one from a name the author types *after* the click needs state that records "nobody references this yet", which the model has no place for. `palette-manager`'s doc comment states the current design deliberately. This is a genuine product question with no precedent in the repo for the alternative, which is what the plan says to record and pass over. |
 | F2.7 | A text object's Height field shows a measurement that is already stale | deferred | — | With no authored `box.height`, the field shows Fabric's measurement — and Fabric remeasures when the text rewraps without firing anything the panel listens for. Measured: after W = 220 wrapped a caption to two lines, the object measured **59** and the field read **91**. The width half of the same finding is fixed (F2.5); this one needs a "measured, not authored" state the field can show honestly, which is a product decision about what the field means before the author has touched it. |

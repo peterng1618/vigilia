@@ -44,6 +44,13 @@ describe("ChartManager", () => {
 
       const chart = objects[0]!;
       expect(chart).toMatchObject({ family, width: 240, height: 160 });
+      // A corner origin, as a panel and a text object both now are, so the
+      // inspector's X and Y are the chart's corner rather than its middle. A
+      // chart is the object a dashboard's layout is most sensitive to, and a
+      // centre origin put every one of them half its own size from where the
+      // author put it.
+      expect(chart.originX).toBe("left");
+      expect(chart.originY).toBe("top");
       expect(JSON.stringify(chart.settings)).toContain("palette.ink");
       expect(canvas.setActiveObject).toHaveBeenCalledWith(chart);
       expect(historyManager.saveState).toHaveBeenCalledTimes(1);

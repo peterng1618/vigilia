@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   addCard,
   addChart,
@@ -33,6 +33,19 @@ import {
  */
 
 const SHOT = (name: string) => `test-results/rebuild/${name}.png`;
+
+/**
+ * The four device colours the composition is painted with. The blank theme's ten
+ * tokens are a minimal surface set and carry no accents, so the author adds
+ * these through the palette — which is a finding in its own right, recorded
+ * below, and not a reason to copy the reference palette.
+ */
+const DEVICE_COLOURS = [
+  ["CPU blue", "#3b9dff"],
+  ["GPU violet", "#a970ff"],
+  ["RAM teal", "#2fd6a8"],
+  ["VRAM magenta", "#d24bf0"],
+] as const;
 
 test.describe("the reference composition, built from blank", () => {
   test.beforeEach(async ({ page }) => {
@@ -118,10 +131,13 @@ test.describe("the reference composition, built from blank", () => {
       blur: 40,
     });
 
-    // 07:24 — the largest type in the composition.
+    // 07:24 — the largest type in the composition, and a reading rather than
+    // the words. The run editor is where a run stops being prose: choosing an
+    // instant key brings a Format and a Zone with it, which is where the
+    // clock's own design lives.
     await addText(page, {
       name: "time",
-      text: "07:24",
+      text: "00:00",
       x: 72,
       y: 244,
       w: 300,
@@ -129,6 +145,21 @@ test.describe("the reference composition, built from blank", () => {
       preset: "typePresets.108-300",
       colour: "text",
     });
+    await selectLayer(page, "time");
+    await page
+      .locator('[data-vigilia-run-source="0"]')
+      .selectOption("time.now");
+    await page.locator('[data-vigilia-run-format="0"]').fill("HH:mm");
+    await page.locator('[data-vigilia-run-format="0"]').blur();
+    // PM beside it, as its own run — the reason F2.1 was blocking.
+    await page.locator("[data-vigilia-run-add]").click();
+    await fill(page, '[data-vigilia-run-text="1"]', "PM");
+    await page
+      .locator('[data-vigilia-run-preset="1"]')
+      .selectOption("typePresets.24-400");
+    await page
+      .locator('[data-vigilia-run-colour="1"]')
+      .selectOption("palette.dim");
 
     // The rule under it. A `Path` takes its data as SVG commands, which is the
     // only way a hairline is drawn at all.
@@ -143,7 +174,7 @@ test.describe("the reference composition, built from blank", () => {
 
     await addText(page, {
       name: "date",
-      text: "Tue, Apr 23, 2024",
+      text: "Mon, Jan 1, 2024",
       x: 72,
       y: 372,
       w: 306,
@@ -151,6 +182,14 @@ test.describe("the reference composition, built from blank", () => {
       preset: "typePresets.24-400",
       colour: "dim",
     });
+    await selectLayer(page, "date");
+    await page
+      .locator('[data-vigilia-run-source="0"]')
+      .selectOption("date.today");
+    await page
+      .locator('[data-vigilia-run-format="0"]')
+      .fill("ddd, MMM D, YYYY");
+    await page.locator('[data-vigilia-run-format="0"]').blur();
 
     await page.screenshot({ path: SHOT("02-clock-region") });
 
@@ -276,5 +315,528 @@ test.describe("the reference composition, built from blank", () => {
     const scene = await readScene(page);
     expect(scene.map((object) => object.name)).toContain("cpu-card");
     expect(scene.map((object) => object.name)).toContain("cpu-card-sparkline");
+  });
+});
+
+/**
+ * The rest of the composition, region by region.
+ *
+ * Each region starts from its own blank theme, because that is the claim being
+ * tested: that the surface can express this from nothing. Icons are drawn as
+ * path data through the one control Fabric has for a glyph, which is what an
+ * author does; nothing here copies a coordinate or a value out of the shipped
+ * theme.
+ */
+
+/** A chip or bar glyph, drawn as the path data the Path field takes. */
+async function glyph(
+  page: Page,
+  name: string,
+  box: { x: number; y: number; w: number; h: number },
+  data: string,
+  token: string,
+): Promise<void> {
+  await insert(page, "Path");
+  await setName(page, name);
+  await place(page, box);
+  await choose(page, "[data-vigilia-panel-fill]", "");
+  await chooseToken(page, "[data-vigilia-panel-stroke]", token);
+  await fill(page, "[data-vigilia-panel-border]", 2);
+  await fill(page, "[data-vigilia-shape-path]", data);
+}
+
+/** A chip: a square with pins on all four sides, as every device icon is. */
+function chip(size: number, pins: number): string {
+  const edge = size * 0.25;
+  const span = size * 0.5;
+  const sides = Array.from({ length: pins }, (_, index) => {
+    const t = (index + 1) / (pins + 1);
+    const x = edge + span * t;
+    const y = edge + span * t;
+    const pin = size * 0.06;
+    return [
+      `M ${x - pin} ${edge - size * 0.11} L ${x + pin} ${edge - size * 0.11}`,
+      `M ${x - pin} ${edge + span + size * 0.11} L ${x + pin} ${edge + span + size * 0.11}`,
+      `M ${edge - size * 0.11} ${y - pin} L ${edge - size * 0.11} ${y + pin}`,
+      `M ${edge + span + size * 0.11} ${y - pin} L ${edge + span + size * 0.11} ${y + pin}`,
+    ].join(" ");
+  });
+  return [
+    `M ${edge} ${edge} L ${edge + span} ${edge}`,
+    `L ${edge + span} ${edge + span} L ${edge} ${edge + span} Z`,
+    ...sides,
+  ].join(" ");
+}
+
+/** The caption a card's reading carries, and the unit that follows it. */
+async function reading(
+  page: Page,
+  name: string,
+  box: { x: number; y: number; w: number; h: number },
+  key: string,
+): Promise<void> {
+  await addText(page, {
+    name,
+    text: "00",
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    preset: "typePresets.60-600",
+    colour: "text",
+  });
+  await selectLayer(page, name);
+  // The run editor lives in Design, and a chart's settings live in Data — so
+  // coming back from a chart is a tab click, the way an author does it.
+  await openTab(page, "Design");
+  await page.locator('[data-vigilia-run-source="0"]').selectOption(key);
+  await page.locator("[data-vigilia-run-add]").click();
+  await fill(page, '[data-vigilia-run-text="1"]', "%");
+  await page
+    .locator('[data-vigilia-run-preset="1"]')
+    .selectOption("typePresets.32-400");
+  await page
+    .locator('[data-vigilia-run-colour="1"]')
+    .selectOption("palette.dim");
+}
+
+test.describe("the rest of the composition", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector("#canvas-host canvas");
+    await openBlank(page);
+    for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+  });
+
+  test("the GPU card", async ({ page }) => {
+    await addCard(page, {
+      name: "gpu-card",
+      x: 714,
+      y: 182,
+      w: 290,
+      h: 305,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await glyph(
+      page,
+      "gpu-card-icon",
+      { x: 746, y: 218, w: 28, h: 28 },
+      chip(28, 2),
+      "GPU violet",
+    );
+    await addText(page, {
+      name: "gpu-card-title",
+      text: "GPU",
+      x: 788,
+      y: 222,
+      w: 120,
+      h: 22,
+      preset: "typePresets.24-400",
+      colour: "dim",
+    });
+    await reading(
+      page,
+      "gpu-card-value",
+      {
+        x: 740,
+        y: 262,
+        w: 230,
+        h: 60,
+      },
+      "gpu.load",
+    );
+    await addText(page, {
+      name: "gpu-card-caption",
+      text: "NVIDIA GeForce RTX 4080",
+      x: 740,
+      y: 344,
+      w: 240,
+      h: 24,
+      preset: "typePresets.20-400",
+      colour: "dim",
+    });
+    await addChart(page, {
+      family: "Line",
+      name: "gpu-card-sparkline",
+      x: 730,
+      y: 386,
+      w: 258,
+      h: 62,
+      series: ["gpu.load"],
+      paint: ["GPU violet"],
+    });
+    // A card sparkline has no axes in the target, and the family offers them.
+    await openTab(page, "Data");
+    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.screenshot({ path: SHOT("04-gpu-card") });
+
+    // The box the author typed, not the measurement under it — F2.5.
+    expect(await readObject(page, "gpu-card-caption")).toMatchObject({
+      left: 740,
+      renderedWidth: 240,
+    });
+    expect(await readObject(page, "gpu-card-value")).toMatchObject({
+      vigiliaText: {
+        runs: [
+          { kind: "value", typePreset: "typePresets.60-600" },
+          { kind: "literal", text: "%" },
+        ],
+      },
+    });
+  });
+
+  test("the two memory rings: a partial gauge and a full one", async ({
+    page,
+  }) => {
+    await addCard(page, {
+      name: "ram-card",
+      x: 1018,
+      y: 182,
+      w: 302,
+      h: 305,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await glyph(
+      page,
+      "ram-card-icon",
+      { x: 1050, y: 218, w: 28, h: 28 },
+      chip(28, 3),
+      "RAM teal",
+    );
+    await addText(page, {
+      name: "ram-card-title",
+      text: "RAM",
+      x: 1092,
+      y: 222,
+      w: 120,
+      h: 22,
+      preset: "typePresets.24-400",
+      colour: "dim",
+    });
+    await addChart(page, {
+      family: "Gauge",
+      name: "ram-gauge",
+      x: 1069,
+      y: 258,
+      w: 200,
+      h: 200,
+      series: ["ram.used.percent"],
+      paint: [undefined, "RAM teal"],
+    });
+    await openTab(page, "Data");
+    // 270 degrees open at the bottom, which is the target's RAM ring.
+    await fill(page, '[data-vigilia-chart-setting="startAngle"]', 135);
+    await fill(page, '[data-vigilia-chart-setting="endAngle"]', 405);
+    await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
+    await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
+    await chooseToken(
+      page,
+      '[data-vigilia-chart-paint="track"]',
+      "Chart track",
+    );
+    await reading(
+      page,
+      "ram-value",
+      { x: 1099, y: 348, w: 140, h: 56 },
+      "ram.used.percent",
+    );
+    await addText(page, {
+      name: "ram-capacity",
+      text: "13.4 / 32 GB",
+      x: 1058,
+      y: 400,
+      w: 220,
+      h: 24,
+      preset: "typePresets.20-400",
+      colour: "dim",
+    });
+
+    // VRAM: the same card, a closed ring, a different colour.
+    await addCard(page, {
+      name: "vram-card",
+      x: 1332,
+      y: 182,
+      w: 302,
+      h: 305,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await glyph(
+      page,
+      "vram-card-icon",
+      { x: 1364, y: 218, w: 28, h: 28 },
+      chip(28, 3),
+      "VRAM magenta",
+    );
+    await addText(page, {
+      name: "vram-card-title",
+      text: "VRAM",
+      x: 1406,
+      y: 222,
+      w: 120,
+      h: 22,
+      preset: "typePresets.24-400",
+      colour: "dim",
+    });
+    await addChart(page, {
+      family: "Gauge",
+      name: "vram-gauge",
+      x: 1383,
+      y: 258,
+      w: 200,
+      h: 200,
+      series: ["vram.used.percent"],
+      paint: [undefined, "VRAM magenta"],
+    });
+    await fill(page, '[data-vigilia-chart-setting="startAngle"]', 90);
+    await fill(page, '[data-vigilia-chart-setting="endAngle"]', -270);
+    await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
+    await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
+    await chooseToken(
+      page,
+      '[data-vigilia-chart-paint="track"]',
+      "Chart track",
+    );
+    await reading(
+      page,
+      "vram-value",
+      { x: 1413, y: 348, w: 140, h: 56 },
+      "vram.used.percent",
+    );
+    await addText(page, {
+      name: "vram-capacity",
+      text: "10.7 / 16 GB",
+      x: 1372,
+      y: 400,
+      w: 220,
+      h: 24,
+      preset: "typePresets.20-400",
+      colour: "dim",
+    });
+    await page.screenshot({ path: SHOT("05-memory-rings") });
+
+    // Both rings differ only in their angles and their colour, which is the
+    // point: the same three settings separate a partial ring from a closed one.
+    expect((await readScene(page)).map((object) => object.name)).toEqual([
+      "ram-card",
+      "ram-card-icon",
+      "ram-card-title",
+      "ram-gauge",
+      "ram-value",
+      "ram-capacity",
+      "vram-card",
+      "vram-card-icon",
+      "vram-card-title",
+      "vram-gauge",
+      "vram-value",
+      "vram-capacity",
+    ]);
+    expect(await readObject(page, "ram-gauge")).toMatchObject({
+      settings: { startAngle: 135, endAngle: 405, roundCap: true },
+    });
+    expect(await readObject(page, "vram-gauge")).toMatchObject({
+      settings: { startAngle: 90, endAngle: -270, roundCap: true },
+    });
+  });
+
+  test("the trends panel", async ({ page }) => {
+    await addCard(page, {
+      name: "trends-card",
+      x: 296,
+      y: 505,
+      w: 828,
+      h: 338,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await glyph(
+      page,
+      "trends-card-icon",
+      { x: 320, y: 536, w: 22, h: 22 },
+      "M 0 20 L 6 20 L 6 8 L 12 8 L 12 14 L 18 14 L 18 2 L 22 2",
+      "Chart track",
+    );
+    await addText(page, {
+      name: "trends-card-title",
+      text: "Performance Trends",
+      x: 352,
+      y: 534,
+      w: 320,
+      h: 26,
+      preset: "typePresets.24-400",
+      colour: "text",
+    });
+    // Three series, three sensors, three tokens — the shape the chart panel
+    // could not reach at all before F2.2.
+    await addChart(page, {
+      family: "Line",
+      name: "trends-chart",
+      x: 350,
+      y: 575,
+      w: 740,
+      h: 240,
+      series: ["cpu.load", "gpu.load", "ram.used.percent"],
+      paint: ["CPU blue", "GPU violet", "RAM teal"],
+    });
+    await openTab(page, "Data");
+    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.screenshot({ path: SHOT("06-trends") });
+
+    const series = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("[data-vigilia-binding]")).map(
+        (select) => (select as HTMLSelectElement).value,
+      ),
+    );
+    expect(series).toEqual(["cpu.load", "gpu.load", "ram.used.percent"]);
+  });
+
+  test("the storage bar", async ({ page }) => {
+    await addCard(page, {
+      name: "storage-card",
+      x: 1138,
+      y: 505,
+      w: 500,
+      h: 168,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await glyph(
+      page,
+      "storage-card-icon",
+      { x: 1166, y: 536, w: 24, h: 24 },
+      "M 2 6 L 22 6 L 22 22 L 2 22 Z M 2 11 L 22 11 M 7 17 L 9 17 M 12 17 L 14 17",
+      "Chart track",
+    );
+    await addText(page, {
+      name: "storage-card-title",
+      text: "Storage",
+      x: 1200,
+      y: 534,
+      w: 180,
+      h: 26,
+      preset: "typePresets.24-400",
+      colour: "text",
+    });
+    await addText(page, {
+      name: "storage-card-value",
+      text: "56",
+      x: 1490,
+      y: 528,
+      w: 120,
+      h: 38,
+      preset: "typePresets.36-500",
+      colour: "text",
+    });
+    await selectLayer(page, "storage-card-value");
+    await page.locator("[data-vigilia-run-add]").click();
+    await fill(page, '[data-vigilia-run-text="1"]', "%");
+    await page
+      .locator('[data-vigilia-run-preset="1"]')
+      .selectOption("typePresets.24-400");
+    await page
+      .locator('[data-vigilia-run-colour="1"]')
+      .selectOption("palette.dim");
+    await addChart(page, {
+      family: "Bar",
+      name: "storage-bar",
+      x: 1160,
+      y: 586,
+      w: 450,
+      h: 22,
+      series: ["disk.used.percent"],
+      paint: ["CPU blue"],
+    });
+    await openTab(page, "Data");
+    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page
+      .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
+      .uncheck();
+    await addText(page, {
+      name: "storage-card-name",
+      text: "Games (D:)",
+      x: 1166,
+      y: 624,
+      w: 260,
+      h: 24,
+      preset: "typePresets.20-400",
+      colour: "dim",
+    });
+    await page.screenshot({ path: SHOT("07-storage") });
+
+    expect((await readScene(page)).map((object) => object.name)).toEqual(
+      expect.arrayContaining([
+        "storage-card",
+        "storage-bar",
+        "storage-card-name",
+      ]),
+    );
+  });
+
+  test("the network panel", async ({ page }) => {
+    await addCard(page, {
+      name: "network-card",
+      x: 1138,
+      y: 688,
+      w: 500,
+      h: 155,
+      radius: 14,
+      stroke: "Panel outline",
+      blur: 40,
+    });
+    await addText(page, {
+      name: "network-card-title",
+      text: "Network",
+      x: 1200,
+      y: 708,
+      w: 180,
+      h: 26,
+      preset: "typePresets.24-400",
+      colour: "text",
+    });
+    await addText(page, {
+      name: "network-down",
+      text: "72.4 Mbps",
+      x: 1300,
+      y: 710,
+      w: 160,
+      h: 22,
+      preset: "typePresets.20-400",
+      colour: "text",
+    });
+    await addText(page, {
+      name: "network-up",
+      text: "8.6 Mbps",
+      x: 1460,
+      y: 710,
+      w: 160,
+      h: 22,
+      preset: "typePresets.20-400",
+      colour: "dim",
+    });
+    await addChart(page, {
+      family: "Line",
+      name: "network-chart",
+      x: 1160,
+      y: 744,
+      w: 450,
+      h: 80,
+      series: ["network.download", "network.upload"],
+      paint: ["CPU blue", "GPU violet"],
+    });
+    await openTab(page, "Data");
+    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.screenshot({ path: SHOT("08-network") });
+
+    expect((await readScene(page)).map((object) => object.name)).toEqual(
+      expect.arrayContaining(["network-card", "network-chart"]),
+    );
   });
 });

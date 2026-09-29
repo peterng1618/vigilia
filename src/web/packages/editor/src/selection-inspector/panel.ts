@@ -354,6 +354,29 @@ const MIN_POLYLINE_POINTS = 2;
 let shapeFieldSeq = 0;
 
 /**
+ * Adopts geometry the author just typed, and drops the scale that belonged to
+ * the geometry it replaced.
+ *
+ * A polygon's points, a polyline's points and a path's commands are all
+ * **absolute coordinates in the object's own space**, so any `scaleX`/`scaleY`
+ * on the object is a scale from a different drawing. Measured: a path sized to
+ * 28 × 28 and then given 14 × 14 of new data drew **1 × 3 units** — the new
+ * data multiplied by the old drawing's scale, which is the order every icon in
+ * a dashboard is built in (insert, size, then draw).
+ *
+ * So the data wins and the scale goes back to 1, which leaves the object at the
+ * size its own geometry measures and makes the W and H fields mean what they
+ * mean on every other shape. This is the rule the polygon branch above already
+ * keeps — *"the points remain the only persisted truth"* — completed.
+ */
+function adoptGeometry(object: FabricObject): void {
+  // Every caller is a `Polygon`, a `Polyline` or a `Path`; all three re-measure
+  // from their own geometry through this one method.
+  (object as FabricObject & { setDimensions(): void }).setDimensions();
+  object.set({ scaleX: 1, scaleY: 1 });
+}
+
+/**
  * The geometry that belongs to this one kind of shape.
  *
  * A circle, an ellipse and a triangle own none: each is fully described by the
@@ -399,7 +422,7 @@ function createShapeFields(
           );
           // Fabric does not re-measure a points change on its own, so the
           // object would keep the old box until something else asked for it.
-          object.setDimensions();
+          adoptGeometry(object);
         }),
     });
     rows.push(sides.row);
@@ -417,7 +440,7 @@ function createShapeFields(
         }
         commit(() => {
           object.set("points", parsed);
-          object.setDimensions();
+          adoptGeometry(object);
         });
         return true;
       },
@@ -473,7 +496,7 @@ function createShapeFields(
           }
           commit(() => {
             object.set("path", parsed);
-            object.setDimensions();
+            adoptGeometry(object);
           });
           return true;
         },

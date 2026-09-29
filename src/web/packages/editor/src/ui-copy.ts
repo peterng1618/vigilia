@@ -91,6 +91,15 @@ export const uiCopy = {
     runSource: "Reads",
     staticText: "Static text",
     runFormat: "Format",
+    /**
+     * The token vocabulary, under the field. The formatter's own rule is that
+     * an unrecognised token renders literally "so a typo is visible" — which
+     * makes it visible **on a display**, where the author is not looking. The
+     * alternative to naming them here is a date reading `EEE, Sep d, yyyy` on a
+     * wall, which is exactly what this pass drew.
+     */
+    runFormatTokens:
+      "Tokens: YYYY YY · MMMM MMM MM M · dddd ddd · DD D · HH H hh h · mm ss · A a. Words in [square brackets].",
     runZone: "Zone",
     runZoneFollows: "Follow the display",
     valueRun: "Value",

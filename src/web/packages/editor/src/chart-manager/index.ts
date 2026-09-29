@@ -30,6 +30,15 @@ function newChart(
     top: 80,
     width: 240,
     height: 160,
+    // Artboard coordinates, as a panel and a text object now both are, so the
+    // inspector's X and Y are the chart's corner. A chart is the object whose
+    // position a dashboard is most sensitive to — six of them, each sitting in
+    // a card — and a centre origin put every one of them half its own size away
+    // from where the author put it: measured, a 200 × 200 gauge placed at
+    // (1069, 258) drew at (969, 158). `boxFrom` converts between the two
+    // origins on the way out, so a saved chart is unaffected.
+    originX: "left",
+    originY: "top",
   };
 
   switch (family) {

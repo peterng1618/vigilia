@@ -151,6 +151,12 @@ export function addButton(page: Page, label: string): Locator {
 
 /** Inserts an object from the Add pane, by the word on the control. */
 export async function insert(page: Page, label: string): Promise<void> {
+  // The rail shows one pane, and selecting a layer switches it to Layers — so
+  // an author comes back to Add the same way this does.
+  await openRailPane(page, "Add");
+  // The selection inspector is in the Design tab and a chart's settings are in
+  // Data, so a fresh object always brings the author back to Design.
+  await openTab(page, "Design");
   const before = (await readScene(page)).length;
   const button = addButton(page, label);
   // "Line" is a shape and a chart, and the legend above each is what tells them
@@ -331,7 +337,11 @@ export async function addChart(
   await place(page, chart);
   await openTab(page, "Data");
   for (const key of chart.series) {
-    await page.locator("[data-vigilia-chart-binding-add]").selectOption(key);
+    // Scrolled first: the Data tab's panel is inside a scrolling inspector, and
+    // `selectOption` waits for visibility rather than scrolling to it.
+    const chooser = page.locator("[data-vigilia-chart-binding-add]");
+    await chooser.scrollIntoViewIfNeeded();
+    await chooser.selectOption(key);
   }
   for (const [index, token] of (chart.paint ?? []).entries()) {
     if (token === undefined) continue;

@@ -589,3 +589,24 @@ describe("which binding a value run carries", () => {
     void dispose();
   });
 });
+
+describe("which format tokens a clock can be given", () => {
+  it("names the vocabulary beside the field", () => {
+    // The formatter's rule is that an unrecognised token renders literally "so
+    // a typo is visible" — which makes it visible on a display, where the
+    // author is not. Drawn during the rebuild: a date authored as
+    // `EEE, MMM d, yyyy` painted exactly that, because the vocabulary is
+    // `ddd`, `D` and `YYYY`.
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "date.today",
+    );
+    box.render();
+
+    const hint = box.pick('[data-vigilia-run-format-hint="0"]').textContent;
+    for (const token of ["YYYY", "MMM", "ddd", "DD", "HH", "mm", "A"])
+      expect(hint).toContain(token);
+    return box.dispose();
+  });
+});

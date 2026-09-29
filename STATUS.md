@@ -19,9 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.40 investigated and left duplicated, with the reason measured rather than asserted.** The id is **inert** across the boundary: the chooser row carries it as `data-template` and links to `/editor/`, the editor's template branch calls `onNewFromStarter()` without reading `choice.id`, and no URL, route or dispatch resolves it.
-- **So the stated failure cannot happen today** — a rename leaves a label the two surfaces spell differently, a copy defect, not a broken link. That margin is what the *second* entry spends: a chooser that can only open one starter has no way to say which.
-- **The owner when that arrives is `renderer-core`, not a new package** — both sides already depend on it and it already carries product content (`MEASUREMENT_SYSTEMS`), so one line there adds no edge. A test *can* cross the boundary today (probed), but it would drag the whole starter composition and `?url` assets into the host's Node test run to compare two strings.
+- **F2.8, F2.9, F2.10: three more places the composition could not be built in.** A path sized before it was drawn came out at 1 unit instead of 14 — absolute coordinates multiplied by the *previous* drawing's scale. X and Y were the centre on a chart and the corner on everything else, so every chart landed half its own size away. And the Format field never named its vocabulary, so a date painted `EEE, Sep d, yyyy` on the canvas.
+- **The rebuild now covers all eight regions**: wordmark, strapline, live clock and date, the CPU and GPU cards, both memory rings, the trends panel, the storage bar and the network panel — 8 tests, each from its own blank theme, every step a pointer or a keystroke.
+- The clock and date are **live readings**, not typed words: `time.now` with `HH:mm` and a second run for the day period, `date.today` with `ddd, MMM D, YYYY`, painting `Tue, Sep 29, 2026`.
+- 2108 unit tests green; `typecheck`, `lint`, `format:check` exit 0 on the paths touched. Red without each fix: 1–3 tests apiece, measured.
 
 ## Next
 
