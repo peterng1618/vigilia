@@ -340,6 +340,27 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 **A new shared-tree hazard, recorded below:** two concurrent Playwright runs sharing the default `test-results/` produced a spurious teardown `ENOENT` on a test that had actually passed.
 
+### The rebuild — what the proof was for
+
+**The reference composition was, until this pass, essentially unauthorable by hand.** The generator emitted it; no author could have built it. Eleven findings, eight classified blocking, all eight fixed and landed:
+
+| # | Finding | Why it was blocking |
+|---|---|---|
+| **F2.1** | A text object could never carry a second run, and a run's text had no field at all | A mixed reading — "62%" plus a unit, the single most common element on a dashboard — could not be authored |
+| **F2.2** | **A chart could not be bound to a sensor** | Every chart in the composition was unauthorable. The composition is mostly charts. |
+| F2.4 | The Add pane's Text was a centred, un-wrappable `IText` | Not the `Textbox` every shipped theme authors |
+| F2.5 | W/H **scaled a text object's type** | `scaleX 3.448`, `scaleY 0.439` for a 220 × 40 box — type sized by the box |
+| F2.8 | A path sized before it was drawn rendered at **1/14** of its size | |
+| F2.9 | X/Y were the chart's centre | A gauge placed at (1069, 258) drew at (969, 158) — the position field lied about where it put things |
+| F2.10 | The Format field never named its vocabulary | A date painted as raw `EEE, Sep d, yyyy` |
+| F2.11 | A three-series chart had **one** series colour | The Trends panel is three series |
+
+Three deferred as product decisions with no precedent, each with its candidates written out: **issues [#8](https://github.com/peterng1618/vigilia/issues/8), [#9](https://github.com/peterng1618/vigilia/issues/9), [#10](https://github.com/peterng1618/vigilia/issues/10)**.
+
+**And the shape of the work, which is the finding worth keeping.** Once the surface was honest, all nine tests build and pass in **1.9 minutes**. The first three regions took longer than the last five combined — the pass was more than half *fixing the surface* than building on it. That is the argument for doing a proof pass before shipping: the cost of an unauthorable product is not the hours to build the thing, it is that nobody can build it at all.
+
+*(Full Playwright counts pending — the suite was at 54/354 when this was written.)*
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
