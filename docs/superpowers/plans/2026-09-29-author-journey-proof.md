@@ -207,7 +207,9 @@ Seventeen findings have landed across five packages and several shared files. A 
 
 That last group is the point: F1.2 deleted the glyphs and F1.1 added state to the same four buttons, and the names survived both.
 
-### P3 — withdrawn, recorded so they are not re-raised
+| F1.32 | **The language sample reads as a bare date** | Seen only by looking at the phone screenshot: under *Language* the panel prints **"September Tuesday"** on its own line. It has an accessible name — `ad45667` gave it `aria-label` "Sample in the chosen language" — so a screen reader is told what it is, and **a sighted author is not**. It sits between the Language picker and the Size row, formatted as a date, with nothing on screen saying it is a preview of the chosen language. The same panel's *Release version* beside it now at least has a label; this one does not. | theme settings panel |
+
+### Verification sweep — do the landed fixes coexist?
 | # | Finding | Why it was withdrawn |
 |---|---|---|
 | W1 | "The canvas gets only 35% of the viewport" | Measured in a 1008px-wide window. At 1920 × 1080 it is **66%**, and View offers "Zoom to fit". The panel being non-collapsible is F1.1; the share was an artifact of the window. |
