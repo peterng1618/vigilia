@@ -1,4 +1,10 @@
+import path from "node:path";
 import { expect, type Page } from "@playwright/test";
+// `openRailPane` has one owner and one guard (`editor-rail.js`); the driver
+// imports it from there and does not re-export it, so this reaches the same
+// place. It is imported from the driver rather than the owner in the import
+// list below only because that list is the driver's.
+import { openRailPane } from "./editor-rail.js";
 import {
   addCard,
   addChart,
@@ -9,7 +15,6 @@ import {
   fill,
   insert,
   openBlank,
-  openRailPane,
   openTab,
   place,
   selectLayer,
@@ -146,15 +151,26 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
   });
 
   // S Y S T E M   I N S I G H T S — smaller, tracked wider still.
+  //
+  // The box is **520**, not the 300 first typed here, and the change was found
+  // on a display rather than in the editor: the tracked preset sets a glyph
+  // advance of about 17.7 units, so 28 characters need roughly 500 and a 300
+  // box truncated the line to "S Y S T E M   I N S I G" — the tail silently
+  // gone, which no editor assertion would have caught.
+  //
+  // `text`, not `dim`: this line sits directly on the photograph with no card
+  // behind it, and measured there `#a8bed0` reads **2.11:1** against the sky.
+  // That is the same ink-versus-field pricing `0013` did for the frosted cards,
+  // on a field the frosted cards were protecting.
   await addText(page, {
     name: "strapline",
     text: "S Y S T E M   I N S I G H T S",
     x: 122,
     y: 112,
-    w: 300,
+    w: 520,
     h: 20,
     preset: "typePresets.17-400",
-    colour: "dim",
+    colour: "text",
   });
 
   // The clock card: a frosted panel, outlined, with a generous radius.
@@ -219,7 +235,9 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
     colour: "dim",
   });
   await selectLayer(page, "date");
-  await page.locator('[data-vigilia-run-source="0"]').selectOption("date.today");
+  await page
+    .locator('[data-vigilia-run-source="0"]')
+    .selectOption("date.today");
   await page.locator('[data-vigilia-run-format="0"]').fill("ddd, MMM D, YYYY");
   await page.locator('[data-vigilia-run-format="0"]').blur();
 }
@@ -695,21 +713,29 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
   await (await chooser).setFiles(file);
   // The pane lists the asset by the file the author chose while the package
   // keys it by an id the editor minted: that is the pair F0.4's fix made
-  // readable, and the id is what the artboard panel stores.
+  // readable, and the id is what the artboard panel stores. The label is the
+  // file's own name, derived here rather than hardcoded — a helper that
+  // guessed the name would pass on one photograph and fail on the next.
+  const label = path.basename(file);
   const select = page.locator("[data-vigilia-asset-select]");
   await expect
     .poll(async () => select.locator("option").allInnerTexts())
-    .toContain("backdrop.jpg");
+    .toContain(label);
   const assetId = await select
     .locator("option")
-    .filter({ hasText: "backdrop.jpg" })
+    .filter({ hasText: label })
     .getAttribute("value");
 
-  await openTab(page, "Data");
-  await page
-    .locator("[data-vigilia-background-asset]")
-    .selectOption(assetId ?? "");
-  await page
-    .locator("[data-vigilia-background-media-fit]")
-    .selectOption("cover");
+  // **Design**, not Data: the artboard panel is a *document* panel, and the
+  // shell mounts it in the Design tab with the comment "a selection must not
+  // make the theme's own settings unreachable". Data is the chart host, where
+  // the select exists in the DOM but inside a `display: none` tab panel — so
+  // the wrong tab is a 10-minute timeout, not a clear failure.
+  await openTab(page, "Design");
+  const media = page.locator("[data-vigilia-background-asset]");
+  await media.scrollIntoViewIfNeeded();
+  await media.selectOption(assetId ?? "");
+  const fit = page.locator("[data-vigilia-background-media-fit]");
+  await fit.scrollIntoViewIfNeeded();
+  await fit.selectOption("cover");
 }

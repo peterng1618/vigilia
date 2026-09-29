@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **U5, U6 and U7 were one bug: the entered-group state lived only in the layer panel.** `grouping-manager` recorded a context and the panel dimmed against it; nothing applied it to the artboard, and `editor-shell` routed *every* double-click into `enterGroup`, so editing a text box recorded a text box as a group and dimmed every other layer until Escape.
-- **Entering now requires a real `Group`,** and entering a second group leaves the first, so the context is one level, never a stack.
-- **The artboard now agrees with the panel:** every object outside the entered group gets `selectable: false, evented: false`, and leaving restores the values it replaced rather than the Fabric defaults. `selectable`/`evented` are not in Fabric's `stateProperties`, so this stays view state (§67) — an `opacity` dim would have been baked into the next save.
-- **A grouped object's own children stay reachable,** and an object added to the root mid-entry is taken out of reach with the rest.
-- 868 editor tests green; 6 red without the fix, measured. Browser: selectable went 51/51 → 1/51 on entry, and a text box's double-click now records no context at all.
+- **The composition is viewable — the last gap in the proof, closed.** All eight regions in one document, the backdrop imported through `Import asset`, saved by the header's own control, shown on a real host at 1920 × 1080 and 390 × 844. `author-journey-display.spec.ts`, on its own preview (4223) and its own host (4224).
+- **F2.12, the pass's headline: the frosted-glass control does not carry the frosted material.** It writes only `vigiliaGlass`, and a new card's fill is `palette.panel` at 85 %, so every glass card in the saved package is 85 % opaque — worse than the 72 % decision [0013](docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md) already rejected. Deferred: `ownership.md` splits fill and treatment between two panels, and whether enabling a material should overwrite an author's fill has no precedent.
+- **The verdict, in pixels: the cards read as tinted panels, not glass.** The blur runs and the photograph shows through as a gradient, but at 85 % a card is mostly a fill. `player-desktop-frosted.png` is the same document with `palette.frost` (30 %) applied through the real Fill picker; both frames are kept because the difference is the evidence.
+- **Three defects only a display could find:** the strapline was truncated to "S Y S T E M   I N S I G" by a 300-wide box (now 520), `palette.dim` measured **2.11:1** on the photograph's sky (now `text`), and `rebuild-composition.ts` had never been executed by any spec — it would not even load.
+- `typecheck`, `lint`, `format:check` and 2110 unit tests all exit 0.
 
 ## Next
 

@@ -39,6 +39,15 @@ const HOST_SPECS = /host-(player|settings|media).spec.ts/;
  */
 const REBUILD_SPEC = /author-journey-rebuild\.spec\.ts/;
 
+/**
+ * The display proof takes its own editor preview and starts its own real host
+ * on its own port, over a themes directory it writes itself. Excluded here for
+ * the same reason the rebuild is: this config provides no such arrangement, and
+ * a spec that arrived at the shared 4174 server would be measuring a bundle its
+ * own fixes were not built into.
+ */
+const DISPLAY_SPEC = /author-journey-display\.spec\.ts/;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   // Seeds the host fixture once; the config itself runs in every worker.
@@ -93,13 +102,17 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 720 },
       },
-      testIgnore: new RegExp(`${HOST_SPECS.source}|${REBUILD_SPEC.source}`),
+      testIgnore: new RegExp(
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}`,
+      ),
     },
     {
       // Tall phone viewport exercises contain-mode letterboxing.
       name: "phone-chromium",
       use: { ...devices["Pixel 7"] },
-      testIgnore: new RegExp(`${HOST_SPECS.source}|${REBUILD_SPEC.source}`),
+      testIgnore: new RegExp(
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}`,
+      ),
     },
     {
       // One real host, one set of stores: serial by construction.

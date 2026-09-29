@@ -14,6 +14,9 @@ playwright/.cache/
 blob-report/
 # Versioned host-theme packages seeded by the browser suite.
 .e2e-host-themes/
+# The display proof's host store: the package the editor's own Save control
+# produced, written where a real host serves it.
+.e2e-display-themes/
 # Downloaded e2e font bytes; the licence is declared in the fixture envelope.
 .e2e-font-cache/
 # Staged third-party release binaries (LibreHardwareMonitor). Provenance is

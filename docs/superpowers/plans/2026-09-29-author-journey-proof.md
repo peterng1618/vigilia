@@ -405,6 +405,117 @@ Twenty-five items from using the editor. Recorded verbatim in intent, triaged by
 | U21 | **Can glass apply to any geometric shape, except line?** | It cannot today, and the reason is concrete: `GLASS_OBJECT_TYPES` is `Rect \| Group`, and the renderer only knows `ctx.rect` and a rounded rect. Widening it is real renderer work plus a re-measured budget. Feasible; a decision plus a task. |
 | U22 | **Stroke types — solid, dashed, dotted — used to exist. Where did they go?** | **Investigate before answering.** The chart families still carry `dash` as a setting (`CHART_SETTINGS_FIELDS.line` has `dash` with solid/dashed/dotted), so the vocabulary exists for *chart strokes*. Whether a panel or text object's own stroke lost it is a separate question and may be a genuine regression. Do not guess. |
 
+### The composition, on a display — the half the rebuild did not do (2026-09-29)
+
+`tests/e2e/author-journey-display.spec.ts`, on `playwright.display.config.ts` (its
+own preview on 4223, its own real host on 4224, its own themes directory, its own
+`--output`). All eight regions in **one** document, the backdrop imported through
+`Import asset`, saved by the header's own control, then shown on a real host at
+1920 × 1080 and 390 × 844. 1 passed, 3.6 min.
+
+**The gap is closed: the composition is authorable, it persists, and it is
+viewable.** The player renders every region, the sensor gaps are gaps rather than
+zeros (§97 intact), and nothing is clipped at either size.
+
+#### F2.12 — **BLOCKING, deferred: the frosted-glass control does not carry the frosted material**
+
+**This is the pass's headline finding, and it is the one the whole pass was
+waiting to see in pixels.**
+
+`selection-inspector/glass.ts` writes exactly one thing: the `vigiliaGlass`
+treatment. It never touches the fill. So ticking **Frosted glass** puts a 40-unit
+blur *under whatever fill the card already had* — and a card's fill is chosen by
+`new-object-defaults.ts:474`:
+
+```ts
+const CARD_SURFACE_TOKENS = ["panel", "frost", ...SURFACE_TOKENS];
+```
+
+`panel` is ahead of `frost`, so every card an author inserts is filled with
+**`palette.panel` = `#081523d9`, 85 % opaque**, and stays that way when it is
+frosted. Measured on the saved package, not inferred: **all eight glass cards
+carry `"fill": "#081523d9"`, `paint: { fill: "palette.panel" }` and
+`blurRadius: 40`.** Not one carries `palette.frost`.
+
+**85 % is worse than the 72 % that `0013` already rejected.** That note measured
+the tint from both ends and settled on **30 %** (`#0815234d`) because the CPU
+card's caption measured 4.02:1 at 18 % and 5.1:1 at 30 %. Its own words for the
+failure mode: *"a blur applied under an almost-opaque panel is a blur of
+nothing."* An author who does everything the surface asks — inserts a card, ticks
+Frosted glass, sets the radius — lands at 85 %, further past the glass than the
+value the decision note threw out.
+
+**What it measures like.** Card interiors on the display read **35–50 luma**
+while the photograph behind them spans **50–196**. The clock card sits on the
+bright sky (140.8) and measures 34.5; `0.851 × 21 + 0.149 × 140.8` predicts 38.9.
+The cards are not flat — they carry a smooth gradient of the backdrop — but the
+transmission is the fill's own 15 %, not the 70 % the 30 % tint would give, and
+the fine structure is gone either way.
+
+**The material is reachable — through a second control, which is the other half
+of the defect.** The Fill picker lists tokens by name, so `palette.frost` is
+right there as **"Frosted panel"**. The capture `player-desktop-frosted.png` is
+the same document with that token applied to all eight cards through the real
+picker, kept beside the 85 % frame precisely so the difference is the evidence.
+
+**Not fixed here, and the reason is a genuine unknown.** `ownership.md` splits
+this field in two: *Shape material fields (fill, stroke, border, shadow, radius)*
+is `selection-inspector/panel.ts`, and *Frosted-glass control (enable, blur
+radius)* is `selection-inspector/glass.ts`. Making the second write the first is
+Review Focus #4's exact trap — a second owner for one property. And the question
+of **whether enabling a material should overwrite a fill the author chose** has no
+precedent in the repo: a chart painted blue, then frosted, would lose its blue.
+That is a product decision, it is the user's, and the plan's rule for those is
+record and move on.
+
+#### F2.13 — **blocking, fixed: `Background media` is on the Design tab, and the wrong tab is a ten-minute timeout**
+
+`rebuild-composition.ts`'s `importBackdrop` opened the **Data** tab to set
+Background media. The artboard panel is a *document* panel, mounted in **Design**
+— `shell-layout.tsx` carries the comment *"Document panels stay mounted in Design:
+a selection must not make the theme's own settings unreachable"* — so on Data the
+`<select data-vigilia-background-asset>` exists in the DOM and is **not visible**,
+and `selectOption` retried for the full test timeout with no message saying why.
+
+Not a product defect; the product is right and says so in its own comment. The
+helper is fixed and the reason is written down, because the same wrong guess costs
+another agent ten minutes next time.
+
+#### F2.14 — **blocking, fixed: the import helper guessed the asset's filename**
+
+`importBackdrop` polled for an option reading `"backdrop.jpg"`. The committed
+photograph is `res/author-journey-backdrop.jpg`, and `fileNameOf` renders the
+file's own name, so the option read `author-journey-backdrop.jpg`. The label is
+now `path.basename(file)`: a helper that guessed a name would pass on one
+photograph and fail on the next.
+
+#### F2.15 — **blocking, fixed: `rebuild-composition.ts` had never been executed by anything**
+
+It imported `openRailPane` from `./rebuild-driver.js`, which imports it from
+`./editor-rail.js` and does not re-export it. The module would not load. Nothing
+caught it because **no spec imported it** — `buildComposition` and
+`importBackdrop` had zero callers, and each region spec builds its own region
+inline. A file of finished work that had never run is the exact thing the
+screenshot spring clean and this pass both exist to surface.
+
+#### The verdict, stated plainly
+
+**The cards read as tinted panels, not as glass.** Not "neither", and not a
+failure of the renderer: the blur is running, the diffusion is real, and the
+photograph does show through as a smooth gradient. What is missing is the thing
+the material is named for — at 85 % the card is mostly a fill, and a mostly-fill
+card reads as a fill. The single sentence: **an author cannot author the frosted
+material the reference composition is made of**, and the one control that says
+"Frosted glass" is the one that should have carried it.
+
+**The tint tension, resolved in the direction the measurement already chose.** The
+fear was that 30 % would be past the ecosystem's *"past 0.25 the glass effect
+dies"*. On the pixels, 85 % is the value past which the glass effect dies, and it
+is the value the surface hands an author by default. 0013's 30 % was not a
+compromise against the glass — it was the measurement, taken from the contrast
+requirement, and the frosted capture is what that looks like against a real
+photograph.
+
 ### Hotkeys: the default audit, and the customisation panel (2026-09-29)
 
 The user asked for two things: expose the shortcut manager to the settings panel with customisable keys, and make the **defaults follow graphic-editor convention** so nobody is thrown off. The audit came first, because knowing what exists is the reuse half of the gate.

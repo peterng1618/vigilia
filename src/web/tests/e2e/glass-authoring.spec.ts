@@ -94,7 +94,13 @@ async function typeInto(
 async function saveEnvelope(page: Page): Promise<unknown> {
   const download = page.waitForEvent("download");
   await page.locator("[data-vigilia-save-package]").click();
-  await expect(page.locator("#status")).toHaveText("Theme package saved");
+  // **Contains**, not equals. The footer is a status line *and* a diagnostic
+  // surface (F1.15): a test whose own action raised a refusal — the radius case
+  // below types a value the product correctly refuses — leaves the refusal on
+  // screen beside the save status, and an exact match would call that a
+  // failure. Each caller asserts its own diagnostic; this one only needs to know
+  // the save happened.
+  await expect(page.locator("#status")).toContainText("Theme package saved");
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
