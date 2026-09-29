@@ -698,11 +698,16 @@ The user asked for two things: expose the shortcut manager to the settings panel
 
 **Open for the design pass:** whether tokens get a visible **left tab beside Layers** (visible, follows Figma's Assets precedent, costs a second non-spatial tab) or Figma's **no-selection fallback in Properties** (one surface, already corroborated — and already known to be hard to find). The design pass should decide with the user's "left, because it's like a layer" reasoning on the table, and the honest counter that Figma chose the other one.
 
-### The player on a phone — decided by the user, 2026-09-29
+### The player on a phone — decided by the user, clarified twice, 2026-09-29
 
-**No new presentation mode. The existing background-media fit is the mechanism**, and it already covers this: a background image either stays at its original size and letterboxes against the background colour, or scales to fill the screen entirely with no letterbox — and **the content fits the edge rather than being cropped**. That is what handles *the same orientation at a slightly different ratio*, which is the real case: a 19.5:9 theme on a 19.5:9 phone, or a 16:9 one on a 16:10.
+**Content is never cropped. A landscape theme on a portrait phone stays landscape.** What the reader gets is either a **large letterbox** or a **heavily scaled background media** — and which is the author's intent, overridable by the user's own setting.
 
-**So U19 (remove "Preview fit") is withdrawn as a design ask and becomes a naming question** — whether two similarly-named fits exist in two places, which is a small copy decision rather than a removal. And a landscape theme on a portrait phone is still the author authoring for the wrong shape; the New chooser now makes the right shape one control away.
+**So the current behaviour is already correct and nothing structural needs building.** The content's fit stays `contain`; the background-media fit is the lever, and it already exists. The two remaining consequences are small and real:
+
+- **U19 is withdrawn as a design ask.** "Preview fit is no longer needed" is not right — it is the *content's* fit, it must stay `contain`, and removing it would remove the guarantee that content is never cropped. What survives is a **naming** question: the product has two fit controls — *Preview fit* for the artboard in the editor, *Media fit* for the backdrop — and F1.41 already found them spelled inconsistently. Two controls called "fit" meaning different things, in one panel, is the actual defect.
+- **A phone in the wrong orientation is an authoring answer, not a rendering one**, and the New chooser now makes the right shape one control away.
+
+### The rebuild finished — and what it did not do
 
 ### Glass on non-rect shapes — investigate before deciding (2026-09-29)
 
