@@ -103,6 +103,16 @@ Everything the pass has shipped. **Read the one-line "what it proved" beside eac
 
 - **No generator, starter file, fixture, hand-edited JSON or developer intervention at any point** in Phase 2. Opening the starter and editing it is not the rebuild. The only legal moves are the controls in the delivered surface and the ones this plan names.
 - **A control that does not exist is the finding.** Do not work around it with the canvas dock, a marquee, a drag, or code. A workaround is a defect in the surface, not a technique.
+- **A canvas readback is a snapshot of a moment, not a fact about the frame.**
+  **Screenshot for what is visible; read the DOM for what is true; never
+  `getImageData` on a live canvas to decide whether a thing renders.** Five
+  findings on this pass were the instrument, not the product — a `mr` handle
+  read in the wrong coordinate space, a selection outline mistaken for a
+  stroke, a stale document behind the dirty guard, a test name quoted from
+  memory, and a black screen that was Fabric's repaint caught mid-frame. **When
+  a reading is surprising, confirm it with a second, independent method before
+  it becomes a finding** — a determinism check (same input, several runs) is
+  usually the cheapest one.
 - **Fix what you find, using what the repo already decides.** A property not exposed in the panel, a layout that does not line up, something hard to read, an icon that is not Lucide — each is fixed in the pass, not merely recorded. The repo already answers most of these: `docs/architecture/ownership.md` names the owner, the surrounding code sets the idiom, `ui-copy.ts` holds the copy, and the existing controls set the pattern. A reasonable decision from those is a decision, and making it is the job. Fix it, regression-test it, and move on.
 - **Note and continue only for a genuine unknown** — a product decision with no precedent in the repo and no owner who can be inferred. Record it in the Findings table, keep the rebuild moving past it, and do not stop the pass. Nothing waits on a human.
 - **Gaps, friction and visual quality are findings in their own right.** A journey that completes but is unpleasant has still failed.
@@ -1006,11 +1016,45 @@ This is the finding F1.16 half-solved: that fix made a plain shape visible by gi
 
 **U27 — a UI for gradients, sharing the colour picker's parts.** The palette already accepts gradients — the Paint chooser offers *Linear gradient* and the palette manager has an angle and a stop list — but there is no editor for them; the stops are text fields. **The reuse answer is that the colour picker's swatch and stop list already *are* the gradient editor**: one component family where a solid is a single stop. So this is not two features that share a look, it is one feature used twice, and the gradient case is the case with more than one stop.
 
+### U29, U30 — found 2026-09-30 by driving the product, both measured
+
+**U29 — every new object lands on top of the last one.** On a blank 1920×1080
+theme, six objects inserted in a row: rect, circle and triangle all at
+**(40, 40)**, both charts at **(120, 80)**. Three shapes give three layer rows
+and **one** visible shape on the canvas. The artboard is 1920×1080 and a new
+object is 360×200 in the corner, so this is not even centring — it is a fixed
+origin, and there are already two of them. *It is a papercut, not a dead end:*
+clicking a buried object's layer row **does** select it, verified — the defect
+is that the canvas misrepresents the document, and that all 52 objects of the
+reference composition need repositioning by hand. **Fix: a cascade**, each new
+object offset from the last by a fixed step, wrapping at the artboard edge, with
+**one** origin for shapes and charts alike. The position it produces is
+authored; the rule must not be (§67). Owner: `new-object-defaults.ts` and the
+caller that applies it. **Dispatched as Task C.**
+
+**U30 — the player's failure screen shows a JavaScript parse error to the
+audience.** At 412×839 with a theme that does not exist, the Reason line reads
+verbatim: ``Unexpected token '<', "<!doctype "... is not valid JSON``. That is
+V8's `SyntaxError` text, uncaught, on a wall display, in front of whoever is
+standing there. It is not only meaningless there, it **mislies** — it says the
+theme file is corrupt when the likeliest cause is that the host is not running.
+F1.14's fix landed well and the rest of that screen is right (*This display has
+nothing to show*, **Try again**, **Go to the host**); this one line bypasses the
+vocabulary F1.24 established. **The same player already says "A theme id is
+required." in the no-query branch** — so it knows how to say this properly in
+one branch and does not in the other, which is what makes it an oversight rather
+than a missing feature. Owner: `player/src/main.ts` plus the reason vocabulary
+in `host/src/providers/browser-reason.ts`. **Queued.**
+
 **U28 — a rejected number reverts where it should clamp.** The user wrote: *"the input box just rejected the value but instead of clamping it to the closest accepted value, it just kept the original value. So I have to trial and errors to find out what the max value was."*
 
 **This corrects a claim in this plan.** I recorded earlier that the glass blur field "refuses through the field, which is what puts the box and the alert line back" — true as far as it goes, and it is exactly the behaviour being complained about. **Clamping teaches the bound; reverting hides it.** Type 60, get 48, and the maximum is known immediately; type 60, get the old value back and a warning, and the author has to bisect.
 
 **And the two fields with the same helper already disagree.** Opacity **clamps** — typing 500 lands on 100, the nearest accepted value, which is why that test reads *"snaps back to 100"*. Blur **reverts**. Both go through the same `numberField`, so the difference is per-field configuration rather than a deliberate rule anyone wrote down, and the result is that one bounded field teaches its bound and the other makes the author guess. **This is the same finding as U26 with a sharper fix:** clamp to the bound, and the value itself carries the information a slider would otherwise have to display.
+
+**Correction, 2026-09-30 — the paragraph above is wrong, and the test it quotes does not exist.** `snaps back to 100` matches nothing in `src/web`. The test that is there is `index.dom.test.ts:217`, named *"refuses opacity outside the range rather than clamping it"*, and it asserts the opposite: `150` leaves opacity at `0.5`, puts `50` back in the box, records no history and warns. **Opacity and blur agree — both refuse.** There is no inconsistency to settle, and the quoted test name appears to have been written from memory rather than read.
+
+**The finding survives the correction, and a second field makes it stronger.** Measured in the browser on a live blank theme, the **polygon's Sides field** is bounded `3–32` and produces three different mistakes with one indistinguishable message: `50` (over), `2` (under) and empty all print *"That value cannot be applied to the selection."* and leave the shape alone. The bound is in the DOM as `min`/`max`, which the browser uses for the spinner and for validation the field never surfaces — so the author bisects. The fix is therefore **two** things, not one: clamp so the result teaches the bound, **and** make the alert name it for the cases clamping cannot cover (empty, non-integer).
 
 **The user's own misreading is the finding.** They had been reading *Preview fit* as "how the background media renders in the preview" — a stand-in for the lack of artboard zoom control. It is neither: it is the **artboard content's** fit. So a control named "Preview fit" sitting beside *Media fit*, in one panel, means something different from what it looks like it means. **That is the defect — not the existence of either.**
 
