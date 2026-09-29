@@ -19,11 +19,11 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F2.8–F2.11: four more places the composition could not be built in.** A path sized before it was drawn came out at 1 unit instead of 14. X and Y were the centre on a chart and the corner on everything else, so every chart landed half its own size away. The Format field never named its vocabulary, so a date painted its own pattern. A three-series chart had one series colour.
-- **The rebuild covers all eight regions** — wordmark, strapline, live clock and date, the CPU and GPU cards, both memory rings, the trends panel, the storage bar and the network panel — each from its own blank theme, every step a pointer or a keystroke.
-- The clock and date are **live readings**: `time.now` with `HH:mm` plus a second run for the day period, `date.today` with `ddd, MMM D, YYYY` painting `Tue, Sep 29, 2026`.
-- **The persisted envelope is proved, not the DOM.** Save package, unzip the browser's download, read `theme.json`: the 220 × 60 box, both runs, the declared `cpu.load` binding, `blurRadius 40`, and every paint a `palette.*` reference with no hex in the chart settings.
-- 2110 unit tests green and 9 rebuild tests green; `typecheck`, `lint`, `format:check`, `build` and `size` all exit 0. Red without each fix: 1–3 tests apiece, measured.
+- **U5, U6 and U7 were one bug: the entered-group state lived only in the layer panel.** `grouping-manager` recorded a context and the panel dimmed against it; nothing applied it to the artboard, and `editor-shell` routed *every* double-click into `enterGroup`, so editing a text box recorded a text box as a group and dimmed every other layer until Escape.
+- **Entering now requires a real `Group`,** and entering a second group leaves the first, so the context is one level, never a stack.
+- **The artboard now agrees with the panel:** every object outside the entered group gets `selectable: false, evented: false`, and leaving restores the values it replaced rather than the Fabric defaults. `selectable`/`evented` are not in Fabric's `stateProperties`, so this stays view state (§67) — an `opacity` dim would have been baked into the next save.
+- **A grouped object's own children stay reachable,** and an object added to the root mid-entry is taken out of reach with the rest.
+- 868 editor tests green; 6 red without the fix, measured. Browser: selectable went 51/51 → 1/51 on entry, and a text box's double-click now records no context at all.
 
 ## Next
 

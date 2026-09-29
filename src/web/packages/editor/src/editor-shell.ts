@@ -268,6 +268,7 @@ function createNativeEditor(input: {
     destroy: () => {
       // Both double-click listeners outlive the canvas otherwise.
       text.destroy();
+      grouping.destroy();
       canvas.off("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
       unbindNavigation();
       viewport.destroy();
