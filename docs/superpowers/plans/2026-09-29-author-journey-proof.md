@@ -288,6 +288,20 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **It corrected itself twice rather than papering over it.** The three `<link>` elements were already in the tree and got swept into its F1.36 commit, so F1.30's message originally claimed them; it amended the message to say where they actually are. And a grep of its own reported the links missing when they were present — **the rtk trap again** — so it re-verified instead of "fixing" a non-bug.
 
+| F1.41 | **One option group, two spellings** | Found by the F1.25 implementer while moving copy. *Preview fit* spelled its options **"Contain"/"Cover"**; *Media fit* spelled the same two values **"cover"/"contain"** — same panel, two capitalisations of one setting, which reads as two different settings. `uiCopy.fitModes` is now the single owner, fixed inside F1.25 with its own red-without-fix test. | `ui-copy.ts` + the artboard panel |
+
+### F1.3, F1.5, F1.25 and F1.32 landed
+
+`9280099`, `c1b5f18`, `dbc8bff`, `3f8f7ad`.
+
+**Description is a 4-row textarea** and all 130 characters are readable — measured `clientHeight === scrollHeight === 81` at 254px wide, so it genuinely fits rather than merely scrolling. The type panel's nine fields now sit in a label column, every label at x=1005 and every control at x=1083, matching the artboard panel.
+
+**The copy move needed no new words in the largest panel.** The type panel's eight labels were **already in `ui-copy.panels`** — ten strings moved and not one rewritten, which is what probing existing copy before writing a new table buys. The genuinely new copy was the palette's (`paintKinds`, `angle`, `stopPosition`/`stopColour`) and `fitModes`. The new test is the net: it mounts all three panels and fails on any label the table does not hold.
+
+**F1.32 is now legible as well as announced** — "Sample | September Tuesday" in the same label column as every other field, with the visible label and the `aria-label` both kept.
+
+**It also named F1.41**, above: *Preview fit* said "Contain"/"Cover" while *Media fit* said "cover"/"contain" for the same two values, in one panel.
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
