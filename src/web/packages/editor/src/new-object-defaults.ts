@@ -126,7 +126,7 @@ const PLACED = {
 function newShapeSurface(
   globals: FabricGlobals | undefined,
 ): Omit<NewPanelDefaults, "width" | "height" | "rx" | "ry" | "name"> {
-  const [id, entry] = surfacePalette(globals, "panel");
+  const [id, entry] = surfacePalette(globals, "shape", CARD_SURFACE_TOKENS);
   const fill = fabricArtboardPaint(
     entry.value,
     NEW_PANEL_SIZE.width,
@@ -134,7 +134,7 @@ function newShapeSurface(
   );
 
   if (fill === undefined)
-    throw new Error(`Palette token "palette.${id}" cannot paint a new panel.`);
+    throw new Error(`Palette token "palette.${id}" cannot paint a new shape.`);
 
   return {
     ...PLACED,
@@ -409,7 +409,7 @@ export function createNewChartDefaults(
   family: ChartFamily,
 ): ChartContent["settings"] {
   const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
-  const surface = surfacePalette(globals, "chart");
+  const surface = surfacePalette(globals, "chart", SURFACE_TOKENS);
 
   if (paint === undefined) {
     throw new Error("New charts require a palette reference.");
@@ -450,20 +450,26 @@ export function createNewChartDefaults(
 const CONTENT_TOKENS = ["text", "ink", "foreground", "primary", "accent"];
 const SURFACE_TOKENS = ["background", "bars", "scene", "surface", "track"];
 
-/** The token for a surface an object draws on: a chart track, a panel fill.
+/** The surfaces a *card* takes, ahead of the scene's own: a shape filled with
+    the backdrop is that backdrop again, and nothing an author can select. */
+const CARD_SURFACE_TOKENS = ["panel", "frost", ...SURFACE_TOKENS];
+
+/** The token for a surface an object draws on: a chart track, a card fill.
     `what` names the object in the refusal, so a palette-less panel is not told
-    it needed a chart. */
+    it needed a chart. `candidates` is that job's surface vocabulary — a card
+    and a chart track are not the same surface, and the caller owns which. */
 function surfacePalette(
   globals: FabricGlobals | undefined,
   what: string,
+  candidates: readonly string[],
 ): readonly [string, NonNullable<FabricGlobals["palette"]>[string]] {
   const entries = Object.entries(globals?.palette ?? {}).filter(
     ([id]) => id !== "none",
   );
   const selected =
-    SURFACE_TOKENS.map((name) =>
-      entries.find(([id]) => id.toLowerCase() === name),
-    ).find((entry) => entry !== undefined) ?? entries[0];
+    candidates
+      .map((name) => entries.find(([id]) => id.toLowerCase() === name))
+      .find((entry) => entry !== undefined) ?? entries[0];
 
   if (selected === undefined)
     throw new Error(`A new ${what} requires a palette token.`);

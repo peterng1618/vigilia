@@ -96,10 +96,40 @@ describe("new object panel", () => {
       .click();
 
     // The saved document is only palette-reassignable if the new panel carries
-    // its own reference rather than a literal colour.
+    // its own reference rather than a literal colour. This palette has no card
+    // token, so it takes the surface it does have.
     expect(
       editor.canvas.add.mock.calls[0]?.[0].get(VIGILIA_PAINT_PROPERTY),
     ).toEqual({ fill: "palette.background" });
+  });
+
+  it("fills an inserted shape with the card token when the palette has one", () => {
+    const editor = editorStub();
+    const panel = createNewObjectPanel(
+      document.body,
+      editor as never,
+      {
+        ...palette,
+        palette: {
+          ...palette.palette,
+          panel: {
+            name: "Panel",
+            value: { kind: "solid" as const, color: "#081523d9" },
+          },
+        },
+      } as never,
+    );
+
+    panel.root
+      .querySelector<HTMLButtonElement>('[data-vigilia-panel-add="ellipse"]')!
+      .click();
+
+    // A shape the author draws is a card they will put something on. Filled with
+    // the scene's own backdrop it is not a shape at all, and nothing an author
+    // cannot see can be selected or edited.
+    expect(
+      editor.canvas.add.mock.calls[0]?.[0].get(VIGILIA_PAINT_PROPERTY),
+    ).toEqual({ fill: "palette.panel" });
   });
 
   it("labels the panel button for an author and a screen reader", () => {

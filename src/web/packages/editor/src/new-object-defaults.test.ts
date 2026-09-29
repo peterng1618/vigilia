@@ -43,6 +43,26 @@ const globals = {
   },
 };
 
+/** The shape of a real palette: a scene backdrop, a card surface and a content
+    token. A shape the author draws has to be legible against the first and
+    usable on the second, so all three have to be present for the rule to bite. */
+const cardGlobals = {
+  ...globals,
+  palette: {
+    ...globals.palette,
+    panel: {
+      name: "Panel",
+      value: { kind: "solid" as const, color: "#081523d9" },
+    },
+    text: { name: "Text", value: { kind: "solid" as const, color: "#ecf5ff" } },
+  },
+};
+
+/** A shape that is drawn rather than stroked: the ones an author fills. */
+const CLOSED_KINDS = SHAPE_KINDS.filter(
+  (kind) => kind !== "polyline" && kind !== "line",
+);
+
 describe("new object defaults", () => {
   it("derives a non-transparent palette reference for a new paintable object", () => {
     const defaults = createNewPaintDefaults(globals);
@@ -204,6 +224,48 @@ async function revive(object: Record<string, unknown>): Promise<FabricObject> {
 }
 
 describe("new shape defaults", () => {
+  it.each(CLOSED_KINDS)(
+    "fills a new %s as a card, not as the scene's own backdrop",
+    (kind) => {
+      const shape = createNewShape(`shape-${kind}`, cardGlobals, kind);
+
+      // A shape the author draws is a surface they will put something on, and
+      // `background` is what is painted behind it. Filling a whole shape with
+      // the colour it sits on is not a card, it is nothing at all — and an
+      // invisible object cannot be selected or edited.
+      expect(shape.get(VIGILIA_PAINT_PROPERTY), kind).toEqual({
+        fill: "palette.panel",
+      });
+      expect(shape.fill, kind).toBe("#081523d9");
+    },
+  );
+
+  it("keeps a new closed shape legible when the palette has no card token", () => {
+    // A palette without a card surface still has to get a fill. `background` is
+    // then the best surface it has, which is the fallback the surface list was
+    // always for.
+    for (const kind of CLOSED_KINDS) {
+      const shape = createNewShape(`shape-${kind}`, globals, kind);
+      expect(shape.get(VIGILIA_PAINT_PROPERTY), kind).toEqual({
+        fill: "palette.background",
+      });
+    }
+  });
+
+  it.each(["polyline", "line"] as const)(
+    "strokes an open %s with a content token rather than a surface",
+    (kind) => {
+      // The other half of the same rule: an open shape is stroked, and a
+      // stroke in a surface colour is as invisible as a fill in one.
+      const shape = createNewShape(`shape-${kind}`, cardGlobals, kind);
+
+      expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+        stroke: "palette.text",
+      });
+      expect(shape.stroke, kind).toBe("#ecf5ff");
+    },
+  );
+
   it.each(SHAPE_KINDS)(
     "places a new %s inset, at artboard coordinates",
     (kind) => {

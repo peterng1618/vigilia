@@ -771,16 +771,16 @@ test.describe("Fabric editor route", () => {
     // must leave the controls bound to *that* object — asserted by the id the
     // bridge reports and by the token the controls show. A starter card behind
     // it would also render the fields, so "the field is visible" proves
-    // nothing; the inserted panel's fill is the surface token and no card
-    // shares it.
+    // nothing; the inserted panel's fill is the card token and no card
+    // shares it — the starter's are all `frost`.
     const panelId = (await activeId(page)) ?? "";
     const inserted = await clientOfScene(page, panelId);
     await page.mouse.click(inserted.x, inserted.y);
     await expect.poll(() => activeId(page)).toBe(panelId);
-    await expect(fill).toHaveValue("palette.background");
+    await expect(fill).toHaveValue("palette.panel");
 
     // Keyboard: one arrow step on the fill token. The inserted panel starts on
-    // the surface token, so a step is a real change the envelope can show.
+    // the card token, so a step is a real change the envelope can show.
     await fill.focus();
     const fillBefore = await fill.inputValue();
     await page.keyboard.press("ArrowDown");
@@ -897,8 +897,9 @@ test.describe("Fabric editor route", () => {
     );
     expect((polygon?.["points"] as unknown[]).length).toBe(5);
     // The material the author did not touch is still a palette reference, so
-    // the document stays reassignable.
-    expect(polygon?.["vigiliaPaint"]).toEqual({ fill: "palette.background" });
+    // the document stays reassignable — and it is the card token, because a
+    // polygon filled with the scene's own backdrop is not a shape at all.
+    expect(polygon?.["vigiliaPaint"]).toEqual({ fill: "palette.panel" });
   });
 
   test("reassigns an authored panel's fill, stroke and shadow before deleting a token", async ({
@@ -940,7 +941,7 @@ test.describe("Fabric editor route", () => {
     );
     expect(panel).toBeDefined();
     expect(panel?.["vigiliaPaint"]).toEqual({
-      fill: "palette.background",
+      fill: "palette.panel",
       stroke: "palette.dim",
       shadowColor: "palette.dim",
     });
