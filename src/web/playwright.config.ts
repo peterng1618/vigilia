@@ -27,6 +27,18 @@ import { HOST_PORT, HOST_THEMES_DIR } from "./tests/e2e/host-theme.js";
  */
 const HOST_SPECS = /host-(player|settings|media).spec.ts/;
 
+/**
+ * The rebuild drives its own preview on its own port, under
+ * `playwright.rebuild.config.ts`, for the reason that config states: two agents
+ * on one preview is how a proof ends up screenshotting somebody else's theme.
+ * A file with its own runner cannot also run under this one — it would arrive
+ * at the shared 4174 server, which is not the bundle its fixes were built into,
+ * and fail for a reason that has nothing to do with the rebuild. Excluded here
+ * for the same reason the host specs are: they need an arrangement this config
+ * does not provide.
+ */
+const REBUILD_SPEC = /author-journey-rebuild\.spec\.ts/;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   // Seeds the host fixture once; the config itself runs in every worker.
@@ -81,13 +93,13 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 720 },
       },
-      testIgnore: HOST_SPECS,
+      testIgnore: new RegExp(`${HOST_SPECS.source}|${REBUILD_SPEC.source}`),
     },
     {
       // Tall phone viewport exercises contain-mode letterboxing.
       name: "phone-chromium",
       use: { ...devices["Pixel 7"] },
-      testIgnore: HOST_SPECS,
+      testIgnore: new RegExp(`${HOST_SPECS.source}|${REBUILD_SPEC.source}`),
     },
     {
       // One real host, one set of stores: serial by construction.
