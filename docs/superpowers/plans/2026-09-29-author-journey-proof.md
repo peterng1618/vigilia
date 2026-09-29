@@ -799,6 +799,27 @@ Meta is covered — `modifier: true` computes `ctrlKey || metaKey`, confirmed by
 
 **Also found and left:** `EditorShell.setFitMode()` has **no callers** and had none before — now unambiguously dead, and not that agent's file. Queued.
 
+### F1.11 landed, and it moved the number that decides it (`df9e725`)
+
+**Transmission went from 0.216 to 0.718.** Same script, same document, same photograph, only the glass checkbox differing:
+
+| | card interior luma | photograph beside it | transmission |
+|---|---|---|---|
+| before | 43.7–47.5, mean **45.4** | 156.8–214.6, mean 189.1 | **0.216** |
+| after | 129.6–144.4, mean **137.4** | the same | **0.718** |
+
+The editor reads the same way: **34.1 → 85.2** (0.247 → 0.961). Before, the card reproduced the finding's exact signature — 35–50 luma against a bright field, a near-black rectangle with no trace of the sky or the buildings. After, **the sky's gradient runs through it**, the building tops are faintly diffused at its lower edge, and the interior moves 15 luma across the card as the sky changes behind it. ADR 0013's numbers did not move; nothing was re-argued.
+
+**The rule, and the problem it solves.** *A default follows the treatment; a choice survives it.* Nothing in the scene records **which hand** set a paint reference, so the honest test is the surface `new-object-defaults` hands a new shape **right now**: a reference equal to that is a default and moves to `frost`; anything else is a choice and is left alone; no reference at all takes `frost`. That is why a chart painted blue and then frosted **keeps its blue** — and it is why option (a), "always overwrite", was rejected: it would have thrown the author's colour away.
+
+Ownership stayed clean: `new-object-defaults` owns the token lists and the new question they answer, `panel.ts` exports `paintRefs`/`writeRef` rather than letting the control keep a second copy, `glass.ts` applies. `GLASS_OBJECT_TYPES` untouched.
+
+**A test was asserting the defect.** `author-journey-display.spec.ts:222` had `toBe("palette.panel")` under the message *"a card the author frosted carries the frosted material"* — passing, and wrong. Propagated to the token plus the other half of the rule.
+
+**Also:** `surfacePalette` no longer throws on a palette-less document, because a throw inside a click handler would leave the treatment written and the fill not — a half-applied edit. And `new-fabric-theme-objects.ts` needed nothing: `frostedCard` already wrote `palette.frost`. **The starter's cards were never the broken ones — the hand-rebuilt ones were.**
+
+**Not verified:** the eight-card composition was not re-measured, only one card twice on one photograph. And whether a person now calls it glass **remains the user's call** — that verdict was never mine to make.
+
 ### The display proof — the glass does not read as glass, and the reason is not the tint (2026-09-29)
 
 **The cards read as tinted panels, not glass.** Measured rather than judged: card interiors sit at **35–50 luma** where the photograph behind them spans **50–196**. The clock card sits on sky at 140.8 and measures **34.5** — and `0.851 × 21 + 0.149 × 140.8` predicts **38.9**, so the card is 85% fill and 15% of what is behind it.
