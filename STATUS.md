@@ -19,10 +19,10 @@ hand is what finds the authoring control that is missing.
 
 ## Last completed change
 
-- **F1.24: a provider's reason is redacted where it is composed.** `redactForBrowser` sits in `provider.ts` — the file whose `ProviderHealth` comment already said *"messages may reach a browser and must be redacted"* — and both providers call it before the string becomes a message. Decision note [0014](docs/decisions/0014-a-provider-reason-is-redacted-where-it-is-composed.md).
-- **What it removes is the machine, not the diagnosis.** A URL, a `host:port` and a filesystem path become *"its configured address"* — the exact phrase `a34b838`'s player net already substitutes, so the two layers cannot disagree. `connect ECONNREFUSED` and `ENOENT` stay: a display that says only "no reading" has learned nothing a person can act on.
-- **The sentence is unchanged, so the player's grouping is untouched.** `lhm.ts` still composes one reason per cause; the player's seven tests pass unmodified and its net stays as the net it was written to be.
-- **Probed each real error string** rather than assuming: LHM gives `connect ECONNREFUSED 127.0.0.1:8085` and host-authored `LHM answered 500`; `systeminformation` gives `spawn C:\Windows\System32\wbem\WMIC.exe ENOENT`. A `\b` does not work before a `/`, so the anchor is a lookbehind — which also leaves `2026/09/29` alone, and `2340:1080` and `19.5:9` are a test, not a hope. 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0. Red-without-fix: the sample message carried `127.0.0.1` and `WMIC.exe`.
+- **F1.30: the host's own three pages name the icon they serve.** `library.html`, `settings.html` and `firstRunPage()` each carry `<link rel="icon" href="/settings/favicon.svg">` — the file `8e0c452` already made for the editor and the player, **copied byte for byte**, not authored again.
+- **The href is absolute, and the host needs no relative care.** The editor's `./favicon.svg` is relative because it is mounted at `/editor/`, where an absolute path resolves against the player's dist. The host's pages are served at `/` and `/settings` — two different directories — so a relative href would resolve against whichever one served the document; `/settings/favicon.svg` is the same path for all three.
+- **Proven headed, because headless proves nothing here.** Headless Chromium never fetches a favicon, so a headless assertion passes with or without the fix — the same trap `8e0c452` recorded. Headed on a real host: both pages declare the icon, both fetch it with **200**, and both log **zero** console errors. Red without the fix, headed: no `<link>` declared and `/` logged the `/favicon.ico` 404.
+- `document-favicon.test.ts` also asserts the host's copy is byte-identical to the editor's, which is what notices when one of the three drifts. 2070 unit tests green; `typecheck`, `lint`, `format:check` exit 0.
 
 ## Next
 
