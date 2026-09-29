@@ -340,6 +340,16 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 **A new shared-tree hazard, recorded below:** two concurrent Playwright runs sharing the default `test-results/` produced a spurious teardown `ENOENT` on a test that had actually passed.
 
+### Queued — the screenshot spring clean (raised by the user, 2026-09-29)
+
+`docs/evidence/screenshots/` holds **57 images** and a large share are stale: they show the old starter theme, an editor UI from before the current shell, or the **v1 schema**, which is queued for removal. A stale evidence screenshot is worse than none — it is a claim about the product that is no longer true, kept in the repo where a reader will believe it.
+
+**The approach is mechanical rather than a judgement call per file.** Regenerate every registered capture from the current build with `VIGILIA_CAPTURE=1 --workers=1`, then diff: an image that regenerates differently was stale, and an image that regenerates identically was already current. That answers all 57 without anyone eyeballing each one, and it cannot be talked into leaving a stale picture because it "looked fine".
+
+**Then** delete the README rows whose capture no longer exists or documents v1 behaviour that is going away, and say which images were dropped rather than quietly emptying a directory.
+
+**Sequencing is a decision, and it is yours.** If this runs *before* v1 is removed, the captures that document v1 are regenerated now and become stale again the moment v1 goes. If it runs *after*, the cleanup is done once. The user should pick — and note that **capture runs write straight into `docs/evidence/screenshots/`, so this must not run concurrently with anything else holding a browser**, which is why it is queued rather than dispatched while the display proof is in flight.
+
 ### The rebuild finished — and what it did not do
 
 Nine tests, 1.9 minutes, all eight regions built from their own blank theme through the delivered UI. **Full Playwright: 206 passed, 143 skipped, 5 failed, exit 1** — and the agent read each of the five rather than counting them: two are stale assertions against landed work, one is filed issue #7, one sits in a file another agent was editing, and one is a player chroma threshold in a file it had not touched. It fixed the one that was cleanly its own: `display-fabric.spec.ts:663` still asserted a string `player/src` has not contained since F1.14, so it guarded nothing and could not pass.
