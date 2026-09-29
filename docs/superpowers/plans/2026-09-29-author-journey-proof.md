@@ -1017,7 +1017,9 @@ This is the finding F1.16 half-solved: that fix made a plain shape visible by gi
 
 **U27 — a UI for gradients, sharing the colour picker's parts.** The palette already accepts gradients — the Paint chooser offers *Linear gradient* and the palette manager has an angle and a stop list — but there is no editor for them; the stops are text fields. **The reuse answer is that the colour picker's swatch and stop list already *are* the gradient editor**: one component family where a solid is a single stop. So this is not two features that share a look, it is one feature used twice, and the gradient case is the case with more than one stop.
 
-### U29, U30 — found 2026-09-30 by driving the product, both measured**U29 — every new object lands on top of the last one.** On a blank 1920×1080
+### U29, U30 — found 2026-09-30 by driving the product, both measured
+
+**U29 — every new object lands on top of the last one.** On a blank 1920×1080
 theme, six objects inserted in a row: rect, circle and triangle all at
 **(40, 40)**, both charts at **(120, 80)**. Three shapes give three layer rows
 and **one** visible shape on the canvas. The artboard is 1920×1080 and a new
