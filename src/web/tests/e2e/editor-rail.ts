@@ -23,19 +23,3 @@ export async function openRailPane(page: Page, name: string): Promise<void> {
   if (showing) return;
   await entry.click();
 }
-
-/**
- * Shows the selection inspector, leaving one that is already showing alone.
- *
- * A separate helper because the state that decides it is not the same state:
- * the inspector is a region rather than one of four interchangeable panes, so
- * its entry carries `aria-expanded` and no `aria-pressed`. Read through
- * `openRailPane`'s test it would never be "showing", and every call would be an
- * unconditional click — which closes what the caller just opened, the exact
- * failure F1.28 was filed for.
- */
-export async function openInspector(page: Page): Promise<void> {
-  const entry = railEntry(page, "Inspect");
-  if ((await entry.getAttribute("aria-expanded")) === "true") return;
-  await entry.click();
-}

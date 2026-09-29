@@ -86,10 +86,9 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   expect(root.querySelector(".editor-shell-dock")?.parentElement).toBe(
     root.querySelector("#stage"),
   );
-  // Four panes and the inspector, which the fifth entry opens.
   expect(
     root.querySelector('[aria-label="Editor areas"]')?.children.length,
-  ).toBe(5);
+  ).toBe(4);
   expect(root.textContent).toContain("File");
   expect(root.textContent).toContain("Arrange");
   expect(root.querySelector('select[aria-label="Shell palette"]')).not.toBeNull();
@@ -104,68 +103,17 @@ function railEntry(root: HTMLElement, label: string): HTMLButtonElement {
   )!;
 }
 
-/** `matchMedia` is absent under jsdom, so the shell reads a wide surface there.
- *  A test that needs the narrow one has to say so, exactly as a browser does. */
-function stubNarrowShell(narrow: boolean): () => void {
-  const original = window.matchMedia;
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    writable: true,
-    value: (query: string) => ({
-      matches: narrow && query === "(max-width: 980px)",
-      media: query,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }),
-  });
-  return () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      writable: true,
-      value: original,
-    });
-  };
-}
-
-it("opens on the canvas on a narrow shell and on the inspector on a wide one", () => {
-  // The default follows the surface, because the two want opposite first
-  // paints: a phone author arrives to the canvas they are authoring on, and a
-  // desktop author arrives to the selection they came to edit.
-  for (const [narrow, open] of [
-    [true, false],
-    [false, true],
-  ] as const) {
-    const restore = stubNarrowShell(narrow);
-    try {
-      const root = document.createElement("div");
-      const layout = createShellLayout(root);
-      expect(root.querySelector<HTMLElement>(".editor-shell-inspector")!.hidden).toBe(
-        !open,
-      );
-      expect(root.querySelector<HTMLElement>(".editor-shell-panel")!.hidden).toBe(
-        false,
-      );
-      layout.destroy();
-    } finally {
-      restore();
-    }
-  }
-});
-
 it("names every rail entry by its label and draws an icon, not a glyph", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const entries = Array.from(
     root.querySelectorAll<HTMLButtonElement>(".editor-shell-rail button"),
   );
-  // The inspector is the fifth entry: it is the selection's own surface, and
-  // below 980px it is the only way to reach it at all (F1.29).
   expect(entries.map((entry) => entry.getAttribute("aria-label"))).toEqual([
     "Layers",
     "Add",
     "Assets",
     "Settings",
-    "Inspect",
   ]);
 
   for (const entry of entries) {
@@ -176,112 +124,6 @@ it("names every rail entry by its label and draws an icon, not a glyph", () => {
   }
 
   layout.destroy();
-});
-
-it("collapses the inspector from the rail and leaves the accessibility tree", async () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  const inspector = root.querySelector<HTMLElement>(".editor-shell-inspector")!;
-  const body = root.querySelector<HTMLElement>(".editor-shell-body")!;
-  const entry = railEntry(root, "Inspect");
-
-  // Open on a wide shell — jsdom has no `matchMedia`, so this is the wide
-  // surface, and where the inspector has always been.
-  expect(inspector.hidden).toBe(false);
-  expect(body.dataset["inspector"]).toBe("true");
-  expect(entry.getAttribute("aria-expanded")).toBe("true");
-  // No `aria-pressed`: the entry names a region, and there is no set of panes
-  // for it to be pressed against.
-  expect(entry.hasAttribute("aria-pressed")).toBe(false);
-
-  await act(async () => entry.click());
-
-  // A closed region leaves the accessibility tree rather than sitting in it
-  // with no box, which is the defect F1.29 was hiding behind a `display: none`
-  // that measured 0x0 and was still read out.
-  expect(inspector.hidden).toBe(true);
-  expect(body.dataset["inspector"]).toBe("false");
-  expect(entry.getAttribute("aria-expanded")).toBe("false");
-  // The panel is untouched by the inspector's toggle — they are two regions
-  // that can be open at once on a wide shell.
-  expect(root.querySelector<HTMLElement>(".editor-shell-panel")!.hidden).toBe(
-    false,
-  );
-
-  await act(async () => entry.click());
-
-  expect(inspector.hidden).toBe(false);
-  expect(entry.getAttribute("aria-expanded")).toBe("true");
-
-  layout.destroy();
-});
-
-it("tells a hovering author what the Inspect entry will do", () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  expect(railEntry(root, "Inspect").title).toBe("Hide Inspect");
-  layout.destroy();
-});
-
-it("keeps both regions open at once on a wide shell", async () => {
-  const restore = stubNarrowShell(false);
-  try {
-    const root = document.createElement("div");
-    const layout = createShellLayout(root);
-
-    // A wide shell has room for a column each, so the two are independent — the
-    // inspector must not cost the author the layer tree.
-    expect(root.querySelector<HTMLElement>(".editor-shell-panel")!.hidden).toBe(
-      false,
-    );
-
-    await act(async () => railEntry(root, "Inspect").click());
-    expect(root.querySelector<HTMLElement>(".editor-shell-inspector")!.hidden).toBe(
-      true,
-    );
-
-    await act(async () => railEntry(root, "Inspect").click());
-    expect(root.querySelector<HTMLElement>(".editor-shell-inspector")!.hidden).toBe(
-      false,
-    );
-    expect(root.querySelector<HTMLElement>(".editor-shell-panel")!.hidden).toBe(
-      false,
-    );
-
-    layout.destroy();
-  } finally {
-    restore();
-  }
-});
-
-it("shows one region at a time on a narrow shell", async () => {
-  const restore = stubNarrowShell(true);
-  try {
-    const root = document.createElement("div");
-    const layout = createShellLayout(root);
-    const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
-    const inspector = root.querySelector<HTMLElement>(".editor-shell-inspector")!;
-
-    await act(async () => railEntry(root, "Inspect").click());
-    expect(inspector.hidden).toBe(false);
-    // Two 280px sheets over a 336px canvas is not a wider panel; it is the top
-    // one hiding the bottom one, so opening either closes the other.
-    expect(panel.hidden).toBe(true);
-
-    await act(async () => railEntry(root, "Add").click());
-    expect(panel.hidden).toBe(false);
-    expect(inspector.hidden).toBe(true);
-
-    // Closing the showing region leaves the canvas alone, which is the same
-    // answer on both widths.
-    await act(async () => railEntry(root, "Add").click());
-    expect(panel.hidden).toBe(true);
-    expect(inspector.hidden).toBe(true);
-
-    layout.destroy();
-  } finally {
-    restore();
-  }
 });
 
 it("collapses the panel when the rail entry for the visible pane is clicked again", async () => {

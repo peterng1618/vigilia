@@ -259,16 +259,6 @@ body,
 .editor-shell-body[data-collapsed="true"] {
   grid-template-columns: 52px minmax(0, 1fr) 280px;
 }
-/* The inspector collapses the same way, and the two compose: it is a grid item
-   only while it is open, so a closed one is simply not there for the template
-   to place. All four states are named rather than left to fall out of the item
-   count, because which track the stage lands in is what the author sees. */
-.editor-shell-body[data-inspector="false"] {
-  grid-template-columns: 52px 280px minmax(0, 1fr);
-}
-.editor-shell-body[data-collapsed="true"][data-inspector="false"] {
-  grid-template-columns: 52px minmax(0, 1fr);
-}
 .editor-shell-rail,
 .editor-shell-panel,
 .editor-shell-inspector {
@@ -302,21 +292,6 @@ body,
   min-height: 38px;
 }
 .editor-shell-rail button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
-}
-/* The inspector is a region of its own, not a fifth pane, so the rail marks
-   where the panes end: a hairline above it rather than a blank gap, which at
-   52px wide would read as a rendering fault. */
-.editor-shell-rail-inspector {
-  margin-top: auto;
-  border-top: 1px solid var(--shell-edge);
-  padding-top: 6px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  display: inline-flex;
-}
-.editor-shell-rail button[aria-expanded="true"]:not([aria-pressed]) {
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);
 }
 .editor-shell-rail button:hover,
@@ -762,86 +737,14 @@ body,
 [hidden] {
   display: none !important;
 }
-/* Below 980px the four-column shell has no room for a canvas, and narrowing the
-   panels does not rescue it: measured on a 412px Pixel 7, 52 + 240 + 8 + 8 +
-   16 padding left the stage 88px, which is a canvas no author can work in. So
-   below the breakpoint the grid is rail and stage and nothing else, and both
-   side regions become sheets over the stage. The canvas keeps the whole
-   remaining width (336px at 412) whether a region is open or not, so an author
-   edits and sees the result without the layout moving under them, and the
-   panel and the inspector each take the width back only while shown.
-
-   This replaces the rule that set `display: none` on the inspector here. That
-   rule is what F1.29 was: the panel was in the DOM at every width and reachable
-   at none, and its controls measured 0x0 because a `display: none` ancestor is
-   not laid out but is still in the accessibility tree — read out by a screen
-   reader, unpressable by a finger. */
 @media (max-width: 980px) {
-  /* Every state of the shell sets both attributes, so requiring both names all
-     four combinations at once — and at a specificity that beats each of the
-     four base rules above. Listing the states one at a time here is what let
-     `data-inspector="false"` fall through to the three-track rule, which is the
-     phone's own default and measured as a 48px stage. */
-  .editor-shell-body[data-collapsed][data-inspector] {
+  .editor-shell-body {
+    grid-template-columns: 52px 240px minmax(0, 1fr);
+  }
+  .editor-shell-body[data-collapsed="true"] {
     grid-template-columns: 52px minmax(0, 1fr);
   }
-  /* The sheets are positioned against the body, not the shell: `.editor-shell`
-     is `position: relative` and would anchor them over the header. */
-  .editor-shell-body {
-    position: relative;
-  }
-  /* The header is a single non-wrapping flex line, and its contents do not fit
-     a phone: measured at 412px the row is 467px wide in a 396px box, which put
-     "Save package" at x=397 — 64 of its 79 pixels off the right edge, on a
-     phone where saving is the one action that must never be out of reach. It
-     wraps instead, and the primary button keeps `margin-left: auto` so it sits
-     at the right of whichever line it lands on. */
-  .editor-shell-header {
-    flex-wrap: wrap;
-  }
-  /* Both regions overlay the stage, which is `position: relative` and fills the
-     remaining column, so a sheet covers the canvas and never the rail. The left
-     inset is the rail and the gap before it — 8 padding + 52 + 8 = 68 — because
-     a sheet over the rail is a trap: the entry that dismisses it is under it.
-     Right and left both set, so the sheet is as wide as the gap allows and the
-     max-width is what caps it on a roomier phone. */
-  .editor-shell-panel,
   .editor-shell-inspector {
-    position: absolute;
-    z-index: 4;
-    top: 8px;
-    bottom: 8px;
-    left: 68px;
-    right: 8px;
-    max-width: 280px;
-  }
-  /* The reveal slides from the edge each sheet is anchored to rather than only
-     fading: a sheet arriving over the canvas with no edge movement reads as a
-     repaint. */
-  .editor-shell-panel {
-    animation-name: vigilia-sheet-in-left;
-  }
-  .editor-shell-inspector {
-    animation-name: vigilia-sheet-in-right;
-  }
-}
-@keyframes vigilia-sheet-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes vigilia-sheet-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+    display: none;
   }
 }

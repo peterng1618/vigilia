@@ -11,17 +11,11 @@ export const uiCopy = {
     add: "Add",
     assets: "Assets",
     settings: "Settings",
-    /** The inspector is a fifth rail entry, not a sixth pane: it is the
-     *  selection's own surface, and a phone-width shell has no room beside
-     *  the canvas for it as a column (F1.29). */
-    inspect: "Inspect",
-    /** What a rail entry does to its region, for the tooltip. One pair, because
-     *  every entry — the four panes and the inspector alike — hides and shows
-     *  with the same two words. The button's accessible name stays the region
-     *  it opens, so a screen reader is told the region and a hovering author is
-     *  told the action. */
-    hide: "Hide",
-    show: "Show",
+    /** What a rail entry does to the panel, for the tooltip. The button's
+        accessible name stays the pane it shows, so a screen reader is told the
+        pane and a hovering author is told the action. */
+    hidePanel: "Hide",
+    showPanel: "Show",
   },
   inspector: { design: "Design", data: "Data", style: "Style" },
   /** Selection inspector field labels. */
