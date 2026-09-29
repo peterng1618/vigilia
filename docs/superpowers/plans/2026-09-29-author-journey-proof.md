@@ -321,6 +321,20 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **A real bug its own test caught before the browser did.** A portrait document's aspect is the *reciprocal* of the ratio it would be named for, so a typed 1280 × 2778 measured **0.46** against a 19.5:9 entry of 2.17, matched nothing, and landed on 4:3 — the same stranding in a different hat. Ratios are matched long-over-short now.
 
+### F1.42, F1.43 and F1.40 done
+
+`75c671e`, `310cc2b`, `4ea07e7`.
+
+**F1.43 is the most consequential result in the pass, and it was worse than one assertion.** I recorded it as `host-player.spec.ts:504` alone. It found **five** `locator("pre")` assertions — four in `host-player.spec.ts`, one in `host-media.spec.ts` — and proved the claim on a real host at a `?theme=` that cannot be served: the display showed the failure page with `preCount 0, failureCount 1`. **The old assertion passed on a dead screen.** All five now name `[data-vigilia-load-failure]`.
+
+The reason none of it was caught: **nothing browser-tested the failure page at all.** It shipped with a jsdom test, and a jsdom test cannot see that a `<pre>` stopped being how the product fails.
+
+**F1.42 was two CSS declarations, and the library already had them.** Base UI measures the room on the popup's chosen side and publishes `--available-height`; a context menu is positioned with the collision avoidance its own source describes as *"dropdowns that… use `var(--available-height)` to limit their height"*. The menu was the half that was missing. Measured at 1280 × 420: before, the popup's bottom sat at 475 in a 420 viewport with `scrollHeight === clientHeight` and no scroll; after, capped at 410px, `End` scrolled 55px, "Pie" fully on screen, and `Enter` inserted it. **The Insert menu carried the identical defect** and the same rule fixes it. Its test asks Fabric and `elementFromPoint` where to click rather than hard-coding a coordinate that would rot.
+
+**F1.40 — investigated, not closed, and the cost measured.** Neither bad outcome can happen today, because the id is **inert across the boundary**: the chooser row carries it as `data-template` and links to `/editor/`, the editor's template branch calls `onNewFromStarter()` without reading `choice.id`, and no URL, route, dispatch or API resolves it. A rename leaves two surfaces spelling a label differently — a copy defect, not a broken link. Closing it *can* be done (a host-side test importing the editor's module passed), but it drags the whole starter composition and its `?url` asset imports into the host's Node run to compare two strings, and makes host tests depend on editor internals — **worse than the duplication**. It named the owner for when it does close: **`renderer-core`**, which both sides already depend on and which already carries product content both read (`MEASUREMENT_SYSTEMS`). Its own words on the margin: *"a chooser that can only open one starter has no way to say which."*
+
+**A new shared-tree hazard, recorded below:** two concurrent Playwright runs sharing the default `test-results/` produced a spurious teardown `ENOENT` on a test that had actually passed.
+
 ### The blank theme works, end to end — the plan's premise, verified
 
 Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
@@ -532,6 +546,7 @@ Measured 2026-09-29, so the driver does not rediscover these:
 - **Menus are `role="menuitem"`, and a closed menu stays in the DOM.** Querying `[role=menu] button` matches a stale menu's items and silently clicks the wrong control — this produced a false "Save to library does nothing" before it was caught. Match on `role="menuitem"` and confirm the item is on screen. A driver that clicks the wrong control produces a confident, wrong finding, which is worse than no finding.
 - **The Playwright MCP browser and the host ports are SHARED between the root session and every running agent.** Two agents and the root all drove one browser: an agent's player fixture at `:4191` navigated the root's page out from under it mid-test, and background hosts on `:4185`/`:4186` were killed twice by processes they did not own. **Each agent must pick its own ports and expect the browser to move** — the e2e suite's own ports (4173 player, 4174 editor, 4175 host) plus the root's (4180 editor) are already taken. If a page you were reading is not the page you opened, another agent moved it; re-navigate rather than reporting what you see.
 - **The rtk hook can report a false zero for `grep -c` across several files**, and the non-zero exit that follows reads exactly like "the file is missing". One implementer briefly concluded its own committed work had been reverted and was about to "fix" it; re-reading proved the files were untouched since its commit. **Re-verify a surprising "gone" with a direct read of the file before acting on it** — a phantom absence is worse than a real one, because it invites a change to something already correct.
+- **Two concurrent Playwright runs share the default `test-results/` directory**, and the collision produced a spurious teardown `ENOENT` **on a test that had passed**. Pass an isolated `--output` per run. A flaky teardown in a concurrent session is a harness collision until proven otherwise, and the reflex to "fix" it would have been a change to working code.
 
 ---
 
