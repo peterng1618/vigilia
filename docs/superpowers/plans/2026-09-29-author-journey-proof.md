@@ -340,6 +340,15 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 **A new shared-tree hazard, recorded below:** two concurrent Playwright runs sharing the default `test-results/` produced a spurious teardown `ENOENT` on a test that had actually passed.
 
+### The rebuild finished — and what it did not do
+
+Nine tests, 1.9 minutes, all eight regions built from their own blank theme through the delivered UI. **Full Playwright: 206 passed, 143 skipped, 5 failed, exit 1** — and the agent read each of the five rather than counting them: two are stale assertions against landed work, one is filed issue #7, one sits in a file another agent was editing, and one is a player chroma threshold in a file it had not touched. It fixed the one that was cleanly its own: `display-fabric.spec.ts:663` still asserted a string `player/src` has not contained since F1.14, so it guarded nothing and could not pass.
+
+**Two things it did not do, both of which are the next task:**
+
+1. **Nothing has been seen on a display.** Every region is proved *in the editor*. Task 11's first half — save the rebuilt theme, open it on a real host, compare the player against the editor — is not done. Given that a phone is the main display type, this is the largest remaining gap in the proof: the pass proved the composition is *authorable* and never proved it is *viewable*.
+2. **The backdrop is absent, and the reason was a genuine constraint collision — now resolved by the user.** The only photograph in the repo is the starter's own, and using it would be exactly the starter file the rules forbid. So every card is frosted over a flat colour rather than a photograph — which means the frosted material has been rebuilt and persisted but **never seen against an image**, which is the one thing the tint, the grain and the diffusion exist for. **The user supplied their own photograph** — Unsplash `CQhgno3yhv8`, "buildings near ocean", stated to be theirs, so no `THIRD-PARTY-NOTICES.md` entry is owed for a test asset. It is to be imported through the real control, not written as a fixture.
+
 ### The rebuild — what the proof was for
 
 **The reference composition was, until this pass, essentially unauthorable by hand.** The generator emitted it; no author could have built it. Eleven findings, eight classified blocking, all eight fixed and landed:
