@@ -89,7 +89,9 @@ describe("glass on the closed shapes", () => {
 
     // Outside the disc: the media never arrives, so the two agree.
     expect(s.pixel(82, 82)).toEqual(without.pixel(82, 82));
-    expect(without.pixel(82, 82)[3], "and there is nothing to agree with").toBe(0);
+    expect(without.pixel(82, 82)[3], "and there is nothing to agree with").toBe(
+      0,
+    );
     // Inside: opaque magenta, where without glass the canvas is clear.
     expect(s.pixel(100, 100)[3]).toBe(255);
     expect(without.pixel(100, 100)[3]).toBeLessThan(255);
@@ -179,10 +181,12 @@ describe("glass on the closed shapes", () => {
     // box around a shape with no interior.
     const s = magenta();
     s.canvas.add(
-      new Polyline(
-        [new Point(0, -25), new Point(25, 25), new Point(-25, 25)],
-        { left: 100, top: 100, fill: "transparent", ...GLASS },
-      ),
+      new Polyline([new Point(0, -25), new Point(25, 25), new Point(-25, 25)], {
+        left: 100,
+        top: 100,
+        fill: "transparent",
+        ...GLASS,
+      }),
     );
     s.canvas.renderAll();
 

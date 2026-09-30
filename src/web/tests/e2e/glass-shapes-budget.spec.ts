@@ -27,9 +27,6 @@ import { glassStripesPng } from "./glass-fixture.js";
 
 const ARTBOARD = { width: 1672, height: 941 };
 
-/** The box every shape shares, so the sampled region is the same for all five. */
-const BOX = { left: 120, top: 120, width: 240, height: 160 };
-
 /** One row of five shapes, so all five cost the same backdrop to draw. */
 const ROW = { left: 120, top: 620, width: 240, height: 160 };
 
@@ -38,7 +35,10 @@ type Kind = "Rect" | "Circle" | "Ellipse" | "Triangle" | "Polygon";
 /** The measured radius, and the one `MAX_GLASS_BLUR_RADIUS` allows. */
 const RADIUS = 48;
 
-function shape(kind: Kind, at: { left: number; top: number; width: number; height: number }) {
+function shape(
+  kind: Kind,
+  at: { left: number; top: number; width: number; height: number },
+) {
   const common = {
     version: "7.4.0" as const,
     originX: "left" as const,
@@ -51,7 +51,14 @@ function shape(kind: Kind, at: { left: number; top: number; width: number; heigh
   };
   switch (kind) {
     case "Rect":
-      return { ...common, type: "Rect", width: at.width, height: at.height, rx: 24, ry: 24 };
+      return {
+        ...common,
+        type: "Rect",
+        width: at.width,
+        height: at.height,
+        rx: 24,
+        ry: 24,
+      };
     case "Circle": {
       // Inscribed, so the box is the largest that fits: a circle in a 240x160
       // box is 160 across, not 240. Giving it width/2 would have made this the
@@ -74,7 +81,12 @@ function shape(kind: Kind, at: { left: number; top: number; width: number; heigh
         ry: at.height / 2,
       };
     case "Triangle":
-      return { ...common, type: "Triangle", width: at.width, height: at.height };
+      return {
+        ...common,
+        type: "Triangle",
+        width: at.width,
+        height: at.height,
+      };
     case "Polygon":
       // A square's corners as a diamond: its bounding box is the same box, and
       // it covers about half of it, which is the area-to-perimeter difference
@@ -108,9 +120,18 @@ function envelope(kinds: readonly Kind[]) {
     },
     globals: {
       palette: {
-        none: { name: "None", value: { kind: "solid" as const, color: "transparent" } },
-        bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
-        panel: { name: "Panel", value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" } },
+        none: {
+          name: "None",
+          value: { kind: "solid" as const, color: "transparent" },
+        },
+        bar: {
+          name: "Bar",
+          value: { kind: "solid" as const, color: "#101318" },
+        },
+        panel: {
+          name: "Panel",
+          value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },
+        },
       },
     },
     assets: [
@@ -440,14 +461,10 @@ test.describe("glass cost on the newly admitted shapes", () => {
     // more, and reports the ratio rather than gating on it.
     const ceiling = 6.44;
     for (const r of readings) {
-      expect(
-        r.cost,
-        `${r.kind} at 48 px is inside the flat band`,
-      ).toBeLessThan(ceiling);
-      expect(
-        r.cost,
-        `${r.kind} at 48 px is not inverted`,
-      ).toBeGreaterThan(0);
+      expect(r.cost, `${r.kind} at 48 px is inside the flat band`).toBeLessThan(
+        ceiling,
+      );
+      expect(r.cost, `${r.kind} at 48 px is not inverted`).toBeGreaterThan(0);
       // The ceiling in `scene-fabric/src/glass.ts`, per panel.
       expect(
         r.regionPixels,

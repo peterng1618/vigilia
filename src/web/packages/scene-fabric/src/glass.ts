@@ -625,7 +625,16 @@ function localPath(
     const end = number(object, "endAngle") ?? 360;
     if (r === undefined) return false;
     ctx.beginPath();
-    ctx.ellipse(0, 0, r, r, 0, radians(start), radians(end), object.counterClockwise);
+    ctx.ellipse(
+      0,
+      0,
+      r,
+      r,
+      0,
+      radians(start),
+      radians(end),
+      object.counterClockwise,
+    );
     return true;
   }
   if (object instanceof Ellipse) {

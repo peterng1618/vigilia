@@ -954,7 +954,9 @@ describe("authored glass treatment", () => {
     for (const type of ["Rect", "Circle", "Ellipse", "Triangle", "Polygon"]) {
       expect(
         validateFabricThemeEnvelope(
-          withObjects([{ type, id: "panel", vigiliaGlass: { blurRadius: 24 } }]),
+          withObjects([
+            { type, id: "panel", vigiliaGlass: { blurRadius: 24 } },
+          ]),
         ),
         type,
       ).toMatchObject({ ok: true });
