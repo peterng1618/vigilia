@@ -551,6 +551,64 @@ export function createRunEditor(
     return wrapper;
   };
 
+  /**
+   * Whether the reading prints its own unit, or the author writes one beside it.
+   *
+   * The reference theme does the second: `cpu-card-value` is a value run on
+   * `cpu.load` with `unitDisplay: "none"` and the "%" as a styled literal at the
+   * caption's size. Nothing here could author that — the chart panel has this
+   * control and the run panel did not, so an author who wanted it got the
+   * reading's unit and their literal both, and "45%%" on the display's face.
+   *
+   * It writes the **run**, not the binding: a run's own `unitDisplay` takes
+   * precedence, so setting the binding would be silently shadowed by exactly the
+   * theme this control exists to reproduce.
+   */
+  const unitDisplayField = (
+    index: number,
+    run: Extract<TextRun, { kind: "value" }>,
+  ): HTMLElement => {
+    const wrapper = document.createElement("label");
+    wrapper.textContent = uiCopy.panels.unitDisplay;
+    const select = document.createElement("select");
+    select.dataset["vigiliaRunUnitDisplay"] = String(index);
+    for (const [value, text] of [
+      ["", "Default"],
+      ["none", "None"],
+      ["short", "Short"],
+      ["long", "Long"],
+    ] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    select.value = run.unitDisplay ?? "";
+    select.addEventListener("change", () => {
+      const chosen = select.value;
+      // Built from the run without its `unitDisplay`, then set or not: dropping
+      // it after a spread would leave the key present with the old value.
+      const { unitDisplay: _previous, ...rest } = run;
+      commit(
+        index,
+        chosen === ""
+          ? rest
+          : {
+              ...rest,
+              // `exactOptionalPropertyTypes` is on: present with one of the
+              // three values, or absent.
+              unitDisplay: chosen as NonNullable<
+                Extract<TextRun, { kind: "value" }>["unitDisplay"]
+              >,
+            },
+      );
+      onChange();
+    });
+
+    wrapper.append(select);
+    return wrapper;
+  };
+
   runs.forEach((run, index) => {
     const row = document.createElement("section");
     row.dataset["vigiliaRun"] = String(index);
@@ -625,7 +683,10 @@ export function createRunEditor(
         run.kind === "value"
           ? port.bindings().find((binding) => binding.id === run.bindingId)
           : undefined;
-      if (run.kind === "value") row.append(bindingState(run, bound, source));
+      if (run.kind === "value") {
+        row.append(bindingState(run, bound, source));
+        row.append(unitDisplayField(index, run));
+      }
       if (
         bound !== undefined &&
         describeSemanticKey(bound.semanticKey)?.instant !== undefined

@@ -146,6 +146,43 @@ describe("binding a text run to a sensor", () => {
     return box.dispose();
   });
 
+  it("lets the author take the unit off a reading, as the reference theme does", () => {
+    // `cpu-card-value` in the reference is a value run on `cpu.load` with the
+    // "%" as a styled literal beside it. Nothing here could author that: the
+    // chart panel had this control and the run panel did not, so an author who
+    // wanted it got the reading's unit AND their literal, and "45%%" on the
+    // display's face.
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "cpu.load",
+    );
+    box.render();
+
+    const unit = box.pick<HTMLSelectElement>(
+      '[data-vigilia-run-unit-display="0"]',
+    );
+    expect(unit).toBeDefined();
+    // Default is no override: the run says nothing about units.
+    expect(box.runs()[0]).not.toHaveProperty("unitDisplay");
+
+    choose(unit, "none");
+    box.render();
+    // On the RUN, not the binding: a run's own unitDisplay wins, so writing the
+    // binding would be shadowed by the very theme this control reproduces.
+    expect(box.runs()[0]).toMatchObject({ kind: "value", unitDisplay: "none" });
+    expect(box.stored()[0]?.unitDisplay).toBeUndefined();
+
+    // Clearing it is not the same as "none" — the default is the reading's own.
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-unit-display="0"]'),
+      "",
+    );
+    box.render();
+    expect(box.runs()[0]).not.toHaveProperty("unitDisplay");
+    return box.dispose();
+  });
+
   it("previews the tokens as they are typed, and stores what was typed", () => {
     const box = harness(literalClock);
     choose(
