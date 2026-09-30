@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **56 rows**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **58 rows, 21 open**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
 - **Nothing is dispatched, and the root is driving the product directly.** Q1 and Q2 both landed (`528b0d2`, `bf3bf2b`); since then this session found and fixed four more defects itself rather than dispatching. `dispatch-active.md` in the workspace is current.
 - **The standing rule earned the hard way is in the plan's Global Constraints: a canvas readback is a snapshot of a moment.** Twelve findings on this pass were the instrument, not the product — most recently a player screenshot taken before the first telemetry batch, which read as "no data anywhere" on a host that was streaming 133 batches. **Screenshot for what is visible, read the DOM for what is true, and when two probes disagree, find out which is wrong before believing either.**
 - **Two claims were refuted by measuring rather than by reading**, and both would have been filed as defects: Group looked keyboard-only until a real canvas multi-select showed it in the context menu, and the Starter theme's rows looked id-derived until the document showed all 52 objects carry an authored `name`. **Check the counter-claim before writing the row.**
@@ -44,18 +44,18 @@ The loop, in order:
 
 ## Last completed change
 
-- **One Size field no longer costs an inserted text object its width** (`208fc7f`). Typing into Height wrote `box: { height }` with no width, and the next text change made `authoredBox` multiply an `undefined` by the scale — the object ended with `width: null` and no bounding rect at all. Both dimensions now seed from the object's measured edge.
-- **A pasted image and a new group are named instead of printed as uuids** (`b1022cf`). `object-name.ts` says absence means fall back to the id, and a minted id is a uuid, so the two creators that left `name` unset were the two the fallback could not help. `newObjectName` already existed for exactly this and its own comment named the failure.
-- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that didn't dedupe.
-- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay.
-- **Two open rows were refuted rather than fixed** (`b0e3fb4`): vg-042's Height field tracks the measurement exactly (79 for 78.83, then 463 for 462.85), and vg-043's key never reaches the author — `innerText` holds neither `colour-2` nor `colour-3`. Gate green: **2416 unit tests across 177 files**, `backlog:check` 57 rows.
+- **Six backlog rows moved in one pass, one by fix and five by correction.** `backlog:check` holds at 58 rows, 21 open. What changed most is how many rows turned out to be wrong: three were test or copy drift, two were mine to measure again, and one was a ruling that still stands.
+- **A mistyped display URL 404s instead of showing a dashboard** (`8cef8d2`). The cause was `serveStatic` treating any extension-less path as a client route — the editor needs that, the player is one document. `/play` and `/display` had been answering 200 with a live display.
+- **A paste and a group are named, not printed as uuids** (`b1022cf`); **one Size field no longer costs a text object its width** (`208fc7f`); **entering a group dims the layer list on entry** (`b5e2f79`); **the drag marquee survives a pause** (`34688c3`) — it was lasting 33ms, one frame of a 30fps repaint that erases anything drawn on the context rather than into the scene.
+- **Two test defects that read as product faults** (`b95e25a`): a modal probed with `isVisible()` the instant a chord landed never saw an async dirty guard, and a test asserted New returns the reference composition when New is a blank theme. Plus a text run can be told not to print its unit (`e53a7aa`). The reference theme already used `unitDisplay: "none"`; only the chart panel could set it. Reproduced live: `Short` renders `69%%`, `None` renders `64%`.
+- **Gate green:** `typecheck`, `lint` (two pre-existing errors cleared), `format:check`, `backlog:check` 58 rows, and the unit suite at 2418 across 177 files before the last two changes.
 
 ## Next
 
-1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
-2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it, and the POSIX root-volume join.
-3. **The backlog-tracking boundary is yours and is still undecided** — what lands in `docs/product/backlog.jsonl` versus what a commit records. A session was lost mid-sentence stating it and it is written down nowhere. Nothing has been pruned in the meantime.
-4. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
+1. **Keep draining the registry.** 21 open; the drainable ones are vg-044 (chart series colours coupled by index), vg-050 (Trends plots nothing), vg-030 (asset handling), vg-028 and vg-029 (chart movement and preview noise). vg-021 (Line handles) is fully specified in the plan and never built.
+2. **The rest need a decision, not a fix** — vg-023's canvas dim, vg-046 artboard clipping, vg-056 layer multi-select, vg-036 phone fit, vg-037 circle-glass, and vg-051, which is yours: where the defect queue lives, including whether a single dispatched request becomes a row. Nothing has been pruned while you think about it.
+3. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
+4. **Watch the viewport when testing gestures.** The e2e window is 1280×720 and the manual one 1035×1000; a drag that marquees in one can move an object in the other, because where the stage letterboxes the artboard decides what is empty.
 5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
 
 ## Blockers / unverified
