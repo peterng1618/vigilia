@@ -211,6 +211,18 @@ function solidFields(
   color.input.addEventListener("change", () => {
     const next = color.input.value.trim();
     if (next.length === 0) return;
+    // The browser is the authority on what a colour is, and it already ships
+    // the answer: `CSS.supports` asks the same engine that will paint it. A
+    // hand-written list of colour names would be a second, worse copy of that,
+    // and a value the engine rejects is one where `ctx.fillStyle` keeps the
+    // PREVIOUS colour — so the edit would silently do nothing while the
+    // document carried the nonsense the validator then has no rule to refuse.
+    if (typeof CSS !== "undefined" && CSS.supports?.("color", next) === false) {
+      color.input.setCustomValidity(uiCopy.panels.colourUnpaintable(next));
+      color.input.reportValidity();
+      return;
+    }
+    color.input.setCustomValidity("");
     commit({ ...entry, value: { kind: "solid", color: next } });
   });
   return [color.label, color.input];

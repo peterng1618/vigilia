@@ -725,6 +725,38 @@ test.describe("Fabric editor route", () => {
     expect(during).toBeGreaterThan(control);
   });
 
+  test("refuses a palette colour the browser cannot paint", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await page.getByRole("button", { name: "Add colour" }).click();
+    const field = page.locator("[data-vigilia-palette-color]");
+
+    // jsdom has no `CSS` object, so this refusal can only be proven where the
+    // predicate actually lives: the browser that will paint the value.
+    await field.fill("#123456");
+    await field.press("Tab");
+    await expect(field).toHaveJSProperty("validity.valid", true);
+
+    // A value the engine rejects is refused with a message that names it, and
+    // `ctx.fillStyle` would have kept the PREVIOUS colour — so accepting it
+    // writes a document the renderer cannot honour.
+    await field.fill("not-a-colour");
+    await field.press("Tab");
+    await expect(field).toHaveJSProperty("validity.valid", false);
+    expect(
+      await field.evaluate((node: HTMLInputElement) => node.validationMessage),
+    ).toContain("not-a-colour");
+
+    // The refusal is not sticky: a value the engine can paint clears it.
+    await field.fill("rgb(1, 2, 3)");
+    await field.press("Tab");
+    await expect(field).toHaveJSProperty("validity.valid", true);
+  });
+
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
   }, testInfo) => {

@@ -422,6 +422,11 @@ export const uiCopy = {
     barColour: "Bar colour",
     /** A paint's own colour, as against the token it is chosen from. */
     colour: "Colour",
+    /** Shown when the browser cannot paint what was typed. Named by the value
+     *  itself, because the author has to be able to see which of several they
+     *  mistyped. */
+    colourUnpaintable: (value: string) =>
+      `Not a colour the browser can paint: "${value}". Hex, rgb(), hsl() or a CSS colour name.`,
     family: "Family",
     size: "Size",
     /** The three controls that choose an artboard size. They choose it
