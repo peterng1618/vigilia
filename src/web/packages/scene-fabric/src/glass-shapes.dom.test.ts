@@ -288,6 +288,92 @@ describe("glass on the closed shapes", () => {
     }
   });
 
+  it("samples one region per box, whatever shape the box belongs to", () => {
+    /**
+     * `sampleRegion` pads a shape's **bounding rect** by a fixed
+     * `ceil(blurRadius * 2) + 2` on every side. It never looks at the outline,
+     * so two shapes with the same box take the same region — which is the claim
+     * that a circle's frost reads stronger for want of backdrop is *not* built
+     * on. A number once said otherwise: 127,449 px for a circle against
+     * 156,009 for a rect, which a fixed pad cannot produce. It could, if the
+     * circle had been authored smaller — 160 across inside a 240-wide box, as
+     * the cost sweep that recorded it had — and 356/436 = 0.8165 predicts the
+     * 0.81691 that was measured.
+     *
+     * So this pins the invariant that killed it: at one box, one region. The
+     * coverage case above asks the other question, whether the region is big
+     * enough for the shape; this one asks whether it varies with the shape at
+     * all, which is the question that was open.
+     */
+    const BOX = 40;
+    const make = (
+      kind: "Rect" | "Circle" | "Ellipse" | "Triangle" | "Polygon",
+    ) => {
+      const common = { left: 100, top: 100, ...GLASS };
+      switch (kind) {
+        case "Rect":
+          return new Rect({ ...common, width: BOX, height: BOX, rx: 0, ry: 0 });
+        case "Circle":
+          return new Circle({ ...common, radius: BOX / 2 });
+        case "Ellipse":
+          return new Ellipse({ ...common, rx: BOX / 2, ry: BOX / 2 });
+        case "Triangle":
+          return new Triangle({ ...common, width: BOX, height: BOX });
+        case "Polygon":
+          return new Polygon(
+            [
+              new Point(-BOX / 2, -BOX / 2),
+              new Point(BOX / 2, -BOX / 2),
+              new Point(BOX / 2, BOX / 2),
+              new Point(-BOX / 2, BOX / 2),
+            ],
+            common,
+          );
+      }
+    };
+    const kinds = ["Rect", "Circle", "Ellipse", "Triangle", "Polygon"] as const;
+
+    /** The region each kind takes, plus the box it took it from. */
+    const taken: {
+      readonly region: {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+      };
+      readonly bounds: {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+      };
+    }[] = [];
+    for (const kind of kinds) {
+      const s = magenta();
+      const object = make(kind);
+      s.canvas.add(object);
+      s.canvas.renderAll();
+      expect(s.errors, `${kind} composites`).toEqual([]);
+      const region = s.regions[0];
+      expect(region, `${kind} sampled a region`).toBeDefined();
+      taken.push({
+        region: region ?? { left: 0, top: 0, width: 0, height: 0 },
+        bounds: object.getBoundingRect(),
+      });
+    }
+
+    // Every box is the box; the first is the baseline and each of the rest has
+    // to match it exactly, which is what "the pad never sees the outline" is.
+    const base = taken[0];
+    if (base === undefined) return;
+    for (const [index, { region, bounds }] of taken.entries()) {
+      const kind = kinds[index];
+      expect(bounds.width, `${kind} shares the box`).toBe(base.bounds.width);
+      expect(bounds.height, `${kind} shares the box`).toBe(base.bounds.height);
+      expect(region, `${kind} samples the same region`).toEqual(base.region);
+    }
+  });
+
   it("refuses an open path rather than clipping it to its box", () => {
     // The exclusion, proved where the renderer can still be handed one. A
     // validated theme never gets this far — `renderer-core` refuses the
