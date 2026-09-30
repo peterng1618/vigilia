@@ -50,6 +50,38 @@ before anything can read it. The two mounts differ in first-render order, not in
 the option — which is why every earlier round could not isolate it from the
 option dump.
 
+### The captured error, 2026-09-30
+
+The first three rounds of this defect were lost to a throw whose text was never
+written down, so it is recorded here verbatim. Re-captured by disabling the fix
+(`data: [{ value: displayValue }]`) and rebuilding the player against the real
+host, driving the editor's own `Save to library` and then opening
+`/?theme=vigilia-demo-dashboard&data=live`:
+
+```
+TypeError: Cannot read properties of undefined (reading '0')
+    at DataDiffer._update        (node_modules/echarts/lib/chart/gauge/GaugeView.js:397:49)
+    at DataDiffer._executeOneToOne (node_modules/echarts/lib/data/DataDiffer.js:133:30)
+    at DataDiffer.execute         (node_modules/echarts/lib/data/DataDiffer.js:108:75)
+    at GaugeView._renderPointer   (node_modules/echarts/lib/chart/gauge/GaugeView.js:412:10)
+    at GaugeView._renderMain      (node_modules/echarts/lib/chart/gauge/GaugeView.js:162:10)
+    at GaugeView.render           (node_modules/echarts/lib/chart/gauge/GaugeView.js:93:10)
+    at Task.progress              (node_modules/echarts/lib/view/Chart.js:202:20)
+    at Task._doProgress           (node_modules/echarts/lib/core/task.js:167:10)
+    at Task.perform               (node_modules/echarts/lib/core/task.js:132:16)
+    at echarts.js:1775:24
+```
+
+In the player this reaches the console through the per-chart guard rather than
+as a `pageerror`, once per chart per refresh cadence:
+
+```
+Vigilia: Chart "ram-gauge" failed to draw and was left as it was.
+  Cannot read properties of undefined (reading '0')
+```
+
+Two gauges are affected, `ram-gauge` and `vram-gauge` — the starter's two rings.
+
 **What it was NOT.** It was not `pointer.offsetCenter`. `createPointer` is
 called only under `if (showPointer)` (`GaugeView.js:360`, `:385`, `:420`) and
 `showPointer` is false, so the read at `:312-314` is unreachable; and omitting
