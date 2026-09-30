@@ -628,6 +628,32 @@ describe("the size of a text object", () => {
     expect(history.saveState).toHaveBeenCalledTimes(2);
   });
 
+  it("gives a whole box when only one Size field is filled in", () => {
+    // An inserted caption has no box yet: its width is Fabric's measurement
+    // until an author types one. Writing the height alone used to produce
+    // `{ height }` with no width, and the next text change multiplied an
+    // undefined width by the scale — the object lost its width and stopped
+    // producing a bounding rect at all.
+    const text = caption();
+    const measured = text.width;
+    const { host } = setup(text);
+
+    const height = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="height"]',
+    )!;
+    height.value = "40";
+    height.dispatchEvent(new Event("change"));
+
+    const authored = text.get("vigiliaText") as {
+      box: { width: number; height: number };
+    };
+    expect(authored.box.height).toBe(40);
+    expect(authored.box.width).toBe(measured);
+    // The other half: the box is a number, not the `undefined` that made the
+    // width unreadable.
+    expect(Number.isFinite(authored.box.width)).toBe(true);
+  });
+
   it("shows the authored box back, not the measurement underneath it", () => {
     // A `Textbox` derives its own width from its longest unbreakable run, so a
     // re-read of the measurement reports what the text happens to measure —
