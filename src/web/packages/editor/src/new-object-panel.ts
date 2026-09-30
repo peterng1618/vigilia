@@ -96,9 +96,22 @@ export function insertNewText(
   globals: FabricGlobals | undefined,
 ): void {
   const content = "New text";
-  editor.textManager.addText({
+  const text = editor.textManager.addText({
     text: content,
     ...createNewTextDefaults(globals, content, nextNewObjectPlacement(editor)),
+  });
+  // The caret, so typing goes somewhere. Asking for a text box and then having
+  // to double-click it before the first character lands is a second, undiscoverable
+  // step: the object appears selected, the status says nothing about editing, and
+  // a keystroke after Insert went nowhere at all. Every editor this product is
+  // measured against puts you in the text as soon as you ask for a text box.
+  // Deferred a frame, because the menu this was opened from takes focus back
+  // for itself as it closes — entering synchronously put the caret in and then
+  // lost it, which is the same defect in a different costume.
+  requestAnimationFrame(() => {
+    if (editor.canvas.getActiveObject() !== text) return;
+    text.enterEditing();
+    text.selectAll();
   });
 }
 

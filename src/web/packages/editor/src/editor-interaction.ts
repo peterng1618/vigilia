@@ -1,4 +1,4 @@
-import type { Canvas, FabricObject, IText } from "fabric/es";
+import type { Canvas, FabricObject, IText, Textbox } from "fabric/es";
 import type { ClipboardManager } from "./clipboard-manager/index.js";
 import type { CropManager } from "./crop-manager/index.js";
 import type { DeletionManager } from "./deletion-manager/index.js";
@@ -29,7 +29,11 @@ export interface EditorInteraction {
     destroy(): void;
   };
   readonly textManager: {
-    addText(options?: Readonly<Record<string, unknown>>): FabricObject;
+    /** A `Textbox`, which is what it creates and what the manager's own
+     *  interface already said — narrowing it here lets a caller put the caret
+     *  in a new text object, which is the difference between typing working and
+     *  typing going nowhere after Insert. */
+    addText(options?: Readonly<Record<string, unknown>>): Textbox;
     /**
      * Installs who paints an object's authoring view when the author starts
      * editing it. The session owns the run display that comes from, and the

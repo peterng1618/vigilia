@@ -16,8 +16,29 @@ import {
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { SHAPE_KINDS } from "./new-object-defaults.js";
-import { createNewObjectPanel } from "./new-object-panel.js";
+import { createNewObjectPanel, insertNewText } from "./new-object-panel.js";
 import { uiCopy } from "./ui-copy.js";
+
+/** The smallest globals an insertion needs: one palette token to paint with. */
+const GLOBALS = {
+  palette: {
+    ink: { name: "Ink", value: { kind: "solid" as const, color: "#102030" } },
+  },
+  typePresets: {
+    body: { name: "Body", value: { family: "Inter", size: 16, weight: "600" } },
+  },
+};
+
+/** The object `addText` hands back: a Textbox, which is what it really creates. */
+function textWithEditing() {
+  return {
+    enterEditing: vi.fn(function (this: { isEditing: boolean }) {
+      this.isEditing = true;
+    }),
+    selectAll: vi.fn(),
+    isEditing: false,
+  };
+}
 
 /** The construction surface a panel insertion writes through: the canvas and
     the history, exactly as the editor's own managers use them. */
@@ -26,6 +47,7 @@ function editorStub() {
     add: vi.fn(),
     setActiveObject: vi.fn(),
     requestRenderAll: vi.fn(),
+    getActiveObject: vi.fn((): unknown => undefined),
     // The cascade reads the document's own object count off the canvas, so a
     // stub that could not answer would leave the placement unexercised.
     getObjects: vi.fn(() => [] as unknown[]),
@@ -36,7 +58,7 @@ function editorStub() {
     // The authored frame a placement has to land inside.
     artboard: () => ({ width: 1920, height: 1080 }),
     historyManager,
-    textManager: { addText: vi.fn() },
+    textManager: { addText: vi.fn((): unknown => textWithEditing()) },
     errorManager: { warn: vi.fn(), error: vi.fn() },
   };
 }
@@ -449,5 +471,43 @@ describe("new object panel", () => {
         }),
       }),
     );
+  });
+});
+
+describe("a new text object takes the caret", () => {
+  it("enters editing after the insert, so the first keystroke lands", async () => {
+    // Asking for a text box and then having to double-click it before the first
+    // character lands is a second, undiscoverable step: the object appears
+    // selected, the status says nothing about editing, and typing after Insert
+    // went nowhere.
+    const editor = editorStub();
+    const created = textWithEditing();
+    editor.textManager.addText = vi.fn((): ReturnType<typeof textWithEditing> => created);
+    // A fresh insert leaves its object selected, which is the state the guard
+    // checks before taking the caret.
+    editor.canvas.getActiveObject = vi.fn((): unknown => created);
+
+    insertNewText(editor as never, GLOBALS);
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(editor.textManager.addText).toHaveBeenCalledOnce();
+    expect(created.enterEditing).toHaveBeenCalled();
+    expect(created.selectAll).toHaveBeenCalled();
+  });
+
+  it("does not enter editing an object the author has since changed", async () => {
+    // The caret is taken a frame late, because the menu takes focus back for
+    // itself as it closes. If the author moved on in that frame, stealing
+    // focus from whatever they are now on would be the defect being fixed.
+    const editor = editorStub();
+    const created = textWithEditing();
+    const other = textWithEditing();
+    editor.textManager.addText = vi.fn((): ReturnType<typeof textWithEditing> => created);
+    editor.canvas.getActiveObject = vi.fn((): unknown => other);
+
+    insertNewText(editor as never, GLOBALS);
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(created.enterEditing).not.toHaveBeenCalled();
   });
 });
