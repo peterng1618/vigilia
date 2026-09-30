@@ -44,18 +44,18 @@ The loop, in order:
 
 ## Last completed change
 
+- **One Size field no longer costs an inserted text object its width** (`208fc7f`). Typing into Height wrote `box: { height }` with no width, and the next text change made `authoredBox` multiply an `undefined` by the scale — the object ended with `width: null` and no bounding rect at all. Both dimensions now seed from the object's measured edge.
 - **A pasted image and a new group are named instead of printed as uuids** (`b1022cf`). `object-name.ts` says absence means fall back to the id, and a minted id is a uuid, so the two creators that left `name` unset were the two the fallback could not help. `newObjectName` already existed for exactly this and its own comment named the failure.
-- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that did not dedupe.
-- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five different misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay. It also does not echo the requested path, because the editor mount made that wrong within a minute.
-- **A group you can leave, a lock you can read, and a lock you can still click** (`528b0d2`, `1eaaf6c`), recovered from an uncommitted tree left by a dead agent. Four defects, four reverts that go red.
-- **Gate green:** `typecheck`, `lint`, `format:check`, **2415 unit tests across 176 files**, `backlog:check` 56 rows.
+- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that didn't dedupe.
+- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay.
+- **Two open rows were refuted rather than fixed** (`b0e3fb4`): vg-042's Height field tracks the measurement exactly (79 for 78.83, then 463 for 462.85), and vg-043's key never reaches the author — `innerText` holds neither `colour-2` nor `colour-3`. Gate green: **2416 unit tests across 177 files**, `backlog:check` 57 rows.
 
 ## Next
 
 1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
-2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it; vg-042 the text Height field; vg-043 the palette token key; and the POSIX root-volume join.
-3. **Two paths are untested by hand and neither can be reached from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
-4. **Three questions are closed by ruling, not by agent judgment** — glass on Circle/Ellipse/Triangle/Polygon (Polyline/Path/Line skipped for having no closed area), the colour picker's ecosystem (shadcn/ui, not Base UI; the alpha requirement stands), and the Arrange menu (removed as redundant with its own toolbar).
+2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it, and the POSIX root-volume join.
+3. **The backlog-tracking boundary is yours and is still undecided** — what lands in `docs/product/backlog.jsonl` versus what a commit records. A session was lost mid-sentence stating it and it is written down nowhere. Nothing has been pruned in the meantime.
+4. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
 5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
 
 ## Blockers / unverified
