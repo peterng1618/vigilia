@@ -11,7 +11,7 @@ const EDITOR_PORT = 4219;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: /glass-shapes-budget\.spec\.ts/,
+  testMatch: /glass-shapes-(budget|visual)\.spec\.ts/,
   retries: 0,
   // One measurement at a time. A second worker competing for the same CPU would
   // make every number here noise, which is the whole artifact.

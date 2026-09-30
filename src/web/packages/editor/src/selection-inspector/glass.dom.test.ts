@@ -3,7 +3,16 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
-import { Group, Rect, Textbox } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  Group,
+  Point,
+  Polygon,
+  Rect,
+  Textbox,
+  Triangle,
+} from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
 
@@ -122,6 +131,11 @@ function alertIn(host: HTMLElement): Element | null {
 /** A live object of each kind the published schema allows. */
 const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
   Rect: () => panel(),
+  Circle: () => new Circle({ left: 0, top: 0, radius: 20 }),
+  Ellipse: () => new Ellipse({ left: 0, top: 0, rx: 20, ry: 12 }),
+  Triangle: () => new Triangle({ left: 0, top: 0, width: 40, height: 40 }),
+  Polygon: () =>
+    new Polygon([new Point(0, -20), new Point(20, 20), new Point(-20, 20)]),
   Group: () => new Group([new Rect({ width: 40, height: 40 })]),
 };
 

@@ -4,7 +4,14 @@ import {
   VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
 import { applyObjectPalettePaints } from "@vigilia/scene-fabric";
-import { type FabricObject, Rect } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  type FabricObject,
+  Polygon,
+  Rect,
+  Triangle,
+} from "fabric/es";
 import { numberField } from "../editor-shell/controls/number-field.js";
 import { frostedShapeFill } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
@@ -48,21 +55,35 @@ export interface GlassFieldHooks {
 }
 
 /**
- * Whether these controls apply at all. A rectangle is the only kind Fabric
- * gives a `before:render` boundary a backdrop can be sampled at: `Group`
- * replaces `drawObject`, so a group's treatment never composites and
- * `scene-fabric`'s `glass.ts` refuses it loudly. A control there would accept an
- * edit and apply none.
+ * Whether these controls apply at all. The question is whether the object's
+ * backdrop can be sampled through a closed path, and the kinds that qualify
+ * are the closed primitives plus a group — `Group` is here only because
+ * `renderer-core` admits it and `scene-fabric` refuses it loudly at attach,
+ * since Fabric replaces `drawObject` and a group never fires `before:render`.
+ *
+ * Widened from `instanceof Rect` with the treatment itself: the frosted
+ * surface needs a closed path to sample through, and `Circle`, `Ellipse`,
+ * `Triangle` and `Polygon` all have one. A control that refused them would
+ * have accepted the ruling's premise — the shapes are frostable — and then
+ * given the author no way to say so. See
+ * `docs/decisions/0015-glass-clips-any-closed-path-not-only-rects.md`.
  *
  * Kept apart from `panel.ts`'s `supportsPanelFields` on purpose. That answers
  * "may these fields write this object's material?" — a group has no own fill,
  * radius or border. This answers "may its backdrop be sampled?", and the two
- * agree today for different reasons. `glass.dom.test.ts` names every kind the
- * published schema allows that this one leaves un-authorable, so widening that
- * schema cannot reopen the gap silently.
+ * differ on `Polyline`, `Line` and `Path`: those have material and no closed
+ * area. `glass.dom.test.ts` names every kind the published schema allows that
+ * this one leaves un-authorable, so widening that schema cannot reopen the
+ * gap silently.
  */
 export function supportsGlassControl(object: FabricObject): boolean {
-  return object instanceof Rect;
+  return (
+    object instanceof Rect ||
+    object instanceof Circle ||
+    object instanceof Ellipse ||
+    object instanceof Triangle ||
+    object instanceof Polygon
+  );
 }
 
 /** The panel's authored treatment, or none. */

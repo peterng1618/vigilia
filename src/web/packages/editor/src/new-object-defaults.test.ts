@@ -64,6 +64,22 @@ const CLOSED_KINDS = SHAPE_KINDS.filter(
   (kind) => kind !== "polyline" && kind !== "line",
 );
 
+/**
+ * The kinds a frosted treatment may sit on — a **different** set from
+ * `CLOSED_KINDS` above, and the difference is the point. A closed path answers
+ * "does an author fill this?", and `path` passes it. Frosting answers "is
+ * there an interior to sample the backdrop through?", and a `Path` cannot
+ * answer that: its closedness is whatever the author typed. Confusing the two
+ * is how an open shape ends up with a blur under nothing.
+ */
+const GLASS_KINDS: ReadonlySet<string> = new Set([
+  "rect",
+  "circle",
+  "ellipse",
+  "triangle",
+  "polygon",
+]);
+
 /** The same palette plus the frosted surface: the pair a glass card needs. */
 const frostGlobals = {
   ...cardGlobals,
@@ -454,10 +470,12 @@ describe("a new shape through the persisted envelope", () => {
 
       const result = validateFabricThemeEnvelope(envelopeWith(object));
 
-      // Glass is not widened with the shapes: `localPath` draws `ctx.rect` and a
-      // rounded rect and nothing else, so a treatment on any other kind would
-      // validate here and then render nothing. A rectangle is the exception.
-      expect(result.ok, kind).toBe(kind === "rect");
+      // The rule is the geometry, not the shape list: the frosted surface needs
+      // a closed path to sample the backdrop through, and these five have one.
+      // `polyline` and `line` are open; `path` is arbitrary author data whose
+      // closedness the product cannot know, so it is refused with them rather
+      // than admitted on the hope that a particular path happens to close.
+      expect(result.ok, kind).toBe(GLASS_KINDS.has(kind));
     },
   );
 
