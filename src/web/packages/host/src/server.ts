@@ -225,12 +225,19 @@ function sendText(
   response.end(body);
 }
 
-/** Serves a bundle file; extension-less routes may fall back to index.html. */
+/**
+ * Serves a bundle file. An extension-less path is a client route and may fall
+ * back to `index.html` — but only where the bundle actually has client routes.
+ * The editor does; the player is one document, and answering every unmatched
+ * path with it hands an operator a live display for a typo, which is harder to
+ * notice than a 404 and impossible to debug from the page.
+ */
 async function serveStatic(
   response: http.ServerResponse,
   root: string,
   urlPath: string,
   missingBundleHint: string,
+  clientRoutes = true,
 ): Promise<void> {
   const resolved = resolveStaticPath(root, urlPath);
 
@@ -241,7 +248,7 @@ async function serveStatic(
 
   const candidates = [resolved];
 
-  if (path.extname(resolved) === "") {
+  if (clientRoutes && path.extname(resolved) === "") {
     candidates.push(
       path.join(resolved, "index.html"),
       path.join(root, "index.html"),
@@ -1048,6 +1055,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
       bundles.player,
       url.pathname,
       "The player bundle is not built. Run: npx vite build packages/player",
+      // The player is one document. Everything else that reaches here is a path
+      // the bundle does not declare, and answering it with a live dashboard is
+      // worse than a 404: an operator whose display URL is wrong sees a
+      // working display and no reason to look for the reason.
+      url.pathname === "/",
     );
   }
 

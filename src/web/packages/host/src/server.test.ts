@@ -1378,3 +1378,48 @@ describe("A bundle 404 names the cause it can prove", () => {
     }
   });
 });
+
+describe("A path the player does not declare is not the player", () => {
+  const dirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })),
+    );
+  });
+
+  it("404s a mistyped display URL instead of serving a working dashboard", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-player-"));
+    dirs.push(dir);
+    await fs.writeFile(
+      path.join(dir, "index.html"),
+      "<!doctype html><title>player</title>",
+    );
+    await fs.writeFile(
+      path.join(dir, "favicon.svg"),
+      '<svg xmlns="http://www.w3.org/2000/svg" />',
+    );
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+    });
+    try {
+      const status = (path: string): Promise<number> =>
+        request(hosted.server, "GET", path).then((res) => res.status);
+
+      // `?data=live` skips the theme resolution above and goes straight to the
+      // bundle, which is the path under test. A bare `/` would answer with
+      // whatever the theme store holds, which is not what this is about.
+      await expect(status("/?data=live")).resolves.toBe(200);
+      await expect(status("/favicon.svg")).resolves.toBe(200);
+      // The two names an operator plausibly mistypes for a display URL.
+      await expect(status("/play")).resolves.toBe(404);
+      await expect(status("/display")).resolves.toBe(404);
+      // Both answers are the honest 404, not a build hint that is not true.
+      const miss = await request(hosted.server, "GET", "/play");
+      expect(miss.text()).toBe("Not found.");
+    } finally {
+      await hosted.close();
+    }
+  });
+});
