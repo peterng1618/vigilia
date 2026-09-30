@@ -152,7 +152,50 @@ export function documentKey(
     ...new Set([...declared.keys(), ...Object.keys(assets)]),
   ].sort();
   return JSON.stringify([
-    theme,
+    authoredOnly(theme),
     paths.map((path) => [path, declared.get(path) ?? null]),
   ]);
+}
+
+/**
+ * The document as its author left it, with what the renderer paints taken out.
+ *
+ * A bound text object carries its authored content in `vigiliaText.runs` — a
+ * value run naming a binding, a literal run saying what it says, each with its
+ * own `style`. The renderer resolves those into the Fabric `text` and `styles`
+ * properties, and those resolutions are what change while the author watches:
+ * the clock ticks, a gauge fills, a trend extends. They are renderings of the
+ * document, not the document.
+ *
+ * Leaving them in the key makes the guard untestable in the only way that
+ * matters. Measured: one live pass rewrites `.styles` on 18 of the Starter's 52
+ * objects — exactly its binding count — with nothing touched, and every later
+ * prompt to replace a document asks about work nobody did.
+ *
+ * This is the narrow half of vg-041: the two properties the live pass actually
+ * writes, on the objects whose runs are the authored truth. An object without
+ * runs owns its `text` and `styles`, so they are kept there and a real edit is
+ * never hidden.
+ */
+function authoredOnly(theme: FabricThemeEnvelope): FabricThemeEnvelope {
+  const objects = (theme.scene as { readonly objects?: readonly unknown[] })
+    .objects;
+  if (!Array.isArray(objects)) return theme;
+
+  return {
+    ...theme,
+    scene: {
+      ...theme.scene,
+      objects: objects.map((object) => {
+        const entry = object as {
+          readonly vigiliaText?: unknown;
+          readonly text?: unknown;
+          readonly styles?: unknown;
+        };
+        if (entry.vigiliaText === undefined) return object;
+        const { text: _text, styles: _styles, ...rest } = entry;
+        return rest;
+      }),
+    },
+  };
 }

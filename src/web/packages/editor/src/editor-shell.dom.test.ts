@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 
+import { createDemoSource } from "@vigilia/fake-source";
 import { objectName } from "@vigilia/renderer-core";
 import { serialiseScene } from "@vigilia/scene-fabric";
 import { FabricImage, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mountEditorShell } from "./editor-shell.js";
+import { LiveRuntime } from "./live-runtime.js";
+import { createNewFabricTheme } from "./new-fabric-theme.js";
+import { PersistenceManager } from "./persistence-manager/index.js";
 
 // jsdom cannot drawImage an undecoded img inside Fabric's render pass; a proxy
 // over a real context forwards everything, no-ops only drawImage, and swallows
@@ -27,6 +31,76 @@ beforeEach(() => {
         }) as unknown as CanvasRenderingContext2D,
     );
   }
+});
+
+describe("the dirty guard and what the renderer paints", () => {
+  /** The instrument that found this: snapshot, one live pass, snapshot. */
+  it("is not made dirty by a reading being painted", async () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 800 },
+      clientHeight: { value: 600 },
+    });
+    const authored = createNewFabricTheme();
+    const shell = await mountEditorShell({
+      host,
+      artboard: authored.artboard,
+      envelope: authored,
+    });
+    shell.setGlobals(authored.globals);
+
+    const objects =
+      (
+        authored.scene as {
+          objects?: {
+            id?: string;
+            vigiliaText?: { runs?: { bindingId?: string }[] };
+          }[];
+        }
+      ).objects ?? [];
+    const bindings: Record<string, unknown[]> = {};
+    for (const object of objects) {
+      const runs = (object.vigiliaText?.runs ?? []).filter(
+        (run) => run.bindingId,
+      );
+      if (object.id && runs.length > 0) {
+        bindings[object.id] = runs.map((run) => ({
+          id: `${object.id}-${run.bindingId}`,
+          semanticKey: run.bindingId!,
+        }));
+      }
+    }
+
+    const manager = new PersistenceManager(shell.snapshot({ ...authored }), {});
+
+    new LiveRuntime({
+      canvas: shell.editor.canvas,
+      bindings: bindings as never,
+      source: createDemoSource(Date.now()),
+      globals: authored.globals,
+    }).refresh();
+
+    // The canvas has genuinely moved — a reading is now painted on it.
+    const painted = shell.snapshot({ ...authored }) as {
+      scene: { objects: { id?: string; styles?: unknown }[] };
+    };
+    const styledByPass = painted.scene.objects.filter(
+      (o) => o.styles !== undefined,
+    );
+    expect(styledByPass.length).toBeGreaterThan(0);
+
+    // ...and the document has not, because a reading is not an edit. Without
+    // this the Starter is reported as edited the moment it opens and every New
+    // asks to save work nobody did.
+    expect(manager.isDirty(shell.snapshot({ ...authored }), {})).toBe(false);
+
+    // The half that matters: an edit the author made is still an edit.
+    const edited = shell.snapshot({ ...authored });
+    (edited.scene as { objects: { left: number }[] }).objects[0].left += 5;
+    expect(manager.isDirty(edited, {})).toBe(true);
+
+    shell.destroy();
+  });
 });
 
 describe("native editor shell", () => {

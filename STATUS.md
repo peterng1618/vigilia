@@ -53,7 +53,7 @@ The loop, in order:
 ## Next
 
 1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
-2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it, and the POSIX root-volume join.
+2. **The queued findings, each measured and each with an owner named:** vg-030 the layer list is inconsistent and some assets cannot be removed, vg-028 the chart slide (not yet reproduced), and the POSIX root-volume join. vg-021, vg-026, vg-033, vg-044 and vg-050 are drained.
 3. **The backlog-tracking boundary is yours and is still undecided** — what lands in `docs/product/backlog.jsonl` versus what a commit records. A session was lost mid-sentence stating it and it is written down nowhere. Nothing has been pruned in the meantime.
 4. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
 5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
