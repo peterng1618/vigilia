@@ -9,13 +9,6 @@ export type ThemeLibraryChoice =
   | { readonly kind: "template"; readonly id: string }
   | { readonly kind: "theme"; readonly id: string };
 
-/** See `promptThemeConflict` for why these are not in `ui-copy.ts`. */
-const CONFLICT_LEAD =
-  "This theme was changed somewhere else since you opened it. Your work is still here.";
-const CONFLICT_RELOAD = "Open the saved version";
-const CONFLICT_OVERWRITE = "Replace it with mine";
-const CONFLICT_CANCEL = "Keep editing";
-
 /** The dialog's return value for an answer. Every other close — Cancel, Escape,
  *  a host closing it — is a dismissal, which is what an empty return value
  *  already means. */
@@ -159,32 +152,32 @@ export type ThemeConflictChoice = "reload" | "overwrite";
  * A `<dialog>` like the other two editor prompts, so it is dismissible by
  * Escape and reachable by keyboard without a bespoke key handler.
  *
- * **ponytail:** these three strings are literals here rather than entries in
- * `ui-copy.ts`, which is the owner of visible editor copy and was not this
- * task's to edit. Fold them into `uiCopy.library` when that file is free; the
- * table is plain English today, so nothing is untranslated by leaving them
- * here.
  */
+/** Longer than the three answers, and read before them, so it stays beside the
+ *  dialog rather than in the table with its siblings. */
+const CONFLICT_LEAD_TEXT =
+  "This theme was changed somewhere else since you opened it. Your work is still here.";
+
 export function promptThemeConflict(): Promise<
   ThemeConflictChoice | undefined
 > {
   const dialog = document.createElement("dialog");
   dialog.className = "vigilia-dialog";
-  dialog.setAttribute("aria-label", CONFLICT_LEAD);
+  dialog.setAttribute("aria-label", CONFLICT_LEAD_TEXT);
 
   const lead = document.createElement("p");
   lead.className = "vigilia-dialog-lead";
-  lead.textContent = CONFLICT_LEAD;
+  lead.textContent = CONFLICT_LEAD_TEXT;
 
   const actions = document.createElement("div");
   actions.className = "vigilia-dialog-actions";
   const buttons: ReadonlyArray<readonly [ThemeConflictChoice, string]> = [
-    ["reload", CONFLICT_RELOAD],
-    ["overwrite", CONFLICT_OVERWRITE],
+    ["reload", uiCopy.library.conflict.reload],
+    ["overwrite", uiCopy.library.conflict.overwrite],
   ];
   const cancel = document.createElement("button");
   cancel.type = "button";
-  cancel.textContent = CONFLICT_CANCEL;
+  cancel.textContent = uiCopy.library.conflict.cancel;
   cancel.setAttribute("data-vigilia-library-cancel", "");
 
   for (const [choice, label] of buttons) {

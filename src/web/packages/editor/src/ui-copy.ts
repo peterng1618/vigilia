@@ -209,6 +209,16 @@ export const uiCopy = {
     yourThemes: "Your themes",
     open: "Open",
     cancel: "Cancel",
+    /** The dialog a refused save raises. Two answers and a way out, because a
+     *  refusal must not cost the author their document and must not be a dead
+     *  end: reload takes the stored version, overwrite keeps theirs, and
+     *  cancelling keeps both. */
+    conflict: {
+      lead: "This theme was changed somewhere else",
+      reload: "Open the saved version",
+      overwrite: "Replace it with mine",
+      cancel: "Keep editing",
+    },
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */
