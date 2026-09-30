@@ -118,16 +118,31 @@ export async function confirmDocumentReplacement(): Promise<
   });
 }
 
-/** Authored state only: a thumbnail is a rendering of one machine, so a
- *  different one is not a change to the document. */
-function documentKey(
+/**
+ * Authored state only: a thumbnail is a rendering of one machine, so a
+ * different one is not a change to the document.
+ *
+ * The asset half of the key is each path's *declared* `sha256`, not its bytes.
+ * The bytes made the key a one-boxed-number-per-byte array and its stringified
+ * form an ~86 MB retained string for a 24 MB asset, paid on every open, new and
+ * save, and it answered a question the digest already answers — a byte can only
+ * reach the map by being imported, replaced or adopted, and every one of those
+ * recomputes the declaration the envelope carries. The envelope's own JSON is in
+ * the key too, so a document whose fields moved while its assets stood still is
+ * still a changed document, and the map's own paths are listed so bytes with no
+ * declaration — and a rename, an addition or a removal — cannot hide behind it.
+ */
+export function documentKey(
   theme: FabricThemeEnvelope,
   assets: Readonly<Record<string, Uint8Array>>,
 ): string {
+  const declared = new Map(
+    (theme.assets ?? []).map((asset) => [asset.path, asset.sha256 ?? null]),
+  );
   return JSON.stringify([
     theme,
-    Object.entries(assets)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([path, bytes]) => [path, [...bytes]]),
+    Object.keys(assets)
+      .sort()
+      .map((path) => [path, declared.get(path) ?? null]),
   ]);
 }
