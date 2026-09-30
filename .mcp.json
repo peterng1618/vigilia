@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "playwright": {
+      "command": "node",
+      "args": [
+        "src/web/node_modules/@playwright/mcp/cli.js",
+        "--browser",
+        "chrome"
+      ]
+    },
     "shadcn": {
       "command": "npx",
       "args": [

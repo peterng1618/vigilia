@@ -93,7 +93,10 @@ describe("ThemeLibraryClient", () => {
 
     const full = await (async () => {
       await client.save("living-room", {
-        envelope: { ...envelope, metadata: { ...envelope.metadata, name: "1" } },
+        envelope: {
+          ...envelope,
+          metadata: { ...envelope.metadata, name: "1" },
+        },
         assets: { "assets/backdrop.png": backdrop },
         base: "base-as-stored",
       });
@@ -102,7 +105,10 @@ describe("ThemeLibraryClient", () => {
 
     const partial = await (async () => {
       await client.save("living-room", {
-        envelope: { ...envelope, metadata: { ...envelope.metadata, name: "2" } },
+        envelope: {
+          ...envelope,
+          metadata: { ...envelope.metadata, name: "2" },
+        },
         assets: {},
         base: "base-as-stored",
       });
