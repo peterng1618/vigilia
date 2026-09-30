@@ -114,6 +114,16 @@
         "data-disk": "Automatic (every drive, combined)",
       };
 
+      /** What a group's dropdown is asking, where one question is not enough
+       * for the whole page. The two disk keys are `disk.*` and `disk.data.*` —
+       * the same reading read twice, on two drives — and both fieldsets used to
+       * ask the one question, so the legend was the only thing telling them
+       * apart, and a legend scrolls out of view. */
+      const DEVICE_QUESTION = {
+        "system-disk": "Which drive does this PC run from?",
+        "data-disk": "Which second drive should dashboards show?",
+      };
+
       let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
       let themes = [];
       // The product's templates, which are not saved on this PC and so are
@@ -347,10 +357,14 @@
           const selectLabel = document.createElement("label");
           // One device is not a question, so the label answers it: the page
           // says which device is in use rather than leaving it in a dropdown
-          // above a fallback that names no device at all.
-          selectLabel.textContent = options.length === 1
-            ? `Only one found — dashboards use ${nameOf(options[0])}`
-            : "Which device should dashboards use?";
+          // above a fallback that names no device at all. A group's own
+          // question wins where it has one, because how many drives there are
+          // says nothing about which one each of the two asks for.
+          selectLabel.textContent =
+            DEVICE_QUESTION[group] ??
+            (options.length === 1
+              ? `Only one found — dashboards use ${nameOf(options[0])}`
+              : "Which device should dashboards use?");
           const select = document.createElement("select");
           select.dataset.group = group;
 
