@@ -35,28 +35,28 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **52 rows, 31 landed**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
-- **Nothing is dispatched.** Q1 (group exit, filled lock, selectable-but-locked) and Q2 (circle-glass parity) both reported before the last crash and both are landed — Q1 recovered from an uncommitted tree as `528b0d2`. `dispatch-active.md` in the workspace is current.
-- **Q2 refuted the lead rather than fixing it.** The circle-glass report's "shape-dependent sample region" is arithmetic: the sweep gave every shape the same *authoring* box and a Circle has no 240x160. At one box all five shapes take a byte-identical region, and the frost is equal to every digit printed. vg-037 stays open on the radius-vs-width authoring asymmetry, not on the renderer.
-- **The standing rule earned the hard way is in the plan's Global Constraints: a canvas readback is a snapshot of a moment.** Ten findings on this pass were the instrument, not the product. **Screenshot for what is visible, read the DOM for what is true, and when two probes disagree, find out which is wrong before believing either.**
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **56 rows**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
+- **Nothing is dispatched, and the root is driving the product directly.** Q1 and Q2 both landed (`528b0d2`, `bf3bf2b`); since then this session found and fixed four more defects itself rather than dispatching. `dispatch-active.md` in the workspace is current.
+- **The standing rule earned the hard way is in the plan's Global Constraints: a canvas readback is a snapshot of a moment.** Twelve findings on this pass were the instrument, not the product — most recently a player screenshot taken before the first telemetry batch, which read as "no data anywhere" on a host that was streaming 133 batches. **Screenshot for what is visible, read the DOM for what is true, and when two probes disagree, find out which is wrong before believing either.**
+- **Two claims were refuted by measuring rather than by reading**, and both would have been filed as defects: Group looked keyboard-only until a real canvas multi-select showed it in the context menu, and the Starter theme's rows looked id-derived until the document showed all 52 objects carry an authored `name`. **Check the counter-claim before writing the row.**
 - **The frame that matters:** the editor is **desktop-only** (`tests/e2e/surface.ts`); a **phone is the main display type** and the **player is the product's face**. Weight player and phone work accordingly.
 - **The rule for the pass:** fix what you find using what the repo already decides — the owner in `ownership.md`, the surrounding idiom, the copy in `ui-copy.ts`, the pattern the existing controls set. Only a genuine product decision with no precedent gets recorded and passed over. **Nothing waits on a human.**
 
 ## Last completed change
 
-- **A group you can leave, a lock you can read, and a lock you can still click** (`528b0d2`, `1eaaf6c`). Double-clicking outside an entered group now exits it, and the reason it was silent before is the fix's mechanism: entering a group takes everything outside it off the artboard, so Fabric resolves that double-click to *nothing* — no target is the outside.
-- **The lock is a fill, not a second drawing.** Lucide ships no filled lock, but `fill` reaches the `<svg>` and overrides its own `fill="none"`, so weight distinguishes locked from unlocked at 13px with no wrapper and no new dependency.
-- **Locked is Fabric's own vocabulary, not an invented flag** — `hasControls: false` plus the `lock*` flags, with `selectable` kept true. The hole was that an `ActiveSelection` transforms its members through itself; `onSelect` is the wrong hook because it also gates a plain click, so locked members are dropped once the selection exists.
-- **A crop frame that covered nothing.** A `Rect` is centre-anchored and `getBoundingRect()` reports a corner, so the frame sat one whole image up-left of its image, three of its four crop edges off the canvas.
-- **Red without each fix**: 2 of 6 dblclick tests, the filled-lock test, 5 of 7 lock tests, the crop-frame test.
+- **A pasted image and a new group are named instead of printed as uuids** (`b1022cf`). `object-name.ts` says absence means fall back to the id, and a minted id is a uuid, so the two creators that left `name` unset were the two the fallback could not help. `newObjectName` already existed for exactly this and its own comment named the failure.
+- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that did not dedupe.
+- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five different misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay. It also does not echo the requested path, because the editor mount made that wrong within a minute.
+- **A group you can leave, a lock you can read, and a lock you can still click** (`528b0d2`, `1eaaf6c`), recovered from an uncommitted tree left by a dead agent. Four defects, four reverts that go red.
+- **Gate green:** `typecheck`, `lint`, `format:check`, **2409 unit tests across 176 files**, `backlog:check` 56 rows.
 
 ## Next
 
-1. **Keep using the product** — the queue is only as good as the last hour of driving it. The host is not built and no editor bundle is current; both are needed before any further visual claim.
-2. **The queued findings, each measured and each with an owner named:** U30 the player prints a JS parse error to a wall display, U31 the shipped reference theme's 52 objects are unnamed because `text()` never writes `name`, and the POSIX root-volume join.
-3. **Three questions are closed by ruling, not by agent judgment** — glass on Circle/Ellipse/Triangle/Polygon (Polyline/Path/Line skipped for having no closed area), the colour picker's ecosystem (shadcn/ui, not Base UI; the alpha requirement stands), and the Arrange menu (removed as redundant with its own toolbar).
-4. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
-5. **Whether a locked selection may still be reordered** is deliberately left open: front/back stay enabled, because reordering is not a transform.
+1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
+2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it; vg-042 the text Height field; vg-043 the palette token key; and the POSIX root-volume join.
+3. **Two paths are untested by hand and neither can be reached from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
+4. **Three questions are closed by ruling, not by agent judgment** — glass on Circle/Ellipse/Triangle/Polygon (Polyline/Path/Line skipped for having no closed area), the colour picker's ecosystem (shadcn/ui, not Base UI; the alpha requirement stands), and the Arrange menu (removed as redundant with its own toolbar).
+5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
 
 ## Blockers / unverified
 
