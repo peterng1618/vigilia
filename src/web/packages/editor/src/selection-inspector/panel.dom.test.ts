@@ -14,6 +14,7 @@ import {
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createSelectionInspector } from "./index.js";
+import { idleCrop } from "./idle-crop.test-stage.js";
 
 /** A palette with a solid surface, a solid content token and a gradient, so a
  * control that must refuse a gradient is offered one to refuse. */
@@ -55,6 +56,7 @@ function setup(active: unknown) {
     },
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
+    cropManager: idleCrop(),
   };
   createSelectionInspector(host, {
     editor: editor as never,
@@ -400,6 +402,7 @@ describe("panel fields in the selection inspector", () => {
         },
         historyManager: { saveState },
         errorManager: { warn: vi.fn(), error: vi.fn() },
+        cropManager: idleCrop(),
       } as never,
       globals,
       refreshGlass: vi.fn(),

@@ -14,6 +14,7 @@ import { VigiliaChart } from "@vigilia/scene-fabric";
 import { IText, Rect, Textbox } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
+import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 
 /** A chart with settings but no live ECharts behind it: what the inspector
@@ -56,6 +57,7 @@ function setup(
     canvas: canvasWith(active),
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
+    cropManager: idleCrop(),
   };
   const revealTypePresets = vi.fn();
   const inspector = createSelectionInspector(host, {

@@ -23,6 +23,7 @@ import {
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
+import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 import { supportsGlassControl } from "./glass.js";
 
@@ -98,6 +99,7 @@ function setup(active: unknown) {
     },
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
+    cropManager: idleCrop(),
   };
   createSelectionInspector(host, {
     editor: editor as never,

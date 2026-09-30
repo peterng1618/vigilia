@@ -71,6 +71,11 @@ export const uiCopy = {
     nothingSelected: "Select an object to inspect it.",
     /** Shown instead of any field when the selection is locked. */
     locked: "This object is locked. Unlock it to edit it.",
+    /** Crop, on a selected image. The session owns the drag and the refusals;
+        these name only the controls that start and end it. */
+    crop: "Crop",
+    cropApply: "Apply",
+    cropCancel: "Cancel",
     /** Panel appearance. Every primitive shape owns a fill, a stroke, a border
         width and a shadow; the corner radius is a rectangle's alone. */
     panelFill: "Fill",

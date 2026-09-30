@@ -21,6 +21,7 @@ import {
   typePresetOf,
 } from "./appearance.js";
 import { createGlassFields } from "./glass.js";
+import { createCropRow } from "./crop.js";
 import { createPanelFields } from "./panel.js";
 import { createRunEditor, type RunBindingPort } from "./runs.js";
 
@@ -191,8 +192,21 @@ export function createSelectionInspector(
     return find(editor.canvas.getObjects());
   };
 
-  /** The object to describe: the live selection, else the last one still present. */
+  /**
+   * The object to describe: the live selection, else the last one still present.
+   *
+   * A crop session is the exception: it makes its own frame the active object,
+   * so following the selection would describe that frame rather than the image
+   * the author is cropping. The session names its image, and the fields stay
+   * bound to it until the session ends.
+   */
   const target = (): FabricObject | undefined => {
+    const cropping = editor.cropManager.target;
+    if (cropping !== undefined) {
+      bound = cropping;
+      return cropping;
+    }
+
     const active = selected();
 
     if (active !== undefined) {
@@ -407,6 +421,11 @@ export function createSelectionInspector(
         },
       });
       geometry.append(rotation.row);
+
+      // Crop sits with the geometry it changes, and only for a selection that
+      // can hold one — an image, which is the only kind `canCrop` admits.
+      const crop = createCropRow(editor, object, stillTarget);
+      if (crop !== undefined) geometry.append(crop);
 
       root.append(geometry);
     }

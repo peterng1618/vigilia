@@ -66,6 +66,7 @@ import { EditorSession } from "./editor-session.js";
 import { ThemeConflictError } from "./theme-library-client.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { fontTrio } from "./font-catalog.js";
+import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
 
 /** What the chooser answered, per test. The chooser is a modal dialog with no
     jsdom implementation, so it is stubbed here and driven where it is real. */
@@ -111,6 +112,7 @@ describe("EditorSession", () => {
         setAuthoringView: vi.fn(),
         setRepaint: vi.fn(),
       },
+      cropManager: idleCrop(),
     };
     const onOpenPackage = vi.fn();
     const onSaved = vi.fn();
@@ -180,6 +182,7 @@ describe("EditorSession", () => {
             setAuthoringView: vi.fn(),
             setRepaint: vi.fn(),
           },
+          cropManager: idleCrop(),
         },
         scene: {},
         snapshot: vi.fn(() => envelope),
@@ -240,6 +243,7 @@ describe("EditorSession", () => {
             setAuthoringView: vi.fn(),
             setRepaint: vi.fn(),
           },
+          cropManager: idleCrop(),
         },
         scene: {},
         snapshot: vi.fn(() => envelope),
@@ -290,6 +294,7 @@ describe("EditorSession", () => {
           setAuthoringView: vi.fn(),
           setRepaint: vi.fn(),
         },
+        cropManager: idleCrop(),
       },
       scene: {},
       snapshot: vi.fn((input) => ({ ...envelope, ...input })),
@@ -352,6 +357,7 @@ describe("EditorSession", () => {
           setAuthoringView: vi.fn(),
           setRepaint: vi.fn(),
         },
+        cropManager: idleCrop(),
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -449,6 +455,7 @@ describe("EditorSession", () => {
           setAuthoringView: vi.fn(),
           setRepaint: vi.fn(),
         },
+        cropManager: idleCrop(),
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -548,6 +555,7 @@ describe("EditorSession", () => {
           setAuthoringView: vi.fn(),
           setRepaint: vi.fn(),
         },
+        cropManager: idleCrop(),
         historyManager: { suspend, saveState, undo, redo: vi.fn() },
       },
       scene: {},
@@ -618,6 +626,7 @@ describe("EditorSession", () => {
           setAuthoringView: vi.fn(),
           setRepaint: vi.fn(),
         },
+        cropManager: idleCrop(),
         historyManager: { saveState: vi.fn() },
       },
       scene: {},
@@ -683,6 +692,7 @@ describe("EditorSession", () => {
         setAuthoringView: vi.fn(),
         setRepaint: vi.fn(),
       },
+      cropManager: idleCrop(),
     };
     const hydrate = vi.spyOn(AssetManager.prototype, "hydrate");
     const extensions = new EditorSession({
@@ -741,6 +751,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
         setAuthoringView: vi.fn(),
         setRepaint: vi.fn(),
       },
+      cropManager: idleCrop(),
     },
     scene: {},
     snapshot: vi.fn(() => envelope),
@@ -855,6 +866,7 @@ describe("a save the host refused", () => {
         setAuthoringView: vi.fn(),
         setRepaint: vi.fn(),
       },
+      cropManager: idleCrop(),
     },
     scene: {},
     snapshot: vi.fn(() => envelope),
@@ -1146,6 +1158,7 @@ describe("a save that carries only what changed", () => {
         setAuthoringView: vi.fn(),
         setRepaint: vi.fn(),
       },
+      cropManager: idleCrop(),
       historyManager: { saveState: vi.fn() },
     },
     scene: {},
@@ -1380,7 +1393,6 @@ describe("a save that carries only what changed", () => {
     extensions.destroy();
   });
 });
-
 
 function panel() {
   return {
