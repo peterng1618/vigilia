@@ -616,6 +616,115 @@ test.describe("Fabric editor route", () => {
     expect(boxes.sizeRowHeight).toBeLessThanOrEqual(boxes.positionRowHeight);
   });
 
+  test("keeps the drag marquee drawn while the pointer rests", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    // The scene has to be mounted before a gesture means anything: hit-testing
+    // an empty canvas finds nothing empty, because nothing is on it yet.
+    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+
+    // Fabric draws the marquee onto the context rather than into the scene, so
+    // the only way to see it is to read back the pixels a repaint erases. The
+    // upper canvas is where it lands, and it is otherwise blank.
+    const marqueeSum = async (): Promise<number> =>
+      page.evaluate(() => {
+        const canvas = document.querySelector(
+          "#vigilia-fabric-editor canvas.upper-canvas",
+        ) as HTMLCanvasElement | null;
+        const context = canvas?.getContext("2d");
+        if (canvas === null || context === null || context === undefined) {
+          return -1;
+        }
+        const data = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data;
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 64) sum += data[i];
+        return sum;
+      });
+
+    // A marquee needs nothing under the pointer where it starts, or the gesture
+    // moves an object instead of drawing a box. Which point is empty depends on
+    // the window and where the stage letterboxed the artboard, so the start is
+    // found by hit-testing rather than guessed.
+    const points = await page.evaluate(() => {
+      const canvas = document.querySelector(
+        "#vigilia-fabric-editor canvas.upper-canvas",
+      ) as HTMLCanvasElement;
+      const box = canvas.getBoundingClientRect();
+      const fabric = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                findTarget(e: unknown): { currentTarget?: unknown } | undefined;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge.editor.canvas;
+      const candidates: { x: number; y: number }[] = [];
+      for (let i = 1; i <= 8; i += 1) {
+        const step = i / 9;
+        candidates.push({ x: box.left + 8, y: box.top + box.height * step });
+        candidates.push({
+          x: box.left + box.width - 8,
+          y: box.top + box.height * step,
+        });
+        candidates.push({ x: box.left + box.width * step, y: box.top + 8 });
+        candidates.push({
+          x: box.left + box.width * step,
+          y: box.top + box.height - 8,
+        });
+      }
+      // A descriptor with no current target is the canvas saying "nothing here".
+      const empty = candidates.find(
+        (p) =>
+          fabric.findTarget({ clientX: p.x, clientY: p.y })?.currentTarget ===
+          undefined,
+      );
+      return {
+        empty,
+        box: {
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        },
+      };
+    });
+    expect(points.empty, "an empty point on the canvas").toBeDefined();
+
+    const from = points.empty!;
+    const to = {
+      x: points.box.left + points.box.width * 0.55,
+      y: points.box.top + points.box.height * 0.3,
+    };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    // The control is taken with the pointer already down and the refresh
+    // already paused, so the marquee is the only thing that can put ink on that
+    // canvas before the second read.
+    await page.waitForTimeout(200);
+    const control = await marqueeSum();
+    await page.mouse.move(to.x, to.y, { steps: 12 });
+    // The pause is the whole finding: the marquee used to survive about 33ms,
+    // one frame of the 30fps refresh, and be gone by the time anyone looked.
+    await page.waitForTimeout(600);
+    const during = await marqueeSum();
+    await page.mouse.up();
+
+    expect(control).toBeGreaterThanOrEqual(0);
+    expect(during).toBeGreaterThan(control);
+  });
+
   test("mounts the adopted editor shell on the editor stage", async ({
     page,
   }, testInfo) => {

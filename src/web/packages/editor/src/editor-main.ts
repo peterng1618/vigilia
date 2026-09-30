@@ -18,6 +18,7 @@ import type { EditorViewControls } from "./editor-shell/session-facade.js";
 import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
+import { bootTheme } from "./boot-theme.js";
 import { createEditorSource } from "./live-source.js";
 import {
   createBlankFabricTheme,
@@ -27,7 +28,6 @@ import { parseThemePackage } from "./persist.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
-import { bootTheme } from "./boot-theme.js";
 import { captureCanvas } from "./thumbnail-capture.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
@@ -53,8 +53,18 @@ async function start(): Promise<void> {
   const layout = createShellLayout(root);
   const host = layout.hosts.canvas;
   const status = layout.hosts.status;
+  // A pointer gesture owns the canvas for its duration. The refresh loop runs
+  // at 30fps and a full repaint erases Fabric's drag marquee — which is drawn
+  // straight onto the context, not into the scene — so the marquee survived
+  // about 33ms and then vanished until the pointer moved again. Live readings
+  // are not worth showing mid-drag anyway; the next frame after `mouse:up`
+  // brings them current.
+  const gesture = { down: false };
   const chartRefresh = startChartRefresh(
-    () => active?.extensions.refresh(),
+    () => {
+      if (gesture.down) return;
+      active?.extensions.refresh();
+    },
     chartRefreshRate,
     undefined,
     // The session is mounted later, so the report is routed through whatever is
@@ -219,6 +229,20 @@ async function start(): Promise<void> {
      * global is published only after the previous document's is torn down. */
     (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
     layout.setBridge(bridge, viewControls);
+    // Bound per document, because the canvas is torn down and rebuilt with it.
+    const canvas = shell.editor.canvas;
+    canvas.on(
+      "mouse:down" as never,
+      (() => {
+        gesture.down = true;
+      }) as never,
+    );
+    canvas.on(
+      "mouse:up" as never,
+      (() => {
+        gesture.down = false;
+      }) as never,
+    );
   };
 
   picker.addEventListener("change", () => {

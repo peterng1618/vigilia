@@ -185,7 +185,7 @@ describe("the selection inspector", () => {
   });
 
   it("refuses a value that would make the object invalid", () => {
-    const { host, history, editor } = setup(rect);
+    const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="width"]',
     )!;

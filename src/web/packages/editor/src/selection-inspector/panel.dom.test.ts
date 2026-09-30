@@ -492,7 +492,7 @@ describe("shape material and a shape's own fields", () => {
 
   it("shows a polygon's own side count, and clamps a two-sided one onto three", () => {
     const polygon = new Polygon([...CORNERS], PLACED);
-    const { history, editor, field } = setup(polygon);
+    const { history, field } = setup(polygon);
     const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
     expect(sides.value).toBe("3");
 
