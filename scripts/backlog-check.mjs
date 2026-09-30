@@ -1,155 +1,155 @@
 #!/usr/bin/env node
 /**
- * Backlog registry check — what is known, what is fixed, what is verified.
+ * The backlog registry, enforced.
  *
- * Two agents on 2026-09-30 reported fixes that were not fixes, and one was
- * reported *verified* having been tested on a neighbouring field — clamping
- * proven on a bounded field, reported as fixing an unbounded one. The registry
- * that would have caught it did not exist; this is it.
+ * ## Why JSONL
  *
- * The rule: **an item may only be `verified` with a check named alongside it,
- * and a check that mentions nothing from the item's own wording is a check of a
- * capability nearby rather than of the finding.** A commit sha is not a check.
+ * This was a markdown table, then a JSON array, and both failed the same way:
+ * **one file that every agent rewrites.** A table cell containing a literal `|`
+ * silently truncated the parse and the gate reported green over 5 of 30 rows; two
+ * agents appending to one array collide on the whole file. Both were mine, on the
+ * same day, and neither was carelessness — it was the format.
+ *
+ * A search turned up [beads](https://github.com/steveyegge/beads), an issue
+ * tracker built for agents, whose own FAQ says "with markdown, two agents working
+ * on the same project means conflicting TODO lists and duplicated work". Two of its
+ * ideas are worth taking and neither needs its database:
+ *
+ *   - **JSONL** — one JSON object per line, append-only. Two agents adding
+ *     different items write different lines and git merges them. A malformed line
+ *     costs one item, not the file.
+ *   - **content-hashed ids** (`vg-a1b2`) so two agents creating items at the
+ *     same moment never collide on a sequence number.
+ *
+ * The rules live here, in a language with comments, not as prose above a table
+ * nobody re-reads.
+ *
+ * ## The rules
+ *
+ * 1. Every line has an `id`, a `statement`, a `state` from the fixed list, and
+ *    a `source` — `user` for something the user raised, `agent` for a defect an
+ *    agent found and did not fix in the same session, `mixed` for both. That is
+ *    the answer to "how do feedback and discovered bugs unify": the same kind of
+ *    thing with a different `source`.
+ * 2. A `verified` item carries a `check` that **names something from its own
+ *    statement.** A capability proven nearby is not a finding fixed. It cost two
+ *    false "landed" reports on 2026-09-30, both found by the user testing.
+ * 3. An `unverified` item carries a `note` saying what claims it is fixed.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const FILE = resolve(ROOT, "docs/product/backlog.md");
+const FILE = resolve(ROOT, "docs/product/backlog.jsonl");
 
-const STATES = ["open", "in progress", "unverified", "verified", "withdrawn"];
+const STATES = new Set(["open", "in progress", "unverified", "verified", "withdrawn"]);
+const SOURCES = new Set(["user", "agent", "mixed"]);
 
-/** Words that carry no meaning for a two-way comparison. */
 const NOISE =
-  /^(that|this|with|from|then|than|them|they|their|there|here|what|when|which|while|only|also|just|like|does|should|could|would|have|been|into|over|each|some|more|most|very|much|make|made|really|thing|things|still|every|before|after|because|instead|another|same|used|using|were|being|does|being|than|about|into|after)$/;
+  /^(that|this|with|from|then|than|them|they|their|there|here|what|when|which|while|only|also|just|like|does|should|could|would|have|been|into|over|each|some|more|most|very|much|make|made|really|thing|things|still|every|before|after|because|instead|another|same|used|using|were|being|about|field|fields|control|controls|button|buttons|panel|panels|value|values|item|items|state|owner|product|answer|answered)$/i;
+const VERB =
+  /^(clamps|clamped|clamping|slides|shows|renders|reads|gives|opens|works|holds|keeps|carries|named|lands|fails|prints|disappears|lists|asks|takes|makes|turns|draws|serves|reports|is|are|was|were|be|been|being|does|do|has|have|had)$/i;
 
-function wordsOf(text) {
-  return new Set(
-    text
+const wordsOf = (text) =>
+  new Set(
+    String(text)
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, " ")
       .split(/\s+/)
-      .filter((w) => w.length > 3 && !NOISE.test(w)),
+      .filter((w) => w.length > 3 && !NOISE.test(w) && !VERB.test(w)),
   );
-}
 
-/**
- * Only the item tables, never the prose that documents them.
- *
- * The "states" table at the top of the file lists the state words as its own
- * first column, and a rule that read it would demand that the definition of
- * `open` be a valid item. Tables are delimited by a header whose first cell is
- * `#` or a state name; everything outside one is ignored.
- */
-function rows(source) {
-  const out = [];
-  let inTable = false;
-  for (const [i, raw] of source.split(/\r?\n/).entries()) {
-    const text = raw.replace(/\r$/, "");
-    if (/^\s*\|/.test(text)) {
-      // `(?:#|item)\s*\|` rather than a `\b` after it: `#` is not a word
-      // character, so `\b` never matches after one and every table read as empty.
-      if (!inTable && /^\s*\|\s*(?:#|item)\s*\|/i.test(text)) inTable = true;
-      if (!inTable) continue;
-      // The header row opens the table; it is not itself an item.
-      const isHeader = /^\s*\|\s*(?:#|item)\s*\|/i.test(text);
-      if (isHeader || /^\s*\|[\s:|-]+\|\s*$/.test(text)) continue;
-      out.push({ line: i + 1, text });
-    } else if (text.trim() === "") {
-      inTable = false;
-    }
-  }
-  return out;
-}
-
-/** The rule, over any source. Returns the problems it finds. */
-export function check(source) {
+/** Read the registry. A malformed line is reported and skipped, never fatal. */
+export function parse(text) {
+  const items = [];
   const problems = [];
-  for (const row of rows(source)) {
-    const cells = row.text.split("|").slice(1, -1).map((c) => c.trim());
-    if (cells.length < 2) continue;
-    const [id, ...rest] = cells;
-    const stateCell = rest.find((c) => STATES.includes(c.toLowerCase()));
-    if (stateCell === undefined) {
-      problems.push(`${id}: no state from [${STATES.join(", ")}]`);
-      continue;
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if (line === "") return;
+    try {
+      items.push(JSON.parse(line));
+    } catch (error) {
+      problems.push(`line ${i + 1}: does not parse — ${error.message}`);
     }
-    if (stateCell.toLowerCase() !== "verified") continue;
+  });
+  return { items, problems };
+}
 
-    const said = wordsOf(`${id} ${rest[0] ?? ""}`);
-    if (said.size === 0) {
-      problems.push(`${id}: verified, but the item has no wording of its own to check against`);
+export function check(items) {
+  const problems = [];
+  if (!Array.isArray(items)) return ["backlog is not a list"];
+  const seen = new Set();
+  for (const [n, item] of items.entries()) {
+    const where = item?.id ?? `line ${n + 1}`;
+    if (typeof item?.statement !== "string" || item.statement.trim() === "") {
+      problems.push(`${where}: no statement`);
       continue;
     }
-    const verification = rest[rest.indexOf(stateCell) + 1] ?? "";
-    if (verification.trim() === "") {
-      problems.push(`${id}: verified with no check named — name the test or the hand-check that ran`);
+    if (!STATES.has(item.state)) {
+      problems.push(`${where}: state "${item.state}" is not one of [${[...STATES].join(", ")}]`);
       continue;
     }
-    const checked = wordsOf(verification);
-    if ([...said].every((w) => !checked.has(w))) {
-      problems.push(
-        `${id}: verified, but the check names nothing from the item itself —\n` +
-          `      item: ${[...said].slice(0, 8).join(", ")}\n` +
-          `      check: ${[...checked].slice(0, 8).join(", ")}\n` +
-          `      a check of a capability nearby is not a check of this finding`,
-      );
-      continue;
+    if (!SOURCES.has(item.source)) {
+      problems.push(`${where}: source "${item.source}" is not one of [${[...SOURCES].join(", ")}]`);
     }
+    if (seen.has(item.id)) problems.push(`${where}: duplicate id`);
+    seen.add(item.id);
 
-    // Overlap on a shared verb is not enough. The mistake this exists to catch
-    // shared "clamps" and "slider" between the item and a check performed on a
-    // *different field*, so the check must name a **noun** the item names — the
-    // thing inspected, not the property inspected. "the polygon sides field
-    // clamps onto 32" overlaps U21 on verbs alone and is still the wrong check.
-    const nouns = (text) =>
-      [...wordsOf(text)].filter(
-        (w) =>
-          !/^(clamps|clamped|clamping|slides|shows|renders|reads|reads|gives|opens|works|holds|keeps|carries|named|lands|fails|prints|disappears|lists|asks|takes|makes|turns|draws|serves|reports)$/.test(w) &&
-          // Generic container words name no specific thing. "the glass blur
-          // field" and "the polygon sides field" share only `field`, and that
-          // is precisely the pair this must reject.
-          !/^(field|fields|control|controls|button|buttons|panel|panels|value|values|thing|item|items|one|thing|state)$/.test(w),
-      );
-    const saidNouns = new Set(nouns(`${id} ${rest[0] ?? ""}`));
-    const checkedNouns = new Set(nouns(verification));
-    if (saidNouns.size > 0 && [...saidNouns].every((w) => !checkedNouns.has(w))) {
-      problems.push(
-        `${id}: the check shares only a verb with the item — it names a different thing —\n` +
-          `      item names: ${[...saidNouns].slice(0, 6).join(", ")}\n` +
-          `      check names: ${[...checkedNouns].slice(0, 6).join(", ")}\n` +
-          `      verifying a capability is not verifying this finding`,
-      );
+    if (item.state === "verified") {
+      const said = wordsOf(item.statement);
+      if (said.size === 0) {
+        problems.push(`${where}: verified, but the statement names nothing to check against`);
+        continue;
+      }
+      if (typeof item.check !== "string" || item.check.trim() === "") {
+        problems.push(`${where}: verified with no check named — name the test or the hand-check that ran`);
+        continue;
+      }
+      const checked = wordsOf(item.check);
+      if ([...said].every((w) => !checked.has(w))) {
+        problems.push(
+          `${where}: the check names nothing from the statement —\n` +
+            `      says: ${[...said].slice(0, 8).join(", ")}\n` +
+            `      check: ${[...checked].slice(0, 8).join(", ")}\n` +
+            `      a check of a capability nearby is not a check of this finding`,
+        );
+      }
+    }
+    if (item.state === "unverified" && !item.note) {
+      problems.push(`${where}: unverified with no note — say what claims it is fixed`);
     }
   }
   return problems;
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("backlog-check.mjs")) {
-  const source = readFileSync(FILE, "utf8");
-  const problems = check(source);
+if (process.argv[1]?.endsWith("backlog-check.mjs")) {
+  const { items, problems: readProblems } = parse(readFileSync(FILE, "utf8"));
+  const problems = [...readProblems, ...check(items)];
 
   if (process.argv.includes("--self-test")) {
-    const table = (row) =>
-      `\n# Fixture\n\n| # | in the user's words | state | check |\n|---|---|---|---|\n${row}\n`;
+    const ok = (i) => check([i]).length === 0;
+    const bad = (i) => check([i]).length > 0;
+    const valid = {
+      id: "vg-abc123",
+      state: "verified",
+      source: "agent",
+      statement: "the circle reads stronger than the rect",
+      check: "hovered the circle's glass and compared it with the rect's",
+    };
     const cases = [
-      ["a valid registry passes", check(table(`| A | the circle reads stronger than the rect | verified | read the circle's glass beside the rect's glass |`)).length === 0],
-      [
-        "THE MISTAKE: clamping proven on one field, claimed for another",
-        check(
-          table(
-            `| A | the glass blur field clamps and has a slider | verified | the polygon sides field clamps onto 32 | \`4fd582c\` |`,
-          ),
-        ).length > 0,
-      ],
-      ["verified with no check fails", check(table(`| A | the circle reads stronger | verified | |`)).length > 0],
-      ["a check naming nothing from the item fails", check(table(`| A | the circle reads stronger | verified | ran the linter |`)).length > 0],
-      ["an unknown state fails", check(table(`| A | the circle reads stronger | done | |`)).length > 0],
-      ["an open item needs no check", check(table(`| A | the circle reads stronger | open | |`)).length === 0],
+      ["a valid item passes", ok(valid)],
+      ["THE MISTAKE: clamping proven on one field, claimed for another", bad({ ...valid, check: "the polygon sides field clamps onto 32" })],
+      ["verified with no check fails", bad({ ...valid, check: undefined })],
+      ["a check naming nothing from the statement fails", bad({ ...valid, check: "ran the linter" })],
+      ["an unknown state fails", bad({ ...valid, state: "done" })],
+      ["an unknown source fails", bad({ ...valid, source: "maybe" })],
+      ["an open item needs no check", ok({ ...valid, state: "open", check: undefined })],
+      ["unverified with no note fails", bad({ ...valid, state: "unverified", check: undefined })],
+      ["a malformed line loses one item, not the file", parse('{"id":"a","statement":"x","state":"open","source":"user"}\nnot json\n{"id":"b","statement":"y","state":"open","source":"user"}').items.length === 2],
     ];
-    const failed = cases.filter(([, ok]) => !ok);
-    for (const [name, ok] of cases) process.stdout.write(`${ok ? "  ok  " : "  FAIL"} ${name}\n`);
+    const failed = cases.filter(([, pass]) => !pass);
+    for (const [name, pass] of cases) process.stdout.write(`${pass ? "  ok  " : "  FAIL"} ${name}\n`);
     if (failed.length > 0) {
       process.stderr.write("\nbacklog-check self-test failed\n");
       process.exit(1);
@@ -158,8 +158,8 @@ if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || proc
   }
 
   if (problems.length > 0) {
-    process.stderr.write(`docs/product/backlog.md:\n  ${problems.join("\n  ")}\n\n`);
+    process.stderr.write(`docs/product/backlog.jsonl:\n  ${problems.join("\n  ")}\n\n`);
     process.exit(1);
   }
-  process.stdout.write(`backlog-check: ${rows(source).length} items, all states valid\n`);
+  process.stdout.write(`backlog-check: ${items.length} items, all valid\n`);
 }

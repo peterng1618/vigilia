@@ -78,7 +78,7 @@ Vigilia process.
   record it in the same commit and say what was tried** — the third failure is
   the trigger, not the absence of a record, so it survives compaction and a
   fresh root. **The register is
-  [`docs/product/backlog.md`](docs/product/backlog.md)**, which is the source of
+  [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl)**, which is the source of
   truth for what is known, what is fixed and what is verified; a GitHub issue is
   an input surface for jotting an idea down, and never the register itself. Fill
   a row there — `npm run backlog:check` refuses a `verified` row whose check
