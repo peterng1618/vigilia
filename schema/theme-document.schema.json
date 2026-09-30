@@ -156,7 +156,13 @@
       "allOf": [
         {
           "if": { "required": ["vigiliaGlass"] },
-          "then": { "properties": { "type": { "enum": ["Rect", "Group"] } } }
+          "then": {
+            "properties": {
+              "type": {
+                "enum": ["Rect", "Circle", "Ellipse", "Triangle", "Polygon", "Group"]
+              }
+            }
+          }
         }
       ],
       "additionalProperties": { "$ref": "#/$defs/jsonValue" }

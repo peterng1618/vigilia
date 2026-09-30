@@ -947,6 +947,66 @@ describe("authored glass treatment", () => {
     });
   });
 
+  it("accepts a treatment on every kind the product proves is closed", () => {
+    // The round trip the widening exists for: written on a Circle, an Ellipse,
+    // a Triangle and a Polygon as well as a Rect, the envelope accepts it.
+    // Refusing any of these would be a theme that saves and will not open.
+    for (const type of ["Rect", "Circle", "Ellipse", "Triangle", "Polygon"]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type, id: "panel", vigiliaGlass: { blurRadius: 24 } }]),
+        ),
+        type,
+      ).toMatchObject({ ok: true });
+    }
+  });
+
+  it("refuses an open path, whose interior there is nothing to sample", () => {
+    // Polyline and Line are open; a `Path` is arbitrary author data whose
+    // closedness the product cannot know. Naming the three here is the point:
+    // the set is the geometry claim, and a silent widening of it would frost
+    // a shape with no area under the blur.
+    for (const type of ["Polyline", "Line", "Path"]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([
+            { type, id: "sketch", vigiliaGlass: { blurRadius: 24 } },
+          ]),
+        ),
+        type,
+      ).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "invalid-enum",
+            path: "/scene/objects/0/vigiliaGlass",
+          }),
+        ]),
+      });
+    }
+  });
+
+  it("refuses a malformed treatment on a newly admitted kind", () => {
+    // Widening the vocabulary must not widen what counts as a treatment: the
+    // kind rule and the value rule are separate, and a bad radius on a Circle
+    // is refused exactly as it is on a Rect.
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Circle", id: "orb", vigiliaGlass: { blurRadius: 999 } },
+        ]),
+      ),
+    ).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-fabric-scene",
+          path: "/scene/objects/0/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+
   it("validates a nested treatment at the child's own path", () => {
     // The scene walk is the only thing that reaches a group child, so a
     // treatment validated only at the top level would let a bad nested value

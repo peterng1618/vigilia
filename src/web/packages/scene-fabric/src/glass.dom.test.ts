@@ -725,7 +725,7 @@ describe("glass composition", () => {
     );
     s.canvas.renderAll();
     expect(s.draws).toHaveLength(0);
-    expect(s.errors[0]).toContain("no measurable box");
+    expect(s.errors[0]).toContain("no closed path to clip");
 
     // A following, well-formed panel is unaffected: the failed one left no
     // clipped context behind for it.

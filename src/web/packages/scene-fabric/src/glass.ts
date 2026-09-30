@@ -1,5 +1,14 @@
 import { glassTreatment } from "@vigilia/renderer-core";
-import { type FabricObject, Group, type StaticCanvas } from "fabric/es";
+import {
+  Circle,
+  Ellipse,
+  type FabricObject,
+  Group,
+  Polygon,
+  Rect,
+  Triangle,
+  type StaticCanvas,
+} from "fabric/es";
 
 /**
  * Backdrop blur for authored glass panels. A panel samples the surface Fabric is
@@ -428,8 +437,10 @@ export function createGlass(options: GlassOptions): GlassHandle {
       ctx.shadowOffsetY = 0;
       ctx.setTransform(own[0], own[1], own[2], own[3], own[4], own[5]);
       if (!localPath(ctx, object)) {
+        // "No closed path", not "no measurable box": a degenerate rectangle and
+        // an open path both land here, and only the second has a box.
         report(
-          `"${nameOf(object)}" has no measurable box, so its backdrop blur was skipped.`,
+          `"${nameOf(object)}" has no closed path to clip, so its backdrop blur was skipped.`,
         );
         return;
       }
@@ -593,18 +604,69 @@ function sampleRegion(
 }
 
 /**
- * Rounded-rectangle path in the object's own local units, origin at the centre,
- * matching the box its own paint uses. False when the shape has no measurable
- * box, which a validated scene cannot reach but a hand-edited one could.
+ * The panel's own path in its own local units, origin at the centre, built
+ * from the geometry its own paint uses — the clip and the fill have to be the
+ * same shape, or the frosted surface reaches where the object is not.
+ *
+ * One branch per shape the product can prove is closed, and no fallback: the
+ * frosted treatment needs a closed path to sample the backdrop through, so a
+ * kind with no branch here is refused rather than clipped to a rectangle it
+ * does not have. See `docs/decisions/0015-glass-clips-any-closed-path-not-only-rects.md`.
  */
 function localPath(
   ctx: CanvasRenderingContext2D,
   object: FabricObject,
 ): boolean {
-  const width = number(object, "width");
-  const height = number(object, "height");
-  if (width === undefined || height === undefined || width <= 0 || height <= 0)
-    return false;
+  if (object instanceof Circle) {
+    // The authored sweep, not a whole turn: a half-disc's blur must not reach
+    // the half it does not paint. Absent angles are Fabric's own 0/360.
+    const r = positive(object, "radius");
+    const start = number(object, "startAngle") ?? 0;
+    const end = number(object, "endAngle") ?? 360;
+    if (r === undefined) return false;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, r, 0, radians(start), radians(end), object.counterClockwise);
+    return true;
+  }
+  if (object instanceof Ellipse) {
+    const rx = positive(object, "rx");
+    const ry = positive(object, "ry");
+    if (rx === undefined || ry === undefined) return false;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    return true;
+  }
+  if (object instanceof Triangle) {
+    const width = positive(object, "width");
+    const height = positive(object, "height");
+    if (width === undefined || height === undefined) return false;
+    ctx.beginPath();
+    ctx.moveTo(-width / 2, height / 2);
+    ctx.lineTo(0, -height / 2);
+    ctx.lineTo(width / 2, height / 2);
+    ctx.closePath();
+    return true;
+  }
+  if (object instanceof Polygon) {
+    // A polygon's own corners about its own `pathOffset`, which is the frame
+    // Fabric centres them in — the same translation its `_render` applies.
+    const offset = object.pathOffset;
+    const corners = object.points;
+    // Fewer than three corners has no area, whatever `closePath` says.
+    if (offset === undefined || corners.length < 3) return false;
+    ctx.beginPath();
+    for (const [index, point] of corners.entries()) {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+      if (index === 0) ctx.moveTo(point.x - offset.x, point.y - offset.y);
+      else ctx.lineTo(point.x - offset.x, point.y - offset.y);
+    }
+    ctx.closePath();
+    return true;
+  }
+  if (!(object instanceof Rect)) return false;
+  const width = positive(object, "width");
+  const height = positive(object, "height");
+  if (width === undefined || height === undefined) return false;
   const left = -width / 2;
   const top = -height / 2;
   const rx = radius(object, "rx", width);
@@ -660,6 +722,19 @@ function number(object: FabricObject, key: string): number | undefined {
     ? value
     : undefined;
 }
+
+/**
+ * A dimension that encloses area. Zero and negative are refused rather than
+ * clipped, because a path built from them is empty or wound inside out, and a
+ * zero-radius circle is the degenerate case that would otherwise become a
+ * hairline the author never drew.
+ */
+function positive(object: FabricObject, key: string): number | undefined {
+  const value = number(object, key);
+  return value !== undefined && value > 0 ? value : undefined;
+}
+
+const radians = (degrees: number): number => (degrees * Math.PI) / 180;
 
 /**
  * The panel's own opacity, which the composite divides out of the context's

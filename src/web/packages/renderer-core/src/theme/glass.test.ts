@@ -77,16 +77,63 @@ describe("the glass treatment contract", () => {
     expect(stored).toEqual({ blurRadius: 16 });
   });
 
-  it("allows glass only on the kinds whose backdrop Task 1 measured", () => {
-    expect(supportsGlass("Rect")).toBe(true);
-    expect(supportsGlass("Group")).toBe(true);
-    // A neighbouring shape may behave identically, but nothing has shown it
-    // does, so it is refused until Task 4 measures it.
-    expect(supportsGlass("Ellipse")).toBe(false);
-    expect(supportsGlass("Circle")).toBe(false);
+  it("allows glass on every kind the product can prove is closed", () => {
+    // The predicate is geometry, not a roster: the treatment needs a closed
+    // path to sample the backdrop through, and each of these has one.
+    for (const type of [
+      "Rect",
+      "Circle",
+      "Ellipse",
+      "Triangle",
+      "Polygon",
+      "Group",
+    ])
+      expect(supportsGlass(type), type).toBe(true);
+  });
+
+  it("refuses an open path, whose interior there is nothing to sample", () => {
+    // The exclusion is the geometry, so it is named here rather than left as
+    // an absence someone re-adds on the theory that it "probably works".
+    // A polyline and a line are open; a `Path` is arbitrary author data whose
+    // closedness the product cannot know.
+    for (const type of ["Polyline", "Line", "Path"])
+      expect(supportsGlass(type), type).toBe(false);
+  });
+
+  it("refuses a kind that is not a panel, on its own terms", () => {
+    // These are not closed-vs-open questions: a blur behind a glyph or a
+    // plotted series has no meaning at all.
     expect(supportsGlass("Textbox")).toBe(false);
     expect(supportsGlass("VigiliaChart")).toBe(false);
     expect(supportsGlass("FabricImage")).toBe(false);
+    // Case-exact, because the property is compared against a persisted string.
     expect(supportsGlass("rect")).toBe(false);
+    expect(supportsGlass("circle")).toBe(false);
+  });
+
+  it("reads a treatment back off every kind that may carry one", () => {
+    // The other half of the round trip: a value the validator admits must be
+    // a value the reader hands to the renderer, or an admitted treatment would
+    // composite nothing and look like a broken blur.
+    for (const type of [
+      "Rect",
+      "Circle",
+      "Ellipse",
+      "Triangle",
+      "Polygon",
+      "Group",
+    ]) {
+      if (!supportsGlass(type)) continue;
+      expect(glassTreatment(objectWith({ blurRadius: 24 })), type).toEqual({
+        blurRadius: 24,
+      });
+    }
+  });
+
+  it("still refuses an out-of-range treatment on a newly admitted kind", () => {
+    // Admitting a kind admits its vocabulary, not its values.
+    expect(
+      glassTreatment(objectWith({ blurRadius: MAX_GLASS_BLUR_RADIUS + 1 })),
+    ).toBeUndefined();
   });
 });

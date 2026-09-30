@@ -20,15 +20,28 @@ export interface GlassTreatment {
 }
 
 /**
- * Object kinds whose backdrop Task 1 actually measured: rounded and square
- * rectangles, including one inside a rotated group. Every other Fabric shape
- * may well behave the same, but that is Task 4's evidence to produce — until
- * then an unmeasured kind is refused rather than silently rendering a
- * treatment nobody has seen. Text, image and chart objects are excluded on
- * their own terms: they are not panels, and a blur behind a glyph or a
- * plotted series has no meaning.
+ * Object kinds that may carry the treatment, which is a property of the
+ * geometry rather than a roster of class names: the frosted surface needs a
+ * closed path to sample the backdrop through, and nothing else. Rounded and
+ * square rectangles, the two curves, the two straight-edged primitives, and a
+ * group — which Fabric gives no render boundary, so the treatment is refused
+ * loudly at attach rather than composited.
+ *
+ * Polyline, Line and Path are absent, and that is geometry rather than taste:
+ * an open path has no interior to sample, and a `Path` is arbitrary author data
+ * whose closedness the product cannot know. Text, image and chart objects are
+ * excluded on their own terms: they are not panels, and a blur behind a glyph
+ * or a plotted series has no meaning. See
+ * `docs/decisions/0015-glass-clips-any-closed-path-not-only-rects.md`.
  */
-const GLASS_OBJECT_TYPES: ReadonlySet<string> = new Set(["Rect", "Group"]);
+const GLASS_OBJECT_TYPES: ReadonlySet<string> = new Set([
+  "Rect",
+  "Circle",
+  "Ellipse",
+  "Triangle",
+  "Polygon",
+  "Group",
+]);
 
 /**
  * The kinds a published theme may carry the treatment on, in a stable order.
