@@ -360,6 +360,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [pane, setPane] = useState<RailPane>("layers");
     const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
+    /** Each pane's scroll offset, kept across the swap.
+     *
+     * The rail is single-panel, so opening Assets really does tear the layer
+     * list down and build it again — the selection, the inspector's geometry
+     * and the canvas handles all survive, and only the scroll was lost. With
+     * the Starter's 52 rows and more in a theme an author has built, finding
+     * your place again after a glance at the assets is the whole cost of it. */
+    const scrollOf = useRef(new Map<RailPane, number>());
+    const paneBody = useRef<HTMLElement | null>(null);
 
     const rail: readonly [RailPane, string][] = [
       ["layers", uiCopy.rail.layers],
@@ -376,8 +385,20 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         setCollapsed(true);
         return;
       }
+      // Read the offset off the DOM rather than off an event: the panel is torn
+      // down by the swap, so anything held in state is already gone by the time
+      // this runs for the next pane.
+      if (paneBody.current !== null) {
+        scrollOf.current.set(pane, paneBody.current.scrollTop);
+      }
       setPane(id);
       setCollapsed(false);
+      const restore = scrollOf.current.get(id) ?? 0;
+      // After the pane's own content is laid out, or the offset lands on
+      // whatever height it has at that moment.
+      requestAnimationFrame(() => {
+        if (paneBody.current !== null) paneBody.current.scrollTop = restore;
+      });
     };
 
     return (
@@ -421,7 +442,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               );
             })}
           </nav>
-          <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
+          <aside
+            className="editor-shell-panel editor-glass"
+            hidden={collapsed}
+            ref={paneBody}
+          >
             <div hidden={pane !== "layers"}>
               <LayerPanel bridge={store.bridge} />
             </div>
