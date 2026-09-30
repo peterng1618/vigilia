@@ -6,6 +6,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   isKnownSemanticKey,
+  isObjectName,
+  MAX_OBJECT_NAME_LENGTH,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
@@ -13,7 +15,9 @@ import {
   serialiseThemeEnvelope,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { readThemePackage } from "@vigilia/theme-package";
 import { StaticCanvas } from "fabric/es";
+import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import {
   createBlankFabricTheme,
@@ -25,6 +29,7 @@ import {
   createNewChartDefaults,
   createNewPanelDefaults,
 } from "./new-object-defaults.js";
+import { serializeThemePackage } from "./persist.js";
 import { STARTER_BACKDROP_PATH } from "./starter-backdrop.js";
 
 type ObjectJson = Readonly<Record<string, unknown>>;
@@ -299,6 +304,75 @@ describe("the new Fabric document", () => {
     // theme cannot show card A's load under card B's name.
     expect(keyOf("gpu-card-value", "gpu-card-load")).toBe("gpu.load");
     expect(keyOf("storage-bar", "storage-used")).toBe("disk.used.percent");
+  });
+
+  it("names every object after the readable id it already carries", () => {
+    const theme = createNewFabricTheme();
+    const objects = objectsOf(theme);
+
+    // The showcase theme is the document an author opens to learn from, and a
+    // layer list of 52 UUIDs is the problem F1.8 was about, not an example of
+    // the fix. The builders already chose a readable id beside every object, so
+    // the name is that id promoted — not a second, invented vocabulary.
+    for (const object of objects) {
+      const id = String(object["id"]);
+      expect(object["name"], `${id} has no name`).toBe(id);
+      // `name` is a bounded label, not free text, and the envelope refuses a
+      // value outside the bound at import — so this is checked against the
+      // guard's own predicate rather than assumed.
+      expect(isObjectName(object["name"]), `${id}'s name is not a label`).toBe(
+        true,
+      );
+      expect(
+        String(object["name"]).length,
+        `${id} exceeds the published bound`,
+      ).toBeLessThanOrEqual(MAX_OBJECT_NAME_LENGTH);
+    }
+
+    // Unique, because a duplicate makes the layer list ambiguous: two rows read
+    // the same and the author cannot tell which one a name refers to.
+    const names = objects.map((object) => String(object["name"]));
+    expect(names).toHaveLength(new Set(names).size);
+
+    // The names must not cost the document its validity: a name the validator
+    // refuses would empty the canvas.
+    expect(validateFabricThemeEnvelope(theme).ok).toBe(true);
+  });
+
+  it("persists those names in the saved package, not at load time", async () => {
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+    const saved = serialiseThemeEnvelope(canvas, theme);
+    await canvas.dispose();
+
+    // A name the editor added on the way in would be runtime state wearing an
+    // authored hat (§67). What is written here is the package, and the names
+    // are read back out of its `theme.json` — so this is the file, not a
+    // revival of it.
+    const bytes = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "starter-backdrop.jpg"),
+    );
+    const pkg = serializeThemePackage(saved, {
+      [STARTER_BACKDROP_PATH]: new Uint8Array(bytes),
+    });
+    if (!pkg.ok) throw new Error(pkg.message);
+    const themeJson = unzipSync(pkg.bytes)["theme.json"];
+    if (themeJson === undefined) throw new Error("no theme.json in the zip");
+    const written = JSON.parse(strFromU8(themeJson)) as {
+      scene: { objects: ReadonlyArray<Record<string, unknown>> };
+    };
+    const persisted = written.scene.objects;
+    expect(persisted).toHaveLength(objectsOf(theme).length);
+    for (const object of persisted) {
+      const id = String(object["id"]);
+      expect(object["name"], `${id} lost its name in the saved file`).toBe(id);
+    }
+    // And the archive is still a package, not a document with extra bytes.
+    expect(readThemePackage(pkg.bytes).ok).toBe(true);
   });
 
   it("places every reference card on its measured box", () => {

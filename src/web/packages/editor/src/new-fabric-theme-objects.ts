@@ -32,6 +32,9 @@ export function rect(
   return {
     type: "Rect",
     id,
+    // The id is already a readable label and the layer list falls back to it,
+    // so promoting it here is what turns the fallback into authored state.
+    name: id,
     left,
     top,
     width,
@@ -129,6 +132,7 @@ export function text(
   return {
     type: "Textbox",
     id,
+    name: id,
     left,
     top,
     width,
@@ -248,6 +252,7 @@ export function path(
   return {
     type: "Path",
     id,
+    name: id,
     left,
     top,
     path: points,
@@ -273,6 +278,7 @@ export function chart(
   return {
     type: "VigiliaChart",
     id,
+    name: id,
     left,
     top,
     width,
