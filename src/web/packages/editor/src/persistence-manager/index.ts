@@ -139,10 +139,20 @@ export function documentKey(
   const declared = new Map(
     (theme.assets ?? []).map((asset) => [asset.path, asset.sha256 ?? null]),
   );
+  // The union, not the loaded map. Enumerating `assets` alone caught the case it
+  // was written for — bytes with no declaration — but made the key a function of
+  // *how much has loaded*: a theme whose asset bytes arrive after the manager was
+  // constructed read as edited with nothing touched. Measured on the Starter,
+  // whose one declared asset is exactly that: the key gained its
+  // `assets/starter-backdrop.jpg` entry when the backdrop finished loading, and
+  // every later prompt to replace a document asked about work nobody had done. A
+  // declared path is in the list whether or not its bytes are here, so loading
+  // stops being an edit, and an undeclared one still appears with a null digest.
+  const paths = [
+    ...new Set([...declared.keys(), ...Object.keys(assets)]),
+  ].sort();
   return JSON.stringify([
     theme,
-    Object.keys(assets)
-      .sort()
-      .map((path) => [path, declared.get(path) ?? null]),
+    paths.map((path) => [path, declared.get(path) ?? null]),
   ]);
 }

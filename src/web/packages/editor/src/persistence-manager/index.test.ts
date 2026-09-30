@@ -126,6 +126,41 @@ describe("PersistenceManager", () => {
     ).toBe(true);
   });
 
+  it("is not made dirty by asset bytes arriving after it was built", () => {
+    // The Starter's one declared asset is a backdrop whose bytes land after the
+    // manager is constructed. Enumerating the loaded map made the key a function
+    // of how much had loaded, so an untouched theme asked to save work nobody did
+    // — the prompt vg-026 was filed about.
+    const document = withAsset("a".repeat(64));
+    const before = documentKey(document, {});
+    const after = documentKey(document, {
+      "assets/logo.png": new Uint8Array([1, 2, 3, 5]),
+    });
+    expect(before).toBe(after);
+
+    const manager = new PersistenceManager(document, {});
+    expect(
+      manager.isDirty(document, {
+        "assets/logo.png": new Uint8Array([1, 2, 3, 5]),
+      }),
+    ).toBe(false);
+  });
+
+  it("still moves the key when the bytes disagree with the declared digest", () => {
+    // The union keeps undeclared bytes visible, and a declared path keeps its
+    // digest, so replacing an asset is caught by the digest the envelope carries.
+    const document = withAsset("a".repeat(64));
+    const manager = new PersistenceManager(document, {
+      "assets/logo.png": new Uint8Array([1, 2, 3, 5]),
+    });
+    expect(
+      manager.isDirty(
+        { ...document, assets: [declared("assets/logo.png", "b".repeat(64))] },
+        { "assets/logo.png": new Uint8Array([1, 2, 3, 5]) },
+      ),
+    ).toBe(true);
+  });
+
   it("detects a rename, an added asset and a removed one", () => {
     const manager = new PersistenceManager(withAsset("a".repeat(64)), {
       "assets/logo.png": logo,
@@ -149,7 +184,17 @@ describe("PersistenceManager", () => {
         { "assets/logo.png": logo, [renamed]: new Uint8Array([9]) },
       ),
     ).toBe(true);
-    expect(manager.isDirty(withAsset("a".repeat(64)), {})).toBe(true);
+    // Bytes without the document are a cache, not an edit. Dropping them used
+    // to read as dirty, which meant a theme whose asset finished loading after
+    // the manager was built — the Starter, whose one declared asset is a
+    // backdrop — asked about work nobody had done the moment it opened. The
+    // declaration is what the document says; the bytes are what has arrived.
+    expect(manager.isDirty(withAsset("a".repeat(64)), {})).toBe(false);
+    // Removing the asset itself still moves the key, because that drops the
+    // declaration as well as the bytes.
+    expect(
+      manager.isDirty({ ...withAsset("a".repeat(64)), assets: [] }, {}),
+    ).toBe(true);
   });
 
   /**
