@@ -172,7 +172,10 @@ that nobody solved this shape, is worth nothing.
 
 ## Verification requirements
 
-Superpowers owns sequencing; these are Vigilia-specific evidence rules:
+Superpowers owns the whole change lifecycle — brainstorm, spec, plan, execute
+through subagents, track progress in its `.superpowers/sdd/` ledger, test, and
+close the plan and spec out when it is done. These are Vigilia-specific
+evidence rules inside that lifecycle:
 
 - Unit-test pure decisions and contracts; browser-test wiring and visible
   behaviour. Visible behaviour requires rendered/browser inspection, not only
