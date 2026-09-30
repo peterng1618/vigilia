@@ -89,10 +89,12 @@ export const NEW_OBJECT_STEP = 80;
  * name at all.
  */
 export function newObjectName(
-  kind: "panel" | "text" | ChartFamily | ShapeKind,
+  kind: "panel" | "text" | "image" | "group" | ChartFamily | ShapeKind,
 ): string {
   if (kind === "text") return uiCopy.panels.text;
   if (kind === "panel") return uiCopy.panels.panel;
+  if (kind === "image") return uiCopy.panels.image;
+  if (kind === "group") return uiCopy.panels.group;
   if (kind in uiCopy.chartFamilies) {
     return uiCopy.chartFamilies[kind as ChartFamily];
   }

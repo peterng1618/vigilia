@@ -33,6 +33,19 @@ describe("GroupingManager", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
+  it("names the group, so the row never prints its uuid", () => {
+    // A row with no authored name falls back to the id (see `object-name.ts`),
+    // and a minted one is a uuid — readable by nobody. `newObjectName` is the
+    // owner every other creator already goes through.
+    const { canvas, grouping } = setup();
+    const first = new Rect({ id: "a", width: 10, height: 10 });
+    const second = new Rect({ id: "b", left: 40, width: 10, height: 10 });
+    canvas.add(first, second);
+    canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
+
+    expect(grouping.group()?.get("name")).toBe("Group");
+  });
+
   it("refuses to group fewer than two objects", () => {
     const { canvas, grouping, save } = setup();
     const only = new Rect({ id: "a", width: 10, height: 10 });

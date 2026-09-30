@@ -80,6 +80,10 @@ describe("ImageManager", () => {
     expect(createObjectURL).toHaveBeenCalledWith(file);
     expect(revokeObjectURL).not.toHaveBeenCalled();
     expect(result?.image.get("id")).toMatch(/^image-[0-9a-f-]{36}$/);
+    // An unnamed row falls back to its id (see `object-name.ts`), which here is
+    // `image-<uuid>` — 42 characters in the layer list. Every other creator
+    // names through `newObjectName`; the paste path was the one that did not.
+    expect(result?.image.get("name")).toBe("Image");
     expect(result?.image.get("format")).toBe("png");
   });
 

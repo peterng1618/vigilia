@@ -1,4 +1,5 @@
 import { type Canvas, FabricImage, type FabricObject } from "fabric/es";
+import { newObjectName } from "../new-object-defaults.js";
 
 /**
  * Decoded-pixel ceiling for imported and rehydrated images. Unrelated to
@@ -120,6 +121,7 @@ export function createImageManager(
       const image = new FabricImage(boundedImageElement(decoded));
       image.set({
         id: `image-${crypto.randomUUID()}`,
+        name: newObjectName("image"),
         format: formatOf(options.source.type),
       });
       if (!options.withoutAdding) {

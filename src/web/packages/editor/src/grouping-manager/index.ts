@@ -6,6 +6,7 @@ import {
   type Point,
 } from "fabric/es";
 import { findById } from "../editor-shell/layer-tree.js";
+import { newObjectName } from "../new-object-defaults.js";
 
 export interface GroupingManager {
   group(): Group | undefined;
@@ -164,6 +165,7 @@ export function createGroupingManager(
         const group = new Group(members);
         // `id` is Vigilia's own persisted property, not a Fabric GroupProps key.
         group.set("id", `group-${crypto.randomUUID()}`);
+        group.set("name", newObjectName("group"));
         for (const member of members) canvas.remove(member);
         canvas.add(group);
         canvas.setActiveObject(group);

@@ -341,6 +341,11 @@ export const uiCopy = {
     add: "Add",
     text: "Text",
     panel: "Panel",
+    /** A pasted image and a fresh group arrive without an authored name, so
+        the layer row would print their uuid; these are what they are called
+        instead. */
+    image: "Image",
+    group: "Group",
     /** The Add pane's two construction lists, each a group. A flat chip list
         would put the word "Line" on two buttons with nothing to tell them
         apart — once for the primitive and once for the chart family. */
