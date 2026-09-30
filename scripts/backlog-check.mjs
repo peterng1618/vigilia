@@ -51,12 +51,26 @@ const NOISE =
 const VERB =
   /^(clamps|clamped|clamping|slides|shows|renders|reads|gives|opens|works|holds|keeps|carries|named|lands|fails|prints|disappears|lists|asks|takes|makes|turns|draws|serves|reports|is|are|was|were|be|been|being|does|do|has|have|had)$/i;
 
+/**
+ * The words an item or a check is *about*.
+ *
+ * Stemmed on a small plural list, so a check saying "chart" counts as naming a
+ * title saying "charts". Without that, the rule rejected a correct check for a
+ * spelling difference — which is how a gate starts being worked around rather
+ * than satisfied.
+ */
 const wordsOf = (text) =>
   new Set(
     String(text)
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, " ")
       .split(/\s+/)
+      .map((w) =>
+        w.replace(
+          /(charts|shapes|objects|assets|colours|colors|drives|points|handles|fields|checks|values|panels|groups|files|presets|readings|questions|buttons|options|panels)$/i,
+          (m) => m.slice(0, -1),
+        ),
+      )
       .filter((w) => w.length > 3 && !NOISE.test(w) && !VERB.test(w)),
   );
 
@@ -82,7 +96,7 @@ export function check(items) {
   const seen = new Set();
   for (const [n, item] of items.entries()) {
     const where = item?.id ?? `line ${n + 1}`;
-    if (typeof item?.statement !== "string" || item.statement.trim() === "") {
+    if (typeof item?.title !== "string" || item.title.trim() === "") {
       problems.push(`${where}: no statement`);
       continue;
     }
@@ -97,7 +111,7 @@ export function check(items) {
     seen.add(item.id);
 
     if (item.state === "verified") {
-      const said = wordsOf(item.statement);
+      const said = wordsOf(item.title);
       if (said.size === 0) {
         problems.push(`${where}: verified, but the statement names nothing to check against`);
         continue;
@@ -109,7 +123,7 @@ export function check(items) {
       const checked = wordsOf(item.check);
       if ([...said].every((w) => !checked.has(w))) {
         problems.push(
-          `${where}: the check names nothing from the statement —\n` +
+          `${where}: the check names nothing from the title —\n` +
             `      says: ${[...said].slice(0, 8).join(", ")}\n` +
             `      check: ${[...checked].slice(0, 8).join(", ")}\n` +
             `      a check of a capability nearby is not a check of this finding`,
@@ -134,7 +148,7 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       id: "vg-abc123",
       state: "verified",
       source: "agent",
-      statement: "the circle reads stronger than the rect",
+      title: "the circle reads stronger than the rect",
       check: "hovered the circle's glass and compared it with the rect's",
     };
     const cases = [
