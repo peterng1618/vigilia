@@ -36,7 +36,7 @@ reported as fixing a field that had none. The user's sentence is the spec.
 | — | "they weren't being dimmed" — the canvas does not dim objects outside an entered group | open | the layer panel dims; the canvas dim was declined because `opacity` serialises. **Needs a decision, not a fix** |
 | U25 | a colour picker for paint | open | search answered the wrong ecosystem; shadcn/ui has one |
 | U27 | a UI for gradients sharing the colour picker's parts | open | blocked behind U25 |
-| U29 | every new object lands on top of the last | in progress | dispatched; an earlier attempt was silently lost |
+| U29 | every new object lands on top of the last | verified | inserted four in turn and read each position: a new object no longer lands on the last one — 360,280 then 440,280 then 520,280 then 600,280 — and the chart uses the same ladder as the shapes, so the two origins are one | `eb6c8ce` |
 | U33 | every unmatched host path serves the player | open | `/play` and `/display` both return 200 with a live dashboard |
 | U34 | the palette colour field accepts anything, and persists it | open | **upstream of U25** — a picker does not fix it, the write path does not check |
 | U36 | the crop notice contradicts the geometry | open | cause not established; the notice was right and my reading was wrong |
