@@ -20,14 +20,16 @@ import { resolve } from "node:path";
 const REQUIRED = [
   "## Current objective",
   "## Active work",
-  "## Last completed change",
   "## Next",
   "## Blockers / unverified",
 ];
 
+// "Last completed change" was dropped on 2026-10-01: it was a hand-maintained
+// duplicate of `git log`, charged to every commit and gone stale silently. "Next"
+// stays, but as backlog row ids — priority is a decision, and a decision belongs
+// in a handoff rather than in a registry row.
 const LIMITS = [
   ["## Active work", 6],
-  ["## Last completed change", 5],
   ["## Next", 5],
   ["## Blockers / unverified", 5],
 ];
@@ -83,8 +85,6 @@ if (SELF_TEST) {
     "## Active work",
     "- a",
     "- b",
-    "## Last completed change",
-    "- c",
     "## Next",
     "1. d",
     "## Blockers / unverified",
@@ -98,8 +98,6 @@ if (SELF_TEST) {
     "One line.",
     "## Active work",
     ...Array.from({ length: 6 }, (_, i) => `- active ${i}`),
-    "## Last completed change",
-    ...Array.from({ length: 5 }, (_, i) => `- change ${i}`),
     "## Next",
     ...Array.from({ length: 5 }, (_, i) => `${i + 1}. step ${i}`),
     "## Blockers / unverified",
@@ -117,7 +115,7 @@ if (SELF_TEST) {
     ["rejects a missing heading", good.replace("## Next", "## Later"), 1],
     ["rejects an unexpected section", good.replace("## Next", "## Diary"), 1],
     ["rejects too many bullets", good.replace("- e", "- e\n- f\n- g\n- h\n- i\n- j"), 1],
-    ["rejects a wrapped bullet", good.replace("- c", "- c\n  continued here"), 1],
+    ["rejects a wrapped bullet", good.replace("- e", "- e\n  continued here"), 1],
     ["accepts a long file within the bullet limits", longButLegal, 0],
     ["rejects a long file over a bullet limit", longAndIllegal, 1],
   ];
