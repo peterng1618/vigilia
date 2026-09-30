@@ -95,6 +95,39 @@ export interface EditorShell {
   destroy(): void;
 }
 
+/**
+ * Bindings whose object is no longer in the scene, dropped.
+ *
+ * A binding is keyed by its object's id, so deleting the object leaves a key
+ * that names something the scene no longer has — and `serialiseThemeEnvelope`
+ * then produces a document the validator refuses, so **every later save in that
+ * session throws** and the author is told nothing. The Starter binds 25 of its
+ * 52 objects, so deleting one sensor readout disarms saving for good while the
+ * row looks like it simply vanished.
+ *
+ * Dropping them here rather than at each delete path is deliberate: the keyboard,
+ * the layer list, the context menu, undo and any future path all arrive at
+ * `snapshot`, so this cannot be the one that was forgotten. A binding is
+ * meaningless without its object, so nothing is lost that the document could
+ * still use — and an author who re-adds an object with that id gets its reading
+ * back, which is the only thing a saved binding was ever for.
+ */
+function dropDanglingBindings(
+  canvas: Canvas,
+  input: FabricThemeEnvelopeInput,
+): FabricThemeEnvelopeInput {
+  const bindings = input.bindings;
+  if (bindings === undefined) return input;
+  const live = new Set<string>();
+  for (const object of canvas.getObjects()) {
+    const id = object.get("id");
+    if (typeof id === "string") live.add(id);
+  }
+  const kept = Object.entries(bindings).filter(([id]) => live.has(id));
+  if (kept.length === Object.keys(bindings).length) return input;
+  return { ...input, bindings: Object.fromEntries(kept) };
+}
+
 const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
 let nextEditorContainer = 1;
 
@@ -434,7 +467,10 @@ export async function mountEditorShell({
       viewport: editor.viewport,
       ...(scene === undefined ? {} : { scene }),
       snapshot(input) {
-        const next = serialiseThemeEnvelope(editor.canvas, input);
+        const next = serialiseThemeEnvelope(
+          editor.canvas,
+          dropDanglingBindings(editor.canvas, input),
+        );
         const validation = validateFabricThemeEnvelope(next);
         if (!validation.ok) {
           throw new Error(

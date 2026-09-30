@@ -33,6 +33,54 @@ beforeEach(() => {
   }
 });
 
+describe("a binding cannot outlive its object", () => {
+  it("drops the binding when the object is deleted, so saving still works", async () => {
+    // The worst defect on the pass: a binding is keyed by its object's id, so a
+    // delete left a key naming something the scene no longer had, `snapshot`
+    // produced a document the validator refuses, and **every later save in that
+    // session threw** — with nothing in the UI saying so. The Starter binds 25
+    // of its 52 objects, so deleting one readout disarmed saving for good.
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 800 },
+      clientHeight: { value: 600 },
+    });
+    const authored = createNewFabricTheme();
+    const shell = await mountEditorShell({
+      host,
+      artboard: authored.artboard,
+      envelope: {
+        ...authored,
+        bindings: { "network-up": [{ id: "b1", semanticKey: "network.up" }] },
+      },
+    });
+    const bound = shell.editor.canvas
+      .getObjects()
+      .find((object) => object.get("id") === "network-up");
+    expect(bound).toBeDefined();
+
+    shell.snapshot({ ...authored });
+    expect(shell.editor.canvas.remove(bound!).length).toBeGreaterThan(0);
+
+    // The half that matters: this threw before, and a throw here means the
+    // author's save fails for the rest of the session.
+    const after = shell.snapshot({ ...authored }) as unknown as {
+      bindings?: Record<string, unknown>;
+      scene: { objects: { id?: string }[] };
+    };
+    const ids = after.scene.objects.map((object) => object.id);
+    expect(ids).not.toContain("network-up");
+    // Only the deleted one goes. The Starter's other 24 bindings still name
+    // objects that are there, and dropping those would take readings with them.
+    expect(Object.keys(after.bindings ?? {})).not.toContain("network-up");
+    expect(Object.keys(after.bindings ?? {}).length).toBe(
+      Object.keys(authored.bindings ?? {}).length - 1,
+    );
+
+    shell.destroy();
+  });
+});
+
 describe("the dirty guard and what the renderer paints", () => {
   /** The instrument that found this: snapshot, one live pass, snapshot. */
   it("is not made dirty by a reading being painted", async () => {
