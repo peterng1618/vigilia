@@ -26,9 +26,16 @@ Searched: `controls-manager/renderers.ts` (`ROTATE_DIAMETER`, `ROTATE_BACKGROUND
 `roundedHandle`), `snap-manager/*`, `canvas-nudge.ts`, `shortcut-manager`.
 
 Found: `renderers.ts` is 83 lines and owns the handle rendering vocabulary
-already. `Line` stores its geometry as `points`, which is what
-`scale-snapping-*` already reads — so a moved handle rewrites a representation
-the existing machinery understands rather than inventing one.
+already.
+
+**Two claims the row carried are false, measured on the running editor's own
+line rather than read off the docs.** First: this project's `Line` is
+`x1, y1, x2, y2` — four scalars, no `points`, no `pathOffset`, no
+`setDimensions`. Fabric's `Line` and its `Polyline` are different classes, and
+the polyline material below is about the *other* one. Second: nothing in
+`snap-manager` reads either representation; snapping works on bounding boxes.
+A moved endpoint therefore rewrites four scalars, not a point array — simpler
+than the row assumed, and for a different reason.
 
 **Shift, searched the same day:** it is plumbed everywhere and **branched on in
 exactly one place** — `canvas-nudge.ts` gives it one job, a larger arrow-key
@@ -55,12 +62,18 @@ anchoring on a point that is not the one being dragged.
 What Fabric does **not** ship is this as a *default transform set* — its poly
 controls are an explicit edit mode, entered and left deliberately. The plan's
 claim that "Fabric ships no per-vertex line controls" was true of the default
-control set and false of the library. The distinction matters: the handler and
-the technique are reusable, the mode is not what is wanted.
+control set and false of the library.
 
-The anchor technique Fabric documents is the non-obvious part: moving one point
-changes the object's dimensions, so you fix position against another point and
-let the box follow.
+**For this object none of that machinery applies**, and the note that first
+proposed it got the class wrong. `Line` stores four scalars, so an endpoint
+handle writes `x1/y1` or `x2/y2` directly, and the anchor technique Fabric
+documents for polylines is not needed: there is no path offset to re-derive.
+
+What does transfer is the *lesson*, and it is the Konva one rather than
+Fabric's: do not configure the bounding box, bind handles to the geometry. Here
+that reads as a control set of two endpoints plus rotation, with each endpoint's
+fraction read from `x1/x2` and `y1/y2` so a line drawn right-to-left still puts
+a handle on each end.
 
 ## Rung 4 — ecosystem
 
@@ -97,12 +110,13 @@ Nobody solves the bounding-box problem by configuring the bounding box.
 
 ## Decision
 
-Two endpoint controls bound to `Line.points`, plus the rotation handle the
-editor already renders, as the default control set for `Line`. Placement reuses
-Fabric's `createPolyPositionHandler`; the action handler writes
-`points[index]` and anchors position on the other point, which is Fabric's own
-documented technique for the same problem. Shift constrains the angle, on a
-modifier that currently branches in one unrelated place.
+Two endpoint controls plus the rotation handle the editor already renders, as
+the default control set for `Line`. Each endpoint reads its own corner from
+`x1/x2` and `y1/y2` rather than assuming top-left and bottom-right, because
+`width` and `height` are absolute values: a line drawn right-to-left has its
+first endpoint at the box's bottom-left. The action handler writes the four
+scalars. Shift constrains the angle, on a modifier that currently branches in
+one unrelated place.
 
 The Konva outcome is the load-bearing part of the search: two independent
 sources reached for the bounding box and were told to build two anchors instead.
