@@ -1162,6 +1162,34 @@ with no export to anchor it. Those need a reading pass over the map — 92 rows,
 each checked for whether the named module is the one that actually decides.
 **Queued as its own piece of work, not folded into a fix.**
 
+**U36 — the crop notice contradicts the geometry it describes, on the product's
+face.** Opened the host the way a reader does; it redirected to
+`/?theme=cpu-only&data=live` and the display is **blank**, under a banner reading
+*"1 of 1 objects are outside this artboard and are not shown — past the left
+edge."* Read the live scene and **the two cannot both be true**: one textbox at
+left **40**, top **40**, 200 × 25, `visible: true`, on a 1920×1080 artboard
+(viewport transform scale 1, offset 0,0). An object at x=40 is 80 units *inside*
+a 1920-wide artboard against a tolerance of 1, so `cropNoticeText`'s
+`box.left < -EDGE_TOLERANCE` is false and the function should return `undefined`.
+
+**Two defects on one screen, and the banner names the wrong one.** The notice is
+stale or computed against a degenerate artboard — though note that a 0×0 artboard
+would name *right* and *bottom*, so "past the left edge" implies the box was
+**negative** when measured, which points at a transform applied before the
+artboard resolved. **Cause not established.** Separately, **the display is empty
+regardless**: a theme with one visible 200×25 textbox at (40,40) should show that
+textbox, and that is the defect a reader actually experiences.
+
+**Why it outranks its size.** A wall display that says "1 of 1 objects are not
+shown" and shows nothing is indistinguishable from a broken install, and the one
+diagnostic on screen misdirects about which half is wrong. The same path produced
+the `1 of 23 objects…` banner on the `stress` fixture earlier, where the count may
+well be right — **here it is demonstrably not.** Discriminating measurement: read
+`getBoundingRect()` and the artboard size at the instant the notice is computed
+and again 3s later, and check whether `showCropNotice` (`main.ts:199`, `:355`) is
+ever called a second time. Owner: `player/src/artboard-crop.ts` and its caller.
+**Queued.**
+
 ### Rulings from the user, 2026-09-30 — three questions closed
 
 **Glass on the closed shapes — decided, and this supersedes the F1.9 note
