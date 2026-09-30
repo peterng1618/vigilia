@@ -1203,7 +1203,29 @@ investigation that got us here is below and it holds: `ctx.ellipse` is already i
 `localPath`, a circle is roughly one line, `ctx.clip()` already works on any path.
 **Re-measure the per-frame cost on the new shapes** — Task 1's radius sweep was
 flat across rectangles, which is what makes this a re-measure rather than a known
-regression.
+regression. *(Done: worst case 1.22× the Rect baseline, absolute never above
+1.95 ms, every region under 4% of the ceiling — `9f8db91`.)*
+
+**Parity across shapes is optional; shipping glass is not.** Ruled 2026-09-30, and
+it settles what "done" means for the whole widening: *"if it's too difficult to
+make the glass value behaves the same on all shapes due to mathematical reasons, a
+slight user confusion is an acceptable tradeoff rather than not having glass at all
+on closed shapes that's not a rect."* **The expensive option wins by default.** A
+Circle has less backdrop behind it than a Rect of the same box and will always
+read somewhat differently; that is geometry, and it is accepted.
+
+**The ruling turns on one distinction, and it is the whole of U37.** Either the
+sampled region does not cover the clipped shape — part of the shape then carries
+frosted fill with **nothing** behind it, which is a defect and worth fixing
+because a fix removes it — **or** the region covers the shape, the material is
+identical, and the shape still reads denser because of area and edge. **So "the
+circle reads stronger" is the observation that sends you looking, not the
+conclusion** — the same shape of error as the pass's other instrument errors.
+
+**What the ruling does not license:** nudging a Circle's *appearance* toward a
+Rect's to fake parity. That hides a cause and leaves the same problem on Triangle
+and Ellipse. **Accepting a genuine difference is permitted; simulating one away is
+not**, and the two are indistinguishable in a screenshot.
 
 **The colour picker — the previous search answered the wrong ecosystem.** U25
 reports that `@base-ui/react` ships no colour picker, which is true and beside
