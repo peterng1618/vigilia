@@ -1084,7 +1084,17 @@ demonstrates it. **The names already exist**: every object is built with a
 readable id beside it (`cpu-card`, `ram-gauge`, `storage-bar`, `time-rule`), and
 the layer list falls back to those today, which is why it is *almost* readable.
 **One owner:** the theme builders, writing `name` beside `id`, reusing the id's
-own word. **Queued.**
+own word. **Landed — `53fb6e5`, the same day it was written.** All four builders
+now write `name: id`, and the served document answers the question directly:
+**52 of 52 objects carry an authored `name`**, `wordmark → wordmark`,
+`time-card → time-card`. The layer list reads them without falling back.
+
+The sentence above about the source "never writes `name`" was true when written
+and is now stale — the fix landed hours later and nothing propagated back here.
+It is kept rather than deleted because the finding was real and the correction
+is the lesson: **a narrative section of a plan goes stale silently, and the
+registry (`docs/product/backlog.jsonl`) is what stays true.** Re-measuring this
+one cost a save and a reload.
 
 **U34 — the palette colour field accepts anything, and persists it.** U25
 records that the palette's colour control is a free-text field; driving it shows
