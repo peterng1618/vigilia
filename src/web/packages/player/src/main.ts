@@ -32,12 +32,13 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
-import { availabilityNoticeText } from "./availability-notice.js";
 import {
   type ArtboardSize,
   cropNoticeText,
   type SceneBox,
 } from "./artboard-crop.js";
+import { availabilityNoticeText } from "./availability-notice.js";
+import { boundSemanticKeys } from "./bound-keys.js";
 import { showLoadFailure } from "./load-failure.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
@@ -284,9 +285,7 @@ async function startHostedTheme(
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
   const measurement = await loadDisplayPreferences(session.fetch);
-  const keys = Object.values(theme.bindings ?? {})
-    .flat()
-    .map((binding) => binding.semanticKey);
+  const keys = boundSemanticKeys(theme);
   const liveHandle = createLiveSource({
     url: session.streamUrl(
       SAMPLE_STREAM_PATH,
