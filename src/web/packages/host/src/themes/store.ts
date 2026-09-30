@@ -154,6 +154,64 @@ function declaredPaths(envelope: FabricThemeEnvelope): readonly string[] {
   return (envelope.assets ?? []).map((asset) => asset.path);
 }
 
+/** What the document says each path holds, for the assets it says it hashes. */
+function declaredHashes(
+  envelope: FabricThemeEnvelope,
+): ReadonlyMap<string, string> {
+  const hashes = new Map<string, string>();
+  for (const asset of envelope.assets ?? []) {
+    // An unhashed declaration is a path with no content to compare, so it never
+    // joins the map rather than joining it as `undefined`.
+    if (asset.sha256 !== undefined) {
+      hashes.set(asset.path, asset.sha256);
+    }
+  }
+  return hashes;
+}
+
+/**
+ * The declared paths the previous folder already holds correctly, so a save can
+ * copy them across instead of rewriting them.
+ *
+ * The declared `sha256` is the authority and nothing is re-hashed here: it was
+ * computed at import from the exact bytes, and a matching declaration on both
+ * sides means the same content. What a hash cannot say is whether the file is
+ * *there* — a folder an author emptied, or a path that is not a regular file,
+ * still has to be written, or the save would commit a theme missing it.
+ */
+async function reusableAssets(
+  library: string,
+  id: string,
+  envelope: FabricThemeEnvelope,
+): Promise<ReadonlySet<string>> {
+  // No readable previous document means nothing to compare against, so the
+  // save writes everything rather than trusting a hash it cannot corroborate.
+  const previous = await readEnvelope(library, id);
+  if (previous === undefined) {
+    return new Set();
+  }
+  const before = declaredHashes(previous);
+  const reusable = new Set<string>();
+  await Promise.all(
+    (envelope.assets ?? []).map(async (asset) => {
+      const sha256 = asset.sha256;
+      if (sha256 === undefined || before.get(asset.path) !== sha256) {
+        return;
+      }
+      // `lstat`, not `stat`: a symlink is not the file it points at, and
+      // copying one would carry its target into the new folder.
+      const isFile = await fs
+        .lstat(path.join(library, id, ...asset.path.split("/")))
+        .then((stat) => stat.isFile())
+        .catch(() => false);
+      if (isFile) {
+        reusable.add(asset.path);
+      }
+    }),
+  );
+  return reusable;
+}
+
 /** Validates both halves of a folder and returns the envelope to persist. */
 function checked(id: string, content: ThemeContent): FabricThemeEnvelope {
   if (!isValidThemeId(id)) {
@@ -311,6 +369,11 @@ export function createThemeStore(directory: string): ThemeStore {
      * an interrupted save can never leave a half-written theme where a working
      * one used to be — the property the single archive file had, kept now that
      * a theme is a directory.
+     *
+     * An asset the previous theme already holds unchanged is copied across
+     * instead of rewritten, with its own timestamps kept: the folder is still
+     * staged whole and renamed in, so a file this save did not write is still
+     * the same file to everything that watches one.
      */
     async write(id: string, content: ThemeContent): Promise<ThemeStoreEntry> {
       const envelope = checked(id, content);
@@ -326,6 +389,7 @@ export function createThemeStore(directory: string): ThemeStore {
       saving.add(id);
 
       try {
+        const reusable = await reusableAssets(directory, id, envelope);
         await fs.mkdir(path.join(staging, ASSETS_DIR), { recursive: true });
         await fs.writeFile(
           path.join(staging, THEME_FILE),
@@ -337,7 +401,13 @@ export function createThemeStore(directory: string): ThemeStore {
           // call and the check is not.
           const file = path.join(staging, ...assetPath.split("/"));
           await fs.mkdir(path.dirname(file), { recursive: true });
-          await fs.writeFile(file, bytes);
+          if (reusable.has(assetPath)) {
+            await fs.cp(path.join(target, ...assetPath.split("/")), file, {
+              preserveTimestamps: true,
+            });
+          } else {
+            await fs.writeFile(file, bytes);
+          }
         }
 
         hadPrevious = await fs

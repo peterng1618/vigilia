@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -496,6 +497,245 @@ describe("ThemeStore crash recovery", () => {
       "living-room",
       "theme-a",
     ]);
+  });
+});
+
+/** The hash a declaration carries, computed the way import computes it. */
+function sha256Of(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/**
+ * A save that changes nothing must not rewrite what it did not change. The
+ * proof is a file's modified time, so the tests put one where only a rewrite
+ * would move it: a date far enough in the past that no clock resolution can
+ * hide a file landing on it by accident.
+ */
+describe("ThemeStore asset reuse", () => {
+  let tmpDir: string;
+
+  const LONG_AGO = new Date("2001-02-03T04:05:06Z");
+
+  const backport = new TextEncoder().encode("backdrop-bytes");
+  const badge = new TextEncoder().encode("<svg/>");
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-theme-reuse-test-"),
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  /** A theme declaring each asset with the hash of its own bytes, as import does. */
+  function themeWith(
+    contents: ReadonlyArray<readonly [string, Uint8Array]>,
+    hash = true,
+  ): ThemeContent {
+    return {
+      envelope: {
+        ...envelopeFor("living-room", "Living Room"),
+        assets: contents.map(([assetPath, bytes], index) => ({
+          id: `asset-${index}`,
+          kind: "image" as const,
+          path: assetPath,
+          ...(hash ? { sha256: sha256Of(bytes) } : {}),
+        })),
+      },
+      assets: Object.fromEntries(contents),
+    };
+  }
+
+  const asset = (assetPath: string): string =>
+    path.join(tmpDir, "living-room", ...assetPath.split("/"));
+
+  const modifiedAt = async (file: string): Promise<number> =>
+    fs
+      .stat(file)
+      .then((stat) => stat.mtime.getTime())
+      .catch(() => Number.NaN);
+
+  const backdate = (file: string): Promise<void> =>
+    fs.utimes(file, LONG_AGO, LONG_AGO);
+
+  it("writes no asset whose declared hash the previous theme already holds", async () => {
+    const store = createThemeStore(tmpDir);
+    const content = themeWith([
+      ["assets/backdrop.png", backport],
+      ["assets/badge.svg", badge],
+    ]);
+    await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+    await backdate(asset("assets/badge.svg"));
+    await backdate(path.join(tmpDir, "living-room", "theme.json"));
+
+    // The same theme again, with only its name changed.
+    await store.write("living-room", {
+      ...content,
+      envelope: {
+        ...content.envelope,
+        metadata: { name: "Renamed", author: "Ada", locale: "en" },
+      },
+    });
+
+    // Neither asset was rewritten, so neither moved; the document is written on
+    // every save, so it did. That is the whole claim, as two clocks disagreeing.
+    expect(await modifiedAt(asset("assets/backdrop.png"))).toBe(
+      LONG_AGO.getTime(),
+    );
+    expect(await modifiedAt(asset("assets/badge.svg"))).toBe(
+      LONG_AGO.getTime(),
+    );
+    expect(
+      await modifiedAt(path.join(tmpDir, "living-room", "theme.json")),
+    ).not.toBe(LONG_AGO.getTime());
+    // And the folder is still whole, which is what a copy must not break.
+    expect(await store.read("living-room")).toMatchObject({
+      name: "Renamed",
+    });
+    expect(await fs.readFile(asset("assets/badge.svg"), "utf8")).toBe("<svg/>");
+  });
+
+  it("writes the one asset that changed and leaves the other alone", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write(
+      "living-room",
+      themeWith([
+        ["assets/backdrop.png", backport],
+        ["assets/badge.svg", badge],
+      ]),
+    );
+    await backdate(asset("assets/backdrop.png"));
+    await backdate(asset("assets/badge.svg"));
+
+    const changed = new TextEncoder().encode("<svg>replaced</svg>");
+    await store.write(
+      "living-room",
+      themeWith([
+        ["assets/backdrop.png", backport],
+        ["assets/badge.svg", changed],
+      ]),
+    );
+
+    expect(await modifiedAt(asset("assets/backdrop.png"))).toBe(
+      LONG_AGO.getTime(),
+    );
+    expect(await modifiedAt(asset("assets/badge.svg"))).not.toBe(
+      LONG_AGO.getTime(),
+    );
+    expect(await fs.readFile(asset("assets/badge.svg"), "utf8")).toBe(
+      "<svg>replaced</svg>",
+    );
+  });
+
+  /**
+   * The trap a hash-only check falls into: the declaration proves the *content*
+   * is right, never that the file is *there*. A theme folder an author emptied
+   * must come back from a save whole.
+   */
+  it("restores an asset the previous theme declared but no longer holds", async () => {
+    const store = createThemeStore(tmpDir);
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+    await fs.rm(asset("assets/backdrop.png"));
+
+    await store.write("living-room", content);
+
+    // Restored, and written rather than copied — a copy would have had nothing
+    // to copy from.
+    expect(await fs.readFile(asset("assets/backdrop.png"), "utf8")).toBe(
+      "backdrop-bytes",
+    );
+    expect(await modifiedAt(asset("assets/backdrop.png"))).not.toBe(
+      LONG_AGO.getTime(),
+    );
+    expect(await store.read("living-room")).toMatchObject({
+      assets: { "assets/backdrop.png": backport },
+    });
+  });
+
+  it("writes an asset whose path is a directory, not a file", async () => {
+    const store = createThemeStore(tmpDir);
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+    await fs.rm(asset("assets/backdrop.png"));
+    await fs.mkdir(asset("assets/backdrop.png"));
+
+    await store.write("living-room", content);
+
+    // Copying a directory there would commit a theme that renders nothing.
+    expect((await fs.stat(asset("assets/backdrop.png"))).isFile()).toBe(true);
+    expect(await fs.readFile(asset("assets/backdrop.png"), "utf8")).toBe(
+      "backdrop-bytes",
+    );
+  });
+
+  it("writes an asset the declaration does not hash", async () => {
+    const store = createThemeStore(tmpDir);
+    const content = themeWith([["assets/backdrop.png", backport]], false);
+    await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+
+    await store.write("living-room", content);
+
+    // Two unhashable declarations are not a match; they are no evidence at all.
+    expect(await modifiedAt(asset("assets/backdrop.png"))).not.toBe(
+      LONG_AGO.getTime(),
+    );
+  });
+
+  for (const [state, damage] of [
+    ["missing", () => fs.rm(path.join(tmpDir, "living-room", "theme.json"))],
+    [
+      "corrupt",
+      () => fs.writeFile(path.join(tmpDir, "living-room", "theme.json"), "{"),
+    ],
+  ] as const) {
+    it(`writes every asset when the previous theme.json is ${state}`, async () => {
+      const store = createThemeStore(tmpDir);
+      const content = themeWith([["assets/backdrop.png", backport]]);
+      await store.write("living-room", content);
+      await backdate(asset("assets/backdrop.png"));
+      await damage();
+
+      await store.write("living-room", content);
+
+      // Nothing to corroborate the declared hash against, so nothing is skipped
+      // on the strength of it.
+      expect(await modifiedAt(asset("assets/backdrop.png"))).not.toBe(
+        LONG_AGO.getTime(),
+      );
+      expect(await fs.readFile(asset("assets/backdrop.png"), "utf8")).toBe(
+        "backdrop-bytes",
+      );
+    });
+  }
+
+  it("writes every asset of a first save, with no previous folder to copy from", async () => {
+    // The library does not exist yet, so a save that tried to reuse anything
+    // would have nothing to read and would fail the write.
+    const store = createThemeStore(path.join(tmpDir, "not-created-yet"));
+    const content = themeWith([
+      ["assets/backdrop.png", backport],
+      ["assets/badge.svg", badge],
+    ]);
+
+    await store.write("living-room", content);
+
+    expect(
+      (
+        await fs.readdir(
+          path.join(tmpDir, "not-created-yet", "living-room", "assets"),
+        )
+      ).sort(),
+    ).toEqual(["backdrop.png", "badge.svg"]);
+    expect(await store.read("living-room")).toMatchObject({
+      assets: { "assets/badge.svg": badge },
+    });
   });
 });
 
