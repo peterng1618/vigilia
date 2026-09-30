@@ -6,7 +6,7 @@ artifacts and from Git history.
 | Need | Canonical source |
 |---|---|
 | Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
-| User feedback, bug reports, the backlog | [GitHub issues](https://github.com/peterng1618/vigilia/issues) |
+| Bugs, feedback and requests, and what is *verified* | [`product/backlog.md`](product/backlog.md) — the source of truth; [GitHub issues](https://github.com/peterng1618/vigilia/issues) are an input surface |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |

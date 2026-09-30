@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Feedback registry check.
+ * Backlog registry check — what is known, what is fixed, what is verified.
  *
  * Two agents on 2026-09-30 reported fixes that were not fixes, and one was
  * reported *verified* having been tested on a neighbouring field — clamping
@@ -16,7 +16,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const FILE = resolve(ROOT, "docs/product/feedback.md");
+const FILE = resolve(ROOT, "docs/product/backlog.md");
 
 const STATES = ["open", "in progress", "unverified", "verified", "withdrawn"];
 
@@ -126,7 +126,7 @@ export function check(source) {
   return problems;
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("feedback-check.mjs")) {
+if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("backlog-check.mjs")) {
   const source = readFileSync(FILE, "utf8");
   const problems = check(source);
 
@@ -151,15 +151,15 @@ if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || proc
     const failed = cases.filter(([, ok]) => !ok);
     for (const [name, ok] of cases) process.stdout.write(`${ok ? "  ok  " : "  FAIL"} ${name}\n`);
     if (failed.length > 0) {
-      process.stderr.write("\nfeedback-check self-test failed\n");
+      process.stderr.write("\nbacklog-check self-test failed\n");
       process.exit(1);
     }
-    process.stdout.write("\nfeedback-check self-test passed\n");
+    process.stdout.write("\nbacklog-check self-test passed\n");
   }
 
   if (problems.length > 0) {
-    process.stderr.write(`docs/product/feedback.md:\n  ${problems.join("\n  ")}\n\n`);
+    process.stderr.write(`docs/product/backlog.md:\n  ${problems.join("\n  ")}\n\n`);
     process.exit(1);
   }
-  process.stdout.write(`feedback-check: ${rows(source).length} items, all states valid\n`);
+  process.stdout.write(`backlog-check: ${rows(source).length} items, all states valid\n`);
 }

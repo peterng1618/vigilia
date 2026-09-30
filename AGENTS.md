@@ -75,20 +75,23 @@ Vigilia process.
   owner, the correct behaviour is already specified, a regression test is
   obvious, and no work is lost and no data misrepresented. Say which side you
   took and why, in the commit. **If a third attempt at the same defect fails,
-  file the issue in that commit and say what was tried** — the third failure is
+  record it in the same commit and say what was tried** — the third failure is
   the trigger, not the absence of a record, so it survives compaction and a
-  fresh root. Agents file with
-  `gh issue create --body-file .github/bug-report-template.md`; humans use
-  `.github/ISSUE_TEMPLATE/bug.yml`, which asks the same questions. Close a bug
-  issue with the fixing commit, a comment naming it — a close reason alone
-  records no fix. A filed bug later judged duplicate or not-a-bug closes as
-  `duplicate` or `not planned`, with the reason in a comment. Do not duplicate
-  a finding in specs, status or reports; plans may link it.
-- A filed request is `needs-triage` until judged. An accepted request closes
-  with a link to the spec or plan that now owns it; a declined one closes as
-  `not planned` **and carries its reason in a closing comment** — the close
-  reason alone says nothing, and a decision nobody can read is a decision lost.
-  `STATUS.md` alone decides acceptance, so the queue keeps one owner. When an
+  fresh root. **The register is
+  [`docs/product/backlog.md`](docs/product/backlog.md)**, which is the source of
+  truth for what is known, what is fixed and what is verified; a GitHub issue is
+  an input surface for jotting an idea down, and never the register itself. Fill
+  a row there — `npm run backlog:check` refuses a `verified` row whose check
+  does not name the thing that was reported. A filed issue is pulled into the
+  register when asked; an issue is closed with a comment naming the row and the
+  check that ran, and the close reason alone records nothing. Do not duplicate a
+  finding in specs, status or reports; plans may link it.
+- A filed request is `undecided` until judged, and `covered` once the register
+  owns it. An accepted request closes with a link to the spec, plan or row that
+  now owns it; a declined one closes as `not planned` **and carries its reason in
+  a closing comment** — the close reason alone says nothing, and a decision
+  nobody can read is a decision lost. `STATUS.md` alone decides acceptance, so the
+  queue keeps one owner. When an
   issue waits on a named plan or an unanswered decision, set `blocked` and say
   what it waits on.
 

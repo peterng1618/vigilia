@@ -1,10 +1,10 @@
-# User feedback registry
+# Backlog — bugs, feedback and requests
 
 **This file is the source of truth for what the user has asked for and whether it
 is checked.** A GitHub issue is an *input surface* — somewhere to jot an idea
 down in ten seconds — and is pulled into this file when asked. An issue is never
 the backlog and closing one never means something was fixed; **this file is what
-gets closed, and `npm run feedback:check` is what keeps it honest.**
+gets closed, and `npm run backlog:check` is what keeps it honest.**
 
 The two are not the same thing and are not allowed to drift: the issue is a
 capture surface with no state, this file carries the state and the evidence. An
@@ -29,7 +29,7 @@ conversation that **was never written down**.
 **`unverified` is not a temporary convenience.** It is the state an item sits in
 when an agent reports success, until a *different* check confirms it. An item
 cannot go from `in progress` to `verified` on the strength of the work that
-claimed it — `scripts/feedback-check.mjs` rejects that, and requires the check to
+claimed it — `scripts/backlog-check.mjs` rejects that, and requires the check to
 name the field, control or path **from the item's own wording**.
 
 **"Verified" means the thing the user said, not a capability nearby.** The rule
