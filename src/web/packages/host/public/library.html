@@ -42,7 +42,8 @@
       </p>
       <div id="themes"></div>
       <p class="elsewhere">
-        Building a theme, or changing one? <a href="/editor/">Open the editor</a>.
+        Building a theme, or changing one?
+        <a id="editor-link" href="/editor/">Open the editor</a>.
       </p>
       <div id="status"></div>
     </main>
@@ -61,10 +62,20 @@
           return;
         }
         const body = await response.json();
-        render(body.themes ?? [], body.templates ?? []);
+        render(body.themes ?? [], body.templates ?? [], body.active ?? null);
       }
 
-      function render(themes, templates) {
+      function render(themes, templates, active) {
+        // A consumer who picked a theme and then goes to change it means that
+        // one, so the editor link carries whichever this page is showing. The
+        // active theme is in the same response the rows came from.
+        const editorLink = document.querySelector("#editor-link");
+        if (editorLink !== null) {
+          editorLink.href =
+            active === null || active === undefined
+              ? "/editor/"
+              : `/editor/?theme=${encodeURIComponent(active)}`;
+        }
         themesHost.replaceChildren(
           themeList(themes, {
             templates,

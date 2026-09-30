@@ -118,7 +118,24 @@ export function themeList(themes, { active = null, onChoose, templates = [] }) {
     }
 
     row.addEventListener("click", () => onChoose(theme.id));
-    fragment.append(row);
+
+    // Showing a theme and changing it are different acts, so they are different
+    // controls: the button above is the consumer choosing, and this is the
+    // author editing. A `<button>` cannot hold a link, so the row's two
+    // controls are siblings inside one row.
+    const edit = document.createElement("a");
+    edit.className = "theme-edit";
+    edit.href = `/editor/?theme=${encodeURIComponent(theme.id)}`;
+    edit.textContent = "Edit";
+    // A row's name is not the link's, so read alone in a list of links every
+    // one of these would be "Edit". The theme's own name is what tells them
+    // apart, and the visible "Edit" is kept inside it.
+    edit.setAttribute("aria-label", `Edit ${named} in the editor`);
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "theme-row";
+    wrapper.append(row, edit);
+    fragment.append(wrapper);
   }
 
   return fragment;

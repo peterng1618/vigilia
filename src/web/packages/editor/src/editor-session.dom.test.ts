@@ -7,6 +7,20 @@ const saveMock = vi.hoisted(() => vi.fn(async () => {}));
 const markSavedMock = vi.hoisted(() => vi.fn());
 /** Shared, so a test can recover the registered `(id, handler)` pairs. */
 const registerMock = vi.hoisted(() => vi.fn());
+/** The dirty-document question and the answer given to it, held so a test can
+ *  set both. The default is a clean document and a replacement nobody objects
+ *  to, which is what every other test in this file is. */
+const dirtyMock = vi.hoisted(() => vi.fn(() => false));
+const replaceMock = vi.hoisted(() => vi.fn(async () => "discard"));
+/** The library dialog has no jsdom implementation. Opening a theme by URL
+ *  reaches a document through this same call, so what the dialog answered is
+ *  the only difference between arriving two ways. */
+const libraryChoiceMock = vi.hoisted(() =>
+  vi.fn(async () => ({ kind: "theme" as const, id: "saved-theme" })),
+);
+vi.mock("./theme-library-dialog.js", () => ({
+  promptThemeSelection: () => libraryChoiceMock(),
+}));
 
 vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
 vi.mock("./palette-manager/index.js", () => ({
@@ -28,11 +42,11 @@ vi.mock("./chart-manager/index.js", () => ({
 vi.mock("./persistence-manager/index.js", () => ({
   PersistenceManager: class {
     destroy = vi.fn();
-    isDirty = vi.fn(() => false);
+    isDirty = dirtyMock;
     save = saveMock;
     markSaved = markSavedMock;
   },
-  confirmDocumentReplacement: vi.fn(async () => "discard"),
+  confirmDocumentReplacement: replaceMock,
 }));
 vi.mock("./shortcut-manager/index.js", () => ({
   ShortcutManager: class {
@@ -697,6 +711,118 @@ describe("EditorSession", () => {
 
     extensions.destroy();
     hydrate.mockRestore();
+  });
+});
+
+/** Opening a theme replaces the open document, whichever way it was asked
+ *  for. `?theme=<id>` reaches a document through exactly this call, so a
+ *  second guard beside this one would be a question asked twice about the same
+ *  work — and a URL route that skipped this one would drop it silently. */
+describe("opening a theme over a document that has unsaved changes", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+    },
+    scene: {},
+    snapshot: vi.fn(() => envelope),
+    setBackgroundMedia: vi.fn(),
+  });
+
+  const sessionWith = (overrides?: Record<string, unknown>): EditorSession =>
+    new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    dirtyMock.mockReset();
+    dirtyMock.mockReturnValue(false);
+    replaceMock.mockReset();
+    replaceMock.mockResolvedValue("discard");
+    libraryChoiceMock.mockClear();
+  });
+
+  it("asks before discarding, and opens nothing when the author says no", async () => {
+    dirtyMock.mockReturnValue(true);
+    replaceMock.mockResolvedValue("cancel");
+    const onOpenTheme = vi.fn();
+    const open = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open,
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(replaceMock).toHaveBeenCalledOnce();
+    // The question is only worth anything if answering it stops the open.
+    expect(open).not.toHaveBeenCalled();
+    expect(onOpenTheme).not.toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("opens the theme once the author has answered", async () => {
+    dirtyMock.mockReturnValue(true);
+    const onOpenTheme = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({ envelope, assets: {} })),
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    extensions.destroy();
+  });
+
+  it("asks nothing of a document nobody has changed", async () => {
+    const onOpenTheme = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({ envelope, assets: {} })),
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    extensions.destroy();
   });
 });
 

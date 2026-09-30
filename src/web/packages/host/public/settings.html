@@ -49,7 +49,8 @@
         Choose the theme your displays show, and which hardware it reports.
       </p>
       <p class="elsewhere">
-        Building a theme, or changing one? <a href="/editor/">Open the editor</a>.
+        Building a theme, or changing one?
+        <a id="editor-link" href="/editor/">Open the editor</a>.
       </p>
       <section aria-labelledby="themes-heading">
         <h2 id="themes-heading">Themes</h2>
@@ -126,6 +127,17 @@
 
       function renderThemes() {
         themesHost.replaceChildren();
+        // An author who is looking at a theme and then goes to change it means
+        // that one. The link cannot carry it in the markup — the host serves
+        // this file as-is and the active theme is only known once the library
+        // has answered — so it is pointed at the theme this page is showing.
+        const editorLink = document.querySelector("#editor-link");
+        if (editorLink !== null) {
+          editorLink.href =
+            activeTheme === null
+              ? "/editor/"
+              : `/editor/?theme=${encodeURIComponent(activeTheme)}`;
+        }
         themesHint.textContent =
           themes.length === 0
             ? "No themes are saved on this PC yet. Build one in the editor, then save it here."

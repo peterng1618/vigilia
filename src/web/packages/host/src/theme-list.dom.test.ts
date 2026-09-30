@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { themeList } from "../public/theme-list.js";
 
 /** The chooser at `/` and the settings page both list saved themes, so the row
@@ -88,6 +88,67 @@ describe("a saved theme as one row", () => {
     );
 
     expect(labels).toEqual(["Living Room", "Studio"]);
+  });
+
+  /** Changing a saved theme was impossible: the row chose which theme the
+   * displays show, and nothing anywhere else opened one for editing. A save
+   * was a place a theme could be put and never read back from. */
+  describe("editing a theme, beside the control that displays it", () => {
+    it("offers an edit link carrying that theme's id", () => {
+      const host = mount(themeList(THEMES, { onChoose }));
+      const edits = [
+        ...host.querySelectorAll<HTMLAnchorElement>(".theme-edit"),
+      ];
+
+      expect(edits.map((edit) => edit.getAttribute("href"))).toEqual([
+        "/editor/?theme=living-room",
+        "/editor/?theme=studio",
+      ]);
+    });
+
+    it("names the theme each link edits, because the word alone does not", () => {
+      const host = mount(themeList(THEMES, { onChoose }));
+      const names = [...host.querySelectorAll(".theme-edit")].map((edit) =>
+        edit.getAttribute("aria-label"),
+      );
+
+      // Read in a list of links, six identical "Edit"s name nothing; the
+      // visible "Edit" stays inside the name so the two agree.
+      expect(names).toEqual([
+        "Edit Living Room in the editor",
+        "Edit Studio in the editor",
+      ]);
+      expect(
+        [...host.querySelectorAll(".theme-edit")].every((edit) =>
+          (edit.getAttribute("aria-label") ?? "").startsWith(
+            edit.textContent ?? "",
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it("keeps the edit link outside the button, so it is a link and not a label", () => {
+      const host = mount(themeList(THEMES, { onChoose }));
+      const row = host.querySelector("[data-theme='living-room']");
+
+      // A link nested in a button cannot be focused or followed on its own:
+      // the pointer goes to the button, and the keyboard has one stop that
+      // chooses the theme rather than editing it.
+      expect(row?.closest(".theme-edit")).toBeNull();
+      expect(
+        host.querySelector(".theme-row [data-theme] + .theme-edit"),
+      ).not.toBeNull();
+    });
+
+    it("leaves the consumer's choice working, beside the new link", () => {
+      const chosen = vi.fn();
+      const host = mount(themeList(THEMES, { onChoose: chosen }));
+      host
+        .querySelector<HTMLButtonElement>("[data-theme='studio']")
+        ?.dispatchEvent(new Event("click"));
+
+      expect(chosen).toHaveBeenCalledWith("studio");
+    });
   });
 });
 

@@ -27,6 +27,7 @@ import { parseThemePackage } from "./persist.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
+import { bootTheme } from "./boot-theme.js";
 import { captureCanvas } from "./thumbnail-capture.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
@@ -239,6 +240,19 @@ async function start(): Promise<void> {
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
   });
+  // A saved theme the author came back to, rather than the reference
+  // composition the editor ships. Nothing is open yet, so there is nothing to
+  // confirm over; the document this replaces is the one that never opened.
+  const requested = await bootTheme(window.location.search, libraryClient);
+  if (requested !== undefined) {
+    await mount({
+      input: envelopeInputFor(requested.envelope),
+      envelope: requested.envelope,
+      assets: requested.assets,
+    });
+    status.textContent = `Opened ${requested.envelope.metadata?.name ?? requested.envelope.id}`;
+    return;
+  }
   const theme = createNewFabricTheme();
   await mount({
     input: envelopeInputFor(theme),

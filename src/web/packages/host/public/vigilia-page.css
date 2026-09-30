@@ -81,6 +81,26 @@ a {
   display: grid;
   gap: 8px;
 }
+/* A saved theme's row holds two controls: the button that chooses it and the
+   link that edits it. They are siblings rather than nested, because a link
+   inside a button is not a link — it cannot be focused or followed on its
+   own, and its accessible name collapses into the button's. */
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.theme-row .theme-option {
+  flex: 1;
+  min-width: 0;
+}
+/* Editing leaves the page, the same as every other link here, so it is told
+   apart by an underline rather than drawn as a second button. */
+.theme-edit {
+  flex: none;
+  color: inherit;
+  font-size: 13px;
+}
 .theme-option {
   display: flex;
   align-items: center;
