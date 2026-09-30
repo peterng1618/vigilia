@@ -163,3 +163,35 @@ export async function chooseAssetFile(
   await page.locator(`[data-vigilia-asset-${control}]`).click();
   await (await chooser).setFiles(file);
 }
+
+/**
+ * Answers a modal if it turns up, and reports whether it did.
+ *
+ * `isVisible()` answers about *now*, and these prompts are not up *now*: the
+ * dirty guard resolves before it asks, so a test that checks immediately sees
+ * nothing and skips the click — then hangs somewhere downstream waiting for a
+ * button it decided did not exist. It reads as a product timeout and is a test
+ * defect, which is exactly how issue #7 presented.
+ *
+ * Bounded so that "no prompt" stays a real outcome rather than a long wait: the
+ * dirty guard is genuinely not settled on a just-saved document, and some
+ * rounds ask and some do not.
+ */
+export async function answerDialogIfShown(
+  page: Page,
+  button: string,
+  timeout = 3_000,
+): Promise<boolean> {
+  const dialog = page.locator("dialog");
+  const shown = await dialog
+    .waitFor({ state: "visible", timeout })
+    .then(() => true)
+    .catch(() => false);
+  if (!shown) return false;
+  await dialog.getByRole("button", { name: button, exact: true }).click();
+  // Deliberately no "and wait for it to close". One flow reuses the element for
+  // its next prompt — New asks for a size, then asks about the changes — so a
+  // caller that waited for closure here would hang on the dialog it was about to
+  // answer. Calling this twice in a row handles both steps.
+  return true;
+}

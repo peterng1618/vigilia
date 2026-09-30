@@ -9,6 +9,7 @@ import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import {
   type ArtboardRect,
+  answerDialogIfShown,
   captureVisualReview,
   chooseAssetFile,
   clientOfScene,
@@ -362,7 +363,7 @@ function objectsOf(
 }
 
 test.describe("the reference composition, authored", () => {
-  test("a new document is the reference composition, and a saved one is never replaced by it", async ({
+  test("a fresh document is the reference composition, and New never touches the saved one", async ({
     page,
   }, testInfo) => {
     desktop(testInfo);
@@ -473,18 +474,23 @@ test.describe("the reference composition, authored", () => {
     // five "discard?" prompts and one silent New across six save-then-`Ctrl+N`
     // rounds on an unchanged starter. The author answers whichever comes.
     await page.keyboard.press("Control+n");
-    const dialog = page.locator("dialog");
-    if (await dialog.isVisible()) {
-      await dialog.getByRole("button", { name: "Discard" }).click();
-      await expect(dialog).toHaveCount(0);
-    }
-    await expect(page.locator("#status")).toHaveText("New Fabric theme");
+    // New asks in two steps, and the order is fixed: a size chooser first, then
+    // the question about the changes. Looking for "Discard" straight after the
+    // chord found the chooser instead, which has no such button, and the test
+    // hung there — a timeout that read like a product fault and was not one.
+    await answerDialogIfShown(page, "Create");
+    await answerDialogIfShown(page, "Discard");
+    await expect(page.locator("#status")).toHaveText("New theme");
     await expect
       .poll(async () => idsOf(await sceneFacts(page)), { timeout: 15_000 })
       .not.toContain(authored);
-    expect(idsOf(await sceneFacts(page))).toEqual(
-      expect.arrayContaining([...REFERENCE_IDS]),
-    );
+    // **New is a blank theme of the chosen size, not the starter.** The File
+    // menu says so — "New theme" beside "New from starter" — and this assertion
+    // used to require the reference composition back, which is the other
+    // command's job. Measured: after Create and Discard the canvas holds 0
+    // objects. What matters here is that the author's object is gone and the
+    // file they saved is untouched.
+    expect(idsOf(await sceneFacts(page))).toEqual([]);
     const afterNew = readThemePackage(saved.bytes);
     expect(afterNew.ok).toBe(true);
     if (afterNew.ok) {

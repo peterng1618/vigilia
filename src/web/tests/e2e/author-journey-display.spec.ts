@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { readThemePackage } from "@vigilia/theme-package";
+import { answerDialogIfShown } from "./editor-canvas.js";
 import {
   buildComposition,
   importBackdrop,
@@ -229,11 +230,7 @@ test.describe("the rebuilt composition, on a display", () => {
     // work. Without this the file chooser never opens and the step hangs until
     // the test times out with no message saying why — the same shape as issue
     // #7, met from the other side.
-    const discard = reopened.getByRole("button", {
-      name: "Discard",
-      exact: true,
-    });
-    if (await discard.isVisible().catch(() => false)) await discard.click();
+    await answerDialogIfShown(reopened, "Discard");
     await (await openPackage).setFiles(EXPORTED);
     await reopened.waitForTimeout(5_000);
     await reopened.screenshot({

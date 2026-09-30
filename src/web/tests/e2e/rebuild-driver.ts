@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 // The rail pane's toggle rule has one owner and one guard: this file grew a
 // second copy of it while the rebuild was being written, which is F1.28's
 // class again.
+import { answerDialogIfShown } from "./editor-canvas.js";
 import { openRailPane } from "./editor-rail.js";
 
 /**
@@ -123,8 +124,7 @@ export async function openBlank(
 
   // A document the author has not touched is still dirty — the editor opens on
   // the starter — so replacing it asks. Correct, and it is a second step.
-  const discard = page.getByRole("button", { name: "Discard", exact: true });
-  if (await discard.isVisible().catch(() => false)) await discard.click();
+  await answerDialogIfShown(page, "Discard");
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
 }
 
