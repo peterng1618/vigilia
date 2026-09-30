@@ -18,8 +18,15 @@ const replaceMock = vi.hoisted(() => vi.fn(async () => "discard"));
 const libraryChoiceMock = vi.hoisted(() =>
   vi.fn(async () => ({ kind: "theme" as const, id: "saved-theme" })),
 );
+/** What the author answered about a refused save, and the default is to think
+ *  about it: a refusal that resolved by itself would be one nothing is said
+ *  about, which is the failure this whole path exists to prevent. */
+const conflictMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<"reload" | "overwrite" | undefined> => undefined),
+);
 vi.mock("./theme-library-dialog.js", () => ({
   promptThemeSelection: () => libraryChoiceMock(),
+  promptThemeConflict: () => conflictMock(),
 }));
 
 vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
@@ -56,6 +63,7 @@ vi.mock("./shortcut-manager/index.js", () => ({
 }));
 
 import { EditorSession } from "./editor-session.js";
+import { ThemeConflictError } from "./theme-library-client.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { fontTrio } from "./font-catalog.js";
 
@@ -109,7 +117,7 @@ describe("EditorSession", () => {
     const mockClient = {
       list: vi.fn(async () => []),
       open: vi.fn(async () => ({ envelope, assets: {} })),
-      save: vi.fn(async () => {}),
+      save: vi.fn(async () => "base-after-save"),
     };
 
     const extensions = new EditorSession({
@@ -822,6 +830,295 @@ describe("opening a theme over a document that has unsaved changes", () => {
 
     expect(replaceMock).not.toHaveBeenCalled();
     expect(onOpenTheme).toHaveBeenCalledOnce();
+    extensions.destroy();
+  });
+});
+
+/**
+ * A save the host refused because the stored theme moved on. The claim under
+ * test is that a refusal costs the author nothing and says so: the document
+ * stays, the refusal arrives in the same words as any failed save, and the two
+ * ways forward are offered rather than guessed.
+ */
+describe("a save the host refused", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+    },
+    scene: {},
+    snapshot: vi.fn(() => envelope),
+    setBackgroundMedia: vi.fn(),
+  });
+
+  const panelHosts = {
+    add: document.body,
+    assets: document.body,
+    document: document.body,
+    chart: document.body,
+    selection: document.body,
+    style: document.body,
+  };
+
+  const stored = { ...envelope, metadata: { name: "Edited elsewhere" } };
+
+  /** A client whose first save is refused, standing in for the stored theme
+   *  having been saved by another tab since this one opened it. */
+  function refusingClient(): {
+    readonly client: Record<string, ReturnType<typeof vi.fn>>;
+    readonly saves: ReturnType<typeof vi.fn>[];
+  } {
+    const saves = [
+      vi.fn(async (..._args: unknown[]): Promise<string> => {
+        throw new ThemeConflictError(
+          '"theme" was changed by someone else after this document was opened.',
+        );
+      }),
+      vi.fn(
+        async (..._args: unknown[]): Promise<string> => "base-after-overwrite",
+      ),
+    ];
+    return {
+      client: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({
+          envelope: stored,
+          assets: {},
+          base: "base-as-stored",
+        })),
+        save: vi.fn(async (...args: unknown[]) => {
+          // The first save is the refused one; every save after it is the
+          // deliberate one and succeeds.
+          const call = saves[0]?.mock.calls.length ? saves[1] : saves[0];
+          return (call as (...a: unknown[]) => Promise<string>)(...args);
+        }),
+      },
+      saves,
+    };
+  }
+
+  beforeEach(() => {
+    conflictMock.mockReset();
+    conflictMock.mockResolvedValue(undefined);
+    markSavedMock.mockReset();
+  });
+
+  it("says the save did not happen, and keeps the document", async () => {
+    const onError = vi.fn();
+    const onSaved = vi.fn();
+    const { client } = refusingClient();
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved,
+      onError,
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    // The editor's own words for a save that did not happen. A silent refusal
+    // is as bad as a silent clobber: the work would look saved.
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Could not save to library:"),
+    );
+    expect(onError.mock.calls[0]?.[0]).toContain("changed by someone else");
+    // Not marked saved, and the author was asked rather than told.
+    expect(markSavedMock).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(conflictMock).toHaveBeenCalledOnce();
+
+    // And the document is still the author's, so the next save is the same one
+    // rather than a save of nothing.
+    expect(shell().snapshot).toBeDefined();
+    extensions.destroy();
+  });
+
+  it("overwrites only because the author said to", async () => {
+    conflictMock.mockResolvedValueOnce("overwrite");
+    const onSaved = vi.fn();
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved,
+      onError: vi.fn(),
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(saves[1]).toHaveBeenCalledOnce();
+    expect(saves[1]?.mock.calls[0]?.[2]).toEqual({ overwrite: true });
+    expect(onSaved).toHaveBeenCalledWith("Saved to library");
+    // The base moves onto what the overwrite wrote, so the next save is made
+    // on the document that is actually stored.
+    await extensions.actionFacade().saveLibrary();
+    expect(saves[1]?.mock.calls[1]?.[1]).toMatchObject({
+      base: "base-after-overwrite",
+    });
+    extensions.destroy();
+  });
+
+  it("reloads onto the stored document, base and all", async () => {
+    conflictMock.mockResolvedValueOnce("reload");
+    const onOpenTheme = vi.fn();
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme,
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(onOpenTheme).toHaveBeenCalledWith(stored, {}, "base-as-stored");
+    // Reloading is taking the stored version, not replacing it: nothing was
+    // written a second time.
+    expect(saves[1]).not.toHaveBeenCalled();
+
+    // The document is now the stored one, so this save is based on it.
+    const reloaded = new EditorSession({
+      shell: {
+        ...shell(),
+        snapshot: vi.fn(() => stored),
+      } as never,
+      source: {} as never,
+      envelope: stored,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+    });
+    await reloaded.actionFacade().saveLibrary();
+    expect(saves[1]).toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("sends the base it opened, and takes the one each save answers", async () => {
+    const saves = [
+      vi.fn(async (..._args: unknown[]): Promise<string> => "base-after-first"),
+    ];
+    const client = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => ({
+        envelope: stored,
+        assets: {},
+        base: "base-as-stored",
+      })),
+      save: vi.fn(async (...args: unknown[]) =>
+        (saves[0] as (...a: unknown[]) => Promise<string>)(...args),
+      ),
+    };
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme: vi.fn(),
+    });
+    const session = extensions.actionFacade();
+
+    // A document that came from nowhere claims no base, so its first save is
+    // a first save and is not refused.
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[0]?.[1]).not.toHaveProperty("base");
+
+    await session.openLibrary();
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[1]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[2]?.[1]).toMatchObject({
+      base: "base-after-first",
+    });
+    extensions.destroy();
+  });
+
+  it("hands the base to the session that replaces this one", async () => {
+    // Opening a theme builds a new session, so a base kept only on this one
+    // dies with it — and the session that inherits the document then saves
+    // with no idea what it is based on, which is an ungated write. A stale tab
+    // reached through `?theme=` was exactly that, until this was threaded.
+    const onOpenTheme = vi.fn();
+    const { client } = refusingClient();
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme,
+    });
+    const session = extensions.actionFacade();
+
+    await session.openLibrary();
+    expect(onOpenTheme).toHaveBeenCalledWith(stored, {}, "base-as-stored");
+
+    conflictMock.mockResolvedValueOnce("reload");
+    await session.saveLibrary();
+    expect(onOpenTheme).toHaveBeenLastCalledWith(stored, {}, "base-as-stored");
+    extensions.destroy();
+  });
+
+  it("does not gate the export, which is not a save against the store", async () => {
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    await extensions.actionFacade().savePackage();
+
+    // A `.vigilia-theme` an author shares is a file, not a write to the
+    // library: refusing it would break sharing a theme.
+    expect(client.save).not.toHaveBeenCalled();
+    expect(saves[0]).not.toHaveBeenCalled();
+    expect(saveMock).toHaveBeenCalled();
     extensions.destroy();
   });
 });

@@ -9,6 +9,13 @@ export type ThemeLibraryChoice =
   | { readonly kind: "template"; readonly id: string }
   | { readonly kind: "theme"; readonly id: string };
 
+/** See `promptThemeConflict` for why these are not in `ui-copy.ts`. */
+const CONFLICT_LEAD =
+  "This theme was changed somewhere else since you opened it. Your work is still here.";
+const CONFLICT_RELOAD = "Open the saved version";
+const CONFLICT_OVERWRITE = "Replace it with mine";
+const CONFLICT_CANCEL = "Keep editing";
+
 /** The dialog's return value for an answer. Every other close — Cancel, Escape,
  *  a host closing it — is a dismissal, which is what an empty return value
  *  already means. */
@@ -137,4 +144,95 @@ function group(
     optgroup.append(option);
   }
   return optgroup;
+}
+
+/** What an author can do about a save the host refused. */
+export type ThemeConflictChoice = "reload" | "overwrite";
+
+/**
+ * Asks what to do about a save that was refused because the stored theme moved
+ * on. Two answers and a way out, because a refusal must not cost the author
+ * their document and must not be a dead end: reload discards their unsaved
+ * edits in favour of the stored version, overwrite discards the stored version
+ * in favour of their edits, and cancelling keeps both.
+ *
+ * A `<dialog>` like the other two editor prompts, so it is dismissible by
+ * Escape and reachable by keyboard without a bespoke key handler.
+ *
+ * **ponytail:** these three strings are literals here rather than entries in
+ * `ui-copy.ts`, which is the owner of visible editor copy and was not this
+ * task's to edit. Fold them into `uiCopy.library` when that file is free; the
+ * table is plain English today, so nothing is untranslated by leaving them
+ * here.
+ */
+export function promptThemeConflict(): Promise<
+  ThemeConflictChoice | undefined
+> {
+  const dialog = document.createElement("dialog");
+  dialog.className = "vigilia-dialog";
+  dialog.setAttribute("aria-label", CONFLICT_LEAD);
+
+  const lead = document.createElement("p");
+  lead.className = "vigilia-dialog-lead";
+  lead.textContent = CONFLICT_LEAD;
+
+  const actions = document.createElement("div");
+  actions.className = "vigilia-dialog-actions";
+  const buttons: ReadonlyArray<readonly [ThemeConflictChoice, string]> = [
+    ["reload", CONFLICT_RELOAD],
+    ["overwrite", CONFLICT_OVERWRITE],
+  ];
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = CONFLICT_CANCEL;
+  cancel.setAttribute("data-vigilia-library-cancel", "");
+
+  for (const [choice, label] of buttons) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute(`data-vigilia-library-${choice}`, "");
+    actions.append(button);
+  }
+  actions.append(cancel);
+  dialog.append(lead, actions);
+
+  return new Promise((resolve) => {
+    let done = false;
+    /** Read at the `close` event, not passed in: `dialog.close(value)` fires
+     *  `close` before the click handler resumes, so a listener that assumed
+     *  every `close` was a dismissal would resolve every answer as a cancel. */
+    const settle = (): void => {
+      if (done) return;
+      done = true;
+      const value = dialog.returnValue;
+      dialog.remove();
+      resolve(value === "reload" || value === "overwrite" ? value : undefined);
+    };
+
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dialog.close?.();
+        settle();
+      }
+    });
+    dialog.addEventListener("close", () => settle());
+    for (const [choice] of buttons) {
+      dialog
+        .querySelector(`[data-vigilia-library-${choice}]`)
+        ?.addEventListener("click", () => {
+          dialog.close?.(choice);
+          settle();
+        });
+    }
+    cancel.addEventListener("click", () => {
+      dialog.close?.("cancel");
+      settle();
+    });
+
+    document.body.append(dialog);
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  });
 }

@@ -9,6 +9,7 @@ import {
   createThemeStore,
   isValidThemeId,
   type ThemeContent,
+  ThemeConflictError,
   type ThemeStore,
 } from "./store.js";
 
@@ -736,6 +737,178 @@ describe("ThemeStore asset reuse", () => {
     expect(await store.read("living-room")).toMatchObject({
       assets: { "assets/badge.svg": badge },
     });
+  });
+});
+
+/**
+ * Two editors open on one theme. The one that saves second is holding a
+ * document that never saw the first one's work, and because a save replaces
+ * the whole folder, applying it would drop the first one's fields *and* the
+ * assets it imported. These are the tests that say the store noticed.
+ */
+describe("ThemeStore concurrent saves", () => {
+  let tmpDir: string;
+  let store: ThemeStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-theme-conflict-test-"),
+    );
+    store = createThemeStore(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  const empty: ThemeContent = {
+    envelope: envelopeFor("kitchen", "Kitchen"),
+    assets: {},
+  };
+  const edited: ThemeContent = {
+    envelope: envelopeFor("kitchen", "Kitchen, edited by the second tab"),
+    assets: {},
+  };
+
+  /** Every byte of a theme folder, so "unchanged" means unchanged and not
+   *  "still parses" — the claim is about the files, not the values. */
+  async function folderBytes(id: string): Promise<Record<string, string>> {
+    const found: Record<string, string> = {};
+    const walk = async (dir: string, prefix: string): Promise<void> => {
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const name = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await walk(full, name);
+        } else {
+          found[name] = (await fs.readFile(full)).toString("base64");
+        }
+      }
+    };
+    await walk(path.join(tmpDir, id), "");
+    return found;
+  }
+
+  it("refuses a save built from a document the store has moved past, and changes nothing", async () => {
+    // Both tabs open the same stored theme.
+    const opened = await store.write("kitchen", empty);
+    const tabA = await store.write("kitchen", edited, { base: opened.base });
+
+    // Tab B still holds the document it opened, and saves it.
+    const before = await folderBytes("kitchen");
+    await expect(
+      store.write("kitchen", empty, { base: opened.base }),
+    ).rejects.toThrow(ThemeConflictError);
+
+    // Not "the theme still parses" — the same bytes, and no scratch folder
+    // left behind by a save that was refused before it staged anything.
+    expect(await folderBytes("kitchen")).toEqual(before);
+    expect((await fs.readdir(tmpDir)).sort()).toEqual(["kitchen"]);
+    expect(tabA.base).not.toBe(opened.base);
+  });
+
+  it("keeps the assets a refused save would have dropped", async () => {
+    const image = new TextEncoder().encode(
+      "a photograph, base64 in a real save",
+    );
+
+    // Both tabs open the theme before the image exists.
+    const opened = await store.write("kitchen", empty);
+    // Tab A imports a picture and saves.
+    await store.write(
+      "kitchen",
+      withAsset("kitchen", "Kitchen", "assets/photo.png", image),
+      {
+        base: opened.base,
+      },
+    );
+
+    // Tab B's document predates the import, so its declaration does not
+    // mention the picture at all — and a save replaces the whole folder.
+    await expect(
+      store.write("kitchen", empty, { base: opened.base }),
+    ).rejects.toThrow(ThemeConflictError);
+
+    const stored = await fs.readFile(
+      path.join(tmpDir, "kitchen", "assets", "photo.png"),
+    );
+    expect(new Uint8Array(stored)).toEqual(image);
+  });
+
+  it("applies a save whose base is the document now stored", async () => {
+    const opened = await store.write("kitchen", empty);
+    const saved = await store.write("kitchen", edited, { base: opened.base });
+
+    const record = await store.read("kitchen");
+    expect(record?.envelope.metadata?.name).toBe(
+      "Kitchen, edited by the second tab",
+    );
+    expect(record?.base).toBe(saved.base);
+  });
+
+  it("applies a first save, which has no stored document to be behind", async () => {
+    // With no base at all, because the author never opened a stored theme.
+    await expect(store.write("kitchen", empty)).resolves.toMatchObject({
+      id: "kitchen",
+    });
+    // And with one, because a theme that was deleted underneath the tab is a
+    // create rather than a conflict.
+    await expect(
+      store.write(
+        "garden",
+        { envelope: envelopeFor("garden", "Garden"), assets: {} },
+        {
+          base: "a-base-for-a-theme-that-is-not-there",
+        },
+      ),
+    ).resolves.toMatchObject({ id: "garden" });
+  });
+
+  it("applies an overwrite deliberately, and answers the base to build on next", async () => {
+    const opened = await store.write("kitchen", empty);
+    await expect(
+      store.write("kitchen", edited, { base: opened.base, overwrite: true }),
+    ).resolves.toMatchObject({ id: "kitchen" });
+
+    const record = await store.read("kitchen");
+    expect(record?.envelope.metadata?.name).toBe(
+      "Kitchen, edited by the second tab",
+    );
+    // The refused save's base is dead; the one the overwrite reported is not.
+    expect(record?.base).not.toBe(opened.base);
+  });
+
+  it("answers a base that is the document's content, not the folder's clock", async () => {
+    const opened = await store.write("kitchen", empty);
+    expect(opened.base).toMatch(/^[0-9a-f]{64}$/);
+
+    // Saving the same document again lands on the same base even though the
+    // store replaced the folder and the folder's mtime moved.
+    const again = await store.write("kitchen", empty, { base: opened.base });
+    expect(again.base).toBe(opened.base);
+
+    // And something that moves the file's time without touching the document —
+    // a checkout, an rsync, a copy that keeps timestamps — is not a change to
+    // be stale about. An mtime base would refuse this save.
+    const later = new Date("2031-05-06T07:08:09Z");
+    await fs.utimes(path.join(tmpDir, "kitchen", "theme.json"), later, later);
+    await expect(
+      store.write("kitchen", edited, { base: opened.base }),
+    ).resolves.toMatchObject({ id: "kitchen" });
+  });
+
+  it("refuses a base that is not the stored document, whatever shape it arrives in", async () => {
+    const opened = await store.write("kitchen", empty);
+    for (const base of [
+      "",
+      "not-a-hash",
+      opened.base.slice(0, -1),
+      `${opened.base}0`,
+    ]) {
+      await expect(store.write("kitchen", edited, { base })).rejects.toThrow(
+        ThemeConflictError,
+      );
+    }
   });
 });
 

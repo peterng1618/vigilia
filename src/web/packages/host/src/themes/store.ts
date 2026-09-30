@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -26,6 +27,9 @@ export interface ThemeStoreEntry {
 
 export interface ThemeStoreRecord extends ThemeStoreEntry {
   readonly ok: true;
+  /** The stored document's identity, which a save made from this read is
+   *  based on. See {@link ThemeWriteOptions.base}. */
+  readonly base: string;
   readonly envelope: FabricThemeEnvelope;
   readonly assets: Readonly<Record<string, Uint8Array>>;
 }
@@ -36,10 +40,55 @@ export interface ThemeContent {
   readonly assets: Readonly<Record<string, Uint8Array>>;
 }
 
+/**
+ * What a save says about the document it was built from.
+ *
+ * `base` is the whole concurrency guard, and it is the *document's* content
+ * rather than the folder's mtime: an mtime moves when anything touches the
+ * folder — the staged rename this store itself performs included — so it
+ * reports a change that did not happen and misses one that did. A hash of the
+ * bytes answers the only question that matters, which is whether the document
+ * the author is editing is still the document that is stored.
+ *
+ * Absent means the client is not claiming a base, and the save is applied as it
+ * always was. That is what a first save is — there is nothing stored to be
+ * behind — and what a script or an older client sends.
+ */
+export interface ThemeWriteOptions {
+  readonly base?: string;
+  /** Apply the save whatever is stored. The one way past the guard, and only
+   *  an author who was told their save was refused should reach for it. */
+  readonly overwrite?: boolean;
+}
+
+/** A save's outcome: the listing line, and the base the next save is made on. */
+export interface ThemeStoreSave extends ThemeStoreEntry {
+  readonly base: string;
+}
+
+/**
+ * A save was refused because the stored theme moved on after the document the
+ * save was built from. The previous version is untouched, and the author's
+ * document is still theirs to keep, reload past, or replace deliberately.
+ */
+export class ThemeConflictError extends Error {
+  constructor(id: string) {
+    super(
+      `"${id}" was changed by someone else after this document was opened. ` +
+        "Reload it to take the newer version, or save again to replace it.",
+    );
+    this.name = "ThemeConflictError";
+  }
+}
+
 export interface ThemeStore {
   list(): Promise<readonly ThemeStoreEntry[]>;
   read(id: string): Promise<ThemeStoreRecord | undefined>;
-  write(id: string, content: ThemeContent): Promise<ThemeStoreEntry>;
+  write(
+    id: string,
+    content: ThemeContent,
+    options?: ThemeWriteOptions,
+  ): Promise<ThemeStoreSave>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -240,11 +289,21 @@ function checked(id: string, content: ThemeContent): FabricThemeEnvelope {
   return envelope;
 }
 
-/** The validated `theme.json` in a folder, or undefined if it has none. */
-async function readEnvelope(
+/** The identity of a stored document: the hash of the bytes that are on disk. */
+function contentId(document: string | Uint8Array): string {
+  return createHash("sha256").update(document).digest("hex");
+}
+
+/** The validated `theme.json` in a folder, and what those bytes identify. */
+interface StoredTheme {
+  readonly envelope: FabricThemeEnvelope;
+  readonly contentId: string;
+}
+
+async function readStored(
   library: string,
   id: string,
-): Promise<FabricThemeEnvelope | undefined> {
+): Promise<StoredTheme | undefined> {
   try {
     const bytes = await fs.readFile(path.join(library, id, THEME_FILE));
     if (bytes.byteLength > MAX_THEME_FILE_BYTES) {
@@ -253,10 +312,20 @@ async function readEnvelope(
     const validation = validateFabricThemeEnvelope(
       JSON.parse(bytes.toString("utf8")),
     );
-    return validation.ok ? validation.envelope : undefined;
+    return validation.ok
+      ? { envelope: validation.envelope, contentId: contentId(bytes) }
+      : undefined;
   } catch {
     return undefined;
   }
+}
+
+/** The validated `theme.json` in a folder, or undefined if it has none. */
+async function readEnvelope(
+  library: string,
+  id: string,
+): Promise<FabricThemeEnvelope | undefined> {
+  return (await readStored(library, id))?.envelope;
 }
 
 /** One library line: what the document says, and when the folder changed. */
@@ -327,10 +396,11 @@ export function createThemeStore(directory: string): ThemeStore {
       if (!isValidThemeId(id)) {
         return undefined;
       }
-      const envelope = await readEnvelope(directory, id);
-      if (envelope === undefined) {
+      const stored = await readStored(directory, id);
+      if (stored === undefined) {
         return undefined;
       }
+      const { envelope } = stored;
       const entry = await entryFor(directory, id, envelope);
       if (entry === undefined) {
         return undefined;
@@ -358,7 +428,7 @@ export function createThemeStore(directory: string): ThemeStore {
           assets[assetPath] = new Uint8Array(bytes);
         }
 
-        return { ok: true, ...entry, envelope, assets };
+        return { ok: true, ...entry, base: stored.contentId, envelope, assets };
       } catch {
         return undefined;
       }
@@ -374,9 +444,27 @@ export function createThemeStore(directory: string): ThemeStore {
      * instead of rewritten, with its own timestamps kept: the folder is still
      * staged whole and renamed in, so a file this save did not write is still
      * the same file to everything that watches one.
+     *
+     * A save that declares a `base` is checked against the stored document
+     * first, and the check runs before anything is created on disk: a refusal
+     * leaves the theme byte-for-byte as it was, which is the same promise the
+     * staged rename makes about an interrupted save.
      */
-    async write(id: string, content: ThemeContent): Promise<ThemeStoreEntry> {
+    async write(
+      id: string,
+      content: ThemeContent,
+      options?: ThemeWriteOptions,
+    ): Promise<ThemeStoreSave> {
+      if (options?.overwrite !== true && options?.base !== undefined) {
+        // A theme that is not stored cannot have been moved on, so a base
+        // against nothing is a first save rather than a stale one.
+        const stored = await readStored(directory, id);
+        if (stored !== undefined && stored.contentId !== options.base) {
+          throw new ThemeConflictError(id);
+        }
+      }
       const envelope = checked(id, content);
+      const serialized = JSON.stringify(envelope);
       await fs.mkdir(directory, { recursive: true });
       const target = path.join(directory, id);
       const staging = path.join(directory, scratchName("staging", id));
@@ -391,10 +479,7 @@ export function createThemeStore(directory: string): ThemeStore {
       try {
         const reusable = await reusableAssets(directory, id, envelope);
         await fs.mkdir(path.join(staging, ASSETS_DIR), { recursive: true });
-        await fs.writeFile(
-          path.join(staging, THEME_FILE),
-          JSON.stringify(envelope),
-        );
+        await fs.writeFile(path.join(staging, THEME_FILE), serialized);
         for (const [assetPath, bytes] of Object.entries(content.assets)) {
           // The declaration is validated above, so a path cannot escape; this
           // is the belt to that suspenders, because the write is a filesystem
@@ -433,7 +518,10 @@ export function createThemeStore(directory: string): ThemeStore {
       if (entry === undefined) {
         throw new Error("The theme could not be read back after saving.");
       }
-      return entry;
+      // The bytes just written are what the next save is based on, so the base
+      // is computed here rather than read back — a re-read would also be a
+      // second chance for something else to have moved underneath.
+      return { ...entry, base: contentId(serialized) };
     },
   };
 }

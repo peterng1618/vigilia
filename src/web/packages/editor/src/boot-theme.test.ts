@@ -33,7 +33,7 @@ function clientOpening(opened: ThemeLibraryContent): ThemeLibraryClient {
   return {
     list: vi.fn(async () => []),
     open: vi.fn(async () => opened),
-    save: vi.fn(async () => undefined),
+    save: vi.fn(async () => "base-after-save"),
   };
 }
 
@@ -59,6 +59,17 @@ describe("the editor on a URL that names a theme", () => {
     expect(firstObjectId(opened?.envelope ?? SAVED)).toBe("renamed-headline");
   });
 
+  it("carries the base, so a save from a URL-opened theme can be checked", async () => {
+    // A tab opened this way holds the document it fetched and nothing since.
+    // Without the base it could not tell that document from the one now
+    // stored, and its save would go through as if it were the newer one.
+    const client = clientOpening({ ...content, base: "base-as-stored" });
+
+    const opened = await bootTheme("?theme=edited-by-hand", client);
+
+    expect(opened?.base).toBe("base-as-stored");
+  });
+
   it("falls back to the editor's own default on a theme this host does not have", async () => {
     // A bookmark outlives the theme it points at. An error page says nothing
     // an author can act on; the editor's default is what a bare `/editor/`
@@ -68,7 +79,7 @@ describe("the editor on a URL that names a theme", () => {
       open: vi.fn(async () => {
         throw new Error("Could not open theme (404).");
       }),
-      save: vi.fn(async () => undefined),
+      save: vi.fn(async () => "base-after-save"),
     };
 
     await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(

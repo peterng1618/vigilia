@@ -2,7 +2,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
-import { promptThemeSelection } from "./theme-library-dialog.js";
+import {
+  promptThemeConflict,
+  promptThemeSelection,
+} from "./theme-library-dialog.js";
 
 /** jsdom has no `<dialog>`, so this stands in for the two methods the code
     calls. `close` is guarded so a real browser's close, which fires the event
@@ -143,6 +146,57 @@ describe("the library chooser", () => {
     document
       .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
       ?.click();
+    await expect(pending).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * A refused save has to be answered, not merely announced. The three ways out
+ * matter separately: the two that act and the one that does not, because the
+ * last is what keeps the author's document theirs while they decide.
+ */
+describe("promptThemeConflict", () => {
+  it.each(["reload", "overwrite"] as const)(
+    "answers %s when the author picks it",
+    async (choice) => {
+      const pending = promptThemeConflict();
+      const button = document.querySelector<HTMLButtonElement>(
+        `[data-vigilia-library-${choice}]`,
+      );
+      if (button === null) throw new Error(`no ${choice} button`);
+      expect(button.textContent).toBeTruthy();
+
+      button.click();
+      await expect(pending).resolves.toBe(choice);
+    },
+  );
+
+  it("keeps both versions when the author says neither", async () => {
+    const pending = promptThemeConflict();
+    document
+      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
+      ?.click();
+    await expect(pending).resolves.toBeUndefined();
+  });
+
+  it("says the work is still there, and can be reached by keyboard", async () => {
+    const pending = promptThemeConflict();
+    const dialog = document.querySelector("dialog");
+    if (dialog === null) throw new Error("the conflict dialog did not open");
+
+    // The refusal has to name what happened and what the author still holds —
+    // a message that only says "conflict" is the silent refusal.
+    expect(dialog.textContent).toContain("still here");
+    expect(
+      dialog.getAttribute("aria-label") ??
+        dialog.getAttribute("aria-labelledby"),
+    ).toBeTruthy();
+    for (const button of dialog.querySelectorAll("button")) {
+      expect(button.type).toBe("button");
+      expect(button.textContent).toBeTruthy();
+    }
+
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await expect(pending).resolves.toBeUndefined();
   });
 });

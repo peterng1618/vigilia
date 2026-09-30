@@ -17,12 +17,34 @@ export interface ThemeLibraryEntry {
 export interface ThemeLibraryContent {
   readonly envelope: FabricThemeEnvelope;
   readonly assets: Readonly<Record<string, Uint8Array>>;
+  /** The stored document this content came from. Sending it back is what lets
+   *  the host tell a save made from what it stored from one made from a
+   *  document that has since been overtaken. */
+  readonly base?: string;
+}
+
+/**
+ * The host refused a save because the stored theme moved on after the document
+ * this save was built from. Nothing was written, and nothing is lost: the
+ * caller's document is untouched, and it can reload or replace deliberately.
+ */
+export class ThemeConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ThemeConflictError";
+  }
 }
 
 export interface ThemeLibraryClient {
   list(): Promise<readonly ThemeLibraryEntry[]>;
   open(id: string): Promise<ThemeLibraryContent>;
-  save(id: string, content: ThemeLibraryContent): Promise<void>;
+  /** Saves, and answers the id of the document now stored — which is the base
+   *  the next save is based on. */
+  save(
+    id: string,
+    content: ThemeLibraryContent,
+    options?: { readonly overwrite?: boolean },
+  ): Promise<string>;
   /** Stores the theme's picture, so the library can show one. Optional: a
    * failure here must not fail the save. */
   saveThumbnail?(id: string, png: Uint8Array): Promise<void>;
@@ -48,6 +70,7 @@ function readContent(json: unknown): ThemeLibraryContent {
   const body = json as {
     readonly envelope?: unknown;
     readonly assets?: unknown;
+    readonly base?: unknown;
   };
   return {
     envelope: body?.envelope as FabricThemeEnvelope,
@@ -56,6 +79,9 @@ function readContent(json: unknown): ThemeLibraryContent {
         ([assetPath, encoded]) => [assetPath, fromBase64(encoded)],
       ),
     ),
+    // A host that reports no base leaves the content without one, so the save
+    // that follows is ungated rather than refused for a reason it cannot fix.
+    ...(typeof body?.base === "string" ? { base: body.base } : {}),
   };
 }
 
@@ -102,7 +128,11 @@ export function createThemeLibraryClient(options?: {
       return readContent(await response.json());
     },
 
-    async save(id: string, content: ThemeLibraryContent): Promise<void> {
+    async save(
+      id: string,
+      content: ThemeLibraryContent,
+      options?: { readonly overwrite?: boolean },
+    ): Promise<string> {
       if (!THEME_ID_REGEX.test(id)) {
         throw new Error("Invalid theme id.");
       }
@@ -119,15 +149,29 @@ export function createThemeLibraryClient(options?: {
                 toBase64(bytes),
               ]),
             ),
+            ...(content.base === undefined ? {} : { base: content.base }),
+            overwrite: options?.overwrite === true,
           }),
         },
       );
+      // Its own error, because this is the one failure the caller can act on
+      // rather than retry: the document it holds is still perfectly good.
+      if (response.status === 409) {
+        throw new ThemeConflictError(await response.text().catch(() => ""));
+      }
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         throw new Error(
           `Could not save theme "${id}" (${response.status}): ${errorText}`,
         );
       }
+      const saved = (await response.json()) as { readonly base?: unknown };
+      // A base invented here would be refused on the next save, so a host that
+      // does not report one is a failure rather than something to paper over.
+      if (typeof saved.base !== "string") {
+        throw new Error("The host did not report what it saved.");
+      }
+      return saved.base;
     },
 
     async saveThumbnail(id: string, png: Uint8Array): Promise<void> {

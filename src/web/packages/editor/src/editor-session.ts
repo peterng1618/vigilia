@@ -64,8 +64,12 @@ import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
   createThemeLibraryClient,
   type ThemeLibraryClient,
+  ThemeConflictError,
 } from "./theme-library-client.js";
-import { promptThemeSelection } from "./theme-library-dialog.js";
+import {
+  promptThemeConflict,
+  promptThemeSelection,
+} from "./theme-library-dialog.js";
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
@@ -99,6 +103,9 @@ export interface EditorSessionOptions {
   readonly thumbnail?: Uint8Array;
   readonly panelHosts: EditorPanelHosts;
   readonly libraryClient?: ThemeLibraryClient;
+  /** The stored document this one was opened from, when it was opened from
+   *  the library. Every save made from here is checked against it. */
+  readonly libraryBase?: string;
   /** Creates a blank document at the artboard the author chose. The chooser
    *  itself is the session's, so the size is asked before the open document is
    *  even offered up for replacement. */
@@ -110,6 +117,10 @@ export interface EditorSessionOptions {
   readonly onOpenTheme?: (
     envelope: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>>,
+    /** The stored document this one came from. Opening a theme builds a new
+     *  session, so the base has to travel with it or the session replacing
+     *  this one would save with no idea what it is based on. */
+    base?: string,
   ) => Promise<void>;
   readonly onSaved: (message?: string) => void;
   readonly onError?: (message: string) => void;
@@ -137,6 +148,13 @@ export class EditorSession {
   readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
+  /**
+   * The stored document this one descends from, or nothing when it descends
+   * from nothing. It is the base every library save is checked against, so it
+   * is cleared wherever the document is replaced by something else: a base that
+   * outlived its document would make the next save look stale when it is not.
+   */
+  #libraryBase: string | undefined;
   /** The picture this document arrived with, which a save falls back to. */
   #thumbnail: Uint8Array | undefined;
   /** The source the runtime reads, which a new source replaces. */
@@ -152,6 +170,7 @@ export class EditorSession {
     this.#envelope = options.envelope;
     this.#shell = options.shell;
     this.#thumbnail = options.thumbnail;
+    this.#libraryBase = options.libraryBase;
     this.#assets.load(
       options.envelope.assets === undefined
         ? {}
@@ -590,28 +609,85 @@ export class EditorSession {
       // The library is a folder, so the theme goes as its document and its
       // declared bytes. Building an archive here would compress data the host
       // is about to write uncompressed and inflate again on the next read.
-      await client.save(current.id, {
-        envelope: current,
-        assets: this.#assets.assets,
-      });
-
-      const png = await this.#picture(options);
-      if (png !== undefined && client.saveThumbnail !== undefined) {
-        try {
-          await client.saveThumbnail(current.id, png);
-        } catch (error) {
-          options.shell.editor.errorManager.warn(
-            "controls",
-            `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-      }
-
-      this.#persistence.markSaved(current, this.#assets.assets);
+      await this.#writeLibrary(client, current, options, false);
       options.onSaved("Saved to library");
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      // The editor's own words for a save that did not happen, whether it was
+      // refused or merely failed — the document is untouched either way, and
+      // `markSaved` was not reached, so the author still has it.
       options.onError?.(`Could not save to library: ${msg}`);
+      if (error instanceof ThemeConflictError) {
+        await this.#resolveConflict(current, options, client);
+      }
+    }
+  }
+
+  /**
+   * The save itself, so a deliberate overwrite after a refusal takes the same
+   * road the refused save did — the same declared bytes, the same picture, and
+   * the same move of the base onto what was just written.
+   */
+  async #writeLibrary(
+    client: ThemeLibraryClient,
+    current: FabricThemeEnvelope,
+    options: EditorSessionOptions,
+    overwrite: boolean,
+  ): Promise<void> {
+    this.#libraryBase = await client.save(
+      current.id,
+      {
+        envelope: current,
+        assets: this.#assets.assets,
+        ...(this.#libraryBase === undefined ? {} : { base: this.#libraryBase }),
+      },
+      { overwrite },
+    );
+
+    const png = await this.#picture(options);
+    if (png !== undefined && client.saveThumbnail !== undefined) {
+      try {
+        await client.saveThumbnail(current.id, png);
+      } catch (error) {
+        options.shell.editor.errorManager.warn(
+          "controls",
+          `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    this.#persistence.markSaved(current, this.#assets.assets);
+  }
+
+  /**
+   * What an author wants done about a save the host refused. Nothing is thrown
+   * away on either road, and the third answer keeps both: reloading takes the
+   * stored document, overwriting sends the author's own with the guard stood
+   * down for this one save, and dismissing it leaves the document exactly as it
+   * was so they can copy anything out of it first.
+   */
+  async #resolveConflict(
+    current: FabricThemeEnvelope,
+    options: EditorSessionOptions,
+    client: ThemeLibraryClient,
+  ): Promise<void> {
+    const choice = await promptThemeConflict();
+    if (choice === "reload") {
+      const opened = await client.open(current.id);
+      this.#libraryBase = opened.base;
+      await options.onOpenTheme?.(opened.envelope, opened.assets, opened.base);
+      return;
+    }
+    if (choice !== "overwrite") {
+      return;
+    }
+    try {
+      await this.#writeLibrary(client, current, options, true);
+      options.onSaved("Saved to library");
+    } catch (error) {
+      options.onError?.(
+        `Could not save to library: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -625,12 +701,14 @@ export class EditorSession {
       // there is nothing to fetch and nothing the author could have deleted.
       // The editor already holds it, which is why it is offered at all.
       if (choice.kind === "template") {
+        this.#libraryBase = undefined;
         await options.onNewFromStarter();
         return;
       }
       const opened = await client.open(choice.id);
       if (options.onOpenTheme !== undefined) {
-        await options.onOpenTheme(opened.envelope, opened.assets);
+        this.#libraryBase = opened.base;
+        await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
       }
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -639,6 +717,9 @@ export class EditorSession {
 
   async #open(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
+    // A package is a file the author brought in, not a stored theme, so the
+    // next save is a first save and claims no base.
+    this.#libraryBase = undefined;
     if (options.onOpenPackage !== undefined) {
       options.onOpenPackage();
     } else if (options.onOpen !== undefined) {
@@ -655,6 +736,7 @@ export class EditorSession {
     const preset = await chooseArtboardPreset(this.#envelope.artboard);
     if (preset === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
+    this.#libraryBase = undefined;
     await options.onNew(
       artboardSize(preset.ratio, preset.resolution, preset.orientation),
     );
@@ -662,6 +744,7 @@ export class EditorSession {
 
   async #newFromStarter(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
+    this.#libraryBase = undefined;
     await options.onNewFromStarter();
   }
 

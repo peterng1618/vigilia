@@ -114,6 +114,10 @@ async function start(): Promise<void> {
     readonly envelope: FabricThemeEnvelope;
     readonly assets?: Readonly<Record<string, Uint8Array>>;
     readonly thumbnail?: Uint8Array;
+    /** The stored document this one came from, when it came from the library.
+     *  A new session is built on every mount, so the base has to arrive with
+     *  the document rather than be remembered by the one being replaced. */
+    readonly base?: string;
   }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
     const releaseFonts = await loadFontAssets({
@@ -143,6 +147,7 @@ async function start(): Promise<void> {
       // The package's own picture, so a theme keeps the look its author saw
       // even where this machine cannot render one.
       ...(next.thumbnail === undefined ? {} : { thumbnail: next.thumbnail }),
+      ...(next.base === undefined ? {} : { libraryBase: next.base }),
       panelHosts: {
         add: layout.hosts.add,
         assets: layout.hosts.assets,
@@ -176,8 +181,14 @@ async function start(): Promise<void> {
       onOpenTheme: async (
         envelope: FabricThemeEnvelope,
         assets: Readonly<Record<string, Uint8Array>>,
+        base?: string,
       ) => {
-        await mount({ input: envelopeInputFor(envelope), envelope, assets });
+        await mount({
+          input: envelopeInputFor(envelope),
+          envelope,
+          assets,
+          ...(base === undefined ? {} : { base }),
+        });
         status.textContent = `Opened ${envelope.metadata?.name ?? envelope.id}`;
       },
       onSaved: (msg: string | undefined) => {
@@ -249,6 +260,7 @@ async function start(): Promise<void> {
       input: envelopeInputFor(requested.envelope),
       envelope: requested.envelope,
       assets: requested.assets,
+      ...(requested.base === undefined ? {} : { base: requested.base }),
     });
     status.textContent = `Opened ${requested.envelope.metadata?.name ?? requested.envelope.id}`;
     return;

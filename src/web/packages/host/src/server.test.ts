@@ -21,9 +21,13 @@ import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { encodeThemeContent } from "./themes/wire.js";
 
-/** The library is a folder, so a save is the document and its bytes (ADR-0017). */
-function themeBody(content: ThemeContent): string {
-  return JSON.stringify(encodeThemeContent(content));
+/** The library is a folder, so a save is the document and its bytes (ADR-0017),
+ *  plus what the client says the save is based on. */
+function themeBody(
+  content: ThemeContent,
+  save?: { readonly base?: string; readonly overwrite?: boolean },
+): string {
+  return JSON.stringify({ ...encodeThemeContent(content), ...save });
 }
 
 function createValidPackage(
@@ -316,7 +320,86 @@ describe("Host theme routes", () => {
       "/api/themes/living-room",
     );
     expect(openRes.status).toBe(200);
-    expect(openRes.json()).toEqual(encodeThemeContent(validEmptyAssetTheme));
+    // An open answers with what is stored plus the base that names it, so the
+    // next save can say which version it was built from.
+    const { base, ...content } = openRes.json() as { base: string };
+    expect(base).toMatch(/^[0-9a-f]{64}$/);
+    expect(content).toEqual(encodeThemeContent(validEmptyAssetTheme));
+  });
+
+  it("refuses a save built from a document the stored theme has moved past", async () => {
+    // Two tabs open the same theme; the first one saves an edit.
+    const opened = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme),
+    );
+    const { base } = opened.json() as { base: string };
+    const edited = createValidPackage("living-room", "Living Room, edited");
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/themes/living-room",
+          themeBody(edited, { base }),
+        )
+      ).status,
+    ).toBe(200);
+
+    // The second tab saves the document it opened. 409, not 400: nothing was
+    // wrong with the theme, the author is just behind, and the answer has to
+    // say which it was.
+    const stale = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme, { base }),
+    );
+    expect(stale.status).toBe(409);
+    expect(stale.text()).toContain("changed by someone else");
+
+    const stored = (
+      await request(hosted.server, "GET", "/api/themes/living-room")
+    ).json() as {
+      envelope: { metadata?: { name?: string } };
+    };
+    expect(stored.envelope.metadata?.name).toBe("Living Room, edited");
+
+    // Overwriting is the author's decision, and it is a second, separate save.
+    const forced = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme, { base, overwrite: true }),
+    );
+    expect(forced.status).toBe(200);
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/living-room")).json(),
+    ).toMatchObject({ envelope: { metadata: { name: "Living Room" } } });
+  });
+
+  it("refuses a malformed base rather than saving without one", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme),
+    );
+    // Dropping a base that is not a string would turn the client's bug into
+    // exactly the ungated write the base is here to prevent.
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      JSON.stringify({
+        ...encodeThemeContent(validEmptyAssetTheme),
+        base: 42,
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(res.text()).toContain("base is not a string");
   });
 
   it("serves the URL a display's asset resolver builds for a declared path", async () => {

@@ -30,10 +30,15 @@ import {
   createThemeStore,
   isValidThemeId,
   type ThemeStore,
+  ThemeConflictError,
 } from "./themes/store.js";
 import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
-import { decodeThemeContent, encodeThemeContent } from "./themes/wire.js";
+import {
+  type DecodedThemeSave,
+  decodeThemeSave,
+  encodeThemeContent,
+} from "./themes/wire.js";
 import { SseConnection } from "./transport/sse.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
@@ -842,8 +847,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
         // The editor reads a theme back the way it wrote one, so the pair of
-        // routes is symmetric: what a save put in the folder, an open takes out.
-        sendJson(response, 200, encodeThemeContent(record));
+        // routes is symmetric: what a save put in the folder, an open takes out
+        // — plus the `base` that says which stored document this is.
+        sendJson(response, 200, encodeThemeContent(record, record.base));
         return;
       }
 
@@ -865,10 +871,32 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
+        let decoded: DecodedThemeSave;
         try {
-          const entry = await themeStore.write(rawId, decodeThemeContent(body));
-          sendJson(response, 200, { ok: true, ...entry });
+          decoded = decodeThemeSave(body);
         } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        try {
+          const saved = await themeStore.write(rawId, decoded.content, {
+            ...(decoded.base === undefined ? {} : { base: decoded.base }),
+            overwrite: decoded.overwrite,
+          });
+          sendJson(response, 200, { ok: true, ...saved });
+        } catch (error) {
+          // A refusal is not a malformed theme: nothing was written, the
+          // stored version is intact, and the author is the one who has to
+          // choose what happens next — so it is not dressed as a 400.
+          if (error instanceof ThemeConflictError) {
+            sendText(response, 409, error.message);
+            return;
+          }
           sendText(
             response,
             400,
