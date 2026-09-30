@@ -191,11 +191,11 @@ describe("the selection inspector", () => {
     width.value = "-5";
     width.dispatchEvent(new Event("change"));
 
-    // Restored to the object's own value; nothing recorded.
-    expect(width.value).toBe("40");
-    expect(rect.scaleX).toBe(1);
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).toHaveBeenCalled();
+    // Was restored to 40 with nothing recorded. The floor is 1, so -5 now
+    // lands on 1: reverting is what made the bound undiscoverable.
+    expect(width.value).toBe("1");
+    expect(rect.scaleX).toBeGreaterThan(0);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("shows opacity as a percentage and stores Fabric's 0-1", () => {

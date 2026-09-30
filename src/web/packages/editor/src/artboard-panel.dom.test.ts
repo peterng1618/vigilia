@@ -62,8 +62,10 @@ describe("artboard panel", () => {
     width.value = "0";
     width.dispatchEvent(new Event("change"));
 
-    expect(change).not.toHaveBeenCalled();
-    expect(width.value).toBe("1280");
+    // Was a refusal restoring 1280. The bound is 1, so 0 now lands on 1 and
+    // says so; reverting hid the bound from the author who typed 0 to find it.
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(width.value).toBe("1");
   });
 
   it("selects persisted palette tokens for artboard paint", () => {

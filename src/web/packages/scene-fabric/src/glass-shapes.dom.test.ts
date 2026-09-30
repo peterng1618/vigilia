@@ -26,6 +26,7 @@ import {
   Point,
   Polygon,
   Polyline,
+  Rect,
   Triangle,
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
@@ -171,6 +172,120 @@ describe("glass on the closed shapes", () => {
     expect(s.pixel(80, 80)).toEqual(without.pixel(80, 80));
     expect(without.pixel(80, 80)[3]).toBe(0);
     expect(s.pixel(100, 100)[3]).toBe(255);
+  });
+
+  it("samples a region that covers every shape's own geometry, not only the rect's", () => {
+    /**
+     * The coverage half of "the circle reads stronger".
+     *
+     * A frosted surface whose sampled region stops short of the clipped shape
+     * carries the material with no backdrop behind it, which reads denser than
+     * the same material over a real blur. The probe above cannot see that: it
+     * only asks whether the clip is too *large*. This asks the other way —
+     * whether the region the sampler takes is large enough to cover what the
+     * clip confines the material to — and it asks it of all five shapes,
+     * because a region derived from a shape's own box covers any shape, while
+     * one derived from a rect's would not.
+     *
+     * The two are read from the same frame: `clips` holds the transform in
+     * force at each `ctx.clip()`, which maps the shape's local units onto the
+     * surface, and `regions` holds the rect the sampler took. A shape's own
+     * local box pushed through the clip's transform is the area the material
+     * is confined to, so the region has to contain it.
+     */
+    const PAD = 50; // ceil(blurRadius * 2) + 2, at the treatment's radius 24.
+    const cases: readonly {
+      readonly kind: string;
+      readonly make: () => FabricObject;
+      /** The shape's own local box, origin at the centre as `localPath` has it. */
+      readonly local: readonly [number, number, number, number];
+    }[] = [
+      {
+        kind: "Rect",
+        make: () =>
+          new Rect({ left: 100, top: 100, width: 40, height: 40, ...GLASS }),
+        local: [-20, -20, 20, 20],
+      },
+      {
+        kind: "Circle",
+        make: () => new Circle({ left: 100, top: 100, radius: 20, ...GLASS }),
+        local: [-20, -20, 20, 20],
+      },
+      {
+        kind: "Ellipse",
+        make: () =>
+          new Ellipse({ left: 100, top: 100, rx: 30, ry: 12, ...GLASS }),
+        local: [-30, -12, 30, 12],
+      },
+      {
+        kind: "Triangle",
+        make: () =>
+          new Triangle({
+            left: 100,
+            top: 100,
+            width: 40,
+            height: 40,
+            ...GLASS,
+          }),
+        local: [-20, -20, 20, 20],
+      },
+      {
+        kind: "Polygon",
+        make: () =>
+          new Polygon(
+            [
+              new Point(0, -25),
+              new Point(25, 0),
+              new Point(0, 25),
+              new Point(-25, 0),
+            ],
+            { left: 100, top: 100, ...GLASS },
+          ),
+        local: [-25, -25, 25, 25],
+      },
+    ];
+
+    for (const { kind, make, local } of cases) {
+      const s = magenta();
+      s.canvas.add(make());
+      s.canvas.renderAll();
+      expect(s.errors, `${kind} composites`).toEqual([]);
+
+      const region = s.regions[0];
+      const clip = s.clips.slice(0, 6);
+      expect(region, `${kind} sampled a region`).toBeDefined();
+      expect(clip, `${kind} clipped under its own transform`).toHaveLength(6);
+      // The stage's clips are an axis-aligned device transform, so only the
+      // scale and the translation are read; `b` and `c` would be the shear.
+      const [a = 0, , , d = 0, e = 0, f = 0] = clip;
+      // The shape's own box, through the transform the clip was set under.
+      const [lx, ly, rx2, ry2] = local;
+      const xs = [lx ?? 0, rx2 ?? 0].map((x) => a * x + e);
+      const ys = [ly ?? 0, ry2 ?? 0].map((y) => d * y + f);
+      const left = Math.min(...xs);
+      const right = Math.max(...xs);
+      const top = Math.min(...ys);
+      const bottom = Math.max(...ys);
+
+      // A full blur radius of slack on every side, which is what the blur needs
+      // to have real pixels at the shape's own edge.
+      expect(
+        region?.left ?? 0,
+        `${kind}: the region covers its left`,
+      ).toBeLessThanOrEqual(left - PAD);
+      expect(
+        region?.top ?? 0,
+        `${kind}: the region covers its top`,
+      ).toBeLessThanOrEqual(top - PAD);
+      expect(
+        (region?.left ?? 0) + (region?.width ?? 0),
+        `${kind}: the region covers its right`,
+      ).toBeGreaterThanOrEqual(right + PAD);
+      expect(
+        (region?.top ?? 0) + (region?.height ?? 0),
+        `${kind}: the region covers its bottom`,
+      ).toBeGreaterThanOrEqual(bottom + PAD);
+    }
   });
 
   it("refuses an open path rather than clipping it to its box", () => {

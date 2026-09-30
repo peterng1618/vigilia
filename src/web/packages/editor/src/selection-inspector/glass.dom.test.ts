@@ -2,19 +2,29 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
+import { defaultGaugeSettings, supportsGlass } from "@vigilia/renderer-core";
+import { VIGILIA_PAINT_PROPERTY, VigiliaChart } from "@vigilia/scene-fabric";
 import {
+  ActiveSelection,
   Circle,
   Ellipse,
+  FabricImage,
   Group,
+  IText,
+  Line,
+  Path,
   Point,
   Polygon,
+  Polyline,
   Rect,
+  Text,
   Textbox,
   Triangle,
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { uiCopy } from "../ui-copy.js";
 import { createSelectionInspector } from "./index.js";
+import { supportsGlassControl } from "./glass.js";
 
 const globals = {
   palette: {
@@ -30,12 +40,10 @@ const globals = {
 /**
  * The kinds a published theme may carry `vigiliaGlass` on.
  *
- * `renderer-core` keeps its own list internal — deliberately, because the
- * reader and the property name are the external contract and the vocabulary is
- * enforced at import. The **published schema** is that same list, and
+ * `renderer-core` now exports the guard itself, so the control asks it rather
+ * than keeping its own list. The **published schema** is that same list, and
  * `fabric-envelope-schema-sync.test.ts` fails if the two ever disagree, so the
- * schema is the editor's honest way to ask. Hard-coding `["Rect", "Group"]`
- * here would be the drift guard this test exists to be.
+ * schema is the independent check that the set is not silently re-spelled.
  */
 interface PublishedSchema {
   readonly $defs: Record<
@@ -128,7 +136,7 @@ function alertIn(host: HTMLElement): Element | null {
   return host.querySelector(".vigilia-field [role='alert']");
 }
 
-/** A live object of each kind the published schema allows. */
+/** A live object of every kind the editor can have selected. */
 const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
   Rect: () => panel(),
   Circle: () => new Circle({ left: 0, top: 0, radius: 20 }),
@@ -136,8 +144,60 @@ const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
   Triangle: () => new Triangle({ left: 0, top: 0, width: 40, height: 40 }),
   Polygon: () =>
     new Polygon([new Point(0, -20), new Point(20, 20), new Point(-20, 20)]),
+  Polyline: () =>
+    new Polyline([new Point(0, 0), new Point(20, 20), new Point(40, 0)]),
+  Line: () => new Line([0, 0, 20, 20]),
+  Path: () => new Path("M 0 0 L 20 20 L 40 0"),
   Group: () => new Group([new Rect({ width: 40, height: 40 })]),
+  ActiveSelection: () => new ActiveSelection([panel(), panel()]),
+  Textbox: () => new Textbox("Hi", { left: 0, top: 0, width: 40 }),
+  Text: () => new Text("Hi", { left: 0, top: 0 }),
+  IText: () => new IText("Hi", { left: 0, top: 0 }),
+  Image: () => new FabricImage("", { left: 0, top: 0, width: 40, height: 40 }),
+  VigiliaChart: () =>
+    new VigiliaChart({
+      id: "chart",
+      family: "gauge",
+      width: 100,
+      height: 100,
+      settings: defaultGaugeSettings,
+    }),
 };
+
+/** The kinds the treatment reaches, which is the owner's answer, not a list. */
+const FROSTABLE: readonly string[] = [
+  "Rect",
+  "Circle",
+  "Ellipse",
+  "Triangle",
+  "Polygon",
+];
+
+/**
+ * The kinds a selection can be in that the treatment cannot reach, each one
+ * here because it is a shape the editor really does offer a selection of.
+ */
+const UNFROSTABLE: readonly string[] = [
+  "Polyline",
+  "Path",
+  "Line",
+  "Textbox",
+  "VigiliaChart",
+];
+
+/** What the author calls the kind, where that is not the class name. */
+const SHOWN_AS: Readonly<Record<string, string>> = {
+  VigiliaChart: "chart",
+  Textbox: "Text",
+};
+
+/** The refused control, whether it is focusable, and the tooltip over it. */
+function glassControl(host: HTMLElement): HTMLInputElement | null {
+  return host.querySelector<HTMLInputElement>("[data-vigilia-glass-enabled]");
+}
+
+const popup = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>(".editor-shell-tooltip");
 
 describe("the glass control in the selection inspector", () => {
   it("offers frosted glass with a blur radius, both named", () => {
@@ -286,18 +346,36 @@ describe("the glass control in the selection inspector", () => {
     expect(alertIn(host)).toBeNull();
   });
 
-  it("refuses an emptied or negative radius instead of reading it as zero", () => {
+  it("refuses an emptied radius, which is not a number at all", () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
     const { history, field } = setup(rect);
     const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
 
+    // `Number("")` is 0, so coercing an empty box would silently mean "no blur".
+    // That is a different mistake from a number that is merely out of range,
+    // and the field still has to tell them apart.
     type(blur, "");
-    type(blur, "-6");
 
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
     expect(blur.value).toBe("12");
     expect(history.saveState).not.toHaveBeenCalled();
+  });
+
+  it("clamps a radius past the bound onto it, because landing on it teaches it", () => {
+    const rect = panel();
+    rect.set("vigiliaGlass", { blurRadius: 12 });
+    const { history, field } = setup(rect);
+    const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
+
+    // Not a refusal: reverting to the old value is what made the bound
+    // undiscoverable, and an author typing 60 to find the maximum is exactly
+    // who this change is for.
+    type(blur, "-6");
+
+    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
+    expect(blur.value).toBe("0");
+    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("refuses a glass edit for an object the panel no longer describes", () => {
@@ -319,14 +397,116 @@ describe("the glass control in the selection inspector", () => {
     expect(enabled.isConnected).toBe(false);
   });
 
-  it("offers a selection that cannot carry glass no glass control at all", () => {
+  it("offers a selection that cannot carry glass a disabled control that says why", () => {
+    // The finding this control exists to close: a `Circle` — or, before the
+    // widening, any shape the editor had not been taught — arrived with no
+    // control at all, so the rule was something an author could only infer from
+    // an absence.
     const text = new Textbox("Hi", { left: 0, top: 0, width: 40 });
     const { host } = setup(text);
+    const control = glassControl(host);
 
-    expect(host.querySelector("[data-vigilia-glass-enabled]")).toBeNull();
+    expect(control).not.toBeNull();
+    expect(control?.getAttribute("aria-disabled")).toBe("true");
+    // Not `disabled`: that would put it out of the tab order and make the
+    // reason below a disclosure only a pointer could reach.
+    expect(control?.hasAttribute("disabled")).toBe(false);
+    expect(control?.disabled).toBe(false);
+    // A radius box over an object with no treatment accepts an edit and applies
+    // none, so it stays out.
     expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
-    // And the fields the editor does serve for it are untouched by that gate.
+    // And the fields the editor does serve for it are untouched by the refusal.
     expect(host.querySelector("[data-vigilia-opacity]")).not.toBeNull();
+  });
+
+  it.each(FROSTABLE)("offers the control enabled on a %s", (kind) => {
+    const make = LIVE_KIND[kind];
+    expect(typeof make, `${kind} has no live object`).toBe("function");
+    if (make === undefined) return;
+    const { host } = setup(make());
+
+    const control = glassControl(host);
+    expect(control, kind).not.toBeNull();
+    expect(control?.getAttribute("aria-disabled"), kind).toBeNull();
+    expect(control?.disabled, kind).toBe(false);
+    expect(control?.checked, kind).toBe(false);
+  });
+
+  it.each(UNFROSTABLE)("offers the control disabled on a %s", (kind) => {
+    const make = LIVE_KIND[kind];
+    expect(typeof make, `${kind} has no live object`).toBe("function");
+    if (make === undefined) return;
+    const { host } = setup(make());
+
+    const control = glassControl(host);
+    expect(control, kind).not.toBeNull();
+    expect(control?.getAttribute("aria-disabled"), kind).toBe("true");
+  });
+
+  it("takes no edit on a refused control, and says nothing about the refusal", () => {
+    // The refusal is the control's reason, not an error: the author did nothing
+    // wrong, so an alert line beside a control they cannot operate would blame
+    // them for the editor's decision.
+    const line = new Line([0, 0, 20, 20]);
+    const { history, refreshGlass, editor, host, field } = setup(line);
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(line.get("vigiliaGlass")).toBeUndefined();
+    // Put back, so the box does not claim a treatment the object does not have.
+    expect(
+      field<HTMLInputElement>("[data-vigilia-glass-enabled]").checked,
+    ).toBe(false);
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(refreshGlass).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).not.toHaveBeenCalled();
+    expect(alertIn(host)).toBeNull();
+  });
+
+  it.each(UNFROSTABLE)(
+    "names the %s it cannot frost, rather than one generic sentence",
+    (kind) => {
+      const make = LIVE_KIND[kind];
+      expect(typeof make, `${kind} has no live object`).toBe("function");
+      if (make === undefined) return;
+      const { host } = setup(make());
+
+      const control = glassControl(host)!;
+      control.dispatchEvent(new Event("focus"));
+
+      const reason = popup()?.textContent ?? "";
+      control.dispatchEvent(new Event("blur"));
+      // The name the author selected is in it: "glass applies to panels" tells
+      // an author nothing they can act on.
+      expect(reason, kind).toContain(SHOWN_AS[kind] ?? kind);
+      expect(reason, kind).not.toBe(
+        uiCopy.inspectorFields.glassRefused("__not a shape__"),
+      );
+    },
+  );
+
+  it("reaches a refused control's reason with no mouse", () => {
+    // A `disabled` checkbox is out of the tab order, so the same tooltip would
+    // reach nobody who was not holding a pointer — the absence it replaces, in
+    // a form that now looks deliberate. Focus is the keyboard path, and it is
+    // the only one this asserts.
+    const path = new Path("M 0 0 L 20 20 L 40 0");
+    const { host } = setup(path);
+    const control = glassControl(host)!;
+
+    expect(control.tabIndex).toBeGreaterThanOrEqual(0);
+    control.dispatchEvent(new Event("focus"));
+
+    const reason = popup();
+    expect(reason?.textContent).toBe(
+      uiCopy.inspectorFields.glassRefused("Path"),
+    );
+    // And it is described to whatever announces the control, not only drawn.
+    expect(control.getAttribute("aria-describedby")).toBe(reason?.id);
+
+    control.dispatchEvent(new Event("blur"));
+    expect(popup()).toBeNull();
+    expect(control.hasAttribute("aria-describedby")).toBe(false);
   });
 
   it("withholds glass from a locked object, which the editor refuses to write", () => {
@@ -398,29 +578,62 @@ describe("the glass control in the selection inspector", () => {
   });
 
   it("does not put a surface on a shape the treatment cannot reach", () => {
-    // A group is refused a treatment outright, so it has no backdrop to
-    // diffuse; the editor offers it no control and there is nothing to write.
+    // A group is in the owner's set and the renderer still refuses it: Fabric
+    // overrides `Group.drawObject`, so a group never fires `before:render` and
+    // `scene-fabric/src/glass.ts` refuses the treatment at attach. Enabling it
+    // here would take an edit that paints nothing, so it is refused with the
+    // reason instead — and an edit through it still writes nothing.
     const group = new Group([new Rect({ width: 40, height: 40 })]);
-    const { host } = setup(group);
+    const { history, refreshGlass, host, field } = setup(group);
 
-    expect(host.querySelector("[data-vigilia-glass-enabled]")).toBeNull();
+    expect(glassControl(host)?.getAttribute("aria-disabled")).toBe("true");
+
+    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+
+    expect(group.get("vigiliaGlass")).toBeUndefined();
     expect(group.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(refreshGlass).not.toHaveBeenCalled();
   });
 
-  it("either authors glass for every kind the schema allows, or names the ones it does not", () => {
+  it("agrees with the owner's guard for every kind Fabric ships", () => {
     /**
-     * The named guard for the one gap the controller ruled on: a kind the
-     * published schema lets carry `vigiliaGlass` but the inspector gives no
-     * control for. A `Group` is one — Fabric replaces `Group.drawObject`, so a
-     * group never fires `before:render`, and `scene-fabric`'s `glass.ts` refuses
-     * the treatment and reports it. A control there would accept an edit and
-     * apply none.
+     * The regression test for the second owner. `fed6dc3` spelled the set out
+     * as an `instanceof` chain, which agrees with `GLASS_OBJECT_TYPES` only
+     * until someone adds a kind there — and then a shape is frostable in a
+     * theme and un-authorable in the inspector, with no error anywhere. The
+     * predicate now asks, so this is the guard that has to notice if it stops.
      */
-    const DELIBERATELY_UN_AUTHORABLE: Readonly<Record<string, string>> = {
-      Group:
-        "Fabric gives a group no before:render boundary, so a treatment on one never composites.",
-    };
+    const disagrees: string[] = [];
+    for (const [kind, make] of Object.entries(LIVE_KIND)) {
+      if (supportsGlassControl(make() as never) !== supportsGlass(kind))
+        disagrees.push(kind);
+    }
 
+    // `Group` alone, and named: it is the one kind the owner admits that this
+    // renderer cannot composite. Listing the disagreement rather than excluding
+    // it is what keeps it from being the first kind quietly left out of the
+    // next widening — and its reason has to say what to do instead.
+    expect(disagrees).toEqual(["Group"]);
+    expect(uiCopy.inspectorFields.glassRefused("Group")).toMatch(
+      /panel inside/,
+    );
+  });
+
+  it("has a live object for every kind the published schema allows", () => {
+    for (const type of PUBLISHED_GLASS_TYPES)
+      expect(typeof LIVE_KIND[type], `${type} has no live object`).toBe(
+        "function",
+      );
+  });
+
+  it("offers every kind the schema allows, so none is left un-authorable", () => {
+    /**
+     * The gap the controller ruled on: a kind the published schema lets carry
+     * `vigiliaGlass` but the inspector gives no control for. Every kind gets
+     * one now — enabled, or refused with its own reason — so a kind added to
+     * the vocabulary cannot reopen the gap silently.
+     */
     for (const type of PUBLISHED_GLASS_TYPES) {
       const make = LIVE_KIND[type];
       // Named first: a kind added to the vocabulary with no live object here
@@ -430,14 +643,10 @@ describe("the glass control in the selection inspector", () => {
         `${type} is in the published schema with no live object`,
       ).toBe("function");
       if (make === undefined) continue;
+
       const { host } = setup(make());
-      const offered =
-        host.querySelector("[data-vigilia-glass-enabled]") !== null;
-      if (offered) continue;
-      expect(
-        DELIBERATELY_UN_AUTHORABLE[type],
-        `${type} can carry glass and has no control, with no stated reason`,
-      ).toBeTypeOf("string");
+
+      expect(glassControl(host), `${type} has no glass control`).not.toBeNull();
     }
   });
 });

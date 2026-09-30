@@ -1,5 +1,37 @@
 /** Typed package-local visible editor copy (§35). Authored theme text,
  * telemetry values and developer errors stay outside this module. */
+
+/**
+ * One reason per kind, keyed by the kind `renderer-core` is asked with.
+ *
+ * Three causes, not one sentence: an open path has no interior to sample
+ * through, a path's closedness is author data the product cannot know, and a
+ * glyph, a photograph or a plotted series is not a panel at all. `Group` is
+ * here because the owner admits it and the renderer still refuses it — Fabric
+ * draws a group's children directly, so no boundary is left to sample through
+ * (`scene-fabric/src/glass.ts`).
+ */
+const glassRefusals: Readonly<Record<string, string>> = {
+  Polyline:
+    "A Polyline is an open path, so there is no interior to sample the backdrop through.",
+  Line: "A Line is an open path, so there is no interior to sample the backdrop through.",
+  Path: "A Path is author-drawn data and the product cannot know whether it is closed.",
+  Group:
+    "A Group has no render boundary of its own — put frosted glass on the panel inside it.",
+  Textbox:
+    "Text is not a panel, and there is no surface behind a glyph to frost.",
+  Text: "Text is not a panel, and there is no surface behind a glyph to frost.",
+  IText:
+    "Text is not a panel, and there is no surface behind a glyph to frost.",
+  Image: "An image is not a panel, and there is nothing behind it to frost.",
+  VigiliaChart:
+    "A chart is not a panel, and there is nothing behind a plotted series to frost.",
+  ActiveSelection:
+    "Frosted glass applies to one shape at a time — select the shape you want to frost.",
+};
+
+/** Typed package-local visible editor copy (§35). Authored theme text,
+ * telemetry values and developer errors stay outside this module. */
 export const uiCopy = {
   brand: "Vigilia",
   editor: "Editor",
@@ -58,6 +90,19 @@ export const uiCopy = {
     /** The frosted-glass treatment and its one parameter. */
     glassEnabled: "Frosted glass",
     glassBlur: "Glass blur",
+    /**
+     * Why one shape cannot be frosted, in that shape's own terms.
+     *
+     * "Glass applies to panels" teaches an author a rule they still cannot act
+     * on; naming the shape they selected tells them what to select instead. The
+     * kinds are the ones `renderer-core` is asked with, and membership is
+     * decided there — this table only says why an answer of no came back, so a
+     * kind it admits never reaches it and a kind added later falls to the
+     * sentence below rather than to no explanation at all.
+     */
+    glassRefused: (kind: string) =>
+      glassRefusals[kind] ??
+      `${kind} is not a shape frosted glass can be applied to.`,
     opacity: "Opacity %",
     paint: "Paint",
     notSet: "not set",

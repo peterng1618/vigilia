@@ -273,9 +273,21 @@ export { fabricEnvelopeInputFor } from "./theme/fabric-envelope.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 export type { GlassTreatment } from "./theme/glass.js";
-// The reader and the property name are the external contract; the guard and
-// the bound stay inside the package, where the validator and its tests live.
-export { glassTreatment, VIGILIA_GLASS_PROPERTY } from "./theme/glass.js";
+// The reader, the property name, the guard and the bound are the external
+// contract. The guard is external because a control that decides the membership
+// of the set itself is a second owner of it: it agrees with `GLASS_OBJECT_TYPES`
+// only until someone adds a kind there, and then a shape is frostable in a theme
+// and un-authorable in the editor, with no error anywhere. An editor that must
+// say *why* a shape is refused also needs the answer to be the owner's. The
+// bound is external for the same reason and the same cost: a blur field that
+// states 48 must ask, because a copied 48 agrees with this one only until the
+// measured sweep moves it.
+export {
+  glassTreatment,
+  MAX_GLASS_BLUR_RADIUS,
+  supportsGlass,
+  VIGILIA_GLASS_PROPERTY,
+} from "./theme/glass.js";
 // The reader and the property name are the external contract; the guard and
 // the bound stay inside the package, where the validator and its tests live.
 // The guard and the bound are exported because an editor field must refuse an

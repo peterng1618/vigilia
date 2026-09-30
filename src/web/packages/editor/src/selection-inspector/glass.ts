@@ -1,18 +1,13 @@
 import {
   type GlassTreatment,
   glassTreatment,
+  supportsGlass,
   VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
 import { applyObjectPalettePaints } from "@vigilia/scene-fabric";
-import {
-  Circle,
-  Ellipse,
-  type FabricObject,
-  Polygon,
-  Rect,
-  Triangle,
-} from "fabric/es";
+import { type FabricObject, Group } from "fabric/es";
 import { numberField } from "../editor-shell/controls/number-field.js";
+import { tooltip, type Tooltip } from "../editor-shell/controls/tooltip.js";
 import { frostedShapeFill } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import type { AppearanceContext } from "./appearance.js";
@@ -55,35 +50,64 @@ export interface GlassFieldHooks {
 }
 
 /**
- * Whether these controls apply at all. The question is whether the object's
- * backdrop can be sampled through a closed path, and the kinds that qualify
- * are the closed primitives plus a group — `Group` is here only because
- * `renderer-core` admits it and `scene-fabric` refuses it loudly at attach,
- * since Fabric replaces `drawObject` and a group never fires `before:render`.
+ * The kind name the treatment is written in. Fabric lowercases the instance's
+ * `type`, so the class's own static is the spelling the envelope, the published
+ * schema and `supportsGlass` all use — and therefore the one to ask with.
+ */
+function kindOf(object: FabricObject): string {
+  return (object.constructor as { readonly type?: string }).type ?? object.type;
+}
+
+/**
+ * Whether the control is offered enabled. The membership is the owner's and is
+ * asked, never restated: a copy of `GLASS_OBJECT_TYPES` here would agree with it
+ * only until someone added a kind there and forgot this file, and then a shape
+ * would be frostable in a theme and un-authorable in the editor with no error
+ * anywhere.
  *
- * Widened from `instanceof Rect` with the treatment itself: the frosted
- * surface needs a closed path to sample through, and `Circle`, `Ellipse`,
- * `Triangle` and `Polygon` all have one. A control that refused them would
- * have accepted the ruling's premise — the shapes are frostable — and then
- * given the author no way to say so. See
- * `docs/decisions/0015-glass-clips-any-closed-path-not-only-rects.md`.
+ * `Group` is the one subtraction, and it is a different fact from membership
+ * rather than a second copy of it — checked on the live class, because that is
+ * what Fabric's overridden `drawObject` is. Fabric renders a group's children
+ * directly, so a group never fires `before:render` and there is no boundary to
+ * sample its backdrop through; `scene-fabric/src/glass.ts` refuses the
+ * treatment there. Enabling it would take an edit that paints nothing, so the
+ * author is told in this control's own reason instead.
  *
  * Kept apart from `panel.ts`'s `supportsPanelFields` on purpose. That answers
  * "may these fields write this object's material?" — a group has no own fill,
  * radius or border. This answers "may its backdrop be sampled?", and the two
  * differ on `Polyline`, `Line` and `Path`: those have material and no closed
- * area. `glass.dom.test.ts` names every kind the published schema allows that
- * this one leaves un-authorable, so widening that schema cannot reopen the
- * gap silently.
+ * area. `glass.dom.test.ts` checks this against `supportsGlass` for every kind
+ * Fabric ships, so widening either set cannot reopen the gap silently.
  */
 export function supportsGlassControl(object: FabricObject): boolean {
-  return (
-    object instanceof Rect ||
-    object instanceof Circle ||
-    object instanceof Ellipse ||
-    object instanceof Triangle ||
-    object instanceof Polygon
-  );
+  return supportsGlass(kindOf(object)) && !(object instanceof Group);
+}
+
+/**
+ * Why this control is refused, in the selected shape's own terms, or
+ * `undefined` when it is offered. One function, so "offered enabled" and "why
+ * not" cannot drift into answering two different questions.
+ */
+function refusalOf(object: FabricObject): string | undefined {
+  return supportsGlassControl(object)
+    ? undefined
+    : uiCopy.inspectorFields.glassRefused(kindOf(object));
+}
+
+/**
+ * The reason, as the shell's one tooltip.
+ *
+ * At most one handle is kept: the tooltip is a singleton by design, and the
+ * inspector rebuilds its whole subtree on every render, so a handle left on a
+ * detached trigger would keep a `document` listener alive with nothing to
+ * dismiss.
+ */
+let glassReason: Tooltip | undefined;
+
+function attachReason(trigger: HTMLElement, text: string): void {
+  glassReason?.destroy();
+  glassReason = tooltip({ trigger, text });
 }
 
 /** The panel's authored treatment, or none. */
@@ -138,14 +162,21 @@ function frostTheSurface(
   applyObjectPalettePaints(context.editor.canvas, context.globals);
 }
 
-/** The panel's glass fields, or nothing when it cannot carry a treatment. */
+/**
+ * The glass fields for any selection, offered enabled or refused with a reason.
+ *
+ * The control used to be withheld from a shape that could not carry the
+ * treatment, which left nothing anywhere saying so: an author who inserted a
+ * `Line` and found no frosted-glass control could only infer the rule from its
+ * absence, and could not tell a deliberate rule from a shape the editor had not
+ * caught up with. It is always here now, and says the shape's own reason.
+ */
 export function createGlassFields(
   context: AppearanceContext,
   object: FabricObject,
   hooks: GlassFieldHooks,
-): HTMLElement | undefined {
-  if (!supportsGlassControl(object)) return undefined;
-
+): HTMLElement {
+  const refusal = refusalOf(object);
   const root = document.createElement("div");
 
   /** A refused edit restores the field itself; this only reports it. */
@@ -175,7 +206,25 @@ export function createGlassFields(
   enabled.id = label.htmlFor;
   enabled.dataset["vigiliaGlassEnabled"] = "";
   enabled.checked = treatmentOf(object) !== undefined;
+  if (refusal !== undefined) {
+    // `aria-disabled`, not `disabled`. A disabled checkbox is out of the tab
+    // order, so the tooltip below would reach nobody who is not holding a
+    // mouse — the same disclosure-for-the-mouse-only defect as the absence this
+    // replaces, in a form that now looks deliberate. This stays focusable and
+    // keeps its place in the tab order; the click is refused in the change
+    // handler below instead, because a browser still toggles an
+    // `aria-disabled` checkbox.
+    enabled.setAttribute("aria-disabled", "true");
+    attachReason(enabled, refusal);
+  }
   enabled.addEventListener("change", () => {
+    // The refused edit is the one thing this control must not take: it writes a
+    // property the validator would refuse at import, on a shape the renderer
+    // would never composite.
+    if (refusal !== undefined) {
+      enabled.checked = treatmentOf(object) !== undefined;
+      return;
+    }
     commit(() => {
       if (
         !writeTreatment(

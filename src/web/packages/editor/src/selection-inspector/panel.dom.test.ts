@@ -214,21 +214,20 @@ describe("panel fields in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a negative border width rather than clamping it", () => {
+  it("clamps a negative border width onto zero, because the bound is where it lands", () => {
     const rect = panel();
-    const { history, editor, field } = setup(rect);
+    const { history, field } = setup(rect);
     const width = field<HTMLInputElement>("[data-vigilia-panel-border]");
-    const before = rect.get("strokeWidth");
 
     type(width, "-4");
 
-    // The object's own width survives, and the field is put back to it. A
-    // clamp to zero would look identical on screen but lose the authored
-    // border the author never asked to change.
-    expect(rect.get("strokeWidth")).toBe(before);
-    expect(width.value).toBe(String(before));
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).toHaveBeenCalled();
+    // Was a refusal, and the reasoning was that a clamp to zero "would look
+    // identical on screen but lose the authored border". That is the finding
+    // this pass overturned: the author typed -4 to find out what the bound is,
+    // and reverting them to the old value teaches nothing. Landing on 0 says it.
+    expect(rect.get("strokeWidth")).toBe(0);
+    expect(width.value).toBe("0");
+    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("refuses an emptied numeric field instead of reading it as zero", () => {
@@ -457,9 +456,19 @@ describe("shape material and a shape's own fields", () => {
       );
       expect(controls.length).toBeGreaterThan(0);
       for (const control of controls) {
+        // Two ways a control here can be named, and both are real: a labelable
+        // input through `for`/wrapping, and the slider — which is not a
+        // labelable element, so it carries `aria-labelledby` instead. Checking
+        // only `for` would call a correctly-labelled slider unnamed.
+        const labelledBy = control.getAttribute("aria-labelledby");
         const name =
+          (labelledBy === null
+            ? undefined
+            : host.querySelector<HTMLElement>(`[id="${labelledBy}"]`)
+                ?.textContent) ??
           host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-            ?.textContent ?? control.closest("label")?.textContent;
+            ?.textContent ??
+          control.closest("label")?.textContent;
         expect(name, control.outerHTML).toBeTruthy();
       }
     },
@@ -478,7 +487,7 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a polygon's own side count, and refuses a two-sided one", () => {
+  it("shows a polygon's own side count, and clamps a two-sided one onto three", () => {
     const polygon = new Polygon([...CORNERS], PLACED);
     const { history, editor, field } = setup(polygon);
     const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
@@ -486,12 +495,12 @@ describe("shape material and a shape's own fields", () => {
 
     type(sides, "2");
 
-    // A two-sided polygon is not a repaired three-sided one: the count stays
-    // what it was and the edit is reported, not coerced.
+    // A two-sided polygon is not a repaired three-sided one by refusal: the
+    // author typed 2 to find where the bound is, and landing on 3 says it.
+    // Coercing silently was the complaint; reverting hid the same number.
     expect(polygon.points).toHaveLength(3);
     expect(sides.value).toBe("3");
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).toHaveBeenCalled();
+    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("redraws a polygon with the side count the author asked for", () => {

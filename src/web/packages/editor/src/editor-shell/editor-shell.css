@@ -566,6 +566,21 @@ body,
 .vigilia-field-row [role="alert"] {
   flex-basis: 100%;
 }
+/* A bounded field's slider sits in the control column, under the box that stays
+   the precise instrument, and its bound reads as part of the field rather than
+   as a failure. */
+.vigilia-field input[type="range"] {
+  grid-column: 2;
+  width: 100%;
+  margin: 0;
+}
+.vigilia-field .vigilia-field-bound {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--shell-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* The layer tree: one dense line per layer, indentation carrying the depth. */
 [data-vigilia-panel="layers"] [role="tree"] {
