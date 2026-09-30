@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -42,8 +43,12 @@ export interface ThemeStore {
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
+const NONCE_REGEX = /^[0-9a-z]+$/;
 const THEME_FILE = "theme.json";
 const ASSETS_DIR = "assets";
+
+/** Which half of the save a scratch folder is part of. */
+type ScratchKind = "staging" | "retired";
 
 /** Chosen import bounds, not measured disk limits. They match the archive's,
  *  so neither format accepts a theme the other would refuse. */
@@ -56,9 +61,92 @@ export function isValidThemeId(id: string): boolean {
   return THEME_ID_REGEX.test(id);
 }
 
-/** A scratch name no theme id can claim, so a listing cannot see it. */
-function scratchName(prefix: string): string {
-  return `${prefix}${Date.now()}.${Math.random().toString(36).slice(2)}`;
+/**
+ * A scratch name no theme id can claim, because a listing skips the leading
+ * dot, and carrying the id it stands for — so a save that died between its two
+ * renames can be put back where the author left it.
+ */
+function scratchName(kind: ScratchKind, id: string): string {
+  const nonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  return `.${kind}-${nonce}.${id}`;
+}
+
+/** The theme a scratch folder stands for, or undefined if it names no theme. */
+function scratchTarget(
+  name: string,
+): { readonly kind: ScratchKind; readonly id: string } | undefined {
+  for (const kind of ["staging", "retired"] as const) {
+    const prefix = `.${kind}-`;
+    if (!name.startsWith(prefix)) {
+      continue;
+    }
+    // The nonce is alphanumeric, so the first dot ends it; an id may hold a
+    // hyphen but never a dot, so what follows is the whole id.
+    const rest = name.slice(prefix.length);
+    const dot = rest.indexOf(".");
+    if (dot < 1) {
+      return undefined;
+    }
+    const id = rest.slice(dot + 1);
+    return NONCE_REGEX.test(rest.slice(0, dot)) && isValidThemeId(id)
+      ? { kind, id }
+      : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * What a killed save left in the library. Renaming onto an existing directory
+ * is not portable — POSIX allows it only for an empty one and Windows refuses
+ * it — so the swap is two renames and a crash between them cannot be made
+ * impossible; it can only be undone. A `.staging-` folder is the debris of a
+ * write that never committed, so it goes. A `.retired-` folder is the last good
+ * copy of a theme that has no name of its own any more, so it comes back:
+ * without this, the failure a crash actually produces is a theme that looks
+ * deleted rather than one that is broken.
+ */
+async function repairScratch(
+  library: string,
+  entries: readonly Dirent[],
+  saving: ReadonlySet<string>,
+): Promise<boolean> {
+  let repaired = false;
+  await Promise.all(
+    entries.map(async (entry) => {
+      try {
+        if (!entry.isDirectory()) {
+          return;
+        }
+        const target = scratchTarget(entry.name);
+        // A save in flight owns its scratch folders; repairing here would
+        // delete a staging folder it is about to rename in.
+        if (target === undefined || saving.has(target.id)) {
+          return;
+        }
+        const scratch = path.join(library, entry.name);
+        if (target.kind === "staging") {
+          await fs.rm(scratch, { recursive: true, force: true });
+          repaired = true;
+          return;
+        }
+        // A live theme wins. Restoring an older copy over a newer one would
+        // trade a crash for silent data loss, so an occupied name is left alone
+        // and the retired copy stays where it is until nothing stands there.
+        const occupied = await fs
+          .stat(path.join(library, target.id))
+          .then(() => true)
+          .catch(() => false);
+        if (!occupied) {
+          await fs.rename(scratch, path.join(library, target.id));
+          repaired = true;
+        }
+      } catch {
+        // A repair that cannot finish must not cost the listing.
+      }
+    }),
+  );
+  // Whether anything moved, so the caller knows if it must look again.
+  return repaired;
 }
 
 /** The declared paths a theme folder must hold, one file each. */
@@ -134,16 +222,28 @@ async function entryFor(
 }
 
 export function createThemeStore(directory: string): ThemeStore {
+  // The ids with a save in flight, so a listing landing inside one does not
+  // mistake that save's scratch folders for the debris of a dead one.
+  const saving = new Set<string>();
+
   return {
     /**
      * Names, authors and modified times, from `theme.json` alone. The archive
      * this replaced inflated every package in the library to print one line
      * each, which is the cost that made listing worth removing.
+     *
+     * Repair runs here rather than on start: the store has no lifecycle of its
+     * own, and this is the one call through which a theme becomes visible at
+     * all — so a crash is undone exactly where it would otherwise be seen, and
+     * the repaired theme appears in the listing that repaired it.
      */
     async list(): Promise<readonly ThemeStoreEntry[]> {
       try {
         await fs.mkdir(directory, { recursive: true });
-        const entries = await fs.readdir(directory, { withFileTypes: true });
+        const seen = await fs.readdir(directory, { withFileTypes: true });
+        const entries = (await repairScratch(directory, seen, saving))
+          ? await fs.readdir(directory, { withFileTypes: true })
+          : seen;
         const themes = await Promise.all(
           entries
             .filter((entry) => entry.isDirectory())
@@ -216,13 +316,14 @@ export function createThemeStore(directory: string): ThemeStore {
       const envelope = checked(id, content);
       await fs.mkdir(directory, { recursive: true });
       const target = path.join(directory, id);
-      const staging = path.join(directory, scratchName(".staging-"));
-      const retired = path.join(directory, scratchName(".retired-"));
+      const staging = path.join(directory, scratchName("staging", id));
+      const retired = path.join(directory, scratchName("retired", id));
       // `rename` onto an existing directory succeeds on POSIX and fails on
       // Windows, so an old folder is moved aside first and removed after — and
       // a crash between the two leaves the theme recoverable under its
       // `.retired-` name rather than gone.
       let hadPrevious = false;
+      saving.add(id);
 
       try {
         await fs.mkdir(path.join(staging, ASSETS_DIR), { recursive: true });
@@ -250,6 +351,8 @@ export function createThemeStore(directory: string): ThemeStore {
       } catch (error) {
         await fs.rm(staging, { recursive: true, force: true });
         throw error;
+      } finally {
+        saving.delete(id);
       }
 
       if (hadPrevious) {

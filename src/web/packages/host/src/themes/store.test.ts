@@ -3,11 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createThemeStore,
   isValidThemeId,
   type ThemeContent,
+  type ThemeStore,
 } from "./store.js";
 
 function envelopeFor(id: string, name: string): FabricThemeEnvelope {
@@ -40,6 +41,68 @@ function withAsset(
     },
     assets: { [assetPath]: bytes },
   };
+}
+
+/**
+ * A save that dies, at the point named — the one thing a test cannot get by
+ * writing folders by hand, because the state that matters is the one the store
+ * itself leaves there.
+ *
+ * `write` stages the whole folder and swaps it in with two renames. The spy
+ * performs the operation that names the crash point for real and then hands
+ * back a promise that never settles, so the save stops there exactly as a
+ * killed process stops: what it had already written is on disk, the rest of the
+ * save never runs, and no `catch` cleans up after it. `crashed` resolves once
+ * that point is really on disk, so the caller observes the crash rather than
+ * assuming it, and the write is deliberately never awaited.
+ */
+async function crashSave(
+  store: ThemeStore,
+  id: string,
+  content: ThemeContent,
+  at: "mid-write" | "between-renames",
+): Promise<void> {
+  const crashed = new Promise<void>((resolve) => {
+    const realRename = fs.rename;
+    const realWriteFile = fs.writeFile;
+    const never = (): Promise<never> => new Promise<never>(() => undefined);
+
+    vi.spyOn(fs, "rename").mockImplementation(async (from, to) => {
+      if (at !== "between-renames" || !String(to).includes(".retired-")) {
+        await realRename(from, to);
+        return;
+      }
+      // The theme is really moved aside first; only the second rename, which
+      // would bring the new folder in, is what never arrives.
+      await realRename(from, to);
+      resolve();
+      return never();
+    });
+
+    vi.spyOn(fs, "writeFile").mockImplementation(async (file, data) => {
+      // `theme.json` is written once into the staging folder, so stopping on
+      // it stops the save before it has written anything worth committing.
+      if (
+        at !== "mid-write" ||
+        !String(file).includes(`${path.sep}.staging-`)
+      ) {
+        await realWriteFile(file, data);
+        return;
+      }
+      resolve();
+      return never();
+    });
+  });
+
+  void store.write(id, content);
+  await crashed;
+}
+
+/** Scratch folder names for one theme, read back off disk rather than guessed. */
+async function scratchNames(library: string, id: string, kind: string) {
+  return (await fs.readdir(library)).filter(
+    (name) => name.startsWith(`.${kind}-`) && name.endsWith(`.${id}`),
+  );
 }
 
 describe("ThemeStore", () => {
@@ -200,37 +263,6 @@ describe("ThemeStore", () => {
     expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
   });
 
-  /**
-   * The property a folder has to earn over a file: a save that dies before its
-   * rename must cost the draft, not the theme. The staging folder is left here
-   * directly rather than by injecting a failure, because that is exactly what a
-   * process killed mid-save leaves behind — and it is the state the rename
-   * exists to make survivable.
-   */
-  it("keeps the stored theme when an interrupted save left a staging folder", async () => {
-    const store = createThemeStore(tmpDir);
-    await store.write("living-room", {
-      envelope: envelopeFor("living-room", "First Name"),
-      assets: {},
-    });
-
-    const leftover = path.join(tmpDir, ".staging-1700000000.abc123");
-    await fs.mkdir(path.join(leftover, "assets"), { recursive: true });
-    await fs.writeFile(
-      path.join(leftover, "theme.json"),
-      JSON.stringify(envelopeFor("living-room", "Never Finished")),
-    );
-
-    // The half-written folder is not a theme, and it did not displace the one
-    // that was already there.
-    expect((await store.list()).map((entry) => entry.id)).toEqual([
-      "living-room",
-    ]);
-    expect(await store.read("living-room")).toMatchObject({
-      name: "First Name",
-    });
-  });
-
   it("lists themes with metadata only", async () => {
     const store = createThemeStore(tmpDir);
     await store.write("theme-a", {
@@ -289,6 +321,181 @@ describe("ThemeStore", () => {
   it("returns undefined when theme is not found", async () => {
     const store = createThemeStore(tmpDir);
     expect(await store.read("non-existent")).toBeUndefined();
+  });
+});
+
+/**
+ * A crash cannot be made impossible here — renaming onto an existing directory
+ * is not portable — so it has to be undone. These kill a real save with
+ * `crashSave`, at both points a kill can reach, and then start again.
+ */
+describe("ThemeStore crash recovery", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-theme-recovery-test-"),
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  const save = (id: string, name: string): ThemeContent => ({
+    envelope: envelopeFor(id, name),
+    assets: {},
+  });
+
+  it("puts back a theme a kill between the two renames left behind", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write("living-room", save("living-room", "First Name"));
+    await crashSave(
+      store,
+      "living-room",
+      save("living-room", "Second Name"),
+      "between-renames",
+    );
+
+    // What the kill left: the previous theme under a name no listing can see,
+    // the new folder still waiting, and nothing at the theme's own name. The
+    // old one is what it was and not what it was becoming, because the save
+    // that would have moved it in never reached its second rename.
+    expect((await fs.readdir(tmpDir)).sort()).toEqual(
+      [
+        ...(await scratchNames(tmpDir, "living-room", "retired")),
+        ...(await scratchNames(tmpDir, "living-room", "staging")),
+      ].sort(),
+    );
+    expect(await fs.readdir(tmpDir)).not.toContain("living-room");
+    expect(await scratchNames(tmpDir, "living-room", "retired")).toHaveLength(
+      1,
+    );
+
+    // The next start is a new store over the same library, which is all a
+    // restart is.
+    const next = createThemeStore(tmpDir);
+    expect(await next.list()).toMatchObject([
+      { id: "living-room", name: "First Name" },
+    ]);
+    expect(await next.read("living-room")).toMatchObject({
+      name: "First Name",
+    });
+    // The staging folder was a write that never happened; the retired one is
+    // the last good copy, now living under its own name again.
+    expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+  });
+
+  it("reaps the staging folder a kill mid-write left behind", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write("living-room", save("living-room", "First Name"));
+    await crashSave(
+      store,
+      "living-room",
+      save("living-room", "Never Finished"),
+      "mid-write",
+    );
+
+    // The theme was never touched, and the draft beside it is a folder with
+    // nothing in it.
+    expect(await scratchNames(tmpDir, "living-room", "staging")).toHaveLength(
+      1,
+    );
+    expect(await scratchNames(tmpDir, "living-room", "retired")).toHaveLength(
+      0,
+    );
+
+    const next = createThemeStore(tmpDir);
+    expect(await next.list()).toMatchObject([
+      { id: "living-room", name: "First Name" },
+    ]);
+    expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+  });
+
+  it("leaves a retired copy alone when a live theme already holds the name", async () => {
+    const crashed = createThemeStore(tmpDir);
+    await crashed.write("living-room", save("living-room", "First Name"));
+    await crashSave(
+      crashed,
+      "living-room",
+      save("living-room", "Second Name"),
+      "between-renames",
+    );
+
+    // The author saves again, which succeeds because the name is free — and
+    // leaves the older copy retired beside a newer live theme.
+    const store = createThemeStore(tmpDir);
+    await store.write("living-room", save("living-room", "Third Name"));
+    expect(await store.list()).toMatchObject([
+      { id: "living-room", name: "Third Name" },
+    ]);
+
+    // Restoring the retired copy would trade a crash for silent data loss, so
+    // it stays where it is, holding the version it always held.
+    const retired = await scratchNames(tmpDir, "living-room", "retired");
+    expect(retired).toHaveLength(1);
+    expect(
+      await fs.readFile(
+        path.join(tmpDir, retired[0] as string, "theme.json"),
+        "utf8",
+      ),
+    ).toContain("First Name");
+    expect(await fs.readdir(tmpDir)).toContain("living-room");
+  });
+
+  it("recovers the same way on every later start", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write("living-room", save("living-room", "First Name"));
+    await crashSave(
+      store,
+      "living-room",
+      save("living-room", "Second Name"),
+      "between-renames",
+    );
+
+    const first = await createThemeStore(tmpDir).list();
+    const second = await createThemeStore(tmpDir).list();
+    expect(second).toEqual(first);
+    expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+
+    // And it does not loop: what it restored is already a theme, so there is
+    // nothing left for a third start to do.
+    expect(await createThemeStore(tmpDir).list()).toEqual(first);
+    expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+  });
+
+  it("leaves a scratch folder it cannot read a theme id out of alone", async () => {
+    await fs.mkdir(path.join(tmpDir, ".staging-1700000000"));
+    await fs.mkdir(path.join(tmpDir, ".retired-1700000000.not a theme id"));
+    await fs.mkdir(path.join(tmpDir, ".notes"));
+
+    const store = createThemeStore(tmpDir);
+    expect(await store.list()).toEqual([]);
+    // Nothing here names a theme, so there is nothing to put back and nothing
+    // that may be deleted on a guess.
+    expect((await fs.readdir(tmpDir)).sort()).toEqual([
+      ".notes",
+      ".retired-1700000000.not a theme id",
+      ".staging-1700000000",
+    ]);
+  });
+
+  it("leaves no scratch folder behind after a save that finished", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write("living-room", save("living-room", "First Name"));
+    // A second save is the one that stages a folder, retires the old theme and
+    // cleans both up — the path a crash would interrupt.
+    await store.write("living-room", save("living-room", "Second Name"));
+    await store.write("theme-a", save("theme-a", "Theme Alpha"));
+
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+      "theme-a",
+    ]);
+    expect((await fs.readdir(tmpDir)).sort()).toEqual([
+      "living-room",
+      "theme-a",
+    ]);
   });
 });
 
