@@ -304,18 +304,6 @@ function ShellMenuBar({
           ),
         )}
       </MenuGroup>
-      <MenuGroup label={uiCopy.menus.arrange}>
-        {item(
-          uiCopy.actions.align,
-          () => session?.arrange("align-left"),
-          session?.canArrange("align-left") !== true,
-        )}
-        {item(
-          uiCopy.actions.distribute,
-          () => session?.arrange("distribute-x"),
-          session?.canArrange("distribute-x") !== true,
-        )}
-      </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>
         {item(
           `${uiCopy.view.dataSource}: ${source === "preview" ? uiCopy.view.preview : uiCopy.view.live}`,

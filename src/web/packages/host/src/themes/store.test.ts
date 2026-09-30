@@ -741,6 +741,271 @@ describe("ThemeStore asset reuse", () => {
 });
 
 /**
+ * A save that leaves an asset out of its payload, because the folder it is
+ * replacing already holds it.
+ *
+ * The one thing that makes this safe is that the base matched first, so "the
+ * host has these bytes" is the host's own knowledge. Every refusal below is a
+ * way of asking what happens when that is not so — and a short payload that
+ * answered any of them with a written file would be a quieter way to lose an
+ * asset than the clobber the base already prevents.
+ */
+describe("ThemeStore partial saves", () => {
+  let tmpDir: string;
+  let store: ThemeStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-theme-partial-test-"),
+    );
+    store = createThemeStore(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  const LONG_AGO = new Date("2001-02-03T04:05:06Z");
+  const backport = new TextEncoder().encode("backdrop-bytes");
+  const badge = new TextEncoder().encode("<svg/>");
+
+  /** A theme declaring each asset with the hash of its own bytes, as import does. */
+  function themeWith(
+    contents: ReadonlyArray<readonly [string, Uint8Array]>,
+    name = "Living Room",
+  ): ThemeContent {
+    return {
+      envelope: {
+        ...envelopeFor("living-room", name),
+        assets: contents.map(([assetPath, bytes], index) => ({
+          id: `asset-${index}`,
+          kind: "image" as const,
+          path: assetPath,
+          sha256: sha256Of(bytes),
+        })),
+      },
+      assets: Object.fromEntries(contents),
+    };
+  }
+
+  /** The payload a second save sends when it changed nothing: the empty map. */
+  function only(
+    content: ThemeContent,
+    assetPath: string,
+  ): ThemeContent {
+    const { [assetPath]: _dropped, ...rest } = content.assets;
+    return { envelope: content.envelope, assets: rest };
+  }
+
+  const asset = (assetPath: string): string =>
+    path.join(tmpDir, "living-room", ...assetPath.split("/"));
+
+  const backdate = (file: string): Promise<void> =>
+    fs.utimes(file, LONG_AGO, LONG_AGO);
+
+  it("keeps an asset the payload left out, and answers the next save's base", async () => {
+    const content = themeWith([
+      ["assets/backdrop.png", backport],
+      ["assets/badge.svg", badge],
+    ]);
+    const opened = await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+    await backdate(asset("assets/badge.svg"));
+
+    // The save the editor now makes: the document with a new name, carrying
+    // neither asset, on the base it opened with.
+    const saved = await store.write(
+      "living-room",
+      {
+        ...only(content, "assets/backdrop.png"),
+        envelope: {
+          ...content.envelope,
+          metadata: { name: "Renamed", author: "Ada", locale: "en" },
+        },
+      },
+      { base: opened.base },
+    );
+
+    // The file nobody sent is still the file the folder had, byte for byte and
+    // unmoved, and the one that *was* sent is present too.
+    expect(await fs.readFile(asset("assets/backdrop.png"), "utf8")).toBe(
+      "backdrop-bytes",
+    );
+    expect(
+      (await fs.stat(asset("assets/backdrop.png"))).mtime.getTime(),
+    ).toBe(LONG_AGO.getTime());
+    expect(await store.read("living-room")).toMatchObject({
+      name: "Renamed",
+      assets: { "assets/backdrop.png": backport, "assets/badge.svg": badge },
+    });
+    // And the base moved on, so the next save is not stale against itself.
+    expect(saved.base).not.toBe(opened.base);
+    await expect(
+      store.write("living-room", only(content, "assets/backdrop.png"), {
+        base: saved.base,
+      }),
+    ).resolves.toMatchObject({ name: "Living Room" });
+  });
+
+  /**
+   * The claim of the whole change, stated where it can be falsified: a save
+   * that sends nothing for an asset still ends with that asset on disk, and
+   * ends with it by copying rather than by receiving.
+   */
+  it("restores an omitted asset by copying it, never by writing empty bytes", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+    await backdate(asset("assets/backdrop.png"));
+
+    await store.write("living-room", only(content, "assets/backdrop.png"), {
+      base: opened.base,
+    });
+
+    // Copied with its timestamps kept — the stamp is what a write would have
+    // moved, and it did not move.
+    expect(
+      (await fs.stat(asset("assets/backdrop.png"))).mtime.getTime(),
+    ).toBe(LONG_AGO.getTime());
+    expect((await fs.stat(asset("assets/backdrop.png"))).size).toBe(
+      backport.byteLength,
+    );
+  });
+
+  /**
+   * The one to read twice. A short payload reconstructs from whatever is
+   * stored — so if it can be reached with a base that did not match, the
+   * clobber the guard exists to prevent comes back through the side door, and
+   * no longer looks like a clobber.
+   */
+  it("refuses a partial save whose base is stale, and changes nothing", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+    // Another author saves over it while this tab is open.
+    const theirs = themeWith(
+      [["assets/backdrop.png", backport], ["assets/badge.svg", badge]],
+      "Living Room, by someone else",
+    );
+    await store.write("living-room", theirs);
+    const before = await store.read("living-room");
+
+    // The stale tab sends only the badge — the asset it believes the folder
+    // still holds — and the base it opened with.
+    await expect(
+      store.write(
+        "living-room",
+        { ...only(theirs, "assets/badge.svg"), envelope: content.envelope },
+        { base: opened.base },
+      ),
+    ).rejects.toThrow(ThemeConflictError);
+
+    // Not "the theme still parses": the other author's whole folder, and no
+    // scratch left by a save refused before it staged anything.
+    expect(await store.read("living-room")).toMatchObject({
+      name: "Living Room, by someone else",
+      assets: { "assets/backdrop.png": backport, "assets/badge.svg": badge },
+    });
+    expect(before).toMatchObject({ base: (await store.read("living-room"))?.base });
+    expect((await fs.readdir(tmpDir)).sort()).toEqual(["living-room"]);
+  });
+
+  it("refuses a partial save that stands the guard down with an overwrite", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+
+    // The one road past the guard is the one road where the stored document is
+    // not the one this save came from, so it cannot claim to leave an asset out.
+    await expect(
+      store.write("living-room", only(content, "assets/backdrop.png"), {
+        base: opened.base,
+        overwrite: true,
+      }),
+    ).rejects.toThrow(/exactly match/);
+    expect(await store.read("living-room")).toMatchObject({
+      name: "Living Room",
+      assets: { "assets/backdrop.png": backport },
+    });
+  });
+
+  it("refuses a partial save with no base, and one for a theme that is not stored", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+
+    // No base at all: a first save, and nothing to reconstruct from.
+    await expect(
+      store.write("living-room", only(content, "assets/backdrop.png")),
+    ).rejects.toThrow(/exactly match/);
+
+    // A base against a theme that is not stored is a first save too — there is
+    // no stored document for the guard to have matched.
+    const fresh = createThemeStore(path.join(tmpDir, "empty-library"));
+    await expect(
+      fresh.write("living-room", only(content, "assets/backdrop.png"), {
+        base: opened.base,
+      }),
+    ).rejects.toThrow(/exactly match/);
+  });
+
+  it("refuses a partial save that names an asset the document does not declare", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+
+    await expect(
+      store.write(
+        "living-room",
+        {
+          ...only(content, "assets/backdrop.png"),
+          assets: { "assets/smuggled.png": badge },
+        },
+        { base: opened.base },
+      ),
+    ).rejects.toThrow(/exactly match/);
+    expect(await store.read("living-room")).toMatchObject({
+      assets: { "assets/backdrop.png": backport },
+    });
+  });
+
+  /**
+   * A hash proves the content, never that the file is *there*. An author who
+   * empties the folder under a tab would otherwise get a theme that validates
+   * and renders nothing — committed silently, which is the failure this whole
+   * mechanism has to be able to make loud.
+   */
+  it("refuses a partial save whose omitted asset is not in the folder", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+    await fs.rm(asset("assets/backdrop.png"));
+    const before = await store.read("living-room");
+
+    await expect(
+      store.write("living-room", only(content, "assets/backdrop.png"), {
+        base: opened.base,
+      }),
+    ).rejects.toThrow(/is not in the library folder/);
+
+    // Nothing written, and nothing half-written: the theme that was already
+    // broken is left exactly as broken as it was, and no staging folder is left.
+    expect(before).toEqual(await store.read("living-room"));
+    expect((await fs.readdir(tmpDir)).sort()).toEqual(["living-room"]);
+  });
+
+  it("refuses a partial save whose omitted path is a directory, not a file", async () => {
+    const content = themeWith([["assets/backdrop.png", backport]]);
+    const opened = await store.write("living-room", content);
+    await fs.rm(asset("assets/backdrop.png"));
+    await fs.mkdir(asset("assets/backdrop.png"));
+
+    await expect(
+      store.write("living-room", only(content, "assets/backdrop.png"), {
+        base: opened.base,
+      }),
+    ).rejects.toThrow(/is not in the library folder/);
+    expect((await fs.stat(asset("assets/backdrop.png"))).isDirectory()).toBe(
+      true,
+    );
+  });
+});
+
+/**
  * Two editors open on one theme. The one that saves second is holding a
  * document that never saw the first one's work, and because a save replaces
  * the whole folder, applying it would drop the first one's fields *and* the

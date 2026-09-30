@@ -1123,6 +1123,265 @@ describe("a save the host refused", () => {
   });
 });
 
+/**
+ * What actually goes over the wire.
+ *
+ * The claim is not "the saved theme is right" — that was true before, and would
+ * stay true with this removed. It is that a save carries the bytes the host
+ * does not already have, so every assertion here is on the payload the client
+ * was handed rather than on what the host did with it.
+ */
+describe("a save that carries only what changed", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      historyManager: { saveState: vi.fn() },
+    },
+    scene: {},
+    // The real snapshot hands back the document it was given, assets included,
+    // which is what makes the payload read here the one a real save sends.
+    snapshot: vi.fn((document: unknown) => document),
+    setBackgroundMedia: vi.fn(),
+    setGlobals: vi.fn(),
+  });
+
+  const panelHosts = {
+    add: document.body,
+    assets: document.body,
+    document: document.body,
+    chart: document.body,
+    selection: document.body,
+    style: document.body,
+  };
+
+  const backdrop = new TextEncoder().encode("backdrop-bytes");
+  const badge = new TextEncoder().encode("<svg/>");
+  // The digests the stored document declares. What the editor compares is one
+  // declared digest against another, so literals say what the test is about.
+  const storedBackdrop = {
+    id: "backdrop",
+    kind: "image" as const,
+    path: "assets/backdrop.png",
+    sha256: "a".repeat(64),
+  };
+  const storedBadge = {
+    id: "badge",
+    kind: "image" as const,
+    path: "assets/badge.svg",
+    sha256: "b".repeat(64),
+  };
+  const opened: FabricThemeEnvelope = {
+    ...envelope,
+    assets: [storedBackdrop, storedBadge],
+  };
+  const bytes = {
+    "assets/backdrop.png": backdrop,
+    "assets/badge.svg": badge,
+  };
+
+  const sessionWith = (
+    save: ReturnType<typeof vi.fn>,
+    overrides?: Record<string, unknown>,
+  ): EditorSession =>
+    new EditorSession({
+      shell: shell() as never,
+      source: {} as never,
+      envelope: opened,
+      assets: bytes,
+      libraryBase: "base-as-stored",
+      panelHosts,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({
+          envelope: opened,
+          assets: bytes,
+          base: "base-as-stored",
+        })),
+        save,
+      } as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      ...overrides,
+    });
+
+  /** The paths one save put in its request, which is the whole claim. */
+  const pathsOf = (call: unknown): string[] =>
+    Object.keys(
+      (call as { readonly assets: Readonly<Record<string, Uint8Array>> })
+        .assets,
+    ).sort();
+
+  const everyPath = ["assets/backdrop.png", "assets/badge.svg"];
+
+  beforeEach(() => {
+    conflictMock.mockReset();
+    conflictMock.mockResolvedValue(undefined);
+  });
+
+  it("transmits no asset the stored document already holds, on any save", async () => {
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save);
+
+    await extensions.actionFacade().saveLibrary();
+    await extensions.actionFacade().saveLibrary();
+
+    // The backdrop and the badge are both declared, both held, and neither goes
+    // over the wire — twice, because the base each save answers carries the
+    // claim forward rather than resetting it to "I know nothing".
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([]);
+    expect(pathsOf(save.mock.calls[1]?.[1])).toEqual([]);
+    expect(save.mock.calls[0]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    expect(save.mock.calls[1]?.[1]).toMatchObject({ base: "base-after-save" });
+    // The document still declares both, so the request is a whole theme that
+    // happens to carry no bytes: what was left out is what the host holds, not
+    // what was dropped.
+    expect(
+      (save.mock.calls[0]?.[1] as { envelope: FabricThemeEnvelope }).envelope
+        .assets,
+    ).toHaveLength(2);
+    extensions.destroy();
+  });
+
+  it("transmits exactly the asset whose digest moved", async () => {
+    // A curated face the stored theme already declares, adopted again over the
+    // same id: the declaration is replaced and its digest recomputed, which is
+    // how an asset's bytes change without a new id appearing.
+    const face = fontTrio("minimal")?.faces[0];
+    if (face === undefined) throw new Error("no curated face");
+    const fontPath = `assets/${face.id}.woff2`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new TextEncoder().encode("inter"))),
+    );
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save, {
+      envelope: {
+        ...opened,
+        globals: {
+          typePresets: {
+            heading: { name: "Heading", value: { family: "Inter" } },
+          },
+        },
+        assets: [
+          storedBackdrop,
+          {
+            id: face.id,
+            kind: "font" as const,
+            path: fontPath,
+            family: face.family,
+            weight: face.weight,
+            style: face.style,
+            format: face.format,
+            sourceUrl: face.sourceUrl,
+            license: face.license,
+            sha256: "c".repeat(64),
+          },
+        ],
+      },
+    });
+
+    await extensions.applyPresetFace("heading", face);
+    await extensions.actionFacade().saveLibrary();
+
+    // The font, whose digest no longer matches the stored one — and not the
+    // backdrop, whose digest never moved.
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([fontPath]);
+    expect(save.mock.calls[0]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    vi.unstubAllGlobals();
+    extensions.destroy();
+  });
+
+  it("transmits everything on a first save, which has nothing to leave out", async () => {
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save, { libraryBase: undefined });
+
+    await extensions.actionFacade().saveLibrary();
+
+    // A document that came from nowhere claims no base, and that is what says
+    // it is a first save — so the host has no folder to take anything from.
+    expect(save.mock.calls[0]?.[1]).not.toHaveProperty("base");
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual(everyPath);
+    extensions.destroy();
+  });
+
+  it("transmits everything for a deliberate overwrite, and nothing for the refusal before it", async () => {
+    // The other half of the guard: the road past it is the one road where what
+    // is on disk is not the document this save came from, so it cannot claim to
+    // have left anything out of it.
+    conflictMock.mockResolvedValueOnce("overwrite");
+    const save = vi.fn(
+      async (
+        _id: string,
+        _content: unknown,
+        options?: { readonly overwrite?: boolean },
+      ): Promise<string> => {
+        if (options?.overwrite !== true) {
+          throw new ThemeConflictError('"theme" was changed by someone else.');
+        }
+        return "base-after-overwrite";
+      },
+    );
+    const extensions = sessionWith(save);
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(save.mock.calls).toHaveLength(2);
+    // The refused save was made on the document it opened with, so it could be
+    // partial — and would have been refused for being stale, not for its size.
+    expect(save.mock.calls[0]?.[2]).toEqual({ overwrite: false });
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([]);
+    // The deliberate one is the whole theme.
+    expect(save.mock.calls[1]?.[2]).toEqual({ overwrite: true });
+    expect(pathsOf(save.mock.calls[1]?.[1])).toEqual(everyPath);
+    extensions.destroy();
+  });
+});
+
+
 function panel() {
   return {
     root: document.createElement("section"),

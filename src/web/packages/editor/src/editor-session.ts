@@ -78,6 +78,41 @@ import {
   type TypePresets,
 } from "./type-preset-manager/index.js";
 
+/**
+ * The stored document a session descends from, and what that document declared.
+ *
+ * A save names the first to say which version it was built from; the second is
+ * what lets it leave an asset the stored folder already holds out of the
+ * request, because a declared `sha256` that has not moved is proof the bytes
+ * have not either. Keeping them in one value is the point — a base without its
+ * hashes would upload the whole theme every time, which is what this exists to
+ * stop.
+ */
+interface LibraryBase {
+  readonly id: string;
+  readonly hashes: ReadonlyMap<string, string>;
+}
+
+/** The base of a document, paired with the hashes that document declares. */
+function libraryBase(
+  id: string | undefined,
+  declarations: readonly { readonly path: string; readonly sha256?: string }[],
+): LibraryBase | undefined {
+  if (id === undefined) {
+    return undefined;
+  }
+  return {
+    id,
+    hashes: new Map(
+      declarations.flatMap((declared) =>
+        declared.sha256 === undefined
+          ? []
+          : [[declared.path, declared.sha256] as const],
+      ),
+    ),
+  };
+}
+
 export interface EditorPanelHosts {
   /** Text and chart creation. */
   readonly add: HTMLElement;
@@ -153,8 +188,13 @@ export class EditorSession {
    * from nothing. It is the base every library save is checked against, so it
    * is cleared wherever the document is replaced by something else: a base that
    * outlived its document would make the next save look stale when it is not.
+   *
+   * The hashes travel with it because the pair is one claim: the base says this
+   * document is the one stored, and the hashes say what that document declared.
+   * Without the second half a save cannot tell an asset the author never
+   * touched from one they replaced, and sends bytes nobody changed.
    */
-  #libraryBase: string | undefined;
+  #libraryBase: LibraryBase | undefined;
   /** The picture this document arrived with, which a save falls back to. */
   #thumbnail: Uint8Array | undefined;
   /** The source the runtime reads, which a new source replaces. */
@@ -170,12 +210,15 @@ export class EditorSession {
     this.#envelope = options.envelope;
     this.#shell = options.shell;
     this.#thumbnail = options.thumbnail;
-    this.#libraryBase = options.libraryBase;
     this.#assets.load(
       options.envelope.assets === undefined
         ? {}
         : { assets: options.envelope.assets },
       options.assets ?? {},
+    );
+    this.#libraryBase = libraryBase(
+      options.libraryBase,
+      this.#assets.declarations,
     );
     this.#onBindingsChange = options.onBindingsChange;
 
@@ -634,14 +677,18 @@ export class EditorSession {
     options: EditorSessionOptions,
     overwrite: boolean,
   ): Promise<void> {
-    this.#libraryBase = await client.save(
-      current.id,
-      {
-        envelope: current,
-        assets: this.#assets.assets,
-        ...(this.#libraryBase === undefined ? {} : { base: this.#libraryBase }),
-      },
-      { overwrite },
+    const base = this.#libraryBase;
+    this.#libraryBase = libraryBase(
+      await client.save(
+        current.id,
+        {
+          envelope: current,
+          assets: this.#libraryPayload(base, overwrite),
+          ...(base === undefined ? {} : { base: base.id }),
+        },
+        { overwrite },
+      ),
+      this.#assets.declarations,
     );
 
     const png = await this.#picture(options);
@@ -660,6 +707,46 @@ export class EditorSession {
   }
 
   /**
+   * The bytes this save has to carry, which is only the ones the stored folder
+   * does not already hold.
+   *
+   * An asset the author has not touched since they opened the theme is left
+   * out, and the host takes it from the folder it is replacing — a 438 KB
+   * backdrop that has not moved does not go over the wire again. It may do that
+   * only because this save went out with the base the editor opened with, and
+   * the host's guard has already said the stored document is that one.
+   *
+   * A save with no base is a first save, and a deliberate overwrite stands the
+   * guard down, so both carry the whole theme: there is nothing to reconstruct
+   * from, and on the second road what is on disk is not the document this save
+   * came from.
+   */
+  #libraryPayload(
+    base: LibraryBase | undefined,
+    overwrite: boolean,
+  ): Readonly<Record<string, Uint8Array>> {
+    const all = this.#assets.assets;
+    if (base === undefined || overwrite) {
+      return all;
+    }
+    const payload: Record<string, Uint8Array> = {};
+    for (const declared of this.#assets.declarations) {
+      const sha256 = declared.sha256;
+      if (sha256 !== undefined && base.hashes.get(declared.path) === sha256) {
+        continue;
+      }
+      // A declaration with no bytes is a document that is already broken; the
+      // host refuses a theme that names an asset nobody can produce, which is
+      // the honest answer, and sending an empty file would not be.
+      const bytes = all[declared.path];
+      if (bytes !== undefined) {
+        payload[declared.path] = bytes;
+      }
+    }
+    return payload;
+  }
+
+  /**
    * What an author wants done about a save the host refused. Nothing is thrown
    * away on either road, and the third answer keeps both: reloading takes the
    * stored document, overwriting sends the author's own with the guard stood
@@ -674,7 +761,10 @@ export class EditorSession {
     const choice = await promptThemeConflict();
     if (choice === "reload") {
       const opened = await client.open(current.id);
-      this.#libraryBase = opened.base;
+      this.#libraryBase = libraryBase(
+        opened.base,
+        opened.envelope.assets ?? [],
+      );
       await options.onOpenTheme?.(opened.envelope, opened.assets, opened.base);
       return;
     }
@@ -707,7 +797,10 @@ export class EditorSession {
       }
       const opened = await client.open(choice.id);
       if (options.onOpenTheme !== undefined) {
-        this.#libraryBase = opened.base;
+        this.#libraryBase = libraryBase(
+          opened.base,
+          opened.envelope.assets ?? [],
+        );
         await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
       }
     } catch (error) {

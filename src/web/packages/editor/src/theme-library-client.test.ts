@@ -14,6 +14,9 @@ const envelope: FabricThemeEnvelope = {
   scene: { version: "7.4.0", objects: [] },
 };
 
+/** What a request body costs on the wire, which is the only size that matters. */
+const bytes = (body: string): number => new TextEncoder().encode(body).length;
+
 describe("ThemeLibraryClient", () => {
   it("saves and opens a theme's content, not an archive", async () => {
     const content = {
@@ -71,6 +74,52 @@ describe("ThemeLibraryClient", () => {
       ...content,
       base: "base-as-stored",
     });
+  });
+
+  it("puts nothing on the wire for an asset the payload leaves out", async () => {
+    // The last link in the chain, and the one that can be measured rather than
+    // inferred: a save that carries no bytes for a declared asset produces a
+    // body with no base64 in it, however large that asset was in the editor.
+    const backdrop = new Uint8Array(448 * 1024).fill(7);
+    const mockFetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ ok: true, base: "base-after-save" }), {
+          status: 200,
+        }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    const full = await (async () => {
+      await client.save("living-room", {
+        envelope: { ...envelope, metadata: { ...envelope.metadata, name: "1" } },
+        assets: { "assets/backdrop.png": backdrop },
+        base: "base-as-stored",
+      });
+      return String(mockFetch.mock.calls.at(-1)?.[1]?.body);
+    })();
+
+    const partial = await (async () => {
+      await client.save("living-room", {
+        envelope: { ...envelope, metadata: { ...envelope.metadata, name: "2" } },
+        assets: {},
+        base: "base-as-stored",
+      });
+      return String(mockFetch.mock.calls.at(-1)?.[1]?.body);
+    })();
+
+    // The document still declares the backdrop in both, and the base travels
+    // in both — so the host is being told what it already has, not asked to
+    // forget it. The 438 KB is simply not there the second time.
+    const decoded = JSON.parse(partial) as {
+      assets: Record<string, string>;
+      base: string;
+    };
+    expect(Object.keys(decoded.assets)).toEqual([]);
+    expect(decoded.base).toBe("base-as-stored");
+    expect(bytes(partial)).toBeLessThan(bytes(full) / 100);
+    expect(bytes(full)).toBeGreaterThan(448 * 1024);
   });
 
   it("lists themes with metadata", async () => {

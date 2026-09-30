@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
@@ -378,6 +379,107 @@ describe("Host theme routes", () => {
     expect(
       (await request(hosted.server, "GET", "/api/themes/living-room")).json(),
     ).toMatchObject({ envelope: { metadata: { name: "Living Room" } } });
+  });
+
+  it("refuses a stale partial save, and a partial save that stands the guard down", async () => {
+    // A save may leave an asset out and name only the base it was built from —
+    // so the pair is the whole claim, and both halves of it are what has to be
+    // checked over the wire, not only in the store.
+    const bytes = new TextEncoder().encode("<svg/>");
+    const content: ThemeContent = {
+      envelope: {
+        ...validEmptyAssetTheme.envelope,
+        assets: [
+          {
+            id: "badge",
+            kind: "image",
+            path: "assets/badge.svg",
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+          } as never,
+        ],
+      },
+      assets: { "assets/badge.svg": bytes },
+    };
+    const opened = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(content),
+    );
+    const { base } = opened.json() as { base: string };
+
+    // A second tab saves over it, and the badge with it.
+    const theirs = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(
+        {
+          ...content,
+          envelope: {
+            ...content.envelope,
+            metadata: { name: "Edited elsewhere", locale: "en" },
+          },
+        },
+        { base },
+      ),
+    );
+    expect(theirs.status).toBe(200);
+
+    // The stale tab sends no bytes at all for the badge it believes the folder
+    // holds. 409, exactly as it would have been with them: a short payload is
+    // not a way past the guard, it is only a way to have said less.
+    const stale = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(
+        { envelope: content.envelope, assets: {} },
+        { base },
+      ),
+    );
+    expect(stale.status).toBe(409);
+    expect(stale.text()).toContain("changed by someone else");
+    // Nothing was written, so the other author's theme is still the one stored.
+    expect(
+      (
+        (await request(
+          hosted.server,
+          "GET",
+          "/api/themes/living-room",
+        )).json() as { envelope: { metadata?: { name?: string } } }
+      ).envelope.metadata?.name,
+    ).toBe("Edited elsewhere");
+
+    // The other road past the guard is not a road a short payload may take:
+    // what is on disk is no longer the document that save came from.
+    const forced = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody({ envelope: content.envelope, assets: {} }, {
+        base,
+        overwrite: true,
+      }),
+    );
+    expect(forced.status).toBe(400);
+    expect(forced.text()).toContain("exactly match");
+
+    // And on the base the save *is* built from, that same empty payload is a
+    // whole theme: the asset comes from the folder, not from the wire.
+    const fresh = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(
+        { envelope: content.envelope, assets: {} },
+        { base: (theirs.json() as { base: string }).base },
+      ),
+    );
+    expect(fresh.status).toBe(200);
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/living-room")).json(),
+    ).toMatchObject({ assets: { "assets/badge.svg": btoa("<svg/>") } });
   });
 
   it("refuses a malformed base rather than saving without one", async () => {

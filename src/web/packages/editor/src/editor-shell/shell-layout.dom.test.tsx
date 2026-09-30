@@ -105,7 +105,11 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
     root.querySelector('[aria-label="Editor areas"]')?.children.length,
   ).toBe(4);
   expect(root.textContent).toContain("File");
-  expect(root.textContent).toContain("Arrange");
+  // The Arrange menu is gone: the arrange toolbar above the canvas already
+  // carries all eight actions, and the menu offered two of them with nothing
+  // saying the rest existed. Asserting its absence is the point — a test that
+  // only checked the toolbar would not have noticed it return.
+  expect(root.textContent).not.toContain("Arrange");
   expect(root.querySelector('select[aria-label="Shell palette"]')).not.toBeNull();
 
   layout.destroy();

@@ -53,6 +53,12 @@ export interface ThemeContent {
  * Absent means the client is not claiming a base, and the save is applied as it
  * always was. That is what a first save is — there is nothing stored to be
  * behind — and what a script or an older client sends.
+ *
+ * A base that matched also lets the save leave an asset out: the host holds
+ * those exact bytes in the folder it is about to replace, and copying them is
+ * cheaper than receiving them again. Nothing about that is a second claim to
+ * trust — it is the same claim, already settled by the comparison above, and
+ * the host re-checks the file itself before it copies.
  */
 export interface ThemeWriteOptions {
   readonly base?: string;
@@ -232,10 +238,10 @@ async function reusableAssets(
   library: string,
   id: string,
   envelope: FabricThemeEnvelope,
+  previous: FabricThemeEnvelope | undefined,
 ): Promise<ReadonlySet<string>> {
   // No readable previous document means nothing to compare against, so the
   // save writes everything rather than trusting a hash it cannot corroborate.
-  const previous = await readEnvelope(library, id);
   if (previous === undefined) {
     return new Set();
   }
@@ -261,8 +267,20 @@ async function reusableAssets(
   return reusable;
 }
 
-/** Validates both halves of a folder and returns the envelope to persist. */
-function checked(id: string, content: ThemeContent): FabricThemeEnvelope {
+/**
+ * Validates both halves of a folder and returns the envelope to persist.
+ *
+ * `fromStored` says the save may leave an asset out because the folder being
+ * replaced already holds it. Only a save that has already been checked against
+ * the document it descends from sets it, so "the host has these bytes" is the
+ * host's own knowledge and never a client's claim — which is the whole reason
+ * a partial payload cannot slip a stale write past the guard.
+ */
+function checked(
+  id: string,
+  content: ThemeContent,
+  fromStored: boolean,
+): FabricThemeEnvelope {
   if (!isValidThemeId(id)) {
     throw new Error("Invalid theme id.");
   }
@@ -278,11 +296,17 @@ function checked(id: string, content: ThemeContent): FabricThemeEnvelope {
   }
   // The declaration is the whole truth about what a theme carries: a byte on
   // disk that no reference names is unreachable, and a reference with no file
-  // is a theme that renders nothing.
-  const declared = new Set(declaredPaths(envelope));
+  // is a theme that renders nothing. So a save that is not reconstructing must
+  // supply every declared path and nothing else, and a save that is may leave
+  // out only what the declaration names.
+  const declared = declaredPaths(envelope);
+  const named = new Set(declared);
+  const supplied = Object.keys(content.assets);
   if (
-    Object.keys(content.assets).length !== declared.size ||
-    [...declared].some((assetPath) => content.assets[assetPath] === undefined)
+    supplied.some((assetPath) => !named.has(assetPath)) ||
+    (!fromStored &&
+      (supplied.length !== declared.length ||
+        declared.some((assetPath) => content.assets[assetPath] === undefined)))
   ) {
     throw new Error("Assets must exactly match the theme declaration.");
   }
@@ -449,21 +473,28 @@ export function createThemeStore(directory: string): ThemeStore {
      * first, and the check runs before anything is created on disk: a refusal
      * leaves the theme byte-for-byte as it was, which is the same promise the
      * staged rename makes about an interrupted save.
+     *
+     * That check is also what lets a save omit an asset. Only a save whose base
+     * *matched* may leave one out, and only of the document it is replacing — an
+     * `overwrite` stands the guard down and therefore carries the whole theme,
+     * because what is on disk is then not the document this save came from.
      */
     async write(
       id: string,
       content: ThemeContent,
       options?: ThemeWriteOptions,
     ): Promise<ThemeStoreSave> {
+      const stored = await readStored(directory, id);
+      let reconstructFrom: StoredTheme | undefined;
       if (options?.overwrite !== true && options?.base !== undefined) {
         // A theme that is not stored cannot have been moved on, so a base
         // against nothing is a first save rather than a stale one.
-        const stored = await readStored(directory, id);
         if (stored !== undefined && stored.contentId !== options.base) {
           throw new ThemeConflictError(id);
         }
+        reconstructFrom = stored;
       }
-      const envelope = checked(id, content);
+      const envelope = checked(id, content, reconstructFrom !== undefined);
       const serialized = JSON.stringify(envelope);
       await fs.mkdir(directory, { recursive: true });
       const target = path.join(directory, id);
@@ -477,16 +508,46 @@ export function createThemeStore(directory: string): ThemeStore {
       saving.add(id);
 
       try {
-        const reusable = await reusableAssets(directory, id, envelope);
+        const reusable = await reusableAssets(
+          directory,
+          id,
+          envelope,
+          stored?.envelope,
+        );
+        // A save that left an asset out has to have left out one the folder
+        // still holds. A hash proves the content is right, never that the file
+        // is *there*, and a theme committed without a declared file is a theme
+        // that renders nothing — so this refuses rather than quietly shipping a
+        // hole, and refuses before the staging folder exists, so nothing is left
+        // half-done.
+        const lost = declaredPaths(envelope).find(
+          (assetPath) =>
+            content.assets[assetPath] === undefined && !reusable.has(assetPath),
+        );
+        if (lost !== undefined) {
+          throw new Error(
+            `Asset "${lost}" is not in the library folder, so a save that ` +
+              "leaves an asset out cannot leave out this one. Send it in full.",
+          );
+        }
         await fs.mkdir(path.join(staging, ASSETS_DIR), { recursive: true });
         await fs.writeFile(path.join(staging, THEME_FILE), serialized);
-        for (const [assetPath, bytes] of Object.entries(content.assets)) {
+        // The declaration, not the payload, is the list: every declared path
+        // ends up in the folder, whether the save carried its bytes or the
+        // folder being replaced already had them.
+        for (const assetPath of declaredPaths(envelope)) {
           // The declaration is validated above, so a path cannot escape; this
           // is the belt to that suspenders, because the write is a filesystem
           // call and the check is not.
           const file = path.join(staging, ...assetPath.split("/"));
           await fs.mkdir(path.dirname(file), { recursive: true });
-          if (reusable.has(assetPath)) {
+          const bytes = content.assets[assetPath];
+          // Copied rather than written whenever the folder already holds these
+          // bytes: either the payload carried them unchanged, or it left them
+          // out and the check above proved the file is there. A copy keeps the
+          // file's own timestamps, so a save that did not write it leaves the
+          // same file in place for everything that watches one.
+          if (bytes === undefined || reusable.has(assetPath)) {
             await fs.cp(path.join(target, ...assetPath.split("/")), file, {
               preserveTimestamps: true,
             });

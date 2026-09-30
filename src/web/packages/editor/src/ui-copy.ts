@@ -175,7 +175,6 @@ export const uiCopy = {
     file: "File",
     edit: "Edit",
     insert: "Insert",
-    arrange: "Arrange",
     view: "View",
   },
   file: {
@@ -247,8 +246,6 @@ export const uiCopy = {
     back: "Send to back",
     group: "Group",
     ungroup: "Ungroup",
-    align: "Align left",
-    distribute: "Distribute horizontally",
     delete: "Delete",
     undo: "Undo",
     redo: "Redo",
