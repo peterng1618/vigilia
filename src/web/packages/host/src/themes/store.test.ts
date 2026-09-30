@@ -8,8 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createThemeStore,
   isValidThemeId,
-  type ThemeContent,
+  ThemeAssetLimitError,
   ThemeConflictError,
+  type ThemeContent,
   type ThemeStore,
 } from "./store.js";
 
@@ -789,10 +790,7 @@ describe("ThemeStore partial saves", () => {
   }
 
   /** The payload a second save sends when it changed nothing: the empty map. */
-  function only(
-    content: ThemeContent,
-    assetPath: string,
-  ): ThemeContent {
+  function only(content: ThemeContent, assetPath: string): ThemeContent {
     const { [assetPath]: _dropped, ...rest } = content.assets;
     return { envelope: content.envelope, assets: rest };
   }
@@ -831,9 +829,9 @@ describe("ThemeStore partial saves", () => {
     expect(await fs.readFile(asset("assets/backdrop.png"), "utf8")).toBe(
       "backdrop-bytes",
     );
-    expect(
-      (await fs.stat(asset("assets/backdrop.png"))).mtime.getTime(),
-    ).toBe(LONG_AGO.getTime());
+    expect((await fs.stat(asset("assets/backdrop.png"))).mtime.getTime()).toBe(
+      LONG_AGO.getTime(),
+    );
     expect(await store.read("living-room")).toMatchObject({
       name: "Renamed",
       assets: { "assets/backdrop.png": backport, "assets/badge.svg": badge },
@@ -863,9 +861,9 @@ describe("ThemeStore partial saves", () => {
 
     // Copied with its timestamps kept — the stamp is what a write would have
     // moved, and it did not move.
-    expect(
-      (await fs.stat(asset("assets/backdrop.png"))).mtime.getTime(),
-    ).toBe(LONG_AGO.getTime());
+    expect((await fs.stat(asset("assets/backdrop.png"))).mtime.getTime()).toBe(
+      LONG_AGO.getTime(),
+    );
     expect((await fs.stat(asset("assets/backdrop.png"))).size).toBe(
       backport.byteLength,
     );
@@ -882,7 +880,10 @@ describe("ThemeStore partial saves", () => {
     const opened = await store.write("living-room", content);
     // Another author saves over it while this tab is open.
     const theirs = themeWith(
-      [["assets/backdrop.png", backport], ["assets/badge.svg", badge]],
+      [
+        ["assets/backdrop.png", backport],
+        ["assets/badge.svg", badge],
+      ],
       "Living Room, by someone else",
     );
     await store.write("living-room", theirs);
@@ -904,7 +905,9 @@ describe("ThemeStore partial saves", () => {
       name: "Living Room, by someone else",
       assets: { "assets/backdrop.png": backport, "assets/badge.svg": badge },
     });
-    expect(before).toMatchObject({ base: (await store.read("living-room"))?.base });
+    expect(before).toMatchObject({
+      base: (await store.read("living-room"))?.base,
+    });
     expect((await fs.readdir(tmpDir)).sort()).toEqual(["living-room"]);
   });
 
@@ -1190,5 +1193,228 @@ describe("isValidThemeId", () => {
     expect(isValidThemeId("a/b")).toBe(false);
     expect(isValidThemeId("a b")).toBe(false);
     expect(isValidThemeId("a".repeat(65))).toBe(false);
+  });
+});
+
+/**
+ * The bounds a theme's assets must meet, asked of both paths and the same
+ * number, because a store that saves what it will not read reports a save that
+ * cannot be opened. Half of each case is put on disk by hand, which is the only
+ * way to ask `read` about a theme no save was allowed to make — and the only
+ * way the two answers can be compared as answers rather than as expectations.
+ */
+describe("ThemeStore asset bounds", () => {
+  const MIB = 1024 * 1024;
+
+  let tmpDir: string;
+  let store: ThemeStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-theme-bounds-test-"),
+    );
+    store = createThemeStore(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  /** A theme declaring each asset with the hash of its own bytes, as import does. */
+  function themeWith(
+    id: string,
+    contents: ReadonlyArray<readonly [string, number]>,
+    name = "Living Room",
+    hash = true,
+  ): ThemeContent {
+    const bytes = contents.map(
+      ([assetPath, length]) => [assetPath, new Uint8Array(length)] as const,
+    );
+    return {
+      envelope: {
+        ...envelopeFor(id, name),
+        assets: bytes.map(([assetPath, content], index) => ({
+          id: `asset-${index}`,
+          kind: "image" as const,
+          path: assetPath,
+          ...(hash ? { sha256: sha256Of(content) } : {}),
+        })),
+      },
+      assets: Object.fromEntries(bytes),
+    };
+  }
+
+  /** A theme of many small assets, for the count bound. */
+  function themeOfCount(id: string, count: number): ThemeContent {
+    return themeWith(
+      id,
+      Array.from({ length: count }, (_unused, index) => [
+        `assets/a${index}.png`,
+        1,
+      ]),
+      "Living Room",
+      false,
+    );
+  }
+
+  /** The same theme written straight to the library folder, and the base a
+   *  save made from that document would carry. */
+  async function placeOnDisk(
+    id: string,
+    content: ThemeContent,
+  ): Promise<string> {
+    const folder = path.join(tmpDir, id);
+    await fs.mkdir(path.join(folder, "assets"), { recursive: true });
+    const document = JSON.stringify(content.envelope);
+    await fs.writeFile(path.join(folder, "theme.json"), document);
+    for (const [assetPath, bytes] of Object.entries(content.assets)) {
+      await fs.writeFile(path.join(folder, ...assetPath.split("/")), bytes);
+    }
+    return sha256Of(new TextEncoder().encode(document));
+  }
+
+  const stored = (id: string) => path.join(tmpDir, id);
+
+  it("refuses a save whose asset is over the bound, and says which and by how much", async () => {
+    await store.write(
+      "living-room",
+      themeWith("living-room", [["assets/badge.svg", 4]], "First Name"),
+    );
+    const document = await fs.readFile(
+      path.join(stored("living-room"), "theme.json"),
+    );
+
+    await expect(
+      store.write(
+        "living-room",
+        themeWith("living-room", [["assets/big.png", 33 * MIB]], "Renamed"),
+      ),
+    ).rejects.toThrow(
+      'Asset "assets/big.png" is 33 MB (34,603,008 bytes); one asset may be ' +
+        "at most 32 MB (33,554,432 bytes). Shrink or remove it, then save again.",
+    );
+
+    // Nothing was renamed into place, so the stored theme is the one the
+    // author last saved — byte for byte, not merely by name.
+    expect(
+      await fs.readFile(path.join(stored("living-room"), "theme.json")),
+    ).toEqual(document);
+    expect(await store.read("living-room")).toMatchObject({
+      name: "First Name",
+    });
+    expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+  });
+
+  it("saves an asset exactly at the bound, and refuses the one byte over it", async () => {
+    await expect(
+      store.write(
+        "living-room",
+        themeWith("living-room", [["assets/big.png", 32 * MIB]]),
+      ),
+    ).resolves.toMatchObject({ id: "living-room" });
+    expect(
+      (await store.read("living-room"))?.assets["assets/big.png"]?.byteLength,
+    ).toBe(32 * MIB);
+
+    await expect(
+      store.write(
+        "living-room",
+        themeWith("living-room", [["assets/big.png", 32 * MIB + 1]]),
+      ),
+    ).rejects.toThrow(ThemeAssetLimitError);
+    // The refused save did not shrink the theme to the size it accepted.
+    expect(
+      (await store.read("living-room"))?.assets["assets/big.png"]?.byteLength,
+    ).toBe(32 * MIB);
+  });
+
+  it("holds read and write to the same per-asset bound, at the boundary", async () => {
+    for (const length of [32 * MIB, 32 * MIB + 1]) {
+      const saved = `saved-${length}`;
+      const placed = `placed-${length}`;
+
+      const written = await store
+        .write(saved, themeWith(saved, [["assets/big.png", length]]))
+        .then(() => true)
+        .catch(() => false);
+      await placeOnDisk(
+        placed,
+        themeWith(placed, [["assets/big.png", length]]),
+      );
+
+      // The same question, asked of both paths: a theme `write` takes is a
+      // theme `read` gives back. A bound that drifted between them would put
+      // these two answers on opposite sides of this line.
+      expect(written).toBe((await store.read(placed)) !== undefined);
+    }
+  });
+
+  it("holds read and write to the same asset count", async () => {
+    await expect(
+      store.write("at-bound", themeOfCount("at-bound", 128)),
+    ).resolves.toMatchObject({ id: "at-bound" });
+    await expect(
+      store.write("over-bound", themeOfCount("over-bound", 129)),
+    ).rejects.toThrow(
+      "This theme declares 129 assets; a theme may declare at most 128.",
+    );
+
+    await placeOnDisk("kept-at", themeOfCount("kept-at", 128));
+    await placeOnDisk("kept-over", themeOfCount("kept-over", 129));
+    expect(await store.read("kept-at")).toBeDefined();
+    expect(await store.read("kept-over")).toBeUndefined();
+  });
+
+  it("refuses a save whose assets together are over the bound", async () => {
+    await expect(
+      store.write(
+        "living-room",
+        themeWith(
+          "living-room",
+          [
+            ["assets/a.png", 32 * MIB],
+            ["assets/b.png", 32 * MIB],
+            ["assets/c.png", 32 * MIB],
+            ["assets/d.png", 32 * MIB],
+            ["assets/e.png", 1],
+          ],
+          "Living Room",
+          false,
+        ),
+      ),
+    ).rejects.toThrow(
+      "This theme's assets come to 128 MB (134,217,729 bytes); together " +
+        "they may be at most 128 MB (134,217,728 bytes). Shrink or remove " +
+        "one, then save again.",
+    );
+    expect(await store.read("living-room")).toBeUndefined();
+    expect(await fs.readdir(tmpDir)).toEqual([]);
+  });
+
+  it("weighs an asset a save left out, which is the one already on disk", async () => {
+    // The world this defect makes: a folder holding an asset over the bound,
+    // written before the write path had a bound to hold it to. It cannot be
+    // opened, so the editor's next save carries no bytes for it at all — and
+    // that is exactly when the store has to weigh it or a refusal is skipped.
+    const onDisk = themeWith("living-room", [["assets/big.png", 33 * MIB]]);
+    const base = await placeOnDisk("living-room", onDisk);
+    expect(await store.read("living-room")).toBeUndefined();
+
+    await expect(
+      store.write(
+        "living-room",
+        {
+          envelope: {
+            ...onDisk.envelope,
+            metadata: { name: "Renamed", author: "Ada", locale: "en" },
+          },
+          assets: {},
+        },
+        { base },
+      ),
+    ).rejects.toThrow('Asset "assets/big.png" is 33 MB');
+    expect(
+      await fs.readFile(path.join(stored("living-room"), "theme.json"), "utf8"),
+    ).toBe(JSON.stringify(onDisk.envelope));
   });
 });

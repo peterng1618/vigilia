@@ -29,8 +29,9 @@ import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
   createThemeStore,
   isValidThemeId,
-  type ThemeStore,
+  ThemeAssetLimitError,
   ThemeConflictError,
+  type ThemeStore,
 } from "./themes/store.js";
 import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
@@ -895,6 +896,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
           // choose what happens next — so it is not dressed as a 400.
           if (error instanceof ThemeConflictError) {
             sendText(response, 409, error.message);
+            return;
+          }
+          // The same 413 this route already answers an oversized body with: the
+          // theme is well-formed and the author is the one who has to make it
+          // smaller, so it is not dressed as a malformed request either.
+          if (error instanceof ThemeAssetLimitError) {
+            sendText(response, 413, error.message);
             return;
           }
           sendText(

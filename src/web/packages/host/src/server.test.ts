@@ -433,21 +433,16 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      themeBody(
-        { envelope: content.envelope, assets: {} },
-        { base },
-      ),
+      themeBody({ envelope: content.envelope, assets: {} }, { base }),
     );
     expect(stale.status).toBe(409);
     expect(stale.text()).toContain("changed by someone else");
     // Nothing was written, so the other author's theme is still the one stored.
     expect(
       (
-        (await request(
-          hosted.server,
-          "GET",
-          "/api/themes/living-room",
-        )).json() as { envelope: { metadata?: { name?: string } } }
+        (
+          await request(hosted.server, "GET", "/api/themes/living-room")
+        ).json() as { envelope: { metadata?: { name?: string } } }
       ).envelope.metadata?.name,
     ).toBe("Edited elsewhere");
 
@@ -457,10 +452,13 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      themeBody({ envelope: content.envelope, assets: {} }, {
-        base,
-        overwrite: true,
-      }),
+      themeBody(
+        { envelope: content.envelope, assets: {} },
+        {
+          base,
+          overwrite: true,
+        },
+      ),
     );
     expect(forced.status).toBe(400);
     expect(forced.text()).toContain("exactly match");
@@ -502,6 +500,48 @@ describe("Host theme routes", () => {
     );
     expect(res.status).toBe(400);
     expect(res.text()).toContain("base is not a string");
+  });
+
+  it("answers a theme it will not store with the same 413 it already used, and the reason", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme),
+    );
+    const document = validEmptyAssetTheme.envelope;
+
+    // 413 is what this route already answers an oversized body with, so the
+    // refusal is a shape the client has seen: a well-formed theme the store
+    // will not hold, not a malformed request and not a conflict.
+    const tooMany = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody({
+        envelope: {
+          ...document,
+          assets: Array.from({ length: 129 }, (_unused, index) => ({
+            id: `asset-${index}`,
+            kind: "image",
+            path: `assets/a${index}.png`,
+          })),
+        },
+        assets: Object.fromEntries(
+          Array.from({ length: 129 }, (_unused, index) => [
+            `assets/a${index}.png`,
+            new Uint8Array(1),
+          ]),
+        ),
+      }),
+    );
+    expect(tooMany.status).toBe(413);
+    expect(tooMany.text()).toContain("at most 128");
+
+    // Nothing was stored, so the theme that was there is still openable.
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/living-room")).status,
+    ).toBe(200);
   });
 
   it("serves the URL a display's asset resolver builds for a declared path", async () => {

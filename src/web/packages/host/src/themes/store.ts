@@ -87,6 +87,20 @@ export class ThemeConflictError extends Error {
   }
 }
 
+/**
+ * A save was refused because the theme's assets do not fit the bounds the
+ * store's own reads enforce. Nothing was written and the previous version is
+ * untouched, so the author's document is still theirs to shrink and send
+ * again — which is the whole difference between this and a save that reports
+ * success and cannot be opened afterwards.
+ */
+export class ThemeAssetLimitError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "ThemeAssetLimitError";
+  }
+}
+
 export interface ThemeStore {
   list(): Promise<readonly ThemeStoreEntry[]>;
   read(id: string): Promise<ThemeStoreRecord | undefined>;
@@ -111,6 +125,92 @@ const MAX_THEME_FILE_BYTES = 32 * 1024 * 1024;
 const MAX_ASSET_BYTES = 32 * 1024 * 1024;
 const MAX_ASSET_COUNT = 128;
 const MAX_TOTAL_ASSET_BYTES = 128 * 1024 * 1024;
+
+/** Bytes as an author reads them, and the exact bytes behind them. The
+ *  platform does both, so there is no size table here to drift from the bounds
+ *  above; pinned to English because every refusal in this store is an English
+ *  sentence, and a locale-dependent number inside one would be the only part
+ *  of it the author cannot predict.
+ *
+ *  Both forms are there because the megabytes alone cannot tell a 32 MB asset
+ *  from a 32 MB asset and one byte — and "32 MB, but at most 32 MB" is not a
+ *  reason an author can do anything with. */
+const MEGABYTES = new Intl.NumberFormat("en", {
+  style: "unit",
+  unit: "megabyte",
+  maximumFractionDigits: 1,
+});
+const BYTES = new Intl.NumberFormat("en");
+
+const size = (bytes: number): string =>
+  `${MEGABYTES.format(bytes / (1024 * 1024))} (${BYTES.format(bytes)} bytes)`;
+
+/**
+ * Why a measure of a theme's assets does not fit, or undefined when it does.
+ *
+ * `read` and `write` both answer to these and to nothing else. A store that
+ * refuses to read a 33 MB asset but saves one anyway tells the author the save
+ * worked and leaves them a blank display, so the bound is written once and
+ * both paths ask about it here: a check spelled in two places is a check that
+ * eventually fires in one.
+ *
+ * Each takes only the measure it refuses, so `read` can stop at the asset that
+ * is too big instead of reading a folder's worth of bytes to find out. That is
+ * also why they return the reason rather than throwing — `read` has no message
+ * to give a caller, only "no such theme".
+ */
+function assetCountRefusal(declared: number): string | undefined {
+  return declared > MAX_ASSET_COUNT
+    ? `This theme declares ${declared} assets; a theme may declare at most ` +
+        `${MAX_ASSET_COUNT}. Remove one, then save again.`
+    : undefined;
+}
+
+function assetSizeRefusal(
+  assetPath: string,
+  bytes: number,
+): string | undefined {
+  return bytes > MAX_ASSET_BYTES
+    ? `Asset "${assetPath}" is ${size(bytes)}; one asset may be at most ` +
+        `${size(MAX_ASSET_BYTES)}. Shrink or remove it, then save again.`
+    : undefined;
+}
+
+function assetTotalRefusal(total: number): string | undefined {
+  return total > MAX_TOTAL_ASSET_BYTES
+    ? `This theme's assets come to ${size(total)}; together they may be at ` +
+        `most ${size(MAX_TOTAL_ASSET_BYTES)}. Shrink or remove one, then ` +
+        `save again.`
+    : undefined;
+}
+
+/**
+ * Why a whole theme's assets do not fit, measured in declaration order so the
+ * answer is the same one {@link ThemeStore.read} would reach, or undefined when
+ * they fit. `sizes` is each declared path's size in bytes.
+ */
+function assetBounds(
+  declared: number,
+  sizes: Iterable<readonly [string, number]>,
+): string | undefined {
+  const tooMany = assetCountRefusal(declared);
+  if (tooMany !== undefined) {
+    return tooMany;
+  }
+  let total = 0;
+  for (const [assetPath, bytes] of sizes) {
+    const tooBig = assetSizeRefusal(assetPath, bytes);
+    if (tooBig !== undefined) {
+      return tooBig;
+    }
+    total += bytes;
+    const tooHeavy = assetTotalRefusal(total);
+    if (tooHeavy !== undefined) {
+      return tooHeavy;
+    }
+  }
+  return undefined;
+}
 
 export function isValidThemeId(id: string): boolean {
   return THEME_ID_REGEX.test(id);
@@ -225,8 +325,9 @@ function declaredHashes(
 }
 
 /**
- * The declared paths the previous folder already holds correctly, so a save can
- * copy them across instead of rewriting them.
+ * The declared paths the previous folder already holds correctly, with the size
+ * of each, so a save can copy them across instead of rewriting them and weigh
+ * them against the bounds it is about to be held to.
  *
  * The declared `sha256` is the authority and nothing is re-hashed here: it was
  * computed at import from the exact bytes, and a matching declaration on both
@@ -239,14 +340,14 @@ async function reusableAssets(
   id: string,
   envelope: FabricThemeEnvelope,
   previous: FabricThemeEnvelope | undefined,
-): Promise<ReadonlySet<string>> {
+): Promise<ReadonlyMap<string, number>> {
   // No readable previous document means nothing to compare against, so the
   // save writes everything rather than trusting a hash it cannot corroborate.
   if (previous === undefined) {
-    return new Set();
+    return new Map();
   }
   const before = declaredHashes(previous);
-  const reusable = new Set<string>();
+  const reusable = new Map<string, number>();
   await Promise.all(
     (envelope.assets ?? []).map(async (asset) => {
       const sha256 = asset.sha256;
@@ -254,13 +355,14 @@ async function reusableAssets(
         return;
       }
       // `lstat`, not `stat`: a symlink is not the file it points at, and
-      // copying one would carry its target into the new folder.
-      const isFile = await fs
+      // copying one would carry its target into the new folder. A file's own
+      // size is therefore the one `read` will measure for it later.
+      const fileSize = await fs
         .lstat(path.join(library, id, ...asset.path.split("/")))
-        .then((stat) => stat.isFile())
-        .catch(() => false);
-      if (isFile) {
-        reusable.add(asset.path);
+        .then((stat) => (stat.isFile() ? stat.size : undefined))
+        .catch(() => undefined);
+      if (fileSize !== undefined) {
+        reusable.set(asset.path, fileSize);
       }
     }),
   );
@@ -432,7 +534,7 @@ export function createThemeStore(directory: string): ThemeStore {
 
       try {
         const declared = declaredPaths(envelope);
-        if (declared.length > MAX_ASSET_COUNT) {
+        if (assetCountRefusal(declared.length) !== undefined) {
           return undefined;
         }
         const assets: Record<string, Uint8Array> = {};
@@ -442,11 +544,11 @@ export function createThemeStore(directory: string): ThemeStore {
           const bytes = await fs.readFile(
             path.join(directory, id, ...assetPath.split("/")),
           );
-          if (bytes.byteLength > MAX_ASSET_BYTES) {
+          if (assetSizeRefusal(assetPath, bytes.byteLength) !== undefined) {
             return undefined;
           }
           total += bytes.byteLength;
-          if (total > MAX_TOTAL_ASSET_BYTES) {
+          if (assetTotalRefusal(total) !== undefined) {
             return undefined;
           }
           assets[assetPath] = new Uint8Array(bytes);
@@ -473,6 +575,11 @@ export function createThemeStore(directory: string): ThemeStore {
      * first, and the check runs before anything is created on disk: a refusal
      * leaves the theme byte-for-byte as it was, which is the same promise the
      * staged rename makes about an interrupted save.
+     *
+     * The asset bounds `read` refuses are refused here too, beside the check
+     * that proves the folder holds what this save left out — so what the store
+     * will not serve is never what it stores, and the author's "Saved to
+     * library" is a claim the store can keep.
      *
      * That check is also what lets a save omit an asset. Only a save whose base
      * *matched* may leave one out, and only of the document it is replacing — an
@@ -529,6 +636,28 @@ export function createThemeStore(directory: string): ThemeStore {
             `Asset "${lost}" is not in the library folder, so a save that ` +
               "leaves an asset out cannot leave out this one. Send it in full.",
           );
+        }
+        // A theme the store would refuse to read must not be written at all: the
+        // save would report success, and the next open would find nothing. An
+        // asset this save left out is weighed from the file it is replacing —
+        // the same measurement `read` takes from that file — so both paths
+        // judge the same theme by the same number. Beside the check above, and
+        // before the staging folder exists, so a refusal leaves the previous
+        // version byte-for-byte as it was.
+        const weighed = declaredPaths(envelope).map((assetPath) => {
+          const carried = content.assets[assetPath];
+          // `lost` above has already refused the case where there is no file to
+          // weigh, so the fallback is a number only in a world that cannot get
+          // here; it still weighs, and it still refuses rather than throwing on
+          // a missing one.
+          return [
+            assetPath,
+            carried?.byteLength ?? reusable.get(assetPath) ?? 0,
+          ] as const;
+        });
+        const tooBig = assetBounds(weighed.length, weighed);
+        if (tooBig !== undefined) {
+          throw new ThemeAssetLimitError(tooBig);
         }
         await fs.mkdir(path.join(staging, ASSETS_DIR), { recursive: true });
         await fs.writeFile(path.join(staging, THEME_FILE), serialized);
