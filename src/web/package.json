@@ -28,10 +28,9 @@
     "status:check": "node ../../scripts/check-status.mjs",
     "ownership:sweep": "node ../../scripts/ownership-sweep.mjs",
     "ownership:overlap": "node ../../scripts/ownership-overlap.mjs",
-    "gates:self-test": "node ../../scripts/check-status.mjs --self-test && node ../../scripts/reuse-gate.mjs --self-test && node ../../scripts/ownership-sweep.mjs --self-test && node ../../scripts/ownership-overlap.mjs --self-test && node ../../scripts/backlog-check.mjs --self-test && node ../../scripts/backlog-file.mjs --self-test",
+    "gates:self-test": "node ../../scripts/check-status.mjs --self-test && node ../../scripts/reuse-gate.mjs --self-test && node ../../scripts/ownership-sweep.mjs --self-test && node ../../scripts/ownership-overlap.mjs --self-test && node ../../scripts/backlog-check.mjs --self-test",
     "hooks:check": "node ../../scripts/sdd-checkpoint.mjs --self-check",
-    "backlog:check": "node ../../scripts/backlog-check.mjs",
-    "backlog:file": "node ../../scripts/backlog-file.mjs"
+    "backlog:check": "node ../../scripts/backlog-check.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

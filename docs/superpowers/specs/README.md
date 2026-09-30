@@ -17,7 +17,6 @@ Keep it to one state plus, at most, a link to the plan.
 | `in progress` | Its plan exists but is not the active one |
 | `implemented` | Every acceptance item is met or explicitly carried elsewhere |
 | `backlog` | Review notes, not accepted requirements — `2026-09-24-editor-behaviour-review.md` |
-| `superseded` | It was implemented and the system it describes has since been replaced. Name the replacement. The spec stays as the record of why the old shape was chosen, because a reader who finds a stale citation needs to know it was deliberate rather than forgotten — do not delete it |
 
 `implemented` is a claim about evidence, not about checkboxes, and it is the only
 state that needs a judgement: a spec is not implemented because its tasks look

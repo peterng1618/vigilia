@@ -27,8 +27,7 @@ The loop, in order:
    at a real screen size and at 390 px. Insert, select, type, resize, save,
    reopen, play, fail. Do not read the source for a defect you can see.
 2. **Write it into the findings backlog** — `docs/product/backlog.jsonl` is the
-   registry, open or closed, with the measurement that shows it. Not fixed here:
-   the finding rides the commit as a trailer and `npm run backlog:file` files it.
+   registry, classified open or verified, with the measurement that shows it.
 3. **Dispatch a subagent** to fix it, with the file set it owns and the files
    it must not touch, plus a browser proof it cannot fake.
 4. **Verify the landed work yourself** by using it again. A passing agent report
@@ -36,19 +35,27 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **20 open**; closed rows moved to `backlog-archive.jsonl`, grepped not read (ADR-0019). **Filing rides the commit**: a finding not fixed goes in the message as a `Discovered, not fixed:` trailer, or `Found by the user, not fixed:` when the user raised it, and `npm run backlog:file` materialises the row — one line in a commit already being written, and the only durable path for the user's own feedback, since no `UserPromptSubmit` hook exists and a message otherwise lives alone in the root session's context.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **56 rows**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
 - **Nothing is dispatched, and the root is driving the product directly.** Q1 and Q2 both landed (`528b0d2`, `bf3bf2b`); since then this session found and fixed four more defects itself rather than dispatching. `dispatch-active.md` in the workspace is current.
 - **The standing rule earned the hard way is in the plan's Global Constraints: a canvas readback is a snapshot of a moment.** Twelve findings on this pass were the instrument, not the product — most recently a player screenshot taken before the first telemetry batch, which read as "no data anywhere" on a host that was streaming 133 batches. **Screenshot for what is visible, read the DOM for what is true, and when two probes disagree, find out which is wrong before believing either.**
 - **Two claims were refuted by measuring rather than by reading**, and both would have been filed as defects: Group looked keyboard-only until a real canvas multi-select showed it in the context menu, and the Starter theme's rows looked id-derived until the document showed all 52 objects carry an authored `name`. **Check the counter-claim before writing the row.**
 - **The frame that matters:** the editor is **desktop-only** (`tests/e2e/surface.ts`); a **phone is the main display type** and the **player is the product's face**. Weight player and phone work accordingly.
 - **The rule for the pass:** fix what you find using what the repo already decides — the owner in `ownership.md`, the surrounding idiom, the copy in `ui-copy.ts`, the pattern the existing controls set. Only a genuine product decision with no precedent gets recorded and passed over. **Nothing waits on a human.**
 
+## Last completed change
+
+- **One Size field no longer costs an inserted text object its width** (`208fc7f`). Typing into Height wrote `box: { height }` with no width, and the next text change made `authoredBox` multiply an `undefined` by the scale — the object ended with `width: null` and no bounding rect at all. Both dimensions now seed from the object's measured edge.
+- **A pasted image and a new group are named instead of printed as uuids** (`b1022cf`). `object-name.ts` says absence means fall back to the id, and a minted id is a uuid, so the two creators that left `name` unset were the two the fallback could not help. `newObjectName` already existed for exactly this and its own comment named the failure.
+- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that didn't dedupe.
+- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay.
+- **Two open rows were refuted rather than fixed** (`b0e3fb4`): vg-042's Height field tracks the measurement exactly (79 for 78.83, then 463 for 462.85), and vg-043's key never reaches the author — `innerText` holds neither `colour-2` nor `colour-3`. Gate green: **2416 unit tests across 177 files**, `backlog:check` 57 rows.
+
 ## Next
 
-1. **Drainable now** — vg-050 (Trends plots nothing), vg-030 (asset handling), vg-028 and vg-029 (chart movement, preview noise). vg-021, vg-033 and vg-044 are drained and archived.
-2. **Waiting on a decision, not a fix** — vg-023 canvas dim, vg-046 artboard clipping, vg-056 layer multi-select, vg-036 phone fit, vg-037 circle-glass. Each says which in its row's `defer`. The queue-location question itself is settled and written down (ADR-0019, `AGENTS.md`).
-3. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
-4. **Watch the viewport when testing gestures.** The e2e window is 1280×720 and the manual one 1035×1000; a drag that marquees in one can move an object in the other, because where the stage letterboxes the artboard decides what is empty.
+1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
+2. **The queued findings, each measured and each with an owner named:** vg-056 the layer list cannot multi-select, so grouping is unreachable from it, and the POSIX root-volume join.
+3. **The backlog-tracking boundary is yours and is still undecided** — what lands in `docs/product/backlog.jsonl` versus what a commit records. A session was lost mid-sentence stating it and it is written down nowhere. Nothing has been pruned in the meantime.
+4. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
 5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
 
 ## Blockers / unverified

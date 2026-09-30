@@ -6,7 +6,7 @@ artifacts and from Git history.
 | Need | Canonical source |
 |---|---|
 | Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
-| Bugs, feedback and requests, and what is *verified* | [`product/backlog.jsonl`](product/backlog.jsonl) — open rows, the working queue; [`product/backlog-archive.jsonl`](product/backlog-archive.jsonl) — closed rows, grepped not read; [ADR-0019](decisions/0019-the-backlog-is-two-files-split-by-state.md). Both are the source of truth; [GitHub issues](https://github.com/peterng1618/vigilia/issues) are an input surface |
+| Bugs, feedback and requests, and what is *verified* | [`product/backlog.jsonl`](product/backlog.jsonl) — the source of truth; [GitHub issues](https://github.com/peterng1618/vigilia/issues) are an input surface |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |

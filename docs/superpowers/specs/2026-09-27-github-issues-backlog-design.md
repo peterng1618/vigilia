@@ -1,19 +1,8 @@
 # GitHub Issues as the backlog
 
-- **Status:** superseded by [ADR-0019](../../decisions/0019-the-backlog-is-two-files-split-by-state.md).
-  Implemented as written on 2026-09-27, then overtaken: the register it dissolved was
-  rebuilt in-repo as `docs/product/backlog.jsonl` plus `backlog-archive.jsonl`, and the
-  defect queue it installed was never the one the project actually worked from.
+- **Status:** implemented — [implementation plan](../plans/2026-09-27-github-issues-backlog.md) executed 2026-09-27.
 - **Date:** 2026-09-27
 - **Queue:** independent of the feature queue. Runs when the active plan closes.
-
-> **Read this as history, not as the current design.** Every statement below describes
-> what was true on 2026-09-27. The current rules are in
-> [`AGENTS.md`](../../../AGENTS.md) and ADR-0019: an issue is an input surface, the
-> in-repo register is the source of truth, and a finding not fixed in the task that
-> found it rides that commit as a trailer. The reasoning here — one owner per fact,
-> issues as the thing both a human and an agent can write to — still holds, and the
-> reason it did not survive is recorded in ADR-0019's rung 4.
 
 ## Intent
 
@@ -184,10 +173,6 @@ or it is not there.
 - `docs/bugs/` is gone, and `docs/README.md` points at Issues.
 - `AGENTS.md` states the judgement rule, the filing and closing duty, and no
   longer mentions `docs/bugs/`.
-
-**Observed 2026-09-27, both met.** `docs/README.md` pointed at Issues until
-2026-10-01, when ADR-0019 repointed it at the in-repo register; that is the
-supersession, not a failure of this spec.
 - Every live reference to a `docs/bugs/` path is repointed, including the two
   e2e comments and the active plan; the archived plan's link resolves to its
   issue.
