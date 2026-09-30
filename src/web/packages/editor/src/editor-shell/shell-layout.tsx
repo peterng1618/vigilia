@@ -360,6 +360,25 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [pane, setPane] = useState<RailPane>("layers");
     const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
+    /** Fit the theme once the viewport has taken the canvas' new width.
+     *
+     * The viewport deliberately keeps its zoom across a resize — a window nudge
+     * should not re-frame the theme — so this belongs on the panel toggle. It
+     * was done with frames first and that was wrong twice over: the aside
+     * re-renders after the frame, and the viewport has its own ResizeObserver
+     * that has not run when the frame fires, so the fit measured the old box and
+     * produced the collapsed zoom on the way back in. Waiting for the viewport's
+     * own change event is the signal that it has already resized.
+     */
+    const refitOnViewportChange = (): void => {
+      const viewport = store.bridge?.editor.viewport;
+      if (viewport === undefined) return;
+      const off = viewport.onChange(() => {
+        off();
+        viewport.zoomToFit();
+      });
+    };
+
     /** Each pane's scroll offset, kept across the swap.
      *
      * The rail is single-panel, so opening Assets really does tear the layer
@@ -383,6 +402,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const choosePane = (id: RailPane): void => {
       if (!collapsed && pane === id) {
         setCollapsed(true);
+        // Collapsing hands the canvas 288px, and the refit runs here too rather
+        // than only on a pane swap.
+        refitOnViewportChange();
         return;
       }
       // Read the offset off the DOM rather than off an event: the panel is torn
@@ -398,6 +420,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // whatever height it has at that moment.
       requestAnimationFrame(() => {
         if (paneBody.current !== null) paneBody.current.scrollTop = restore;
+        refitOnViewportChange();
       });
     };
 
