@@ -3,6 +3,64 @@ import { describe, expect, it, vi } from "vitest";
 import { type ChartPropertyPanel, createChartPropertyPanel } from "./panel.js";
 
 describe("chart property panel", () => {
+  it("names the series it removes, and removes only that one", () => {
+    // The reconciliation that keeps each series its own colour lives in the
+    // manager; this is the control that reaches it, and it names the reading so
+    // an author can tell three "Remove" buttons apart.
+    const onRemoveBinding = vi.fn();
+    const panel = createChartPropertyPanel(
+      document.body,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      onRemoveBinding,
+    );
+    const bindings = [
+      { id: "b1", semanticKey: "cpu.load" },
+      { id: "b2", semanticKey: "gpu.load" },
+      { id: "b3", semanticKey: "ram.used.percent" },
+    ];
+    panel.render(
+      {
+        id: "trend",
+        content: {
+          family: "line",
+          settings: {
+            lineWidth: 2,
+            interpolation: "smooth",
+            stroke: { kind: "solid", color: "#00b8d9" },
+            showMarkers: false,
+            markerSize: 4,
+            windowSeconds: 60,
+            maxPoints: 600,
+            showAxes: false,
+            palette: [
+              { ref: "palette.cpu" },
+              { ref: "palette.gpu" },
+              { ref: "palette.ram" },
+            ],
+          },
+        },
+        bindings,
+      },
+      undefined,
+    );
+
+    const buttons = [
+      ...panel.root.querySelectorAll<HTMLButtonElement>(
+        "[data-vigilia-chart-binding-remove]",
+      ),
+    ];
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      "Remove the series reading cpu.load",
+      "Remove the series reading gpu.load",
+      "Remove the series reading ram.used.percent",
+    ]);
+    buttons[1]?.click();
+    expect(onRemoveBinding).toHaveBeenCalledWith("trend", "b2");
+  });
+
   it("offers line aspect presets and visible history", () => {
     const resize = vi.fn();
     const panel = createChartPropertyPanel(

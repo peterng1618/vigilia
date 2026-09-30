@@ -4,9 +4,9 @@ import type { Binding } from "@vigilia/renderer-core";
 import { defaultGaugeSettings } from "@vigilia/renderer-core";
 import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import { describe, expect, it, vi } from "vitest";
-import { newObjectPlacement } from "../new-object-defaults.js";
 import type { EditorInteraction } from "../editor-interaction.js";
-import { ChartManager } from "./index.js";
+import { newObjectPlacement } from "../new-object-defaults.js";
+import { ChartManager, carriedPaintFor } from "./index.js";
 
 /** The authored frame a new chart has to land inside, as the editor supplies it. */
 const artboard = () => ({ width: 1920, height: 1080 });
@@ -66,6 +66,49 @@ describe("ChartManager", () => {
       manager.destroy();
     },
   );
+
+  it("keeps each series its own colour when a middle one is removed", () => {
+    // The per-series paint is a positional array sitting beside the bindings.
+    // Filtering the bindings without it slid every later series onto its
+    // neighbour's colour — silently, with nothing on screen that looked wrong.
+    // Measured on the reference trends chart: removing the middle of CPU/GPU/RAM
+    // left CPU on its blue and painted **RAM with the GPU's green**.
+    const settings = {
+      palette: [
+        { ref: "palette.cpu" },
+        { ref: "palette.gpu" },
+        { ref: "palette.ram" },
+      ],
+    } as unknown as Parameters<typeof carriedPaintFor>[1];
+    const cpu = { id: "b1", semanticKey: "cpu.load" };
+    const gpu = { id: "b2", semanticKey: "gpu.load" };
+    const ram = { id: "b3", semanticKey: "ram.used.percent" };
+    const paint = (
+      previous: readonly Binding[],
+      next: readonly Binding[],
+    ): unknown =>
+      (
+        carriedPaintFor("line", settings, previous, next) as {
+          palette: unknown;
+        }
+      ).palette;
+
+    // The middle one, where truncating from the end would leave cpu and gpu.
+    expect(paint([cpu, gpu, ram], [cpu, ram])).toEqual([
+      { ref: "palette.cpu" },
+      { ref: "palette.ram" },
+    ]);
+    // The last one, which truncation already got right.
+    expect(paint([cpu, gpu, ram], [cpu, gpu])).toEqual([
+      { ref: "palette.cpu" },
+      { ref: "palette.gpu" },
+    ]);
+    // Nothing removed: the settings come back untouched, so an unrelated edit
+    // does not rewrite a chart's paint.
+    expect(
+      carriedPaintFor("line", settings, [cpu, gpu, ram], [cpu, gpu, ram]),
+    ).toBe(settings);
+  });
 
   it("places a new chart on the same cascade a shape takes", () => {
     // The defect had two origins: the shapes and the text inset by 40, the

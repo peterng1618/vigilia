@@ -51,6 +51,38 @@ function seriesPaintFor(
   } as ChartContent["settings"];
 }
 
+/**
+ * Each surviving series' own paint, in its new order.
+ *
+ * The per-series paint is a positional array sitting beside the bindings, so
+ * filtering the bindings without it slides every later series onto its
+ * neighbour's colour — silently, with nothing on screen that looks wrong.
+ * Measured on the reference trends chart: removing the middle of CPU/GPU/RAM
+ * left CPU on its blue and painted **RAM with the GPU's green**, because the GPU
+ * entry was still sitting at index 1.
+ */
+export function carriedPaintFor(
+  family: ChartFamily,
+  settings: ChartContent["settings"],
+  previous: readonly Binding[],
+  next: readonly Binding[],
+): ChartContent["settings"] {
+  const field = chartPaintFieldsFor(family).find((entry) => entry.multiple);
+  if (field === undefined) return settings;
+  const current = (settings as unknown as Record<string, unknown>)[
+    field.property
+  ];
+  if (!Array.isArray(current)) return settings;
+  const kept = previous.flatMap((binding, index) =>
+    next.includes(binding) && index < current.length ? [current[index]] : [],
+  );
+  if (kept.length === current.length) return settings;
+  return {
+    ...settings,
+    [field.property]: kept,
+  } as ChartContent["settings"];
+}
+
 function newChart(
   family: ChartFamily,
   globals: FabricGlobals | undefined,
@@ -318,6 +350,7 @@ export class ChartManager {
       | ((id: string, bindings: readonly Binding[]) => void)
       | undefined,
   ): void {
+    const previous = this.#bindings[id] ?? [];
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#chartFor(id);
     if (chart instanceof VigiliaChart) {
@@ -328,7 +361,11 @@ export class ChartManager {
       // measured, and the reason the target's blue/violet/teal is unreachable.
       chart.set(
         "settings",
-        seriesPaintFor(chart.family, chart.settings, bindings.length),
+        seriesPaintFor(
+          chart.family,
+          carriedPaintFor(chart.family, chart.settings, previous, bindings),
+          bindings.length,
+        ),
       );
       this.#applyChart(id, chart);
     }
