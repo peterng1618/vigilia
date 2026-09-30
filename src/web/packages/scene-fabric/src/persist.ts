@@ -102,7 +102,17 @@ export async function reviveScene(
   scene: SerialisedScene,
 ): Promise<void> {
   disposeScene(canvas);
+  // `loadFromJSON` assigns every canvas-level property the document omits, so
+  // the artboard clip and paint the mount installed are replaced with
+  // `undefined`. Both are artboard state rather than scene state, so a scene
+  // document never carries them and a revived display has no boundary at all:
+  // an object outside the artboard paints over the letterbox bars. Restored
+  // after the load, from the canvas's own pre-revival values.
+  const clipPath = canvas.clipPath;
+  const backgroundColor = canvas.backgroundColor;
   await canvas.loadFromJSON(scene);
+  if (clipPath !== undefined) canvas.clipPath = clipPath;
+  if (backgroundColor !== undefined) canvas.backgroundColor = backgroundColor;
 }
 
 /** Refuse a different Fabric runtime instead of guessing its serialization semantics. */

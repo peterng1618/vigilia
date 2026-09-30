@@ -85,6 +85,43 @@ describe("the artboard crop notice", () => {
     ).toBeUndefined();
   });
 
+  /**
+   * The measure is the **box**, never the anchor `left`/`top` a caller might
+   * read off the object instead.
+   *
+   * A theme that omits `originX`/`originY` revives with Fabric's default
+   * `center`, so `left: 40` on a 200-wide box is its *centre* and the box runs
+   * from −60.5 to 140.5 — 60.5 units past the left edge, with the anchor
+   * looking comfortably inside. This is the measured shape of a real display
+   * that showed "1 of 1 objects … past the left edge" over visibly cropped
+   * text, and it is the case a reader cannot argue with: the notice was right
+   * and the earlier reading of `left: 40` was not.
+   */
+  it("measures the box, so a centred anchor inside the artboard is still cropped", () => {
+    // A 1920×1080 artboard; a 200-wide box centred on x=40.
+    expect(
+      cropNoticeText([box({ left: -60.5, top: 27, width: 201, height: 26 })], {
+        width: 1920,
+        height: 1080,
+      }),
+    ).toBe(
+      "1 of 1 objects are outside this artboard and are not shown — past the left edge",
+    );
+  });
+
+  it("names only the side a box actually crosses", () => {
+    // Centred on the right edge: past the right, and nowhere else. A notice that
+    // also named the left would send an author to fix the wrong side.
+    expect(
+      cropNoticeText([box({ left: 1900, top: 500, width: 100, height: 40 })], {
+        width: 1920,
+        height: 1080,
+      }),
+    ).toBe(
+      "1 of 1 objects are outside this artboard and are not shown — past the right edge",
+    );
+  });
+
   it("does not count a hidden object against the total it is a proportion of", () => {
     expect(
       cropNoticeText(
