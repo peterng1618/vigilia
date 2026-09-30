@@ -45,7 +45,7 @@ The loop, in order:
 
 ## Next
 
-1. **Drainable now** — vg-044 (chart series colours coupled by index), vg-050 (Trends plots nothing), vg-030 (asset handling), vg-028 and vg-029 (chart movement, preview noise). vg-021 (Line handles) is fully specified in the plan and never built.
+1. **Drainable now** — vg-033 (the palette colour field accepts anything and persists it), vg-050 (Trends plots nothing), vg-030 (asset handling), vg-028 and vg-029 (chart movement, preview noise). vg-021 (Line handles) is fully specified in the plan and never built. vg-044 is drained and archived.
 2. **Waiting on a decision, not a fix** — vg-023 canvas dim, vg-046 artboard clipping, vg-056 layer multi-select, vg-036 phone fit, vg-037 circle-glass. Each says which in its row's `defer`. The queue-location question itself is settled and written down (ADR-0019, `AGENTS.md`).
 3. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
 4. **Watch the viewport when testing gestures.** The e2e window is 1280×720 and the manual one 1035×1000; a drag that marquees in one can move an object in the other, because where the stage letterboxes the artboard decides what is empty.
