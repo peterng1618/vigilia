@@ -1,0 +1,130 @@
+/**
+ * The editor's one tooltip, as a DOM function.
+ *
+ * `canvas-dock.tsx` is React and the selection inspector builds elements with
+ * `document.createElement` and never sees React, so a shared *component* would
+ * be a component one of the two callers cannot use. What both need is the
+ * behaviour — a popup portalled to `body` above the trigger, opened by hover
+ * or focus, dismissed by leaving, blurring or Escape — and the class the shell
+ * and `tests/e2e/editor.spec.ts` already locate by name.
+ */
+
+/** Above the trigger, as the dock's `Positioner(side="top", sideOffset={8})`
+    had it. */
+const SIDE_OFFSET = 8;
+/** Kept off the viewport edge, so a long reason in a side panel stays readable. */
+const EDGE_MARGIN = 8;
+/** Wide enough for a sentence about a shape, narrow enough not to cross the
+    inspector. A popup with no bound measures to the width of the page. */
+const MAX_WIDTH = 280;
+/** Hover waits, focus does not: a delay is what stops a pointer crossing the
+    dock from flashing every label, and a keyboard user has already committed to
+    a control by focusing it. */
+const HOVER_DELAY_MS = 600;
+
+let seq = 0;
+/** The open tooltip, if any. Two at once would put two `.editor-shell-tooltip`
+    elements in the document, which is a strict-mode violation for every
+    locator that names the class. */
+let open: Tooltip | undefined;
+
+export interface TooltipOptions {
+  readonly trigger: HTMLElement;
+  readonly text: string;
+}
+
+export interface Tooltip {
+  /** Removes the popup and every listener this call added. */
+  destroy(): void;
+}
+
+export function tooltip({ trigger, text }: TooltipOptions): Tooltip {
+  let popup: HTMLElement | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const hide = (): void => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = undefined;
+    if (popup === undefined) return;
+    popup.remove();
+    popup = undefined;
+    trigger.removeAttribute("aria-describedby");
+    if (open === handle) open = undefined;
+  };
+
+  const show = (): void => {
+    if (popup !== undefined) return;
+    open?.destroy();
+    const element = document.createElement("div");
+    element.className = "editor-shell-tooltip";
+    element.setAttribute("role", "tooltip");
+    element.textContent = text;
+    element.id = `vigilia-tooltip-${++seq}`;
+    element.style.maxWidth = `${MAX_WIDTH}px`;
+    document.body.append(element);
+    popup = element;
+    place(element, trigger);
+    // The description is what reaches a screen reader on focus; the popup
+    // alone is a visual affordance and the disclosure this control exists for
+    // would be the mouse's alone without it.
+    trigger.setAttribute("aria-describedby", element.id);
+    open = handle;
+  };
+
+  const showOnHover = (): void => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(show, HOVER_DELAY_MS);
+  };
+
+  const onPointerDown = (event: Event): void => {
+    if (event.target !== trigger) hide();
+  };
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") hide();
+  };
+
+  trigger.addEventListener("pointerenter", showOnHover);
+  trigger.addEventListener("pointerleave", hide);
+  trigger.addEventListener("focus", show);
+  trigger.addEventListener("blur", hide);
+  trigger.addEventListener("keydown", onKeyDown);
+  // Pressing anywhere else dismisses it. The inspector re-renders its whole
+  // subtree on every selection change, and removing a focused element fires no
+  // blur — without this a popup would be left stranded over the editor.
+  document.addEventListener("pointerdown", onPointerDown);
+
+  const handle: Tooltip = {
+    destroy: (): void => {
+      hide();
+      trigger.removeEventListener("pointerenter", showOnHover);
+      trigger.removeEventListener("pointerleave", hide);
+      trigger.removeEventListener("focus", show);
+      trigger.removeEventListener("blur", hide);
+      trigger.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+      if (open === handle) open = undefined;
+    },
+  };
+  return handle;
+}
+
+/**
+ * Above the trigger and horizontally centred on it, then pulled inside the
+ * viewport. Measured after the popup is in the document, because its own width
+ * is what the horizontal clamp needs and it has none until it is laid out.
+ */
+function place(popup: HTMLElement, trigger: HTMLElement): void {
+  const anchor = trigger.getBoundingClientRect();
+  popup.style.position = "fixed";
+  const box = popup.getBoundingClientRect();
+  const half = box.width / 2 + EDGE_MARGIN;
+  const centre = anchor.left + anchor.width / 2;
+  const left = Math.min(
+    Math.max(centre, half),
+    Math.max(half, window.innerWidth - half),
+  );
+  const above = anchor.top - box.height - SIDE_OFFSET;
+  popup.style.left = `${Math.round(left)}px`;
+  popup.style.top = `${Math.round(above < EDGE_MARGIN ? anchor.bottom + SIDE_OFFSET : above)}px`;
+}

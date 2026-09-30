@@ -1,0 +1,130 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { tooltip } from "./tooltip.js";
+
+/**
+ * The editor's one tooltip, as a DOM function.
+ *
+ * The point of these cases is that the two callers cannot both be right unless
+ * the behaviour is shared: `canvas-dock.tsx` is React, the selection inspector
+ * builds elements with `document.createElement` and never sees React, and a
+ * popup only one of them can use would be a second owner for it. So the contract
+ * is the behaviour, and every case here is a behaviour a mouse-only
+ * implementation would fail.
+ */
+
+const POPUP = ".editor-shell-tooltip";
+const live: Array<{ destroy(): void }> = [];
+
+function attach(text = "Glass blur", label = "A control"): HTMLButtonElement {
+  const trigger = document.createElement("button");
+  trigger.textContent = label;
+  document.body.append(trigger);
+  live.push(tooltip({ trigger, text }));
+  return trigger;
+}
+
+const open = (): HTMLElement | null => document.querySelector<HTMLElement>(POPUP);
+
+afterEach(() => {
+  while (live.length > 0) live.pop()?.destroy();
+  document.body.innerHTML = "";
+  vi.useRealTimers();
+});
+
+describe("the editor's shared tooltip", () => {
+  it("puts the popup in the document with the class the shell and the e2e spec locate", () => {
+    const trigger = attach();
+
+    trigger.dispatchEvent(new Event("focus"));
+
+    // Not "some element appears": `editor-shell.css` and
+    // `tests/e2e/editor.spec.ts:1180` both name this class, and renaming it is
+    // how the dock's existing coverage would quietly stop finding anything.
+    expect(open()?.className).toBe("editor-shell-tooltip");
+    expect(open()?.textContent).toBe("Glass blur");
+    expect(open()?.getAttribute("role")).toBe("tooltip");
+  });
+
+  it("describes its trigger for a screen reader, not only for a pointer", () => {
+    const trigger = attach("A Circle cannot be frosted");
+
+    trigger.dispatchEvent(new Event("focus"));
+
+    // The disclosure this control exists for is useless to a keyboard user if
+    // it is a visual affordance only, so focus must both open the popup AND
+    // name it. A hover-only tooltip passes every other case in this file.
+    const id = open()?.id;
+    expect(id).toBeTruthy();
+    expect(trigger.getAttribute("aria-describedby")).toBe(id);
+  });
+
+  it("opens on focus without waiting, and on hover only after the delay", () => {
+    vi.useFakeTimers();
+    const trigger = attach();
+
+    // A keyboard user has already committed to a control by focusing it; a
+    // pointer merely crossing the dock has not. Same trigger, two timings.
+    trigger.dispatchEvent(new Event("focus"));
+    expect(open()).not.toBeNull();
+
+    const other = document.createElement("button");
+    document.body.append(other);
+    live.push(tooltip({ trigger: other, text: "Second" }));
+
+    other.dispatchEvent(new Event("pointerenter"));
+    vi.advanceTimersByTime(500);
+    expect(open()?.textContent).toBe("A control".length > 0 ? "Glass blur" : "");
+    vi.advanceTimersByTime(200);
+    expect(open()?.textContent).toBe("Second");
+  });
+
+  it("keeps at most one popup open, so a `.editor-shell-tooltip` locator is unambiguous", () => {
+    const first = attach("First", "One");
+    const second = document.createElement("button");
+    document.body.append(second);
+    live.push(tooltip({ trigger: second, text: "Second" }));
+
+    first.dispatchEvent(new Event("focus"));
+    second.dispatchEvent(new Event("focus"));
+
+    // Two elements with the class would make every locator that names it
+    // resolve to two nodes, and the e2e spec's strict-mode click would throw.
+    expect(document.querySelectorAll(POPUP)).toHaveLength(1);
+    expect(open()?.textContent).toBe("Second");
+  });
+
+  it("removes the popup and the description on blur, and on Escape", () => {
+    const trigger = attach();
+
+    trigger.dispatchEvent(new Event("focus"));
+    // A real KeyboardEvent, because the handler reads `event.key` and a bare
+    // `Event` carries none — dispatching one here would fail for a reason that
+    // has nothing to do with the control.
+    trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(open()).toBeNull();
+    expect(trigger.hasAttribute("aria-describedby")).toBe(false);
+
+    trigger.dispatchEvent(new Event("focus"));
+    trigger.dispatchEvent(new Event("blur"));
+    expect(open()).toBeNull();
+  });
+
+  it("detaches every listener on destroy, so a removed control leaks nothing", () => {
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    const handle = tooltip({ trigger, text: "Short-lived" });
+
+    trigger.dispatchEvent(new Event("focus"));
+    expect(open()).not.toBeNull();
+
+    handle.destroy();
+    expect(open()).toBeNull();
+
+    // The inspector re-renders its whole subtree on every selection change, so
+    // a destroyed tooltip that still responds would fire against a detached
+    // node and put a popup nobody can dismiss over the editor.
+    trigger.dispatchEvent(new Event("focus"));
+    expect(open()).toBeNull();
+  });
+});
