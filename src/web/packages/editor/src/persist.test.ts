@@ -59,6 +59,30 @@ describe("parseThemePackage", () => {
         new Uint8Array([1, 2, 3]),
       );
   });
+
+  it("hands back the picture a package carried, and nothing when it carried none", () => {
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1,
+    ]);
+    const withPicture = writeThemePackage({
+      envelope: validEnvelope,
+      assets: {},
+      thumbnail: png,
+    });
+    expect(withPicture.ok).toBe(true);
+    if (!withPicture.ok) return;
+
+    const opened = parseThemePackage(withPicture.bytes);
+    expect(opened.ok).toBe(true);
+    if (opened.ok) expect(opened.thumbnail).toEqual(png);
+
+    const bare = writeThemePackage({ envelope: validEnvelope, assets: {} });
+    expect(bare.ok).toBe(true);
+    if (!bare.ok) return;
+    const bareParsed = parseThemePackage(bare.bytes);
+    expect(bareParsed.ok).toBe(true);
+    if (bareParsed.ok) expect(bareParsed.thumbnail).toBeUndefined();
+  });
 });
 
 describe("serializeThemePackage", () => {
@@ -86,6 +110,22 @@ describe("serializeThemePackage", () => {
       "assets/test.png": new Uint8Array([1, 2, 3]),
     });
     expect(result).toMatchObject({ ok: true });
+  });
+
+  it("serializes the picture beside the theme, not as a declared asset", () => {
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1,
+    ]);
+    const result = serializeThemePackage(validEnvelope, {}, png);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const parsed = parseThemePackage(result.bytes);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.thumbnail).toEqual(png);
+    // A declared asset is one the renderer loads; a preview is not that.
+    expect(parsed.envelope.assets ?? []).toEqual([]);
   });
 });
 

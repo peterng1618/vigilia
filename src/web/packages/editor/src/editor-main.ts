@@ -112,6 +112,7 @@ async function start(): Promise<void> {
     readonly input: FabricThemeEnvelopeInput;
     readonly envelope: FabricThemeEnvelope;
     readonly assets?: Readonly<Record<string, Uint8Array>>;
+    readonly thumbnail?: Uint8Array;
   }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
     const releaseFonts = await loadFontAssets({
@@ -138,6 +139,9 @@ async function start(): Promise<void> {
       source: source.source,
       envelope: next.input,
       ...(next.assets === undefined ? {} : { assets: next.assets }),
+      // The package's own picture, so a theme keeps the look its author saw
+      // even where this machine cannot render one.
+      ...(next.thumbnail === undefined ? {} : { thumbnail: next.thumbnail }),
       panelHosts: {
         add: layout.hosts.add,
         assets: layout.hosts.assets,
@@ -221,6 +225,9 @@ async function start(): Promise<void> {
           input: envelopeInputFor(parsed.envelope),
           envelope: parsed.envelope,
           assets: parsed.assets,
+          ...(parsed.thumbnail === undefined
+            ? {}
+            : { thumbnail: parsed.thumbnail }),
         });
         status.textContent = `Opened ${file.name}`;
       } catch (error) {

@@ -47,8 +47,9 @@ export class PersistenceManager {
   async save(
     theme: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>> = {},
+    thumbnail?: Uint8Array,
   ): Promise<void> {
-    const result = serializeThemePackage(theme, assets);
+    const result = serializeThemePackage(theme, assets, thumbnail);
     if (!result.ok) {
       throw new Error(result.message);
     }
@@ -117,6 +118,8 @@ export async function confirmDocumentReplacement(): Promise<
   });
 }
 
+/** Authored state only: a thumbnail is a rendering of one machine, so a
+ *  different one is not a change to the document. */
 function documentKey(
   theme: FabricThemeEnvelope,
   assets: Readonly<Record<string, Uint8Array>>,

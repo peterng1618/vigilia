@@ -303,8 +303,14 @@ library-update propagation.
 ZIP packages embed required theme/widget dependencies and assets. The first
 theme-package format is one v2 theme envelope plus its declared `assets/` bytes;
 it rejects unexpected paths, duplicate/missing assets and bounded hostile input
-before a document is revived. Preview/licence files and widget packages follow
-only when they have an authoring workflow.
+before a document is revived. It may also carry the theme's own thumbnail, at the
+package root in a slot the manifest names, so whoever receives the file can see
+the look without installing anything. The export writes the envelope, its
+declared assets and that picture and nothing else: a file in the theme folder is
+not in the package for being in the folder, and a picture the library would
+refuse is dropped rather than failing an import, because the theme is the thing
+that matters. Licence files and widget packages follow only when they have an
+authoring workflow.
 
 The host may expose declared package assets as validated read-only bytes for the
 player; the player remains ZIP-format-free.

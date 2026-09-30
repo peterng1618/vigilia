@@ -69,6 +69,30 @@ describe("PersistenceManager", () => {
     expect(manager.isDirty(changedEnvelope, {})).toBe(false);
   });
 
+  it("ships the picture in the downloaded package, and does not track it", async () => {
+    let downloaded: { name: string; bytes: Uint8Array } | undefined;
+    const manager = new PersistenceManager(
+      baseline,
+      {},
+      {
+        downloader: (name, bytes) => {
+          downloaded = { name, bytes };
+        },
+      },
+    );
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1,
+    ]);
+
+    await manager.save(baseline, {}, png);
+    const read = readThemePackage(downloaded!.bytes);
+    expect(read.ok).toBe(true);
+    if (read.ok) expect(read.thumbnail).toEqual(png);
+
+    // A picture is a rendering of one machine, not authored state.
+    expect(manager.isDirty(baseline, {})).toBe(false);
+  });
+
   it("marks theme as clean after remote save", () => {
     const manager = new PersistenceManager(baseline, {});
     const changed = { ...baseline, id: "changed" };

@@ -291,12 +291,15 @@ describe("EditorSession", () => {
     });
 
     const session = extensions.actionFacade();
+    // The third argument is the picture the package carries; this canvas has
+    // nothing laid out, so it renders none and the export happens regardless.
     await session.savePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         metadata: { version: "1.2.3", locale: "en" },
       }),
       expect.anything(),
+      undefined,
     );
 
     await session.releasePackage();
@@ -305,6 +308,7 @@ describe("EditorSession", () => {
         metadata: { version: "1.2.4", locale: "en" },
       }),
       expect.anything(),
+      undefined,
     );
     extensions.destroy();
   });

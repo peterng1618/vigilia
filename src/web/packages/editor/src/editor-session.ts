@@ -94,6 +94,9 @@ export interface EditorSessionOptions {
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
   readonly assets?: Readonly<Record<string, Uint8Array>>;
+  /** The picture the opened package carried, if it carried one. A save that
+   *  cannot render one of its own keeps this rather than losing it. */
+  readonly thumbnail?: Uint8Array;
   readonly panelHosts: EditorPanelHosts;
   readonly libraryClient?: ThemeLibraryClient;
   /** Creates a blank document at the artboard the author chose. The chooser
@@ -134,6 +137,8 @@ export class EditorSession {
   readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
+  /** The picture this document arrived with, which a save falls back to. */
+  #thumbnail: Uint8Array | undefined;
   /** The source the runtime reads, which a new source replaces. */
   #source: SampleSource;
   readonly #onBindingsChange: (() => void) | undefined;
@@ -146,6 +151,7 @@ export class EditorSession {
     }
     this.#envelope = options.envelope;
     this.#shell = options.shell;
+    this.#thumbnail = options.thumbnail;
     this.#assets.load(
       options.envelope.assets === undefined
         ? {}
@@ -540,10 +546,40 @@ export class EditorSession {
   async #save(options: EditorSessionOptions): Promise<void> {
     try {
       const current = this.#snapshot(options.shell);
-      await this.#persistence.save(current, this.#assets.assets);
+      // The package carries the theme's picture so whoever receives the file
+      // can see the look without installing anything.
+      await this.#persistence.save(
+        current,
+        this.#assets.assets,
+        (await this.#capture(options)) ?? this.#thumbnail,
+      );
       options.onSaved("Theme package saved");
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** The picture a save ships, or the one this document arrived with: a
+   *  capture that fails must cost the preview, not the theme. */
+  async #picture(
+    options: EditorSessionOptions,
+  ): Promise<Uint8Array | undefined> {
+    return (await this.#capture(options)) ?? this.#thumbnail;
+  }
+
+  /** The browser already has the theme on screen, so it is the right place to
+   *  render it; a failure here is not a failure of what is being saved. */
+  async #capture(
+    options: EditorSessionOptions,
+  ): Promise<Uint8Array | undefined> {
+    try {
+      return await captureThumbnail(
+        options.shell.editor.canvas,
+        undefined,
+        options.shell.backdrop(),
+      );
+    } catch {
+      return undefined;
     }
   }
 
@@ -559,23 +595,16 @@ export class EditorSession {
         assets: this.#assets.assets,
       });
 
-      // The picture is this machine's rendering of the theme, so the browser
-      // that already has it on screen is the right place to make one. Failing to
-      // capture must not fail the save: the theme is the thing that matters.
-      try {
-        const png = await captureThumbnail(
-          options.shell.editor.canvas,
-          undefined,
-          options.shell.backdrop(),
-        );
-        if (png !== undefined && client.saveThumbnail !== undefined) {
+      const png = await this.#picture(options);
+      if (png !== undefined && client.saveThumbnail !== undefined) {
+        try {
           await client.saveThumbnail(current.id, png);
+        } catch (error) {
+          options.shell.editor.errorManager.warn(
+            "controls",
+            `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
-      } catch (error) {
-        options.shell.editor.errorManager.warn(
-          "controls",
-          `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
       }
 
       this.#persistence.markSaved(current, this.#assets.assets);

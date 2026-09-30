@@ -6,10 +6,13 @@ import { isValidThemeId } from "./store.js";
  * A still of a theme's artboard, stored inside that theme's own folder so the
  * library can show a picture instead of a name.
  *
- * Not part of the package: `theme-package` admits exactly manifest.json,
- * theme.json and assets/, and a thumbnail is a rendering of one machine's fonts
- * and GPU, so it is not portable and does not belong in the immutable share
- * artifact (§139). Losing one is never an error; the library falls back to text.
+ * It also travels in the exported package, in a slot `theme-package` names in
+ * the manifest and rewrites on every export. The ruling that put it there
+ * overturned the earlier argument against it — that a picture is a rendering of
+ * one machine's fonts and GPU, and so not portable. The half that still holds:
+ * a thumbnail is not a *runtime* asset, which is why it is a slot of its own
+ * rather than something in `assets/` for the renderer to load. Losing one is
+ * never an error; the library falls back to text.
  */
 
 const FILE = "thumbnail.png";
