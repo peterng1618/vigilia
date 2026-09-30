@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   type APIRequestContext,
@@ -9,8 +9,8 @@ import {
 import {
   HOST_DISK_THEME_ID,
   HOST_PORT,
+  HOST_SETTINGS_DIR,
   HOST_THEME_ID,
-  HOST_THEMES_DIR,
 } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -21,13 +21,15 @@ import { isDesktopSurface } from "./surface.js";
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
-/** Every store sits in the seeded fixture directory, so each state below is
- * reachable by writing the same file the host reads — including after a
- * recycled server left state behind. */
-const ACTIVE_FILE = path.join(HOST_THEMES_DIR, "active-theme.json");
-const ANSWERS_FILE = path.join(HOST_THEMES_DIR, "theme-answers.json");
+/** Every store sits in the app folder's settings directory, so each state below
+ * is reachable by writing the same file the host reads — including after a
+ * recycled server left state behind. They left the themes directory so that a
+ * theme folder is only ever a theme (ADR-0017). */
+const ACTIVE_FILE = path.join(HOST_SETTINGS_DIR, "active-theme.json");
+const ANSWERS_FILE = path.join(HOST_SETTINGS_DIR, "theme-answers.json");
 
 function resetStores(): void {
+  mkdirSync(HOST_SETTINGS_DIR, { recursive: true });
   writeFileSync(ACTIVE_FILE, "{}\n", "utf8");
   writeFileSync(ANSWERS_FILE, "{}\n", "utf8");
 }

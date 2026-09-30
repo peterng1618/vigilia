@@ -18,13 +18,19 @@ import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
-import { createThemeStore } from "./themes/store.js";
+import { createThemeStore, type ThemeContent } from "./themes/store.js";
+import { encodeThemeContent } from "./themes/wire.js";
+
+/** The library is a folder, so a save is the document and its bytes (ADR-0017). */
+function themeBody(content: ThemeContent): string {
+  return JSON.stringify(encodeThemeContent(content));
+}
 
 function createValidPackage(
   id = "living-room",
   name = "Living Room",
   semanticKey?: string,
-): Uint8Array {
+): ThemeContent {
   const envelope: FabricThemeEnvelope = {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
@@ -94,13 +100,13 @@ function createValidPackage(
   };
   const result = writeThemePackage({ envelope, assets: {} });
   if (!result.ok) throw new Error(result.message);
-  return result.bytes;
+  return { envelope, assets: {} };
 }
 
 function createPackageWithAsset(
   path: string,
   bytes: readonly number[],
-): Uint8Array {
+): ThemeContent {
   const envelope: FabricThemeEnvelope = {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
@@ -125,12 +131,10 @@ function createPackageWithAsset(
       } as never,
     ],
   };
-  const result = writeThemePackage({
-    envelope,
-    assets: { [path]: new Uint8Array(bytes) },
-  });
+  const assets = { [path]: new Uint8Array(bytes) };
+  const result = writeThemePackage({ envelope, assets });
   if (!result.ok) throw new Error(result.message);
-  return result.bytes;
+  return { envelope, assets };
 }
 
 function request(
@@ -256,13 +260,13 @@ function streamStatus(
 describe("Host theme routes", () => {
   let tmpDir: string;
   let hosted: ReturnType<typeof createHostServer>;
-  let validEmptyAssetPackage: Uint8Array;
+  let validEmptyAssetTheme: ThemeContent;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
       path.join(os.tmpdir(), "vigilia-host-theme-test-"),
     );
-    validEmptyAssetPackage = createValidPackage("living-room", "Living Room");
+    validEmptyAssetTheme = createValidPackage("living-room", "Living Room");
     const store = createThemeStore(tmpDir);
     hosted = createHostServer({
       registry: new ProviderRegistry([]),
@@ -281,7 +285,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
     );
     expect(putRes.status).toBe(200);
 
@@ -305,13 +309,14 @@ describe("Host theme routes", () => {
     expect(docData.id).toBe("living-room");
     expect(docData.schemaVersion).toBe(2);
 
-    const rawRes = await request(
+    // What a save put in the folder, an open takes out again.
+    const openRes = await request(
       hosted.server,
       "GET",
       "/api/themes/living-room",
     );
-    expect(rawRes.status).toBe(200);
-    expect(new Uint8Array(rawRes.body)).toEqual(validEmptyAssetPackage);
+    expect(openRes.status).toBe(200);
+    expect(openRes.json()).toEqual(encodeThemeContent(validEmptyAssetTheme));
   });
 
   it("serves the URL a display's asset resolver builds for a declared path", async () => {
@@ -319,7 +324,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      createPackageWithAsset("assets/inter-400.woff2", [1, 2]),
+      themeBody(createPackageWithAsset("assets/inter-400.woff2", [1, 2])),
     );
 
     // The seam, exercised from both ends: the declarations the host publishes
@@ -347,7 +352,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      createPackageWithAsset("assets/inter-400.woff2", [1, 2]),
+      themeBody(createPackageWithAsset("assets/inter-400.woff2", [1, 2])),
     );
 
     const status = (path: string): Promise<number> =>
@@ -376,7 +381,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
       {
         remoteAddress: "10.0.0.2",
       },
@@ -414,7 +419,7 @@ describe("Host theme routes", () => {
         paired.server,
         "PUT",
         "/api/themes/living-room",
-        validEmptyAssetPackage,
+        themeBody(validEmptyAssetTheme),
       );
     });
 
@@ -569,7 +574,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
     );
 
     // Without a session store this host is loopback-only by construction, so a
@@ -597,7 +602,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
     );
 
     const badRes = await request(
@@ -624,7 +629,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/..%2Fescape",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
     );
     expect(putRes.status).toBe(400);
 
@@ -650,7 +655,7 @@ describe("Host theme routes", () => {
       hosted.server,
       "PUT",
       "/api/themes/living-room",
-      validEmptyAssetPackage,
+      themeBody(validEmptyAssetTheme),
     );
 
     const res = await request(hosted.server, "GET", "/");
@@ -926,13 +931,13 @@ describe("A theme's own device answers", () => {
   let hosted: ReturnType<typeof createHostServer>;
   const pushed: DeviceAssignment[] = [];
 
-  /** Writes one theme package into the store the host reads. */
+  /** Writes one theme into the store the host reads. */
   async function seed(id: string, semanticKey?: string): Promise<void> {
     await request(
       hosted.server,
       "PUT",
       `/api/themes/${id}`,
-      createValidPackage(id, id, semanticKey),
+      themeBody(createValidPackage(id, id, semanticKey)),
     );
   }
 

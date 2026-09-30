@@ -54,6 +54,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     host,
     openBrowser: shouldOpen,
     themesDir,
+    settingsDir,
     lhmUrl,
     lhmExecutable,
     registerLhmTask: shouldRegisterTask,
@@ -104,13 +105,14 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Sessions exist only when the server is LAN-reachable; a loopback-only host
   // refuses non-loopback reads outright rather than trusting them.
   const sessions = servingLan ? createSessionStore() : undefined;
-  // Device assignments are admin state, stored beside the themes.
-  const deviceSettings = createDeviceSettingsStore(themesDir);
+  // Everything the host knows about *this* machine lives in one settings
+  // folder, so a theme folder is only ever a theme (ADR-0017).
+  const deviceSettings = createDeviceSettingsStore(settingsDir);
   // The consumer's display preferences, read by the provider that acquires the
   // readings they apply to.
-  const displaySettings = createDisplaySettingsStore(themesDir);
+  const displaySettings = createDisplaySettingsStore(settingsDir);
   // Which theme this host displays; consumer state beside the device choices.
-  const activeTheme = createActiveThemeStore(themesDir);
+  const activeTheme = createActiveThemeStore(settingsDir);
 
   const hosted = createHostServer({
     registry,
@@ -121,8 +123,10 @@ export async function run(argv: readonly string[]): Promise<number> {
       admin: path.join(packagesDir, "host", "public"),
     },
     themeStore: createThemeStore(themesDir),
-    thumbnails: createThumbnailStore(themesDir),
-    themeSettings: createThemeSettingsStore(themesDir),
+    // A thumbnail is this machine's rendering of a theme, so it is host state
+    // rather than part of the portable folder a save replaces wholesale.
+    thumbnails: createThumbnailStore(settingsDir),
+    themeSettings: createThemeSettingsStore(settingsDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     display: displaySettings,

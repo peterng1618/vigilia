@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { networkInterfaces } from "node:os";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { HOST_PORT, HOST_THEMES_DIR } from "./host-theme.js";
+import { HOST_APP_DIR, HOST_PORT } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Changing media on the real player, and the paired display that has to fetch
@@ -181,33 +181,41 @@ async function recordWebm(page: Page): Promise<Uint8Array> {
 }
 
 /** Publishes the theme through the host's own admin write route, so the bytes
- *  the display later fetches went in and out of the real package format. */
+ *  the display later fetches went in and out of the real store. The library is
+ *  a folder (ADR-0017), so the route takes the document and its declared bytes
+ *  as JSON — the archive is only ever what an author exports. */
 async function publish(
   page: Page,
   id: string,
   webm: Uint8Array,
 ): Promise<void> {
-  const written = writeThemePackage({
+  const theme = {
     envelope: envelope(id),
     assets: {
       "assets/loop.webm": webm,
       "assets/badge.svg": new TextEncoder().encode(badge),
     },
-  });
+  };
+  // Validated by the archive writer too, so a fixture that cannot be exported
+  // cannot be saved, and the failure names the real problem.
+  const written = writeThemePackage(theme);
   if (!written.ok)
     throw new Error(`the fixture is invalid: ${written.message}`);
 
-  // **A `Buffer`, not the `Uint8Array` the writer returns.** Playwright's
-  // request serializes a typed array as its JSON-ish form rather than as bytes,
-  // so the host reads a mangled body and answers "not a readable theme
-  // package" for a package `readThemePackage` accepts locally. The round trip
-  // is the point of this route, so the bytes have to survive it.
   const response = await page.request.put(`${HOST}/api/themes/${id}`, {
-    data: Buffer.from(written.bytes),
+    data: {
+      envelope: theme.envelope,
+      assets: Object.fromEntries(
+        Object.entries(theme.assets).map(([assetPath, bytes]) => [
+          assetPath,
+          Buffer.from(bytes).toString("base64"),
+        ]),
+      ),
+    },
   });
   expect(
     response.status(),
-    `the host accepted the fixture package: ${await response.text().catch(() => "")}`,
+    `the host accepted the fixture theme: ${await response.text().catch(() => "")}`,
   ).toBe(200);
 }
 
@@ -949,8 +957,8 @@ async function startLanHost(port: number): Promise<ChildProcess> {
       String(port),
       "--host",
       "0.0.0.0",
-      "--themes-dir",
-      HOST_THEMES_DIR,
+      "--app-dir",
+      HOST_APP_DIR,
     ],
     { cwd: process.cwd(), stdio: "ignore" },
   );

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { HOST_PORT, HOST_THEMES_DIR } from "./tests/e2e/host-theme.js";
+import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
 
 /**
  * Projects are split by *shared state*, not by device.
@@ -88,7 +88,7 @@ export default defineConfig({
     {
       // The real Node host, not a preview server: hosted theme loading, package
       // asset serving and the SSE stream are otherwise never browser-tested.
-      command: `node packages/host/bin/vigilia.js --no-browser --port ${HOST_PORT} --themes-dir ${HOST_THEMES_DIR}`,
+      command: `node packages/host/bin/vigilia.js --no-browser --port ${HOST_PORT} --app-dir ${HOST_APP_DIR}`,
       url: `http://127.0.0.1:${HOST_PORT}/api/health`,
       reuseExistingServer: true,
       timeout: 60_000,

@@ -94,7 +94,7 @@ describe("EditorSession", () => {
     const onSaved = vi.fn();
     const mockClient = {
       list: vi.fn(async () => []),
-      open: vi.fn(async () => new Uint8Array()),
+      open: vi.fn(async () => ({ envelope, assets: {} })),
       save: vi.fn(async () => {}),
     };
 

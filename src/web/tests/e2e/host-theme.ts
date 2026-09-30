@@ -39,7 +39,12 @@ export const HOST_GROUPED_THEME_ID = "e2e-grouped-glass";
  *  reaches a display is the URL its asset resolver builds, so this is the
  *  fixture that covers it. */
 export const HOST_MEDIA_THEME_ID = "e2e-media";
-export const HOST_THEMES_DIR = path.join(here, "..", "..", ".e2e-host-themes");
+/** The host's app folder; it owns both the library and the settings beside it. */
+export const HOST_APP_DIR = path.join(here, "..", "..", ".e2e-host-app");
+/** The library itself, where each theme is one folder (ADR-0017). */
+export const HOST_THEMES_DIR = path.join(HOST_APP_DIR, "themes");
+/** Host state, out of the library so a theme folder is only ever a theme. */
+export const HOST_SETTINGS_DIR = path.join(HOST_APP_DIR, "settings");
 
 /** The node a reading is painted into, by the id a test reads it back by. */
 export const CLOCK_NODE_ID = "clock";
@@ -645,28 +650,34 @@ export async function seedHostTheme(): Promise<void> {
     },
   ];
 
-  rmSync(HOST_THEMES_DIR, { recursive: true, force: true });
+  rmSync(HOST_APP_DIR, { recursive: true, force: true });
   mkdirSync(HOST_THEMES_DIR, { recursive: true });
 
   for (const envelope of themes) {
-    // A package's bytes must match its own declaration exactly, so a theme
+    // A theme's bytes must match its own declaration exactly, so a theme
     // that declares a subset gets that subset rather than the whole map.
     const declared = new Set(
       (envelope.assets ?? []).map((entry) => entry.path),
     );
-    const result = writeThemePackage({
-      envelope,
-      assets: Object.fromEntries(
-        Object.entries(assets).filter(([assetPath]) => declared.has(assetPath)),
-      ),
-    });
+    const themeAssets = Object.fromEntries(
+      Object.entries(assets).filter(([assetPath]) => declared.has(assetPath)),
+    );
+    // Validated by writing it, which is the one the store also does; a
+    // fixture that cannot be saved would fail the browser test far from here.
+    const result = writeThemePackage({ envelope, assets: themeAssets });
     if (!result.ok) {
       throw new Error(`E2E host fixture is invalid: ${result.message}`);
     }
 
-    writeFileSync(
-      path.join(HOST_THEMES_DIR, `${envelope.id}.vigilia-theme`),
-      result.bytes,
-    );
+    // The library is a folder: the document beside the bytes it declares
+    // (ADR-0017). The archive above is only ever what an author exports.
+    const folder = path.join(HOST_THEMES_DIR, envelope.id);
+    mkdirSync(path.join(folder, "assets"), { recursive: true });
+    writeFileSync(path.join(folder, "theme.json"), JSON.stringify(envelope));
+    for (const [assetPath, bytes] of Object.entries(themeAssets)) {
+      const file = path.join(folder, ...assetPath.split("/"));
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, bytes);
+    }
   }
 }

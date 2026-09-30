@@ -1,8 +1,15 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { copyFileSync, mkdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import { readThemePackage } from "@vigilia/theme-package";
 import {
   buildComposition,
   importBackdrop,
@@ -45,10 +52,38 @@ const BACKDROP = path.join(
 );
 /** A port no other agent and no Playwright runner owns. */
 const HOST_PORT = 4224;
-const THEMES_DIR = path.join(here, "..", "..", ".e2e-display-themes");
+/** The host's app folder; the library is one folder per theme inside it. */
+const APP_DIR = path.join(here, "..", "..", ".e2e-display-app");
+const THEMES_DIR = path.join(APP_DIR, "themes");
+/** Where the exported package is kept, so the import below can reopen it. */
+const EXPORTED = path.join(APP_DIR, "exported.vigilia-theme");
 /** The blank theme's own id (`new-fabric-theme.ts`), which is what the host keys. */
 const THEME_ID = "vigilia-new-theme";
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
+
+/**
+ * Seeds the library from the package the editor exported.
+ *
+ * **Both halves are the point, and they are different formats.** The library
+ * is a folder (ADR-0017), so the exported archive is unpacked here to make
+ * one; the same file is then handed to the editor's own `Open package`
+ * control, which is the export path the ruling keeps. A change that broke
+ * either would show up here rather than being assumed to work.
+ */
+function seedLibraryFromPackage(packagePath: string): void {
+  const parsed = readThemePackage(new Uint8Array(readFileSync(packagePath)));
+  if (!parsed.ok) throw new Error(parsed.message);
+
+  const folder = path.join(THEMES_DIR, THEME_ID);
+  mkdirSync(path.join(folder, "assets"), { recursive: true });
+  writeFileSync(
+    path.join(folder, "theme.json"),
+    JSON.stringify(parsed.envelope),
+  );
+  for (const [assetPath, bytes] of Object.entries(parsed.assets)) {
+    writeFileSync(path.join(folder, ...assetPath.split("/")), bytes);
+  }
+}
 
 /** The two sizes the composition has to survive. A phone is the main display. */
 const DISPLAYS = [
@@ -64,8 +99,8 @@ async function startHost(): Promise<ChildProcess> {
       "--no-browser",
       "--port",
       String(HOST_PORT),
-      "--themes-dir",
-      THEMES_DIR,
+      "--app-dir",
+      APP_DIR,
     ],
     { cwd: process.cwd(), stdio: "ignore" },
   );
@@ -127,7 +162,7 @@ test.describe("the rebuilt composition, on a display", () => {
   let host: ChildProcess | undefined;
 
   test.beforeAll(async () => {
-    rmSync(THEMES_DIR, { recursive: true, force: true });
+    rmSync(APP_DIR, { recursive: true, force: true });
     mkdirSync(THEMES_DIR, { recursive: true });
     host = await startHost();
   });
@@ -161,7 +196,8 @@ test.describe("the rebuilt composition, on a display", () => {
       await page.locator("[data-vigilia-save-package]").click();
       const file = await (await download).path();
       expect(file, "Save package should write a package").not.toBeNull();
-      copyFileSync(file!, path.join(THEMES_DIR, `${THEME_ID}.vigilia-theme`));
+      copyFileSync(file!, EXPORTED);
+      seedLibraryFromPackage(EXPORTED);
     };
 
     // The display gets **its own page**. The editor document lives in this
@@ -198,9 +234,7 @@ test.describe("the rebuilt composition, on a display", () => {
       exact: true,
     });
     if (await discard.isVisible().catch(() => false)) await discard.click();
-    await (await openPackage).setFiles(
-      path.join(THEMES_DIR, `${THEME_ID}.vigilia-theme`),
-    );
+    await (await openPackage).setFiles(EXPORTED);
     await reopened.waitForTimeout(5_000);
     await reopened.screenshot({
       path: "test-results/display/editor-desktop.png",

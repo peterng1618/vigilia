@@ -33,6 +33,7 @@ import {
 } from "./themes/store.js";
 import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
+import { decodeThemeContent, encodeThemeContent } from "./themes/wire.js";
 import { SseConnection } from "./transport/sse.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
@@ -86,7 +87,9 @@ export interface HostServer {
 }
 
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
-const MAX_THEME_UPLOAD_BYTES = 64 * 1024 * 1024;
+/** A save is JSON with base64 assets, so the wire is a third larger than the
+ *  archive it replaced; the store enforces its own bounds on the decoded side. */
+const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
 /** A dashboard screenshot; the store enforces the same bound. */
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
@@ -838,11 +841,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
           sendText(response, 404, "Theme not found.");
           return;
         }
-        response.writeHead(200, {
-          "content-type": "application/octet-stream",
-          "cache-control": "no-store",
-        });
-        response.end(Buffer.from(record.bytes));
+        // The editor reads a theme back the way it wrote one, so the pair of
+        // routes is symmetric: what a save put in the folder, an open takes out.
+        sendJson(response, 200, encodeThemeContent(record));
         return;
       }
 
@@ -856,32 +857,16 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        let receivedBytes = 0;
-        const chunks: Buffer[] = [];
-        let aborted = false;
-
-        for await (const chunk of request) {
-          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          receivedBytes += buf.byteLength;
-          if (receivedBytes > MAX_THEME_UPLOAD_BYTES) {
-            aborted = true;
-            break;
-          }
-          chunks.push(buf);
-        }
-
-        if (aborted) {
-          sendText(
-            response,
-            413,
-            "Theme package exceeds maximum size of 64 MiB.",
-          );
+        let body: string;
+        try {
+          body = await readBody(request, MAX_THEME_UPLOAD_BYTES);
+        } catch {
+          sendText(response, 413, "That theme is too large to save.");
           return;
         }
 
-        const body = new Uint8Array(Buffer.concat(chunks));
         try {
-          const entry = await themeStore.write(rawId, body);
+          const entry = await themeStore.write(rawId, decodeThemeContent(body));
           sendJson(response, 200, { ok: true, ...entry });
         } catch (error) {
           sendText(

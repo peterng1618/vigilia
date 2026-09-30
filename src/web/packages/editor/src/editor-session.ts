@@ -45,7 +45,7 @@ import {
   paletteTokenUsage,
   reassignPaletteToken,
 } from "./palette-manager/index.js";
-import { parseThemePackage, serializeThemePackage } from "./persist.js";
+import { serializeThemePackage } from "./persist.js";
 import {
   confirmDocumentReplacement,
   PersistenceManager,
@@ -549,14 +549,15 @@ export class EditorSession {
 
   async #saveLibrary(options: EditorSessionOptions): Promise<void> {
     const current = this.#snapshot(options.shell);
-    const result = serializeThemePackage(current, this.#assets.assets);
-    if (!result.ok) {
-      options.onError?.(result.message);
-      return;
-    }
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
-      await client.save(current.id, result.bytes);
+      // The library is a folder, so the theme goes as its document and its
+      // declared bytes. Building an archive here would compress data the host
+      // is about to write uncompressed and inflate again on the next read.
+      await client.save(current.id, {
+        envelope: current,
+        assets: this.#assets.assets,
+      });
 
       // The picture is this machine's rendering of the theme, so the browser
       // that already has it on screen is the right place to make one. Failing to
@@ -598,14 +599,9 @@ export class EditorSession {
         await options.onNewFromStarter();
         return;
       }
-      const bytes = await client.open(choice.id);
-      const parsed = parseThemePackage(bytes);
-      if (!parsed.ok) {
-        options.onError?.(`Could not open theme: ${parsed.message}`);
-        return;
-      }
+      const opened = await client.open(choice.id);
       if (options.onOpenTheme !== undefined) {
-        await options.onOpenTheme(parsed.envelope, parsed.assets);
+        await options.onOpenTheme(opened.envelope, opened.assets);
       }
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -689,6 +685,10 @@ export class EditorSession {
     const level = window.prompt("Release bump: major, minor or patch", "patch");
     if (level !== "major" && level !== "minor" && level !== "patch") return;
     try {
+      // **The one archive left in this file, and it is not a round trip.**
+      // Nothing is stored here: the package is built so the release refuses a
+      // theme that would not export, and the archive is then downloaded by
+      // `#save`. The library is a folder (ADR-0017); the export is not.
       const beforeRelease = serializeThemePackage(
         this.#snapshot(options.shell),
         this.#assets.assets,

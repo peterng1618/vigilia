@@ -1,9 +1,22 @@
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { createThemeLibraryClient } from "./theme-library-client.js";
 
+const envelope: FabricThemeEnvelope = {
+  schemaVersion: 2,
+  fabricVersion: "7.4.0",
+  id: "living-room",
+  artboard: { width: 1920, height: 1080 },
+  metadata: { name: "Living Room", locale: "en" },
+  scene: { version: "7.4.0", objects: [] },
+};
+
 describe("ThemeLibraryClient", () => {
-  it("saves and opens packages through the host theme routes", async () => {
-    const packageBytes = new Uint8Array([1, 2, 3, 4]);
+  it("saves and opens a theme's content, not an archive", async () => {
+    const content = {
+      envelope,
+      assets: { "assets/badge.svg": new TextEncoder().encode("<svg/>") },
+    };
     const mockFetch = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
@@ -11,7 +24,15 @@ describe("ThemeLibraryClient", () => {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
         if (url === "/api/themes/living-room") {
-          return new Response(packageBytes, { status: 200 });
+          return new Response(
+            JSON.stringify({
+              envelope,
+              assets: {
+                "assets/badge.svg": btoa("<svg/>"),
+              },
+            }),
+            { status: 200 },
+          );
         }
         return new Response("Not found", { status: 404 });
       },
@@ -21,13 +42,20 @@ describe("ThemeLibraryClient", () => {
       fetch: mockFetch as unknown as typeof fetch,
     });
 
-    await client.save("living-room", packageBytes);
+    await client.save("living-room", content);
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/themes/living-room",
       expect.objectContaining({ method: "PUT" }),
     );
+    // The seam the store depends on: the document rides as JSON and the
+    // declared bytes as base64, keyed by the path the document declares.
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      envelope,
+      assets: { "assets/badge.svg": btoa("<svg/>") },
+    });
 
-    await expect(client.open("living-room")).resolves.toEqual(packageBytes);
+    await expect(client.open("living-room")).resolves.toEqual(content);
   });
 
   it("lists themes with metadata", async () => {
@@ -68,7 +96,7 @@ describe("ThemeLibraryClient", () => {
     });
 
     await expect(
-      client.save("living-room", new Uint8Array([1])),
+      client.save("living-room", { envelope, assets: {} }),
     ).rejects.toThrow('Could not save theme "living-room" (400)');
   });
 
@@ -91,9 +119,9 @@ describe("ThemeLibraryClient", () => {
       fetch: mockFetch as unknown as typeof fetch,
     });
 
-    await expect(client.save("../escape", new Uint8Array())).rejects.toThrow(
-      "Invalid theme id",
-    );
+    await expect(
+      client.save("../escape", { envelope, assets: {} }),
+    ).rejects.toThrow("Invalid theme id");
     await expect(client.open("../escape")).rejects.toThrow("Invalid theme id");
     expect(mockFetch).not.toHaveBeenCalled();
   });
