@@ -292,35 +292,57 @@ describe("the glass control in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts the published bound and refuses one past it", () => {
+  it("lands a radius past the published bound on it, because landing teaches it", () => {
     const bound = PUBLISHED_BLUR_MAXIMUM;
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { host, history, editor, field } = setup(rect);
+    const { host, history, field } = setup(rect);
     const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
 
-    type(blur, String(bound));
+    // The field asks the owner for the ceiling rather than restating it, so the
+    // number below is the schema's and the field's own bound cannot drift from
+    // it. Asserted against the published schema rather than against a constant
+    // imported here, because a test that reads the same constant as the code
+    // proves only that they are both 48.
+    expect(blur.max).toBe(String(bound));
 
+    type(blur, "60");
+
+    // Not a refusal. The finding was "took me a while to figure out blur only
+    // accepts 48 maximum": a field that reverted to 12 taught nothing about
+    // where the maximum is, and the slider that teaches it needs both bounds.
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
     expect(history.saveState).toHaveBeenCalledTimes(1);
 
     // Re-read: the accepted edit re-rendered the panel, so the element the
-    // first commit belonged to is detached and holds no authority.
+    // commit belonged to is detached and holds no authority.
     const afterCommit = host.querySelector<HTMLInputElement>(
       "[data-vigilia-glass-blur]",
     )!;
-    type(afterCommit, String(bound + 1));
-
-    // Refused by the contract's own reader, not by a number copied into the
-    // editor: a clamp to the bound would look identical on screen and
-    // silently lose the radius the author asked for.
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
     expect(afterCommit.value).toBe(String(bound));
-    expect(history.saveState).toHaveBeenCalledTimes(1);
+    // And the slider the bound exists to enable, beside the box it moves.
+    const range = afterCommit.parentElement?.querySelector<HTMLInputElement>(
+      "input[type='range']",
+    );
+    expect(range).not.toBeNull();
+    expect(range?.min).toBe("0");
+    expect(range?.max).toBe(String(bound));
+    expect(afterCommit.parentElement?.textContent).toContain(`0–${bound}`);
+  });
+
+  it("refuses an emptied radius rather than coercing it to the bound", () => {
+    const rect = panel();
+    rect.set("vigiliaGlass", { blurRadius: 12 });
+    const { history, field, editor } = setup(rect);
+
+    // The bound does not swallow this: `Number("")` is 0, which is a real
+    // radius, so coercing it would silently mean "no blur" and look like it
+    // was refused. The field still has to tell them apart.
+    type(field<HTMLInputElement>("[data-vigilia-glass-blur]"), "");
+
+    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
+    expect(history.saveState).not.toHaveBeenCalled();
     expect(editor.errorManager.warn).toHaveBeenCalled();
-    // And through the field's own alert, the same one an empty or negative
-    // value raises. One field, one kind of invalid-input feedback.
-    expect(alertIn(host)).toBeTruthy();
   });
 
   it("says nothing when a stale event is refused, because nothing was wrong", () => {
@@ -484,6 +506,29 @@ describe("the glass control in the selection inspector", () => {
       );
     },
   );
+
+  it("reaches a refused control's reason by hovering, not only by focusing", () => {
+    // A disclosure only the keyboard can reach is the same defect as one only a
+    // mouse can reach, in the other direction. Asserted on hover alone, so it
+    // cannot pass because focus happens to work — the finding was that hover
+    // fired its event and still showed nothing.
+    vi.useFakeTimers();
+    const path = new Path("M 0 0 L 20 20 L 40 0");
+    const { host } = setup(path);
+    const control = glassControl(host)!;
+
+    control.dispatchEvent(new Event("pointerenter"));
+    vi.advanceTimersByTime(700);
+
+    expect(popup()?.textContent).toBe(
+      uiCopy.inspectorFields.glassRefused("Path"),
+    );
+    expect(control.getAttribute("aria-describedby")).toBe(popup()?.id);
+
+    control.dispatchEvent(new Event("pointerleave"));
+    expect(popup()).toBeNull();
+    vi.useRealTimers();
+  });
 
   it("reaches a refused control's reason with no mouse", () => {
     // A `disabled` checkbox is out of the tab order, so the same tooltip would

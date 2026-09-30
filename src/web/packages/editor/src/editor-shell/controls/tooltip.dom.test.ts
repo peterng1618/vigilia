@@ -24,7 +24,8 @@ function attach(text = "Glass blur", label = "A control"): HTMLButtonElement {
   return trigger;
 }
 
-const open = (): HTMLElement | null => document.querySelector<HTMLElement>(POPUP);
+const open = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>(POPUP);
 
 afterEach(() => {
   while (live.length > 0) live.pop()?.destroy();
@@ -74,7 +75,9 @@ describe("the editor's shared tooltip", () => {
 
     other.dispatchEvent(new Event("pointerenter"));
     vi.advanceTimersByTime(500);
-    expect(open()?.textContent).toBe("A control".length > 0 ? "Glass blur" : "");
+    expect(open()?.textContent).toBe(
+      "A control".length > 0 ? "Glass blur" : "",
+    );
     vi.advanceTimersByTime(200);
     expect(open()?.textContent).toBe("Second");
   });
@@ -92,6 +95,27 @@ describe("the editor's shared tooltip", () => {
     // resolve to two nodes, and the e2e spec's strict-mode click would throw.
     expect(document.querySelectorAll(POPUP)).toHaveLength(1);
     expect(open()?.textContent).toBe("Second");
+  });
+
+  it("sizes the popup independently of where it is put, so placing it cannot move it", () => {
+    const trigger = attach(
+      "A Path is author-drawn data and the product cannot know whether it is closed.",
+    );
+
+    trigger.dispatchEvent(new Event("focus"));
+
+    // The width has to be the popup's own, and not a consequence of `left` and
+    // `top` still being unset: an out-of-flow popup sizes against the space from
+    // its static position to the viewport edge until it is pinned, so a reason
+    // that wraps to three lines where it lands measured as one line, and the
+    // height `place` worked from was short by two. The popup then landed on top
+    // of its own trigger, which fires `pointerleave` on the trigger, dismisses
+    // the popup, and re-arms the hover timer — so hover never settled and only
+    // focus showed anything. The dock's one-word labels measured the same either
+    // way, which is why that caller never showed it and this one did.
+    const popup = open();
+    expect(popup?.style.width).toBe("max-content");
+    expect(popup?.style.maxWidth).toBe("280px");
   });
 
   it("removes the popup and the description on blur, and on Escape", () => {

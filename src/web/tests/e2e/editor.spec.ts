@@ -1184,6 +1184,94 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => injectedTransition(tooltip)).toBe("0s");
   });
 
+  test("a refused glass control says why to a pointer and to a keyboard alike", async ({
+    page,
+  }, testInfo) => {
+    /**
+     * The browser half of a fix jsdom cannot see.
+     *
+     * The reason reached the keyboard and not the mouse: `pointerenter` fired
+     * and no popup appeared, while the dock's one-word labels hovered fine. The
+     * cause was placement, not listeners. `place()` measured the popup before it
+     * was pinned, and an out-of-flow popup sizes against the space from its
+     * static position to the viewport edge until `left` and `top` are assigned —
+     * so a three-line reason measured one line, the computed height was short by
+     * two, and the popup landed **on top of its own trigger**. That fires
+     * `pointerleave` on the trigger, which dismisses the popup and restarts the
+     * hover timer, forever. jsdom has no layout, so nothing there could see it:
+     * the same event sequence passes in jsdom and flickers in a browser.
+     *
+     * A `Path` is one of the kinds the treatment cannot reach, and the reason
+     * named for it is a full sentence — the shape of the text is what made the
+     * stale measurement wrong, so a short label would pass here and still ship.
+     */
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      const canvas = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getObjects(): Array<{
+                  constructor: { type?: string };
+                  type: string;
+                }>;
+                setActiveObject(object: unknown): void;
+                requestRenderAll(): void;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge.editor.canvas;
+      const path = canvas
+        .getObjects()
+        .find((object) => (object.constructor.type ?? object.type) === "Path");
+      if (path === undefined) throw new Error("the starter has no Path");
+      canvas.setActiveObject(path);
+      canvas.requestRenderAll();
+    });
+    await openInspectorTab(page, "Design");
+
+    const control = page.locator("[data-vigilia-glass-enabled]");
+    await expect(control).toHaveAttribute("aria-disabled", "true");
+    const tooltip = page.locator(".editor-shell-tooltip");
+
+    // **Hover**, asserted on its own: focusing first would make this pass on
+    // the behaviour that already worked.
+    await control.hover();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText("Path");
+    // Settled, not flickering: the popup has to survive a moment rather than
+    // appear and be dismissed by the pointerleave its own placement provoked.
+    await page.waitForTimeout(1200);
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toHaveCount(1);
+    // And it is not sitting on the control that opened it.
+    const [triggerBox, tooltipBox] = await Promise.all([
+      control.boundingBox(),
+      tooltip.boundingBox(),
+    ]);
+    expect(
+      tooltipBox!.y + tooltipBox!.height,
+      "the popup overlaps its own trigger",
+    ).toBeLessThanOrEqual(triggerBox!.y);
+
+    await page.mouse.move(0, 0);
+    await expect(tooltip).toHaveCount(0);
+
+    // **Focus**, asserted separately, so neither can pass on the other.
+    await control.focus();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText("Path");
+    await page.keyboard.press("Escape");
+    await expect(tooltip).toHaveCount(0);
+  });
+
   test("captures selected chart binding controls for visual review", async ({
     page,
   }, testInfo) => {

@@ -1,6 +1,7 @@
 import {
   type GlassTreatment,
   glassTreatment,
+  MAX_GLASS_BLUR_RADIUS,
   supportsGlass,
   VIGILIA_GLASS_PROPERTY,
 } from "@vigilia/renderer-core";
@@ -123,9 +124,9 @@ function clearTreatment(object: FabricObject): void {
 /**
  * Writes the treatment and asks `renderer-core`'s own reader whether it is one.
  *
- * The bound is deliberately not exported from that package, so the control is
- * refused by the same code that refuses it at import rather than by a number
- * copied here. `false` means the object was left exactly as it was.
+ * The reader, not a check of its own, is what accepts the value — so the
+ * control is refused by the same code that refuses it at import. `false` means
+ * the object was left exactly as it was.
  */
 function writeTreatment(
   object: FabricObject,
@@ -252,10 +253,17 @@ export function createGlassFields(
   const treatment = treatmentOf(object);
   if (treatment === undefined) return root;
 
+  // The ceiling is asked of the owner, not restated here: `MAX_GLASS_BLUR_RADIUS`
+  // is the measured bound the validator enforces, and a 48 typed into this file
+  // would agree with it only until the sweep moved it. Naming it is also what
+  // gives the field its other two affordances — the range appears only when both
+  // bounds are present, and there is nothing to clamp onto with only a floor, so
+  // an author typing 60 was refused instead of landing on the maximum.
   const blur = numberField({
     label: uiCopy.inspectorFields.glassBlur,
     value: treatment.blurRadius,
     min: 0,
+    max: MAX_GLASS_BLUR_RADIUS,
     data: "vigiliaGlassBlur",
     invalidMessage: uiCopy.inspectorFields.invalidValue,
     onReject: refused,

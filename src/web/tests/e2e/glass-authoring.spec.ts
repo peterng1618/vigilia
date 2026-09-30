@@ -174,7 +174,40 @@ test.describe("authoring frosted glass through the inspector", () => {
     await expect(blur).toHaveCount(0);
   });
 
-  test("refuses a radius past the published bound and puts the box back", async ({
+  test("lands a radius past the published bound on it, and offers a slider", async ({
+    page,
+  }, testInfo) => {
+    desktop(testInfo.project.name);
+    await openFixture(page);
+    await selectAuthoringPanel(page);
+
+    const enabled = page.locator("[data-vigilia-glass-enabled]");
+    await enabled.focus();
+    await page.keyboard.press("Space");
+    const blur = page.locator("[data-vigilia-glass-blur]");
+    const range = page
+      .locator("[data-vigilia-glass-blur]")
+      .locator("xpath=following-sibling::input[@type='range']");
+
+    // The slider only exists when the field is bounded at both ends, so its
+    // presence is what proves the ceiling reached the field rather than the
+    // capability existing somewhere else.
+    await expect(range).toHaveAttribute("max", "48");
+    await expect(range).toHaveAttribute("min", "0");
+
+    await typeInto(page, blur, "60");
+
+    // The finding was "took me a while to figure out blur only accepts 48
+    // maximum": a box reverted to its old value teaches nothing about where the
+    // maximum is, and the radius the author typed is the one they meant.
+    await expect(blur).toHaveValue("48");
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
+      blurRadius: 48,
+    });
+    await expect(page.locator(".vigilia-field [role='alert']")).toHaveCount(0);
+  });
+
+  test("refuses an emptied radius rather than reading it as no blur", async ({
     page,
   }, testInfo) => {
     desktop(testInfo.project.name);
@@ -187,15 +220,23 @@ test.describe("authoring frosted glass through the inspector", () => {
     const blur = page.locator("[data-vigilia-glass-blur]");
     const onEnable = Number(await blur.inputValue());
 
-    await typeInto(page, blur, "999");
+    await blur.click();
+    await page.keyboard.press("Control+a");
+    // Delete, not `typeInto(page, blur, "")`: typing an empty string types
+    // nothing, so the box would still hold its old value and this would assert
+    // nothing at all.
+    await page.keyboard.press("Delete");
+    await expect(blur).toHaveValue("");
+    await page.keyboard.press("Tab");
 
-    // Refused, not clamped: a box reading the bound would look identical on
-    // screen while the document carried a radius nobody chose.
+    // `Number("")` is 0, and 0 is a real radius — a treatment with no blur — so
+    // coercing an empty box would silently mean "no blur" while looking refused.
     await expect(blur).toHaveValue(String(onEnable));
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: onEnable,
     });
-    // And through the field's own alert, the same one an empty value raises.
+    // And it is refused through its own line, the same one any invalid value
+    // raises: the bound does not swallow the case that is not a number.
     await expect(page.locator(".vigilia-field [role='alert']")).toHaveCount(1);
   });
 

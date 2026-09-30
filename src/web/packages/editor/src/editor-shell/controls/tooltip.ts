@@ -17,6 +17,19 @@ const EDGE_MARGIN = 8;
 /** Wide enough for a sentence about a shape, narrow enough not to cross the
     inspector. A popup with no bound measures to the width of the page. */
 const MAX_WIDTH = 280;
+/** The popup's width is its own, and never a consequence of where it is put.
+
+    An out-of-flow popup whose `left` is still `auto` is sized against the space
+    from its static position to the edge of the viewport, and only once `left`
+    and `top` are assigned does it shrink-wrap its text — so a reason that wraps
+    to three lines in its placed position measured as one line, and the height
+    `place` computed was short by two. The popup then landed on top of its own
+    trigger, which fires `pointerleave` on the trigger, dismisses the popup, and
+    leaves the pointer re-entering a trigger whose hover timer has just restarted:
+    hover never settled, and a reason that only answered to focus. A one-word
+    dock label measured the same either way, which is why that caller never
+    showed it and this one did. */
+const WIDTH = "max-content";
 /** Hover waits, focus does not: a delay is what stops a pointer crossing the
     dock from flashing every label, and a keyboard user has already committed to
     a control by focusing it. */
@@ -60,6 +73,7 @@ export function tooltip({ trigger, text }: TooltipOptions): Tooltip {
     element.setAttribute("role", "tooltip");
     element.textContent = text;
     element.id = `vigilia-tooltip-${++seq}`;
+    element.style.width = WIDTH;
     element.style.maxWidth = `${MAX_WIDTH}px`;
     document.body.append(element);
     popup = element;
@@ -112,7 +126,8 @@ export function tooltip({ trigger, text }: TooltipOptions): Tooltip {
 /**
  * Above the trigger and horizontally centred on it, then pulled inside the
  * viewport. Measured after the popup is in the document, because its own width
- * is what the horizontal clamp needs and it has none until it is laid out.
+ * is what the horizontal clamp needs and it has none until it is laid out —
+ * which is why `show` sizes it independently of where it is put.
  */
 function place(popup: HTMLElement, trigger: HTMLElement): void {
   const anchor = trigger.getBoundingClientRect();
