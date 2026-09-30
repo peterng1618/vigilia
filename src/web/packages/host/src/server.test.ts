@@ -1326,3 +1326,55 @@ describe("A theme's own device answers", () => {
     });
   });
 });
+
+describe("A bundle 404 names the cause it can prove", () => {
+  const dirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })),
+    );
+  });
+
+  async function server(
+    built: boolean,
+  ): Promise<ReturnType<typeof createHostServer>> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-404-"));
+    dirs.push(dir);
+    if (built) {
+      await fs.writeFile(path.join(dir, "index.html"), "<!doctype html>");
+    }
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+    });
+  }
+
+  it("does not tell a reader to rebuild a bundle that is built", async () => {
+    const hosted = await server(true);
+    try {
+      const res = await request(hosted.server, "GET", "/assets/missing.js");
+      expect(res.status).toBe(404);
+      // The build hint is right exactly when there is no build. Sending it here
+      // is the loop ADR-0018 describes: rebuild, ask again, same answer.
+      expect(res.text()).not.toContain("is not built");
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("still says which build to run when the bundle really is unbuilt", async () => {
+    const hosted = await server(false);
+    try {
+      const res = await request(
+        hosted.server,
+        "GET",
+        "/editor/assets/missing.js",
+      );
+      expect(res.status).toBe(404);
+      expect(res.text()).toContain("packages/editor");
+    } finally {
+      await hosted.close();
+    }
+  });
+});

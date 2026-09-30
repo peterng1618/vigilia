@@ -265,7 +265,15 @@ async function serveStatic(
     }
   }
 
-  sendText(response, 404, missingBundleHint);
+  // The hint is only true when the bundle itself is missing its entry; a file
+  // that simply is not in a built bundle must not send the reader rebuilding
+  // one they already built. See ADR-0018.
+  const built = await fs
+    .stat(path.join(root, "index.html"))
+    .then(() => true)
+    .catch(() => false);
+
+  sendText(response, 404, built ? "Not found." : missingBundleHint);
 }
 
 export function createHostServer(options: HostServerOptions): HostServer {
