@@ -42,6 +42,9 @@ const idOf = (object: FabricObject): string | undefined => {
  * whole walk. */
 const ownerGroup = (object: FabricObject): Group | undefined => object.parent;
 
+/** Fired on the canvas when the entered group changes; see `setContext`. */
+export const GROUP_CONTEXT_EVENT = "editor:group-context-changed";
+
 export function createGroupingManager(
   options: GroupingManagerOptions,
 ): GroupingManager {
@@ -49,6 +52,23 @@ export function createGroupingManager(
 
   /** Selection state, not authored content (§67): never persisted, never history. */
   let context: FabricObject[] = [];
+
+  /**
+   * The entered context, announced when it changes.
+   *
+   * Entering a group does not move the selection — the group was already the
+   * active object, so `setActiveObject` is a no-op and Fabric fires nothing.
+   * The layer panel reads the context to dim the rows that are no longer
+   * reachable, and it republishes only when the bridge is told, so without this
+   * the dim appears only once something unrelated happens to re-project the
+   * tree. The custom `editor:` event is the convention the other managers use.
+   */
+  const setContext = (next: readonly FabricObject[]): void => {
+    const unchanged =
+      context.length === next.length && context.every((o, i) => o === next[i]);
+    context = [...next];
+    if (!unchanged) canvas.fire(GROUP_CONTEXT_EVENT as never, {} as never);
+  };
   /** Which of the two through-selection flags this manager set, so `exitGroup`
    * restores only those and leaves an author's own flags alone. */
   const flagsSet = new Set<Group>();
@@ -141,11 +161,11 @@ export function createGroupingManager(
     const found =
       id === undefined ? undefined : findById(canvas.getObjects(), id);
     if (!(found instanceof Group)) {
-      context = [];
+      setContext([]);
       leave();
       return;
     }
-    context = [found];
+    setContext([found]);
     leave();
     makeSelectableThrough(found);
     applyReachability(found);
@@ -194,7 +214,7 @@ export function createGroupingManager(
         canvas.requestRenderAll();
         // The entered group is gone, so a later `exitGroup` would otherwise
         // re-select a destroyed object.
-        context = [];
+        setContext([]);
         leave();
         return members;
       } finally {
@@ -231,7 +251,7 @@ export function createGroupingManager(
       // Recorded before `setActiveObject`: that call fires `selection:created`
       // synchronously, and the bridge re-reads the layer tree on it, so the
       // context must already be right when the panel renders.
-      context = [entry];
+      setContext([entry]);
       applyReachability(entry);
       canvas.setActiveObject(selected);
       canvas.requestRenderAll();
@@ -239,9 +259,12 @@ export function createGroupingManager(
     },
 
     exitGroup(): readonly FabricObject[] | undefined {
+      // Sliced rather than popped: `setContext` compares against what is still
+      // there, and the return value is what was exited, not what remains.
       const before = [...context];
-      const target = context.pop();
+      const target = before.at(-1);
       if (target === undefined) return undefined;
+      setContext(before.slice(0, -1));
       leave();
       // An entry can only have been destroyed by an operation that also clears
       // the context (`ungroup`), so `target` is still on the canvas here.
@@ -255,8 +278,9 @@ export function createGroupingManager(
     destroy(): void {
       canvas.off("object:added" as never, onObjectAdded as never);
       canvas.off("editor:history-state-loaded" as never, onHistoryLoaded);
+      // A direct assignment: teardown announces nothing, for the same reason it
+      // repaints nothing.
       context = [];
-      // No repaint: the canvas is being torn down, and teardown asks for nothing.
       leave(false);
     },
   };

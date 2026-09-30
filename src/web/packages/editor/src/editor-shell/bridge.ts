@@ -3,6 +3,7 @@ import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import { GROUP_CONTEXT_EVENT } from "../grouping-manager/index.js";
 import {
   actionEnabled,
   type ObjectActionId,
@@ -15,6 +16,7 @@ import {
   pathTo,
   projectLayers,
 } from "./layer-tree.js";
+
 import type { EditorActionFacade } from "./session-facade.js";
 
 /** Selection-kind routing for menu/tab eligibility. Transient, never persisted. */
@@ -101,8 +103,11 @@ export function createEditorShellBridge(input: {
     "selection:updated",
     "selection:cleared",
     "object:modified",
+    // Entering or leaving a group moves no selection, so Fabric fires nothing
+    // for it — the panel would repaint only when something unrelated did.
+    GROUP_CONTEXT_EVENT,
   ] as const;
-  for (const event of events) canvas.on(event, notify);
+  for (const event of events) canvas.on(event as never, notify);
   const activeObject = ():
     | (FabricObject & { readonly locked?: boolean })
     | undefined =>
@@ -320,7 +325,7 @@ export function createEditorShellBridge(input: {
       notify();
     },
     destroy() {
-      for (const event of events) canvas.off(event, notify);
+      for (const event of events) canvas.off(event as never, notify);
       listeners.clear();
     },
   };

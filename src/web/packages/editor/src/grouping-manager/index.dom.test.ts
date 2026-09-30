@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
-import { createGroupingManager } from "./index.js";
+import { createGroupingManager, GROUP_CONTEXT_EVENT } from "./index.js";
 
 function setup() {
   const canvas = new Canvas(document.createElement("canvas"));
@@ -125,5 +125,46 @@ describe("GroupingManager", () => {
 
     expect(grouping.ungroup()).toBeUndefined();
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe("GroupingManager announces its context", () => {
+  it("fires on entry and on exit, and not when nothing changed", () => {
+    // Entering a group does not move the selection — the group is already the
+    // active object — so Fabric fires nothing and the layer panel has no way to
+    // learn the context changed. Measured on the running editor: zero events.
+    const canvas = new Canvas(document.createElement("canvas"));
+    const seen: string[] = [];
+    const onChange = (): void => {
+      seen.push("changed");
+    };
+    canvas.on(GROUP_CONTEXT_EVENT as never, onChange);
+    const grouping = createGroupingManager({
+      canvas,
+      save: vi.fn(),
+      suspend: (): (() => void) => vi.fn(),
+    });
+    const first = new Rect({ id: "a", width: 10, height: 10 });
+    const second = new Rect({ id: "b", left: 40, width: 10, height: 10 });
+    canvas.add(first, second);
+    const group = new Group([first, second]);
+    canvas.add(group);
+    canvas.setActiveObject(group);
+
+    grouping.enterGroup({ object: group });
+    expect(seen).toHaveLength(1);
+
+    // Re-entering the same group is not a second level, so it says nothing.
+    grouping.enterGroup({ object: group });
+    expect(seen).toHaveLength(1);
+
+    grouping.exitGroup();
+    expect(seen).toHaveLength(2);
+
+    // Leaving again with nothing entered changes nothing and announces nothing.
+    grouping.exitGroup();
+    expect(seen).toHaveLength(2);
+
+    canvas.off(GROUP_CONTEXT_EVENT as never, onChange);
   });
 });
