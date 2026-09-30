@@ -203,10 +203,14 @@ Ordered so that each step is independently useful and the blocking defect lands
 first.
 
 1. **Refuse a write the store would refuse to read.** Apply `MAX_ASSET_BYTES`,
-   `MAX_ASSET_COUNT` and `MAX_TOTAL_ASSET_BYTES` in `checked()`, so a 33 MB asset
-   is refused at save time with a message that says why, instead of accepted and
-   then unreadable. This is a real defect with a named cause
+   `MAX_ASSET_COUNT` and `MAX_TOTAL_ASSET_BYTES` so a 33 MB asset is refused at
+   save time with a message that says why, instead of accepted and then
+   unreadable. This is a real defect with a named cause
    (`themes/store.ts:435-450` is enforced only on the read path) and one owner.
+   **Done**, in `write()` beside the check that proves the folder holds what a
+   save left out, not in `checked()`: `checked()` runs before the reuse step, so
+   it cannot weigh an asset the payload omitted — and an omitted asset is
+   exactly the one that can push a theme over a bound the payload does not.
 2. **Stop the copy-on-open** in `AssetManager.load` — view the `Uint8Array` it is
    handed instead of copying it.
 3. **Fix `documentKey`**, which is the measured cost and the reason this question
