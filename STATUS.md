@@ -48,7 +48,7 @@ The loop, in order:
 - **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that did not dedupe.
 - **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five different misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay. It also does not echo the requested path, because the editor mount made that wrong within a minute.
 - **A group you can leave, a lock you can read, and a lock you can still click** (`528b0d2`, `1eaaf6c`), recovered from an uncommitted tree left by a dead agent. Four defects, four reverts that go red.
-- **Gate green:** `typecheck`, `lint`, `format:check`, **2409 unit tests across 176 files**, `backlog:check` 56 rows.
+- **Gate green:** `typecheck`, `lint`, `format:check`, **2415 unit tests across 176 files**, `backlog:check` 56 rows.
 
 ## Next
 
