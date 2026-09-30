@@ -97,3 +97,35 @@ reported as fixing a field that had none. The user's sentence is the spec.
 | — | an unchanged save writes and uploads nothing — 1.21 MB → 45 KB | verified | an unchanged save writes and uploads nothing — 1.21 MB → 45 KB | `70a510f` `95803e9` |
 | U32 | the two disk dropdowns stop asking the same question | verified | the two disk dropdowns stop asking the same question | `266dfe6` |
 | — | the Arrange menu is gone; the toolbar already had all 8 | verified | the Arrange menu is gone; the toolbar already had all 8 | `95803e9` |
+
+---
+
+## How an issue becomes a row, and what is still manual
+
+The mechanic mirrors the one the user runs in **apitable** (`scripts/backlog.mjs`
+there), and it works because the *labels* carry the state:
+
+| label | means |
+|---|---|
+| `undecided` | jotted down, not yet judged by the owner |
+| `covered` | this register owns it; a row exists here |
+
+- **Jot an issue.** It sits `undecided`. Nothing reads it until asked.
+- **Pull.** On request, the open `undecided` issues are read and become rows
+  here, each carrying its issue number. The two then reconcile in both
+  directions: a row cites `#n`, an issue can be closed.
+- **Close.** An issue closes with a comment naming the row and the check that
+  ran, and takes `covered`. A close reason alone records nothing.
+
+**What is manual here and is not in apitable.** Their script closes an issue
+*mechanically* the moment a spec absorbs it, and **refuses** to close one the
+owner has parked as `undecided`. Here, closing is a comment someone writes by
+hand, so it depends on whoever closes the issue having read the row first. That
+is the honest gap, and the fix is the same shape as theirs: a small
+`scripts/backlog.mjs` that takes a row's issue numbers, refuses any that is still
+`undecided`, and closes the rest with the check named.
+
+**Until that exists, the register is the source of truth and an issue is a
+receipt —** which is safe, because a row in this file is what the gate reads, and
+an issue that never got pulled is visible as an open `undecided` issue rather than
+as a silent loss.
