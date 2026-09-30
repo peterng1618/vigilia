@@ -123,9 +123,11 @@ export async function run(argv: readonly string[]): Promise<number> {
       admin: path.join(packagesDir, "host", "public"),
     },
     themeStore: createThemeStore(themesDir),
-    // A thumbnail is this machine's rendering of a theme, so it is host state
-    // rather than part of the portable folder a save replaces wholesale.
-    thumbnails: createThumbnailStore(settingsDir),
+    // A thumbnail is this machine's rendering of a theme, so it lives in that
+    // theme's own folder rather than in a directory of its own. The editor
+    // writes it after the save that replaced the folder, which is why the
+    // library always has a picture for what was just saved.
+    thumbnails: createThumbnailStore(themesDir),
     themeSettings: createThemeSettingsStore(settingsDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,

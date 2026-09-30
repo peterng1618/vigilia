@@ -99,7 +99,7 @@ two apart is the judgement the map cannot make for itself.
 | The languages an author may pick | `editor/src/theme-languages.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
 | The consumer's clock zone | `host/src/settings/display.ts` |
-| Theme thumbnails (store and route) | `host/src/themes/thumbnails.ts` |
+| Theme thumbnails — store, location in the theme folder, and route | `host/src/themes/thumbnails.ts` |
 | Thumbnail capture in the editor | `editor/src/thumbnail-capture.ts` |
 | Shell chrome, rail, inspector tabs, menus | `editor/src/editor-shell/shell-layout.tsx` |
 | Shell palette | `editor/src/editor-shell/palette.ts` |

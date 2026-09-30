@@ -22,11 +22,11 @@ opening the editor, and it must never be the thing a display loads.
 
 ## Design
 
-### Rendered, then stored beside the package
+### Rendered, then stored in the theme's own folder
 
 The host renders the thumbnail at save time using the player's existing renderer
-path, and stores it next to the package in the theme store. The package format
-does **not** change.
+path, and stores it inside the theme's own folder, beside `theme.json` and
+`assets/`. The package format does **not** change.
 
 Why not inside the package: `theme-package` deliberately admits exactly
 `manifest.json`, `theme.json` and `assets/*`, and it is a validated, portable
@@ -56,9 +56,10 @@ captures: no animation, a fixed clock, fonts awaited before the shot.
 
 ### Storage
 
-Beside the package, under the theme store's directory, named for the theme id.
-A missing or unreadable thumbnail is not an error: the library falls back to the
-name-only listing it has today.
+Inside the theme's own folder, as `thumbnail.png` (ADR-0017). A theme is a
+folder, so a theme and its picture are one thing on disk, and removing the
+folder removes the picture. A missing or unreadable thumbnail is not an error:
+the library falls back to the name-only listing it has today.
 
 ### Served like any other theme read
 
