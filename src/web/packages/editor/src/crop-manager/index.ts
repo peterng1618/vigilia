@@ -112,6 +112,11 @@ export function createCropManager(options: CropManagerOptions): CropManager {
       const bounds = target.getBoundingRect();
       image = target;
       frame = new Rect({
+        // `getBoundingRect` reports a corner and a `Rect` is anchored at its
+        // centre, so without these the frame drew a whole image up and to the
+        // left of the image, three of its four crop edges off the canvas.
+        originX: "left",
+        originY: "top",
         left: bounds.left,
         top: bounds.top,
         width: bounds.width,

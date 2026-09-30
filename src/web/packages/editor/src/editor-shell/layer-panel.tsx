@@ -36,6 +36,31 @@ const TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>> = {
   expanded: ChevronDown,
 };
 
+/** Locked is a filled lock, unlocked an outline one: at 13px the outlines differ
+ * only by a gap in the shackle. `fill` is part of `LucideProps` and overrides
+ * Lucide's own `fill="none"`, so the weight changes without a second glyph. */
+const LOCK_STATES: Readonly<
+  Record<"locked" | "unlocked", { readonly icon: LucideIcon; readonly fill?: string }>
+> = {
+  locked: { icon: Lock, fill: "currentColor" },
+  unlocked: { icon: Unlock },
+};
+
+/** `exactOptionalPropertyTypes` is on, so the absent fill is spread in rather
+ * than passed as `undefined` — that would type-check but defeat the default. */
+function LockStateIcon({ locked }: { readonly locked: boolean }): React.JSX.Element {
+  const state = LOCK_STATES[locked ? "locked" : "unlocked"];
+  const Icon = state.icon;
+  return (
+    <Icon
+      aria-hidden
+      size={13}
+      strokeWidth={1.75}
+      {...(state.fill === undefined ? {} : { fill: state.fill })}
+    />
+  );
+}
+
 /** Selection is external mutable state and Fabric owns it, so the projection is
  * cached rather than rebuilt per `getSnapshot`: React compares snapshots with
  * `Object.is`, and a fresh array each call re-renders forever. */
@@ -311,11 +336,7 @@ export function LayerPanel({
                   store.mutate(() => bridge?.setLayerLocked(row.id, !row.locked));
                 }}
               >
-                {row.locked ? (
-                  <Lock aria-hidden size={13} strokeWidth={1.75} />
-                ) : (
-                  <Unlock aria-hidden size={13} strokeWidth={1.75} />
-                )}
+                <LockStateIcon locked={row.locked} />
               </button>
             </div>
           );

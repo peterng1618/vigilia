@@ -97,6 +97,44 @@ describe("CropManager", () => {
     expect(frame?.excludeFromExport).toBe(true);
   });
 
+  it("draws the frame over the image, so all four of its edges are reachable", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const image = imageObject();
+    image.set({ left: 250, top: 180 });
+    canvas.add(image);
+    canvas.setActiveObject(image);
+    const crop = manager(canvas);
+
+    crop.begin();
+    const frame = canvas
+      .getObjects()
+      .find((object): object is Rect => object !== image) as Rect;
+    frame.setCoords();
+
+    // A `Rect`'s origin is its centre, so a frame given the image's corner
+    // without saying so is drawn a whole image up and to the left — and three
+    // of its four edges, with the handles that crop from them, are off the
+    // canvas. The frame has to cover what it frames.
+    const imageBounds = image.getBoundingRect();
+    const frameBounds = frame.getBoundingRect();
+    expect({
+      origin: `${frame.originX}/${frame.originY}`,
+      frameLeft: Math.round(frameBounds.left),
+      imageLeft: Math.round(imageBounds.left),
+      frameTop: Math.round(frameBounds.top),
+      imageTop: Math.round(imageBounds.top),
+    }).toEqual({
+      origin: "left/top",
+      frameLeft: Math.round(imageBounds.left),
+      imageLeft: Math.round(imageBounds.left),
+      frameTop: Math.round(imageBounds.top),
+      imageTop: Math.round(imageBounds.top),
+    });
+    // Within the frame's own 1px stroke, which is the edge the author sees.
+    expect(frame.getScaledWidth()).toBeCloseTo(imageBounds.width, -1);
+    expect(frame.getScaledHeight()).toBeCloseTo(imageBounds.height, -1);
+  });
+
   it("refuses to crop a rotated image and warns", () => {
     const canvas = new Canvas(document.createElement("canvas"));
     const image = imageObject({ angle: 30 });

@@ -172,6 +172,13 @@ function applyArtboardPaint(
   editor.canvas.requestRenderAll();
 }
 
+/** Whether `object` is the entered group or one of its direct children. Mirrors
+ * the grouping manager's own reachability rule; the manager does not publish
+ * it, and the entry is a single level rather than a walk. */
+function insideGroup(object: FabricObject, entry: FabricObject): boolean {
+  return object === entry || object.parent === entry;
+}
+
 function createNativeEditor(input: {
   readonly container: HTMLElement;
   readonly host: HTMLElement;
@@ -209,25 +216,39 @@ function createNativeEditor(input: {
   const text = createTextManager(canvas, save, (message) =>
     errors.warn("controls", message),
   );
+  const objectLockManager = createObjectLockManager(canvas, save);
 
   const grouping = createGroupingManager({
     canvas,
     save,
     suspend: () => history.suspend(),
   });
-  /** Double-click enters the group the pointer resolved to. `text-manager` owns
-   * this event too and returns early for a non-`IText` target, so a group
-   * double-click reaches here untouched rather than being taken over. The scene
-   * point goes with it: Fabric resolved the group, and only the manager can
-   * re-resolve the child beneath it. */
+  /** Double-click enters the group the pointer resolved to, and leaves the one
+   * already entered when the pointer was outside it — the same gesture both ways,
+   * which is what makes the way out discoverable. Escape stays the keyboard
+   * route. `text-manager` owns this event too and returns early for a non-`IText`
+   * target, so a group double-click reaches here untouched rather than being
+   * taken over. The scene point goes with it: Fabric resolved the group, and
+   * only the manager can re-resolve the child beneath it. */
   const enterGroupOnDoubleClick = (event: {
     readonly target?: unknown;
     readonly scenePoint?: Point;
   }): void => {
-    const target = event.target;
+    const target = event.target as FabricObject | undefined | null;
+    const entered = grouping.groupContext()[0];
+    // Everything outside an entered group is `evented: false`, so Fabric
+    // resolves a double-click out there to nothing at all — no target *is* the
+    // outside. Without this a miss was silent and only Escape could leave.
+    if (
+      entered !== undefined &&
+      (target == null || !insideGroup(target, entered))
+    ) {
+      grouping.exitGroup();
+      return;
+    }
     if (target === undefined || target === null) return;
     grouping.enterGroup({
-      object: target as FabricObject,
+      object: target,
       ...(event.scenePoint === undefined
         ? {}
         : { scenePoint: event.scenePoint }),
@@ -251,7 +272,7 @@ function createNativeEditor(input: {
     textManager: text,
     imageManager: images,
     layerManager: createLayerManager(canvas, save),
-    objectLockManager: createObjectLockManager(canvas, save),
+    objectLockManager,
     errorManager: errors,
     cropManager: createCropManager({
       canvas,
@@ -273,6 +294,7 @@ function createNativeEditor(input: {
       text.destroy();
       images.destroy();
       grouping.destroy();
+      objectLockManager.destroy();
       canvas.off("mouse:dblclick" as never, enterGroupOnDoubleClick as never);
       unbindNavigation();
       viewport.destroy();

@@ -52,6 +52,7 @@ export interface EditorInteraction {
   readonly objectLockManager: {
     lockObject(input?: { readonly object?: FabricObject }): void;
     unlockObject(input?: { readonly object?: FabricObject }): void;
+    destroy(): void;
   };
   readonly historyManager: {
     saveState(): void;

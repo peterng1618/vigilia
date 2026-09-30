@@ -375,3 +375,32 @@ it("only marks a drop slot that would actually land", async () => {
   expect(selectLayer).not.toHaveBeenCalled();
   expect(line().hidden).toBe(true);
 });
+
+it("draws locked as a filled lock and unlocked as an outline one", async () => {
+  // vg-024: at 13px the two outline locks differ only by a gap in the shackle,
+  // which the author could not tell apart. Filled versus outline is a
+  // difference in weight the row can be read by at that size, and it comes from
+  // the icon's own `fill` rather than from hand-picking a second glyph.
+  const host = await renderPanel([
+    { id: "shut", name: "Shut", kind: "shape", depth: 0, parentId: undefined,
+      hasChildren: false, visible: true, locked: true, selected: false },
+    { id: "open", name: "Open", kind: "shape", depth: 0, parentId: undefined,
+      hasChildren: false, visible: true, locked: false, selected: false },
+  ]);
+  // Both state buttons carry `aria-pressed`, so the lock one is named rather
+  // than positional: the visibility icon would satisfy a bare attribute match.
+  const lock = (id: string): SVGSVGElement | null =>
+    host.querySelector(
+      `[data-vigilia-layer="${id}"] button[aria-label="Lock"], [data-vigilia-layer="${id}"] button[aria-label="Unlock"]`,
+    )?.querySelector("svg") ?? null;
+
+  // Lucide's own default is `fill: none`; the locked row overrides it.
+  expect(lock("shut")?.getAttribute("fill")).toBe("currentColor");
+  // The other half of the contract: the unlocked row is untouched, so a fix
+  // that filled everything would fail here rather than pass.
+  expect(lock("open")?.getAttribute("fill")).toBe("none");
+  // Same glyph family either way — the difference is the property, not a
+  // different drawing.
+  expect(lock("shut")?.getAttribute("class")).toContain("lucide-lock");
+  expect(lock("open")?.getAttribute("class")).toContain("lucide-lock-open");
+});
