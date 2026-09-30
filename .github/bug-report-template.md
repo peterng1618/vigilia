@@ -10,10 +10,19 @@ The form a human fills in the browser is `.github/ISSUE_TEMPLATE/bug.yml`; it
 asks the same questions. This file is the same shape in a form `gh` can post.
 
 **Where the record lives:** an issue is an INPUT, not the backlog.
-`docs/product/backlog.jsonl` is the source of truth and `npm run backlog:check`
-enforces its states; this issue is pulled into that file when asked, and is
-closed with a comment naming the check that ran. Do not treat closing an issue
-as fixing a thing — the doc is what gets closed.
+`docs/product/backlog.jsonl` holds the rows that can still be worked;
+`docs/product/backlog-archive.jsonl` holds the closed ones, grepped rather than
+read. `npm run backlog:check` enforces both — it derives a `verified` row's
+closure from git, so a row citing a commit that never landed is refused. This
+issue is pulled into the register when asked, and is closed with a comment
+naming the row and the check that ran. Do not treat closing an issue as fixing a
+thing — the row is what gets closed.
+
+**A finding not fixed in the same task does not need an issue at all.** Put it
+in that commit's message as a `Discovered, not fixed:` trailer — or
+`Found by the user, not fixed:` when the user raised it — and run
+`npm run backlog:file`, which files a row per bullet. One line in a message
+already being written beats a second surface to keep in sync.
 -->
 
 **What happens**

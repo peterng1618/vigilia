@@ -31,10 +31,11 @@
  * `withdrawn`. A row leaves the live file at the moment it reaches a closed state.
  *
  * The split is by state rather than by count because a count is a chore with no
- * trigger. "Archive once 20 completed rows pile up" was already breached — 33 of
- * 58 rows were `verified` — and had not fired for two sessions, because every
- * session must first decide whether it is due. Splitting by state makes the live
- * file short by construction instead of by decree.
+ * trigger: every session would have to decide whether it was due. "Archive once
+ * 20 completed rows pile up" was proposed in discussion and rejected on those
+ * merits — no such rule was ever implemented, and its number was already
+ * arbitrary against the 33 verified rows present at the time. Splitting by state
+ * makes the live file short by construction instead of by decree.
  *
  * Everything every git-native tracker does here is on the record in
  * `docs/decisions/0019`. Two properties the split would otherwise cost:

@@ -1,5 +1,15 @@
 # GitHub Issues Backlog Implementation Plan
 
+> **Superseded 2026-10-01 — do not execute.** This plan ran on 2026-09-27
+> (`fea0aee`, `docs/bugs/` removed and `docs/README.md` repointed at Issues), and
+> the system it installed was then overtaken by the in-repo register in
+> [ADR-0019](../../decisions/0019-the-backlog-is-two-files-split-by-state.md).
+> Its 32 unchecked boxes were never ticked and are **not** work outstanding — the
+> boxes record the plan's own tracking convention, not the state of the repo. The
+> design record is the
+> [spec](../specs/2026-09-27-github-issues-backlog-design.md); the current rules
+> are in [`AGENTS.md`](../../../AGENTS.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the in-repo `docs/bugs/` registry with GitHub Issues, in a

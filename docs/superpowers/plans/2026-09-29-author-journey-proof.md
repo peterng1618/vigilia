@@ -148,6 +148,8 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 **This section is live and grows.** The pass is driven by using the product, and every gap found is either fixed here or recorded. Priorities are re-ordered as new findings arrive — a P1 becomes P0 if it blocks the rebuild, and finished items move to the archived tail rather than disappearing.
 
+**The registry itself is `docs/product/backlog.jsonl`** (open rows) and `docs/product/backlog-archive.jsonl` (closed rows), split by state per [ADR-0019](../../decisions/0019-the-backlog-is-two-files-split-by-state.md); this section is the pass's narrative of the same work. A finding not fixed in the task that found it rides that task's commit as a `Discovered, not fixed:` trailer and `npm run backlog:file` files it.
+
 **Standing instruction (2026-09-29):** this plan's scope is whatever it takes to ship. Finding something broken, missing, misaligned, hard to read, or inconsistent with the repo's own conventions means it enters this backlog and gets done — not that it gets noted for later.
 
 ## START HERE — the next session's queue, in order

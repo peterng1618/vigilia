@@ -10,9 +10,13 @@ The defect registry had one shape problem and one enforcement problem.
 
 The shape: `docs/product/backlog.jsonl` held every row forever. At 58 rows, 33 of
 them `verified`, a fresh session read a third of a document to find out what was
-still open. The obvious fix — "archive when more than 20 completed rows pile up" —
-is a chore with no trigger: every session must first check whether it is due, and
-it had already been breached for two sessions without firing.
+still open. The obvious fix — "archive when more than 20 completed rows pile up" — was
+raised in discussion on 2026-10-01 and is worth rejecting on its merits. It is a
+chore with no trigger: every session would have to check whether it was due and
+skip it when it was not, and the count it names (20) was already exceeded by the
+33 verified rows present at the time, which is the tell that the number was
+arbitrary. **No such rule ever existed** — nothing enforced it and nothing
+failed; it was a proposal, and it loses to splitting by state.
 
 The enforcement: a row's status was a word an agent typed into a file, inside the
 same session that would have changed it. Nothing outside that session could
@@ -95,7 +99,7 @@ has. Adding one would import constraint-1 risk and solve nothing.
 | Option | Fit | Cost | Risk | Verdict |
 |---|---|---|---|---|
 | One file, never archive | reading cost grows without bound | none | a fresh session pays to read history every time | rejected |
-| One file, archive at >20 completed | churns on a trigger nobody runs | a rule to check, then skip | already breached for two sessions without firing | rejected |
+| One file, archive at >20 completed | churns on a trigger nobody runs | a rule to check, then skip | the number was already arbitrary against 33 verified rows; no such rule was ever implemented | rejected |
 | Adopt renga/flatissues | a real tracker, well built | a second task tracker beside Superpowers | claims the task tracker by its own docs; status still session-scoped | rejected |
 | **Two files split by state; git derives closure** | transition needs no decision at the moment it happens | a `defer` field, one gate rule, one script | refs span two files | **chosen** |
 
@@ -103,8 +107,9 @@ has. Adding one would import constraint-1 risk and solve nothing.
 
 Run against the live registry, 58 rows:
 
-- 33 `verified`, 22 `open`, 3 `withdrawn`. The proposed >20-completed rule is
-  breached today and has been for two sessions.
+- 33 `verified`, 22 `open`, 3 `withdrawn`. The proposed >20-completed threshold
+  was already exceeded by the verified count alone, which is why the number itself
+  was the tell — it was a proposed rule, never an implemented one.
 - 6 of 22 `open` rows carry no `owner`, no `check` and no `issue`: vg-031, -032,
   -033, -037, -040, -050. Read individually, all six are genuinely parked —
   vg-040 is ruled but needs a spec, vg-037 is characterised-not-fixed, vg-031 and
