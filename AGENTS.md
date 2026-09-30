@@ -77,15 +77,46 @@ Vigilia process.
   took and why, in the commit. **If a third attempt at the same defect fails,
   record it in the same commit and say what was tried** — the third failure is
   the trigger, not the absence of a record, so it survives compaction and a
-  fresh root. **The register is
-  [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl)**, which is the source of
-  truth for what is known, what is fixed and what is verified; a GitHub issue is
-  an input surface for jotting an idea down, and never the register itself. Fill
-  a row there — `npm run backlog:check` refuses a `verified` row whose check
-  does not name the thing that was reported. A filed issue is pulled into the
-  register when asked; an issue is closed with a comment naming the row and the
-  check that ran, and the close reason alone records nothing. Do not duplicate a
-  finding in specs, status or reports; plans may link it.
+  fresh root.
+- **What goes in the register.** **File it** if the user raised it, or you found
+  it and it is not the task you are doing. The test is not effort — a one-line fix
+  in an unrelated file still gets a row, and a large one inside the task you are
+  already doing does not — but whether fixing it now means holding two problems in
+  one head. **Do not file it** if it *is* the task (the plan or ledger owns it), or
+  if it is a bug you introduced *in* this task and are fixing *in* it; found
+  *while* doing the task is the first rule. **Withdraw it** only having reasoned
+  with the user that we should not, with `detail` recording what they said — the
+  decision is theirs, an agent's hand writes it. Provenance goes in `detail` as
+  prose ("the user found this testing on a phone"), because that is what a
+  controller with no memory of the finding needs.
+- **Filing rides the commit you were already writing.** Put a finding you are not
+  fixing in that commit's message as a `Discovered, not fixed:` trailer — or
+  `Found by the user, not fixed:` for the user's — and materialise the row from
+  it. One line in a message being composed regardless costs nothing; opening a
+  file, running a command and choosing a category at the moment your context is
+  most poisoned is what loses the finding. This is also the only durable path for
+  the user's own feedback, since no `UserPromptSubmit` hook is registered and a
+  message otherwise lives alone in the root session's context and dies with it.
+- **The register is two files, split by state**
+  ([`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) holds what can still
+  be worked; [`backlog-archive.jsonl`](docs/product/backlog-archive.jsonl) holds
+  `verified` and `withdrawn`). Split by state rather than by count, because a count
+  is a chore with no trigger: a row leaves the live file at the moment it reaches a
+  closed state. **The archive is grepped, not read** — it is the anti-double-report
+  record, so grep it before filing a row.
+- **`verified` is enforced two ways, and the check is the stronger one.** A
+  `verified` row needs a `check` naming a word from its own `title`, so a check of
+  a capability *nearby* is not a check of this finding — that mistake cost two
+  false "landed" reports, both caught by the user testing. It also needs
+  `artefacts` naming a sha that resolves and is an ancestor of HEAD, which answers
+  a question the check cannot: whether that work still exists on the mainline
+  rather than on a branch that was lost. The check proves the named problem was
+  addressed; the sha proves the commit is real. Neither substitutes for the other.
+- A GitHub issue is an input surface for jotting an idea down, and never the
+  register itself. A filed issue is pulled into the register when asked; an issue
+  is closed with a comment naming the row and the check that ran, and the close
+  reason alone records nothing. Do not duplicate a finding in specs, status or
+  reports; plans may link it.
 - A filed request is `undecided` until judged, and `covered` once the register
   owns it. An accepted request closes with a link to the spec, plan or row that
   now owns it; a declined one closes as `not planned` **and carries its reason in

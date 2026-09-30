@@ -36,6 +36,7 @@
  *    false "landed" reports on 2026-09-30, both found by the user testing.
  * 3. An `unverified` item carries a `note` saying what claims it is fixed.
  */
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -129,6 +130,35 @@ export function check(items) {
             `      a check of a capability nearby is not a check of this finding`,
         );
       }
+      // The check above is the stronger of the two, and it cannot answer this
+      // question: whether the work it names still exists. Exists and is an
+      // ancestor of HEAD are separate, and a sha can resolve while sitting on a
+      // branch that was never merged — the shape of ten agents that died
+      // mid-task with their work uncommitted. Read-only git calls, no shell:
+      // execFileSync takes an argv array, so a sha cannot become a command.
+      const shas = Array.isArray(item.artefacts) ? item.artefacts : [];
+      if (shas.length === 0) {
+        problems.push(
+          `${where}: verified with no artefact commit — name the sha that closed it, so this ` +
+            `stays checkable after the session that fixed it is gone`,
+        );
+      }
+      for (const sha of shas) {
+        try {
+          execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: ROOT, stdio: "ignore" });
+        } catch {
+          problems.push(`${where}: artefact ${sha} does not resolve to a commit`);
+          continue;
+        }
+        try {
+          execFileSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { cwd: ROOT, stdio: "ignore" });
+        } catch {
+          problems.push(
+            `${where}: artefact ${sha} is not an ancestor of HEAD — it is on a branch that was ` +
+              `never merged, or was lost, so nothing downstream can rely on it`,
+          );
+        }
+      }
     }
     if (item.state === "unverified" && !item.note) {
       problems.push(`${where}: unverified with no note — say what claims it is fixed`);
@@ -150,6 +180,9 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       source: "agent",
       title: "the circle reads stronger than the rect",
       check: "hovered the circle's glass and compared it with the rect's",
+      // HEAD at the time this was written: a sha that resolves and is an
+      // ancestor of itself, which is the only shape the positive case can have.
+      artefacts: ["HEAD"],
     };
     const cases = [
       ["a valid item passes", ok(valid)],
@@ -160,6 +193,9 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["an unknown source fails", bad({ ...valid, source: "maybe" })],
       ["an open item needs no check", ok({ ...valid, state: "open", check: undefined })],
       ["unverified with no note fails", bad({ ...valid, state: "unverified", check: undefined })],
+      // The sha rule answers what the check cannot: does the work still exist.
+      ["verified with no artefact commit fails", bad({ ...valid, artefacts: [] })],
+      ["an artefact that is not a commit fails", bad({ ...valid, artefacts: ["a1b2c3d"] })],
       ["a malformed line loses one item, not the file", parse('{"id":"a","statement":"x","state":"open","source":"user"}\nnot json\n{"id":"b","statement":"y","state":"open","source":"user"}').items.length === 2],
     ];
     const failed = cases.filter(([, pass]) => !pass);
