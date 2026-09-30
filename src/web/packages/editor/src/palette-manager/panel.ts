@@ -6,6 +6,7 @@ import type {
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { ColourPicker } from "../components/ui/colour-picker.js";
+import { GradientEditor } from "../components/ui/gradient-editor.js";
 import { uiCopy } from "../ui-copy.js";
 
 /** An object a token is linked to. The name is what the panel shows; the id
@@ -266,6 +267,24 @@ function mountPicker(
   host.dataset["vigiliaPalettePicker"] = "";
 }
 
+function mountGradient(
+  host: HTMLElement,
+  value: Extract<PalettePaint, { readonly kind: "gradient" }>,
+  commit: (entry: FabricPaletteEntry) => void,
+  entry: FabricPaletteEntry,
+): void {
+  const root = createRoot(host);
+  root.render(
+    React.createElement(GradientEditor, {
+      stops: value.stops,
+      angle: value.angle,
+      label: uiCopy.panels.gradient,
+      onChange: ({ stops, angle }) =>
+        commit({ ...entry, value: { ...value, stops, angle } }),
+    }),
+  );
+}
+
 function gradientFields(
   entry: FabricPaletteEntry,
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
@@ -283,6 +302,15 @@ function gradientFields(
     commit({ ...entry, value: { ...value, angle: next } });
   });
   const fields: HTMLElement[] = [angle.label, angle.input];
+
+  // The visual editor: a preview of the gradient it produces and a track whose
+  // handles are its stops, each opening the shared picker. The number and text
+  // fields below stay, because a drag cannot land on 0.37 exactly.
+  const host = document.createElement("div");
+  host.dataset["vigiliaPaletteGradient"] = "";
+  fields.push(host);
+  mountGradient(host, value, commit, entry);
+
   for (const [index, stop] of value.stops.entries()) {
     const offset = field(
       uiCopy.panels.stopPosition(index + 1),
