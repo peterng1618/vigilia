@@ -103,6 +103,12 @@ export function createEditorShellBridge(input: {
     "selection:updated",
     "selection:cleared",
     "object:modified",
+    // A deleted object fires no selection event, so the layer list kept
+    // showing a row for something the canvas no longer had — and the inspector
+    // went on reading its geometry. Deletion is the one edit that most needs the
+    // projection to move, because the row it removes is the proof it happened.
+    "object:removed",
+    "object:added",
     // Entering or leaving a group moves no selection, so Fabric fires nothing
     // for it — the panel would repaint only when something unrelated did.
     GROUP_CONTEXT_EVENT,

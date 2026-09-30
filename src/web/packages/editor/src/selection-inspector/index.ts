@@ -553,6 +553,12 @@ export function createSelectionInspector(
   editor.canvas.on("selection:created", render);
   editor.canvas.on("selection:updated", render);
   editor.canvas.on("selection:cleared", render);
+  // A deletion fires no selection event — the active object is discarded first,
+  // so the panel went on showing the deleted object's name and geometry while
+  // the layer list and canvas had both moved on. The three surfaces disagreed
+  // about what the document contained.
+  editor.canvas.on("object:removed", render);
+  editor.canvas.on("object:added", render);
   // Restoring history rebuilds the scene and drops the selection; the fields
   // must re-bind to the same object rather than vanishing.
   editor.canvas.on("editor:history-state-loaded" as never, render);

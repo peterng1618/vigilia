@@ -54,6 +54,14 @@ function bridgeFor(
   const canvas = {
     getActiveObject: () => active,
     getObjects: () => objects,
+    // Fabric's own add/remove, so a test that deletes or inserts is projecting
+    // from the same array the canvas reports. A stub that only answered
+    // `getObjects` would make every staleness test pass for the wrong reason.
+    add: (object: NonNullable<typeof active>) => objects.push(object),
+    remove: (object: NonNullable<typeof active>) => {
+      const index = objects.indexOf(object);
+      return index < 0 ? [] : objects.splice(index, 1);
+    },
     requestRenderAll: vi.fn(),
     on: vi.fn((name: string, listener: () => void) =>
       listeners.set(name, listener),
@@ -188,6 +196,34 @@ it("gates ungroup on a real Group selection", () => {
 
   expect(bridge.can("ungroup")).toBe(true);
   expect(bridge.can("group")).toBe(false);
+});
+
+it("republishes when an object is deleted, so the row goes with it", () => {
+  // A deletion fires no selection event — the active object is discarded
+  // first — so the projection was never re-read and the layer list kept a row
+  // for something the canvas no longer had. The layer list, the canvas and the
+  // inspector disagreed about what the document contained.
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge, canvas } = bridgeFor(rect);
+  const heard = vi.fn();
+  bridge.subscribe(heard);
+
+  canvas.remove(rect);
+  canvas.fire("object:removed", { target: rect });
+  expect(heard).toHaveBeenCalled();
+  expect(bridge.layers().map((row) => row.id)).not.toContain("header");
+});
+
+it("republishes when an object is added", () => {
+  const { bridge, canvas } = bridgeFor(undefined);
+  const heard = vi.fn();
+  bridge.subscribe(heard);
+
+  const added = new Rect({ id: "footer", width: 10, height: 10 });
+  canvas.add(added);
+  canvas.fire("object:added", { target: added });
+  expect(heard).toHaveBeenCalled();
+  expect(bridge.layers().map((row) => row.id)).toContain("footer");
 });
 
 it("carries the object's display name into the projection and back out again", () => {
