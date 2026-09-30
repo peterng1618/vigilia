@@ -9,6 +9,14 @@ import type { ViewportManager } from "./viewport-manager/index.js";
 /** Product panels depend only on the editor mechanics they exercise. */
 export interface EditorInteraction {
   readonly canvas: Canvas;
+  /**
+   * The authored frame the canvas is a viewport onto, as it is *now*.
+   *
+   * A getter because the artboard is resizable, and a placement computed
+   * against the frame the author has since replaced is a ladder that no longer
+   * ends inside the picture.
+   */
+  readonly artboard: () => { readonly width: number; readonly height: number };
   /** The camera over the canvas: the single writer of its viewport transform. */
   readonly viewport: ViewportManager;
   readonly imageManager: {

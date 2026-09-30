@@ -18,6 +18,10 @@ import {
   createNewTextDefaults,
   frostedShapeFill,
   NEW_OBJECT_INSET,
+  NEW_PANEL_SIZE,
+  NEW_OBJECT_STEP,
+  newObjectPlacement,
+  nextNewObjectPlacement,
   newObjectName,
   SHAPE_KINDS,
   type ShapeKind,
@@ -65,6 +69,14 @@ const CLOSED_KINDS = SHAPE_KINDS.filter(
 );
 
 /**
+ * The first cascade slot, which is where every one of these objects was placed
+ * before the cascade existed. The cascade itself is exercised in its own
+ * describe block; what these cases are about is everything a new object is
+ * *not* — its name, its paint, its size — so they all share one position.
+ */
+const placement = newObjectPlacement(0, { width: 1920, height: 1080 });
+
+/**
  * The kinds a frosted treatment may sit on — a **different** set from
  * `CLOSED_KINDS` above, and the difference is the point. A closed path answers
  * "does an author fill this?", and `path` passes it. Frosting answers "is
@@ -105,13 +117,13 @@ describe("new object defaults", () => {
     // Fabric's centre origin, so the inspector's X and Y were the middle of the
     // object. A card is placed by its left edge, and a label that cannot be
     // placed by the same edge cannot be lined up with one.
-    const defaults = createNewTextDefaults(globals, "New text");
+    const defaults = createNewTextDefaults(globals, "New text", placement);
 
     expect(defaults).toMatchObject({ originX: "left", originY: "top" });
   });
 
   it("derives per-run palette and type-preset references for new text", () => {
-    const defaults = createNewTextDefaults(globals, "New text");
+    const defaults = createNewTextDefaults(globals, "New text", placement);
 
     expect(defaults).toMatchObject({
       fill: "#102030",
@@ -135,7 +147,11 @@ describe("new object defaults", () => {
   it("refuses to invent local paint or type values when references are unavailable", () => {
     expect(() => createNewPaintDefaults(undefined)).toThrow("palette token");
     expect(() =>
-      createNewTextDefaults({ palette: globals.palette }, "New text"),
+      createNewTextDefaults(
+        { palette: globals.palette },
+        "New text",
+        placement,
+      ),
     ).toThrow("type preset");
   });
 
@@ -159,8 +175,10 @@ describe("new object defaults", () => {
     // The Add pane's own labels are the naming this repo already has; a new
     // object that shows its id instead would be a wall of uuids from the first
     // click, and the author would have nothing to tell two panels apart.
-    expect(createNewPanelDefaults(globals).name).toBe(uiCopy.panels.panel);
-    expect(createNewTextDefaults(globals, "New text").name).toBe(
+    expect(createNewPanelDefaults(globals, placement).name).toBe(
+      uiCopy.panels.panel,
+    );
+    expect(createNewTextDefaults(globals, "New text", placement).name).toBe(
       uiCopy.panels.text,
     );
   });
@@ -193,13 +211,13 @@ describe("new object defaults", () => {
 
   it("gives a newly built shape the name its kind implies", () => {
     for (const kind of SHAPE_KINDS) {
-      const shape = createNewShape(`panel-1`, globals, kind);
+      const shape = createNewShape(`panel-1`, globals, kind, placement);
       expect(shape.get("name")).toBe(newObjectName(kind));
     }
   });
 
   it("derives a new panel from a surface token, not a content one", () => {
-    const defaults = createNewPanelDefaults(globals);
+    const defaults = createNewPanelDefaults(globals, placement);
 
     // A panel is a surface. `ink` is the token a new *text* object takes, and
     // painting a whole card in it would hide every label the author puts on it.
@@ -210,7 +228,7 @@ describe("new object defaults", () => {
   });
 
   it("places a new panel inset, at artboard coordinates, sized and rounded", () => {
-    const defaults = createNewPanelDefaults(globals);
+    const defaults = createNewPanelDefaults(globals, placement);
 
     expect(defaults.left).toBe(NEW_OBJECT_INSET);
     expect(defaults.top).toBe(NEW_OBJECT_INSET);
@@ -225,7 +243,9 @@ describe("new object defaults", () => {
   });
 
   it("refuses a new panel without a palette token", () => {
-    expect(() => createNewPanelDefaults(undefined)).toThrow("palette token");
+    expect(() => createNewPanelDefaults(undefined, placement)).toThrow(
+      "palette token",
+    );
   });
 });
 
@@ -269,7 +289,12 @@ describe("new shape defaults", () => {
   it.each(CLOSED_KINDS)(
     "fills a new %s as a card, not as the scene's own backdrop",
     (kind) => {
-      const shape = createNewShape(`shape-${kind}`, cardGlobals, kind);
+      const shape = createNewShape(
+        `shape-${kind}`,
+        cardGlobals,
+        kind,
+        placement,
+      );
 
       // A shape the author draws is a surface they will put something on, and
       // `background` is what is painted behind it. Filling a whole shape with
@@ -287,7 +312,7 @@ describe("new shape defaults", () => {
     // then the best surface it has, which is the fallback the surface list was
     // always for.
     for (const kind of CLOSED_KINDS) {
-      const shape = createNewShape(`shape-${kind}`, globals, kind);
+      const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
       expect(shape.get(VIGILIA_PAINT_PROPERTY), kind).toEqual({
         fill: "palette.background",
       });
@@ -299,7 +324,12 @@ describe("new shape defaults", () => {
     (kind) => {
       // The other half of the same rule: an open shape is stroked, and a
       // stroke in a surface colour is as invisible as a fill in one.
-      const shape = createNewShape(`shape-${kind}`, cardGlobals, kind);
+      const shape = createNewShape(
+        `shape-${kind}`,
+        cardGlobals,
+        kind,
+        placement,
+      );
 
       expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
         stroke: "palette.text",
@@ -311,7 +341,7 @@ describe("new shape defaults", () => {
   it.each(SHAPE_KINDS)(
     "places a new %s inset, at artboard coordinates",
     (kind) => {
-      const shape = createNewShape(`shape-${kind}`, globals, kind);
+      const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
 
       expect(shape.left).toBe(NEW_OBJECT_INSET);
       expect(shape.top).toBe(NEW_OBJECT_INSET);
@@ -324,7 +354,7 @@ describe("new shape defaults", () => {
   );
 
   it.each(SHAPE_KINDS)("gives a new %s a visible size", (kind) => {
-    const shape = createNewShape(`shape-${kind}`, globals, kind);
+    const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
 
     expect(shape.width).toBeGreaterThan(0);
     expect(shape.height).toBeGreaterThan(0);
@@ -333,7 +363,7 @@ describe("new shape defaults", () => {
   it.each(SHAPE_KINDS)(
     "gives a new %s a palette reference, not a literal",
     (kind) => {
-      const shape = createNewShape(`shape-${kind}`, globals, kind);
+      const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
 
       // The saved document is only palette-reassignable if the shape carries its
       // own reference. An open shape is stroked, so it references a stroke.
@@ -348,9 +378,9 @@ describe("new shape defaults", () => {
 
   it("refuses a new shape without a palette token", () => {
     for (const kind of SHAPE_KINDS) {
-      expect(() => createNewShape(`shape-${kind}`, undefined, kind)).toThrow(
-        "palette token",
-      );
+      expect(() =>
+        createNewShape(`shape-${kind}`, undefined, kind, placement),
+      ).toThrow("palette token");
     }
   });
 });
@@ -362,7 +392,7 @@ describe("the surface a shape takes once it is frosted", () => {
     // control read as a tint over a smooth gradient rather than as glass. The
     // treatment and the surface are one decision, and only one of the two
     // carried it.
-    const shape = createNewShape("glass-1", frostGlobals, "rect");
+    const shape = createNewShape("glass-1", frostGlobals, "rect", placement);
 
     expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
       fill: "palette.panel",
@@ -408,7 +438,7 @@ describe("the surface a shape takes once it is frosted", () => {
     // The fill reference is what a save keeps; the resolved colour is what the
     // author sees. Both have to come back, or the material is one reload from
     // being a flat tint again.
-    const shape = createNewShape("glass-2", frostGlobals, "rect");
+    const shape = createNewShape("glass-2", frostGlobals, "rect", placement);
     shape.set(VIGILIA_PAINT_PROPERTY, {
       fill: frostedShapeFill(
         frostGlobals,
@@ -433,7 +463,9 @@ describe("the surface a shape takes once it is frosted", () => {
 describe("a new shape through the persisted envelope", () => {
   it.each(SHAPE_KINDS)("the validator accepts a saved %s", (kind) => {
     const result = validateFabricThemeEnvelope(
-      envelopeWith(saved(createNewShape(`shape-${kind}`, globals, kind))),
+      envelopeWith(
+        saved(createNewShape(`shape-${kind}`, globals, kind, placement)),
+      ),
     );
 
     expect(result.ok, kind).toBe(true);
@@ -442,7 +474,9 @@ describe("a new shape through the persisted envelope", () => {
   it.each(SHAPE_KINDS)(
     "a saved %s keeps its own property through revival",
     async (kind) => {
-      const before = saved(createNewShape(`shape-${kind}`, globals, kind));
+      const before = saved(
+        createNewShape(`shape-${kind}`, globals, kind, placement),
+      );
       const revived = await revive(before);
       const after = saved(revived);
 
@@ -464,7 +498,7 @@ describe("a new shape through the persisted envelope", () => {
     "the validator refuses a glass treatment on a %s",
     (kind) => {
       const object = {
-        ...saved(createNewShape(`shape-${kind}`, globals, kind)),
+        ...saved(createNewShape(`shape-${kind}`, globals, kind, placement)),
         [VIGILIA_GLASS_PROPERTY]: { blurRadius: 16 },
       };
 
@@ -480,7 +514,9 @@ describe("a new shape through the persisted envelope", () => {
   );
 
   it.each(SHAPE_KINDS)("the validator refuses a %s with no type", (kind) => {
-    const object = saved(createNewShape(`shape-${kind}`, globals, kind));
+    const object = saved(
+      createNewShape(`shape-${kind}`, globals, kind, placement),
+    );
     delete object["type"];
 
     expect(validateFabricThemeEnvelope(envelopeWith(object)).ok).toBe(false);
@@ -508,3 +544,199 @@ function ownPropertyOf(kind: ShapeKind): string {
       return "path";
   }
 }
+
+/** The reference theme's artboard, and the frame the cascade wraps inside. */
+const REFERENCE_ARTBOARD = { width: 1920, height: 1080 } as const;
+
+/**
+ * The defect: every object the Add pane inserted landed on the same fixed
+ * inset, so three shapes gave three layer rows and **one** visible shape. Each
+ * case below is the half of that which fails if the cascade is reverted.
+ */
+describe("where a new object lands", () => {
+  it("puts the first object at the inset", () => {
+    // The inset is where an author already expects a new object to appear, and
+    // it is the one placement that was already right — the defect was only
+    // that every object after it inherited it.
+    expect(newObjectPlacement(0, REFERENCE_ARTBOARD)).toEqual({
+      left: NEW_OBJECT_INSET,
+      top: NEW_OBJECT_INSET,
+    });
+  });
+
+  it("offsets the second object from the first", () => {
+    const first = newObjectPlacement(0, REFERENCE_ARTBOARD);
+    const second = newObjectPlacement(1, REFERENCE_ARTBOARD);
+
+    // The measured defect, stated as a difference rather than as a number: any
+    // change to the step keeps this true, which is what the property is.
+    expect(second).not.toEqual(first);
+    expect(second.left).toBeGreaterThan(first.left);
+  });
+
+  it("steps the n-th object n steps from the inset", () => {
+    for (let index = 1; index < 6; index += 1) {
+      const place = newObjectPlacement(index, REFERENCE_ARTBOARD);
+      expect(place.left, `object ${index}`).toBe(
+        NEW_OBJECT_INSET + index * NEW_OBJECT_STEP,
+      );
+      expect(place.top, `object ${index}`).toBe(NEW_OBJECT_INSET);
+    }
+  });
+
+  it("wraps at the artboard edge rather than walking off it", () => {
+    // The bound is the artboard, measured against a new object's own
+    // footprint: an object outside the authored frame is not shown at all, so a
+    // ladder that kept going would put the last objects in the letterbox.
+    const across = Math.floor(
+      (REFERENCE_ARTBOARD.width - NEW_OBJECT_INSET - NEW_PANEL_SIZE.width) /
+        NEW_OBJECT_STEP,
+    );
+    const down = Math.floor(
+      (REFERENCE_ARTBOARD.height - NEW_OBJECT_INSET - NEW_PANEL_SIZE.height) /
+        NEW_OBJECT_STEP,
+    );
+
+    for (let index = 0; index < (across + 1) * (down + 1) + 20; index += 1) {
+      const place = newObjectPlacement(index, REFERENCE_ARTBOARD);
+      // The whole object inside the frame, not merely its corner.
+      expect(
+        place.left + NEW_PANEL_SIZE.width,
+        `object ${index} leaves the right edge`,
+      ).toBeLessThanOrEqual(REFERENCE_ARTBOARD.width);
+      expect(
+        place.top + NEW_PANEL_SIZE.height,
+        `object ${index} leaves the bottom edge`,
+      ).toBeLessThanOrEqual(REFERENCE_ARTBOARD.height);
+    }
+
+    // And it really does wrap rather than saturate: the object after a full
+    // pass is back at the inset, not parked at the last free step.
+    expect(
+      newObjectPlacement((across + 1) * (down + 1), REFERENCE_ARTBOARD),
+    ).toEqual(newObjectPlacement(0, REFERENCE_ARTBOARD));
+  });
+
+  it("keeps every object inside an artboard too small to hold the step", () => {
+    // A naive step walks objects off a small artboard, and the author is left
+    // inserting things they cannot see. An artboard this size has one slot, and
+    // that is where every object goes.
+    const tiny = { width: 200, height: 120 };
+
+    for (let index = 0; index < 8; index += 1) {
+      expect(newObjectPlacement(index, tiny), `object ${index}`).toEqual({
+        left: NEW_OBJECT_INSET,
+        top: NEW_OBJECT_INSET,
+      });
+    }
+  });
+
+  it("re-fits the ladder when the artboard is resized", () => {
+    // A narrower frame holds fewer steps, so the same n-th object lands
+    // somewhere new. That is the point: the artboard is the bound, so a resize
+    // has to change the answer or the ladder no longer ends inside the frame.
+    const wide = newObjectPlacement(3, REFERENCE_ARTBOARD);
+    const narrow = newObjectPlacement(3, { width: 400, height: 300 });
+
+    expect(narrow.left).toBeLessThan(400);
+    expect(narrow.top).toBeLessThan(300);
+    expect(narrow).not.toEqual(wide);
+  });
+
+  it("reads the step off the document, so a removed object frees its slot", () => {
+    // The count is the document's own rather than a counter held beside it: an
+    // undo that removes an object shortens the ladder, and the next insert
+    // fills the gap it left instead of leaving a hole in the staircase. The
+    // editor supplies both halves — the canvas it is about to join and the
+    // artboard that canvas is a viewport onto — so neither can be a stale copy.
+    const withObjects = (count: number) => ({
+      canvas: { getObjects: () => Array.from({ length: count }, () => ({})) },
+      artboard: () => REFERENCE_ARTBOARD,
+    });
+
+    expect(nextNewObjectPlacement(withObjects(2))).toEqual(
+      newObjectPlacement(2, REFERENCE_ARTBOARD),
+    );
+    expect(nextNewObjectPlacement(withObjects(0))).toEqual(
+      newObjectPlacement(0, REFERENCE_ARTBOARD),
+    );
+  });
+});
+
+/**
+ * The constraint that is not negotiable: **the position is authored; the rule
+ * that produced it is not** (§67). Everything here is asserted on the persisted
+ * JSON rather than on the live object, because a test on in-memory state
+ * passes whether or not the property actually holds.
+ */
+describe("a new object's placement through the persisted envelope", () => {
+  it.each(SHAPE_KINDS)(
+    "saves a cascaded %s as a plain coordinate, with no trace of the rule",
+    async (kind) => {
+      // Placed three steps in, as the third object inserted would be.
+      const object = createNewShape(
+        `shape-${kind}`,
+        globals,
+        kind,
+        newObjectPlacement(3, REFERENCE_ARTBOARD),
+      );
+      const json = saved(object);
+
+      // The position the cascade chose is authored, so it is in the document…
+      expect(json["left"]).toBe(NEW_OBJECT_INSET + 3 * NEW_OBJECT_STEP);
+      expect(json["top"]).toBe(NEW_OBJECT_INSET);
+      // …and it is the only thing about the placement that is. No index, no
+      // step count, no cascade marker: a reader of the file cannot tell this
+      // object was the third, and neither can a machine reopening it.
+      expect(Object.keys(json)).toEqual(
+        expect.not.arrayContaining([
+          "index",
+          "step",
+          "cascade",
+          "slot",
+          "placementIndex",
+        ]),
+      );
+      const serialised = JSON.stringify(json);
+      expect(serialised).not.toContain("NEW_OBJECT_STEP");
+      expect(serialised).not.toContain("cascade");
+
+      // And the round trip is what the property is really for: the revived
+      // object stands at the same coordinates, on any machine, whatever the
+      // document was called.
+      const revived = await revive(json);
+      expect(revived.left).toBe(NEW_OBJECT_INSET + 3 * NEW_OBJECT_STEP);
+      expect(revived.top).toBe(NEW_OBJECT_INSET);
+      expect(validateFabricThemeEnvelope(envelopeWith(json)).ok).toBe(true);
+    },
+  );
+
+  it("saves two objects at different steps without either recording which", () => {
+    // The pair the defect was about: two shapes, one visible. Distinct
+    // coordinates in the document, and no ordering information beyond them.
+    const first = saved(
+      createNewShape(
+        "rect-a",
+        globals,
+        "rect",
+        newObjectPlacement(0, REFERENCE_ARTBOARD),
+      ),
+    );
+    const second = saved(
+      createNewShape(
+        "rect-b",
+        globals,
+        "rect",
+        newObjectPlacement(1, REFERENCE_ARTBOARD),
+      ),
+    );
+
+    expect([first["left"], first["top"]]).not.toEqual([
+      second["left"],
+      second["top"],
+    ]);
+    // Swapping their positions is indistinguishable from never having a
+    // cascade: the document holds coordinates, and coordinates are all.
+    expect(Object.keys(first).sort()).toEqual(Object.keys(second).sort());
+  });
+});

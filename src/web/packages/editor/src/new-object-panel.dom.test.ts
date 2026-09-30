@@ -26,10 +26,15 @@ function editorStub() {
     add: vi.fn(),
     setActiveObject: vi.fn(),
     requestRenderAll: vi.fn(),
+    // The cascade reads the document's own object count off the canvas, so a
+    // stub that could not answer would leave the placement unexercised.
+    getObjects: vi.fn(() => [] as unknown[]),
   };
   const historyManager = { saveState: vi.fn() };
   return {
     canvas,
+    // The authored frame a placement has to land inside.
+    artboard: () => ({ width: 1920, height: 1080 }),
     historyManager,
     textManager: { addText: vi.fn() },
     errorManager: { warn: vi.fn(), error: vi.fn() },
@@ -411,7 +416,7 @@ describe("new object panel", () => {
     const addText = vi.fn();
     const root = createNewObjectPanel(
       document.body,
-      { textManager: { addText } } as never,
+      { ...editorStub(), textManager: { addText } } as never,
       {
         palette: {
           none: {

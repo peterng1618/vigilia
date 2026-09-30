@@ -14,6 +14,7 @@ import type { EditorInteraction } from "../editor-interaction.js";
 import {
   createNewChartDefaults,
   newObjectName,
+  nextNewObjectPlacement,
 } from "../new-object-defaults.js";
 import { createChartPropertyPanel } from "./panel.js";
 
@@ -54,14 +55,18 @@ function newChart(
   family: ChartFamily,
   globals: FabricGlobals | undefined,
   id: string,
+  placement: { readonly left: number; readonly top: number },
 ): VigiliaChart {
   const common = {
     id,
     // The family is what the author just chose, so it is what the layer list
     // shows; a new chart that arrived as a bare uuid would be unreadable.
     name: newObjectName(family),
-    left: 120,
-    top: 80,
+    // The same cascade a shape and a text object take. A chart used to carry
+    // its own `120, 80`, which is how a gauge inserted after a rectangle landed
+    // in a second corner rather than beside it: two origins for one rule, and
+    // neither of them knew the other existed.
+    ...placement,
     width: 240,
     height: 160,
     // Artboard coordinates, as a panel and a text object now both are, so the
@@ -209,7 +214,14 @@ export class ChartManager {
   /** Add a typed chart while preserving the editor's canvas and history ownership. */
   addChart(family: ChartFamily): void {
     const id = `chart-${crypto.randomUUID()}`;
-    const chart = newChart(family, this.#globals, id);
+    // Placed before the chart joins the canvas, so it takes the n-th slot rather
+    // than counting itself.
+    const chart = newChart(
+      family,
+      this.#globals,
+      id,
+      nextNewObjectPlacement(this.#editor),
+    );
     this.#editor.canvas.add(chart);
     this.#editor.canvas.setActiveObject(chart);
     this.#applyChart(id, chart);

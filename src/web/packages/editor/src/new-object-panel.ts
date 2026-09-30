@@ -7,6 +7,7 @@ import type { EditorInteraction } from "./editor-interaction.js";
 import {
   createNewShape,
   createNewTextDefaults,
+  nextNewObjectPlacement,
   SHAPE_KINDS,
   type ShapeKind,
 } from "./new-object-defaults.js";
@@ -97,7 +98,7 @@ export function insertNewText(
   const content = "New text";
   editor.textManager.addText({
     text: content,
-    ...createNewTextDefaults(globals, content),
+    ...createNewTextDefaults(globals, content, nextNewObjectPlacement(editor)),
   });
 }
 
@@ -119,6 +120,7 @@ export function insertNewShape(
     `${kind}-${crypto.randomUUID()}`,
     globals,
     kind,
+    nextNewObjectPlacement(editor),
   );
   editor.canvas.add(inserted);
   editor.canvas.setActiveObject(inserted);

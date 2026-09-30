@@ -66,6 +66,17 @@ export interface NewTextDefaults extends NewPaintDefaults {
 export const NEW_OBJECT_INSET = 40;
 
 /**
+ * How far each new object steps from the last, on both axes.
+ *
+ * Twice the inset, so the second object sits at double the margin and the
+ * staircase is unmistakable rather than a rounding error, and a fifth of a new
+ * object's width — enough of the one underneath to see and click it. Large
+ * enough that twenty columns fit the reference artboard, small enough that a
+ * dozen objects do not cross it.
+ */
+export const NEW_OBJECT_STEP = 80;
+
+/**
  * What a newly inserted object is called until the author renames it: the label
  * of the control that made it. The Add pane already spells every object, so
  * reusing those words is the naming this repo has — and a new object that
@@ -98,6 +109,95 @@ export const NEW_PANEL_SIZE = { width: 360, height: 200 } as const;
  */
 export const NEW_PANEL_RADIUS = 10;
 
+/** The artboard a new object has to stay inside, and nothing more. */
+export interface NewObjectArtboard {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The artboard as the editor sees it *now*. A getter rather than a value because
+    the artboard is resizable: a placement computed against the frame the author
+    has since replaced is a ladder that no longer ends inside the picture. */
+export type NewObjectArtboardSource = () => NewObjectArtboard;
+
+/**
+ * Where the n-th new object lands: the inset plus n steps, wrapping back to
+ * the inset when the next step would carry the object off the artboard.
+ *
+ * **The one place a new object's position is decided.** The shapes, the text
+ * and the charts each carried their own inset, and two kinds of object each
+ * believing they own the corner is how three shapes came to stack behind one
+ * another — three layer rows, one visible shape, and an inspector reading
+ * `Ellipse / X 40 / Y 40` for what the author sees as a rectangle.
+ *
+ * The step wraps on the **artboard**, not on a count of steps. The artboard is
+ * the authored frame and an object outside it is not shown at all, so a ladder
+ * that simply kept going would walk its last objects into the letterbox. The
+ * two axes wrap independently, because a wide artboard must not let a short one
+ * run its ladder off the bottom edge.
+ *
+ * **Placement at insert time, and nothing more (§67).** The result is written
+ * as an ordinary `left`/`top` on the object, so a saved scene carries the
+ * coordinates and nothing that says which step produced them: an object
+ * inserted second opens at the same place on any machine, with no record that
+ * it was the second. Undo restores the object, not the rule.
+ */
+export function newObjectPlacement(
+  index: number,
+  artboard: NewObjectArtboard,
+): { readonly left: number; readonly top: number } {
+  // The ladder is measured against the new object's own footprint, so the last
+  // step still lands the whole object inside the frame. A chart is smaller and
+  // a text object smaller again, so the largest default is the bound that keeps
+  // every one of them on the artboard.
+  const stepsAlong = (axis: number, footprint: number): number => {
+    const steps =
+      Math.floor((axis - NEW_OBJECT_INSET - footprint) / NEW_OBJECT_STEP) + 1;
+    return steps < 1 ? 1 : steps;
+  };
+  const columns = stepsAlong(artboard.width, NEW_PANEL_SIZE.width);
+  const rows = stepsAlong(artboard.height, NEW_PANEL_SIZE.height);
+  const column = index % columns;
+  const row = Math.floor(index / columns) % rows;
+  return {
+    left: NEW_OBJECT_INSET + column * NEW_OBJECT_STEP,
+    top: NEW_OBJECT_INSET + row * NEW_OBJECT_STEP,
+  };
+}
+
+/** Artboard coordinates, so the inspector's X and Y are the object's edges. */
+function placed(placement: { readonly left: number; readonly top: number }): {
+  readonly left: number;
+  readonly top: number;
+  readonly originX: "left";
+  readonly originY: "top";
+} {
+  return { ...placement, originX: "left", originY: "top" };
+}
+
+/**
+ * Where the next new object lands, read off the editor rather than kept.
+ *
+ * Both inputs come from the editor itself — the object count from the canvas it
+ * is about to join, the frame from the artboard that canvas is a viewport onto
+ * — so a caller cannot place an object against a different canvas or a stale
+ * artboard than the one it is inserting into. There is no counter to drift out
+ * of step with the document: an undo that removes an object shortens the
+ * ladder, and the next insert fills the gap it left.
+ *
+ * Neither input is ever written to the scene, so nothing about the cascade
+ * reaches a saved file (§67).
+ */
+export function nextNewObjectPlacement(editor: {
+  readonly canvas: { getObjects(): readonly unknown[] };
+  readonly artboard: NewObjectArtboardSource;
+}): { readonly left: number; readonly top: number } {
+  return newObjectPlacement(
+    editor.canvas.getObjects().length,
+    editor.artboard(),
+  );
+}
+
 export interface NewPanelDefaults extends NewPaintDefaults {
   /** Narrowed from `NewPaintDefaults`, so a panel goes straight into Fabric's
       own `Rect` constructor without a cast at the call site. */
@@ -115,20 +215,13 @@ export interface NewPanelDefaults extends NewPaintDefaults {
   readonly originY: "top";
 }
 
-/** Artboard coordinates, so the inspector's X and Y are the shape's edges. */
-const PLACED = {
-  left: NEW_OBJECT_INSET,
-  top: NEW_OBJECT_INSET,
-  originX: "left",
-  originY: "top",
-} as const;
-
 /**
  * The surface a new shape is filled with, and where it lands. One rule for
  * every kind: a shape an author draws a card on must be as legible as a panel.
  */
 function newShapeSurface(
   globals: FabricGlobals | undefined,
+  placement: { readonly left: number; readonly top: number },
 ): Omit<NewPanelDefaults, "width" | "height" | "rx" | "ry" | "name"> {
   const selected = surfacePalette(globals, CARD_SURFACE_TOKENS);
   if (selected === undefined)
@@ -144,7 +237,7 @@ function newShapeSurface(
     throw new Error(`Palette token "palette.${id}" cannot paint a new shape.`);
 
   return {
-    ...PLACED,
+    ...placed(placement),
     fill,
     [VIGILIA_PAINT_PROPERTY]: { fill: `palette.${id}` },
   };
@@ -153,9 +246,10 @@ function newShapeSurface(
 /** Supplies a surface-backed, sized, rounded placement for a new panel. */
 export function createNewPanelDefaults(
   globals: FabricGlobals | undefined,
+  placement: { readonly left: number; readonly top: number },
 ): NewPanelDefaults {
   return {
-    ...newShapeSurface(globals),
+    ...newShapeSurface(globals, placement),
     name: newObjectName("panel"),
     width: NEW_PANEL_SIZE.width,
     height: NEW_PANEL_SIZE.height,
@@ -194,14 +288,17 @@ const NEW_SHAPE_STROKE_WIDTH = 2;
  * are what they are drawn with — so it takes a content token, which is the
  * palette's own answer to "a colour visible against the surface".
  */
-function newShapeStroke(globals: FabricGlobals | undefined): {
+function newShapeStroke(
+  globals: FabricGlobals | undefined,
+  placement: { readonly left: number; readonly top: number },
+): {
   readonly fill: null;
   readonly stroke: string | Gradient<"linear">;
   readonly strokeWidth: number;
   readonly strokeLineCap: "round";
   readonly strokeLineJoin: "round";
   readonly [VIGILIA_PAINT_PROPERTY]: { readonly stroke: `palette.${string}` };
-} & typeof PLACED {
+} & ReturnType<typeof placed> {
   const [id, entry] = firstPalette(globals);
   const stroke = fabricArtboardPaint(entry.value, 1, 1);
 
@@ -209,7 +306,7 @@ function newShapeStroke(globals: FabricGlobals | undefined): {
     throw new Error(`Palette token "palette.${id}" cannot paint a new shape.`);
 
   return {
-    ...PLACED,
+    ...placed(placement),
     fill: null,
     stroke,
     strokeWidth: NEW_SHAPE_STROKE_WIDTH,
@@ -282,6 +379,7 @@ export function createNewShape(
   id: string,
   globals: FabricGlobals | undefined,
   kind: ShapeKind,
+  placement: { readonly left: number; readonly top: number },
 ): FabricObject {
   const { width, height } = NEW_PANEL_SIZE;
   // Beside the id in every branch: a shape the author inserted must be as
@@ -291,19 +389,23 @@ export function createNewShape(
   switch (kind) {
     case "rect":
       // The panel defaults carry the panel's own name, so this one's wins.
-      return new Rect({ id, ...createNewPanelDefaults(globals), name });
+      return new Rect({
+        id,
+        ...createNewPanelDefaults(globals, placement),
+        name,
+      });
     case "circle":
       return new Circle({
         id,
         name,
-        ...newShapeSurface(globals),
+        ...newShapeSurface(globals, placement),
         radius: height / 2,
       });
     case "ellipse":
       return new Ellipse({
         id,
         name,
-        ...newShapeSurface(globals),
+        ...newShapeSurface(globals, placement),
         rx: width / 2,
         ry: height / 2,
       });
@@ -311,14 +413,14 @@ export function createNewShape(
       return new Triangle({
         id,
         name,
-        ...newShapeSurface(globals),
+        ...newShapeSurface(globals, placement),
         width,
         height,
       });
     case "polygon": {
       // A value rather than a fresh literal: Fabric infers its options type
       // from one, and the inferred type has no room for the authored `id`.
-      const options = { id, name, ...newShapeSurface(globals) };
+      const options = { id, name, ...newShapeSurface(globals, placement) };
       return new Polygon(
         cornersForSides(NEW_POLYGON_SIDES, width, height),
         options,
@@ -328,16 +430,20 @@ export function createNewShape(
       return new Polyline(NEW_POLYLINE_POINTS, {
         id,
         name,
-        ...newShapeStroke(globals),
+        ...newShapeStroke(globals, placement),
       });
     case "line":
       return new Line([0, 0, width, height], {
         id,
         name,
-        ...newShapeStroke(globals),
+        ...newShapeStroke(globals, placement),
       });
     case "path":
-      return new Path(NEW_PATH, { id, name, ...newShapeSurface(globals) });
+      return new Path(NEW_PATH, {
+        id,
+        name,
+        ...newShapeSurface(globals, placement),
+      });
   }
 }
 
@@ -359,6 +465,7 @@ export function createNewPaintDefaults(
 export function createNewTextDefaults(
   globals: FabricGlobals | undefined,
   text: string,
+  placement: { readonly left: number; readonly top: number },
 ): NewTextDefaults {
   const paint = createNewPaintDefaults(globals);
   const [id, preset] = firstTypePreset(globals);
@@ -373,11 +480,8 @@ export function createNewTextDefaults(
     name: newObjectName("text"),
     // Fabric's own default is (0,0), which puts a new object on the artboard
     // corner where it is awkward to select. Charts already start inset; text
-    // must too.
-    left: NEW_OBJECT_INSET,
-    top: NEW_OBJECT_INSET,
-    originX: "left",
-    originY: "top",
+    // must too — and from the same cascade, not its own inset.
+    ...placed(placement),
     fontFamily: preset.family,
     fontSize: preset.size,
     ...(preset.weight === undefined ? {} : { fontWeight: preset.weight }),

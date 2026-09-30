@@ -4,8 +4,12 @@ import type { Binding } from "@vigilia/renderer-core";
 import { defaultGaugeSettings } from "@vigilia/renderer-core";
 import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import { describe, expect, it, vi } from "vitest";
+import { newObjectPlacement } from "../new-object-defaults.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { ChartManager } from "./index.js";
+
+/** The authored frame a new chart has to land inside, as the editor supplies it. */
+const artboard = () => ({ width: 1920, height: 1080 });
 
 describe("ChartManager", () => {
   it.each(["gauge", "line", "bar", "pie"] as const)(
@@ -23,7 +27,11 @@ describe("ChartManager", () => {
       };
       const historyManager = { saveState: vi.fn() };
       const manager = new ChartManager({
-        editor: { canvas, historyManager } as unknown as EditorInteraction,
+        editor: {
+          canvas,
+          historyManager,
+          artboard,
+        } as unknown as EditorInteraction,
         scene: {} as SceneAdapter,
         source: createDemoSource(0),
         globals: {
@@ -59,6 +67,62 @@ describe("ChartManager", () => {
     },
   );
 
+  it("places a new chart on the same cascade a shape takes", () => {
+    // The defect had two origins: the shapes and the text inset by 40, the
+    // charts by their own 120, 80. A gauge inserted after a rectangle therefore
+    // landed in a second corner rather than beside it, and neither origin knew
+    // the other existed. This is the case that fails if a second origin returns.
+    const objects: unknown[] = [];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn((chart: unknown) => objects.push(chart)),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        historyManager: { saveState: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      globals: {
+        palette: {
+          none: {
+            name: "None",
+            value: { kind: "solid" as const, color: "transparent" },
+          },
+          ink: {
+            name: "Ink",
+            value: { kind: "solid" as const, color: "#102030" },
+          },
+        },
+      },
+      panelHost: document.body,
+    });
+
+    manager.addChart("gauge");
+    const first = objects[0] as VigiliaChart;
+    manager.addChart("gauge");
+    const second = objects[1] as VigiliaChart;
+
+    // The first chart takes the inset every other new object takes…
+    expect({ left: first.left, top: first.top }).toEqual(
+      newObjectPlacement(0, { width: 1920, height: 1080 }),
+    );
+    // …and the second steps from it, rather than joining it at the chart's own
+    // 120, 80 that the shape path never knew about.
+    expect({ left: second.left, top: second.top }).toEqual(
+      newObjectPlacement(1, { width: 1920, height: 1080 }),
+    );
+    expect([second.left, second.top]).not.toEqual([120, 80]);
+    manager.destroy();
+  });
+
   it("does not add a chart when no palette reference can be derived", () => {
     const canvas = {
       on: vi.fn(),
@@ -71,7 +135,11 @@ describe("ChartManager", () => {
     };
     const historyManager = { saveState: vi.fn() };
     const manager = new ChartManager({
-      editor: { canvas, historyManager } as unknown as EditorInteraction,
+      editor: {
+        canvas,
+        historyManager,
+        artboard,
+      } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
       panelHost: document.body,
@@ -101,7 +169,7 @@ describe("ChartManager", () => {
       requestRenderAll: vi.fn(),
     };
     const manager = new ChartManager({
-      editor: { canvas } as unknown as EditorInteraction,
+      editor: { canvas, artboard } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
       globals: {
@@ -148,7 +216,7 @@ describe("ChartManager", () => {
     };
     const scene = { objectFor: vi.fn(() => chart) } as unknown as SceneAdapter;
     const manager = new ChartManager({
-      editor: { canvas } as unknown as EditorInteraction,
+      editor: { canvas, artboard } as unknown as EditorInteraction,
       scene,
       source: createDemoSource(0),
       bindings: { "cpu-gauge": [{ id: "cpu", semanticKey: "cpu.load" }] },
@@ -261,6 +329,7 @@ describe("a chart that throws", () => {
     const manager = new ChartManager({
       editor: {
         canvas,
+        artboard,
         historyManager: { saveState: vi.fn() },
         errorManager: { warn, error: vi.fn() },
       } as unknown as EditorInteraction,
@@ -313,6 +382,7 @@ describe("a chart's series paint", () => {
     const manager = new ChartManager({
       editor: {
         canvas,
+        artboard,
         historyManager: { saveState: vi.fn() },
         errorManager: { warn: vi.fn(), error: vi.fn() },
       } as never,

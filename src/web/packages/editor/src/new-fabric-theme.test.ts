@@ -28,6 +28,7 @@ import { starterPalette } from "./new-fabric-theme-globals.js";
 import {
   createNewChartDefaults,
   createNewPanelDefaults,
+  newObjectPlacement,
 } from "./new-object-defaults.js";
 import { serializeThemePackage } from "./persist.js";
 import { STARTER_BACKDROP_PATH } from "./starter-backdrop.js";
@@ -824,7 +825,12 @@ describe("the blank Fabric document", () => {
     // colour, is an object the author cannot see — which is what the
     // surface-token rules in `new-object-defaults.ts` exist to prevent, and
     // they only hold if the blank palette names the surfaces they reach for.
-    const card = createNewPanelDefaults(globals);
+    // Only the card's fill is under test here, so it takes the first cascade
+    // slot: this is a palette assertion, not a placement one.
+    const card = createNewPanelDefaults(
+      globals,
+      newObjectPlacement(0, blank.artboard),
+    );
     const chart = createNewChartDefaults(globals, "gauge");
     const cardFill = token(card.vigiliaPaint?.fill);
     const track = token((chart.track as { ref?: string } | undefined)?.ref);

@@ -237,6 +237,9 @@ function createNativeEditor(input: {
 
   return {
     canvas,
+    // The authored frame, read through so a resize is seen by whoever asks
+    // next rather than frozen at mount.
+    artboard: () => input.artboard(),
     viewport,
     historyManager: {
       saveState: save,
