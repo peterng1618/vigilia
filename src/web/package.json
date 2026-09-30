@@ -28,8 +28,7 @@
     "status:check": "node ../../scripts/check-status.mjs",
     "ownership:sweep": "node ../../scripts/ownership-sweep.mjs",
     "ownership:overlap": "node ../../scripts/ownership-overlap.mjs",
-    "feedback:check": "node ../../scripts/feedback-check.mjs",
-    "gates:self-test": "node ../../scripts/check-status.mjs --self-test && node ../../scripts/reuse-gate.mjs --self-test && node ../../scripts/ownership-sweep.mjs --self-test && node ../../scripts/ownership-overlap.mjs --self-test && node ../../scripts/feedback-check.mjs --self-test",
+    "gates:self-test": "node ../../scripts/check-status.mjs --self-test && node ../../scripts/reuse-gate.mjs --self-test && node ../../scripts/ownership-sweep.mjs --self-test && node ../../scripts/ownership-overlap.mjs --self-test",
     "hooks:check": "node ../../scripts/sdd-checkpoint.mjs --self-check"
   },
   "devDependencies": {
@@ -41,7 +40,7 @@
     "vite": "8.3.0",
     "vitest": "5.0.0"
   },
-  "//devDependencies": "jsdom and canvas are the `*.dom.test.ts` environment, declared here beside vitest because vitest.config.ts owns `environment` for the whole workspace. They were reachable without being declared — both are OPTIONAL dependencies of fabric@7.4.0 — which is the problem: `canvas` is native, npm continues silently when its prebuild is unavailable, and the tests that need a real 2D context would then lose it without failing. Declaring them also puts them through CI's licence job.",
+  "//devDependencies": "jsdom and canvas are the `*.dom.test.ts` environment, declared here beside vitest because vitest.config.ts owns `environment` for the whole workspace. They were reachable without being declared \u2014 both are OPTIONAL dependencies of fabric@7.4.0 \u2014 which is the problem: `canvas` is native, npm continues silently when its prebuild is unavailable, and the tests that need a real 2D context would then lose it without failing. Declaring them also puts them through CI's licence job.",
   "engines": {
     "node": ">=22"
   }
