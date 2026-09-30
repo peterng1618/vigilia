@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [tailwindcss()],
   resolve: {
     alias: {
+      // shadcn's own convention, and the reason a components.json can point at
+      // this package's source without every generated import being rewritten.
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@vigilia/renderer-core": fileURLToPath(
         new URL("../renderer-core/src/index.ts", import.meta.url),
       ),

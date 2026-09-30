@@ -425,6 +425,7 @@ export const uiCopy = {
     /** Shown when the browser cannot paint what was typed. Named by the value
      *  itself, because the author has to be able to see which of several they
      *  mistyped. */
+    colourPicker: "Pick a colour",
     colourUnpaintable: (value: string) =>
       `Not a colour the browser can paint: "${value}". Hex, rgb(), hsl() or a CSS colour name.`,
     family: "Family",

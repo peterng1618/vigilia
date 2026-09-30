@@ -1,6 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // shadcn's convention, matched to the editor's own vite alias so a component
+  // written for the app resolves in tests too.
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./packages/editor/src", import.meta.url)) },
+  },
   test: {
     // Unit tests for the shared renderer's pure logic. Visual and cross-device
     // behaviour is covered by Playwright (tests/e2e), not here.

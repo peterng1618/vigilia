@@ -77,11 +77,13 @@ describe("the dirty guard and what the renderer paints", () => {
       canvas: shell.editor.canvas,
       bindings: bindings as never,
       source: createDemoSource(Date.now()),
-      globals: authored.globals,
+      ...(authored.globals === undefined ? {} : { globals: authored.globals }),
     }).refresh();
 
     // The canvas has genuinely moved — a reading is now painted on it.
-    const painted = shell.snapshot({ ...authored }) as {
+    // `scene` is an opaque record on the envelope, so this is a look, not a
+    // claim about its type.
+    const painted = shell.snapshot({ ...authored }) as unknown as {
       scene: { objects: { id?: string; styles?: unknown }[] };
     };
     const styledByPass = painted.scene.objects.filter(
@@ -96,7 +98,8 @@ describe("the dirty guard and what the renderer paints", () => {
 
     // The half that matters: an edit the author made is still an edit.
     const edited = shell.snapshot({ ...authored });
-    (edited.scene as { objects: { left: number }[] }).objects[0].left += 5;
+    const moved = (edited.scene as { objects: { left: number }[] }).objects;
+    if (moved?.[0] !== undefined) moved[0].left += 5;
     expect(manager.isDirty(edited, {})).toBe(true);
 
     shell.destroy();

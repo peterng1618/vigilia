@@ -148,7 +148,6 @@ The starter keeps its own 1672 × 941 artboard. It is not resized to a preset �
 
 **This section is live and grows.** The pass is driven by using the product, and every gap found is either fixed here or recorded. Priorities are re-ordered as new findings arrive — a P1 becomes P0 if it blocks the rebuild, and finished items move to the archived tail rather than disappearing.
 
-**The registry itself is `docs/product/backlog.jsonl`** (open rows) and `docs/product/backlog-archive.jsonl` (closed rows), split by state per [ADR-0019](../../decisions/0019-the-backlog-is-two-files-split-by-state.md); this section is the pass's narrative of the same work. A finding not fixed in the task that found it rides that task's commit as a `Discovered, not fixed:` trailer and `npm run backlog:file` files it.
 
 **Standing instruction (2026-09-29):** this plan's scope is whatever it takes to ship. Finding something broken, missing, misaligned, hard to read, or inconsistent with the repo's own conventions means it enters this backlog and gets done — not that it gets noted for later.
 
@@ -2205,6 +2204,17 @@ git commit -m "chore(gate): the author journey pass at the broad gate"
 **3. Type consistency.** `artboardSize`, `createBlankFabricTheme`, `openBlank`, `reloadEnvelope`, `insertPanel`, `setToken`, `addText`, `setRun` are produced once and consumed by name in later tasks; no task calls a helper a later task renames. Selector keys were read from source on 2026-09-29 and appear in exactly one table.
 
 **4. Review Focus.** Each of the five lines is discharged: (1) by the Task 7 rule that any state-writing `page.evaluate` is a defect; (2) by the persisted-envelope assertion in Tasks 4, 6 and 11; (3) by classification at observation time; (4) by the "fix inside its owner" rule in Task 4 Step 3; (5) by the saved-envelope assertion in Task 11 Step 2.
+
+### Colour picker and gradient maker — SUPERSEDED IN PART by the user, 2026-10-01
+
+**The conclusion below is no longer the ruling.** It reached for Base UI and a
+zero-dependency source, because the candidate covering the most ground is
+Radix-based and this product has one headless library on purpose. **The user
+ruled that this field's ecosystem is shadcn/ui, not Base UI** — which means
+accepting a second headless library, plus `clsx`, `tailwind-merge` and `cva`, in
+exchange for the ecosystem rather than around it. The search is kept because
+every other finding in it holds, and because it records what was considered and
+why the decision went the other way.
 
 ### Colour picker and gradient maker — the ecosystem search (2026-09-29)
 

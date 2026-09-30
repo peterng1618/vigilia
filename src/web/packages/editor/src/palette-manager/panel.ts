@@ -3,6 +3,9 @@ import type {
   FabricPaletteEntry,
   PalettePaint,
 } from "@vigilia/renderer-core";
+import * as React from "react";
+import { createRoot } from "react-dom/client";
+import { ColourPicker } from "../components/ui/colour-picker.js";
 import { uiCopy } from "../ui-copy.js";
 
 /** An object a token is linked to. The name is what the panel shows; the id
@@ -225,7 +228,42 @@ function solidFields(
     color.input.setCustomValidity("");
     commit({ ...entry, value: { kind: "solid", color: next } });
   });
-  return [color.label, color.input];
+  // The swatch beside the field opens the picker. The field stays, because a
+  // value can be typed exactly and a picker cannot always be dragged to it.
+  const row = document.createElement("div");
+  row.className = "vigilia-field";
+  row.style.cssText = "display:flex;gap:6px;align-items:center";
+  const host = document.createElement("div");
+  row.append(host);
+  mountPicker(host, entry, commit);
+
+  return [color.label, color.input, row];
+}
+
+/**
+ * The picker, in its own React root.
+ *
+ * shadcn on Radix, per the ruling on this field's ecosystem: a native
+ * `<input type="color">` has no alpha channel and the theme's paints carry it,
+ * so it stays ruled out.
+ */
+function mountPicker(
+  host: HTMLElement,
+  entry: FabricPaletteEntry,
+  commit: (entry: FabricPaletteEntry) => void,
+): void {
+  const root = createRoot(host);
+  root.render(
+    React.createElement(ColourPicker, {
+      value: entry.value.kind === "solid" ? entry.value.color : "#ffffff",
+      label: uiCopy.panels.colourPicker,
+      // The picker owns the value; the entry it hands back keeps everything
+      // else the author named, so a colour change never renames a token.
+      onChange: (next: string) =>
+        commit({ ...entry, value: { kind: "solid", color: next } }),
+    }),
+  );
+  host.dataset["vigiliaPalettePicker"] = "";
 }
 
 function gradientFields(
