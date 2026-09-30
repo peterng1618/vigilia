@@ -21,6 +21,23 @@ why comparing the three made the working ones look broken.
 re-run with a dialog handler and a file-chooser handler before it is filed. See
 the archived vg-064.
 
+## It cuts both ways — check before filing, and check before retracting
+
+A finding can also be *right about the product and wrong about the cause*. I
+filed vg-062 (Insert > Text does not put the caret in the new object) from a
+probe with no dialog handler, and it turned out to be a true defect that the
+agent fixed — but my measurement of it was contaminated, and a re-run with a
+dialog handler no longer reproduced the "typing goes nowhere" half. The caret
+now goes in because of the fix, not because of the handler.
+
+The practical order that avoids both errors:
+
+1. Probe with `page.on("dialog")` **accepting** and a `filechooser` handler from
+   the start. This is the cheap default and it removes the whole class.
+2. If a probe claims nothing happened, re-run it under (1) before filing.
+3. If a previously filed row claims nothing happened and is about to be worked,
+   re-run it under (1) before spending an agent on it.
+
 ## The editor reloads the Starter, so a reload is not a round trip
 
 `File > Save to library`, then reload, shows the Starter again rather than the
