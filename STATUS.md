@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-09-30
+Updated: 2026-10-01
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
@@ -35,8 +35,8 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **56 rows**. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
-- **Nothing is dispatched, and the root is driving the product directly.** Q1 and Q2 both landed (`528b0d2`, `bf3bf2b`); since then this session found and fixed four more defects itself rather than dispatching. `dispatch-active.md` in the workspace is current.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete, the rebuild has run once, and `docs/product/backlog.jsonl` is the working queue — **20 rows**, with 64 closed rows in the archive. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
+- **Nothing is dispatched, and the root is draining the registry itself.** vg-071 and vg-079 closed together on `3e3783e`. `dispatch-active.md` in the workspace is current.
 - **The standing rule earned the hard way is in the plan's Global Constraints: a canvas readback is a snapshot of a moment.** Twelve findings on this pass were the instrument, not the product — most recently a player screenshot taken before the first telemetry batch, which read as "no data anywhere" on a host that was streaming 133 batches. **Screenshot for what is visible, read the DOM for what is true, and when two probes disagree, find out which is wrong before believing either.** **A native prompt or chooser is invisible to automation, and an auto-dismissed prompt is indistinguishable from an absent one** — vg-064 filed two working commands as dead for exactly that reason, and their working sibling has neither a prompt nor a chooser.
 - **Two claims were refuted by measuring rather than by reading**, and both would have been filed as defects: Group looked keyboard-only until a real canvas multi-select showed it in the context menu, and the Starter theme's rows looked id-derived until the document showed all 52 objects carry an authored `name`. **Check the counter-claim before writing the row.**
 - **The frame that matters:** the editor is **desktop-only** (`tests/e2e/surface.ts`); a **phone is the main display type** and the **player is the product's face**. Weight player and phone work accordingly.
@@ -44,16 +44,15 @@ The loop, in order:
 
 ## Last completed change
 
-- **One Size field no longer costs an inserted text object its width** (`208fc7f`). Typing into Height wrote `box: { height }` with no width, and the next text change made `authoredBox` multiply an `undefined` by the scale — the object ended with `width: null` and no bounding rect at all. Both dimensions now seed from the object's measured edge.
-- **A pasted image and a new group are named instead of printed as uuids** (`b1022cf`). `object-name.ts` says absence means fall back to the id, and a minted id is a uuid, so the two creators that left `name` unset were the two the fallback could not help. `newObjectName` already existed for exactly this and its own comment named the failure.
-- **A display counts the sensors it reads, not the bindings that name them** (`fe5e584`). The strip said "2 of 30 sensors"; the theme binds 19 distinct ones, because the player's hosted path was the only one of three that didn't dedupe.
-- **A 404 that says a bundle is unbuilt when it is built** (`9ad60ca`, ADR-0018). Five misses returned the same build hint, which is the message `AGENTS.md` sends people chasing — the failure is a loop, not a delay.
-- **Two open rows were refuted rather than fixed** (`b0e3fb4`): vg-042's Height field tracks the measurement exactly (79 for 78.83, then 463 for 462.85), and vg-043's key never reaches the author — `innerText` holds neither `colour-2` nor `colour-3`. Gate green: **2416 unit tests across 177 files**, `backlog:check` 57 rows.
+- **The editor says when a document is unsaved, and asks before it goes** (`3e3783e`, closes vg-071 and vg-079). `PersistenceManager.isDirty` already answered this and only the replace prompt ever asked; the session now owns the answer, pulls it, and two consumers read it — a mark at the far end of the footer, and `beforeunload`.
+- **Every write of the envelope goes through one line** (`#writeEnvelope`), because the row named three edit paths that never touch Fabric — the theme name, a palette token, a binding — and forgetting one is a setter that lost a line, not a bug anyone would see.
+- **The mark is separate from the status line** rather than shared with it: that line holds whatever happened last, so a shared mark is erased exactly when the author is deciding whether to leave.
+- **Red without the fix, measured live:** the footer read empty after a rename and a rectangle, and no reload raised a dialog. Green: 52→53 layers with the mark on, cleared by Save to library, back on for a nudge and for a rename, and an untouched Starter leaves silently — the guard vg-026 established. Editor suite **1037 across 87 files**; `backlog:check` 20 rows.
 
 ## Next
 
 1. **Keep using the product** — the queue is only as good as the last hour of driving it. A host on a private port with a private `--themes-dir` is the loop: editor → Save to library → the player, at desktop and at 390 px.
-2. **The queued findings, each measured and each with an owner named:** vg-030 the layer list is inconsistent and some assets cannot be removed, vg-028 the chart slide (not yet reproduced), and the POSIX root-volume join. vg-021, vg-026, vg-033, vg-044 and vg-050 are drained.
+2. **The queued findings, each measured and each with an owner named:** **vg-060 reopening the editor shows the Starter, not the author's own theme** — the third leg of the shape vg-071 and vg-079 just closed, and the last one; `bootTheme` already opens `?theme=<id>`, so the missing half is only the fallback. Then vg-028 the chart slide (not yet reproduced), and the POSIX root-volume join.
 3. **The backlog-tracking boundary is yours and is still undecided** — what lands in `docs/product/backlog.jsonl` versus what a commit records. A session was lost mid-sentence stating it and it is written down nowhere. Nothing has been pruned in the meantime.
 4. **Two paths are untested by hand and neither is reachable from the editor's own menus:** an image can only be pasted (the Insert menu has no Image), so the crop control's subject arrives by clipboard alone.
 5. **Group C still wants a design pass**: the right sidebar restructure, the token panel to the left, the shortcut editor, the zoom toolbar, the gradient/colour surface. Then the screenshot spring clean — the **v1 captures wait until v1 is removed**, as decided.
