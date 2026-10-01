@@ -317,7 +317,13 @@ async function startHostedTheme(
     bytes: fontBytes,
     onError: reportFontError,
   });
-  await reviveThemeEnvelope(handle.canvas, theme);
+  // The scene's own asset references resolve here, the way background media
+  // already does: an object that names a packaged image has to load from the
+  // host, because the `src` the editor saved is a handle into that session.
+  await reviveThemeEnvelope(handle.canvas, theme, (assetId) => {
+    const url = resolveAsset(assetId);
+    return url === undefined ? undefined : session.withToken(url);
+  });
   // Every text object, bound or not, takes its box, its alignment and its
   // clip from the authored content once after revival. `refreshBoundText`
   // only visits objects a binding resolves, so without this an unbound label

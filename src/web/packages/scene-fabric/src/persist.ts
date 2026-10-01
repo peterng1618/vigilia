@@ -17,7 +17,10 @@ import {
 // Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
 import { VigiliaChart } from "./chart-object.js";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
-import { VIGILIA_ASSET_PROPERTY } from "./object-asset.js";
+import {
+  isFabricAssetReference,
+  VIGILIA_ASSET_PROPERTY,
+} from "./object-asset.js";
 import { VIGILIA_PAINT_PROPERTY } from "./object-paint.js";
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON
@@ -100,6 +103,7 @@ export function disposeScene(canvas: StaticCanvas): void {
 export async function reviveScene(
   canvas: StaticCanvas,
   scene: SerialisedScene,
+  resolveAsset?: (assetId: string) => string | undefined,
 ): Promise<void> {
   disposeScene(canvas);
   // `loadFromJSON` assigns every canvas-level property the document omits, so
@@ -110,7 +114,7 @@ export async function reviveScene(
   // after the load, from the canvas's own pre-revival values.
   const clipPath = canvas.clipPath;
   const backgroundColor = canvas.backgroundColor;
-  await canvas.loadFromJSON(scene);
+  await canvas.loadFromJSON(resolveAssetSources(scene, resolveAsset));
   if (clipPath !== undefined) canvas.clipPath = clipPath;
   if (backgroundColor !== undefined) canvas.backgroundColor = backgroundColor;
 }
@@ -119,9 +123,57 @@ export async function reviveScene(
 export async function reviveThemeEnvelope(
   canvas: StaticCanvas,
   envelope: FabricThemeEnvelope,
+  resolveAsset?: (assetId: string) => string | undefined,
 ): Promise<void> {
   assertFabricThemeEnvelopeCompatible(envelope);
-  await reviveScene(canvas, envelope.scene as SerialisedScene);
+  await reviveScene(canvas, envelope.scene as SerialisedScene, resolveAsset);
+}
+
+/**
+ * The scene as Fabric should load it, with every asset reference turned into
+ * the URL that asset resolves to.
+ *
+ * `vigiliaAsset` is the authored truth and `src` is whatever the session that
+ * decoded the image happened to hold — for a pasted image, a `blob:` URL that
+ * means nothing in another tab, another browser, or on a phone. Fabric
+ * enlivens an image from `src` alone, so resolving here rather than after the
+ * load is what makes the declared bytes travel: a second load would first fail
+ * on the stale URL and then flash. An asset the resolver cannot name keeps its
+ * own `src`, which fails visibly rather than painting the wrong picture.
+ */
+function resolveAssetSources(
+  scene: SerialisedScene,
+  resolveAsset: ((assetId: string) => string | undefined) | undefined,
+): SerialisedScene {
+  if (resolveAsset === undefined) return scene;
+  return {
+    ...scene,
+    objects: scene.objects.map((object) =>
+      resolveObjectAsset(object, resolveAsset),
+    ),
+  };
+}
+
+function resolveObjectAsset(
+  object: Readonly<Record<string, unknown>>,
+  resolveAsset: (assetId: string) => string | undefined,
+): Readonly<Record<string, unknown>> {
+  const children = object["objects"];
+  const reference = object[VIGILIA_ASSET_PROPERTY];
+  const url = isFabricAssetReference(reference)
+    ? resolveAsset(reference.assetId)
+    : undefined;
+  return {
+    ...object,
+    ...(url === undefined ? {} : { src: url }),
+    ...(Array.isArray(children)
+      ? {
+          objects: children
+            .filter(isRecord)
+            .map((child) => resolveObjectAsset(child, resolveAsset)),
+        }
+      : {}),
+  };
 }
 
 /** Checks compatibility before a caller replaces an already-mounted scene. */

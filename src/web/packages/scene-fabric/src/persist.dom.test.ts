@@ -24,7 +24,7 @@ import {
   StaticCanvas,
   Textbox,
 } from "fabric/es";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
@@ -106,6 +106,28 @@ function canvasOf(...objects: readonly object[]): StaticCanvas {
   }
 
   return canvas;
+}
+
+/**
+ * The scene JSON `reviveScene` hands to `loadFromJSON`, without the load.
+ *
+ * jsdom never decodes an image, so a real revive of one that names a URL waits
+ * on an `onload` that cannot arrive. What is under test is what Fabric is
+ * given, so the load is captured rather than performed.
+ */
+async function sceneFabricWouldLoad(
+  scene: SerialisedScene,
+  resolveAsset?: (assetId: string) => string | undefined,
+): Promise<SerialisedScene> {
+  let handed: SerialisedScene | undefined;
+  const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+  vi.spyOn(canvas, "loadFromJSON").mockImplementation((json: unknown) => {
+    handed = json as SerialisedScene;
+    return Promise.resolve(canvas);
+  });
+  await reviveScene(canvas, scene, resolveAsset);
+  if (handed === undefined) throw new Error("Fabric was never asked to load.");
+  return handed;
 }
 
 function keysOf(
@@ -275,6 +297,28 @@ describe("Fabric’s own keys are held to the same rule", () => {
 });
 
 describe("identity survives a round trip", () => {
+  // jsdom cannot drawImage an image it never decoded, and reviving an image
+  // that names a URL makes Fabric render it. A proxy over a real context
+  // forwards everything and no-ops only drawImage.
+  beforeEach(() => {
+    const real = document.createElement("canvas").getContext("2d");
+    if (real === null) return;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () =>
+        new Proxy(real, {
+          get(target, property) {
+            if (property === "drawImage") return (): void => {};
+            const value = Reflect.get(target, property, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+          set(target, property, value) {
+            if (property === "patternQuality") return true;
+            return Reflect.set(target, property, value);
+          },
+        }) as unknown as CanvasRenderingContext2D,
+    );
+  });
+
   it("retains an image asset reference without serialising its preview URL", async () => {
     const source = image();
     setObjectAssetReference(source, { assetId: "logo", kind: "svg" });
@@ -291,6 +335,97 @@ describe("identity survives a round trip", () => {
       assetId: "logo",
       kind: "svg",
     });
+  });
+
+  it("hands Fabric the URL an asset resolves to, not the one the save carried", async () => {
+    // A pasted image saves the `blob:` URL of the session that decoded it,
+    // which means nothing in another tab, another browser or on a phone — the
+    // bytes ship, the picture does not. Fabric enlivens from `src` alone, so
+    // the reference has to be resolved BEFORE the load; after it, the image is
+    // already missing. The load itself is stubbed because jsdom never decodes an
+    // image and would wait on an `onload` that cannot come.
+    const source = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(source, { assetId: "pasted-probe", kind: "image" });
+    const scene = serialiseScene(canvasOf(source));
+    // What the editor's session happened to be holding when it saved.
+    (scene.objects[0] as Record<string, unknown>)["src"] =
+      "blob:http://127.0.0.1:5311/081c983e";
+    const asked: string[] = [];
+
+    const handed = await sceneFabricWouldLoad(scene, (assetId) => {
+      asked.push(assetId);
+      return assetId === "pasted-probe"
+        ? "/api/themes/demo/assets/pasted-probe.png?t=session"
+        : undefined;
+    });
+
+    expect(asked).toEqual(["pasted-probe"]);
+    expect(handed.objects[0]!["src"]).toBe(
+      "/api/themes/demo/assets/pasted-probe.png?t=session",
+    );
+    // The reference is untouched: it is the authored truth, and the URL is what
+    // this session resolves it to.
+    expect(handed.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+      assetId: "pasted-probe",
+      kind: "image",
+    });
+  });
+
+  it("resolves an image inside a group, and leaves one nobody can name alone", async () => {
+    // Nothing is invented for an asset the resolver cannot name: the object
+    // keeps the `src` it arrived with and fails visibly, rather than being
+    // pointed at a placeholder that would paint the wrong picture.
+    const inside = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(inside, { assetId: "known", kind: "image" });
+    const missing = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 8,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(missing, { assetId: "unknown", kind: "image" });
+    const group = new Group([inside, missing], { left: 0, top: 0 });
+    const scene = serialiseScene(canvasOf(group));
+    const children = scene.objects[0]!["objects"] as Record<string, unknown>[];
+    children[0]!["src"] = "blob:http://x/known";
+    children[1]!["src"] = "blob:http://x/unknown";
+
+    const handed = await sceneFabricWouldLoad(scene, (assetId) =>
+      assetId === "known" ? "/assets/known.png" : undefined,
+    );
+
+    const revivedChildren = handed.objects[0]!["objects"] as Record<
+      string,
+      unknown
+    >[];
+    expect(revivedChildren[0]!["src"]).toBe("/assets/known.png");
+    expect(revivedChildren[1]!["src"]).toBe("blob:http://x/unknown");
+  });
+
+  it("changes nothing when the caller has no resolver", async () => {
+    const source = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(source, { assetId: "pasted-probe", kind: "image" });
+    const scene = serialiseScene(canvasOf(source));
+    (scene.objects[0] as Record<string, unknown>)["src"] = "blob:http://x/y";
+
+    const handed = await sceneFabricWouldLoad(scene);
+
+    expect(handed.objects[0]!["src"]).toBe("blob:http://x/y");
   });
 
   it("persists palette references and reapplies their resolved paint", async () => {
