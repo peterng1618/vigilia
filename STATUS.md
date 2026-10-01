@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete and `docs/product/backlog.jsonl` is the working queue — **26 open rows**, 73 in the archive. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
+- **Active plan:** [author journey proof](docs/superpowers/plans/2026-09-29-author-journey-proof.md). Phase 0 is complete and `docs/product/backlog.jsonl` is the working queue — **26 open rows**, 73 in the archive, plus one filed during the gate. The registry is the source of truth; the workspace's `backlog-2026-09-30.md` predates it and is superseded.
 - **Wave 1 is landed and verified; no agent is running.** Ten commits, four rows closed on live evidence (vg-072, vg-084, vg-086, vg-088), vg-087 refuted as filed with its real half filed as vg-099. **THREE AGENTS DIED, and this is the session's recurring failure four times over.** vg-089's handles and vg-086 were stopped with no report; vg-086's work was complete and is committed, verified live before landing. vg-089's wrote nothing and the user's ruling on it is unexecuted.
 - **vg-083 is withdrawn — refuted by a spec this repo had already implemented five days earlier.** The language is a theme property: `metadata.locale`, required on v2 and refused when malformed, governing the words the theme's clock spells; the player's chrome is explicitly outside it. The failure was mine — an agent was dispatched to look for a weather provider before `docs/superpowers/specs/2026-09-26-clock-and-theme-locale.md` was read. **Read the spec index before filing a row about a settled area.**
 - **Two of the six rows had already been attempted or misread once, so their briefs carry the reason rather than just the symptom.** vg-072's obvious fix was reverted for breaking the point-under-cursor invariant, so its brief asks *when* to refit, not *how*. vg-088's two dropdowns may not actually disagree — one `value` is a stored ref and the other's a bare id — so its brief asks which control is mis-bound rather than assuming.
@@ -51,11 +51,11 @@ The loop, in order:
 
 ## Next
 
-1. **Two agents' work is in the tree uncommitted and one is red.** The host library page (vg-085's second half) has modified library.html, settings.html, theme-list.js, vigilia-page.css and theme-list.dom.test.ts, and it is the cause of all four suite failures — three of them in editor-link.dom.test.ts, which is unchanged and committed, so its HTML is being broken by the in-flight edit. Verify or finish that before anything else claims the suite is green.
-2. **vg-089 needs re-dispatching and is the user's call to make.** Its agent was stopped having written nothing, so the ruling — give the textbox its resize and rotation handles like any shape — is unexecuted and the clipping is still there: cpu-card-title at 90-600 renders PU.
-3. **Wave 2 is measurement, and it needs the browser the root now holds.** vg-090 the bar takes a radius and its track does not; vg-091 chart edits do not serialise and one undo reverses several, where the only evidence so far is that an aspect change recorded no history at all; vg-092 icon fill floods the counters. All three are filed as NOT INDEPENDENTLY REPRODUCED and none is worth dispatching blind.
-4. **vg-087 is measured false and stays open**, because withdrawing is the user's call. What remains is vg-099, that a cross-group drop is refused in total silence.
-5. **vg-035 is answered and waiting on the user**: defects first, and if a redesign happens its subject is 841 lines of hand-written CSS with Tailwind installed and unused, not nine components of which one is a hand-roll.
+1. **The suite is green: 2488 across 181 files**, and the one unhandled error in it predates this pass and is filed as vg-100. The build is clean and the host on 8799 was used to verify four rows by driving them.
+2. **vg-089 needs re-dispatching and is the user's call.** Its agent was stopped having written nothing, so the ruling - give the textbox its resize and rotation handles like any shape - is unexecuted and the clipping is still there: cpu-card-title at 90-600 renders PU.
+3. **Wave 2 is measurement, and the browser is free.** vg-090 the bar takes a radius and its track does not; vg-091 chart edits do not serialise and one undo reverses several, where the only evidence is that an aspect change recorded no history at all; vg-092 icon fill floods the counters. All three are filed as NOT INDEPENDENTLY REPRODUCED and none is worth dispatching blind.
+4. **Two claims are now settled against the code, which is the pass's best result.** vg-083 was refuted by a spec implemented five days earlier, and vg-035's search found one hand-roll in nine panels and an 841-line CSS file that is the real subject.
+5. **vg-087 is measured false and stays open**, because withdrawing is the user's call; what remains is vg-099, that a cross-group drop is refused in total silence.
 
 ## Blockers / unverified
 
