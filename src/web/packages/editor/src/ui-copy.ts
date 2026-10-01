@@ -79,6 +79,10 @@ export const uiCopy = {
     /** Panel appearance. Every primitive shape owns a fill, a stroke, a border
         width and a shadow; the corner radius is a rectangle's alone. */
     panelFill: "Fill",
+    /** An unfilled path is stroked, so its paint is ink and `Fill` would be the
+        wrong word — the author who sets it wants the icon recoloured, not the
+        region its centrelines enclose flooded. See `paintPropertyFor`. */
+    panelInk: "Ink",
     panelStroke: "Stroke",
     panelBorder: "Border width",
     panelRadius: "Corner radius",

@@ -2,6 +2,7 @@ import type { FabricGlobals } from "@vigilia/renderer-core";
 import {
   applyObjectPalettePaints,
   type FabricPaintRefs,
+  paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "@vigilia/scene-fabric";
 import {
@@ -187,6 +188,8 @@ export function createPanelFields(
 
   const root = document.createElement("div");
   const refs = paintRefs(object);
+  /** An unfilled path is stroked; one of the controls below paints that ink. */
+  const paintProperty = paintPropertyFor(object);
 
   /** A refused edit restores the field itself; this only reports it. */
   const refused = (): void =>
@@ -211,30 +214,41 @@ export function createPanelFields(
   };
 
   root.append(
+    // One control, and which property it writes is the scene's own decision:
+    // an unfilled path is stroked, so its paint is ink. See `paintPropertyFor`.
     tokenField({
-      label: uiCopy.inspectorFields.panelFill,
+      label:
+        paintProperty === "stroke"
+          ? uiCopy.inspectorFields.panelInk
+          : uiCopy.inspectorFields.panelFill,
       data: "vigiliaPanelFill",
       context,
-      selected: refs.fill,
+      selected: refs[paintProperty],
       onCommit: (ref) =>
         commitRef(() => {
-          writeRef(object, "fill", ref);
+          writeRef(object, paintProperty, ref);
           // No reference means no resolver will clear it, so the live paint is
           // cleared here rather than left at the last token's colour.
-          if (ref === undefined) object.set("fill", "");
+          if (ref === undefined) object.set(paintProperty, "");
         }),
     }),
-    tokenField({
-      label: uiCopy.inspectorFields.panelStroke,
-      data: "vigiliaPanelStroke",
-      context,
-      selected: refs.stroke,
-      onCommit: (ref) =>
-        commitRef(() => {
-          writeRef(object, "stroke", ref);
-          if (ref === undefined) object.set("stroke", "");
-        }),
-    }),
+    // Not offered twice: on an unfilled path the control above already writes
+    // the stroke, and two fields on one property is a coin toss for the author.
+    ...(paintProperty === "stroke"
+      ? []
+      : [
+          tokenField({
+            label: uiCopy.inspectorFields.panelStroke,
+            data: "vigiliaPanelStroke",
+            context,
+            selected: refs.stroke,
+            onCommit: (ref) =>
+              commitRef(() => {
+                writeRef(object, "stroke", ref);
+                if (ref === undefined) object.set("stroke", "");
+              }),
+          }),
+        ]),
     numberField({
       label: uiCopy.inspectorFields.panelBorder,
       value: Math.round(object.get("strokeWidth") as number),

@@ -64,6 +64,7 @@ export {
 export {
   applyObjectPalettePaints,
   type FabricPaintRefs,
+  paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 export {

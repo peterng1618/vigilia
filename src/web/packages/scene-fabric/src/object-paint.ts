@@ -1,5 +1,11 @@
 import type { Globals } from "@vigilia/renderer-core";
-import { Group, Shadow, type StaticCanvas } from "fabric/es";
+import {
+  type FabricObject,
+  Group,
+  Path,
+  Shadow,
+  type StaticCanvas,
+} from "fabric/es";
 import { fabricArtboardPaint } from "./artboard-paint.js";
 
 /** Persisted semantic palette references for Fabric object paint properties. */
@@ -27,6 +33,36 @@ type PaintableObject = {
   scaleX?: number;
   scaleY?: number;
 };
+
+/**
+ * Which Fabric property a paint the author picks belongs on.
+ *
+ * A `Path` carrying no fill is a stroked object, and this product already says
+ * so: `newShapeStroke` fills nothing and is the palette's answer for a line, a
+ * polyline and — by its own comment — a path. The Starter's icons are authored
+ * the same way, `fill: null` and `stroke`/`strokeWidth` carrying the ink.
+ *
+ * Filling one of those paints whatever region its centrelines happen to
+ * enclose, which for a stroke glyph is not the glyph. `starterIcons.storage`
+ * declares one closed subpath and no second, so under any fill rule the whole
+ * drive body floods and every counter closes: there is no hole in the data for
+ * even one to open. What the author meant was the ink, so on an unfilled path
+ * the ink is the stroke.
+ *
+ * Everything else is untouched. A path that arrives filled — a filled author's
+ * glyph, the new-path default — keeps filling the region it encloses, and so
+ * does a rounded card or a chevron.
+ */
+export function paintPropertyFor(object: FabricObject): "fill" | "stroke" {
+  return object instanceof Path && !objectHasFill(object) ? "stroke" : "fill";
+}
+
+/** Fabric spells "no fill" three ways across revival, the inspector and authoring. */
+function objectHasFill(object: FabricObject): boolean {
+  const fill: unknown = object.get("fill");
+
+  return fill !== null && fill !== undefined && fill !== "" && fill !== false;
+}
 
 /** Reapply global palette changes without making resolved Fabric paint authored state. */
 export function applyObjectPalettePaints(
