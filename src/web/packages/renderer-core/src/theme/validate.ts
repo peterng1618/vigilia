@@ -193,6 +193,7 @@ const KNOWN_KEYS = {
     "cornerRadius",
     "fill",
     "track",
+    "trackCornerRadius",
     "showAxes",
     "showCategoryLabels",
     "animation",

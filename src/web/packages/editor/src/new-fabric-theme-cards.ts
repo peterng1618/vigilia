@@ -457,6 +457,10 @@ export function storageCard(): ObjectJson[] {
       cornerRadius: 10,
       fill: { ref: "palette.storageFill" },
       track: { ref: "palette.chartTrack" },
+      // 20 wide is half-radius — a pill. The track states its own rather than
+      // taking the bar's, because the ruling is that the two are independent and
+      // the shipped theme should say what it wants rather than inherit one.
+      trackCornerRadius: 10,
     }),
     // The row the reference puts the volume name and a chevron on. The name is
     // the selected volume's own: it reads a gap until a consumer picks a drive,
