@@ -1073,7 +1073,7 @@ describe("the Fabric theme envelope", () => {
     const envelope = serialiseThemeEnvelope(canvasOf(rect), {
       id: "theme",
       artboard: { width: 400, height: 300 },
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       bindings: { rect: [] },
     });
 

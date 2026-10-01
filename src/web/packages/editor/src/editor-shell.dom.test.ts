@@ -264,7 +264,7 @@ describe("native editor shell", () => {
     const input = {
       id: "theme",
       artboard: { width: 100, height: 100 },
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
     };
     const panel = new Rect({ id: "header", width: 40, height: 20 });
     panel.set("name", "Header rule");

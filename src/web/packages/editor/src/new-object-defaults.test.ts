@@ -266,7 +266,7 @@ function envelopeWith(
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "theme",
-    metadata: { locale: "en" },
+    metadata: { themeLanguage: "en" },
     artboard: { width: 1920, height: 1080 },
     globals: document,
     scene: { version: "7.4.0", objects: [object] },

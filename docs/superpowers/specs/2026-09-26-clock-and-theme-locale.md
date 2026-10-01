@@ -102,15 +102,25 @@ authored design; `Intl` supplies names, the walker decides arrangement.
 
 ### The theme declares its language
 
-The envelope's `metadata` gains `locale`, a BCP 47 tag (`en`, `fr`, `ja-JP`),
-beside `name`, `author` and `description`. It is a fact about the document, which
-is what that bag is for, and it is the value a theme library or store filters on
-— `ThemeStoreEntry` already projects `metadata.name` and `metadata.author`, so
-this joins an existing projection rather than adding a lookup path.
+The envelope's `metadata` gains `themeLanguage`, a BCP 47 tag (`en`, `fr`,
+`ja-JP`), beside `name`, `author` and `description`. It is a fact about the
+document, which is what that bag is for, and it is the value a theme library or
+store filters on — `ThemeStoreEntry` already projects `metadata.name` and
+`metadata.author`, so this joins an existing projection rather than adding a
+lookup path.
 
 It is named for the theme's **language**, not the clock's locale, because it is
 deliberately general: a weather or similar locale-aware provider added later
 reads the same declared fact. The clock is only its first consumer.
+
+**Renamed from `locale` on 2026-10-01** (`docs/decisions/0022`). This section
+originally specified the field as `locale` while stating above that it is a
+language; the name contradicted the decision it recorded. The key is now
+`themeLanguage`, matching the validator function that already had it right. The
+value is unchanged — a BCP 47 tag, `de`/`ar`/`zh-Hans`/`ja` exactly as before —
+and so is the requirement that a missing value means English when a v1 document
+is read. The rename is a clean break: a theme carrying `metadata.locale` is
+refused until it is re-saved, and no fallback reads the old key.
 
 **Required on v2 envelopes.** `validateFabricThemeEnvelope` refuses a theme that
 declares none. Every saved theme is v2, so the future filter is total by
@@ -171,10 +181,11 @@ measurement preference.
 
 ### The language reaches the formatter the way the other display facts do
 
-`PlanContext` gains `locale`, and `plan.ts` passes `document.metadata?.locale`;
-`resolveTextSegments` and `formatValueSegment` add it to the `Pick<...>` context
-they already thread, the same shape `longUnits` uses. The `scene-fabric` text
-entry points take it as a further parameter, mirroring `measurement`.
+`PlanContext` gains `themeLanguage`, and `plan.ts` passes
+`document.metadata?.themeLanguage`; `resolveTextSegments` and
+`formatValueSegment` add it to the `Pick<...>` context they already thread, the
+same shape `longUnits` uses. The `scene-fabric` text entry points take it as a
+further parameter, mirroring `measurement`.
 
 The editor session already broadcasts envelope-level state to its consumers when
 it changes; the language joins that broadcast, so the run preview and the paint
@@ -249,7 +260,7 @@ vocabulary.
   and a language is one scalar nothing references.
 - The zone list and instant reading stay `renderer-core`'s; the default zone stays
   the consumer's, in the host's display settings.
-- The published `schema/theme-document.schema.json` gains `locale` in its
+- The published `schema/theme-document.schema.json` gains `themeLanguage` in its
   `metadata` definition; it sets `additionalProperties: false` and would
   otherwise refuse documents this build accepts.
 - The ownership map's single row for this area ("Instant reading, author format
@@ -267,7 +278,7 @@ vocabulary.
 
 ## Acceptance
 
-- A v2 theme without `metadata.locale` is refused, and one with a malformed or
+- A v2 theme without `metadata.themeLanguage` is refused, and one with a malformed or
   unsupported tag is refused, each naming the offending value.
 - An author sets the language in Theme settings from the curated list; a new theme
   starts at `en`, and every tag the control offers is one the validator accepts.
@@ -286,7 +297,7 @@ vocabulary.
 
 Annotated 2026-09-27 from the code, not from the plan's boxes:
 
-- A v2 theme without `metadata.locale`, and one with a malformed or unsupported
+- A v2 theme without `metadata.themeLanguage`, and one with a malformed or unsupported
   tag, is refused naming the value — `theme/fabric-envelope-validate.ts` and its
   test.
 - Long and short name forms come from the platform, not a truncation of the long

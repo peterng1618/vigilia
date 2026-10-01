@@ -123,32 +123,32 @@ function themeLanguage(metadata: unknown, issues: ValidationIssue[]): void {
     issues.push(
       issue(
         "missing-field",
-        "/metadata/locale",
+        "/metadata/themeLanguage",
         "A theme must declare its language, so its text reads in the language it was written in.",
       ),
     );
     return;
   }
 
-  const locale = metadata["locale"];
+  const language = metadata["themeLanguage"];
 
-  if (locale === undefined) {
+  if (language === undefined) {
     issues.push(
       issue(
         "missing-field",
-        "/metadata/locale",
+        "/metadata/themeLanguage",
         "A theme must declare its language, so its text reads in the language it was written in.",
       ),
     );
     return;
   }
 
-  if (typeof locale !== "string" || !isLocaleName(locale)) {
+  if (typeof language !== "string" || !isLocaleName(language)) {
     issues.push(
       issue(
         "invalid-enum",
-        "/metadata/locale",
-        `locale "${String(locale)}" is not a language this runtime can render.`,
+        "/metadata/themeLanguage",
+        `themeLanguage "${String(language)}" is not a language this runtime can render.`,
       ),
     );
   }

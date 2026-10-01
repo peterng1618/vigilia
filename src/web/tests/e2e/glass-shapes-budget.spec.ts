@@ -109,7 +109,7 @@ function envelope(kinds: readonly Kind[]) {
     schemaVersion: 2 as const,
     fabricVersion: "7.4.0" as const,
     id: "e2e-glass-shapes",
-    metadata: { name: "E2E glass shapes", locale: "en" },
+    metadata: { name: "E2E glass shapes", themeLanguage: "en" },
     artboard: {
       width: ARTBOARD.width,
       height: ARTBOARD.height,

@@ -17,7 +17,7 @@ export class LiveRuntime {
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #source: SampleSource;
   #globals: FabricGlobals | undefined;
-  #locale: string | undefined;
+  #themeLanguage: string | undefined;
   #runDisplay: RunDisplayMode = DEFAULT_RUN_DISPLAY_MODE;
 
   constructor(options: {
@@ -25,13 +25,13 @@ export class LiveRuntime {
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
     readonly source: SampleSource;
     readonly globals?: FabricGlobals;
-    readonly locale?: string;
+    readonly themeLanguage?: string;
   }) {
     this.#canvas = options.canvas;
     this.#bindings = options.bindings ?? {};
     this.#source = options.source;
     this.#globals = options.globals;
-    this.#locale = options.locale;
+    this.#themeLanguage = options.themeLanguage;
   }
 
   /**
@@ -76,9 +76,9 @@ export class LiveRuntime {
     this.#globals = globals;
   }
 
-  setLocale(locale: string | undefined): void {
-    if (locale === this.#locale) return;
-    this.#locale = locale;
+  setThemeLanguage(themeLanguage: string | undefined): void {
+    if (themeLanguage === this.#themeLanguage) return;
+    this.#themeLanguage = themeLanguage;
     // The language decides the words a clock paints, so changing it must repaint
     // rather than wait for the next sample. `setGlobals` above deliberately does
     // not refresh; this one must, because nothing else is scheduled to.
@@ -113,7 +113,7 @@ export class LiveRuntime {
         this.#source,
         this.#globals,
         undefined,
-        this.#locale,
+        this.#themeLanguage,
       );
     }
     this.#canvas.requestRenderAll();

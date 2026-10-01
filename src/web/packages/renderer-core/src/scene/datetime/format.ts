@@ -18,23 +18,28 @@
  */
 
 import { type Parts, parseInstant, partsInZone } from "./instant.js";
-import { DEFAULT_LOCALE, dayPeriod, monthName, weekdayName } from "./names.js";
+import {
+  DEFAULT_THEME_LANGUAGE,
+  dayPeriod,
+  monthName,
+  weekdayName,
+} from "./names.js";
 
 /**
  * Longest first so `HH` is read before `H` and `MMMM` before `MMM`. Built per
  * call so the table cannot capture a stale language.
  */
 const tokensFor = (
-  locale: string,
+  themeLanguage: string,
 ): readonly (readonly [string, (parts: Parts) => string])[] => [
   ["YYYY", (p) => String(p.year).padStart(4, "0")],
   ["YY", (p) => String(p.year % 100).padStart(2, "0")],
-  ["MMMM", (p) => monthName(p, locale, "long")],
-  ["MMM", (p) => monthName(p, locale, "short")],
+  ["MMMM", (p) => monthName(p, themeLanguage, "long")],
+  ["MMM", (p) => monthName(p, themeLanguage, "short")],
   ["MM", (p) => String(p.month).padStart(2, "0")],
   ["M", (p) => String(p.month)],
-  ["dddd", (p) => weekdayName(p, locale, "long")],
-  ["ddd", (p) => weekdayName(p, locale, "short")],
+  ["dddd", (p) => weekdayName(p, themeLanguage, "long")],
+  ["ddd", (p) => weekdayName(p, themeLanguage, "short")],
   ["DD", (p) => String(p.day).padStart(2, "0")],
   ["D", (p) => String(p.day)],
   ["HH", (p) => String(p.hour).padStart(2, "0")],
@@ -49,9 +54,9 @@ const tokensFor = (
   ["h", (p) => String(p.hour % 12 === 0 ? 12 : p.hour % 12)],
   ["mm", (p) => String(p.minute).padStart(2, "0")],
   ["ss", (p) => String(p.second).padStart(2, "0")],
-  ["A", (p) => dayPeriod(p, locale)],
+  ["A", (p) => dayPeriod(p, themeLanguage)],
   // `a` is `A` lowered, so the two agree in every language.
-  ["a", (p) => dayPeriod(p, locale).toLowerCase()],
+  ["a", (p) => dayPeriod(p, themeLanguage).toLowerCase()],
 ];
 
 /** Renders an instant with the author's tokens; literals pass through. */
@@ -59,7 +64,7 @@ export function formatInstant(
   value: string,
   format: string,
   timeZone?: string,
-  locale: string = DEFAULT_LOCALE,
+  themeLanguage: string = DEFAULT_THEME_LANGUAGE,
 ): string | undefined {
   const parts =
     timeZone === undefined
@@ -69,7 +74,7 @@ export function formatInstant(
 
   let out = "";
   let index = 0;
-  const tokens = tokensFor(locale);
+  const tokens = tokensFor(themeLanguage);
 
   while (index < format.length) {
     // Bracketed text is the author's literal, verbatim.

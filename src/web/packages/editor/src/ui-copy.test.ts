@@ -61,7 +61,7 @@ it("leaves the three panels with no copy of their own", () => {
       assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
       onMetadataChange: () => undefined,
     },
-  ).render({ width: 1280, height: 720 }, { name: "Living Room", locale: "en" });
+  ).render({ width: 1280, height: 720 }, { name: "Living Room", themeLanguage: "en" });
   createPalettePanel(
     root,
     () => undefined,

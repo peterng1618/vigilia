@@ -29,7 +29,7 @@ const SAVED: FabricThemeEnvelope = {
   fabricVersion: "7.4.0",
   id: "edited-by-hand",
   artboard: { width: 1920, height: 1080 },
-  metadata: { name: "EDITED BY HAND", locale: "en" },
+  metadata: { name: "EDITED BY HAND", themeLanguage: "en" },
   scene: { version: "7.4.0", objects: [{ id: "renamed-headline" }] },
 };
 

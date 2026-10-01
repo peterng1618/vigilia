@@ -8,7 +8,7 @@
 
 import type { Parts } from "./instant.js";
 
-export const DEFAULT_LOCALE = "en";
+export const DEFAULT_THEME_LANGUAGE = "en";
 
 /**
  * Whether this runtime can render the tag. `Intl` accepts any well-formed tag
@@ -37,21 +37,21 @@ const OPTIONS: Record<NameKind, Intl.DateTimeFormatOptions> = {
 // constructing a formatter is expensive.
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
-function formatter(locale: string, kind: NameKind): Intl.DateTimeFormat {
-  const key = `${locale}\u0000${kind}`;
+function formatter(themeLanguage: string, kind: NameKind): Intl.DateTimeFormat {
+  const key = `${themeLanguage}\u0000${kind}`;
   const cached = formatters.get(key);
   if (cached !== undefined) return cached;
 
   let created: Intl.DateTimeFormat;
   try {
-    created = new Intl.DateTimeFormat(locale, {
+    created = new Intl.DateTimeFormat(themeLanguage, {
       ...OPTIONS[kind],
       timeZone: "UTC",
     });
   } catch {
     // A tag the runtime dropped since validation reads as English rather than
     // failing a paint. Validation is what refuses an unusable tag.
-    created = new Intl.DateTimeFormat(DEFAULT_LOCALE, {
+    created = new Intl.DateTimeFormat(DEFAULT_THEME_LANGUAGE, {
       ...OPTIONS[kind],
       timeZone: "UTC",
     });
@@ -68,22 +68,22 @@ function dateOf(parts: Parts): Date {
 
 export function monthName(
   parts: Parts,
-  locale: string,
+  themeLanguage: string,
   width: "long" | "short",
 ): string {
   return formatter(
-    locale,
+    themeLanguage,
     width === "long" ? "monthLong" : "monthShort",
   ).format(dateOf(parts));
 }
 
 export function weekdayName(
   parts: Parts,
-  locale: string,
+  themeLanguage: string,
   width: "long" | "short",
 ): string {
   return formatter(
-    locale,
+    themeLanguage,
     width === "long" ? "weekdayLong" : "weekdayShort",
   ).format(dateOf(parts));
 }
@@ -95,24 +95,24 @@ const dayPeriods = new Map<string, Intl.DateTimeFormat>();
  * periods — "at night", or nothing at all for some languages — so the period is
  * read off a 12-hour clock instead, which is the AM/PM a clock actually shows.
  */
-export function dayPeriod(parts: Parts, locale: string): string {
-  let at = dayPeriods.get(locale);
+export function dayPeriod(parts: Parts, themeLanguage: string): string {
+  let at = dayPeriods.get(themeLanguage);
 
   if (at === undefined) {
     try {
-      at = new Intl.DateTimeFormat(locale, {
+      at = new Intl.DateTimeFormat(themeLanguage, {
         hour: "numeric",
         hourCycle: "h12",
         timeZone: "UTC",
       });
     } catch {
-      at = new Intl.DateTimeFormat(DEFAULT_LOCALE, {
+      at = new Intl.DateTimeFormat(DEFAULT_THEME_LANGUAGE, {
         hour: "numeric",
         hourCycle: "h12",
         timeZone: "UTC",
       });
     }
-    dayPeriods.set(locale, at);
+    dayPeriods.set(themeLanguage, at);
   }
 
   const written = at.formatToParts(

@@ -84,7 +84,7 @@ export const GLASS_ENVELOPE = {
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0" as const,
   id: "e2e-glass",
-  metadata: { name: "E2E glass", locale: "en" },
+  metadata: { name: "E2E glass", themeLanguage: "en" },
   artboard: {
     width: GLASS_ARTBOARD.width,
     height: GLASS_ARTBOARD.height,

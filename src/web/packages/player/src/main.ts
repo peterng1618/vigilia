@@ -141,7 +141,7 @@ function startFixtureTheme(
   animate: boolean,
   measurement: MeasurementSystem,
 ): void {
-  declareDocumentLanguage(theme.metadata?.locale);
+  declareDocumentLanguage(theme.metadata?.themeLanguage);
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get("data") === "live";
   const fake = live ? undefined : createDemoSource(Date.now());
@@ -283,7 +283,7 @@ async function startHostedTheme(
   theme: FabricThemeEnvelope,
   session: DisplaySessionToken,
 ): Promise<void> {
-  declareDocumentLanguage(theme.metadata?.locale);
+  declareDocumentLanguage(theme.metadata?.themeLanguage);
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
   const measurement = await loadDisplayPreferences(session.fetch);
@@ -349,7 +349,7 @@ async function startHostedTheme(
       liveHandle.source,
       theme.globals,
       measurement,
-      theme.metadata?.locale,
+      theme.metadata?.themeLanguage,
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has
@@ -612,18 +612,18 @@ function showScaffoldBanner(keyCount: number, themeName: string): void {
  * The theme's own strings are the author's text and are left exactly as
  * authored; this declares the page they sit in.
  */
-function declareDocumentLanguage(locale: string | undefined): void {
-  if (locale === undefined || locale.length === 0) return;
+function declareDocumentLanguage(themeLanguage: string | undefined): void {
+  if (themeLanguage === undefined || themeLanguage.length === 0) return;
   try {
-    const { language, script } = new Intl.Locale(locale);
+    const { language, script } = new Intl.Locale(themeLanguage);
     const root = document.documentElement;
     root.lang = script === undefined ? language : `${language}-${script}`;
-    const direction = new Intl.Locale(locale).getTextInfo?.().direction;
+    const direction = new Intl.Locale(themeLanguage).getTextInfo?.().direction;
     if (direction === "rtl") root.dir = "rtl";
     else root.removeAttribute("dir");
   } catch {
     // A tag this runtime cannot parse leaves the page as it was, which is the
-    // same place a document with no locale starts.
+    // same place a document with no declared language starts.
   }
 }
 

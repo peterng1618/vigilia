@@ -154,7 +154,7 @@ export interface PlanContext {
    * The language the document's text is written in. A runtime input like
    * `longUnits`, never persisted scene state: the theme's own `metadata` owns it.
    */
-  readonly locale?: string;
+  readonly themeLanguage?: string;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
@@ -164,13 +164,14 @@ export type ChartPlanContext = Pick<
 >;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
-  // The document's own `metadata.locale` is the theme's language; a caller
-  // that sets `context.locale` overrides it for one plan. Normalized once, so
-  // the two `Pick` sites downstream only ever see a string or nothing.
+  // The document's own `metadata.themeLanguage` is the theme's language; a
+  // caller that sets `context.themeLanguage` overrides it for one plan.
+  // Normalized once, so the two `Pick` sites downstream only ever see a string
+  // or nothing.
   const plan: PlanContext =
-    context.locale === undefined &&
-    context.document.metadata?.locale !== undefined
-      ? { ...context, locale: context.document.metadata.locale }
+    context.themeLanguage === undefined &&
+    context.document.metadata?.themeLanguage !== undefined
+      ? { ...context, themeLanguage: context.document.metadata.themeLanguage }
       : context;
 
   const issues: PlanIssue[] = [];
@@ -414,7 +415,10 @@ export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: Pick<PlanContext, "source" | "longUnits" | "measurement" | "locale">,
+  context: Pick<
+    PlanContext,
+    "source" | "longUnits" | "measurement" | "themeLanguage"
+  >,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
@@ -461,7 +465,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, "longUnits" | "measurement" | "locale">,
+  context: Pick<PlanContext, "longUnits" | "measurement" | "themeLanguage">,
 ): PlanTextSegment {
   if (sample.status !== "ok") {
     return {
@@ -489,10 +493,10 @@ function formatValueSegment(
       sample.unit,
       context.measurement ?? DEFAULT_MEASUREMENT_SYSTEM,
     );
-    text = formatNumber(converted.value, precision, context.locale);
+    text = formatNumber(converted.value, precision, context.themeLanguage);
     shown = converted.unit;
   } else if (sample.textValue !== undefined) {
-    text = formatTextReading(binding, sample.textValue, context.locale);
+    text = formatTextReading(binding, sample.textValue, context.themeLanguage);
   } else if (sample.booleanValue !== undefined) {
     text = sample.booleanValue ? "on" : "off";
   } else {
@@ -512,7 +516,7 @@ function formatValueSegment(
 function formatTextReading(
   binding: Binding,
   value: string,
-  locale: string | undefined,
+  themeLanguage: string | undefined,
 ): string {
   const instant = describeSemanticKey(binding.semanticKey)?.instant;
 
@@ -525,7 +529,7 @@ function formatTextReading(
       value,
       binding.format ?? instant.defaultFormat,
       binding.timeZone,
-      locale,
+      themeLanguage,
     ) ?? value
   );
 }
@@ -534,7 +538,7 @@ function formatTextReading(
 export function formatNumber(
   value: number,
   precision: number | undefined,
-  locale?: string,
+  themeLanguage?: string,
 ): string {
   // `Intl` distinguishes negative zero and prints it; `toFixed`, which this
   // used, did not. A reading of `-0` on a dashboard is a rounding artefact
@@ -543,7 +547,7 @@ export function formatNumber(
 
   if (precision !== undefined) {
     const digits = Math.min(Math.max(Math.trunc(precision), 0), 6);
-    return numberFormat(locale, digits, digits).format(measured);
+    return numberFormat(themeLanguage, digits, digits).format(measured);
   }
 
   // At most one decimal, and none where the value has none: `toFixed(1)` used
@@ -551,7 +555,7 @@ export function formatNumber(
   // authored text box then has to be laid out around.
   const rounded = Math.round(measured * 10) / 10;
   return numberFormat(
-    locale,
+    themeLanguage,
     0,
     Number.isInteger(rounded) ? 0 : 1,
   ).format(rounded === 0 ? 0 : rounded);
@@ -571,24 +575,24 @@ const numberFormatters = new Map<string, Intl.NumberFormat>();
  * second-guess in the one respect that moves the layout.
  */
 function numberFormat(
-  locale: string | undefined,
+  themeLanguage: string | undefined,
   minimumFractionDigits: number,
   maximumFractionDigits: number,
 ): Intl.NumberFormat {
-  if (locale === undefined) {
+  if (themeLanguage === undefined) {
     return new Intl.NumberFormat(undefined, {
       useGrouping: false,
       minimumFractionDigits,
       maximumFractionDigits,
     });
   }
-  const key = `${locale} ${minimumFractionDigits} ${maximumFractionDigits}`;
+  const key = `${themeLanguage} ${minimumFractionDigits} ${maximumFractionDigits}`;
   const cached = numberFormatters.get(key);
   if (cached !== undefined) return cached;
 
   let created: Intl.NumberFormat;
   try {
-    created = new Intl.NumberFormat(locale, {
+    created = new Intl.NumberFormat(themeLanguage, {
       useGrouping: false,
       minimumFractionDigits,
       maximumFractionDigits,

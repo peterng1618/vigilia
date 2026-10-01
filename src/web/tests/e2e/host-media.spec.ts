@@ -43,7 +43,7 @@ const envelope = (id: string) => ({
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
   id,
-  metadata: { name: "E2E changing media", locale: "en" },
+  metadata: { name: "E2E changing media", themeLanguage: "en" },
   artboard: {
     width: ARTBOARD.width,
     height: ARTBOARD.height,

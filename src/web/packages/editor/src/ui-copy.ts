@@ -233,6 +233,9 @@ export const uiCopy = {
     cancel: "Cancel",
   },
   saveState: { unsaved: "Unsaved changes" },
+  /** The View menu. Each setting names itself and its current value; the values
+   *  are listed here rather than composed from a number and a unit, so the menu
+   *  cannot say `1` and leave the reader to guess FPS from the neighbour. */
   view: {
     dataSource: "Data source",
     chartRefresh: "Chart refresh",
@@ -241,6 +244,8 @@ export const uiCopy = {
     valueRuns: "Value runs",
     tokens: "tokens",
     values: "values",
+    fps30: "30 FPS",
+    fps1: "1 FPS",
   },
   actions: {
     duplicate: "Duplicate",
@@ -366,7 +371,7 @@ export const uiCopy = {
     assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
-    language: "Language",
+    language: "Theme language",
     /** The sample's own row label, one word because it shares the 72px label
      * column every other field on this panel uses. */
     sampleLabel: "Sample",

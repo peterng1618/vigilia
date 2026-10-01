@@ -135,7 +135,7 @@ function packageFor(scene: Scene, backdrop: Backdrop): Uint8Array {
       schemaVersion: 2 as const,
       fabricVersion: "7.4.0" as const,
       id: `probe-${scene}-${backdrop}`,
-      metadata: { name: "Glass shape parity", locale: "en" },
+      metadata: { name: "Glass shape parity", themeLanguage: "en" },
       artboard: {
         ...(backdrop === "photograph" ? PHOTOGRAPH : STRIPES),
         contentFit: "contain" as const,

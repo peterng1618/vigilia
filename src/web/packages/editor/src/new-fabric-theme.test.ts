@@ -99,7 +99,7 @@ describe("the new Fabric document", () => {
       envelope: document_,
     });
     expect(document_.artboard).toMatchObject(ARTBOARD);
-    expect(document_.metadata?.locale).toBe("en");
+    expect(document_.metadata?.themeLanguage).toBe("en");
     expect(document_.globals?.typePresets).toMatchObject({
       "36-500": { value: { trioRole: "heading" } },
       "90-600": { value: { trioRole: "heading" } },

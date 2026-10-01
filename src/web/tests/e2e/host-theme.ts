@@ -58,12 +58,12 @@ const envelopeFor = (
   name: string,
   nodeId: string,
   binding: { semanticKey: string; format?: string; precision?: number },
-  locale = "en",
+  themeLanguage = "en",
 ) => ({
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
   id,
-  metadata: { name, locale },
+  metadata: { name, themeLanguage },
   artboard: {
     width: 640,
     height: 360,
@@ -233,7 +233,7 @@ const mediaEnvelope = {
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
   id: HOST_MEDIA_THEME_ID,
-  metadata: { name: "E2E media", locale: "en" },
+  metadata: { name: "E2E media", themeLanguage: "en" },
   artboard: {
     width: 640,
     height: 360,
@@ -315,7 +315,7 @@ const groupedGlassEnvelope = {
   schemaVersion: 2 as const,
   fabricVersion: "7.4.0",
   id: HOST_GROUPED_THEME_ID,
-  metadata: { name: "E2E grouped glass", locale: "en" },
+  metadata: { name: "E2E grouped glass", themeLanguage: "en" },
   artboard: {
     width: 640,
     height: 480,

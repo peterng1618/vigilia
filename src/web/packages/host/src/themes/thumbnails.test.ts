@@ -16,7 +16,7 @@ const envelopeFor = (id: string): FabricThemeEnvelope => ({
   schemaVersion: 2,
   fabricVersion: "7.4.0",
   id,
-  metadata: { name: "Living Room", locale: "en" },
+  metadata: { name: "Living Room", themeLanguage: "en" },
   artboard: { width: 1920, height: 1080 },
   scene: { version: "7.4.0", objects: [] },
 });

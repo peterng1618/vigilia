@@ -314,7 +314,7 @@ export function refreshBoundText(
   source: SampleSource,
   globals: FabricGlobals | undefined,
   measurement?: MeasurementSystem,
-  locale?: string,
+  themeLanguage?: string,
 ): void {
   const refresh = (objects: readonly object[]): void => {
     for (const object of objects) {
@@ -336,7 +336,7 @@ export function refreshBoundText(
             {
               source,
               ...(measurement === undefined ? {} : { measurement }),
-              ...(locale === undefined ? {} : { locale }),
+              ...(themeLanguage === undefined ? {} : { themeLanguage }),
             },
             globals ?? {},
             [],

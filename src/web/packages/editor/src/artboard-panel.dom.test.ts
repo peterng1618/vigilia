@@ -154,7 +154,7 @@ describe("artboard panel", () => {
     name.dispatchEvent(new Event("change"));
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Living Room",
-      locale: "en",
+      themeLanguage: "en",
     });
 
     const source = panel.root.querySelector<HTMLSelectElement>(
@@ -191,7 +191,7 @@ describe("artboard panel", () => {
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "After",
       version: "1.2.3",
-      locale: "en",
+      themeLanguage: "en",
     });
     expect(version.tagName).toBe("OUTPUT");
     expect(version.value).toBe("1.2.3");
@@ -204,7 +204,7 @@ describe("artboard panel", () => {
     });
     panel.render(
       { width: 1280, height: 720 },
-      { name: "Before", locale: "en" },
+      { name: "Before", themeLanguage: "en" },
     );
 
     const language = panel.root.querySelector<HTMLSelectElement>(
@@ -223,7 +223,7 @@ describe("artboard panel", () => {
 
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Before",
-      locale: "vi",
+      themeLanguage: "vi",
     });
 
     // The spec's "resolved names shown live": the author sees the words the
@@ -285,7 +285,7 @@ describe("artboard panel", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
     panel.render(
       { width: 1280, height: 720 },
-      { name: "Before", locale: "vi" },
+      { name: "Before", themeLanguage: "vi" },
     );
 
     // It has said so to a screen reader since ad45667 gave it an aria-label,
@@ -311,7 +311,7 @@ describe("artboard panel", () => {
     const panel = createArtboardPanel(document.body, undefined, vi.fn());
     panel.render(
       { width: 1280, height: 720 },
-      { name: "Hand-edited", locale: "cy" },
+      { name: "Hand-edited", themeLanguage: "cy" },
     );
 
     const language = panel.root.querySelector<HTMLSelectElement>(

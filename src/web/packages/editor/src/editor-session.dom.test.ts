@@ -85,7 +85,7 @@ const envelope: FabricThemeEnvelope = {
   schemaVersion: 2,
   fabricVersion: "7.4.0",
   id: "theme",
-  metadata: { locale: "en" },
+  metadata: { themeLanguage: "en" },
   artboard: { width: 100, height: 100 },
   scene: { version: "7.4.0", objects: [] },
 };
@@ -311,7 +311,7 @@ describe("EditorSession", () => {
       assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
-      envelope: { ...envelope, metadata: { version: "1.2.3", locale: "en" } },
+      envelope: { ...envelope, metadata: { version: "1.2.3", themeLanguage: "en" } },
       panelHosts: {
         add: document.body,
         assets: document.body,
@@ -331,7 +331,7 @@ describe("EditorSession", () => {
     await session.savePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        metadata: { version: "1.2.3", locale: "en" },
+        metadata: { version: "1.2.3", themeLanguage: "en" },
       }),
       expect.anything(),
       undefined,
@@ -340,7 +340,7 @@ describe("EditorSession", () => {
     await session.releasePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        metadata: { version: "1.2.4", locale: "en" },
+        metadata: { version: "1.2.4", themeLanguage: "en" },
       }),
       expect.anything(),
       undefined,

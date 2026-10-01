@@ -80,7 +80,7 @@ function mountPanels(): { root: HTMLElement } {
     },
   ).render(
     { width: 1280, height: 720 },
-    { name: "Living Room", version: "1.2.3", locale: "en" },
+    { name: "Living Room", version: "1.2.3", themeLanguage: "en" },
   );
 
   createPalettePanel(

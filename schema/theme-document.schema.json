@@ -33,7 +33,7 @@
         "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "locale": { "type": "string", "maxLength": 64 }
+        "themeLanguage": { "type": "string", "maxLength": 64 }
       }
     },
     "paletteReference": {

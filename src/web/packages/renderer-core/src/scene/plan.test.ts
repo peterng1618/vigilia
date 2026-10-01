@@ -397,7 +397,7 @@ describe("text (§89)", () => {
           ),
         ],
         undefined,
-        { locale: "ja" },
+        { themeLanguage: "ja" },
       ),
       { source },
     );
@@ -409,7 +409,7 @@ describe("text (§89)", () => {
   });
 
   it("lets a caller's language override the document's", () => {
-    // Both are declared, and the caller's wins: `context.locale` is how a
+    // Both are declared, and the caller's wins: `context.themeLanguage` is how a
     // consumer renders one plan in a language that is not the theme's own.
     const source = storeWith({
       "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
@@ -423,9 +423,9 @@ describe("text (§89)", () => {
           ),
         ],
         undefined,
-        { locale: "ja" },
+        { themeLanguage: "ja" },
       ),
-      { source, locale: "en" },
+      { source, themeLanguage: "en" },
     );
     const content = result.nodes[0]!.content;
     if (content.kind !== "text") throw new Error("expected a text node");
@@ -450,7 +450,7 @@ describe("text (§89)", () => {
         },
       ],
       [{ kind: "value", bindingId: "b" }],
-      { locale: "en" },
+      { themeLanguage: "en" },
     );
 
     // 20:00 UTC is already Friday the 25th in Tokyo, so a formatter that read the
@@ -472,7 +472,7 @@ describe("text (§89)", () => {
         },
       ],
       [{ kind: "value", bindingId: "b" }],
-      { locale: "ar" },
+      { themeLanguage: "ar" },
     );
 
     // `ar` is the sharpest case: its own calendar and digits are not Latin, and

@@ -119,7 +119,7 @@ async function openFixture(
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: `snapping-${kind}-${mode}`,
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: ARTBOARD_WIDTH, height: 600 },
       globals: paint(),
       scene: { version: "7.4.0", objects },

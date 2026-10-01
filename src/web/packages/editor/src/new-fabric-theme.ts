@@ -53,7 +53,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         "The reference composition: a clock, two usage cards, two memory rings, a performance chart and stacked storage and network panels.",
       // The editor's own copy is English, so a new theme starts where its
       // author does rather than guessing from the browser.
-      locale: "en",
+      themeLanguage: "en",
     },
     artboard: {
       width: 1672,
@@ -270,7 +270,7 @@ export function createBlankFabricTheme(
       name: "New theme",
       author: "Vigilia",
       description: "",
-      locale: "en",
+      themeLanguage: "en",
     },
     artboard: {
       width: artboard.width,

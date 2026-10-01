@@ -7,7 +7,7 @@ const baseline = {
   fabricVersion: "7.4.0",
   id: "theme",
   artboard: { width: 1, height: 1 },
-  metadata: { locale: "en" },
+  metadata: { themeLanguage: "en" },
   scene: { version: "7.4.0", objects: [] },
 } as const;
 
@@ -70,7 +70,7 @@ describe("PersistenceManager", () => {
     const changedEnvelope = {
       ...baseline,
       id: "living-room",
-      metadata: { name: "Living Room", locale: "en" },
+      metadata: { name: "Living Room", themeLanguage: "en" },
     };
 
     await manager.save(changedEnvelope, {});

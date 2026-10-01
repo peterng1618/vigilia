@@ -359,7 +359,7 @@ export class EditorSession {
       // asks it to re-resolve.
       refreshGlass: () => options.shell.refreshGlass(),
     });
-    this.#selection.setLocale(options.envelope.metadata?.locale);
+    this.#selection.setLocale(options.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the
     // shell built the text manager before this session existed, so the
     // dependency is installed here rather than passed in.
@@ -405,9 +405,9 @@ export class EditorSession {
       ...(options.envelope.globals === undefined
         ? {}
         : { globals: options.envelope.globals }),
-      ...(options.envelope.metadata?.locale === undefined
+      ...(options.envelope.metadata?.themeLanguage === undefined
         ? {}
-        : { locale: options.envelope.metadata.locale }),
+        : { themeLanguage: options.envelope.metadata.themeLanguage }),
     });
     // A pasted image must be a declared asset, not a blob URL: the half-only
     // path saves a document whose image is a handle into this session's memory
@@ -831,7 +831,15 @@ export class EditorSession {
     if (!(await this.#confirmReplacement(options))) return;
     const client = options.libraryClient ?? createThemeLibraryClient();
     try {
-      const choice = await promptThemeSelection(await client.list());
+      // The client goes in so a delete raised from this dialog reaches the host
+      // this session is already talking to, rather than one the dialog builds.
+      const choice = await promptThemeSelection(
+        await client.list(),
+        undefined,
+        {
+          client,
+        },
+      );
       if (choice === undefined) return;
       // A template is not a stored theme: it is not in the host's library, so
       // there is nothing to fetch and nothing the author could have deleted.
@@ -1001,13 +1009,13 @@ export class EditorSession {
   }
 
   #pushLocale(): void {
-    const locale = this.#envelope.metadata?.locale;
+    const themeLanguage = this.#envelope.metadata?.themeLanguage;
     // Two receivers, not four: the editor paints bound text only through the
     // live runtime, and the inspector's run preview is the other place a
     // formatted reading is written. `runs.ts`'s own `applyAuthoredText` calls
     // pass no bindings, so they resolve no reading and need no language.
-    this.#runtime.setLocale(locale);
-    this.#selection.setLocale(locale);
+    this.#runtime.setThemeLanguage(themeLanguage);
+    this.#selection.setLocale(themeLanguage);
   }
 
   #refreshBackgroundMedia(shell: EditorShell): void {

@@ -1539,7 +1539,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "literal-bars",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: {
         width: 1000,
         height: 720,
@@ -1564,7 +1564,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "gradient-artboard",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: {
         width: 1000,
         height: 720,
@@ -1945,7 +1945,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "style-tab",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: {
         width: 320,
         height: 180,
@@ -2076,7 +2076,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "live-text",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: {
         width: 320,
         height: 180,
@@ -2282,7 +2282,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "opened",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       scene: {
         version: "7.4.0",
@@ -2367,7 +2367,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "unnamed",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       scene: {
         version: "7.4.0",
@@ -2403,7 +2403,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "source",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       scene: {
         version: "7.4.0",
@@ -2633,7 +2633,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "movable",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       globals: {
         palette: {
@@ -2718,7 +2718,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "grouping",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       // The brief's fixture wrote a raw `fill`; this validator rejects one
       // without a palette reference, so the paint is declared the way every
@@ -2989,7 +2989,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "unselectable",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: {
         width: STARTER_WIDTH,
         height: 941,
@@ -3157,7 +3157,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "unrevivable",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       scene: { version: "7.4.0", objects: [{ type: "UnknownFabricObject" }] },
     });
@@ -3926,7 +3926,7 @@ test.describe("Fabric editor route", () => {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "reorder",
-      metadata: { locale: "en" },
+      metadata: { themeLanguage: "en" },
       artboard: { width: 320, height: 180 },
       globals: paint,
       scene: {

@@ -33,7 +33,7 @@ function envelope(): Record<string, unknown> {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "theme",
-    metadata: { locale: "en" },
+    metadata: { themeLanguage: "en" },
     artboard: { width: 400, height: 300 },
     bindings: { chart: [{ id: "cpu", semanticKey: "cpu.load", precision: 0 }] },
     scene: {
@@ -129,7 +129,7 @@ describe("Fabric theme envelope validation", () => {
     expect(
       validateFabricThemeEnvelope({
         ...envelope(),
-        metadata: { version: "1.2.3", locale: "en" },
+        metadata: { version: "1.2.3", themeLanguage: "en" },
         artboard: {
           width: 400,
           height: 300,
@@ -143,7 +143,7 @@ describe("Fabric theme envelope validation", () => {
   it("rejects malformed versions and invalid background-media references", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { version: "v1.2.3", locale: "en" },
+      metadata: { version: "v1.2.3", themeLanguage: "en" },
       artboard: {
         width: 400,
         height: 300,
@@ -250,7 +250,7 @@ describe("Fabric theme envelope validation", () => {
   it("keeps shared semantics valid while refusing obsolete GIF assets", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { name: "Valid", locale: "en", unexpected: true },
+      metadata: { name: "Valid", themeLanguage: "en", unexpected: true },
       assets: [{ id: "animated", kind: "gif", path: "assets/animated.gif" }],
       editorMetadata: ["not-an-object"],
     });
@@ -790,7 +790,7 @@ describe("Fabric theme envelope validation", () => {
 
   it("requires the theme to declare the language its text is written in", () => {
     // The realistic case: every v2 theme already has a metadata bag with a name
-    // and author, so the refusal that matters is a bag without `locale` in it —
+    // and author, so the refusal that matters is a bag without `themeLanguage` in it —
     // not a document missing metadata entirely. Both paths are pinned, since the
     // validator handles them separately.
     const withoutLocale = withMetadata(envelope(), {
@@ -803,24 +803,24 @@ describe("Fabric theme envelope validation", () => {
     // A refusal that names the field, not a crash: a theme saved before this
     // change must fail legibly.
     expect(issuesOf(missing)).toContainEqual(
-      expect.objectContaining({ path: "/metadata/locale" }),
+      expect.objectContaining({ path: "/metadata/themeLanguage" }),
     );
 
     const withoutMetadata = withoutKey(envelope(), "metadata");
     expect(
       issuesOf(validateFabricThemeEnvelope(withoutMetadata)),
-    ).toContainEqual(expect.objectContaining({ path: "/metadata/locale" }));
+    ).toContainEqual(expect.objectContaining({ path: "/metadata/themeLanguage" }));
   });
 
   it("refuses a language this runtime cannot render", () => {
-    for (const locale of ["en_US", "xx-YY"]) {
+    for (const language of ["en_US", "xx-YY"]) {
       const result = validateFabricThemeEnvelope(
-        withMetadata(envelope(), { name: "Fixture", locale }),
+        withMetadata(envelope(), { name: "Fixture", themeLanguage: language }),
       );
 
       expect(result.ok).toBe(false);
       expect(issuesOf(result)).toContainEqual(
-        expect.objectContaining({ path: "/metadata/locale" }),
+        expect.objectContaining({ path: "/metadata/themeLanguage" }),
       );
     }
   });
@@ -828,7 +828,7 @@ describe("Fabric theme envelope validation", () => {
   it("accepts a theme that declares a language but binds no clock", () => {
     // The language is a fact about the document, not a demand that it show a clock.
     const result = validateFabricThemeEnvelope(
-      withMetadata(envelope(), { name: "Fixture", locale: "ja" }),
+      withMetadata(envelope(), { name: "Fixture", themeLanguage: "ja" }),
     );
 
     expect(result.ok).toBe(true);
@@ -843,14 +843,14 @@ describe("Fabric theme envelope validation", () => {
     const noBindingsKey = withoutKey(envelope(), "bindings");
     expect(
       validateFabricThemeEnvelope(
-        withMetadata(noBindingsKey, { name: "Fixture", locale: "ja" }),
+        withMetadata(noBindingsKey, { name: "Fixture", themeLanguage: "ja" }),
       ).ok,
     ).toBe(true);
 
     const emptyBindings = { ...envelope(), bindings: {} };
     expect(
       validateFabricThemeEnvelope(
-        withMetadata(emptyBindings, { name: "Fixture", locale: "ja" }),
+        withMetadata(emptyBindings, { name: "Fixture", themeLanguage: "ja" }),
       ).ok,
     ).toBe(true);
   });

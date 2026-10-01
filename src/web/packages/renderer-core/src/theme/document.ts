@@ -300,8 +300,12 @@ export interface ThemeMetadata {
    * The language this theme's text is written in, as a BCP 47 tag. Required on
    * v2 envelopes: text a theme shows belongs to the theme's language, and a
    * theme library filters on it. Absent means English when a v1 document is read.
+   *
+   * Named for the language rather than the locale: the value is a bare language
+   * tag from the curated list, and it states a fact about this theme rather than
+   * the runtime's formatting preferences. See docs/decisions/0022.
    */
-  readonly locale?: string;
+  readonly themeLanguage?: string;
 }
 
 export interface ThemeDocument {

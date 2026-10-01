@@ -259,7 +259,7 @@ export function createArtboardPanel(
       name: name.input.value,
       author: author.input.value,
       description: description.input.value,
-      locale: language.select.value,
+      themeLanguage: language.select.value,
     });
     currentMetadata = next;
     options.onMetadataChange?.(next);
@@ -352,8 +352,8 @@ export function createArtboardPanel(
     author.input.value = metadata?.author ?? "";
     description.input.value = metadata?.description ?? "";
     version.value = metadata?.version ?? "";
-    refreshLanguageOptions(language.select, metadata?.locale);
-    language.select.value = metadata?.locale ?? "en";
+    refreshLanguageOptions(language.select, metadata?.themeLanguage);
+    language.select.value = metadata?.themeLanguage ?? "en";
     refreshLanguageSample(languageSample, language.select.value);
   };
 
@@ -492,10 +492,15 @@ function refreshLanguageOptions(
 /** The words this language actually spells, for the instant a clock would read. */
 function refreshLanguageSample(
   sample: HTMLOutputElement,
-  locale: string,
+  themeLanguage: string,
 ): void {
   sample.textContent =
-    formatInstant(instantIn(Date.now()), "MMMM dddd", undefined, locale) ?? "";
+    formatInstant(
+      instantIn(Date.now()),
+      "MMMM dddd",
+      undefined,
+      themeLanguage,
+    ) ?? "";
 }
 
 function refreshPaletteOptions(

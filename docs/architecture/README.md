@@ -74,7 +74,7 @@ The development v2 envelope is:
 
 ```text
 Theme envelope
-├── schemaVersion / fabricVersion / id / metadata (incl. locale)
+├── schemaVersion / fabricVersion / id / metadata (incl. themeLanguage)
 ├── artboard
 ├── globals / assets / bindings / editor metadata
 └── scene: Fabric JSON
