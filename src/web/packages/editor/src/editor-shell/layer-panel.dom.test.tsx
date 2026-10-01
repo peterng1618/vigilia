@@ -6,6 +6,7 @@ import { Canvas, Rect } from "fabric/es";
 import { LayerPanel } from "./layer-panel.js";
 import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
+import { uiCopy } from "../ui-copy.js";
 
 function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
   return {
@@ -515,6 +516,109 @@ function dragEvent(type: string): Event {
   });
   return event;
 }
+
+/** vg-099: the refusal was silent, so an author dragging toward another group
+ * saw the same row, the same cursor and the same list as a drop that lands.
+ * `draggable` is honest and cross-group reordering is still refused — what was
+ * missing is the panel saying so, so the state a row carries mid-gesture is
+ * the thing pinned here: a slot, a refusal, or neither. */
+it("tells a refused drop target from one that would land, mid-gesture", async () => {
+  const reorderLayer = vi.fn(() => false);
+  const tree = [
+    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false },
+    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined,
+      hasChildren: false, visible: true, locked: false, selected: false },
+  ];
+  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const host = await renderPanel(tree, {
+    reorderLayer,
+    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+  });
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const tree_ = (): HTMLElement => host.querySelector<HTMLElement>('[role="tree"]')!;
+
+  // Before any gesture nothing is marked, so an ordinary hover is untouched.
+  expect(row("peer").getAttribute("data-drop")).toBeNull();
+  expect(tree_().getAttribute("data-dragging")).toBeNull();
+
+  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
+  // The tree knows a gesture is in flight, which is what lets the stylesheet
+  // dim every row that is not the slot — the refusal has to be visible
+  // somewhere other than the row the pointer happens to be over.
+  expect(tree_().getAttribute("data-dragging")).toBe("child");
+
+  const refused = await act(async () => {
+    const event = dragEvent("dragover");
+    row("sibling").dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  // The gesture is answered rather than swallowed: a refused row is not
+  // cancelled, so the browser's own drag cursor joins in and says no too.
+  expect(refused).toBe(false);
+  expect(row("sibling").getAttribute("data-drop")).toBe("refused");
+  // The source row is not a refusal — it is where the layer already is, which
+  // is a third answer the panel must not confuse with either of the others.
+  await act(async () => row("child").dispatchEvent(dragEvent("dragover")));
+  expect(row("child").getAttribute("data-drop")).toBeNull();
+
+  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  expect(row("peer").getAttribute("data-drop")).toBe("slot");
+  // Only one row is ever marked, so a refusal cannot linger beside a slot.
+  expect(row("sibling").getAttribute("data-drop")).toBeNull();
+
+  // The mark is the drag's, so the gesture ending takes it with it.
+  await act(async () => row("peer").dispatchEvent(dragEvent("dragend")));
+  expect(tree_().getAttribute("data-dragging")).toBeNull();
+  expect(row("peer").getAttribute("data-drop")).toBeNull();
+});
+
+it("still restacks on a drop the panel marked, and refuses the one it did not", async () => {
+  // The half of vg-099 that must not move: making a refusal visible is not a
+  // reason to stop accepting a drop, and the two answers come from one gesture.
+  const reorderLayer = vi.fn(() => true);
+  const tree = [
+    { ...textRow, id: "child", name: "Child", depth: 1, parentId: "group" },
+    { ...textRow, id: "peer", name: "Peer", depth: 1, parentId: "group" },
+    { ...textRow, id: "sibling", name: "Sibling", depth: 0 },
+  ];
+  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const host = await renderPanel(tree, {
+    reorderLayer,
+    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+  });
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+
+  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("sibling").dispatchEvent(dragEvent("drop")));
+  expect(reorderLayer).not.toHaveBeenCalled();
+
+  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("peer").dispatchEvent(dragEvent("drop")));
+  expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
+  expect(row("peer").getAttribute("data-drop")).toBeNull();
+  expect(host.querySelector('[role="tree"]')?.getAttribute("data-dragging")).toBeNull();
+});
+
+it("states the reorder rule in the panel's own words, for a reader and not only a pointer", async () => {
+  // A cursor is a pointer's answer; an author who has never read a line of
+  // documentation needs the rule in text too. It hangs off the tree through
+  // `aria-describedby`, which is how a screen-reader user reaches it — the
+  // brief's own criterion was one an author can satisfy without hovering.
+  const host = await renderPanel([textRow]);
+  const rule = host.querySelector<HTMLElement>("[data-vigilia-layer-rule]");
+  expect(rule?.textContent).toBe(uiCopy.panels.reorderRule);
+  const tree = host.querySelector('[role="tree"]');
+  expect(tree?.getAttribute("aria-describedby")).toBe(rule?.id);
+});
 
 /** vg-087: the rows said `draggable` and nothing acted on it. Every earlier test
  * here drove the panel through a stub bridge, so a stub that answered

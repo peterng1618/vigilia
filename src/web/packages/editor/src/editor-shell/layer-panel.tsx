@@ -12,7 +12,7 @@ import {
   Type as TypeIcon,
   Unlock,
 } from "lucide-react";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
@@ -216,12 +216,49 @@ export function LayerPanel({
   // The drag's own state, not React's: a ref set mid-gesture lands without a
   // re-render, so a drop that follows within the same frame cannot see the
   // stale value a state update would leave behind.
-  const drag = useRef<{ from: string; before: string | undefined } | undefined>(
-    undefined,
-  );
+  const drag = useRef<
+    {
+      from: string;
+      before: string | undefined;
+      marked: HTMLElement | undefined;
+      source: HTMLElement | undefined;
+    } | undefined
+  >(undefined);
   // One line for the whole tree: the browser applies it to whatever element is
   // under the cursor, which is exactly the slot that would take the drop.
   const indicator = useRef<HTMLDivElement | null>(null);
+  // The tree itself, so the stylesheet can tell "a drag is in flight" from
+  // "this row is a target" — the two answer different questions.
+  const tree = useRef<HTMLDivElement | null>(null);
+  const ruleId = useId();
+
+  /** The one row carrying `data-drop`, and the only one that may: two marked
+   * rows would claim two slots, and the second would be a lie. Written to the
+   * DOM for the same reason the drag state is a ref — a drop can follow the
+   * last `dragover` inside one frame. */
+  const mark = (
+    row: HTMLElement | undefined,
+    state: "slot" | "refused" | undefined,
+  ): void => {
+    const active = drag.current;
+    if (active === undefined) return;
+    active.marked?.removeAttribute("data-drop");
+    active.marked = undefined;
+    if (row !== undefined && state !== undefined) {
+      row.setAttribute("data-drop", state);
+      active.marked = row;
+    }
+  };
+
+  /** Take the gesture's marks off the tree with the gesture, so nothing outlives
+   * the drag that put it there. */
+  const unmark = (): void => {
+    mark(undefined, undefined);
+    drag.current?.source?.removeAttribute("data-drag-source");
+    drag.current = undefined;
+    tree.current?.removeAttribute("data-dragging");
+    if (indicator.current !== null) indicator.current.hidden = true;
+  };
 
   const commit = (id: string, name: string): void => {
     setEditing(undefined);
@@ -231,7 +268,18 @@ export function LayerPanel({
   return (
     <section data-vigilia-panel="layers">
       <h2>{uiCopy.panels.layers}</h2>
-      <div role="tree" aria-label={uiCopy.panels.layers}>
+      {/* The rule, stated where the author reads the panel rather than only in
+        * a cursor they may never look at. `aria-describedby` is the same string
+        * reached without a pointer, so it is not two copies of the rule. */}
+      <p id={ruleId} data-vigilia-layer-rule className="vigilia-layer-rule">
+        {uiCopy.panels.reorderRule}
+      </p>
+      <div
+        ref={tree}
+        role="tree"
+        aria-label={uiCopy.panels.layers}
+        aria-describedby={ruleId}
+      >
         {rows.map((row, index) => {
           const Icon = KIND_ICONS[row.kind];
           const Twisty = TWISTY_ICONS[row.collapsed ? "collapsed" : "expanded"];
@@ -274,7 +322,18 @@ export function LayerPanel({
                 // Chrome will not start a drag without payload, and one of our
                 // own rows is the only thing that may start one.
                 event.dataTransfer.setData("application/x-vigilia-layer", row.id);
-                drag.current = { from: row.id, before: undefined };
+                drag.current = {
+                  from: row.id,
+                  before: undefined,
+                  marked: undefined,
+                  source: event.currentTarget,
+                };
+                // The whole tree knows a gesture is in flight, so the stylesheet
+                // can hold the slot apart from everything it is not.
+                tree.current?.setAttribute("data-dragging", row.id);
+                // What the author picked up, so the list shows the gesture is
+                // holding a specific row rather than the whole tree.
+                event.currentTarget.setAttribute("data-drag-source", "");
               }}
               // The row is the drop slot's height, so the browser pointing its
               // drop indicator at this row is the same thing as a pointer aimed
@@ -282,20 +341,32 @@ export function LayerPanel({
               onDragOver={(event) => {
                 const active = drag.current;
                 if (active === undefined) return;
-                // A permanent marker reads as state, not as a target.
-                event.preventDefault();
                 if (active.before === row.id) return;
-                // Not above ourselves: that is where the layer already is.
+                // Not above ourselves: that is where the layer already is, which
+                // is a third answer and neither a slot nor a refusal.
                 const moved = row.id !== active.from;
                 // Nothing marked outside one parent — the bridge would refuse
                 // it, and a marker there would promise a drop that cannot land.
-                active.before = moved && bridge?.sameLayerParent(active.from, row.id)
-                  ? row.id
-                  : undefined;
+                const lands =
+                  moved && bridge?.sameLayerParent(active.from, row.id) === true;
+                active.before = lands ? row.id : undefined;
+
+                if (lands) {
+                  // A permanent marker reads as state, not as a target.
+                  event.preventDefault();
+                  mark(event.currentTarget, "slot");
+                } else {
+                  // vg-099: the refusal used to be swallowed whole — cancelled
+                  // or not made no difference to anything an author could see.
+                  // Not cancelling is deliberate: the browser then shows its own
+                  // no-drop cursor here, which is one more surface saying no
+                  // rather than the panel saying it alone.
+                  mark(moved ? event.currentTarget : undefined, "refused");
+                }
+
                 const line = indicator.current;
-                if (line === null || !moved) return;
-                line.hidden = active.before === undefined;
-                if (active.before === undefined) return;
+                if (line === null || !lands) return;
+                line.hidden = false;
                 line.style.setProperty(
                   "--layer-dropline-top",
                   String(index * ROW_HEIGHT),
@@ -307,17 +378,13 @@ export function LayerPanel({
               }}
               onDrop={(event) => {
                 const active = drag.current;
-                drag.current = undefined;
-                if (indicator.current !== null) indicator.current.hidden = true;
                 const before = active?.before;
+                unmark();
                 if (active === undefined || before === undefined) return;
                 event.preventDefault();
                 store.mutate(() => bridge?.reorderLayer(active.from, before));
               }}
-              onDragEnd={() => {
-                drag.current = undefined;
-                if (indicator.current !== null) indicator.current.hidden = true;
-              }}
+              onDragEnd={unmark}
               style={
                 {
                   "--layer-depth": String(row.depth),

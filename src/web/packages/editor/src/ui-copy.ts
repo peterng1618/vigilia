@@ -348,6 +348,12 @@ export const uiCopy = {
     rename: "Rename",
     collapse: "Collapse",
     expand: "Expand",
+    /** The drag rule, in the panel's own words rather than in a cursor. A drop
+     * across a group boundary is refused by design (Fabric membership is a
+     * different operation), and a refusal nothing says reads as a panel being
+     * unreliable — the same gesture works one row over, so the author has no
+     * other evidence that a rule is what stopped it. */
+    reorderRule: "Drag a row to reorder it within its group.",
     add: "Add",
     text: "Text",
     panel: "Panel",

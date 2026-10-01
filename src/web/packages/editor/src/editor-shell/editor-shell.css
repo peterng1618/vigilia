@@ -594,7 +594,51 @@ body,
   height: 24px;
   overflow: hidden;
   border-radius: 5px;
-  cursor: default;
+  /* A row is draggable, so it says so the way Fabric's own handles say what
+     they do: the pointer changes to the gesture, not to a text I-beam. The
+     buttons inside keep their own `pointer` below. */
+  cursor: grab;
+}
+.vigilia-layer-row button {
+  cursor: pointer;
+}
+
+/* The reorder rule, stated once in the panel rather than only in a cursor. */
+.vigilia-layer-rule {
+  margin: 0 0 4px;
+  color: var(--shell-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Mid-gesture there are three answers and all three are visible. Before this
+   the row under the pointer was the same row it had been all along, so a
+   refused drop and a landing one looked identical until release. */
+.vigilia-layer-row[data-drop="refused"] {
+  /* Unreachable, the same word the panel already uses for a hidden or
+     out-of-context row — but struck through, because refusing to let go of a
+     layer is not the same as greying one out. */
+  opacity: 0.45;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.vigilia-layer-row[data-drop="slot"] {
+  cursor: copy;
+}
+/* Every row the drag cannot land on recedes, so the slot reads as the one
+   place the drop would go rather than as one more row of the same list. */
+[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row:not([data-drop="slot"]) {
+  opacity: 0.4;
+}
+/* The refusal is held a shade stronger than the rest, so "no" is still legible
+   against a list that is already dimmed. */
+[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row[data-drop="refused"] {
+  opacity: 0.65;
+}
+/* The row being moved says so too, so the author can see what they picked up. */
+[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row[data-drag-source] {
+  cursor: grabbing;
+  opacity: 0.65;
 }
 /* Only an entered group dims anything: with no group entered every top-level
    layer is selectable on the canvas, and a tree greyed out by default would
