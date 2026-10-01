@@ -16,50 +16,57 @@ import { applyEditorControls } from "./index.js";
  * persists, and the object reads it back.
  */
 
-/** A `Textbox` in the vg-089 state: authored 27 tall, a 90px run in it. */
-function dragged(height: number, draggedHeight: number): Textbox {
-  const textbox = new Textbox("CPU", { width: 140, height, fontSize: 90 });
-  textbox.set("vigiliaText", {
+/** A `Textbox` in the vg-089 state: a 90px run in an authored 27-tall box. */
+function textbox(height: number): Textbox {
+  const object = new Textbox("CPU", { width: 140, height, fontSize: 90 });
+  object.set("vigiliaText", {
     runs: [{ kind: "literal", text: "CPU" }],
     box: { width: 140, height },
   });
-  // What Fabric's `changeHeight` leaves behind: its own height, unscaled.
-  textbox.set("height", draggedHeight);
-  return textbox;
+  return object;
 }
 
-/** Releases a control the way a completed drag does. */
-function release(textbox: Textbox, key: string): void {
+/** Presses `key`, drags the edge to `to`, and lets go — the whole gesture. */
+function drag(object: Textbox, key: string, to: number): void {
   applyEditorControls();
-  Textbox.ownDefaults.controls?.[key]?.mouseUpHandler?.(
-    {} as never,
-    { target: textbox } as never,
-    0,
-    0,
-  );
+  const control = Textbox.ownDefaults.controls?.[key];
+  if (control === undefined) throw new Error(`${key} is not a control`);
+  const transform = { target: object } as never;
+  control.mouseDownHandler?.({} as never, transform, 0, 0);
+  object.set("height", to);
+  control.mouseUpHandler?.({} as never, transform, 0, 0);
 }
 
-function boxOf(textbox: Textbox): unknown {
-  return (textbox.get("vigiliaText") as { box?: unknown }).box;
+/** The same gesture without the move, which is not a resize. */
+function press(object: Textbox, key: string): void {
+  applyEditorControls();
+  const control = Textbox.ownDefaults.controls?.[key];
+  const transform = { target: object } as never;
+  control?.mouseDownHandler?.({} as never, transform, 0, 0);
+  control?.mouseUpHandler?.({} as never, transform, 0, 0);
+}
+
+function boxOf(object: Textbox): unknown {
+  return (object.get("vigiliaText") as { box?: unknown }).box;
 }
 
 describe("a textbox's vertical edge writes the authored box", () => {
   it("records the dragged height in the box, not in Fabric's own height", () => {
-    const textbox = dragged(27, 130);
+    const object = textbox(27);
 
-    release(textbox, "mb");
+    drag(object, "mb", 130);
 
-    expect(boxOf(textbox)).toMatchObject({ width: 140, height: 130 });
+    expect(boxOf(object)).toMatchObject({ width: 140, height: 130 });
   });
 
   it("leaves Fabric's derived height to the pass that owns it", () => {
-    const textbox = dragged(27, 130);
+    const object = textbox(27);
 
-    release(textbox, "mb");
+    drag(object, "mb", 130);
 
     // The height itself is not what persists. Asserting it would pin Fabric's
     // derivation, which the next text pass overwrites on purpose.
-    expect(textbox.height).toBe(130);
+    expect(object.height).toBe(130);
   });
 
   it("authors a whole box from an object that had none", () => {
@@ -67,42 +74,53 @@ describe("a textbox's vertical edge writes the authored box", () => {
     // whatever Fabric measured, which is the case the handle is for. Writing the
     // height alone would leave `{ height }` with no width, and `authoredBox`
     // would multiply an `undefined` width by the scale on the next pass.
-    const textbox = new Textbox("CPU", { width: 140, fontSize: 90 });
-    textbox.set("vigiliaText", { runs: [{ kind: "literal", text: "CPU" }] });
-    textbox.set("height", 130);
+    const object = new Textbox("CPU", { width: 140, fontSize: 90 });
+    object.set("vigiliaText", { runs: [{ kind: "literal", text: "CPU" }] });
 
-    release(textbox, "mb");
+    drag(object, "mb", 130);
 
     // Its own measured width, not the 140 it was built at: without a box the
     // object has widened to its longest run, and the seeded box has to say what
     // is on the canvas rather than what was asked for.
-    expect(boxOf(textbox)).toMatchObject({
-      width: textbox.width,
+    expect(boxOf(object)).toMatchObject({
+      width: object.width,
       height: 130,
     });
-    expect(textbox.width).toBeGreaterThan(140);
+    expect(object.width).toBeGreaterThan(140);
   });
 
   it("refuses a height that is not a usable number rather than coercing it", () => {
-    const textbox = dragged(27, 130);
-    textbox.set("height", Number.NaN);
+    const object = textbox(27);
 
-    release(textbox, "mb");
+    drag(object, "mb", Number.NaN);
 
     // The box the author already had is left alone: a non-number is not a
     // height, and zero would be a box nothing can paint in.
-    expect(boxOf(textbox)).toMatchObject({ width: 140, height: 27 });
+    expect(boxOf(object)).toMatchObject({ width: 140, height: 27 });
   });
 
   it("records the dragged height unscaled, on a scaled object", () => {
     // `vigiliaText.box` is the number the object measures against and
     // `boxFrom` puts the scale back on for the clip. Multiplying here would
     // grow the box by the scale on every drag.
-    const textbox = dragged(27, 87);
-    textbox.set("scaleY", 1.5);
+    const object = textbox(27);
+    object.set("scaleY", 1.5);
 
-    release(textbox, "mb");
+    drag(object, "mb", 87);
 
-    expect(boxOf(textbox)).toMatchObject({ width: 140, height: 87 });
+    expect(boxOf(object)).toMatchObject({ width: 140, height: 87 });
+  });
+
+  it("records nothing for a press with no move", () => {
+    // The handle sits on the object's own bounds, which for a clipped textbox
+    // is the taller of the text and the box — 145 here, against a 27 box.
+    // Recording that on a bare click would turn a click into a silent
+    // enlargement of a box the author never touched.
+    const object = textbox(27);
+    object.set("height", 145);
+
+    press(object, "mb");
+
+    expect(boxOf(object)).toMatchObject({ width: 140, height: 27 });
   });
 });

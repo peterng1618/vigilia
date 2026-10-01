@@ -220,6 +220,9 @@ let applied = false;
  * author lets go rather than at the next telemetry tick.
  */
 function withTextboxHeightControls(controls: Record<string, Control>): void {
+  // Shared by both edges, as the controls themselves are: one pointer, one drag.
+  let atPress: number | undefined;
+
   for (const key of ["mt", "mb"] as const) {
     const control = controls[key];
     if (control === undefined) continue;
@@ -227,9 +230,23 @@ function withTextboxHeightControls(controls: Record<string, Control>): void {
     control.actionHandler = controlsUtils.changeHeight;
     control.cursorStyleHandler = controlsUtils.scaleCursorStyleHandler;
     control.getActionName = () => "resizing";
+    control.mouseDownHandler = (_eventData, transform) => {
+      atPress =
+        transform.target instanceof Textbox
+          ? transform.target.height
+          : undefined;
+      return false;
+    };
     control.mouseUpHandler = (_eventData, transform) => {
       const textbox = transform.target;
-      if (!(textbox instanceof Textbox)) return false;
+      const pressed = atPress;
+      atPress = undefined;
+      // A press with no move is not a resize. The handle sits on the object's
+      // own bounds, which for a clipped textbox is the taller of the text and
+      // the box — so recording it unconditionally would turn a click into a
+      // silent enlargement of a box the author never touched.
+      if (!(textbox instanceof Textbox) || textbox.height === pressed)
+        return false;
 
       // Fabric's own height, unscaled. `vigiliaText.box` is the number the
       // object measures against, and `boxFrom` is what puts the scale back on
