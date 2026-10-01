@@ -215,12 +215,18 @@ function removeRuntimeText(
 }
 
 /**
- * A text object's clip rect is a cache of its authored box, not authored state.
+ * A text object's clip rect and its own `height` are caches of its authored
+ * box, not authored state.
  *
- * Fabric serialises it, and it is the only thing clipping a text object no
- * refresh pass visits — an unbound label is never re-resolved, so a stale rect
- * from an earlier layout would be what a reader sees. `vigiliaText.box` is the
- * owner; `applyClip` rebuilds this from it on the first refresh after revival.
+ * Fabric serialises both, and the clip is the only thing clipping a text object
+ * no refresh pass visits — an unbound label is never re-resolved, so a stale
+ * rect from an earlier layout would be what a reader sees. `height` is the
+ * sharper of the two: `Textbox.initDimensions` derives it from the wrapped text
+ * on construction and every pass puts it back at the box, so a file that
+ * carried it would show a different number the moment the document opened and
+ * the editor would report the author's own document as edited (§67).
+ * `vigiliaText.box` is the owner; `applyClip` and `assertBoxHeight` rebuild
+ * these from it on the first refresh after revival.
  */
 function removeDerivedTextClips(
   objects: readonly Readonly<Record<string, unknown>>[],
@@ -228,6 +234,7 @@ function removeDerivedTextClips(
   for (const object of objects) {
     if (isRecord(object[VIGILIA_TEXT_PROPERTY])) {
       delete (object as Record<string, unknown>)["clipPath"];
+      delete (object as Record<string, unknown>)["height"];
     }
     const children = object["objects"];
     if (Array.isArray(children))

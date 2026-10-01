@@ -424,6 +424,30 @@ describe("the clip is a cache, not saved state", () => {
       height: BOX.height,
     });
   });
+
+  it("keeps the object's own height out of the save, as it keeps the clip", () => {
+    // `height` is a Fabric core property, so it serialises — and it is the one
+    // number on a text object that changes under a pass with no edit: Fabric
+    // derives it from the wrapped text on construction, and the pass puts it
+    // back at the box. Carried in the file it would make every opening read as
+    // an edit the author made (§67), which is what the dirty guard is for.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+    expect(object.height).toBe(BOX.height);
+
+    const saved = serialiseScene(canvas);
+    const entry = saved.objects.find(
+      (candidate) => candidate["id"] === "ram-value",
+    ) as Record<string, unknown>;
+
+    expect(entry["height"]).toBeUndefined();
+    // The box is the owner, and it is what the reload reads.
+    expect((entry[VIGILIA_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
+      width: BOX.width,
+      height: BOX.height,
+    });
+  });
 });
 
 describe("an object with no authored box", () => {
