@@ -574,9 +574,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // **The bundle is not dashboard content**, and it comes before this guard
+    // because a credential cannot reach it. A session token rides in the query
+    // string — `fetch` and `EventSource` carry one and `<script src>` cannot — so
+    // a paired phone was served the document and then refused its own scripts
+    // with a blank page. The bundle is the same bytes any loopback visitor
+    // already has: no reading, no theme, no device in it. Everything this guard
+    // exists to protect stays behind it — `/api/themes/**`, the sample stream,
+    // `/api/display` — and `/editor` keeps its own loopback guard.
+    // See `docs/decisions/0019`.
+    const isBundleAsset =
+      url.pathname.startsWith("/assets/") ||
+      // The browser probes this unprompted and without a token, and the repo
+      // already links the mark deliberately so it does not.
+      url.pathname === "/favicon.svg";
+
     // Display reads stay open on loopback; from the LAN they need a session so
     // dashboard content is not served to every device on the network.
     if (
+      !isBundleAsset &&
       !isLoopbackRemote(request.socket.remoteAddress) &&
       !allowed(request, url)
     ) {

@@ -1423,3 +1423,59 @@ describe("A path the player does not declare is not the player", () => {
     }
   });
 });
+
+describe("a pairing guard protects dashboard content, not the bundle", () => {
+  /** A bundle file is served to anything that asks; content is not. */
+  it("serves the bundle to an unpaired device and refuses everything else", async () => {
+    const bundle = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-bundle-"));
+    const themes = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-themes-"));
+    // Where a bundle actually keeps them: under its own `assets/`.
+    await fs.mkdir(path.join(bundle, "assets"), { recursive: true });
+    await fs.writeFile(
+      path.join(bundle, "assets", "index-abc123.js"),
+      "export const x = 1;",
+    );
+    await fs.writeFile(path.join(bundle, "favicon.svg"), "<svg/>");
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: bundle, editor: bundle },
+      themeStore: createThemeStore(themes),
+      sessions: createSessionStore(),
+    });
+    const lan = { remoteAddress: "192.168.2.56" };
+    try {
+      // A session token rides in the query string, because `fetch` and
+      // `EventSource` carry one and `<script src>` cannot — so a paired phone
+      // was served the document and then refused its own scripts.
+      expect(
+        (
+          await request(
+            hosted.server,
+            "GET",
+            "/assets/index-abc123.js",
+            undefined,
+            lan,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await request(hosted.server, "GET", "/favicon.svg", undefined, lan))
+          .status,
+      ).toBe(200);
+      // Everything the guard exists for stays behind it.
+      // `/api/display` is absent here — this server has no display store — and
+      // a 404 for a route that does not exist is not the guard refusing, so the
+      // paths below are the ones this harness can actually ask about.
+      for (const path of ["/api/themes", "/editor/"]) {
+        expect(
+          (await request(hosted.server, "GET", path, undefined, lan)).status,
+          path,
+        ).toBe(403);
+      }
+    } finally {
+      await hosted.close();
+      await fs.rm(bundle, { recursive: true, force: true });
+      await fs.rm(themes, { recursive: true, force: true });
+    }
+  });
+});
