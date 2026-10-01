@@ -379,6 +379,13 @@ export class EditorSession {
         ? {}
         : { locale: options.envelope.metadata.locale }),
     });
+    // A pasted image must be a declared asset, not a blob URL: the half-only
+    // path saves a document whose image is a handle into this session's memory
+    // and is gone from every other tab, every other browser and every reload —
+    // silently, because the save succeeds.
+    options.shell.editor.clipboardManager.setImageImporter((file) =>
+      this.#assets.placeImage(options.shell.editor, file),
+    );
     this.#assetPanel = createAssetPanel(
       options.panelHosts.assets,
       this.#assets,

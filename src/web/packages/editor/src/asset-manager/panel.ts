@@ -210,19 +210,7 @@ export function createAssetPanel(
     asset: PlacedAssetReference,
     file: File,
   ): Promise<boolean> => {
-    const imported = await editor.imageManager.importImage({
-      source: file,
-      scale: "image-contain",
-      withoutSave: true,
-    });
-    if (imported === null || !(imported.image instanceof FabricImage))
-      return false;
-    setObjectAssetReference(imported.image, {
-      assetId: asset.id,
-      kind: asset.kind,
-    });
-    imported.image.setCoords();
-    editor.canvas.setActiveObject(imported.image);
+    await manager.placeImage(editor, file);
     return true;
   };
 

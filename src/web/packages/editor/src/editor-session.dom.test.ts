@@ -62,11 +62,11 @@ vi.mock("./shortcut-manager/index.js", () => ({
   },
 }));
 
-import { EditorSession } from "./editor-session.js";
-import { ThemeConflictError } from "./theme-library-client.js";
 import { AssetManager } from "./asset-manager/index.js";
+import { EditorSession } from "./editor-session.js";
 import { fontTrio } from "./font-catalog.js";
 import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
+import { ThemeConflictError } from "./theme-library-client.js";
 
 /** What the chooser answered, per test. The chooser is a modal dialog with no
     jsdom implementation, so it is stubbed here and driven where it is real. */
@@ -107,6 +107,7 @@ describe("EditorSession", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      clipboardManager: { setImageImporter: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -177,6 +178,7 @@ describe("EditorSession", () => {
             getObjects: () => [],
             requestRenderAll: vi.fn(),
           },
+          clipboardManager: { setImageImporter: vi.fn() },
           textManager: {
             addText: vi.fn(),
             setAuthoringView: vi.fn(),
@@ -238,6 +240,7 @@ describe("EditorSession", () => {
             getObjects: () => [],
             requestRenderAll: vi.fn(),
           },
+          clipboardManager: { setImageImporter: vi.fn() },
           textManager: {
             addText: vi.fn(),
             setAuthoringView: vi.fn(),
@@ -289,6 +292,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        clipboardManager: { setImageImporter: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -352,6 +356,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        clipboardManager: { setImageImporter: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -450,6 +455,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        clipboardManager: { setImageImporter: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -550,6 +556,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        clipboardManager: { setImageImporter: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -621,6 +628,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
+        clipboardManager: { setImageImporter: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -687,6 +695,7 @@ describe("EditorSession", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      clipboardManager: { setImageImporter: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -746,6 +755,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      clipboardManager: { setImageImporter: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -861,6 +871,7 @@ describe("a save the host refused", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      clipboardManager: { setImageImporter: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -1153,6 +1164,7 @@ describe("a save that carries only what changed", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
+      clipboardManager: { setImageImporter: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),

@@ -11,11 +11,15 @@ import type { ImageManager } from "../image-manager/index.js";
 
 const PASTE_OFFSET = 10;
 
+/** What places a pasted image. Returns whatever the importer returns. */
+export type ImageImporter = (file: File) => Promise<unknown>;
+
 export interface ClipboardManager {
   copy(): Promise<boolean>;
   cut(): Promise<boolean>;
   paste(): Promise<boolean>;
   duplicate(object?: FabricObject): Promise<boolean>;
+  setImageImporter(importer: ImageImporter): void;
   destroy(): void;
 }
 
@@ -93,13 +97,16 @@ export function createClipboardManager(
       .find((candidate): candidate is File => candidate !== null);
     if (file !== undefined) {
       event.preventDefault();
-      void options.importImage({ source: file }).catch((error: unknown) => {
+      void imageImporter(file).catch((error: unknown) => {
         errors.error("clipboard", "Could not paste that image.", error);
       });
       return;
     }
     void manager.paste();
   };
+
+  let imageImporter = (file: File): Promise<unknown> =>
+    options.importImage({ source: file });
 
   const manager: ClipboardManager = {
     async copy(): Promise<boolean> {
@@ -139,6 +146,18 @@ export function createClipboardManager(
         errors.error("clipboard", "Could not duplicate that selection.", error);
         return false;
       }
+    },
+
+    /** Replaces the image importer.
+     *
+     * The shell builds this manager before the session exists, and the session
+     * owns the asset manager, so the importer that makes a pasted image a
+     * *declared asset* rather than a session-local `blob:` URL is installed from
+     * there. Half the fix here is worse than none: the image appears, saves,
+     * and is gone everywhere else.
+     */
+    setImageImporter(importer: ImageImporter): void {
+      imageImporter = importer;
     },
 
     destroy(): void {

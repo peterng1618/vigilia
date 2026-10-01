@@ -3,13 +3,14 @@ import type {
   FabricThemeEnvelope,
   FontAssetReference,
 } from "@vigilia/renderer-core";
-import { objectAssetReference } from "@vigilia/scene-fabric";
+import { objectAssetReference, setObjectAssetReference } from "@vigilia/scene-fabric";
 import {
   FabricImage,
-  Group,
   type FabricObject,
+  Group,
   type StaticCanvas,
 } from "fabric/es";
+import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 import { boundedImageElement } from "../image-manager/index.js";
 
@@ -50,6 +51,41 @@ export class AssetManager {
 
   get declarations(): readonly LocalAssetReference[] {
     return this.#declarations;
+  }
+
+  /**
+   * Declares a file as an asset AND puts it on the canvas.
+   *
+   * Both halves or neither. An image placed without a declaration keeps the
+   * `blob:` URL it was decoded from, which is a handle into one browser
+   * session's memory: it means nothing in another tab, on a phone, or on a
+   * second visit — and the document still saves, so the loss is silent. The
+   * assets pane and a pasted image both go through here so neither can take the
+   * half-only path.
+   */
+  async placeImage(
+    editor: EditorInteraction,
+    file: File,
+  ): Promise<FabricImage | undefined> {
+    const asset = await this.import(file);
+    const imported = await editor.imageManager.importImage({
+      source: file,
+      scale: "image-contain",
+      withoutSave: true,
+    });
+    if (imported === null || !(imported.image instanceof FabricImage)) {
+      return undefined;
+    }
+    // Only images and SVG reach here, and both are the kinds an image object
+    // can carry — a font or a video has no image object to point at.
+    if (asset.kind !== "image" && asset.kind !== "svg") return undefined;
+    setObjectAssetReference(imported.image, {
+      assetId: asset.id,
+      kind: asset.kind,
+    });
+    imported.image.setCoords();
+    editor.canvas.setActiveObject(imported.image);
+    return imported.image;
   }
 
   async import(file: File): Promise<LocalAssetReference> {

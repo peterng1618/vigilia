@@ -11,6 +11,7 @@ describe("asset panel", () => {
     const manager = {
       declarations: [{ id: "logo", kind: "image", path: "assets/logo.png" }],
       previewUrl: () => "blob:logo",
+      placeImage: vi.fn(async () => undefined),
       remove,
     };
     const editor = {
@@ -40,6 +41,7 @@ describe("asset panel", () => {
     const manager = {
       declarations: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       previewUrl: () => "blob:hero",
+      placeImage: vi.fn(async () => undefined),
       remove,
     };
     const editor = { canvas: { getObjects: () => [] } };
@@ -64,6 +66,7 @@ describe("asset panel", () => {
       {
         declarations: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
         previewUrl: () => "blob:hero",
+        placeImage: vi.fn(async () => undefined),
         remove: vi.fn(() => false),
       } as never,
       { canvas: { getObjects: () => [] } } as never,
@@ -96,6 +99,7 @@ describe("asset panel", () => {
       {
         declarations: [{ id: "logo", kind: "image", path: "assets/logo.png" }],
         previewUrl: () => "blob:logo",
+        placeImage: vi.fn(async () => undefined),
         remove,
       } as never,
       { canvas: { getObjects: () => [group] } } as never,
@@ -130,6 +134,7 @@ describe("replacing an asset", () => {
       {
         declarations: [hero],
         previewUrl: () => "blob:hero",
+        placeImage: vi.fn(async () => undefined),
         replace,
         hydrate,
         remove: vi.fn(() => true),
@@ -165,6 +170,7 @@ describe("replacing an asset", () => {
       {
         declarations: [hero],
         previewUrl: () => "blob:hero",
+        placeImage: vi.fn(async () => undefined),
         replace,
         remove: vi.fn(() => true),
       } as never,
@@ -238,6 +244,7 @@ describe("asset panel reach", () => {
           { id: "loop", kind: "video", path: "assets/loop.mp4" },
         ],
         previewUrl: (id: string) => (id === "hero" ? "blob:hero" : undefined),
+        placeImage: vi.fn(async () => undefined),
         remove: vi.fn(() => false),
       } as never,
       { canvas: { getObjects: () => [] } } as never,
@@ -306,6 +313,7 @@ describe("asset panel reach", () => {
         }),
       ),
       previewUrl: () => "blob:hero",
+      placeImage: vi.fn(async () => undefined),
       remove: vi.fn(() => false),
     };
     const panel = createAssetPanel(
