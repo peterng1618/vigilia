@@ -55,11 +55,21 @@ export function describeRun(run: TextRun): string {
       : text;
 }
 
-/** The palette tokens a run's colour may reference. */
-function paletteTokens(globals: FabricGlobals | undefined): readonly string[] {
-  return Object.keys((globals?.palette as FabricPalette | undefined) ?? {})
-    .filter((id) => id !== "none")
-    .map((id) => `palette.${id}`);
+/**
+ * The palette tokens a run's colour may reference, each under its stored
+ * reference and the name its author gave it.
+ *
+ * The name, not the id, for the reason `presetOptions` gives: the palette panel,
+ * `panel.ts` and `chart-manager` all print the authored name, and printing `cpu`
+ * here put the same tokens in the run editor under a second vocabulary, one
+ * field below the preset dropdown that had just been fixed for it.
+ */
+function paletteOptions(
+  globals: FabricGlobals | undefined,
+): readonly { readonly ref: `palette.${string}`; readonly name: string }[] {
+  return Object.entries((globals?.palette as FabricPalette | undefined) ?? {})
+    .filter(([id]) => id !== "none")
+    .map(([id, entry]) => ({ ref: `palette.${id}`, name: entry.name }));
 }
 
 /**
@@ -670,13 +680,16 @@ export function createRunEditor(
     const current = (
       run.style?.["color"] as { readonly ref?: string } | undefined
     )?.ref;
-    for (const ref of paletteTokens(globals)) {
+    // The same split as the preset dropdown above: the label is the authored
+    // name, the value is the reference the run keeps.
+    const colours = paletteOptions(globals);
+    for (const { ref, name } of colours) {
       const option = document.createElement("option");
       option.value = ref;
-      option.textContent = ref.replace("palette.", "");
+      option.textContent = name;
       colour.append(option);
     }
-    colour.value = current ?? paletteTokens(globals)[0] ?? "";
+    colour.value = current ?? colours[0]?.ref ?? "";
     colour.addEventListener("change", () =>
       commit(index, {
         ...run,

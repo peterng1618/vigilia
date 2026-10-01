@@ -648,11 +648,64 @@ describe("which type preset a run is set in", () => {
     // The control was never mis-bound — it holds the stored reference, which is
     // what the run carries. What an author could not do was read the option it
     // had landed on and match it against the list beside it.
-    const preset = box.pick<HTMLSelectElement>(
-      '[data-vigilia-run-preset="0"]',
-    );
+    const preset = box.pick<HTMLSelectElement>('[data-vigilia-run-preset="0"]');
     expect(preset.value).toBe("typePresets.46-600");
     expect(preset.selectedOptions[0]?.textContent).toBe("Ring unit");
+    return box.dispose();
+  });
+});
+
+describe("which palette token a run's colour is set in", () => {
+  const globals = {
+    palette: {
+      ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
+      bars: { name: "Letterbox bars", value: { kind: "solid", color: "#000" } },
+      none: { name: "None", value: { kind: "solid", color: "#fff" } },
+    },
+  } as unknown as FabricGlobals;
+
+  const inBars: readonly TextRun[] = [
+    { kind: "literal", text: "42", style: { color: { ref: "palette.bars" } } },
+  ];
+
+  it("lists each token under the name its own owner gives it", () => {
+    // The preset dropdown above this one was fixed for exactly this reason, and
+    // the colour dropdown beside it still printed the token's id: the author read
+    // `bars` here and `Letterbox bars` in the palette panel, a field apart.
+    const box = harness(inBars, undefined, globals);
+
+    const options = [
+      ...box
+        .pick<HTMLSelectElement>('[data-vigilia-run-colour="0"]')
+        .querySelectorAll("option"),
+    ];
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Ink",
+      "Letterbox bars",
+    ]);
+    return box.dispose();
+  });
+
+  it("stores the reference, not the name it shows", () => {
+    const box = harness(inBars, undefined, globals);
+
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-colour="0"]'),
+      "palette.ink",
+    );
+
+    // What persists is the stored reference; what the author reads is the label.
+    // Changing the first to make the second prettier would break every theme.
+    expect(box.runs()[0]?.style?.["color"]).toEqual({ ref: "palette.ink" });
+    return box.dispose();
+  });
+
+  it("shows the token the run is actually set in", () => {
+    const box = harness(inBars, undefined, globals);
+
+    const colour = box.pick<HTMLSelectElement>('[data-vigilia-run-colour="0"]');
+    expect(colour.value).toBe("palette.bars");
+    expect(colour.selectedOptions[0]?.textContent).toBe("Letterbox bars");
     return box.dispose();
   });
 });
