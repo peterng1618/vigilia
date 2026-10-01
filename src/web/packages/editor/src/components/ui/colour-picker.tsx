@@ -106,12 +106,16 @@ export function ColourPicker({
   );
   const [draft, setDraft] = useState(value);
 
-  // The field is the truth from outside; a reopened popover follows it.
+  // The field is the truth from outside, and only from outside: reopening the
+  // popover must not undo a colour the author just picked here, so this
+  // follows `value` and not `open`. Resetting on open is what made the swatch
+  // disagree with the colour field beside it the moment the panel stopped
+  // rebuilding itself on every commit.
   useEffect(() => {
     const next = parseColour(value);
     if (next !== undefined) setHsva(rgbaToHsva(next));
     setDraft(value);
-  }, [value, open]);
+  }, [value]);
 
   const emit = useCallback(
     (next: Hsva) => {

@@ -74,6 +74,8 @@ export function createPalettePanel(
 
   let palette: FabricPalette = {};
   let selected = "";
+  /** What the field set currently on screen was built from; see `draw`. */
+  let built = "";
   const draw = (): void => {
     // Read once per draw: the scene can change between two tokens, and a
     // figure that mixed two moments would be a measurement of nothing.
@@ -92,9 +94,25 @@ export function createPalettePanel(
     if (palette[selected] === undefined)
       selected = Object.keys(palette)[0] ?? "";
     select.value = selected;
-    fields.replaceChildren();
     const entry = palette[selected];
-    if (entry !== undefined) fields.append(...paletteFields(entry));
+    /**
+     * What the fields on screen are made of, and the only thing that rebuilds
+     * them. A colour or an angle changes a value rather than a shape, so a
+     * commit from one of those inputs leaves the field set standing — which is
+     * what keeps the colour picker's own trigger attached, and an open popover
+     * anchored to a node that still exists.
+     */
+    const shape =
+      entry === undefined
+        ? ""
+        : `${selected}|${entry.name}|${entry.value.kind}|${
+            entry.value.kind === "gradient" ? entry.value.stops.length : ""
+          }`;
+    if (shape !== built) {
+      built = shape;
+      fields.replaceChildren();
+      if (entry !== undefined) fields.append(...paletteFields(entry));
+    }
     users.replaceChildren();
     for (const use of usage?.[selected] ?? []) {
       const item = document.createElement("li");
@@ -107,8 +125,40 @@ export function createPalettePanel(
     palette = { ...palette, [selected]: entry };
     onChange(palette);
     draw();
+    // `draw` rebuilds only when the shape moved, so the fields that survived it
+    // are still showing the value from before this commit. The picker and these
+    // fields are two views of one colour; a field that argues with the swatch
+    // the author is dragging is worse than the jump it replaced.
+    syncFields(entry);
+  };
+  /** Writes a token's values into the fields already standing. */
+  const syncFields = (entry: FabricPaletteEntry): void => {
+    const set = (key: string, value: string, index = 0): void => {
+      const input = fields.querySelectorAll<HTMLInputElement>(
+        `[data-${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}]`,
+      )[index];
+      if (input !== undefined && input.value !== value) input.value = value;
+    };
+    set("vigiliaPaletteName", entry.name);
+    if (entry.value.kind === "solid") {
+      set("vigiliaPaletteColor", entry.value.color);
+      return;
+    }
+    set("vigiliaPaletteAngle", String(entry.value.angle));
+    entry.value.stops.forEach((stop, index) => {
+      set("vigiliaPaletteStopOffset", String(stop.offset), index);
+      set("vigiliaPaletteStopColor", stop.color, index);
+    });
   };
   const paletteFields = (entry: FabricPaletteEntry): HTMLElement[] => {
+    /**
+     * The token as it stands, read at commit time rather than the copy these
+     * fields were built with. They used to be rebuilt on every commit so their
+     * closures would see the new value; that rebuild destroyed the colour
+     * picker's trigger, and Radix then measured a detached node — which is how
+     * one click on the saturation square threw the picker to (0, 6).
+     */
+    const live = (): FabricPaletteEntry => palette[selected]!;
     const name = field(
       uiCopy.panels.name,
       "vigiliaPaletteName",
@@ -118,7 +168,7 @@ export function createPalettePanel(
     name.input.addEventListener("change", () => {
       const next = name.input.value.trim();
       if (next.length === 0) return draw();
-      commit({ ...entry, name: next });
+      commit({ ...live(), name: next });
     });
     if (selected === "none") {
       name.input.disabled = true;
@@ -135,7 +185,7 @@ export function createPalettePanel(
     kind.value = entry.value.kind;
     kind.addEventListener("change", () => {
       commit({
-        ...entry,
+        ...live(),
         value:
           kind.value === "gradient"
             ? defaultGradient()
@@ -147,8 +197,8 @@ export function createPalettePanel(
     label.htmlFor = kind.id = `vigilia-palette-${++fieldSeq}`;
     const controls =
       entry.value.kind === "solid"
-        ? solidFields(entry, entry.value, commit)
-        : gradientFields(entry, entry.value, commit);
+        ? solidFields(live, commit)
+        : gradientFields(live, entry.value, commit);
     const deletion = deletionControls();
     return [name.label, name.input, label, kind, ...controls, ...deletion];
   };
@@ -202,14 +252,14 @@ export function createPalettePanel(
 }
 
 function solidFields(
-  entry: FabricPaletteEntry,
-  value: Extract<PalettePaint, { readonly kind: "solid" }>,
+  live: () => FabricPaletteEntry,
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
+  const entry = live();
   const color = field(
     uiCopy.panels.colour,
     "vigiliaPaletteColor",
-    value.color,
+    entry.value.kind === "solid" ? entry.value.color : "#ffffff",
     "text",
   );
   color.input.addEventListener("change", () => {
@@ -227,7 +277,7 @@ function solidFields(
       return;
     }
     color.input.setCustomValidity("");
-    commit({ ...entry, value: { kind: "solid", color: next } });
+    commit({ ...live(), value: { kind: "solid", color: next } });
   });
   // The swatch beside the field opens the picker. The field stays, because a
   // value can be typed exactly and a picker cannot always be dragged to it.
@@ -236,7 +286,7 @@ function solidFields(
   row.style.cssText = "display:flex;gap:6px;align-items:center";
   const host = document.createElement("div");
   row.append(host);
-  mountPicker(host, entry, commit);
+  mountPicker(host, live, commit);
 
   return [color.label, color.input, row];
 }
@@ -250,10 +300,11 @@ function solidFields(
  */
 function mountPicker(
   host: HTMLElement,
-  entry: FabricPaletteEntry,
+  live: () => FabricPaletteEntry,
   commit: (entry: FabricPaletteEntry) => void,
 ): void {
   const root = createRoot(host);
+  const entry = live();
   root.render(
     React.createElement(ColourPicker, {
       value: entry.value.kind === "solid" ? entry.value.color : "#ffffff",
@@ -261,7 +312,7 @@ function mountPicker(
       // The picker owns the value; the entry it hands back keeps everything
       // else the author named, so a colour change never renames a token.
       onChange: (next: string) =>
-        commit({ ...entry, value: { kind: "solid", color: next } }),
+        commit({ ...live(), value: { kind: "solid", color: next } }),
     }),
   );
   host.dataset["vigiliaPalettePicker"] = "";
@@ -271,7 +322,7 @@ function mountGradient(
   host: HTMLElement,
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
   commit: (entry: FabricPaletteEntry) => void,
-  entry: FabricPaletteEntry,
+  live: () => FabricPaletteEntry,
 ): void {
   const root = createRoot(host);
   root.render(
@@ -279,17 +330,34 @@ function mountGradient(
       stops: value.stops,
       angle: value.angle,
       label: uiCopy.panels.gradient,
-      onChange: ({ stops, angle }) =>
-        commit({ ...entry, value: { ...value, stops, angle } }),
+      onChange: ({ stops, angle }) => {
+        const entry = live();
+        if (entry.value.kind !== "gradient") return;
+        commit({ ...entry, value: { ...entry.value, stops, angle } });
+      },
     }),
   );
 }
 
 function gradientFields(
-  entry: FabricPaletteEntry,
+  live: () => FabricPaletteEntry,
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
   commit: (entry: FabricPaletteEntry) => void,
 ): HTMLElement[] {
+  /** The token as it stands, narrowed to the gradient these fields were built
+   *  for. Switching paint kind rebuilds them, so it cannot be asked for the
+   *  wrong variant — and the guard says so rather than casting past it. */
+  const liveGradient = ():
+    | {
+        readonly entry: FabricPaletteEntry;
+        readonly value: Extract<PalettePaint, { readonly kind: "gradient" }>;
+      }
+    | undefined => {
+    const entry = live();
+    return entry.value.kind === "gradient"
+      ? { entry, value: entry.value }
+      : undefined;
+  };
   const angle = field(
     uiCopy.panels.angle,
     "vigiliaPaletteAngle",
@@ -299,7 +367,9 @@ function gradientFields(
   angle.input.addEventListener("change", () => {
     const next = Number(angle.input.value);
     if (!Number.isFinite(next)) return;
-    commit({ ...entry, value: { ...value, angle: next } });
+    const current = liveGradient();
+    if (current === undefined) return;
+    commit({ ...current.entry, value: { ...current.value, angle: next } });
   });
   const fields: HTMLElement[] = [angle.label, angle.input];
 
@@ -309,7 +379,7 @@ function gradientFields(
   const host = document.createElement("div");
   host.dataset["vigiliaPaletteGradient"] = "";
   fields.push(host);
-  mountGradient(host, value, commit, entry);
+  mountGradient(host, value, commit, live);
 
   for (const [index, stop] of value.stops.entries()) {
     const offset = field(
@@ -337,19 +407,19 @@ function gradientFields(
         nextColor.length === 0
       )
         return;
-      const stops = value.stops.map((current, stopIndex) =>
-        stopIndex === index
-          ? { offset: nextOffset, color: nextColor }
-          : current,
+      const current = liveGradient();
+      if (current === undefined) return;
+      const stops = current.value.stops.map((stop, stopIndex) =>
+        stopIndex === index ? { offset: nextOffset, color: nextColor } : stop,
       );
       if (
         stops.some(
-          (current, stopIndex) =>
-            stopIndex > 0 && current.offset < stops[stopIndex - 1]!.offset,
+          (stop, stopIndex) =>
+            stopIndex > 0 && stop.offset < stops[stopIndex - 1]!.offset,
         )
       )
         return;
-      commit({ ...entry, value: { ...value, stops } });
+      commit({ ...current.entry, value: { ...current.value, stops } });
     };
     offset.input.addEventListener("change", update);
     color.input.addEventListener("change", update);
@@ -362,11 +432,13 @@ function gradientFields(
     add.textContent = uiCopy.panels.addStop;
     add.dataset["vigiliaPaletteAddStop"] = "";
     add.addEventListener("click", () => {
+      const current = liveGradient();
+      if (current === undefined) return;
       commit({
-        ...entry,
+        ...current.entry,
         value: {
-          ...value,
-          stops: [...value.stops, { offset: 1, color: last.color }],
+          ...current.value,
+          stops: [...current.value.stops, { offset: 1, color: last.color }],
         },
       });
     });
