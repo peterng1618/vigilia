@@ -14,7 +14,12 @@ import {
   VIGILIA_GLASS_PROPERTY,
 } from "./glass.js";
 import { isObjectName, VIGILIA_NAME_PROPERTY } from "./object-name.js";
-import { type ValidationIssue, validateThemeDocument } from "./validate.js";
+import {
+  envelopeKeysFor,
+  knownKeysFor,
+  type ValidationIssue,
+  validateThemeDocument,
+} from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
@@ -57,24 +62,7 @@ export function validateFabricThemeEnvelope(
   }
 
   const issues: ValidationIssue[] = [];
-  unknownKeys(
-    input,
-    "",
-    [
-      "schemaVersion",
-      "fabricVersion",
-      "id",
-      "metadata",
-      "artboard",
-      "globals",
-      "assets",
-      "bindings",
-      "editorMetadata",
-      "scene",
-    ],
-    "A Fabric theme",
-    issues,
-  );
+  unknownKeys(input, "", envelopeKeysFor("envelope"), "A Fabric theme", issues);
   if (
     typeof input["fabricVersion"] !== "string" ||
     !/^\d+\.\d+\.\d+$/.test(input["fabricVersion"])
@@ -382,7 +370,7 @@ function v2Globals(value: unknown, issues: ValidationIssue[]): void {
   unknownKeys(
     value,
     "/globals",
-    ["palette", "typePresets"],
+    envelopeKeysFor("globals"),
     "v2 globals",
     issues,
   );
@@ -848,22 +836,7 @@ function bindings(
         issues.push(issue("wrong-type", path, "A binding must be an object."));
         continue;
       }
-      unknownKeys(
-        entry,
-        path,
-        [
-          "id",
-          "semanticKey",
-          "precision",
-          "unitDisplay",
-          "scale",
-          "offset",
-          "format",
-          "timeZone",
-        ],
-        "A binding",
-        issues,
-      );
+      unknownKeys(entry, path, knownKeysFor("binding"), "A binding", issues);
       if (stableId(entry["id"], `${path}/id`, "A binding id", issues)) {
         if (ids.has(entry["id"])) {
           issues.push(

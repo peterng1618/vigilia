@@ -135,7 +135,9 @@
         "semanticKey": { "type": "string", "minLength": 1, "maxLength": 120 },
         "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
         "unitDisplay": { "enum": ["none", "short", "long"] },
-        "scale": { "type": "number" }, "offset": { "type": "number" }
+        "scale": { "type": "number" }, "offset": { "type": "number" },
+        "format": { "type": "string", "maxLength": 64 },
+        "timeZone": { "type": "string", "maxLength": 64 }
       }
     },
     "fabricScene": {
