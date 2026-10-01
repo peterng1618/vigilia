@@ -2,8 +2,9 @@
 import { expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
+import { Canvas, Rect } from "fabric/es";
 import { LayerPanel } from "./layer-panel.js";
-import type { EditorShellBridge } from "./bridge.js";
+import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 
 function bridge(rows: readonly unknown[], overrides = {}): EditorShellBridge {
@@ -500,5 +501,84 @@ it("selects the focused row with Space, so the list can be driven without a mous
   expect(selectLayer).toHaveBeenCalledWith("second");
   // And the row that was in rename's way is not selected by it.
   expect(renameLayer).not.toHaveBeenCalled();
+  host.remove();
+});
+
+/** jsdom has neither `DragEvent` nor `DataTransfer`, so a drag is driven as the
+ * three plain events the panel listens for. `cancelable` is what a real one
+ * carries: `dragover` is only a valid drop target because the handler cancels
+ * it, and `defaultPrevented` is how that cancellation is observable here. */
+function dragEvent(type: string): Event {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", {
+    value: { setData: () => undefined },
+  });
+  return event;
+}
+
+/** vg-087: the rows said `draggable` and nothing acted on it. Every earlier test
+ * here drove the panel through a stub bridge, so a stub that answered
+ * `sameLayerParent` and `reorderLayer` the way the test wanted would keep them
+ * green while the real bridge refused the same gesture. This one wires the real
+ * `createEditorShellBridge` over a real Fabric canvas, so the drag has to land
+ * in Fabric's own array — the thing the panel's markup promises.
+ *
+ * The assertion is the document, not a call count: what an author gets from a
+ * drag is the layer list in a new order, and a stubbed call would pass even if
+ * the move Fabric performed were a no-op. */
+it("restacks the document when a row is dropped on another", async () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const alpha = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const beta = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  alpha.set("id", "alpha");
+  beta.set("id", "beta");
+  canvas.add(alpha, beta);
+  const real = createEditorShellBridge({
+    editor: {
+      canvas,
+      groupingManager: { groupContext: () => [] },
+      historyManager: { saveState: vi.fn() },
+    },
+    session: {} as never,
+    capture: () => undefined,
+  } as never);
+
+  const host = document.createElement("div");
+  await act(async () =>
+    (await Promise.resolve(createRoot(host))).render(
+      <LayerPanel bridge={real} />,
+    ),
+  );
+  const order = (): unknown[] =>
+    canvas.getObjects().map((object) => object.get("id"));
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const panelOrder = (): (string | null)[] =>
+    [...host.querySelectorAll("[data-vigilia-layer]")].map((element) =>
+      element.getAttribute("data-vigilia-layer"),
+    );
+
+  const before = order();
+  expect(before).toEqual(["alpha", "beta"]);
+  // The panel paints topmost-first, so `beta` is the row above `alpha`.
+  expect(panelOrder()).toEqual(["beta", "alpha"]);
+
+  await act(async () => row("alpha").dispatchEvent(dragEvent("dragstart")));
+  const over = await act(async () => {
+    const event = dragEvent("dragover");
+    row("beta").dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  // A refused dragover leaves the browser with no valid drop target, so the
+  // `drop` that follows is never delivered. This is the half that made the
+  // gesture inert while every attribute still read as though it worked.
+  expect(over).toBe(true);
+
+  await act(async () => row("beta").dispatchEvent(dragEvent("drop")));
+  expect(order()).not.toEqual(before);
+  // And the list the author reads followed the document, rather than the panel
+  // re-rendering the order it was handed a moment earlier.
+  expect(panelOrder()).toEqual(["alpha", "beta"]);
+
   host.remove();
 });
