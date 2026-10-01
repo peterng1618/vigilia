@@ -38,7 +38,7 @@ button with no handler. That cost a false finding once.
 | `maximize.mjs` | Maximizes the window. It is the intended editor size — a 1024-wide viewport is a real authoring condition, but test it deliberately rather than by default. |
 | `document-vs-ui.mjs` | Diffs what the host stored against what the editor shows. **Start here.** Every worst defect on this product was that disagreement. |
 | `instrument-control.mjs` | Installs the thing you claim is missing and proves the probe fires. Only then does silence mean absence. Run before filing any "it does nothing". |
-| `longtask.mjs` | Turns "it feels sluggish" into numbers: main-thread blocks over 50 ms, and the share of a human-paced interaction spent blocked. |
+| `longtask.mjs` | Turns "it feels sluggish" into numbers: main-thread blocks over 50 ms, the share of a human-paced interaction spent blocked, **and** how many times a text object was re-measured in a fixed idle interval. The counts are the ones to read: a share on this editor has read 4% and 46% for the same code minutes apart, because four agents were building into the bundle under it. |
 
 ## Why these three probes and not more
 
