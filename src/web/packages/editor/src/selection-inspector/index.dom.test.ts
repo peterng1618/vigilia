@@ -338,8 +338,10 @@ describe("the selection inspector", () => {
     const { host } = setup(rect);
     const line = host.querySelector("[data-vigilia-resolution]");
 
-    // The author chose a token; they must see what it means.
-    expect(line?.textContent).toContain("palette.ink");
+    // The author chose a token by its name; they must see what it means under
+    // that name. `palette.ink` is what the document stores, not what it says.
+    expect(line?.textContent).toContain("Ink");
+    expect(line?.textContent).not.toContain("palette.ink");
     expect(line?.textContent).toContain("#e8ecf3");
   });
 
@@ -350,6 +352,18 @@ describe("the selection inspector", () => {
     expect(
       host.querySelector("[data-vigilia-resolution]")?.textContent,
     ).toContain("no longer resolves");
+  });
+
+  it("prints the raw reference for a token that no longer exists, since no name is left", () => {
+    rect.set({ vigiliaPaint: { fill: "palette.gone" } });
+    const { host } = setup(rect);
+
+    // A deleted token has no authored name, so the reference is the only thing
+    // that still identifies it — and the author needs it to find the dangling
+    // use. This is the one surface where the ref is the subject.
+    expect(
+      host.querySelector("[data-vigilia-resolution]")?.textContent,
+    ).toContain("palette.gone");
   });
 
   it("names the paint a chart keeps in its own settings", () => {
@@ -366,7 +380,7 @@ describe("the selection inspector", () => {
     const progress = host.querySelector(
       '[data-vigilia-resolution="Progress paint"]',
     );
-    expect(progress?.textContent).toContain("palette.ink");
+    expect(progress?.textContent).toContain("Ink");
     expect(progress?.textContent).toContain("#e8ecf3");
     expect(host.textContent).not.toContain(uiCopy.inspectorFields.notSet);
   });
@@ -383,7 +397,7 @@ describe("the selection inspector", () => {
     expect(
       host.querySelector('[data-vigilia-resolution="Slice paint 1"]')
         ?.textContent,
-    ).toContain("palette.ink");
+    ).toContain("Ink");
     expect(
       host.querySelector('[data-vigilia-resolution="Slice paint 2"]')
         ?.textContent,
@@ -401,8 +415,14 @@ describe("the selection inspector", () => {
 
     // The object's type is its first authored run's preset — the same run
     // `applyObjectTypePresets` reads — shown with what it means.
+    //
+    // This line printed `typePresets.body` while the panel beside it printed
+    // `Body` and both dropdowns printed `Body`, which is what made vg-089 look
+    // like a mis-bound dropdown: the screenshot had caught this line, not the
+    // control it was blamed on.
     const line = host.querySelector('[data-vigilia-resolution="Type preset"]');
-    expect(line?.textContent).toContain("typePresets.body");
+    expect(line?.textContent).toContain("Body");
+    expect(line?.textContent).not.toContain("typePresets.body");
     expect(line?.textContent).toContain("Inter");
   });
 

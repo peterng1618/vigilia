@@ -15,6 +15,7 @@ import {
   createOpacityField,
   createResolutionLine,
   createTypePresetReveal,
+  nameOfRef,
   paintReferencesOf,
   resolveToken,
   resolveTypePreset,
@@ -492,7 +493,7 @@ export function createSelectionInspector(
         appearance.append(
           createResolutionLine(
             label,
-            ref,
+            nameOfRef(context().globals, ref),
             resolveToken(context().globals, ref),
           ),
         );
@@ -502,10 +503,14 @@ export function createSelectionInspector(
     // Type belongs to a text object; a shape has none, so it gets no line.
     const preset = typePresetOf(object);
     if (preset !== undefined) {
+      // `nameOfRef`, because this line printed `typePresets.24-400` while the
+      // panel beside it and both dropdowns printed `Card title`. That is what
+      // made vg-089 read as a mis-bound dropdown: the screenshot had caught
+      // this line, not the control it was blamed on.
       appearance.append(
         createResolutionLine(
           uiCopy.inspectorFields.runPreset,
-          preset,
+          nameOfRef(context().globals, preset),
           resolveTypePreset(context().globals, preset),
         ),
       );

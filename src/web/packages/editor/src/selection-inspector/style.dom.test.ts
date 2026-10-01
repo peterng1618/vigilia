@@ -48,13 +48,18 @@ describe("the style tab", () => {
     });
     const { host } = setup(text);
 
-    // What the author picked, and what it actually means.
-    const lines = [...host.querySelectorAll("[data-vigilia-resolution]")].map(
-      (line) => line.textContent,
-    );
-    expect(lines.join("\n")).toContain("palette.ink");
-    expect(lines.join("\n")).toContain("#e8ecf3");
-    expect(lines.join("\n")).toContain("Inter");
+    // What the author picked, and what it actually means — under the names they
+    // picked it by. The Style tab is a second reader of the same selection the
+    // inspector describes, so it names tokens the same way.
+    const lines = [...host.querySelectorAll("[data-vigilia-resolution]")]
+      .map((line) => line.textContent)
+      .join("\n");
+    expect(lines).toContain("Ink");
+    expect(lines).toContain("Body");
+    expect(lines).not.toContain("palette.ink");
+    expect(lines).not.toContain("typePresets.body");
+    expect(lines).toContain("#e8ecf3");
+    expect(lines).toContain("Inter");
   });
 
   it("lists the document's globals when nothing is selected", () => {

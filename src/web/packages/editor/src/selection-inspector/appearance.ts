@@ -103,6 +103,39 @@ function paletteRef(value: unknown): `palette.${string}` | undefined {
     : undefined;
 }
 
+/**
+ * What the author calls the thing a reference points at, or the reference itself
+ * when the document no longer declares it.
+ *
+ * The name, because every surface that offers a reference names what it offers
+ * — the palette panel, the run editor, the preset panel — and a line that prints
+ * `typePresets.24-400` beside a dropdown printing `Card title` reads as two
+ * different things. The ref is the fallback, not the label, because a token the
+ * author has deleted has no name left and its reference is then the only thing
+ * that identifies the dangling use.
+ */
+export function nameOfRef(
+  globals: FabricGlobals | undefined,
+  ref: string | undefined,
+): string | undefined {
+  if (ref === undefined) {
+    return undefined;
+  }
+
+  if (ref.startsWith("palette.")) {
+    const palette = globals?.palette as FabricPalette | undefined;
+    return palette?.[ref.slice("palette.".length)]?.name ?? ref;
+  }
+
+  if (ref.startsWith("typePresets.")) {
+    return (
+      globals?.typePresets?.[ref.slice("typePresets.".length)]?.name ?? ref
+    );
+  }
+
+  return ref;
+}
+
 /** What a palette token currently resolves to, for display. */
 export function resolveToken(
   globals: FabricGlobals | undefined,
@@ -165,17 +198,21 @@ export function resolveTypePreset(
     .join(" ");
 }
 
-/** A read-only line naming a token and what it resolves to. */
+/**
+ * A read-only line naming a reference and what it resolves to. `shown` is what
+ * the author reads — the authored name where the document declares one, and the
+ * stored reference where it does not. See `nameOfRef`.
+ */
 export function createResolutionLine(
   label: string,
-  ref: string | undefined,
+  shown: string | undefined,
   resolved: string | undefined,
 ): HTMLElement {
   const line = document.createElement("p");
   line.className = "vigilia-resolution";
   line.dataset["vigiliaResolution"] = label;
 
-  if (ref === undefined) {
+  if (shown === undefined) {
     line.textContent = `${label}: ${uiCopy.inspectorFields.notSet}`;
     return line;
   }
@@ -184,8 +221,8 @@ export function createResolutionLine(
   // so they must be told it no longer answers.
   line.textContent =
     resolved === undefined
-      ? `${label}: ${ref} (${uiCopy.inspectorFields.unresolved})`
-      : `${label}: ${ref} → ${resolved}`;
+      ? `${label}: ${shown} (${uiCopy.inspectorFields.unresolved})`
+      : `${label}: ${shown} → ${resolved}`;
   return line;
 }
 

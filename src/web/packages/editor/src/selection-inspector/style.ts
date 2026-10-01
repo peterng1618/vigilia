@@ -3,6 +3,8 @@ import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
 import {
+  createResolutionLine,
+  nameOfRef,
   paintReferencesOf,
   resolveToken,
   resolveTypePreset,
@@ -36,21 +38,6 @@ export interface StylePanel {
   destroy(): void;
 }
 
-function line(
-  label: string,
-  ref: string,
-  resolved: string | undefined,
-): HTMLElement {
-  const entry = document.createElement("p");
-  entry.className = "vigilia-resolution";
-  entry.dataset["vigiliaResolution"] = label;
-  entry.textContent =
-    resolved === undefined
-      ? `${label}: ${ref} (${uiCopy.inspectorFields.unresolved})`
-      : `${label}: ${ref} → ${resolved}`;
-  return entry;
-}
-
 /**
  * What the document offers, for when nothing is selected: the palette tokens and
  * type presets an object can reference. Read from globals directly — the panel
@@ -68,7 +55,11 @@ function documentGlobals(globals: FabricGlobals | undefined): HTMLElement {
   for (const [id, entry] of Object.entries(palette ?? {})) {
     if (id === "none") continue;
     const ref = `palette.${id}`;
-    section.append(line(entry?.name ?? ref, ref, resolveToken(globals, ref)));
+    // The row's label is already the authored name, so the reference is what
+    // identifies the entry in the document it was read from.
+    section.append(
+      createResolutionLine(entry?.name ?? ref, ref, resolveToken(globals, ref)),
+    );
   }
 
   for (const [id, entry] of Object.entries(globals?.typePresets ?? {})) {
@@ -76,7 +67,11 @@ function documentGlobals(globals: FabricGlobals | undefined): HTMLElement {
     // The preset's own name is what the author sees in the preset panel, so it
     // is what they can match here.
     section.append(
-      line(entry?.name ?? ref, ref, resolveTypePreset(globals, ref)),
+      createResolutionLine(
+        entry?.name ?? ref,
+        ref,
+        resolveTypePreset(globals, ref),
+      ),
     );
   }
 
@@ -104,15 +99,21 @@ export function createStylePanel(
     }
 
     for (const { label, ref } of paintReferencesOf(active)) {
-      root.append(line(label, ref, resolveToken(globals, ref)));
+      root.append(
+        createResolutionLine(
+          label,
+          nameOfRef(globals, ref),
+          resolveToken(globals, ref),
+        ),
+      );
     }
 
     const preset = typePresetOf(active);
     if (preset !== undefined) {
       root.append(
-        line(
+        createResolutionLine(
           uiCopy.inspectorFields.runPreset,
-          preset,
+          nameOfRef(globals, preset),
           resolveTypePreset(globals, preset),
         ),
       );
