@@ -140,6 +140,31 @@ function newChart(
   }
 }
 
+/** The ratios the line-chart control group offers, widest last. */
+const ASPECT_RATIOS: readonly number[] = [2, 3, 4];
+
+/**
+ * The offered ratio a chart is at, or nothing when it is at none of them.
+ *
+ * Read off the object rather than remembered from the last click, so a chart
+ * the author dragged is described by its own shape. A chart at 2.004:1 is at
+ * none of them: rounding to the nearest would light up a ratio that was never
+ * applied, which is the disagreement this state exists to remove.
+ */
+function aspectOf(
+  chart: VigiliaChart,
+  ratios: readonly number[],
+): { readonly aspect: number } | Record<string, never> {
+  const width = chart.width * chart.scaleX;
+  const height = chart.height * chart.scaleY;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || height <= 0) {
+    return {};
+  }
+  const ratio = width / height;
+  const match = ratios.find((candidate) => Math.abs(candidate - ratio) < 0.01);
+  return match === undefined ? {} : { aspect: match };
+}
+
 /** Vigilia-owned chart semantics layered on the editor's generic canvas mechanics. */
 export class ChartManager {
   readonly #editor: EditorInteraction;
@@ -306,6 +331,7 @@ export class ChartManager {
               settings: chart.settings,
             } as ChartContent,
             bindings: this.#bindings[id] ?? [],
+            ...aspectOf(chart, ASPECT_RATIOS),
           },
       this.#globals?.palette,
     );
@@ -387,6 +413,13 @@ export class ChartManager {
     chart.resizeTo(width, width / ratio);
     this.#editor.canvas.requestRenderAll();
     this.#drawPanel();
+    // A ratio is a geometry edit, and the object is changed by the time the
+    // chart's own panel has redrawn — measured, 215 → 241 at 4:1 and 482 at
+    // 2:1. The selection inspector re-reads on `object:modified` and on nothing
+    // else, so without this the Height field kept reporting the height the
+    // chart had before the click, on a control an author types into. Announced
+    // the way `canvas-nudge` announces a programmatic move.
+    this.#editor.canvas.fire("object:modified", { target: chart });
   }
 
   readonly #rerasterizeScaledChart = (event: { target?: unknown }): void => {
@@ -403,6 +436,10 @@ export class ChartManager {
       return;
     }
     chart.resizeTo(width, height);
+    // A drag changes the ratio too, so the control group has to re-read it —
+    // otherwise the buttons name whichever ratio was last clicked, on a chart
+    // that is no longer at it.
+    this.#drawPanel();
   };
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */

@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
 import { createDemoSource } from "@vigilia/fake-source";
 import type { Binding } from "@vigilia/renderer-core";
-import { defaultGaugeSettings } from "@vigilia/renderer-core";
-import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
+import {
+  defaultGaugeSettings,
+  defaultLineSettings,
+} from "@vigilia/renderer-core";
+import {
+  type SceneAdapter,
+  serialiseScene,
+  VigiliaChart,
+} from "@vigilia/scene-fabric";
+import { Canvas } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { newObjectPlacement } from "../new-object-defaults.js";
@@ -327,6 +335,167 @@ describe("ChartManager", () => {
 
     manager.destroy();
     expect(canvas.off).toHaveBeenCalledTimes(6);
+  });
+
+  it("announces a ratio resize, so a geometry field re-reads the chart", () => {
+    // **The claim under test.** A ratio button is a deliberate geometry edit,
+    // and the object's Height changed — measured, 215 → 241 at 4:1, 321 at 3:1,
+    // 482 at 2:1 — while the selection inspector's Height field sat on 215
+    // through all four comparisons. The object was right and the field was
+    // stale: `#resizeToAspect` re-rendered the chart's own panel and the canvas,
+    // but announced nothing, and the inspector re-reads on `object:modified`.
+    // The Height field is editable, so an author reading a number the product no
+    // longer holds types a height against it.
+    const host = document.createElement("div");
+    document.body.append(host);
+    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+      id: "trends",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 963,
+      height: 215,
+      scaleX: 1,
+      scaleY: 1,
+      resizeTo(this: { width: number; height: number }, w: number, h: number) {
+        this.width = w;
+        this.height = h;
+      },
+    }) as VigiliaChart;
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      getActiveObject: vi.fn(() => chart),
+      getObjects: vi.fn(() => [chart]),
+      requestRenderAll: vi.fn(),
+      fire: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: { canvas, artboard } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: host,
+    });
+
+    host
+      .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="2"]')!
+      .click();
+
+    // The object resized, exactly as the saved document showed: 963 wide at
+    // 2:1 is 481.5, which is the 482 the inspector rounds to.
+    expect(chart.width).toBe(963);
+    expect(chart.height).toBe(481.5);
+    // And it said so, which is what the inspector reads to re-render.
+    expect(canvas.fire).toHaveBeenCalledWith(
+      "object:modified",
+      expect.objectContaining({ target: chart }),
+    );
+
+    manager.destroy();
+  });
+
+  it("names the ratio the chart is at, so a control group says which is active", () => {
+    // The second half of the same finding: three buttons and nothing to tell
+    // them apart, so after clicking there was no way to tell 2:1 from 3:1.
+    // The ratio is the chart's own width over its height — read from the object
+    // rather than remembered, so it is right after a drag as well as a click.
+    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+      id: "trends",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 800,
+      height: 400,
+      scaleX: 1,
+      scaleY: 1,
+      resizeTo(this: { width: number; height: number }, w: number, h: number) {
+        this.width = w;
+        this.height = h;
+      },
+    }) as VigiliaChart;
+    const host = document.createElement("div");
+    document.body.append(host);
+    const listeners = new Map<string, (event?: unknown) => void>();
+    const canvas = {
+      on: vi.fn((event: string, listener: (event?: unknown) => void) =>
+        listeners.set(event, listener),
+      ),
+      off: vi.fn(),
+      getActiveObject: vi.fn(() => chart),
+      getObjects: vi.fn(() => [chart]),
+      requestRenderAll: vi.fn(),
+      fire: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: { canvas, artboard } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: host,
+    });
+
+    const pressed = (): (string | null)[] =>
+      [...host.querySelectorAll("[data-vigilia-chart-aspect]")].map((button) =>
+        button.getAttribute("aria-pressed"),
+      );
+
+    // 800 × 400 is 2:1, and that is the only button that says so.
+    expect(pressed()).toEqual(["true", "false", "false"]);
+
+    host
+      .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="3"]')!
+      .click();
+
+    expect(pressed()).toEqual(["false", "true", "false"]);
+
+    // A chart dragged to a ratio the control group does not offer names none
+    // of them, rather than lighting up whichever is nearest.
+    chart.width = 1000;
+    chart.height = 300;
+    chart.scaleX = 1;
+    chart.scaleY = 1;
+    listeners.get("object:modified")!({ target: chart });
+
+    expect(pressed()).toEqual(["false", "false", "false"]);
+
+    manager.destroy();
+  });
+
+  it("keeps the announced ratio out of the saved document", () => {
+    // §67: only authored state persists. The active ratio is read off the
+    // chart's own width and height to draw the control group, and a chart
+    // carries no `aspect` property — so the state that tells the author which
+    // button is live cannot reach a save and become a fourth source of truth
+    // beside the geometry it describes.
+    const chart = new VigiliaChart({
+      id: "trends",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 800,
+      height: 400,
+    });
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(chart);
+    canvas.setActiveObject(chart);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const manager = new ChartManager({
+      editor: { canvas, artboard } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: host,
+    });
+
+    host
+      .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="4"]')!
+      .click();
+
+    // The chart's own persisted shape: no ratio, no pressed state, just the
+    // geometry the ratio produced. 4:1 of an 800-wide chart is 200 tall, and
+    // that height is authored geometry — the ratio itself is not stored.
+    const saved = serialiseScene(canvas).objects[0]!;
+    expect(saved).not.toHaveProperty("aspect");
+    expect(JSON.stringify(saved)).not.toContain("aria-pressed");
+    expect(saved["height"]).toBe(200);
+
+    manager.destroy();
   });
 });
 

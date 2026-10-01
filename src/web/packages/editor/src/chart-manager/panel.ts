@@ -17,6 +17,14 @@ export interface ChartPropertyPanel {
           readonly id: string;
           readonly content: ChartContent;
           readonly bindings: readonly Binding[];
+          /**
+           * The ratio this chart is at, or `undefined` when it is at none the
+           * control group offers — a chart dragged to an arbitrary shape names
+           * no button rather than lighting up whichever is nearest. Read from
+           * the chart rather than remembered from the last click, so it is
+           * right after a drag too.
+           */
+          readonly aspect?: number;
         }
       | undefined,
     palette?: FabricPalette,
@@ -66,6 +74,11 @@ export function createChartPropertyPanel(
           button.type = "button";
           button.dataset["vigiliaChartAspect"] = String(ratio);
           button.textContent = `${ratio}:1`;
+          // Three buttons that looked alike left no way to tell 2:1 from 3:1
+          // after the click. `aria-pressed` is what the rest of the shell's
+          // toggles already carry, so it states the active ratio to assistive
+          // technology and to the eye through the same attribute.
+          button.setAttribute("aria-pressed", String(chart.aspect === ratio));
           button.addEventListener("click", () =>
             onAspectChange(chart.id, ratio),
           );
