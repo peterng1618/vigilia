@@ -39,6 +39,12 @@ Maximise the window. It is the intended editor size, and a 1024-wide viewport
 is a genuine authoring condition worth testing — but do it deliberately, as a
 finding, not as your default.
 
+**Start the host as a managed background task**, not as a detached `(cmd &)`.
+A detached one gets reaped and the failure mode is misleading: the next probe
+fails with `ERR_CONNECTION_REFUSED` and you start debugging the editor when the
+host is simply gone. If it does die, check `host.log` before assuming a crash —
+an empty log after the banner means it was reaped, not that it faulted.
+
 Keep scratch outside the repo. Nothing you write should appear in `git status`.
 
 ---
