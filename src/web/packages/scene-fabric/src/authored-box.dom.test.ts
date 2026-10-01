@@ -153,6 +153,31 @@ describe("the authored box outlives a token wider than it", () => {
     expect((revived as Textbox).clipPath?.width).toBe(BOX.width);
   });
 
+  it("carries a height the author dragged through a save and a reload", async () => {
+    // vg-089's fix is a gesture, and a gesture has to survive the file. The
+    // box is the owner, so the height travels in it and comes back at both the
+    // object and the clip — with the object's own `height` left out of the save
+    // and re-derived by the first pass, which is what stops the reload reading
+    // as an edit.
+    const box = { width: BOX.width, height: 140 };
+    const object = reading({}, box);
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    const reloaded = new StaticCanvas(undefined, { width: 600, height: 400 });
+    await reviveScene(reloaded, serialiseScene(canvas));
+    const revived = reloaded
+      .getObjects()
+      .find((candidate) => candidate.get("id") === "ram-value") as
+      | Textbox
+      | undefined;
+    paint(reloaded);
+
+    expect(revived).toBeDefined();
+    expect(revived?.height).toBe(140);
+    expect(revived?.clipPath?.height).toBe(140);
+  });
+
   it("leaves a document with no authored box on the measured behaviour", () => {
     // The migration: a theme saved before this change carries no box, and must
     // not be repaired by a guess.
