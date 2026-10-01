@@ -7,6 +7,20 @@ export const MAX_ZOOM = 64;
 /** How much of the host a framed selection fills. */
 const SELECTION_FIT_FILL = 0.9;
 
+/** Relative slack on "is this the fitted zoom". A wheel notch moves the zoom by
+ * about a tenth, so this separates rounding noise from any real zoom change. */
+const FIT_SCALE_EPSILON = 1e-6;
+
+/** Slack on the artboard's edges, in screen px, for the same reason. */
+const FIT_EDGE_EPSILON = 1e-6;
+
+/** A box the camera is looking into, in screen px. Named once because the fit
+ * helpers all take one and a resize has to compare two of them. */
+interface Viewport {
+  width: number;
+  height: number;
+}
+
 export interface ViewportManager {
   zoom(): number;
   /** Zoom about a point in canvas-screen coordinates. */
@@ -25,7 +39,9 @@ export interface ViewportManager {
     width: number;
     height: number;
   };
-  /** Re-fit after the host element or the artboard changed size. */
+  /** Re-measure after the host element changed size. A camera that was showing
+   * the whole artboard is re-fitted to the new box; one the author has zoomed or
+   * panned is held, so a window nudge cannot move a view they set. */
   resize(): void;
   /** Subscribes to camera changes; returns the unsubscribe function. */
   onChange(listener: () => void): () => void;
@@ -58,7 +74,7 @@ export function createViewportManager({
       : new ResizeObserver(() => resize());
 
   /** An unlaid-out host measures 0; writing that would collapse the canvas. */
-  const viewportSize = (): { width: number; height: number } | undefined => {
+  const viewportSize = (): Viewport | undefined => {
     const width = host.clientWidth;
     const height = host.clientHeight;
     if (!Number.isFinite(width) || !Number.isFinite(height)) return undefined;
@@ -120,9 +136,7 @@ export function createViewportManager({
 
   const zoom = (): number => canvas.getZoom();
 
-  const fitScale = (): number => {
-    const viewport = viewportSize();
-    if (viewport === undefined) return zoom();
+  const fitScaleFor = (viewport: Viewport): number => {
     const board = artboard();
     const scale = Math.min(
       viewport.width / board.width,
@@ -130,6 +144,50 @@ export function createViewportManager({
     );
     if (!Number.isFinite(scale) || scale <= 0) return zoom();
     return Math.min(Math.max(scale, MIN_ZOOM), MAX_ZOOM);
+  };
+
+  const fitScale = (): number => {
+    const viewport = viewportSize();
+    if (viewport === undefined) return zoom();
+    return fitScaleFor(viewport);
+  };
+
+  /** Where a fit puts the camera in `viewport`, after the same clamp every
+   * commit passes through, so "the camera is fitted" and "the camera is where
+   * a fit would have put it" cannot disagree about a clamped centre. */
+  const fitTransformIn = (
+    viewport: Viewport,
+  ): { scale: number; translateX: number; translateY: number } => {
+    const scale = fitScaleFor(viewport);
+    const board = artboard();
+    const offset = clampPan({
+      viewport,
+      zoom: scale,
+      artboard: board,
+      offset: {
+        x: (viewport.width - board.width * scale) / 2,
+        y: (viewport.height - board.height * scale) / 2,
+      },
+    });
+    return { scale, translateX: offset.x, translateY: offset.y };
+  };
+
+  /** Whether the camera is where a fit would have put it in `viewport`.
+   *
+   * Derived from the transform rather than remembered as a flag. A flag would
+   * have to be cleared by every writer of the tuple — `panBy`, `zoomToPoint`,
+   * and Fabric's own `zoomToPoint`, which this module does not own — and one
+   * writer missed is a resize that silently discards the author's pan. Read
+   * this way it cannot go stale, and it is false at construction unless the
+   * identity transform happens to be a fit for the box. */
+  const isFittedIn = (viewport: Viewport): boolean => {
+    const fit = fitTransformIn(viewport);
+    const { scale, translateX, translateY } = transform();
+    return (
+      Math.abs(scale - fit.scale) <= fit.scale * FIT_SCALE_EPSILON &&
+      Math.abs(translateX - fit.translateX) <= FIT_EDGE_EPSILON &&
+      Math.abs(translateY - fit.translateY) <= FIT_EDGE_EPSILON
+    );
   };
 
   const zoomToFit = (): void => {
@@ -149,7 +207,23 @@ export function createViewportManager({
   function resize(): void {
     const viewport = viewportSize();
     if (viewport === undefined) return;
+    // The host already reports its new size by the time an observer runs, so
+    // the box the camera was framed in is the canvas' own dimensions — the
+    // value `setDimensions` has not overwritten yet. Reading the host here
+    // would compare the camera against a box it was never fitted to.
+    const wasFitted = isFittedIn({
+      width: canvas.getWidth(),
+      height: canvas.getHeight(),
+    });
     canvas.setDimensions(viewport);
+    if (wasFitted) {
+      // A fitted view follows its window. A camera the author has moved is
+      // theirs: re-centring it on every size change yanks the view back under
+      // them, which is what broke the point-under-cursor invariant when this
+      // was tried as an unconditional re-centre.
+      zoomToFit();
+      return;
+    }
     const { scale, translateX, translateY } = transform();
     commit(scale, translateX, translateY);
     notify();

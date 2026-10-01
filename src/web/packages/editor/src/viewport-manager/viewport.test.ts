@@ -29,9 +29,12 @@ beforeEach(() => {
 
 function setup() {
   const host = document.createElement("div");
+  // Read through a live holder rather than a fixed `value`, so a test can
+  // resize the host the way a window does.
+  const size = { width: 1000, height: 800 };
   Object.defineProperties(host, {
-    clientWidth: { value: 1000 },
-    clientHeight: { value: 800 },
+    clientWidth: { get: () => size.width },
+    clientHeight: { get: () => size.height },
   });
   const canvas = new Canvas(document.createElement("canvas"));
   const camera = createViewportManager({
@@ -39,7 +42,17 @@ function setup() {
     host,
     artboard: () => ({ width: 1280, height: 720 }),
   });
-  return { canvas, camera, host };
+  return {
+    canvas,
+    camera,
+    host,
+    /** The seam the ResizeObserver drives, driven directly instead. */
+    resizeHost(width: number, height: number): void {
+      size.width = width;
+      size.height = height;
+      camera.resize();
+    },
+  };
 }
 
 describe("viewport camera", () => {
@@ -129,6 +142,121 @@ describe("viewport camera", () => {
       ...before,
       left: before.left + 40,
       top: before.top - 25,
+    });
+  });
+});
+
+describe("viewport camera on a host resize", () => {
+  it("re-fits a camera that was showing the whole artboard", () => {
+    const { camera, resizeHost } = setup();
+    camera.zoomToFit();
+    // Contain-fit of 1280x720 into 1000x800 is 0.78125.
+    expect(camera.zoom()).toBeCloseTo(1000 / 1280, 5);
+
+    resizeHost(400, 800);
+
+    // The board was whole in the old box, so it is whole in the new one. A
+    // camera that only held its zoom would leave 1290 of the board's pixels
+    // past the right edge and the badge reading a number for the wrong view.
+    const scale = 400 / 1280;
+    expect(camera.zoom()).toBeCloseTo(scale, 5);
+    expect(camera.artboardScreenRect()).toEqual({
+      left: (400 - 1280 * scale) / 2,
+      top: (800 - 720 * scale) / 2,
+      width: 400,
+      height: 720 * scale,
+    });
+  });
+
+  it("re-fits on every step of a shrinking host", () => {
+    const { camera, resizeHost } = setup();
+    camera.zoomToFit();
+    for (const width of [900, 700, 500, 300]) {
+      resizeHost(width, 800);
+      expect(camera.zoom()).toBeCloseTo(width / 1280, 5);
+    }
+  });
+
+  it("keeps the zoom an author chose", () => {
+    const { camera, resizeHost } = setup();
+    camera.zoomToFit();
+    camera.zoomToPoint(new Point(500, 400), camera.zoom() * 2);
+    const zoomed = camera.zoom();
+    expect(zoomed).toBeCloseTo((1000 / 1280) * 2, 5);
+
+    resizeHost(400, 800);
+
+    // The revert this replaces re-centred on every resize, which is what broke
+    // `keeps the point under the cursor fixed while zooming`: a zoom the author
+    // asked for is not the camera's to undo.
+    expect(camera.zoom()).toBeCloseTo(zoomed, 5);
+  });
+
+  it("keeps the pan an author made", () => {
+    const { camera, resizeHost } = setup();
+    camera.zoomToFit();
+    camera.panBy(-200, -50);
+    const panned = camera.artboardScreenRect();
+
+    resizeHost(500, 800);
+
+    expect(camera.artboardScreenRect()).toEqual(panned);
+  });
+
+  it("keeps the point under the cursor across a resize", () => {
+    const { canvas, camera, resizeHost } = setup();
+    const at = (x: number, y: number) =>
+      canvas.getScenePoint(
+        new MouseEvent("pointermove", { clientX: x, clientY: y }),
+      );
+
+    camera.zoomToFit();
+    camera.zoomToPoint(new Point(400, 300), camera.zoom() * 2);
+    const before = at(400, 300);
+
+    resizeHost(500, 700);
+
+    // Read through the same accessor as the zooming test, so this pins the
+    // camera not having moved rather than a transform tuple restated here.
+    const after = at(400, 300);
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+  });
+
+  it("fits again after the author takes the camera off fit", () => {
+    const { camera, resizeHost } = setup();
+    camera.zoomToFit();
+    camera.panBy(-200, 0);
+    resizeHost(400, 800);
+    // Held: a pan is the author's, and the row is not about taking it back.
+    expect(camera.zoom()).toBeCloseTo(1000 / 1280, 5);
+
+    camera.zoomToFit();
+    resizeHost(400, 800);
+
+    expect(camera.zoom()).toBeCloseTo(400 / 1280, 5);
+  });
+
+  it("still sizes the canvas to the host", () => {
+    const { canvas, resizeHost } = setup();
+    resizeHost(640, 480);
+    expect(canvas.getWidth()).toBe(640);
+    expect(canvas.getHeight()).toBe(480);
+  });
+
+  it("refits nothing on the resize at construction", () => {
+    // There is no camera yet: the canvas still carries Fabric's own 300x150
+    // default and the identity transform, which is not a fit for this board. A
+    // predicate that read the host — already at its real size by the time the
+    // manager is built — would compare identity against that host and could
+    // claim a fit nobody chose. `zoomToFit` is what establishes the first view.
+    const { camera } = setup();
+    expect(camera.zoom()).toBe(1);
+    expect(camera.artboardScreenRect()).toEqual({
+      left: 0,
+      top: 0,
+      width: 1280,
+      height: 720,
     });
   });
 });
