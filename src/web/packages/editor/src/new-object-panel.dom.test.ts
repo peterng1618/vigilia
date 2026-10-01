@@ -206,7 +206,15 @@ describe("new object panel", () => {
     const addChart = vi.fn();
     const panel = createNewObjectPanel(
       document.body,
-      { textManager: { addText: vi.fn() } } as never,
+      // `addText` returns a `Textbox`, never undefined — see `TextManager`. A
+      // bare `vi.fn()` broke that contract, and the panel's deferred caret
+      // callback then dereferenced the undefined: its guard compares the canvas's
+      // active object against the returned one, and `undefined !== undefined` is
+      // false, so it fell through. Every full run printed an Unhandled Errors
+      // block that had nothing to do with what any of these tests were checking.
+      {
+        textManager: { addText: vi.fn((): unknown => textWithEditing()) },
+      } as never,
       undefined,
       { addChart },
     );
@@ -437,7 +445,9 @@ describe("new object panel", () => {
   });
 
   it("delegates text construction to the editor with derived v2 defaults", () => {
-    const addText = vi.fn();
+    // Records the call AND honours `TextManager.addText`'s contract, which is a
+    // `Textbox` and never undefined — see the note on the ChartManager cases.
+    const addText = vi.fn((): unknown => textWithEditing());
     const root = createNewObjectPanel(
       document.body,
       { ...editorStub(), textManager: { addText } } as never,
