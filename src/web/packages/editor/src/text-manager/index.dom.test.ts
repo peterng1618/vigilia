@@ -359,8 +359,13 @@ describe("what a text object an author inserts can do", () => {
 
     // What the author chose: the box is the owner's, and it has not moved.
     expect(box).toEqual({ width: 140, height: 27.12 });
-    // What the canvas now has to fit inside it.
-    expect(object.height).toBeGreaterThan(box.height);
+    // What the canvas now has to fit inside it. The glyphs are 90px, so one
+    // line is far taller than the box — measured off the line, because the
+    // object's own `height` is the box by design (a `Textbox` re-derives it
+    // from the wrapped text on every `initDimensions`, and the pass puts it
+    // back at the box so the selection and the clip cannot disagree).
+    expect(object.getHeightOfLine(0)).toBeGreaterThan(box.height);
+    expect(object.height).toBeCloseTo(box.height, 6);
     // And the clip the object carries is the box, so the overflow is cut off
     // rather than merely reported. This is the visible half of the finding.
     expect(object.clipPath?.height).toBeCloseTo(box.height, 6);
