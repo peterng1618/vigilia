@@ -15,7 +15,6 @@ import {
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
 import {
-  Circle,
   Ellipse,
   type FabricObject,
   type Gradient,
@@ -24,7 +23,6 @@ import {
   Polygon,
   Polyline,
   Rect,
-  Triangle,
 } from "fabric/es";
 import { uiCopy } from "./ui-copy.js";
 

@@ -345,7 +345,10 @@ describe("identity survives a round trip", () => {
     // thing, and into every exported package.
     const source = image();
     setObjectAssetReference(source, { assetId: "logo", kind: "image" });
-    source.setSrc?.("blob:http://127.0.0.1:5311/081c983e");
+    // Not awaited: these cases are about what the serialiser leaves out, and the
+    // synchronous test bodies have nothing to wait on. `void` says that out loud,
+    // where a bare call reads as an oversight.
+    void source.setSrc?.("blob:http://127.0.0.1:5311/081c983e");
 
     const scene = serialiseScene(canvasOf(source));
 
@@ -369,7 +372,10 @@ describe("identity survives a round trip", () => {
   it("takes the URL off an asset-referenced image inside a group too", () => {
     const inside = image();
     setObjectAssetReference(inside, { assetId: "logo", kind: "image" });
-    inside.setSrc?.("blob:http://127.0.0.1:5311/inside");
+    // Not awaited: this case is about what the serialiser leaves out, and the
+    // synchronous test body has nothing to wait on. `void` says that out loud,
+    // where a bare call reads as an oversight.
+    void inside.setSrc?.("blob:http://127.0.0.1:5311/inside");
     const plain = image();
     const scene = serialiseScene(canvasOf(new Group([inside, plain])));
 

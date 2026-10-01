@@ -5,14 +5,12 @@ import {
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
 import {
-  Circle,
   Ellipse,
   Line,
   Path,
   Polygon,
   Polyline,
   Rect,
-  Triangle,
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { SHAPE_KINDS } from "./new-object-defaults.js";

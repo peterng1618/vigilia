@@ -1,5 +1,4 @@
-import { setObjectAssetReference } from "@vigilia/scene-fabric";
-import { FabricImage } from "fabric/es";
+
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
 import {
