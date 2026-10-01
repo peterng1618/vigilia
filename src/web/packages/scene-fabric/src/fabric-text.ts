@@ -284,6 +284,14 @@ export function applyAuthoredText(
           // Authored layout belongs to the same content, so reapplying the
           // text must reapply it: alignment lives only here and at construction,
           // and a layout control would otherwise change nothing on screen.
+          //
+          // **No `initDimensions` after this `set`.** Every key written here is
+          // one of Fabric's `textLayoutProperties` (`fabric/dist/index.mjs:4131`),
+          // and `Text.set` re-measures on all of them before it returns
+          // (`:16295`). A second call measures the identical state again — and
+          // the refresh loop runs this pass over every text object in the
+          // document thirty times a second, so it was one wasted measure per
+          // object per pass for the whole of an idle editor.
           object.set({
             text: shape.text,
             styles: shape.styles,
@@ -291,10 +299,9 @@ export function applyAuthoredText(
               ? {}
               : { textAlign: authored.align }),
           });
-          object.initDimensions();
           // `refreshLayout` restores the box, places by both alignments and
-          // clips; it has to follow this last `initDimensions`, which widens to
-          // the longest run and would otherwise be what it reads.
+          // clips; it has to follow this last measure, which widens to the
+          // longest run and would otherwise be what it reads.
           refreshLayout(object, segments, runtimeLayout(object, authored));
         }
       }
@@ -347,6 +354,8 @@ export function refreshBoundText(
             object.graphemeSplit(value),
           );
           guardBoxWidth(object);
+          // Measured by the `set` itself, for the reason given in
+          // `applyAuthoredText` above.
           object.set({
             text: shape.text,
             styles: shape.styles,
@@ -354,7 +363,6 @@ export function refreshBoundText(
               ? {}
               : { textAlign: authored.align }),
           });
-          object.initDimensions();
           refreshLayout(object, segments, layoutState);
         }
       }

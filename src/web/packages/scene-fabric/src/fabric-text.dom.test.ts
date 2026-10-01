@@ -6,9 +6,15 @@ import type {
   PlanTextLayout,
   PlanTextSegment,
 } from "@vigilia/renderer-core";
-import { Rect, Textbox } from "fabric/es";
+import { Canvas, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { buildText, textGaps } from "./fabric-text.js";
+import {
+  applyAuthoredText,
+  buildText,
+  refreshBoundText,
+  textGaps,
+  VIGILIA_TEXT_PROPERTY,
+} from "./fabric-text.js";
 
 /**
  * Text overflow, measured rather than asserted structurally.
@@ -260,5 +266,79 @@ describe("truncation and per-run styles", () => {
     }
 
     expect(Object.keys(styles[0] ?? {})).toHaveLength(object.text.length);
+  });
+});
+
+describe("what one text pass costs", () => {
+  /**
+   * Counts re-measures for the body of `body`, leaving the prototype alone.
+   *
+   * `Text.set` re-enters `initDimensions` itself for every `textLayoutProperties`
+   * key (`fabric/dist/index.mjs:16279-16296`, list at `:4131`) — `text`,
+   * `styles` and `textAlign` are all in it. So a pass that writes those and then
+   * calls `initDimensions` again measures the same object twice, in the same
+   * pass, with nothing changed in between. This is the count that decides it: a
+   * percentage of a frame is not measurable on a machine of any given speed, and
+   * this is.
+   */
+  function measures(body: () => void): number {
+    const base = Textbox.prototype.initDimensions;
+    let count = 0;
+    Textbox.prototype.initDimensions = function (this: Textbox) {
+      count += 1;
+      base.call(this);
+    };
+    try {
+      body();
+    } finally {
+      Textbox.prototype.initDimensions = base;
+    }
+    return count;
+  }
+
+  function stage(): { canvas: Canvas; object: Textbox } {
+    // Wrapped, because that is what the Starter's text objects are and it is
+    // the shape `initDimensions` re-measures most: it re-derives the line
+    // capacity and the dynamic minimum width on every call.
+    const object = buildText(
+      textNode([segment("CPU 48%")], { wrap: true, overflow: "clip" }),
+      box(),
+    ) as Textbox;
+    object.set("id", "label");
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "literal", text: "CPU 48%" }],
+      align: "left",
+    });
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(object);
+    return { canvas, object };
+  }
+
+  it("measures a bound object once in the authored pass, not twice", async () => {
+    const { canvas, object } = stage();
+
+    expect(
+      measures(() => applyAuthoredText(canvas, undefined, { bindings: {} })),
+    ).toBe(1);
+    // The pass still did its job; the measure is not skipped to reach one.
+    expect(object.width).toBeGreaterThan(0);
+    await canvas.dispose();
+  });
+
+  it("measures a bound object once in the sample pass, not twice", async () => {
+    const { canvas, object } = stage();
+
+    expect(
+      measures(() =>
+        refreshBoundText(
+          canvas,
+          { label: [{ id: "load", semanticKey: "cpu.load" }] },
+          { latest: () => undefined, history: () => [] },
+          undefined,
+        ),
+      ),
+    ).toBe(1);
+    expect(object.width).toBeGreaterThan(0);
+    await canvas.dispose();
   });
 });
