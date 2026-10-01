@@ -333,6 +333,46 @@ it("switches panes without closing when the panel is already open", async () => 
   layout.destroy();
 });
 
+it("re-frames on the panel toggle even for a camera the author has moved", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const zoomToFit = vi.fn();
+  const listeners = new Set<() => void>();
+  const bridge = bridgeStub({
+    editor: {
+      canvas: new Canvas(document.createElement("canvas")),
+      viewport: {
+        zoom: () => 1,
+        onChange: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        zoomToFit,
+      },
+    } as unknown as EditorShellBridge["editor"],
+  });
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+
+  // The viewport refits a fitted camera on a resize by itself, so this looks
+  // like the leftover it was once assumed to be. It is not: `resize()` holds a
+  // camera the author has zoomed or panned, and a panel collapse is the author
+  // handing the canvas 288px on purpose. Delete this and the camera stays where
+  // the author left it while 288px of workspace goes unused.
+  await act(async () => railEntry(root, "Layers").click());
+  expect(zoomToFit, "the toggle waits for the viewport, not the frame").not
+    .toHaveBeenCalled();
+
+  for (const listener of listeners) listener();
+
+  expect(zoomToFit, "the viewport has resized, so the theme is re-framed").toHaveBeenCalledTimes(1);
+  // And it unsubscribes, so a later pan does not drag the view back to fit.
+  for (const listener of listeners) listener();
+  expect(zoomToFit).toHaveBeenCalledTimes(1);
+
+  layout.destroy();
+});
+
 it("tells a hovering author what the rail entry will do to the panel", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);

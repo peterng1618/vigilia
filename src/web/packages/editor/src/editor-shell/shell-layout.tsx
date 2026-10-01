@@ -450,15 +450,16 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [pane, setPane] = useState<RailPane>("layers");
     const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
-    /** Fit the theme once the viewport has taken the canvas' new width.
+    /** Re-frame on the panel toggle, once the viewport has the new width.
      *
-     * The viewport deliberately keeps its zoom across a resize — a window nudge
-     * should not re-frame the theme — so this belongs on the panel toggle. It
-     * was done with frames first and that was wrong twice over: the aside
-     * re-renders after the frame, and the viewport has its own ResizeObserver
-     * that has not run when the frame fires, so the fit measured the old box and
-     * produced the collapsed zoom on the way back in. Waiting for the viewport's
-     * own change event is the signal that it has already resized.
+     * A resize does not need this any more: the viewport derives whether the
+     * camera was fitted and re-fits that one itself. What it deliberately will
+     * not do is touch a camera the author has zoomed or panned, and collapsing a
+     * panel is not a window nudge — the author handed the canvas 288px on
+     * purpose — so this is the one case where their view still follows. Still
+     * waiting on the change event rather than a frame: the aside re-renders
+     * after the frame, so a fit measured then reads the old box and lands on the
+     * collapsed zoom on the way back in.
      */
     const refitOnViewportChange = (): void => {
       const viewport = store.bridge?.editor.viewport;
