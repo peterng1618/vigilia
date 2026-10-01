@@ -222,6 +222,56 @@ describe("a width the author dragged stays dragged", () => {
   });
 });
 
+describe("a height the author wrote is the height the object has", () => {
+  /**
+   * Fabric derives `height` from the wrapped text on every `initDimensions`
+   * (`fabric/dist/index.mjs:18452`), and `guardBoxWidth`'s width is the mirror
+   * case. An author who writes a height in the Size field, or drags the
+   * vertical edge, writes the box — so the pass has to put the object back at
+   * the box afterwards or the two disagree and the glyphs are cut against a box
+   * the object no longer has.
+   */
+  it("reports the box height after a pass, not Fabric's derivation", () => {
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    expect(object.height).toBe(BOX.height);
+    expect(object.clipPath?.height).toBe(BOX.height);
+  });
+
+  it("holds a taller box over a run measured taller than it", () => {
+    // vg-089: the box is 27 and the glyphs are 90, so Fabric's own height is
+    // ~101 and the authored 27 clips the leading glyph off. The author drags the
+    // vertical edge to 140, which is a statement about the box and nothing else.
+    const box = { width: BOX.width, height: 140 };
+    const object = reading({}, box);
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.height).toBe(140);
+    expect(object.clipPath?.height).toBe(140);
+  });
+
+  it("keeps the box height under a scaled object, and the clip on it", () => {
+    // `vigiliaText.box` is the number the object measures against and
+    // `boxFrom` puts the scale back on for the clip, so a 1.5x object built at
+    // 140 is still 140 in its own space — 210 on the artboard, which is what a
+    // corner drag of a 1.5x object produces. Reading one as the other grows the
+    // box by the scale on every pass.
+    const box = { width: BOX.width, height: 140 };
+    const object = reading({}, box);
+    object.set({ scaleY: 1.5 });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+
+    expect(object.height).toBe(140);
+    expect(object.clipPath?.height).toBe(140);
+  });
+});
+
 describe("alignment acts inside the authored box", () => {
   /** The painted ink's edges, in parent space. */
   function edgesOf(object: Textbox): { left: number; right: number } {

@@ -31,13 +31,19 @@ describe("applyEditorControls", () => {
     expect(rotate).toMatchObject({ sizeX: 32, sizeY: 32, offsetY: -32 });
   });
 
-  it("hides the textbox vertical-resize handles", () => {
+  it("gives the textbox the vertical-resize handles every other shape has", () => {
     applyEditorControls();
     const controls = Textbox.ownDefaults.controls;
 
-    expect(controls?.["mt"]?.visible).toBe(false);
-    expect(controls?.["mb"]?.visible).toBe(false);
+    // vg-089: an author who picked a type preset taller than the authored box
+    // had no way to move the box by hand. Corners and horizontal edges were
+    // already there; these two were the whole of the gap.
+    expect(controls?.["mt"]?.visible).not.toBe(false);
+    expect(controls?.["mb"]?.visible).not.toBe(false);
     expect(controls?.["ml"]?.visible).not.toBe(false);
+    // A visible handle that cannot be dragged is worse than an absent one.
+    expect(controls?.["mt"]?.actionHandler).toBeTypeOf("function");
+    expect(controls?.["mb"]?.actionHandler).toBeTypeOf("function");
   });
 
   it("leaves Fabric's ActiveSelection internals unpatched", () => {

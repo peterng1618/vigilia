@@ -1,4 +1,8 @@
 import {
+  applyAuthoredText,
+  writeAuthoredBoxDimension,
+} from "@vigilia/scene-fabric";
+import {
   Control,
   controlsUtils,
   InteractiveFabricObject,
@@ -195,6 +199,55 @@ function constrainAngle(line: Line): void {
 let applied = false;
 
 /**
+ * A textbox's vertical edge, which records the authored box rather than
+ * Fabric's own height.
+ *
+ * `createTextboxDefaultControls` already replaces `ml`/`mr` with Fabric's
+ * `changeWidth`, because a textbox's width *is* its box. The vertical half is
+ * the same statement, and it was not made here for a reason that turned out to
+ * be half true: `Textbox.initDimensions` does end in
+ * `this.height = this.calcTextHeight()` (`fabric/dist/index.mjs:18452`), so
+ * Fabric's height is a measurement of the rendered text and a handle that
+ * stopped there would be overwritten by the next text pass — and until that
+ * pass, `placeInBox` would put the glyphs at a vertical alignment the clip does
+ * not have. That is the disagreement vg-089 records, produced by the handle
+ * rather than by a type preset.
+ *
+ * So the edge is an ordinary handle while the pointer is down — `changeHeight`,
+ * the exact mirror of the width path — and on release it records the box, which
+ * is what persists and what the clip and the line capacity are computed from.
+ * The text pass then runs, so the object agrees with its box on the frame the
+ * author lets go rather than at the next telemetry tick.
+ */
+function withTextboxHeightControls(controls: Record<string, Control>): void {
+  for (const key of ["mt", "mb"] as const) {
+    const control = controls[key];
+    if (control === undefined) continue;
+
+    control.actionHandler = controlsUtils.changeHeight;
+    control.cursorStyleHandler = controlsUtils.scaleCursorStyleHandler;
+    control.getActionName = () => "resizing";
+    control.mouseUpHandler = (_eventData, transform) => {
+      const textbox = transform.target;
+      if (!(textbox instanceof Textbox)) return false;
+
+      // Fabric's own height, unscaled. `vigiliaText.box` is the number the
+      // object measures against, and `boxFrom` is what puts the scale back on
+      // for the clip and the placement — so scaling here would grow the box by
+      // the scale on every drag.
+      writeAuthoredBoxDimension(textbox, "height", textbox.height);
+      const canvas = textbox.canvas;
+      // No globals: the run editor's own writes repaint the same way, and a
+      // value run keeps its authored placeholder either way.
+      if (canvas === undefined) return false;
+      applyAuthoredText(canvas, undefined);
+      canvas.requestRenderAll();
+      return false;
+    };
+  }
+}
+
+/**
  * Fabric reads `ownDefaults` when an object is constructed, so this runs before
  * the canvas exists. Excludes the fork's ActiveSelection bounds patch and its
  * Textbox width-control wrapping; neither has a Vigilia type to serve.
@@ -209,11 +262,7 @@ export function applyEditorControls(): void {
 
   const textboxControls = controlsUtils.createTextboxDefaultControls();
   applyOverrides(textboxControls);
-  // Vertical resize would fight Textbox's own height derivation.
-  if (textboxControls["mt"] !== undefined)
-    textboxControls["mt"].visible = false;
-  if (textboxControls["mb"] !== undefined)
-    textboxControls["mb"].visible = false;
+  withTextboxHeightControls(textboxControls);
   Textbox.ownDefaults.controls = textboxControls;
 
   // A line gets its own set rather than a narrowed one: the six handles it does

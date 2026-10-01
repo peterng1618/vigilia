@@ -133,6 +133,69 @@ export function assertBoxWidth(object: PlanTextObject, box: PlanBox): void {
 }
 
 /**
+ * Put the object back at the box's height after the pass's last `initDimensions`.
+ *
+ * The mirror of `assertBoxWidth`, and for the same reason, with one difference:
+ * `height` is not a `textLayoutProperties` member, so a restore written as a
+ * `set` would land — the overwrite comes from `initDimensions` itself, which
+ * ends in `this.height = this.calcTextHeight()`
+ * (`fabric/dist/index.mjs:18452`). Fabric's height is therefore a *measurement*
+ * of the rendered text, and a box the author wrote is not one: without this the
+ * object and the clip derived from the box disagree by exactly the overflow,
+ * which is what an author sees when a type preset is taller than the box.
+ *
+ * Only a `Textbox`, for `assertBoxWidth`'s reason: an unwrapped object's height
+ * is its measurement, and there is no authored box to put it back at.
+ */
+export function assertBoxHeight(object: PlanTextObject, box: PlanBox): void {
+  if (!(object instanceof Textbox)) return;
+  object.height = box.height / scaleOf(object.scaleY);
+}
+
+/**
+ * One dimension of the authored box, written from a number the author chose.
+ *
+ * The single write every geometry surface shares, so a Size field and a dragged
+ * edge cannot disagree about what a box is. Fabric's own floor is 1 — the same
+ * `Math.max(newWidth, 1)` `changeWidth` applies (`index.mjs:6737`) — and a value
+ * below it, or one that is not a number at all, is refused rather than coerced:
+ * a zero-height box clips everything and a `NaN` propagates into the clip.
+ *
+ * An object with no box yet gets one, both dimensions from its own measured
+ * edges. Writing one alone would leave `{ height }` with no width, and
+ * `authoredBox` would multiply an `undefined` width by the scale on the next
+ * pass — the object loses its width and stops producing a bounding rect.
+ */
+export function writeAuthoredBoxDimension(
+  object: PlanTextObject,
+  dimension: "width" | "height",
+  value: number,
+): void {
+  if (!Number.isFinite(value) || value < 1) return;
+
+  const authored = object.get("vigiliaText");
+  if (typeof authored !== "object" || authored === null) return;
+
+  const content = authored as Record<string, unknown>;
+  const box = (content["box"] ?? {}) as {
+    width?: number;
+    height?: number;
+  };
+
+  // The object's own edges, unscaled: the box is the number Fabric measures
+  // against, and `boxFrom` is what puts the scale back on for the clip and the
+  // placement. Seeding with the scaled value would grow the box on every pass.
+  object.set("vigiliaText", {
+    ...content,
+    box: {
+      width: box.width ?? object.width,
+      height: box.height ?? object.height,
+      [dimension]: value,
+    },
+  });
+}
+
+/**
  * Put the object's own edges where the authored alignment puts them.
  *
  * A wrapped object's width is the box, so horizontal alignment is `textAlign`

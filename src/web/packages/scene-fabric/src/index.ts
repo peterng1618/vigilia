@@ -9,6 +9,7 @@ export {
   right,
   sceneBoxesOf,
 } from "./artboard-crop.js";
+export { writeAuthoredBoxDimension } from "./authored-box.js";
 /** Fabric ScenePlan renderer. Keep Fabric out of renderer-core; player code uses `fabric/es` StaticCanvas only. */
 
 export type {

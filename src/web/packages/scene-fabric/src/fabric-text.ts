@@ -22,6 +22,7 @@ import {
 } from "fabric/es";
 import {
   applyClip,
+  assertBoxHeight,
   assertBoxWidth,
   authoredBox,
   boxFrom,
@@ -377,9 +378,12 @@ function refreshLayout(
   }
 
   // After the ellipsis rewrite too: that `write` is a `set` and re-enters
-  // `initDimensions`, which widens the object to its longest run — the same
-  // thing the pass-level restore exists to undo, one call later.
+  // `initDimensions`, which widens the object to its longest run and re-derives
+  // its height from the text — the same thing the pass-level restore exists to
+  // undo, one call later. The height restore has to follow the width one, or
+  // the object would be put back at a width the box no longer has.
   assertBoxWidth(object, box);
+  assertBoxHeight(object, box);
   placeInBox(object, box, layout);
   applyClip(object, layout, box);
 }
