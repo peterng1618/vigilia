@@ -109,6 +109,13 @@ git commit -m "..."
 The draining agent's work is unstaged in the same tree. Never `git add -A`,
 never `-a`, never a stash that touches their files.
 
+**One thing you cannot avoid:** a JSONL row cannot be staged part of a file
+non-interactively, so if they have an uncommitted row in `backlog.jsonl`, your
+commit of that file carries it too. This happened on this pass. It is harmless —
+the register is the shared surface and both rows belong in it — but **say so in
+the commit message**, so nobody finds their in-progress row in someone else's
+commit and wonders. Their *source* work is unaffected; that stays unstaged.
+
 ### Refuting and withdrawing
 
 You will file something that turns out wrong. That is the expected cost of

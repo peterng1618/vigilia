@@ -66,6 +66,43 @@ Re-run `node scripts/backlog-check.mjs` after every append, and commit each
 batch. Stage `docs/product/backlog.jsonl` explicitly — never `git add -A`; the
 draining agent's work is unstaged in the same tree and you do not own it.
 
+### The id space is shared — allocate immediately before you append
+
+Another agent files into the same file while you are still writing your row.
+Reading the highest id at the start of a session, or picking ids while composing
+prose, loses that race: on this pass I drafted four rows, and by the time I
+appended them the draining agent had filed their own `vg-078`, so my append
+produced a duplicate.
+
+**Read the highest id and append in the same step.** Do not pick ids when you
+start composing a row and write the file later. The gate catches the collision
+rather than letting it through, so a duplicate is a recoverable moment — but only
+if you commit the fix rather than leaving the file dirty.
+
+Renumber yours, not theirs. Match by title, move only the rows that collided,
+and then re-run the gate: a duplicate id is almost always the harmless kind, but
+"almost always" is not a reason to skip the check.
+
+### Recovering a crash
+
+A crash mid-session leaves the working tree dirty and the register uncommitted,
+which is the state `STATUS.md` warns about repeatedly. The order that worked:
+
+1. `git log --oneline -3` and `git status --short` — what actually landed.
+2. `node scripts/backlog-check.mjs` — this is what tells you the register is
+   malformed rather than merely incomplete. A duplicate id is the most likely
+   damage and the gate names it exactly.
+3. Decide what is yours by diffing, and stage only your files.
+4. **Re-verify your measurements.** A crash does not invalidate a finding, but
+   the pre-crash run is no longer fresh evidence — re-run the probe against the
+   restored environment before you commit a claim that the world may have moved
+   under. `grep` the source for the thing you measured (no `beforeunload` in the
+   editor still meant the guard was absent after the crash).
+
+Restarting after a power failure means the host **and** the browser: both die,
+and the theme library survives because it is on disk. Re-check the library
+before trusting anything you measure next.
+
 ---
 
 ## 2. Handle native dialogs, or you will file a working feature as dead
