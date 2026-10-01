@@ -373,6 +373,87 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   layout.destroy();
 });
 
+it("leaves the camera alone after a swap between two open panes", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const zoomToFit = vi.fn();
+  const listeners = new Set<() => void>();
+  const bridge = bridgeStub({
+    editor: {
+      canvas: new Canvas(document.createElement("canvas")),
+      viewport: {
+        zoom: () => 1,
+        onChange: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        zoomToFit,
+      },
+    } as unknown as EditorShellBridge["editor"],
+  });
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+
+  await act(async () => railEntry(root, "Add").click());
+
+  // A swap changes which pane is showing, not how wide the panel is, so the host
+  // does not resize and the viewport never notifies. Anything armed here sits
+  // until the author's next pan or zoom — and that gesture is the one it eats,
+  // snapping the view back to fit. Measured on canvas: one ctrl-wheel notch
+  // after a swap left the badge on 57%.
+  for (const listener of listeners) listener();
+  expect(zoomToFit, "no refit was waiting on a camera that will not move")
+    .not.toHaveBeenCalled();
+
+  layout.destroy();
+});
+
+it("re-frames when a collapsed panel is reopened by asking for a pane", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const zoomToFit = vi.fn();
+  const listeners = new Set<() => void>();
+  const bridge = bridgeStub({
+    editor: {
+      canvas: new Canvas(document.createElement("canvas")),
+      viewport: {
+        zoom: () => 1,
+        onChange: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        zoomToFit,
+      },
+    } as unknown as EditorShellBridge["editor"],
+  });
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+  // The viewport's own notify, which a real host resize produces on its own.
+  // A swap arms inside a `requestAnimationFrame`, so the frame has to have run
+  // before the notify is faked, or the test reads an arm that has not happened.
+  const resized = async (): Promise<void> => {
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    });
+    for (const listener of listeners) listener();
+    await Promise.resolve();
+  };
+
+  await act(async () => railEntry(root, "Layers").click());
+  await resized();
+  expect(zoomToFit, "the collapse re-framed").toHaveBeenCalledTimes(1);
+
+  // The other half of the guard in the test above: this swap *does* hand the
+  // canvas 288px back, so the refit is the point and skipping it would strand
+  // the theme at the collapsed zoom.
+  await act(async () => railEntry(root, "Layers").click());
+  await resized();
+
+  expect(zoomToFit, "and so does the reopen").toHaveBeenCalledTimes(2);
+
+  layout.destroy();
+});
+
 it("tells a hovering author what the rail entry will do to the panel", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);

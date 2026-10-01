@@ -511,7 +511,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // whatever height it has at that moment.
       requestAnimationFrame(() => {
         if (paneBody.current !== null) paneBody.current.scrollTop = restore;
-        refitOnViewportChange();
+        // Only when the panel is coming back. A swap between two open panes
+        // changes which pane shows, not how wide the panel is, so nothing
+        // resizes and no change event ever arrives — the listener would sit
+        // armed until the author's next pan or zoom, and that gesture is the one
+        // it ate, snapping the view back to fit.
+        if (collapsed) refitOnViewportChange();
       });
     };
 
