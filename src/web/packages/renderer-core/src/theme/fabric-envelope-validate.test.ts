@@ -809,7 +809,9 @@ describe("Fabric theme envelope validation", () => {
     const withoutMetadata = withoutKey(envelope(), "metadata");
     expect(
       issuesOf(validateFabricThemeEnvelope(withoutMetadata)),
-    ).toContainEqual(expect.objectContaining({ path: "/metadata/themeLanguage" }));
+    ).toContainEqual(
+      expect.objectContaining({ path: "/metadata/themeLanguage" }),
+    );
   });
 
   it("refuses a language this runtime cannot render", () => {

@@ -863,7 +863,10 @@ describe("which format tokens a clock can be given", () => {
 describe("how a run's controls are named", () => {
   it("gives every control an id its own label names", async () => {
     const box = harness(literalClock, "en-GB");
-    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'), "date.today");
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "date.today",
+    );
     box.render();
 
     const unnamed = [
@@ -872,7 +875,11 @@ describe("how a run's controls are named", () => {
       ),
     ]
       .filter((control) => control.id === "")
-      .map((control) => control.dataset[Object.keys(control.dataset)[0] ?? ""] ?? control.tagName);
+      .map(
+        (control) =>
+          control.dataset[Object.keys(control.dataset)[0] ?? ""] ??
+          control.tagName,
+      );
 
     expect(unnamed).toEqual([]);
     return box.dispose();
@@ -884,7 +891,10 @@ describe("how a run's controls are named", () => {
     // DD D · HH H hh h · mm ss · A a. Words in [square brackets]."` The name
     // changed every minute, because the preview it swallowed was a clock.
     const box = harness(literalClock, "en-GB");
-    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'), "date.today");
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'),
+      "date.today",
+    );
     box.render();
 
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');

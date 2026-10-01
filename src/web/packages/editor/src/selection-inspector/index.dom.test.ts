@@ -774,9 +774,8 @@ describe("the size of a text object", () => {
     // W reads 360 and the object draws 720, which is the same disagreement —
     // but there the field *is* the scaled edge, so there is nothing to report.
     expect(
-      host.querySelector<HTMLInputElement>(
-        '[data-vigilia-geometry="width"]',
-      )?.value,
+      host.querySelector<HTMLInputElement>('[data-vigilia-geometry="width"]')
+        ?.value,
     ).toBe("720");
     expect(sizeLine(host)).toBeUndefined();
   });

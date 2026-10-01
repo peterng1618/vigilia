@@ -249,10 +249,16 @@ describe("a template the product ships, beside the saved themes", () => {
     // Built with a removal available, so a Delete on the starter row would be
     // a control that appears and moves nothing.
     const host = mount(
-      themeList(THEMES, { onChoose, onDelete: deleteTheme, templates: TEMPLATES }),
+      themeList(THEMES, {
+        onChoose,
+        onDelete: deleteTheme,
+        templates: TEMPLATES,
+      }),
     );
 
-    expect(host.querySelector("[data-template]")?.closest(".theme-row")).toBeNull();
+    expect(
+      host.querySelector("[data-template]")?.closest(".theme-row"),
+    ).toBeNull();
     // One per saved theme, and none on the template.
     expect(host.querySelectorAll(".theme-delete")).toHaveLength(THEMES.length);
   });
@@ -275,12 +281,10 @@ describe("removing a saved theme from a host page", () => {
 
   /** Press Delete on a row and answer the confirmation, the way a person
    *  does: the dialog opens, then one of its two buttons is pressed. */
-  const confirm = async (
-    id: string,
-    answer: "yes" | "no",
-  ): Promise<void> => {
+  const confirm = async (id: string, answer: "yes" | "no"): Promise<void> => {
     const row = document.querySelector(`[data-theme='${id}']`);
-    row?.closest(".theme-row")
+    row
+      ?.closest(".theme-row")
       ?.querySelector<HTMLButtonElement>(".theme-delete")
       ?.click();
     await Promise.resolve();
@@ -303,9 +307,9 @@ describe("removing a saved theme from a host page", () => {
 
   it("offers a Delete beside the row, beside Edit rather than instead of it", () => {
     const host = deleting();
-    const wrapper = host.querySelector("[data-theme='living-room']")?.closest(
-      ".theme-row",
-    );
+    const wrapper = host
+      .querySelector("[data-theme='living-room']")
+      ?.closest(".theme-row");
 
     // Sitting beside Open and Edit: a row a person cannot get rid of is an
     // experiment they can never clear away, and the row itself still chooses.
@@ -318,8 +322,8 @@ describe("removing a saved theme from a host page", () => {
 
   it("names the theme it would remove, because the word alone does not", () => {
     const host = deleting();
-    const labels = [...host.querySelectorAll(".theme-delete")].map(
-      (remove) => remove.getAttribute("aria-label"),
+    const labels = [...host.querySelectorAll(".theme-delete")].map((remove) =>
+      remove.getAttribute("aria-label"),
     );
 
     // Read in a list of controls, two identical "Delete"s name nothing.
@@ -340,9 +344,9 @@ describe("removing a saved theme from a host page", () => {
 
   it("asks first, naming the theme and saying where it goes", async () => {
     const host = deleting();
-    const wrapper = host.querySelector("[data-theme='living-room']")?.closest(
-      ".theme-row",
-    );
+    const wrapper = host
+      .querySelector("[data-theme='living-room']")
+      ?.closest(".theme-row");
     wrapper?.querySelector<HTMLButtonElement>(".theme-delete")?.click();
     await Promise.resolve();
 

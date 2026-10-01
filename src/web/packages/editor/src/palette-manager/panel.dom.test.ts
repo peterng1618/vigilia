@@ -115,13 +115,21 @@ describe("palette panel", () => {
     const change = vi.fn();
     const panel = createPalettePanel(document.body, change);
     panel.render({
-      frost: { name: "Frosted panel", value: { kind: "solid", color: "#0815234d" } },
+      frost: {
+        name: "Frosted panel",
+        value: { kind: "solid", color: "#0815234d" },
+      },
     });
     const kind = (): HTMLSelectElement =>
-      document.querySelector<HTMLSelectElement>(
-        "[data-vigilia-palette-kind]",
-      )!;
-    act(() => panel.render({ frost: { name: "Frosted panel", value: { kind: "solid", color: "#0815234d" } } }));
+      document.querySelector<HTMLSelectElement>("[data-vigilia-palette-kind]")!;
+    act(() =>
+      panel.render({
+        frost: {
+          name: "Frosted panel",
+          value: { kind: "solid", color: "#0815234d" },
+        },
+      }),
+    );
 
     act(() => {
       kind().value = "gradient";

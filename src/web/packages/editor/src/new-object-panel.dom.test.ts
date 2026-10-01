@@ -4,14 +4,7 @@ import {
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
-import {
-  Ellipse,
-  Line,
-  Path,
-  Polygon,
-  Polyline,
-  Rect,
-} from "fabric/es";
+import { Ellipse, Line, Path, Polygon, Polyline, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { SHAPE_KINDS } from "./new-object-defaults.js";
 import { createNewObjectPanel, insertNewText } from "./new-object-panel.js";

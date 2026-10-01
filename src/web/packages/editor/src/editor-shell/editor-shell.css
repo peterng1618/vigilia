@@ -627,16 +627,22 @@ body,
 }
 /* Every row the drag cannot land on recedes, so the slot reads as the one
    place the drop would go rather than as one more row of the same list. */
-[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row:not([data-drop="slot"]) {
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row:not([data-drop="slot"]) {
   opacity: 0.4;
 }
 /* The refusal is held a shade stronger than the rest, so "no" is still legible
    against a list that is already dimmed. */
-[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row[data-drop="refused"] {
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row[data-drop="refused"] {
   opacity: 0.65;
 }
 /* The row being moved says so too, so the author can see what they picked up. */
-[data-vigilia-panel="layers"] [role="tree"][data-dragging] .vigilia-layer-row[data-drag-source] {
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row[data-drag-source] {
   cursor: grabbing;
   opacity: 0.65;
 }

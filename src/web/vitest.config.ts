@@ -5,7 +5,9 @@ export default defineConfig({
   // shadcn's convention, matched to the editor's own vite alias so a component
   // written for the app resolves in tests too.
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./packages/editor/src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./packages/editor/src", import.meta.url)),
+    },
   },
   test: {
     // Unit tests for the shared renderer's pure logic. Visual and cross-device

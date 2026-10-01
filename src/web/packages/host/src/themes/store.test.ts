@@ -1481,7 +1481,10 @@ describe("ThemeStore remove", () => {
       path.join(tmpDir, "active-theme.json"),
       '{"id":"living-room"}\n',
     );
-    await fs.writeFile(path.join(tmpDir, "cpu-only.vigilia-theme"), "not a zip");
+    await fs.writeFile(
+      path.join(tmpDir, "cpu-only.vigilia-theme"),
+      "not a zip",
+    );
     await fs.mkdir(path.join(tmpDir, ".retired-abc.cpu-only"), {
       recursive: true,
     });

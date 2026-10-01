@@ -311,7 +311,10 @@ describe("EditorSession", () => {
       assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
-      envelope: { ...envelope, metadata: { version: "1.2.3", themeLanguage: "en" } },
+      envelope: {
+        ...envelope,
+        metadata: { version: "1.2.3", themeLanguage: "en" },
+      },
       panelHosts: {
         add: document.body,
         assets: document.body,
