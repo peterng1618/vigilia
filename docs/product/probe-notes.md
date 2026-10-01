@@ -38,6 +38,26 @@ The practical order that avoids both errors:
 3. If a previously filed row claims nothing happened and is about to be worked,
    re-run it under (1) before spending an agent on it.
 
+## A stale page against a restarted host looks exactly like a broken product
+
+Hit on this pass, and it produced the most convincing false finding I came
+close to filing. I had stopped the host to clean up and restarted it; the
+browser still held a page from before. Opening the editor from that stale page
+gave **zero layer rows, a completely empty inspector, and an uncaught
+`Cannot read properties of undefined (reading 'width')`** — which reads as a
+severe first-run defect, and the library really was empty at the time.
+
+It was not a first-run defect. With the same empty library and a **fresh** page
+load, four consecutive runs gave 52 layer rows, a populated inspector and zero
+errors every time. The empty-panels state was the old page failing against a
+host that had gone away and come back.
+
+The tell is cheap: **wipe the library and load fresh, twice, before believing
+any state that looks broken.** If it only reproduces on a page you already had
+open, you are looking at your own harness, not the product. Note that this is
+worse than the dialog trap, because a stale page also *renders* — the canvas
+still drew the Starter, so the screenshot looked plausible.
+
 ## The editor reloads the Starter, so a reload is not a round trip
 
 `File > Save to library`, then reload, shows the Starter again rather than the
