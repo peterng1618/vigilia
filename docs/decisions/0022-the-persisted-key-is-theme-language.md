@@ -6,7 +6,7 @@
   `src/web/packages/renderer-core/src/scene/plan.ts`
   `src/web/packages/renderer-core/src/scene/datetime/format.ts`
   `src/web/packages/scene-fabric/src/fabric-text.ts`
-  `src/web/schema/theme-document.schema.json`
+  `schema/theme-document.schema.json`
 
 ## The problem
 
