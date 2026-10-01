@@ -115,6 +115,7 @@ export function numberInput(options: NumberInputOptions): NumberInput {
           options.step ?? 1,
           last,
           label.id,
+          input.id,
         )
       : undefined;
 
@@ -177,16 +178,19 @@ export function numberInput(options: NumberInputOptions): NumberInput {
 
 /** The platform's own range control, named by the label the box already has
     rather than by a second string, and styled by the row's grid rather than
-    here. */
+    here. The id is the box's, suffixed, so it is a handle on the same field
+    rather than a second unaddressable control beside it. */
 function rangeControl(
   min: number,
   max: number,
   step: number,
   value: number,
   labelId: string,
+  id: string,
 ): HTMLInputElement {
   const range = document.createElement("input");
   range.type = "range";
+  range.id = `${id}-range`;
   range.className = "vigilia-numeric";
   range.min = String(min);
   range.max = String(max);

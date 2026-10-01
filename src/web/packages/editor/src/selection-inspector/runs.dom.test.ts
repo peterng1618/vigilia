@@ -845,3 +845,53 @@ describe("which format tokens a clock can be given", () => {
     return box.dispose();
   });
 });
+
+/**
+ * How each control here is named.
+ *
+ * The run editor's labels wrap their control, which the platform reads as an
+ * association — but only while the label wraps nothing else. `formatField` puts
+ * the live preview and the token vocabulary inside the label, so the browser
+ * read its control as
+ *
+ *   "Format 04:38 Tokens: YYYY YY · MMMM … Words in [square brackets]."
+ *
+ * which is the whole hint and a ticking clock read as the field's name. The id
+ * is what makes the association explicit, and an explicit association is what
+ * stops a sibling appended inside the label later from reaching the name.
+ */
+describe("how a run's controls are named", () => {
+  it("gives every control an id its own label names", async () => {
+    const box = harness(literalClock, "en-GB");
+    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'), "date.today");
+    box.render();
+
+    const unnamed = [
+      ...box.host.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+        "input, select",
+      ),
+    ]
+      .filter((control) => control.id === "")
+      .map((control) => control.dataset[Object.keys(control.dataset)[0] ?? ""] ?? control.tagName);
+
+    expect(unnamed).toEqual([]);
+    return box.dispose();
+  });
+
+  it("names the format field by its own words, not by its preview or its hint", () => {
+    // Measured on the live control in a browser's own accessibility tree:
+    // `textbox "Format 04:38 Tokens: YYYY YY · MMMM MMM MM M · dddd ddd ·
+    // DD D · HH H hh h · mm ss · A a. Words in [square brackets]."` The name
+    // changed every minute, because the preview it swallowed was a clock.
+    const box = harness(literalClock, "en-GB");
+    choose(box.pick<HTMLSelectElement>('[data-vigilia-run-source="0"]'), "date.today");
+    box.render();
+
+    const field = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    const label = box.host.querySelector<HTMLLabelElement>(
+      `label[for="${field.id}"]`,
+    );
+    expect(label?.textContent).toBe("Format");
+    return box.dispose();
+  });
+});

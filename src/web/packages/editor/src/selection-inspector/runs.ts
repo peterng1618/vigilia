@@ -28,6 +28,31 @@ import { uiCopy } from "../ui-copy.js";
 
 const TEXT_PROPERTY = "vigiliaText";
 
+let controlSeq = 0;
+
+/**
+ * A label that names its control explicitly rather than by containment.
+ *
+ * Containment is an association the platform reads, so a label wrapping its own
+ * control is legitimate — and it is how these fields were built until the Format
+ * field put a live preview and a token vocabulary inside its own label, which
+ * the browser then announced as
+ *
+ *   "Format 04:38 Tokens: YYYY YY · MMMM MMM MM M · dddd ddd · DD D · HH H
+ *   hh h · mm ss · A a. Words in [square brackets]."
+ *
+ * The name of a field changed every minute, because it had swallowed a clock.
+ * An `id` cannot be swallowed: `htmlFor` names the control and nothing else,
+ * whatever else the label goes on to contain. The wrapper stays, because the
+ * styling and the reading order both want the words beside the control.
+ */
+function labelled(label: string, control: HTMLElement): HTMLLabelElement {
+  const element = document.createElement("label");
+  element.textContent = label;
+  element.htmlFor = control.id = `vigilia-run-${++controlSeq}`;
+  return element;
+}
+
 interface ObjectWithText {
   get(name: string): unknown;
   set(name: string, value: unknown): void;
@@ -268,8 +293,6 @@ export function createRunEditor(
     current: string,
     onPick: (value: string) => void,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = label;
     const select = document.createElement("select");
     select.dataset[data] = "";
     for (const [value, text] of options) {
@@ -280,6 +303,7 @@ export function createRunEditor(
     }
     select.value = current;
     select.addEventListener("change", () => onPick(select.value));
+    const wrapper = labelled(label, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -369,8 +393,6 @@ export function createRunEditor(
     index: number,
     port: RunBindingPort,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runSource;
     const select = document.createElement("select");
     select.dataset["vigiliaRunSource"] = String(index);
     const prose = document.createElement("option");
@@ -420,6 +442,7 @@ export function createRunEditor(
       onChange();
     });
 
+    const wrapper = labelled(uiCopy.inspectorFields.runSource, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -435,8 +458,6 @@ export function createRunEditor(
     run: Extract<TextRun, { readonly kind: "literal" }>,
     index: number,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runText;
     const input = document.createElement("input");
     input.type = "text";
     input.dataset["vigiliaRunText"] = String(index);
@@ -444,6 +465,7 @@ export function createRunEditor(
     input.addEventListener("change", () =>
       commit(index, { ...run, text: input.value }),
     );
+    const wrapper = labelled(uiCopy.inspectorFields.runText, input);
     wrapper.append(input);
     return wrapper;
   };
@@ -482,11 +504,9 @@ export function createRunEditor(
     index: number,
     binding: Binding,
     port: RunBindingPort,
-  ): HTMLElement => {
+  ): DocumentFragment => {
     const instant = describeSemanticKey(binding.semanticKey)?.instant;
     const fallback = instant?.defaultFormat ?? "";
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runFormat;
     const input = document.createElement("input");
     input.type = "text";
     input.dataset["vigiliaRunFormat"] = String(index);
@@ -537,8 +557,14 @@ export function createRunEditor(
     hint.dataset["vigiliaRunFormatHint"] = String(index);
     hint.textContent = uiCopy.inspectorFields.runFormatTokens;
 
-    wrapper.append(input, preview, hint);
-    return wrapper;
+    // Siblings, not children: a label names its control by its own words, and
+    // these two are not its words. A fragment rather than a wrapper because the
+    // row is already the container.
+    const row = document.createDocumentFragment();
+    const wrapper = labelled(uiCopy.inspectorFields.runFormat, input);
+    wrapper.append(input);
+    row.append(wrapper, preview, hint);
+    return row;
   };
 
   /**
@@ -552,8 +578,6 @@ export function createRunEditor(
     binding: Binding,
     port: RunBindingPort,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runZone;
     const select = document.createElement("select");
     select.dataset["vigiliaRunZone"] = String(index);
     const follows = document.createElement("option");
@@ -588,6 +612,7 @@ export function createRunEditor(
       onChange();
     });
 
+    const wrapper = labelled(uiCopy.inspectorFields.runZone, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -609,8 +634,6 @@ export function createRunEditor(
     index: number,
     run: Extract<TextRun, { kind: "value" }>,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.panels.unitDisplay;
     const select = document.createElement("select");
     select.dataset["vigiliaRunUnitDisplay"] = String(index);
     for (const [value, text] of [
@@ -646,6 +669,7 @@ export function createRunEditor(
       onChange();
     });
 
+    const wrapper = labelled(uiCopy.panels.unitDisplay, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -670,8 +694,6 @@ export function createRunEditor(
     // Preset reference, per run. The option's value is the stored reference and
     // its text is the preset's authored name, so what the author picks is what
     // persists and what they read back is the word they chose it by.
-    const presetLabel = document.createElement("label");
-    presetLabel.textContent = uiCopy.inspectorFields.runPreset;
     const preset = document.createElement("select");
     preset.dataset["vigiliaRunPreset"] = String(index);
     const options = presetOptions(globals);
@@ -688,12 +710,11 @@ export function createRunEditor(
         typePreset: preset.value as `typePresets.${string}`,
       }),
     );
+    const presetLabel = labelled(uiCopy.inspectorFields.runPreset, preset);
     presetLabel.append(preset);
     row.append(presetLabel);
 
     // Colour reference, per run: the `style` map the renderer already reads.
-    const colourLabel = document.createElement("label");
-    colourLabel.textContent = uiCopy.inspectorFields.runColour;
     const colour = document.createElement("select");
     colour.dataset["vigiliaRunColour"] = String(index);
     const current = (
@@ -718,6 +739,7 @@ export function createRunEditor(
         },
       }),
     );
+    const colourLabel = labelled(uiCopy.inspectorFields.runColour, colour);
     colourLabel.append(colour);
     row.append(colourLabel);
 

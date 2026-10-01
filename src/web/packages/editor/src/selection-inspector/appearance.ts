@@ -252,9 +252,6 @@ export function createOpacityField(
   object: FabricObject,
   stillTarget: (object: FabricObject) => boolean,
 ): HTMLElement {
-  const label = document.createElement("label");
-  label.textContent = uiCopy.inspectorFields.opacity;
-
   const input = document.createElement("input");
   input.type = "number";
   input.min = "0";
@@ -262,6 +259,15 @@ export function createOpacityField(
   input.step = "1";
   input.dataset["vigiliaOpacity"] = "";
   input.value = String(Math.round(object.opacity * 100));
+
+  // An explicit association, not just containment. vg-103 fixed the chart
+  // settings section and the run editor's controls were written afterwards with
+  // no `id` at all, so the audit it left behind could not see them: a label
+  // wrapping its own control is legitimate, but it is the association that
+  // breaks first when anything else is put inside the label.
+  const label = document.createElement("label");
+  label.textContent = uiCopy.inspectorFields.opacity;
+  label.htmlFor = input.id = `vigilia-opacity-${++opacitySeq}`;
 
   input.addEventListener("change", () => {
     const percent = Number(input.value);
@@ -288,6 +294,7 @@ export function createOpacityField(
 }
 
 let nameSeq = 0;
+let opacitySeq = 0;
 
 /**
  * The object's display name — the one control that says what a layer is called,
