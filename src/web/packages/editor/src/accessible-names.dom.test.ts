@@ -2,6 +2,8 @@
 import { Canvas, Rect, Textbox } from "fabric/es";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
+import { createAssetPanel } from "./asset-manager/panel.js";
+import { newDocumentChooser } from "./new-document-chooser.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
@@ -20,10 +22,38 @@ import { createTypePresetPanel } from "./type-preset-manager/panel.js";
  * text alignment select — shipped with no `id` at all. vg-103's own test walked
  * one section's controls, so the shape of the fix was "a section", and a
  * control written tomorrow in a different section was nobody's red test.
+ *
+ * **Adding a panel to the editor means adding it to `mountPanels` below.** That
+ * is the whole limit of this file, and it was invisible until vg-114: the asset
+ * pane and the new-theme chooser had gone years without appearing here, so a
+ * control written in either was nobody's red test. The list is the contract —
+ * an unmounted panel is not audited, not "audited and clean".
  */
 
 /** The elements a person can focus, so the audit is over what they can reach. */
 const FOCUSABLE = "a[href],button,input,select,textarea,[tabindex]";
+
+/** The form controls among them, which are the ones an id or a label points at. */
+const FIELDS = "input,select,textarea";
+
+/**
+ * Whether a person can reach this at all, which is the audit's premise.
+ *
+ * `[hidden]` is `display: none`, and a browser puts no such element in the
+ * accessibility tree — it cannot be focused, and it is not announced. Measured
+ * in Chromium over the Assets pane: the tree holds `combobox "Asset"`,
+ * `button "Import asset"`, `button "Replace asset"`, `button "Remove asset"` and
+ * the alert, and **neither** `<input type="file">` is in it, though the markup
+ * has both. They are the two file pickers the Import and Replace buttons drive,
+ * and the buttons are named and audited here.
+ *
+ * So naming them would mean a `<label for>` pointing at something nobody can
+ * reach — a control that passes this audit by being absent from the product.
+ * Hiding a control to escape it removes it from the author's reach as surely;
+ * that is what `[hidden]` means, and it is the one escape worth naming rather
+ * than pretending the audit is absolute.
+ */
+const reached = (element: HTMLElement): boolean => !element.hidden;
 
 /** The elements a `<label for>` may name. `output` is one of them. */
 const LABELABLE = "button,input,meter,output,progress,select,textarea";
@@ -34,6 +64,7 @@ describe("editor panels", () => {
   it("gives every control an accessible name", () => {
     const { root } = mountPanels();
     const unnamed = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE))
+      .filter(reached)
       .filter((element) => accessibleName(element) === "")
       .map(identity);
     expect(unnamed).toEqual([]);
@@ -102,13 +133,30 @@ describe("editor panels", () => {
     // editor.
     const { root } = mountPanels();
     const anonymous = Array.from(
-      root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-        "input, select, textarea",
-      ),
+      root.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >(FIELDS),
     )
+      .filter(reached)
       .filter((control) => control.id === "")
       .map(identity);
     expect(anonymous).toEqual([]);
+  });
+
+  it("skips only hidden file pickers, so the audit's blind spot stays named", () => {
+    // `reached` is the one place this file looks away, and a carve-out nobody
+    // can see is how an audit rots. Naming the shape keeps it honest in both
+    // directions: a third hidden control is a decision someone has to take, and
+    // an empty list means a panel stopped being mounted — the exact failure vg-114
+    // recorded, where the asset pane and the chooser had never been here at all.
+    const { root } = mountPanels();
+    const skipped = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE))
+      .filter((element) => !reached(element))
+      .map(
+        (element) =>
+          `${element.tagName}[type=${element.getAttribute("type") ?? ""}]`,
+      );
+    expect(skipped).toEqual(["INPUT[type=file]", "INPUT[type=file]"]);
   });
 
   it("names the release version, which no form control owns", () => {
@@ -128,10 +176,22 @@ describe("editor panels", () => {
   });
 });
 
-/** The panels mounted at once, each in a state that shows every field it can
-    render: a gradient with stops, a font picker, a delete control, and a text
-    object with a run bound to a clock — the inspector's richest selection, and
-    the one that reaches the format and zone fields nothing else does. */
+/**
+ * The panels this file audits, mounted at once: the artboard panel, the palette
+ * panel, the type preset panel, the selection inspector on two disjoint field
+ * sets, the asset pane and the new-theme chooser.
+ *
+ * Each in a state that shows every field it can render: a gradient with stops,
+ * a font picker, a delete control, and a text object with a run bound to a
+ * clock — the inspector's richest selection, and the one that reaches the
+ * format and zone fields nothing else does.
+ *
+ * **This list is the coverage.** An editor panel that is not mounted here is
+ * not audited, and the assertions below pass on it by never seeing it — which
+ * is how two file inputs and three dropdowns went unaudited until vg-114 named
+ * them. Mount a panel when it is written; do not read a green run here as
+ * "the editor is clean".
+ */
 function mountPanels(): { root: HTMLElement } {
   const root = document.createElement("div");
   document.body.append(root);
@@ -193,6 +253,27 @@ function mountPanels(): { root: HTMLElement } {
 
   mountSelectionInspector(root);
 
+  createAssetPanel(
+    root,
+    {
+      declarations: [
+        { id: "hero", kind: "image", path: "assets/hero.png" },
+        { id: "clip", kind: "video", path: "assets/clip.mp4" },
+      ],
+      previewUrl: () => "blob:hero",
+      placeImage: vi.fn(async () => undefined),
+      remove: vi.fn(() => false),
+      import: vi.fn(async () => ({ id: "new", kind: "image", path: "a.png" })),
+      replace: vi.fn(async () => undefined),
+      hydrate: vi.fn(async () => undefined),
+    } as never,
+    { canvas: { getObjects: () => [] } } as never,
+    vi.fn(),
+  );
+
+  root.append(newDocumentChooser({ width: 1280, height: 720 }));
+  // TEMP-NEGATIVE-CHECK
+
   return { root };
 }
 
@@ -241,9 +322,7 @@ function mountSelectionInspector(root: HTMLElement): void {
     createSelectionInspector(host, {
       editor: editor as never,
       globals: globals as never,
-      nodeBindings: () => [
-        { id: "clock-time", semanticKey: "date.today" },
-      ],
+      nodeBindings: () => [{ id: "clock-time", semanticKey: "date.today" }],
       refreshGlass: vi.fn(),
     });
   }
