@@ -584,6 +584,79 @@ describe("how many runs a text object has", () => {
   });
 });
 
+describe("which type preset a run is set in", () => {
+  const globals = {
+    typePresets: {
+      "24-400": { name: "Card title", value: { family: "Inter", size: 24 } },
+      "46-600": { name: "Ring unit", value: { family: "Inter", size: 46 } },
+      mono: { name: "Mono", value: { family: "Inter", size: 14 } },
+    },
+    palette: {
+      text: { name: "Text", value: { kind: "solid", color: "#fff" } },
+    },
+  } as unknown as FabricGlobals;
+
+  it("lists each preset under the name the type preset panel lists it by", () => {
+    // Two dropdowns, thirteen presets, one document — and the run editor printed
+    // the ids (`24-400`) where every other reference picker in the editor prints
+    // the authored name (`Card title`). An author who read one could not find the
+    // same preset in the other, a field apart.
+    const box = harness(
+      [{ kind: "literal", text: "Hi", typePreset: "typePresets.24-400" }],
+      undefined,
+      globals,
+    );
+
+    const options = [
+      ...box
+        .pick<HTMLSelectElement>('[data-vigilia-run-preset="0"]')
+        .querySelectorAll("option"),
+    ];
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Card title",
+      "Ring unit",
+      "Mono",
+    ]);
+    return box.dispose();
+  });
+
+  it("stores the reference, not the name it shows", () => {
+    const box = harness(
+      [{ kind: "literal", text: "Hi", typePreset: "typePresets.24-400" }],
+      undefined,
+      globals,
+    );
+
+    choose(
+      box.pick<HTMLSelectElement>('[data-vigilia-run-preset="0"]'),
+      "typePresets.46-600",
+    );
+
+    // The label is display; the value is what persists. Changing the first must
+    // not change the second.
+    expect(box.runs()[0]?.typePreset).toBe("typePresets.46-600");
+    return box.dispose();
+  });
+
+  it("shows the preset the run is actually set in", () => {
+    const box = harness(
+      [{ kind: "literal", text: "Hi", typePreset: "typePresets.46-600" }],
+      undefined,
+      globals,
+    );
+
+    // The control was never mis-bound — it holds the stored reference, which is
+    // what the run carries. What an author could not do was read the option it
+    // had landed on and match it against the list beside it.
+    const preset = box.pick<HTMLSelectElement>(
+      '[data-vigilia-run-preset="0"]',
+    );
+    expect(preset.value).toBe("typePresets.46-600");
+    expect(preset.selectedOptions[0]?.textContent).toBe("Ring unit");
+    return box.dispose();
+  });
+});
+
 describe("which binding a value run carries", () => {
   const bound: readonly TextRun[] = [
     { kind: "value", bindingId: "load", typePreset: "typePresets.60-600" },

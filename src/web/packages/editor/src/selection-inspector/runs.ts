@@ -62,11 +62,23 @@ function paletteTokens(globals: FabricGlobals | undefined): readonly string[] {
     .map((id) => `palette.${id}`);
 }
 
-/** The type presets a run may reference. */
-function presetIds(globals: FabricGlobals | undefined): readonly string[] {
-  return Object.keys(globals?.typePresets ?? {}).map(
-    (id) => `typePresets.${id}`,
-  );
+/**
+ * The type presets a run may reference, each under its stored reference and the
+ * name its author gave it.
+ *
+ * The name, not the id, because every other reference picker in the editor names
+ * what it offers — `panel.ts`'s palette tokens, `chart-manager`'s paints, the
+ * preset panel's own chooser. Printing `24-400` here put thirteen presets in the
+ * inspector under one vocabulary and the same thirteen, one field lower, under
+ * another, so an author who read `Ring unit` could not find it.
+ */
+function presetOptions(
+  globals: FabricGlobals | undefined,
+): readonly { readonly ref: `typePresets.${string}`; readonly name: string }[] {
+  return Object.entries(globals?.typePresets ?? {}).map(([id, entry]) => ({
+    ref: `typePresets.${id}`,
+    name: entry.name,
+  }));
 }
 
 /**
@@ -626,18 +638,21 @@ export function createRunEditor(
       row.append(runTextField(run, index));
     }
 
-    // Preset reference, per run.
+    // Preset reference, per run. The option's value is the stored reference and
+    // its text is the preset's authored name, so what the author picks is what
+    // persists and what they read back is the word they chose it by.
     const presetLabel = document.createElement("label");
     presetLabel.textContent = uiCopy.inspectorFields.runPreset;
     const preset = document.createElement("select");
     preset.dataset["vigiliaRunPreset"] = String(index);
-    for (const id of presetIds(globals)) {
+    const options = presetOptions(globals);
+    for (const { ref, name } of options) {
       const option = document.createElement("option");
-      option.value = id;
-      option.textContent = id.replace("typePresets.", "");
+      option.value = ref;
+      option.textContent = name;
       preset.append(option);
     }
-    preset.value = run.typePreset ?? presetIds(globals)[0] ?? "";
+    preset.value = run.typePreset ?? options[0]?.ref ?? "";
     preset.addEventListener("change", () =>
       commit(index, {
         ...run,
