@@ -7,7 +7,7 @@ artifacts and from Git history.
 |---|---|
 | Fresh-session handoff / current work | [`../STATUS.md`](../STATUS.md) |
 | Bugs, feedback and requests, and what is *verified* | [`product/backlog.jsonl`](product/backlog.jsonl) — the source of truth; [GitHub issues](https://github.com/peterng1618/vigilia/issues) are an input surface |
-| Driving the product to find what's wrong with it | [`product/tester-runbook.md`](product/tester-runbook.md) — operating procedure; [`product/tester-brief.md`](product/tester-brief.md) — what to file; [`product/probe-notes.md`](product/probe-notes.md) — the instrument traps, with evidence |
+| Driving the product to find what's wrong with it | [`product/tester-runbook.md`](product/tester-runbook.md) — operating procedure; [`product/tester-brief.md`](product/tester-brief.md) — what to file; [`product/probe-notes.md`](product/probe-notes.md) — the instrument traps, with evidence; [`product/probes/`](product/probes/README.md) — the reusable scripts |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
