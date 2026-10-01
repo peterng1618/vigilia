@@ -55,25 +55,41 @@ describe("palette panel", () => {
     )!;
     kind.value = "gradient";
     kind.dispatchEvent(new Event("change"));
-    const angle = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-angle]",
-    )!;
-    angle.value = "45";
-    angle.dispatchEvent(new Event("change"));
 
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
         background: {
           name: "Background",
+          // Both stops are the colour being replaced, `#102030`, alpha and all
+          // — see `seedPaint`. White and black is what it used to invent.
           value: {
             kind: "gradient",
-            angle: 45,
+            angle: 0,
             stops: [
-              { offset: 0, color: "#ffffff" },
-              { offset: 1, color: "#000000" },
+              { offset: 0, color: "#102030" },
+              { offset: 1, color: "#102030" },
             ],
           },
         },
+      }),
+    );
+
+    const angle = document.querySelector<HTMLInputElement>(
+      "[data-vigilia-palette-angle]",
+    )!;
+    angle.value = "45";
+    angle.dispatchEvent(new Event("change"));
+    expect(change).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        background: expect.objectContaining({
+          value: expect.objectContaining({
+            angle: 45,
+            stops: [
+              { offset: 0, color: "#102030" },
+              { offset: 1, color: "#102030" },
+            ],
+          }),
+        }),
       }),
     );
 
@@ -84,11 +100,66 @@ describe("palette panel", () => {
       expect.objectContaining({
         background: expect.objectContaining({
           value: expect.objectContaining({
-            stops: expect.arrayContaining([{ offset: 1, color: "#000000" }]),
+            stops: expect.arrayContaining([{ offset: 1, color: "#102030" }]),
           }),
         }),
       }),
     );
+  });
+
+  it("carries the colour across a paint-kind switch in both directions", () => {
+    // The row's measurement: choosing Linear gradient over a 30% alpha panel
+    // replaced it, in one dropdown choice, with an opaque white-to-black sweep
+    // and undo was the way back. A translucent token must stay translucent, and
+    // going back to a solid must not pick a colour the author never had.
+    const change = vi.fn();
+    const panel = createPalettePanel(document.body, change);
+    panel.render({
+      frost: { name: "Frosted panel", value: { kind: "solid", color: "#0815234d" } },
+    });
+    const kind = (): HTMLSelectElement =>
+      document.querySelector<HTMLSelectElement>(
+        "[data-vigilia-palette-kind]",
+      )!;
+    act(() => panel.render({ frost: { name: "Frosted panel", value: { kind: "solid", color: "#0815234d" } } }));
+
+    act(() => {
+      kind().value = "gradient";
+      kind().dispatchEvent(new Event("change"));
+    });
+    expect(change).toHaveBeenLastCalledWith({
+      frost: {
+        name: "Frosted panel",
+        value: {
+          kind: "gradient",
+          angle: 0,
+          stops: [
+            { offset: 0, color: "#0815234d" },
+            { offset: 1, color: "#0815234d" },
+          ],
+        },
+      },
+    });
+
+    // Now the gradient has a first stop the author moved, and going back to a
+    // solid should take that rather than white.
+    const firstStop = document.querySelector<HTMLInputElement>(
+      "[data-vigilia-palette-stop-color]",
+    )!;
+    act(() => {
+      firstStop.value = "#0a16234d";
+      firstStop.dispatchEvent(new Event("change"));
+    });
+    act(() => {
+      kind().value = "solid";
+      kind().dispatchEvent(new Event("change"));
+    });
+    expect(change).toHaveBeenLastCalledWith({
+      frost: {
+        name: "Frosted panel",
+        value: { kind: "solid", color: "#0a16234d" },
+      },
+    });
   });
 
   it("keeps the reserved transparent token immutable", () => {
@@ -182,7 +253,7 @@ describe("palette panel", () => {
             angle: 45,
             stops: [
               { offset: 0, color: "#ff0000" },
-              { offset: 1, color: "#000000" },
+              { offset: 1, color: "#102030" },
             ],
           }),
         }),

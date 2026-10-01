@@ -184,13 +184,11 @@ export function createPalettePanel(
     }
     kind.value = entry.value.kind;
     kind.addEventListener("change", () => {
-      commit({
-        ...live(),
-        value:
-          kind.value === "gradient"
-            ? defaultGradient()
-            : { kind: "solid", color: "#ffffff" },
-      });
+      const current = live();
+      const wanted =
+        kind.value === "gradient" ? "gradient" : ("solid" as const);
+      if (current.value.kind === wanted) return;
+      commit({ ...current, value: seedPaint(current.value) });
     });
     const label = document.createElement("label");
     label.textContent = uiCopy.panels.paint;
@@ -467,14 +465,30 @@ function field(
   return { label, input };
 }
 
-function defaultGradient(): PalettePaint {
+/**
+ * The same paint in the other shape, carrying the colour it already had.
+ *
+ * Switching kind used to invent one: a gradient opened on white and black, so
+ * choosing "Linear gradient" over a 30% alpha panel replaced it, in one
+ * dropdown choice, with an opaque sweep of two colours nobody asked for — and
+ * undo was the way back. Seeding both stops from the colour being replaced
+ * loses nothing, and going back to a solid takes the gradient's first stop,
+ * because that is the one colour a gradient can still name.
+ */
+function seedPaint(value: PalettePaint): PalettePaint {
+  if (value.kind === "solid") {
+    return {
+      kind: "gradient",
+      angle: 0,
+      stops: [
+        { offset: 0, color: value.color },
+        { offset: 1, color: value.color },
+      ],
+    };
+  }
   return {
-    kind: "gradient",
-    angle: 0,
-    stops: [
-      { offset: 0, color: "#ffffff" },
-      { offset: 1, color: "#000000" },
-    ],
+    kind: "solid",
+    color: value.stops[0]?.color ?? "#ffffff",
   };
 }
 
