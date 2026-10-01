@@ -205,6 +205,18 @@ function MenuGroup({
   );
 }
 
+/** Two insertable objects can share a label — a shape Line and a chart Line. */
+function keyOf(object: InsertableObject): string {
+  switch (object.kind) {
+    case "text":
+      return "text";
+    case "shape":
+      return `shape:${object.shape}`;
+    case "chart":
+      return `chart:${object.family}`;
+  }
+}
+
 /** One item per insertable object, dispatching the construction its owner
     holds. The menu reaches it through the session façade, as every other menu
     action does. */
@@ -226,7 +238,10 @@ function insertItem(
   };
 
   return (
-    <Menu.Item key={object.label} onClick={run}>
+    // A shape Line and a chart Line share a label, and `key` is what tells two
+    // siblings apart — so the key carries what makes them different rather than
+    // what they are called.
+    <Menu.Item key={keyOf(object)} onClick={run}>
       {object.label}
     </Menu.Item>
   );
