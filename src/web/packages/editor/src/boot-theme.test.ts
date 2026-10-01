@@ -7,12 +7,18 @@ import type {
 } from "./theme-library-client.js";
 
 /**
- * Which document the editor opens on a URL that names one.
+ * Which document the editor opens on a URL that names one, and on one that
+ * does not.
  *
  * The editor shipped a baked-in default and could not open anything else, so a
  * theme it saved to the library was a write-only surface: the status line said
  * "Saved to library" and nothing in the product could read it back. The join
  * was the whole of it — the client, the open call and the mount all existed.
+ *
+ * Naming a theme fixed the bookmark and not the round trip: an author who
+ * closes the tab and opens the editor again got the template, with their work
+ * still on the host and nothing said. So a URL that names nothing opens what
+ * they saved last, which is what "coming back" means.
  */
 
 /** A saved theme, named and identified so a test cannot pass on either count:
@@ -87,18 +93,121 @@ describe("the editor on a URL that names a theme", () => {
     );
   });
 
-  it("asks for nothing on a bare /editor/, which is most of the traffic", async () => {
+  it("asks for nothing when the author has saved nothing", async () => {
+    // A first-time author has no work to come back to, so the reference
+    // composition is the right thing to open — and asking for it must not
+    // reach into the library at all.
     const client = clientOpening(content);
 
     await expect(bootTheme("", client)).resolves.toBe(undefined);
-    await expect(bootTheme("?data=live", client)).resolves.toBe(undefined);
+    expect(client.list).toHaveBeenCalledOnce();
     expect(client.open).not.toHaveBeenCalled();
   });
 
-  it("treats an empty id as no id", async () => {
+  it("never opens a template as if the author had saved it", async () => {
+    // `updatedAt` is the host store's mtime and a template has none, so an
+    // entry without one is not the author's own work however it is named.
+    const client = clientOpening(content);
+    client.list = vi.fn(async () => [
+      { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+    ]);
+
+    await expect(bootTheme("", client)).resolves.toBe(undefined);
+    expect(client.open).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the default when the host cannot be asked", async () => {
+    const client: ThemeLibraryClient = {
+      list: vi.fn(async () => {
+        throw new Error("Could not list themes (0).");
+      }),
+      open: vi.fn(async () => content),
+      save: vi.fn(async () => "base-after-save"),
+    };
+
+    await expect(bootTheme("", client)).resolves.toBe(undefined);
+    expect(client.open).not.toHaveBeenCalled();
+  });
+
+  it("treats an empty id as no id, and comes back to the author's own work", async () => {
     const client = clientOpening(content);
 
-    await expect(bootTheme("?theme=", client)).resolves.toBe(undefined);
-    expect(client.open).not.toHaveBeenCalled();
+    await bootTheme("?theme=", client);
+    expect(client.open).not.toHaveBeenCalledWith("");
+  });
+});
+
+describe("the editor on a URL that names nothing", () => {
+  it("opens what the author saved last, not the template", async () => {
+    // The shape the row measured: rename, add a rectangle, save, close the
+    // tab, reopen — and hold the Starter with the work still on the host.
+    const client = clientOpening(content);
+    client.list = vi.fn(async () => [
+      {
+        id: "edited-yesterday",
+        name: "Older",
+        updatedAt: "2026-09-30T09:00:00.000Z",
+      },
+      {
+        id: "edited-by-hand",
+        name: "Last",
+        updatedAt: "2026-10-01T09:00:00.000Z",
+      },
+      { id: "vigilia-starter-template", name: "Starter" },
+    ]);
+
+    const opened = await bootTheme("", client);
+
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("edited-by-hand");
+    expect(opened?.envelope.metadata?.name).toBe("EDITED BY HAND");
+  });
+
+  it("reads the store's ISO timestamps as text, newest last in the file wins", async () => {
+    // ISO-8601 UTC is fixed width, so the newest is the greatest string and
+    // not the one that happens to be listed last.
+    const client = clientOpening(content);
+    client.list = vi.fn(async () => [
+      {
+        id: "edited-by-hand",
+        name: "Last",
+        updatedAt: "2026-10-01T09:00:00.000Z",
+      },
+      {
+        id: "edited-yesterday",
+        name: "Older",
+        updatedAt: "2026-09-30T09:00:00.000Z",
+      },
+    ]);
+
+    await bootTheme("?data=live", client);
+
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("edited-by-hand");
+  });
+
+  it("gives a dead ?theme= the same thing a bare URL gives", async () => {
+    // The promise the URL form already made: a bookmark outlives its theme,
+    // and what opens instead is the editor's own default rather than a page
+    // that says nothing useful. With a fallback in place that default is the
+    // author's own work — sending them to the template instead would put the
+    // loss straight back for whoever's bookmark died.
+    const client = clientOpening(content);
+    client.list = vi.fn(async () => [
+      {
+        id: "edited-by-hand",
+        name: "Last",
+        updatedAt: "2026-10-01T09:00:00.000Z",
+      },
+    ]);
+    client.open = vi.fn(async (id: string) => {
+      if (id === "deleted-long-ago") throw new Error("Could not open (404).");
+      return content;
+    });
+
+    const opened = await bootTheme("?theme=deleted-long-ago", client);
+
+    // Asked for the bookmark first, then settled on the author's own work —
+    // both calls happen, so this is about what it ended on.
+    expect(client.open).toHaveBeenNthCalledWith(1, "deleted-long-ago");
+    expect(opened?.envelope.metadata?.name).toBe("EDITED BY HAND");
   });
 });
