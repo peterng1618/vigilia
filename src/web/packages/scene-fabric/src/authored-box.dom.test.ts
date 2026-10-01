@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 
-import type { PlanTextSegment, TextRun } from "@vigilia/renderer-core";
+import type {
+  PlanBox,
+  PlanNode,
+  PlanTextSegment,
+  TextRun,
+} from "@vigilia/renderer-core";
 import { Rect, StaticCanvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
   applyAuthoredText,
+  buildText,
   refreshBoundText,
   VIGILIA_TEXT_PROPERTY,
 } from "./fabric-text.js";
@@ -73,6 +79,10 @@ function reading(
     top: BOX.y,
     width: box.width,
     fontSize: 32,
+    // Zero so a bounding rect is the box: Fabric pads `aCoords` by half a
+    // stroke each side (`:5377`), which would make every reading below one
+    // point wider than the box and hide the difference this file is about.
+    strokeWidth: 0,
     originX: "left",
     originY: "top",
   });
@@ -511,6 +521,171 @@ describe("an object with no authored box", () => {
     expect(object.top).toBeCloseTo(top, 6);
   });
 });
+
+describe("the canvas's own idea of the box", () => {
+  /**
+   * Fabric keeps a second cache of where an object is: `getBoundingRect()` is
+   * `makeBoundingBoxFromPoints(this.getCoords())`
+   * (`fabric/dist/index.mjs:5281`) and `getCoords()` reads `aCoords` (`:5198`).
+   * Putting the box back is a direct assignment, so the pass never refreshes
+   * it — and everything that reads a box through the canvas, which is the
+   * selection frame the author drags by, the snap guides and `arrange`, reads
+   * the size Fabric widened to inside the pass rather than the box.
+   *
+   * So every assertion here is on `getBoundingRect()`, never on `width`: the
+   * field has read correctly since the box became a cache, and a test on it
+   * passed for as long as this defect was open.
+   */
+  function drawn(object: Textbox): { width: number; height: number } {
+    const rect = object.getBoundingRect();
+    return {
+      width: rect.width / object.scaleX,
+      height: rect.height / object.scaleY,
+    };
+  }
+
+  it("has the coordinates describe the box the pass wrote", () => {
+    // The premise: the token is wider and taller than the box, so the pass has
+    // a real restoration to do and a stale cache to leave behind.
+    const object = reading({}, { width: BOX.width, height: 140 });
+    const canvas = canvasOf(object);
+    expect(tokenWidth()).toBeGreaterThan(BOX.width);
+
+    paint(canvas);
+
+    expect(drawn(object)).toEqual({ width: BOX.width, height: 140 });
+  });
+
+  it("holds the coordinates across repeated passes, not only the first", () => {
+    const object = reading({}, { width: BOX.width, height: 140 });
+    const canvas = canvasOf(object);
+
+    paint(canvas);
+    for (let pass = 0; pass < 25; pass += 1) paint(canvas);
+
+    expect(drawn(object)).toEqual({ width: BOX.width, height: 140 });
+  });
+
+  it("has the coordinates describe the box after a bound refresh", () => {
+    // The second caller of the same pass. A sample arrives, the run changes,
+    // and the box is written again by the same three statements.
+    const object = reading({}, { width: BOX.width, height: 140 });
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    refreshBoundText(
+      canvas,
+      { "ram-value": [{ id: "m", semanticKey: "ram.used.percent" }] },
+      {
+        latest: () => ({
+          sensorId: "ram.used.percent",
+          timestamp: "2026-10-01T00:00:00.000Z",
+          status: "ok" as const,
+          value: 61,
+        }),
+        history: () => [],
+      },
+      undefined,
+    );
+
+    expect(drawn(object)).toEqual({ width: BOX.width, height: 140 });
+  });
+
+  it("has the coordinates describe the box after a save and a revive", async () => {
+    // The history path. The revived objects are new, so their caches start
+    // honest — for the box Fabric measured them at, not the authored one, since
+    // no pass has run. The first pass over them is what has to make both agree.
+    const object = reading({}, { width: BOX.width, height: 140 });
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    const reloaded = new StaticCanvas(undefined, { width: 600, height: 400 });
+    await reviveScene(reloaded, serialiseScene(canvas));
+    const revived = reloaded
+      .getObjects()
+      .find((candidate) => candidate.get("id") === "ram-value") as
+      | Textbox
+      | undefined;
+    expect(revived).toBeDefined();
+
+    // The premise: the revive is honest before any pass, so what follows is the
+    // pass doing the work rather than the revive having got it right.
+    const before = drawn(revived as Textbox);
+    expect(before.width).toBeCloseTo(revived?.width ?? -1, 6);
+    expect(before.height).toBeCloseTo(revived?.height ?? -1, 6);
+
+    paint(reloaded);
+
+    expect(drawn(revived as Textbox)).toEqual({
+      width: BOX.width,
+      height: 140,
+    });
+  });
+
+  it("has the coordinates describe a width written through `set`", () => {
+    // `guardBoxWidth` is the third write: it restores the width after Fabric's
+    // own `set` has re-measured, so it inherits the same stale cache.
+    const object = reading();
+    const canvas = canvasOf(object);
+    paint(canvas);
+
+    object.set("width", 90);
+
+    expect(object.width).toBe(90);
+    expect(drawn(object).width).toBe(90);
+  });
+
+  it("has the coordinates agree with the object on the plan path", () => {
+    // The fourth writer, and the counter-case: `buildText` and `updateText`
+    // write the box through `set`, so Fabric refreshes `aCoords` itself and
+    // there is nothing to restore. The plan path's own width is the widened
+    // measurement rather than the box — a separate question, and one the first
+    // authoring pass settles — but the canvas must still report what the object
+    // says it is, or every reader here is reading a cache nothing maintains.
+    const target = box();
+    const object = buildText(
+      {
+        id: "label",
+        style: {},
+        content: {
+          kind: "text",
+          segments: [
+            {
+              text: TOKEN,
+              style: { fontSize: 32, fill: "#fff" },
+            },
+          ],
+          layout: {
+            wrap: true,
+            overflow: "clip",
+            align: "left",
+            verticalAlign: "top",
+          },
+          authored: { wrap: true, runs: [{ kind: "literal", text: TOKEN }] },
+        },
+      } as unknown as PlanNode,
+      target,
+    ) as Textbox;
+
+    expect(drawn(object)).toEqual({
+      width: object.width,
+      height: object.height,
+    });
+  });
+});
+
+function box(overrides: Partial<PlanBox> = {}): PlanBox {
+  return {
+    x: BOX.x,
+    y: BOX.y,
+    width: BOX.width,
+    height: 140,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+    ...overrides,
+  };
+}
 
 describe("an ellipsis on wrapped text inside a fixed box", () => {
   /** A box one line tall, so a second line cannot fit. */

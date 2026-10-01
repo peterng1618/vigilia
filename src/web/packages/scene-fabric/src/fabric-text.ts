@@ -22,8 +22,7 @@ import {
 } from "fabric/es";
 import {
   applyClip,
-  assertBoxHeight,
-  assertBoxWidth,
+  assertBox,
   authoredBox,
   boxFrom,
   guardBoxWidth,
@@ -412,10 +411,10 @@ function refreshLayout(
   // After the ellipsis rewrite too: that `write` is a `set` and re-enters
   // `initDimensions`, which widens the object to its longest run and re-derives
   // its height from the text — the same thing the pass-level restore exists to
-  // undo, one call later. The height restore has to follow the width one, or
-  // the object would be put back at a width the box no longer has.
-  assertBoxWidth(object, box);
-  assertBoxHeight(object, box);
+  // undo, one call later. The restore is also what makes the canvas agree: it
+  // carries the two caches `_set` would have refreshed, so the selection frame,
+  // the snap guides and `arrange` read the box rather than the widened text.
+  assertBox(object, box);
   placeInBox(object, box, layout);
   applyClip(object, layout, box);
 }

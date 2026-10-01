@@ -92,6 +92,10 @@ export function authoredBox(
  * object to its longest run before the call returns. Without this the width an
  * author dragged is gone before `object:resizing` reports it. Fabric's own
  * widening goes through `_set`, which is not overridden.
+ *
+ * The restore is a box write like any other, so it marks the coordinates the
+ * same way: `base` refreshed `aCoords` from the widened width on the way out,
+ * and the width put back underneath it is the one the canvas has to report.
  */
 export function guardBoxWidth(object: PlanTextObject): void {
   if (!(object instanceof Textbox) || BOX_GUARD in object) {
@@ -112,6 +116,7 @@ export function guardBoxWidth(object: PlanTextObject): void {
     const result = base(key, value) as PlanTextObject;
     if (typeof requested === "number" && Number.isFinite(requested)) {
       object.width = requested;
+      markBoxWritten(object);
     }
     return result;
   }) as typeof object.set;
@@ -120,36 +125,60 @@ export function guardBoxWidth(object: PlanTextObject): void {
 }
 
 /**
- * Put the box back after the pass's last `initDimensions`.
+ * The bookkeeping Fabric's own `set` would have done for a box write.
  *
- * A direct assignment, because `width` is a layout property on a `Textbox` and
- * a restore written as a `set` re-enters `initDimensions` inside its own call.
- * Only a `Textbox`: an unwrapped object's width *is* its measurement, and
- * forcing the box onto it would draw a box the text does not have.
+ * `aCoords` is a second cache of where an object is: `getBoundingRect()` is
+ * `makeBoundingBoxFromPoints(this.getCoords())` (`fabric/dist/index.mjs:5281`)
+ * and `getCoords()` reads `aCoords` (`:5198`). Only `setCoords()` refreshes it,
+ * which is exactly why a box cannot be put back through `set` — and exactly why
+ * a direct assignment has to refresh it itself. Without this the readers that
+ * go through the canvas, which is the selection frame an author drags by, the
+ * snap guides and `arrange`, all read the box Fabric widened to inside the pass.
+ *
+ * `dirty` is the other half, and the reason this is not just `setCoords()`:
+ * `width` and `height` are Fabric `cacheProperties`, so `_set` marks the object
+ * dirty when either changes (`:5836`). A direct assignment replaces `_set`, so
+ * it owes the same mark — cheap at 0.03 µs, and the difference between the two
+ * boxes agreeing everywhere and agreeing on the canvas.
+ *
+ * At the writer rather than at the reader: the reader set is open-ended and one
+ * line away from growing again, while every write to the box is here.
  */
-export function assertBoxWidth(object: PlanTextObject, box: PlanBox): void {
-  if (!(object instanceof Textbox)) return;
-  object.width = box.width / scaleOf(object.scaleX);
+function markBoxWritten(object: PlanTextObject): void {
+  object.dirty = true;
+  object.setCoords();
 }
 
 /**
- * Put the object back at the box's height after the pass's last `initDimensions`.
+ * Put the box back after the pass's last `initDimensions`, on both dimensions
+ * and with the canvas told.
  *
- * The mirror of `assertBoxWidth`, and for the same reason, with one difference:
- * `height` is not a `textLayoutProperties` member, so a restore written as a
- * `set` would land — the overwrite comes from `initDimensions` itself, which
- * ends in `this.height = this.calcTextHeight()`
- * (`fabric/dist/index.mjs:18452`). Fabric's height is therefore a *measurement*
- * of the rendered text, and a box the author wrote is not one: without this the
- * object and the clip derived from the box disagree by exactly the overflow,
- * which is what an author sees when a type preset is taller than the box.
+ * A direct assignment, because `width` is a layout property on a `Textbox` and
+ * a restore written as a `set` re-enters `initDimensions` inside its own call —
+ * so the assignment is what `set` would have done minus the two caches, and
+ * `markBoxWritten` is those two caches. Both dimensions in one function because
+ * they are one statement: after it returns the object is *at* the box and
+ * *reports* the box, and there is no moment in between where it is at the box
+ * and reports something else.
  *
- * Only a `Textbox`, for `assertBoxWidth`'s reason: an unwrapped object's height
- * is its measurement, and there is no authored box to put it back at.
+ * Height differs from width in why it cannot go through `set` at all: `height`
+ * is not a `textLayoutProperties` member, so a restore written as a `set` would
+ * land, and the overwrite comes from `initDimensions` itself, which ends in
+ * `this.height = this.calcTextHeight()` (`fabric/dist/index.mjs:18452`). Fabric's
+ * height is a *measurement* of the rendered text, and a box the author wrote is
+ * not one: without this the object and the clip derived from the box disagree by
+ * exactly the overflow, which is what an author sees when a type preset is
+ * taller than the box.
+ *
+ * Only a `Textbox`: an unwrapped object's width and height *are* its
+ * measurement, and forcing the box onto it would draw a box the text does not
+ * have.
  */
-export function assertBoxHeight(object: PlanTextObject, box: PlanBox): void {
+export function assertBox(object: PlanTextObject, box: PlanBox): void {
   if (!(object instanceof Textbox)) return;
+  object.width = box.width / scaleOf(object.scaleX);
   object.height = box.height / scaleOf(object.scaleY);
+  markBoxWritten(object);
 }
 
 /**
