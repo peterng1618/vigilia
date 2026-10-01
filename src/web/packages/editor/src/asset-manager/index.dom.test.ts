@@ -145,6 +145,31 @@ describe("AssetManager", () => {
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:logo");
   });
 
+  it("answers a reference it cannot name with nothing rather than throwing", () => {
+    // This is what a scene revival asks, before Fabric loads anything: an
+    // asset the manager has no bytes for has to be a miss the caller can
+    // handle. It threw before, out of a revival that had no way to catch it.
+    const manager = new AssetManager();
+    manager.load(
+      {
+        assets: [
+          { id: "logo", kind: "image", path: "assets/logo.png" },
+          { id: "clip", kind: "video", path: "assets/clip.mp4" },
+        ],
+      },
+      { "assets/clip.mp4": new Uint8Array([1]) },
+    );
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:probe");
+
+    // `logo` is declared and its bytes never arrived, which is what a document
+    // opened without its package looks like.
+    expect(manager.previewUrl("logo")).toBeUndefined();
+    expect(manager.previewUrl("clip")).toBeUndefined();
+    expect(manager.previewUrl("never-declared")).toBeUndefined();
+    // Readable, so the miss is a wrong answer rather than a crash.
+    expect(manager.previewUrl("logo")).not.toBe("blob:probe");
+  });
+
   it("hydrates an asset-referenced Fabric image from declared package bytes", async () => {
     const manager = new AssetManager();
     const element = document.createElement("img");

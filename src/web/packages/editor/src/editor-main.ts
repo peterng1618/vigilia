@@ -9,6 +9,7 @@ import {
   startChartRefresh,
 } from "@vigilia/scene-fabric";
 import type { ArtboardSize } from "./artboard-presets.js";
+import { AssetManager } from "./asset-manager/index.js";
 import { EditorSession } from "./editor-session.js";
 import {
   createEditorShellBridge,
@@ -138,14 +139,29 @@ async function start(): Promise<void> {
       },
     });
     const source = createSource(next.input);
+    // The shell revives the scene before a session exists, and Fabric enlivens
+    // an image from `src` alone. A pasted image's persisted `src` is the dead
+    // `blob:` URL of the session that saved it, so without bytes in hand by
+    // then the object is not revived broken — it is not revived at all, and the
+    // next save drops it. One manager, loaded here where the document and its
+    // bytes first meet, and handed to the session rather than a second copy.
+    const assetManager = new AssetManager();
+    assetManager.load(
+      next.envelope.assets === undefined
+        ? {}
+        : { assets: next.envelope.assets },
+      next.assets ?? {},
+    );
     let shell: Awaited<ReturnType<typeof mountEditorShell>>;
     try {
       shell = await mountEditorShell({
         host,
         artboard: next.input.artboard,
         envelope: next.envelope,
+        resolveSceneAsset: (assetId) => assetManager.previewUrl(assetId),
       });
     } catch (error) {
+      assetManager.destroy();
       releaseFonts();
       throw error;
     }
@@ -153,11 +169,11 @@ async function start(): Promise<void> {
       shell,
       source: source.source,
       envelope: next.input,
-      ...(next.assets === undefined ? {} : { assets: next.assets }),
       // The package's own picture, so a theme keeps the look its author saw
       // even where this machine cannot render one.
       ...(next.thumbnail === undefined ? {} : { thumbnail: next.thumbnail }),
       ...(next.base === undefined ? {} : { libraryBase: next.base }),
+      assetManager,
       panelHosts: {
         add: layout.hosts.add,
         assets: layout.hosts.assets,

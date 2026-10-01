@@ -124,6 +124,7 @@ describe("EditorSession", () => {
     };
 
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: {
         editor,
         scene: {},
@@ -169,6 +170,7 @@ describe("EditorSession", () => {
   it("New creates at the size the chooser answered, and a dismissal creates nothing", async () => {
     const onNew = vi.fn(async () => undefined);
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: {
         editor: {
           canvas: {
@@ -231,6 +233,7 @@ describe("EditorSession", () => {
   it("New from starter creates the composition, and does not ask for a size", async () => {
     const onNewFromStarter = vi.fn(async () => undefined);
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: {
         editor: {
           canvas: {
@@ -305,6 +308,7 @@ describe("EditorSession", () => {
       setBackgroundMedia: vi.fn(),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
       envelope: { ...envelope, metadata: { version: "1.2.3", locale: "en" } },
@@ -371,6 +375,7 @@ describe("EditorSession", () => {
       setGlobals: vi.fn(),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
       envelope: {
@@ -470,6 +475,7 @@ describe("EditorSession", () => {
       setGlobals: vi.fn(),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
       envelope: {
@@ -570,6 +576,7 @@ describe("EditorSession", () => {
       setBackgroundMedia: vi.fn(),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
       envelope,
@@ -643,6 +650,7 @@ describe("EditorSession", () => {
       setGlobals: vi.fn(),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell as never,
       source: {} as never,
       envelope: {
@@ -705,6 +713,7 @@ describe("EditorSession", () => {
     };
     const hydrate = vi.spyOn(AssetManager.prototype, "hydrate");
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: {
         editor,
         scene: {},
@@ -770,6 +779,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
 
   const sessionWith = (overrides?: Record<string, unknown>): EditorSession =>
     new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -941,6 +951,7 @@ describe("a save the host refused", () => {
     const onSaved = vi.fn();
     const { client } = refusingClient();
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -976,6 +987,7 @@ describe("a save the host refused", () => {
     const onSaved = vi.fn();
     const { client, saves } = refusingClient();
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -1006,6 +1018,7 @@ describe("a save the host refused", () => {
     const onOpenTheme = vi.fn();
     const { client, saves } = refusingClient();
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -1027,6 +1040,7 @@ describe("a save the host refused", () => {
 
     // The document is now the stored one, so this save is based on it.
     const reloaded = new EditorSession({
+      assetManager: new AssetManager(),
       shell: {
         ...shell(),
         snapshot: vi.fn(() => stored),
@@ -1061,6 +1075,7 @@ describe("a save the host refused", () => {
       ),
     };
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -1099,6 +1114,7 @@ describe("a save the host refused", () => {
     const onOpenTheme = vi.fn();
     const { client } = refusingClient();
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -1124,6 +1140,7 @@ describe("a save the host refused", () => {
   it("does not gate the export, which is not a save against the store", async () => {
     const { client, saves } = refusingClient();
     const extensions = new EditorSession({
+      assetManager: new AssetManager(),
       shell: shell() as never,
       source: {} as never,
       envelope,
@@ -1214,16 +1231,23 @@ describe("a save that carries only what changed", () => {
     "assets/backdrop.png": backdrop,
     "assets/badge.svg": badge,
   };
+  // Loaded here, as the mount that produces a session does: the manager is
+  // the document's bytes and nobody builds it inside the session any more.
+  const loadedAssets = (): AssetManager => {
+    const manager = new AssetManager();
+    manager.load(opened, bytes);
+    return manager;
+  };
 
   const sessionWith = (
     save: ReturnType<typeof vi.fn>,
     overrides?: Record<string, unknown>,
   ): EditorSession =>
     new EditorSession({
+      assetManager: loadedAssets(),
       shell: shell() as never,
       source: {} as never,
       envelope: opened,
-      assets: bytes,
       libraryBase: "base-as-stored",
       panelHosts,
       libraryClient: {

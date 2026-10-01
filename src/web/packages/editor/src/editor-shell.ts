@@ -64,6 +64,16 @@ export interface EditorShellOptions {
   readonly resolveAsset?: (
     assetId: string,
   ) => BackgroundMediaSource | undefined;
+  /**
+   * Resolves a scene object's own `vigiliaAsset` reference, for the revival
+   * that happens here — before a session exists to own the bytes.
+   *
+   * Separate from `resolveAsset` because the lifetimes differ: a media source
+   * is handed over with a disposer and is revoked when the layer unmounts,
+   * while this URL has to outlive the load it was used for and is owned by
+   * whoever holds the asset manager.
+   */
+  readonly resolveSceneAsset?: (assetId: string) => string | undefined;
 }
 
 export interface EditorShell {
@@ -346,6 +356,7 @@ export async function mountEditorShell({
   envelope,
   assets,
   resolveAsset,
+  resolveSceneAsset,
 }: EditorShellOptions): Promise<EditorShell> {
   if (plan !== undefined && envelope !== undefined) {
     throw new Error(
@@ -400,7 +411,7 @@ export async function mountEditorShell({
     editor.canvas.on("editor:history-state-loaded" as never, restorePlate);
 
     if (envelope !== undefined) {
-      await reviveThemeEnvelope(editor.canvas, envelope);
+      await reviveThemeEnvelope(editor.canvas, envelope, resolveSceneAsset);
       editor.historyManager.resetHistory();
     }
 

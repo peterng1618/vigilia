@@ -252,11 +252,20 @@ export class AssetManager {
     canvas.requestRenderAll();
   }
 
+  /**
+   * A URL for an image or SVG asset, owned by this manager and revoked when it
+   * is destroyed. A declaration with no bytes answers `undefined` rather than
+   * throwing: this is what a caller resolving a scene reference asks, and a
+   * reference it cannot name has to be a miss the caller can handle, not an
+   * exception out of a revival.
+   */
   previewUrl(assetId: string): string | undefined {
     const asset = this.#declarations.find(
       (candidate) => candidate.id === assetId,
     );
-    return asset === undefined || asset.kind === "video"
+    return asset === undefined ||
+      asset.kind === "video" ||
+      this.#assets[asset.path] === undefined
       ? undefined
       : this.#preview(asset);
   }

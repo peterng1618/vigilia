@@ -133,7 +133,16 @@ export interface EditorSessionOptions {
   readonly shell: EditorShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;
-  readonly assets?: Readonly<Record<string, Uint8Array>>;
+  /**
+   * The document's declared assets and their bytes, already loaded.
+   *
+   * Passed in rather than built here because the shell revives the scene before
+   * this session exists, and Fabric enlivens an image from `src` alone: the
+   * bytes have to be resolvable by then or a pasted image's dead `blob:` URL
+   * costs the object itself, not just its picture. Whoever mounts a document
+   * loads one manager and hands it to both.
+   */
+  readonly assetManager: AssetManager;
   /** The picture the opened package carried, if it carried one. A save that
    *  cannot render one of its own keeps this rather than losing it. */
   readonly thumbnail?: Uint8Array;
@@ -176,7 +185,7 @@ export class EditorSession {
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
-  readonly #assets = new AssetManager();
+  readonly #assets: AssetManager;
   readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #nudge: CanvasNudge;
@@ -216,12 +225,7 @@ export class EditorSession {
     this.#envelope = options.envelope;
     this.#shell = options.shell;
     this.#thumbnail = options.thumbnail;
-    this.#assets.load(
-      options.envelope.assets === undefined
-        ? {}
-        : { assets: options.envelope.assets },
-      options.assets ?? {},
-    );
+    this.#assets = options.assetManager;
     this.#libraryBase = libraryBase(
       options.libraryBase,
       this.#assets.declarations,
