@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import {
+  applyAuthoredText,
+  VIGILIA_TEXT_PROPERTY,
+} from "@vigilia/scene-fabric";
 import { Canvas, IText, Textbox } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createTextManager } from "./index.js";
@@ -305,5 +308,61 @@ describe("what a text object an author inserts can do", () => {
     expect(text.width).toBeLessThanOrEqual(200);
     expect(text.height).toBeGreaterThan(36);
     manager.destroy();
+  });
+
+  it("keeps a grown type inside the authored box it was given", () => {
+    // **The claim under test, and the measurement behind it.** The starter's
+    // `cpu-card-title` is authored 140 x 27.12 for its 24px face. Applying the
+    // `90-600` preset leaves `vigiliaText.box` at exactly {140, 27.12} — it does
+    // not grow — while Fabric's own measured height goes 27.12 -> 101.7 and the
+    // clip is rebuilt at the box's 27.12. So the glyphs are far taller than the
+    // box that is told to contain them, and the canvas shows the title cut off,
+    // while the inspector's Height field keeps reporting the box truthfully.
+    //
+    // The box staying put is not the bug: ADR 0003 makes it the owner precisely
+    // so a type change cannot move it, and §89 wants fixed boxes so a reading
+    // cannot jitter. The defect is that nothing ever told the box it no longer
+    // fits — an author who picks a larger face is left with text they cannot
+    // read and a Height field that is right about a box that is wrong.
+    const object = reading("cpu-card-title");
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      wrap: true,
+      overflow: "clip",
+      align: "left",
+      verticalAlign: "top",
+      box: { width: 140, height: 27.12 },
+      runs: [
+        {
+          kind: "literal" as const,
+          text: "CPU",
+          typePreset: "typePresets.90-600",
+        },
+      ],
+    });
+    const canvas = scene(object);
+    const globals = {
+      typePresets: {
+        "90-600": {
+          name: "Card reading",
+          value: { family: "Inter", size: 90, weight: "600" },
+        },
+      },
+    } as never;
+
+    applyAuthoredText(canvas, globals);
+
+    const box = (
+      object.get(VIGILIA_TEXT_PROPERTY) as {
+        box: { width: number; height: number };
+      }
+    ).box;
+
+    // What the author chose: the box is the owner's, and it has not moved.
+    expect(box).toEqual({ width: 140, height: 27.12 });
+    // What the canvas now has to fit inside it.
+    expect(object.height).toBeGreaterThan(box.height);
+    // And the clip the object carries is the box, so the overflow is cut off
+    // rather than merely reported. This is the visible half of the finding.
+    expect(object.clipPath?.height).toBeCloseTo(box.height, 6);
   });
 });
