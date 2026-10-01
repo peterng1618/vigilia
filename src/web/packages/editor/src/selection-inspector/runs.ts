@@ -636,12 +636,7 @@ export function createRunEditor(
   ): HTMLElement => {
     const select = document.createElement("select");
     select.dataset["vigiliaRunUnitDisplay"] = String(index);
-    for (const [value, text] of [
-      ["", "Default"],
-      ["none", "None"],
-      ["short", "Short"],
-      ["long", "Long"],
-    ] as const) {
+    for (const [value, text] of Object.entries(uiCopy.unitDisplayOptions)) {
       const option = document.createElement("option");
       option.value = value;
       option.textContent = text;

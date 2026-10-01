@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { expect, it } from "vitest";
+import { Canvas, Textbox } from "fabric/es";
+import { expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
+import { createChartPropertyPanel } from "./chart-manager/panel.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
+import { createRunEditor } from "./selection-inspector/runs.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -61,7 +64,10 @@ it("leaves the three panels with no copy of their own", () => {
       assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
       onMetadataChange: () => undefined,
     },
-  ).render({ width: 1280, height: 720 }, { name: "Living Room", themeLanguage: "en" });
+  ).render(
+    { width: 1280, height: 720 },
+    { name: "Living Room", themeLanguage: "en" },
+  );
   createPalettePanel(
     root,
     () => undefined,
@@ -124,6 +130,101 @@ it("leaves the three panels with no copy of their own", () => {
     .filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
   expect(spoken.filter((text) => !owned.has(text))).toEqual([]);
 });
+
+/**
+ * The four unit display words have one owner, in both panels that offer them.
+ *
+ * Scoped to these four on purpose. Both panels carry dozens more literals —
+ * "Precision", "Start angle", "Rounded ends" and the rest of the chart panel's
+ * fields — and folding them into the net above would be F1.25's row, not this
+ * one's. What vg-113 moved was four words that were written twice with nothing
+ * joining them, and this is the net under that much and no more.
+ *
+ * The number is load-bearing too: eight is four options in two panels, so a
+ * control that stopped rendering takes this red rather than emptying the set.
+ */
+it("gives the unit display options one owner, in both panels that offer them", () => {
+  const root = document.createElement("div");
+  document.body.append(root);
+  mountUnitDisplayPanels(root);
+
+  const offered = Array.from(
+    root.querySelectorAll(
+      "[data-vigilia-binding-field$='.unitDisplay'] option, [data-vigilia-run-unit-display] option",
+    ),
+    (option) => option.textContent ?? "",
+  );
+  const owned = new Set(copy());
+  expect(offered).toHaveLength(8);
+  expect(offered.filter((text) => !owned.has(text))).toEqual([]);
+});
+
+/**
+ * The two panels that offer the unit display options, so the four words have
+ * somewhere to be caught when they are written as literals again.
+ *
+ * Both carry the same four, which is the point: the chart panel had the control
+ * and the run panel was written to mirror it, so the words were written twice
+ * with nothing joining them.
+ *
+ * A value run on a reading is the only state that renders the run panel's
+ * control; a literal run has no reading to take a unit off.
+ */
+function mountUnitDisplayPanels(root: HTMLElement): void {
+  const gauge = {
+    id: "gauge",
+    content: {
+      family: "gauge" as const,
+      settings: {
+        startAngle: 90,
+        endAngle: -270,
+        min: 0,
+        max: 100,
+        thickness: 10,
+        track: { kind: "solid" as const, color: "#000" },
+        progress: { kind: "solid" as const, color: "#fff" },
+        roundCap: true,
+      },
+    },
+    bindings: [{ id: "g", semanticKey: "ram.used.percent" }],
+  };
+  createChartPropertyPanel(
+    root,
+    vi.fn(),
+    vi.fn(),
+    vi.fn(),
+    vi.fn(),
+    vi.fn(),
+  ).render(gauge as never);
+
+  const canvas = new Canvas(document.createElement("canvas"));
+  const object = new Textbox("", { id: "clock-label" });
+  object.set("vigiliaText", {
+    align: "left",
+    runs: [{ kind: "value", bindingId: "clock-time" }],
+  });
+  canvas.add(object);
+
+  let bindings: readonly { id: string; semanticKey: string }[] = [
+    { id: "clock-time", semanticKey: "date.today" },
+  ];
+  root.append(
+    createRunEditor(
+      { canvas, historyManager: { saveState: vi.fn() } } as never,
+      undefined,
+      object as never,
+      vi.fn(),
+      {
+        bindings: () => bindings,
+        setBindings: (next) => {
+          bindings = next;
+        },
+      },
+      undefined,
+      () => ({ latest: () => undefined, history: () => [] }),
+    ).root,
+  );
+}
 
 /**
  * Every string the table can produce. A function entry is called with the

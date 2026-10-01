@@ -350,6 +350,28 @@ export const uiCopy = {
    * of the model, so there is one control left to name them.
    */
   fitModes: { contain: "Contain", cover: "Cover" },
+  /**
+   * The four ways a reading may print its unit, keyed by what is stored.
+   *
+   * Probed before these were written here and the platform has no word for any
+   * of them: `Intl.DisplayNames` has six types — language, region, script,
+   * currency, calendar, dateTimeField — and asks for `unitDisplay` with a
+   * `RangeError`; `Intl.supportedValuesOf("unit")` is the 45 sanctioned *units
+   * of measurement* (acre, byte, celsius), not the ways to display one. So the
+   * words name the product's own options: `short` and `long` are the platform's
+   * `unitDisplay` values, `none` is ours (ECMA-402 rejects it), and `Default`
+   * is the absence of the key. §35 settles the rest — product UI copy is not
+   * localised, and a theme declares the language its own text is written in.
+   *
+   * What the table buys is an owner. The chart panel and the run panel each
+   * wrote all four, so a rename fixed one and silently missed the other.
+   */
+  unitDisplayOptions: {
+    "": "Default",
+    none: "None",
+    short: "Short",
+    long: "Long",
+  },
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",

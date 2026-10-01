@@ -395,12 +395,7 @@ function unitDisplay(
   label.htmlFor =
     select.id = `vigilia-chart-binding-${binding.id}-unit-display`;
   select.dataset["vigiliaBindingField"] = `${binding.id}.unitDisplay`;
-  for (const [value, text] of [
-    ["", "Default"],
-    ["none", "None"],
-    ["short", "Short"],
-    ["long", "Long"],
-  ] as const) {
+  for (const [value, text] of Object.entries(uiCopy.unitDisplayOptions)) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = text;
