@@ -570,6 +570,21 @@ export class EditorSession {
     this.charts.refresh();
   }
 
+  /**
+   * The refresh loop's own call, and a separate method from `refresh` because
+   * the two halves of a repaint want different cadences.
+   *
+   * Charts animate, so they keep the author's rate. Text does not: a reading
+   * that changes once a second was being re-measured thirty times a second
+   * across every text object in the document, which cost the same whether the
+   * author was mid-gesture or had walked away. `LiveRuntime.tick` owns the two
+   * text cadences; this is the loop asking for them beside the charts.
+   */
+  tick(): void {
+    this.#runtime.tick();
+    this.charts.refresh();
+  }
+
   /** How value runs read while authoring (§89). */
   runDisplay(): RunDisplayMode {
     return this.#runtime.runDisplay;

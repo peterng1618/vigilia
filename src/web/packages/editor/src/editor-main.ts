@@ -60,11 +60,17 @@ async function start(): Promise<void> {
   // about 33ms and then vanished until the pointer moved again. Live readings
   // are not worth showing mid-drag anyway; the next frame after `mouse:up`
   // brings them current.
+  //
+  // **A panel gesture is deliberately not this guard.** A palette drag reaches
+  // the canvas only through the loop: the session hands new globals to six
+  // owners and none of them repaints text, so pausing the loop for one would
+  // freeze the very preview the drag exists to produce. The loop's cost went
+  // down instead — see `LiveRuntime.tick` — rather than away during a gesture.
   const gesture = { down: false };
   const chartRefresh = startChartRefresh(
     () => {
       if (gesture.down) return;
-      active?.extensions.refresh();
+      active?.extensions.tick();
     },
     chartRefreshRate,
     undefined,
