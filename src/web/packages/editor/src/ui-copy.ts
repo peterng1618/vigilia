@@ -172,6 +172,14 @@ export const uiCopy = {
     left: "Left",
     centre: "Centre",
     right: "Right",
+    /** Text inside its box, which is the thing the two words above do not say.
+        The canvas's own `align-top` / `align-center-y` / `align-bottom` move
+        selected *objects*, and both surfaces are reachable from one selection,
+        so this one names its own subject rather than borrowing the verb. */
+    verticalAlign: "Vertical text align",
+    verticalTop: "Top",
+    verticalMiddle: "Middle",
+    verticalBottom: "Bottom",
     wrap: "Wrap",
     on: "On",
     off: "Off",

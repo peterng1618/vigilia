@@ -339,6 +339,78 @@ describe("binding a text run to a sensor", () => {
     return box.dispose();
   });
 
+  it("writes vertical alignment into the object's authored text", () => {
+    const box = harness(literalClock);
+    const content = (): Record<string, unknown> =>
+      box.object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>;
+
+    // A text box the renderer already places from (`placeInBox`) but nothing in
+    // the editor could reach: the Starter ships `verticalAlign` hardcoded, so a
+    // shipped theme could carry one and an author could not set one. Horizontal
+    // alignment has had a control all along; this is its other axis.
+    expect(content()["verticalAlign"]).toBeUndefined();
+
+    choose(
+      box.pick<HTMLSelectElement>("[data-vigilia-text-vertical-align]"),
+      "middle",
+    );
+
+    expect(content()["verticalAlign"]).toBe("middle");
+    return box.dispose();
+  });
+
+  it("shows vertical alignment again from what was stored", () => {
+    const box = harness(literalClock);
+    choose(
+      box.pick<HTMLSelectElement>("[data-vigilia-text-vertical-align]"),
+      "bottom",
+    );
+
+    box.render();
+    expect(
+      box.pick<HTMLSelectElement>("[data-vigilia-text-vertical-align]").value,
+    ).toBe("bottom");
+    return box.dispose();
+  });
+
+  it("reads an unset vertical alignment as top, which is what the renderer assumes", () => {
+    const box = harness(literalClock);
+
+    // `fabric-text.ts` defaults an absent `verticalAlign` to `top`, so a control
+    // that showed anything else would offer the author a lie about the current
+    // state before they had touched it.
+    expect(
+      box.pick<HTMLSelectElement>("[data-vigilia-text-vertical-align]").value,
+    ).toBe("top");
+    return box.dispose();
+  });
+
+  it("does not offer a text object's own alignment under arrange's vocabulary", () => {
+    const box = harness(literalClock);
+
+    // Two concepts, one word. `align-top` and `align-bottom` are canvas actions
+    // that move selected objects; this control moves text inside its box. A
+    // shared dataset prefix would make the two indistinguishable to a test, a
+    // screenshot and a screen reader alike, so the names have to stay apart.
+    expect(
+      box.host.querySelector("[data-vigilia-text-vertical-align]"),
+    ).not.toBe(null);
+    for (const arrangeKey of [
+      "align-left",
+      "align-center-x",
+      "align-right",
+      "align-top",
+      "align-center-y",
+      "align-bottom",
+    ]) {
+      expect(
+        box.host.querySelector(`[data-vigilia-arrange="${arrangeKey}"]`),
+        arrangeKey,
+      ).toBeNull();
+    }
+    return box.dispose();
+  });
+
   it("shows alignment, wrap and overflow again from what was stored", () => {
     const box = harness(literalClock);
     choose(box.pick<HTMLSelectElement>("[data-vigilia-text-align]"), "right");

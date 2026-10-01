@@ -74,6 +74,26 @@ function isEditing(object: PlanTextObject): boolean {
   return object instanceof IText && object.isEditing;
 }
 
+/**
+ * The alignment scalars the author wrote, with Fabric's fallbacks.
+ *
+ * Split from `runtimeLayout` because the cache below serves the *measured* half
+ * of the layout and must not serve this half: an editor control rewrites these
+ * into the authored content and then asks the pass to reapply, so reading them
+ * from the cache is reading the value the author just replaced.
+ */
+function authoredAlignment(
+  object: PlanTextObject,
+  authored: TextContent,
+): PlanTextLayout {
+  return {
+    wrap: authored.wrap ?? object instanceof Textbox,
+    overflow: authored.overflow ?? "clip",
+    align: authored.align ?? "left",
+    verticalAlign: authored.verticalAlign ?? "top",
+  };
+}
+
 function runtimeLayout(
   object: PlanTextObject,
   authored: TextContent,
@@ -82,18 +102,22 @@ function runtimeLayout(
     | RuntimeTextLayout
     | undefined;
   if (saved !== undefined) {
-    return saved;
+    // The box and the line capacity are measurements this pass would have to
+    // take again, so the cache still serves them. The alignment is authored
+    // state the author can edit between two passes, so it is re-read: `Align`
+    // and `Vertical text align` both work by rewriting the authored content and
+    // calling `applyAuthoredText`, and returning `saved` whole made the object
+    // placed by the values the control had just replaced.
+    return {
+      ...saved,
+      layout: { ...saved.layout, ...authoredAlignment(object, authored) },
+    };
   }
 
   const scaleX = scaleOf(object.scaleX);
   const scaleY = scaleOf(object.scaleY);
   const clip = object.clipPath;
-  const layout = {
-    wrap: authored.wrap ?? object instanceof Textbox,
-    overflow: authored.overflow ?? "clip",
-    align: authored.align ?? "left",
-    verticalAlign: authored.verticalAlign ?? "top",
-  } satisfies PlanTextLayout;
+  const layout = authoredAlignment(object, authored);
 
   // The authored box first, then the clip that carries it: reading the clip
   // first would make the second pass see whatever the first one measured.

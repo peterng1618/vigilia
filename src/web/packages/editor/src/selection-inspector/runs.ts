@@ -297,6 +297,25 @@ export function createRunEditor(
       (value) => setLayout({ align: value }),
     ),
     choice(
+      uiCopy.inspectorFields.verticalAlign,
+      // `text-vertical-align`, not `align-top`: the dataset name and the
+      // accessible name both have to say this moves text within its box, because
+      // arrange's `align-*` vocabulary is on screen for the same selection and
+      // means moving the object itself.
+      "vigiliaTextVerticalAlign",
+      [
+        ["top", uiCopy.inspectorFields.verticalTop],
+        ["middle", uiCopy.inspectorFields.verticalMiddle],
+        ["bottom", uiCopy.inspectorFields.verticalBottom],
+      ],
+      // The renderer's own fallback, so an unset value and an explicit `top` are
+      // the same thing to the author looking at the control.
+      typeof content["verticalAlign"] === "string"
+        ? content["verticalAlign"]
+        : "top",
+      (value) => setLayout({ verticalAlign: value }),
+    ),
+    choice(
       uiCopy.inspectorFields.wrap,
       "vigiliaTextWrap",
       [

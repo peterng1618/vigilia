@@ -269,6 +269,43 @@ describe("truncation and per-run styles", () => {
   });
 });
 
+describe("a layout change an author makes", () => {
+  it("replaces the placement the cached runtime layout carries", async () => {
+    // The editor's alignment controls work by rewriting the authored content and
+    // calling `applyAuthoredText`, which is what puts the authored layout back on
+    // the object. `runtimeLayout` returns the layout cached on the object at
+    // construction, so a control that writes a *new* value into the authored
+    // content has that value discarded and the object placed by the old one:
+    // the control shows the author's choice and the canvas does not move.
+    // Horizontal alignment is re-applied through `textAlign` below, which is why
+    // only the axis `placeInBox` reads — vertical — was dead.
+    const authored = box({ x: 0, y: 0, width: 200, height: 100 });
+    const object = buildText(
+      textNode([segment("short")], { wrap: false, overflow: "visible" }),
+      authored,
+    );
+    object.set("id", "label");
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "literal", text: "short" }],
+      verticalAlign: "top",
+    });
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(object);
+
+    const top = object.top;
+
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "literal", text: "short" }],
+      verticalAlign: "bottom",
+    });
+    applyAuthoredText(canvas, undefined, { bindings: {} });
+
+    // The box is 100 tall and the text one line, so `bottom` has to move it.
+    expect(object.top).toBeGreaterThan(top);
+    await canvas.dispose();
+  });
+});
+
 describe("what one text pass costs", () => {
   /**
    * Counts re-measures for the body of `body`, leaving the prototype alone.
