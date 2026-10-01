@@ -471,3 +471,34 @@ it("marks a hidden row so the list says what the canvas is doing", async () => {
   expect(hidden.getAttribute("data-hidden")).toBe("true");
   host.remove();
 });
+
+
+it("selects the focused row with Space, so the list can be driven without a mouse", async () => {
+  // vg-067 gave the list navigation and vg-074 is its residual: a treeitem you
+  // can walk to but not pick is half a tree. Enter is already rename's, so
+  // selection takes the key a list has always used for it.
+  const selectLayer = vi.fn();
+  const renameLayer = vi.fn();
+  const host = await renderPanel(
+    [
+      { ...textRow, id: "first", name: "first" },
+      { ...textRow, id: "second", name: "second" },
+    ],
+    { selectLayer, renameLayer },
+  );
+  document.body.append(host);
+  const rows = [...host.querySelectorAll<HTMLElement>('[role="treeitem"]')];
+  rows[1]!.focus();
+
+  await act(async () => {
+    host.ownerDocument.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+    await Promise.resolve();
+  });
+
+  expect(selectLayer).toHaveBeenCalledWith("second");
+  // And the row that was in rename's way is not selected by it.
+  expect(renameLayer).not.toHaveBeenCalled();
+  host.remove();
+});

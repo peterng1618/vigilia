@@ -343,6 +343,15 @@ export function LayerPanel({
                   setEditing(row.id);
                   return;
                 }
+                // Selecting is the other half of the keys vg-067 added, and a
+                // treeitem you can walk to but not pick is half a tree. Enter
+                // is already rename's, so selection takes the key a list has
+                // always used for it.
+                if (event.key === " " || event.key === "Spacebar") {
+                  event.preventDefault();
+                  store.mutate(() => bridge?.selectLayer(row.id));
+                  return;
+                }
                 if (moveFocus(event, row, bridge)) {
                   // The nudge handler defers only for a text entry, and a row is
                   // a `div`, so without this an arrow key navigates the list
