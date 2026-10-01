@@ -811,6 +811,16 @@ body,
 .editor-shell-diagnostic[data-severity="error"] {
   color: var(--shell-danger);
 }
+/* Not a message: it has to survive every one that replaces the status line, so
+   it sits at the far end of the footer and says the same thing until the
+   document is saved again. */
+.editor-shell-save-state {
+  flex: none;
+  margin: 0;
+  color: var(--shell-warm);
+  font-weight: 600;
+  white-space: nowrap;
+}
 .editor-shell-diagnostic svg {
   flex: none;
   align-self: center;

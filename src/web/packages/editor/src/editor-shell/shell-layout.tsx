@@ -19,6 +19,7 @@ import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { LayerPanel } from "./layer-panel.js";
+import { SaveState } from "./save-state.js";
 import { ZoomReadout } from "./zoom-readout.js";
 import {
   applyShellPalette,
@@ -568,6 +569,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         <footer id="status" className="editor-shell-status">
           <Host node={hosts.status} />
           <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
+          <SaveState session={store.bridge?.session} />
         </footer>
       </div>
     );

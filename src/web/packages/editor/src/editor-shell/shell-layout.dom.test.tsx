@@ -44,6 +44,8 @@ function facade(): EditorActionFacade {
     duplicate: vi.fn(),
     group: vi.fn(),
     ungroup: vi.fn(),
+    isDirty: vi.fn(() => false),
+    subscribeDocumentChange: vi.fn(() => () => undefined),
   };
 }
 

@@ -29,6 +29,10 @@ export interface EditorActionFacade {
   duplicate(): void;
   group(): void;
   ungroup(): void;
+  /** Whether the document differs from what was last saved. Pulled, so the
+   *  subscription carries no value: it says the document may have moved. */
+  isDirty(): boolean;
+  subscribeDocumentChange(listener: () => void): () => void;
 }
 
 /** Editor-main owns these; the View menu dispatches through them. */

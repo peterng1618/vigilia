@@ -275,6 +275,15 @@ async function start(): Promise<void> {
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
   });
+  // The browser owns this dialog's wording and leaves no room to say what would
+  // be lost, so it can only ask. It asks the session's own comparison rather
+  // than a second one, so a document saved since the last edit stays silent —
+  // a warning the author learns to dismiss is the same as no warning.
+  window.addEventListener("beforeunload", (event) => {
+    if (active?.extensions.isDirty() !== true) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   // A saved theme the author came back to, rather than the reference
   // composition the editor ships. Nothing is open yet, so there is nothing to
   // confirm over; the document this replaces is the one that never opened.

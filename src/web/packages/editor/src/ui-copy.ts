@@ -232,6 +232,7 @@ export const uiCopy = {
     discard: "Discard",
     cancel: "Cancel",
   },
+  saveState: { unsaved: "Unsaved changes" },
   view: {
     dataSource: "Data source",
     chartRefresh: "Chart refresh",

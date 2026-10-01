@@ -201,6 +201,11 @@ export class EditorSession {
   /** The source the runtime reads, which a new source replaces. */
   #source: SampleSource;
   readonly #onBindingsChange: (() => void) | undefined;
+  /** Told the document may have moved; see `#writeEnvelope`. */
+  readonly #documentChangeListeners = new Set<() => void>();
+  readonly #announceChange = (): void => {
+    for (const listener of this.#documentChangeListeners) listener();
+  };
 
   constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
@@ -240,6 +245,21 @@ export class EditorSession {
         void this.hydrateAssets(options.shell).catch(() => undefined);
       }) as never,
     );
+
+    // `history-manager` fires the first when a recorded edit lands, which is
+    // the signal the rest of the shell already reads as "the document moved".
+    // Adding and removing move it too, and are listed so the unsaved marker
+    // does not depend on a path happening to record history.
+    for (const event of [
+      "editor:edit-committed",
+      "object:added",
+      "object:removed",
+    ]) {
+      options.shell.editor.canvas.on(
+        event as never,
+        this.#announceChange as never,
+      );
+    }
 
     // The File menu dispatches these through `actionFacade`; the section that
     // used to hold the buttons is gone.
@@ -529,6 +549,9 @@ export class EditorSession {
       duplicate: () => void editor.clipboardManager.duplicate(),
       group: () => editor.groupingManager.group(),
       ungroup: () => editor.groupingManager.ungroup(),
+      isDirty: () => this.isDirty(),
+      subscribeDocumentChange: (listener) =>
+        this.subscribeDocumentChange(listener),
     };
   }
 
@@ -604,6 +627,7 @@ export class EditorSession {
   destroy(): void {
     this.#shortcuts.destroy();
     this.#nudge.dispose();
+    this.#documentChangeListeners.clear();
     this.#persistence.destroy();
     this.#assets.destroy();
     releaseFontPreview();
@@ -629,6 +653,7 @@ export class EditorSession {
         this.#assets.assets,
         (await this.#capture(options)) ?? this.#thumbnail,
       );
+      this.#announceChange();
       options.onSaved("Theme package saved");
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -718,6 +743,9 @@ export class EditorSession {
     }
 
     this.#persistence.markSaved(current, this.#assets.assets);
+    // The document did not move, but whether it is saved just changed, and the
+    // marker reads that question rather than watching the scene.
+    this.#announceChange();
   }
 
   /**
@@ -893,8 +921,38 @@ export class EditorSession {
     );
   }
 
+  /**
+   * The document as the author last left it. Every write after the constructor
+   * goes through here, so a panel that changes the theme name, a palette token
+   * or a binding cannot leave the unsaved marker reading "saved" — the failure
+   * being one setter missing a line, which nothing else would notice.
+   */
+  #writeEnvelope(envelope: FabricThemeEnvelopeInput): void {
+    this.#envelope = envelope;
+    this.#announceChange();
+  }
+
+  /** Whether the document differs from what was last saved. Pulled, never held:
+   *  the comparison already exists for the replace prompt, and a stored flag
+   *  would be one more thing to keep true. */
+  isDirty(): boolean {
+    return this.#persistence.isDirty(
+      this.#snapshot(this.#shell),
+      this.#assets.assets,
+    );
+  }
+
+  /** Told "look again", not told the answer: a path that announces without
+   *  having changed anything costs a recompute rather than a wrong marker. */
+  subscribeDocumentChange(listener: () => void): () => void {
+    this.#documentChangeListeners.add(listener);
+    return () => {
+      this.#documentChangeListeners.delete(listener);
+    };
+  }
+
   #setArtboard(shell: EditorShell, artboard: Artboard): void {
-    this.#envelope = { ...this.#envelope, artboard };
+    this.#writeEnvelope({ ...this.#envelope, artboard });
     shell.setArtboard(artboard);
     this.#refreshBackgroundMedia(shell);
     this.#artboard.render(artboard, this.#envelope.metadata);
@@ -928,9 +986,9 @@ export class EditorSession {
   #setMetadata(metadata: FabricThemeEnvelopeInput["metadata"]): void {
     if (metadata === undefined || Object.keys(metadata).length === 0) {
       const { metadata: _metadata, ...withoutMetadata } = this.#envelope;
-      this.#envelope = withoutMetadata;
+      this.#writeEnvelope(withoutMetadata);
     } else {
-      this.#envelope = { ...this.#envelope, metadata };
+      this.#writeEnvelope({ ...this.#envelope, metadata });
     }
     // The language is the one metadata field that changes what is painted, and
     // `metadata` is the only way to set it, so this is the only push site needed
@@ -955,19 +1013,19 @@ export class EditorSession {
   }
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
-    this.#envelope = {
+    this.#writeEnvelope({
       ...this.#envelope,
       bindings: { ...this.#envelope.bindings, [id]: bindings },
-    };
+    });
     this.#runtime.setBindings(this.#envelope.bindings ?? {});
     this.#onBindingsChange?.();
   }
 
   #setPalette(shell: EditorShell, palette: FabricPalette): void {
-    this.#envelope = {
+    this.#writeEnvelope({
       ...this.#envelope,
       globals: { ...this.#envelope.globals, palette },
-    };
+    });
     shell.setGlobals(this.#envelope.globals);
     this.#runtime.setGlobals(this.#envelope.globals);
     this.charts.setGlobals(this.#envelope.globals);
@@ -988,11 +1046,11 @@ export class EditorSession {
       replacement,
     );
     this.charts.reassignPaletteReferences(from, to);
-    this.#envelope = {
+    this.#writeEnvelope({
       ...this.#envelope,
       artboard,
       globals: { ...this.#envelope.globals, palette },
-    };
+    });
     shell.setArtboard(artboard);
     shell.setGlobals(this.#envelope.globals);
     this.#runtime.setGlobals(this.#envelope.globals);
@@ -1006,10 +1064,10 @@ export class EditorSession {
   }
 
   #setTypes(shell: EditorShell, typePresets: TypePresets): void {
-    this.#envelope = {
+    this.#writeEnvelope({
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
-    };
+    });
     shell.setGlobals(this.#envelope.globals);
     this.#runtime.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
@@ -1045,10 +1103,10 @@ export class EditorSession {
       id,
       replacement,
     );
-    this.#envelope = {
+    this.#writeEnvelope({
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
-    };
+    });
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
