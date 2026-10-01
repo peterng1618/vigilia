@@ -446,6 +446,11 @@ export const uiCopy = {
         rather than after the content has gone. */
     artboardSizeNote:
       "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
+    /** The rule, with the figure the scene can now be asked for. A proportion of
+     *  the composition rather than a bare complaint, and the same wording the
+     *  display uses when it loses objects the author cannot see. */
+    artboardOutside: (rule: string, outside: number, counted: number): string =>
+      `${outside} of ${counted} objects are now outside the artboard and will not be shown on a display. ${rule}`,
     weight: "Weight",
     lineHeight: "Line height",
     letterSpacing: "Letter spacing",

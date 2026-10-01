@@ -267,9 +267,7 @@ export function createNewPanelDefaults(
  */
 export const SHAPE_KINDS = [
   "rect",
-  "circle",
   "ellipse",
-  "triangle",
   "polygon",
   "polyline",
   "line",
@@ -396,28 +394,18 @@ export function createNewShape(
         ...createNewPanelDefaults(globals, placement),
         name,
       });
-    case "circle":
-      return new Circle({
-        id,
-        name,
-        ...newShapeSurface(globals, placement),
-        radius: height / 2,
-      });
     case "ellipse":
+      // **A circle by default.** There is no Circle kind any more, because a
+      // circle was never protected from becoming an ellipse — nothing tied its
+      // scales together — so it bought nothing an author could not undo with one
+      // number. What it did buy was the common case: a dot, a ring, a chip.
+      // So a new ellipse arrives round, and stretching it is one edit away.
       return new Ellipse({
         id,
         name,
         ...newShapeSurface(globals, placement),
         rx: width / 2,
-        ry: height / 2,
-      });
-    case "triangle":
-      return new Triangle({
-        id,
-        name,
-        ...newShapeSurface(globals, placement),
-        width,
-        height,
+        ry: width / 2,
       });
     case "polygon": {
       // A value rather than a fresh literal: Fabric infers its options type

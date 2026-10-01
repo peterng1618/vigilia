@@ -1,3 +1,14 @@
+export type { ArtboardSize, SceneBox } from "./artboard-crop.js";
+export {
+  bottom,
+  countable,
+  EDGE_TOLERANCE,
+  outsideBoxes,
+  outsideCount,
+  outsideEdges,
+  right,
+  sceneBoxesOf,
+} from "./artboard-crop.js";
 /** Fabric ScenePlan renderer. Keep Fabric out of renderer-core; player code uses `fabric/es` StaticCanvas only. */
 
 export type {
@@ -28,13 +39,6 @@ export {
   withoutEngineAnimation,
 } from "./chart-object.js";
 export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
-export {
-  type BackdropMedia,
-  createGlass,
-  type DeviceRect,
-  type GlassHandle,
-  type GlassOptions,
-} from "./glass.js";
 export type { UnsupportedReporter } from "./fabric-nodes.js";
 export {
   applyAuthoredText,
@@ -43,6 +47,13 @@ export {
   VIGILIA_TEXT_PROPERTY,
 } from "./fabric-text.js";
 export { type FontAssetLoadOptions, loadFontAssets } from "./font-assets.js";
+export {
+  type BackdropMedia,
+  createGlass,
+  type DeviceRect,
+  type GlassHandle,
+  type GlassOptions,
+} from "./glass.js";
 export {
   type FabricAssetReference,
   objectAssetReference,

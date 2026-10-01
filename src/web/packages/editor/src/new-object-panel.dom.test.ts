@@ -337,11 +337,13 @@ describe("new object panel", () => {
     );
   });
 
+  // No circle and no triangle: both are shapes the editor no longer offers.
+  // A circle is an ellipse that nothing kept round, and a triangle is a
+  // 3-sided polygon, so each had an entry that added nothing the other could
+  // not already produce. See vg-078.
   it.each([
     ["rect", Rect],
-    ["circle", Circle],
     ["ellipse", Ellipse],
-    ["triangle", Triangle],
     ["polygon", Polygon],
     ["polyline", Polyline],
     ["line", Line],
@@ -482,7 +484,9 @@ describe("a new text object takes the caret", () => {
     // went nowhere.
     const editor = editorStub();
     const created = textWithEditing();
-    editor.textManager.addText = vi.fn((): ReturnType<typeof textWithEditing> => created);
+    editor.textManager.addText = vi.fn(
+      (): ReturnType<typeof textWithEditing> => created,
+    );
     // A fresh insert leaves its object selected, which is the state the guard
     // checks before taking the caret.
     editor.canvas.getActiveObject = vi.fn((): unknown => created);
@@ -502,7 +506,9 @@ describe("a new text object takes the caret", () => {
     const editor = editorStub();
     const created = textWithEditing();
     const other = textWithEditing();
-    editor.textManager.addText = vi.fn((): ReturnType<typeof textWithEditing> => created);
+    editor.textManager.addText = vi.fn(
+      (): ReturnType<typeof textWithEditing> => created,
+    );
     editor.canvas.getActiveObject = vi.fn((): unknown => other);
 
     insertNewText(editor as never, GLOBALS);

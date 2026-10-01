@@ -7,6 +7,7 @@ import {
   type FabricThemeEnvelopeInput,
   type SampleSource,
 } from "@vigilia/renderer-core";
+import { sceneBoxesOf } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
@@ -269,6 +270,11 @@ export class EditorSession {
       {
         assets: this.#assets.declarations,
         onMetadataChange: (metadata) => this.#setMetadata(metadata),
+        // The panel's own comment said the scene was not its to read, so it
+        // stated a rule true at every size and therefore said nothing. It is
+        // given the scene now that the counting lives with it.
+        sceneBoxes: () =>
+          sceneBoxesOf(options.shell.editor.canvas.getObjects()),
       },
     );
     this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);

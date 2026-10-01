@@ -7,6 +7,7 @@ import {
   MAX_ARTBOARD_DIMENSION,
   type ThemeMetadata,
 } from "@vigilia/renderer-core";
+import { outsideCount, type SceneBox } from "@vigilia/scene-fabric";
 import {
   ARTBOARD_ORIENTATIONS,
   ARTBOARD_RATIOS,
@@ -38,7 +39,12 @@ export function createArtboardPanel(
   host: HTMLElement,
   globals: Globals | undefined,
   onChange: (artboard: Artboard) => void,
-  options: ThemeSettingsOptions = {},
+  options: ThemeSettingsOptions & {
+    /** The scene, so the panel can say how much of it the frame now holds.
+     *  Optional, and the panel is truthful without it — it falls back to the
+     *  rule alone rather than claiming a number it cannot read. */
+    readonly sceneBoxes?: () => readonly SceneBox[];
+  } = {},
 ): ArtboardPanel {
   const root = document.createElement("section");
   const heading = document.createElement("h2");
@@ -195,6 +201,29 @@ export function createArtboardPanel(
   sizeNote.dataset["vigiliaArtboardNote"] = "";
   sizeNote.id = `vigilia-artboard-note-${++fieldSeq}`;
   sizeNote.setAttribute("role", "note");
+  /** The rule, plus the figure when the scene is available to read.
+   *
+   * The count used to be impossible here — the panel was never given the scene
+   * and said so in its own comment — so it stated a rule that was true at every
+   * size and therefore said nothing. The player has counted this exact thing
+   * since the beginning; the counting now lives with the scene, so both surfaces
+   * read one number rather than one of them guessing.
+   */
+  const sceneNote = (): string => {
+    const boxes = options.sceneBoxes?.();
+    if (boxes === undefined) return uiCopy.panels.artboardSizeNote;
+    const { outside, counted } = outsideCount(boxes, current);
+    return outside === 0
+      ? uiCopy.panels.artboardSizeNote
+      : uiCopy.panels.artboardOutside(
+          uiCopy.panels.artboardSizeNote,
+          outside,
+          counted,
+        );
+  };
+  // The rule, until a render knows the current size to measure against —
+  // `current` is not assigned yet, and measuring against it would read the
+  // artboard off undefined.
   sizeNote.textContent = uiCopy.panels.artboardSizeNote;
   // The row is a wrapping flex line, so the note takes a line of its own the
   // way the shell's own error line does. Styled here rather than in the shell
@@ -304,6 +333,9 @@ export function createArtboardPanel(
     metadata: ThemeMetadata | undefined = currentMetadata,
   ): void => {
     current = artboard;
+    // Now that the size is known, the note can say what the frame holds rather
+    // than only the rule.
+    sizeNote.textContent = sceneNote();
     currentMetadata = metadata;
     size.setValues(artboard.width, artboard.height);
     artboardWidth = artboard.width;

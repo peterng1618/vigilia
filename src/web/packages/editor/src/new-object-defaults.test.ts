@@ -523,18 +523,16 @@ describe("a new shape through the persisted envelope", () => {
   });
 });
 
-/** The one property a kind owns that no other kind has. A triangle owns none —
+/** The one property a kind owns that no other kind has. An ellipse owns none —
     it is width and height like a rectangle — so its kind is what is checked. */
 function ownPropertyOf(kind: ShapeKind): string {
   switch (kind) {
     case "rect":
       return "rx";
-    case "circle":
-      return "radius";
+    // No circle and no triangle: a circle is an ellipse that nothing kept
+    // round, and a triangle is a 3-sided polygon. See vg-078.
     case "ellipse":
       return "ry";
-    case "triangle":
-      return "type";
     case "polygon":
     case "polyline":
       return "points";

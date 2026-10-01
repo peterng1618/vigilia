@@ -1,76 +1,40 @@
+import {
+  bottom,
+  countable,
+  EDGE_TOLERANCE,
+  outsideBoxes,
+  right,
+  type ArtboardSize,
+  type SceneBox,
+} from "@vigilia/scene-fabric";
 import { uiCopy } from "./ui-copy.js";
 
 /**
  * Names the scene objects this artboard does not contain, and which way the
  * composition ran off the frame.
  *
- * The player is the only place that can measure this: Fabric clips the canvas
- * to the artboard rect (`adapter.ts`), so an object outside it is drawn
- * nowhere — not shrunk, not scaled away, simply never painted. A phone and a
- * wall display lose it identically, so a reader cannot tell a short dashboard
- * from a broken one. The artboard panel owns what a size means and states the
- * rule to the author; this is the display's half, measured rather than assumed.
- */
-
-/** One object in artboard units, as Fabric reports it for the scene plane. */
-export interface SceneBox {
-  readonly visible: boolean;
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-}
-
-export interface ArtboardSize {
-  readonly width: number;
-  readonly height: number;
-}
-
-/**
- * Artboard units of slack at an edge. Fabric's own coordinates are fractional,
- * so a panel the author placed flush against the edge must not be reported as
- * cropped over a rounding error; at the tightest fit this repo offers, a unit
- * is a fraction of a pixel.
- */
-const EDGE_TOLERANCE = 1;
-
-/**
- * Objects a reader cannot see, or that must not be counted as lost.
+ * The player is the surface that made this necessary: Fabric clips the canvas
+ * to the artboard rect (`adapter.ts`), so an object outside it is drawn nowhere —
+ * not shrunk, not scaled away, simply never painted. A phone and a wall display
+ * lose it identically, so a reader cannot tell a short dashboard from a broken
+ * one. The artboard panel owns what a size means and states the rule to the
+ * author; this is the display's half.
  *
- * An object the author hid is not cropped, so counting it would put a false
- * cause next to the real one; an object with no area paints nothing at any
- * position. Both are the author's own doing, and this notice exists to say what
- * the *artboard* lost.
+ * **The counting is not here.** Which objects the artboard does not contain is
+ * a fact about the scene, and the editor needs the same number for the same
+ * reason — it changes the artboard and is the one surface where the figure is
+ * actionable. So it lives in `scene-fabric` and this module supplies only what
+ * a display says about it.
  */
-function countable(box: SceneBox): boolean {
-  return box.visible && box.width > 0 && box.height > 0;
-}
+export type { ArtboardSize, SceneBox };
+export { countable, EDGE_TOLERANCE };
 
-function right(box: SceneBox): number {
-  return box.left + box.width;
-}
-
-function bottom(box: SceneBox): number {
-  return box.top + box.height;
-}
-
-/**
- * What the display is not showing, or `undefined` when it shows all of it.
- * `total` is every countable object, so the line reads as a proportion of the
- * dashboard rather than a bare complaint.
- */
 export function cropNoticeText(
   boxes: readonly SceneBox[],
   artboard: ArtboardSize,
 ): string | undefined {
   const counted = boxes.filter(countable);
-  const outside = counted.filter(
-    (box) =>
-      box.left < -EDGE_TOLERANCE ||
-      box.top < -EDGE_TOLERANCE ||
-      right(box) > artboard.width + EDGE_TOLERANCE ||
-      bottom(box) > artboard.height + EDGE_TOLERANCE,
-  );
+  const outside = outsideBoxes(boxes, artboard);
 
   if (outside.length === 0) {
     return undefined;
