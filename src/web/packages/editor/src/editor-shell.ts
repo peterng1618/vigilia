@@ -226,6 +226,9 @@ function createNativeEditor(input: {
   readonly container: HTMLElement;
   readonly host: HTMLElement;
   readonly artboard: () => Artboard;
+  /** The same resolver the mount revives with, so undo restores an image the
+   *  way opening the document did rather than dropping it. */
+  readonly resolveSceneAsset?: (assetId: string) => string | undefined;
 }): EditorInteraction {
   const { container, host } = input;
   applyEditorControls();
@@ -246,7 +249,8 @@ function createNativeEditor(input: {
   const history = new EditorHistory({
     canvas,
     serialize: serialiseScene,
-    revive: reviveScene,
+    revive: (target, scene) =>
+      reviveScene(target, scene, input.resolveSceneAsset),
   });
   history.reset();
   const save = (): void => history.save();
@@ -392,6 +396,7 @@ export async function mountEditorShell({
       container,
       host,
       artboard: () => currentArtboard,
+      ...(resolveSceneAsset === undefined ? {} : { resolveSceneAsset }),
     });
     (window as unknown as Record<string, unknown>)[debugKey] = editor;
     // The host drives the camera, so a host resize only needs the camera told.

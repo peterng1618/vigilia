@@ -78,6 +78,7 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   removeRuntimeText(scene.objects);
   removeGroupEntryFlags(scene.objects);
   removeDerivedTextClips(scene.objects);
+  removeResolvedAssetSources(scene.objects);
   return scene;
 }
 
@@ -231,6 +232,31 @@ function removeDerivedTextClips(
     const children = object["objects"];
     if (Array.isArray(children))
       removeDerivedTextClips(children.filter(isRecord));
+  }
+}
+
+/**
+ * An image that names its asset does not also carry a URL.
+ *
+ * Fabric writes `src` on every image regardless of what the caller asked to be
+ * serialised, and what it wrote is whatever session happened to decode it — for
+ * a pasted image, a `blob:` handle that means nothing to the next reader. The
+ * reference is the authored truth and every reader resolves it before the load,
+ * so persisting the URL ships a dead handle beside the live thing.
+ *
+ * Only where the reference is. An image with no `vigiliaAsset` has nothing to
+ * resolve, and dropping its `src` would leave a picture no one can load.
+ */
+function removeResolvedAssetSources(
+  objects: readonly Readonly<Record<string, unknown>>[],
+): void {
+  for (const object of objects) {
+    if (isFabricAssetReference(object[VIGILIA_ASSET_PROPERTY])) {
+      delete (object as Record<string, unknown>)["src"];
+    }
+    const children = object["objects"];
+    if (Array.isArray(children))
+      removeResolvedAssetSources(children.filter(isRecord));
   }
 }
 

@@ -337,6 +337,47 @@ describe("identity survives a round trip", () => {
     });
   });
 
+  it("does not persist the URL an asset-referenced image was decoded from", () => {
+    // Fabric writes `src` on every image whatever the caller asked for, so it
+    // has to be taken back off. What it wrote was the `blob:` handle of
+    // whichever session decoded it, and every reader resolves the reference
+    // before the load — persisting it shipped a dead handle beside the live
+    // thing, and into every exported package.
+    const source = image();
+    setObjectAssetReference(source, { assetId: "logo", kind: "image" });
+    source.setSrc?.("blob:http://127.0.0.1:5311/081c983e");
+
+    const scene = serialiseScene(canvasOf(source));
+
+    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+      assetId: "logo",
+      kind: "image",
+    });
+    expect(scene.objects[0]).not.toHaveProperty("src");
+  });
+
+  it("keeps the URL of an image nothing declared", () => {
+    // The strip is for objects whose picture is the asset. An image with no
+    // reference has nothing to resolve, and dropping its `src` would leave a
+    // picture no reader could load — the one case where the URL is all there is.
+    const scene = serialiseScene(canvasOf(image()));
+
+    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toBeUndefined();
+    expect(scene.objects[0]!["src"]).toBeDefined();
+  });
+
+  it("takes the URL off an asset-referenced image inside a group too", () => {
+    const inside = image();
+    setObjectAssetReference(inside, { assetId: "logo", kind: "image" });
+    inside.setSrc?.("blob:http://127.0.0.1:5311/inside");
+    const plain = image();
+    const scene = serialiseScene(canvasOf(new Group([inside, plain])));
+
+    const children = scene.objects[0]!["objects"] as Record<string, unknown>[];
+    expect(children[0]).not.toHaveProperty("src");
+    expect(children[1]).toHaveProperty("src");
+  });
+
   it("hands Fabric the URL an asset resolves to, not the one the save carried", async () => {
     // A pasted image saves the `blob:` URL of the session that decoded it,
     // which means nothing in another tab, another browser or on a phone — the
