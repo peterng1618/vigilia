@@ -369,8 +369,11 @@ it("only marks a drop slot that would actually land", async () => {
   // Landing: the child moves above its peer, inside their shared group. The
   // line is placed at the slot the drop would take.
   expect(line().hidden).toBe(false);
-  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("48");
-  expect(line().style.getPropertyValue("--layer-dropline-left")).toBe("19");
+  // The units are the assertion, not the numbers: `top: 48` is an invalid
+  // length, so the declaration is dropped, `top` falls back to `auto` and the
+  // line sizes to zero. Measured on canvas — the line had never drawn.
+  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("48px");
+  expect(line().style.getPropertyValue("--layer-dropline-left")).toBe("19px");
 
   await act(async () => row("peer").dispatchEvent(drag("drop")));
   expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
@@ -576,6 +579,44 @@ it("tells a refused drop target from one that would land, mid-gesture", async ()
   await act(async () => row("peer").dispatchEvent(dragEvent("dragend")));
   expect(tree_().getAttribute("data-dragging")).toBeNull();
   expect(row("peer").getAttribute("data-drop")).toBeNull();
+});
+
+it("takes the drop line away when the row under the pointer refuses it", async () => {
+  // The line is the panel's promise of a landing slot. Found on canvas, not by
+  // reading the handler: it is a single element for the whole tree, so a line
+  // shown over a sibling is still lit while the pointer has moved a row further
+  // to a refusal — offering the very drop that row has just said no to.
+  const tree = [
+    { id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, visible: true, locked: false, selected: false },
+    { id: "child", name: "Child", kind: "text", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group",
+      hasChildren: false, visible: true, locked: false, selected: false },
+    { id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined,
+      hasChildren: false, visible: true, locked: false, selected: false },
+  ];
+  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const host = await renderPanel(tree, {
+    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+  });
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const line = (): HTMLElement =>
+    host.querySelector<HTMLElement>("[data-vigilia-layer-dropline]")!;
+
+  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  expect(line().hidden).toBe(false);
+
+  // One row further, across the boundary: the line must go with the slot.
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
+  expect(line().hidden).toBe(true);
+
+  // And back again, so it is the row's answer that drives it rather than a
+  // one-way latch.
+  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  expect(line().hidden).toBe(false);
 });
 
 it("still restacks on a drop the panel marked, and refuses the one it did not", async () => {

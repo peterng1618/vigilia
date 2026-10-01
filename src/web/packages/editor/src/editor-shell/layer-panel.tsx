@@ -364,16 +364,30 @@ export function LayerPanel({
                   mark(moved ? event.currentTarget : undefined, "refused");
                 }
 
+                // The line follows the row's answer rather than the other way
+                // round: it is the panel's promise of a landing slot, so it has
+                // to be taken away wherever there is no slot. Carried over from
+                // the pointer's previous row, it would offer the drop the row
+                // under the cursor has just refused.
                 const line = indicator.current;
-                if (line === null || !lands) return;
+                if (line === null) return;
+                if (!lands) {
+                  line.hidden = true;
+                  return;
+                }
                 line.hidden = false;
+                // The `px` is load-bearing and was missing: `top: 48` is an
+                // invalid length, so the declaration is dropped and the line
+                // falls back to `auto`, which sizes it to zero. Measured on
+                // canvas — the line had never drawn at all, on any drop, and
+                // the only thing marking a valid slot was the row itself.
                 line.style.setProperty(
                   "--layer-dropline-top",
-                  String(index * ROW_HEIGHT),
+                  `${index * ROW_HEIGHT}px`,
                 );
                 line.style.setProperty(
                   "--layer-dropline-left",
-                  String(6 + row.depth * 13),
+                  `${6 + row.depth * 13}px`,
                 );
               }}
               onDrop={(event) => {
