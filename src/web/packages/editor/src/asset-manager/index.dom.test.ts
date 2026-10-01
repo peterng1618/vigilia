@@ -310,3 +310,44 @@ function oversizedImage(width: number, height: number): HTMLImageElement {
   Object.defineProperty(element, "naturalHeight", { value: height });
   return element;
 }
+
+describe("AssetManager.placeImage", () => {
+  it("does not declare a file twice when the caller already declared it", async () => {
+    // The pane imports a file and then places it. `placeImage` imports as well,
+    // so a caller that hands over its own declaration must not be given a
+    // second one — one Import click produced `name` and `name-2` with one
+    // object on the canvas, and an author has no way to tell which is which.
+    const manager = new AssetManager();
+    const source = file(PNG, "test-image.png", "image/png");
+    const declared = await manager.import(source);
+    const editor = {
+      imageManager: {
+        importImage: vi.fn(async () => ({
+          image: new FabricImage(document.createElement("img")),
+        })),
+      },
+      canvas: { setActiveObject: vi.fn() },
+    } as never;
+
+    await manager.placeImage(editor, source, declared);
+
+    expect(manager.declarations).toHaveLength(1);
+    expect(manager.declarations[0]?.id).toBe(declared.id);
+  });
+
+  it("declares the file itself when the caller has not", async () => {
+    const manager = new AssetManager();
+    const editor = {
+      imageManager: {
+        importImage: vi.fn(async () => ({
+          image: new FabricImage(document.createElement("img")),
+        })),
+      },
+      canvas: { setActiveObject: vi.fn() },
+    } as never;
+
+    await manager.placeImage(editor, file(PNG, "solo.png", "image/png"));
+
+    expect(manager.declarations).toHaveLength(1);
+  });
+});

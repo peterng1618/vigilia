@@ -3,7 +3,10 @@ import type {
   FabricThemeEnvelope,
   FontAssetReference,
 } from "@vigilia/renderer-core";
-import { objectAssetReference, setObjectAssetReference } from "@vigilia/scene-fabric";
+import {
+  objectAssetReference,
+  setObjectAssetReference,
+} from "@vigilia/scene-fabric";
 import {
   FabricImage,
   type FabricObject,
@@ -66,8 +69,11 @@ export class AssetManager {
   async placeImage(
     editor: EditorInteraction,
     file: File,
+    /** The declaration the caller already made, so a caller that imports first
+     *  and then places does not declare the same file twice. */
+    declared?: LocalAssetReference,
   ): Promise<FabricImage | undefined> {
-    const asset = await this.import(file);
+    const asset = declared ?? (await this.import(file));
     const imported = await editor.imageManager.importImage({
       source: file,
       scale: "image-contain",

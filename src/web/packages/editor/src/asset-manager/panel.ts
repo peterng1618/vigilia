@@ -210,7 +210,7 @@ export function createAssetPanel(
     asset: PlacedAssetReference,
     file: File,
   ): Promise<boolean> => {
-    await manager.placeImage(editor, file);
+    await manager.placeImage(editor, file, asset);
     return true;
   };
 
