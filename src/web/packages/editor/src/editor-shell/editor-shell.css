@@ -602,6 +602,19 @@ body,
 .vigilia-layer-row[data-context="false"] {
   opacity: 0.45;
 }
+/* A hidden layer is dimmed the way an unreachable one is, for the same reason:
+   the canvas honours the eye button, so the row has to say what the canvas is
+   doing. Without it the only difference is a tooltip's title, which is a mouse
+   affordance for a state an author sets once and then forgets. */
+.vigilia-layer-row[data-hidden="true"] {
+  opacity: 0.45;
+}
+/* Entering a group already dims what it makes unreachable; a hidden row inside
+   one should not stack two opacities into an unreadable row. */
+.vigilia-layer-row[data-hidden="true"][data-context="false"] {
+  opacity: 0.45;
+}
+
 /* One line for the whole tree, positioned at the slot the drop would land on,
    so a moved row can never leave a second marker behind. */
 .vigilia-layer-dropline {

@@ -448,3 +448,26 @@ it("answers the keys a tree is defined by, and does not nudge", async () => {
   expect(await press("End")).toBe(2);
   host.remove();
 });
+
+
+it("marks a hidden row so the list says what the canvas is doing", async () => {
+  // Hiding a layer hides it on the canvas, and the row changed in exactly one
+  // measurable way: the eye button's title. One property flip on a control the
+  // author sets once and then forgets is not the same as the row looking hidden.
+  // The attribute is what the stylesheet dims on, so it is the contract worth
+  // pinning — jsdom applies no CSS, and a computed style here would be theatre.
+  const renameLayer = vi.fn();
+  const host = await renderPanel(
+    [
+      { ...textRow, id: "shown", name: "shown" },
+      { ...textRow, id: "hidden-one", name: "hidden-one", visible: false },
+    ],
+    { renameLayer },
+  );
+  const shown = host.querySelector('[data-vigilia-layer="shown"]')!;
+  const hidden = host.querySelector('[data-vigilia-layer="hidden-one"]')!;
+
+  expect(shown.getAttribute("data-hidden")).toBe("false");
+  expect(hidden.getAttribute("data-hidden")).toBe("true");
+  host.remove();
+});

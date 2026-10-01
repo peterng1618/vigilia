@@ -245,6 +245,10 @@ export function LayerPanel({
               className="vigilia-layer-row"
               data-vigilia-layer={row.id}
               data-selected={row.selected}
+              // A hidden layer is hidden on the canvas too, and the row said
+              // so only in its tooltip — one measurable difference between a
+              // row you hid and a row you never touched.
+              data-hidden={!row.visible}
               // The entered group and its descendants are what a tree click can
               // reach on its own; everything else is dimmed to say so. With no
               // group entered there is no context to be outside of, so the
