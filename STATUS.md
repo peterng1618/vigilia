@@ -51,10 +51,10 @@ The loop, in order:
 
 ## Next
 
-1. **Wave 2 is measurement, and the browser is free.** vg-090 the bar takes a radius and its track does not; vg-092 icon fill floods the counters. vg-091 has gained a lead from two directions — an aspect change recorded no history at all, and an undo drops the selection rather than restoring it (vg-101) — which is the seam it was always about.
-2. **vg-101 is the most serious thing newly open:** undo on a text object blanks the inspector and loses the selection, so an author cannot see what the undo did without re-finding the object. The undo itself is correct; only the selection is lost.
-3. **vg-102 closes the loop on vg-088 and vg-093** — the resolution line is the third surface printing a stored ref where every other picker prints a name, and it is what made vg-089's readback claim look true when it was not.
-4. **vg-035 is answered and waiting on the user**: defects first, and if a redesign happens its subject is 841 lines of hand-written CSS with Tailwind installed and unused, not nine components of which one is a hand-roll.
+1. **Wave 2 is measured and vg-091 + vg-101 are in flight.** Three edits to three fields on trends-chart collapsed into one undo, measured; the undo also blanks the selection panel, on charts as well as text. vg-092 reproduces with a screenshot — the Starter's icons are stroked not filled, so the defect is invisible until an author touches Fill.
+2. **vg-090 is a different defect than its title**: there is no corner-radius control at all, on bars or tracks, so neither end of the asymmetry the user saw is authorable. It needs a decision, not a patch.
+3. **WHEN THE DRAIN IS EMPTY: `docs/superpowers/plans/2026-09-27-font-trio-catalog.md`**, queued 2026-10-01 and 8 tasks long. Reconcile it against the code before Task 1 — five days of backlog work moved four things directly beside the picker it builds.
+4. **Waiting on the user:** vg-035, which the search answered (defects first; the subject is 841 lines of hand-written CSS with Tailwind unused, not nine components) and which still needs the Base-versus-Radix base call; and the rows that are decisions rather than defects — vg-046, vg-036, vg-051, vg-029.
 5. **vg-087 is measured false and stays open**, because withdrawing is the user's call; what remains is vg-099, that a cross-group drop is refused in total silence.
 
 ## Blockers / unverified

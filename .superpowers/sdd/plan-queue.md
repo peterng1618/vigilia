@@ -20,7 +20,15 @@ ledger stays the record of what happened inside it.
 | 7 | `2026-09-24-theme-thumbnails.md` | 0 landed, 4 partial, 1 open (all core work is in the tree; each task is short one clause). | Recon: biggest real gap is the capture using the editor's canvas, not the player's scene mount (spec §31). Also: no capture test at all, no phone-width rule, no delete path for `thumbnails.remove`. Rulings in its ledger. |
 | 8 | `2026-09-24-authoring-time-run-placeholders.md` | 3 landed, 2 partial. | Recon: Tasks 1-3 landed at `51023c2`. Open: Task 4 (player-side token case in `host-player.spec.ts`) + Task 5 gate. |
 | 9 | `2026-09-26-clock-and-theme-locale.md` | **Closed and archived** (2026-09-27). | STATUS.md recorded it closed; the archive pass confirmed the spec's acceptance section had never been annotated and annotated it from the code. Its workspace was tracked in git and is deleted — recoverable from history. |
+| 10 | `2026-09-27-font-trio-catalog.md` | Written and self-reviewed 2026-09-27; **never started, and never queued until 2026-10-01.** 8 tasks, none landed. | **QUEUED NEXT, once the author-journey-proof drain pass has nothing left to drain.** Replaces the one-entry hand-written catalogue in `editor/src/font-catalog.ts` — a single `minimal` trio of Inter 700, Inter 400 and JetBrains Mono 400 — with a generated, committed catalogue of 380 trios over 238 deduplicated faces, and replaces the two dropdowns with one searchable faceted face picker rendering each name in its own family. Its spec is `docs/superpowers/specs/2026-09-27-font-trio-catalog-design.md`. **Reconcile against the code before Task 1:** the plan predates this pass, which renamed the persisted language key to `metadata.themeLanguage`, made the type-preset dropdowns print authored names, gave the textbox vertical resize handles, and made a textbox's own height a cache of its box. None of those is in the plan, and the picker is the surface that sits beside all four. |
 
+**Ruling 2026-10-01: the font trio catalogue runs next, once the drain pass is empty.** The user asked for it
+by name after a new plan had been offered, which was the wrong offer — `2026-09-27-font-trio-catalog.md`
+already exists, complete and self-reviewed at 2,083 lines, and had sat unqueued since the day it was
+written. It runs when `docs/product/backlog.jsonl` has nothing an agent can act on, and not before: the
+drain is the standing goal and this is the next thing after it rather than a thing to jump to. The one
+ruling that rides with it — **reconcile the plan against the code before Task 1** — exists because five days
+of backlog work moved four things directly beside the picker it builds.
 **Ruling: Plan B's deferred Minor 6 rides in snapping-fidelity Task 9's dispatch.** Minor 6 is
 "the layer panel's bottom action row has no automated browser coverage" — one browser case asserting
 the row's entry set equals the canvas dock's for the same selection. It was deferred because
