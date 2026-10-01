@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Canvas } from "fabric/es";
 import { act } from "react";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { createErrorManager } from "../error-manager/index.js";
 import { createNewObjectPanel } from "../new-object-panel.js";
 import { arrangeActions } from "../object-actions.js";
@@ -9,7 +9,7 @@ import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { createShellLayout } from "./shell-layout.js";
-import type { EditorActionFacade } from "./session-facade.js";
+import type { EditorActionFacade, EditorViewControls } from "./session-facade.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting
@@ -46,6 +46,29 @@ function facade(): EditorActionFacade {
     ungroup: vi.fn(),
     isDirty: vi.fn(() => false),
     subscribeDocumentChange: vi.fn(() => () => undefined),
+  };
+}
+
+/** Base UI portals a menu to `body` and unmounts it on the next frame, so an
+ *  open menu from one test is still in the document for the next one and
+ *  `openPopup()` would read it. Escape is the gesture that closes it. */
+afterEach(() => {
+  document.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+});
+
+/** The View menu's controls. The shell only reads and writes these three, so a
+ *  stub with every member is the whole of what the menu can reach. */
+function viewStub(overrides: Partial<EditorViewControls> = {}): EditorViewControls {
+  return {
+    sourceMode: () => "preview",
+    setSourceMode: vi.fn(),
+    chartRefreshRate: () => 30,
+    setChartRefreshRate: vi.fn(),
+    runDisplay: () => "values",
+    setRunDisplay: vi.fn(),
+    ...overrides,
   };
 }
 
@@ -187,6 +210,27 @@ function openPopup(): HTMLElement {
 
 function menuItems(): readonly HTMLElement[] {
   return Array.from(openPopup().querySelectorAll<HTMLElement>("[role=menuitem]"));
+}
+
+/** Every popup an author currently has open. A submenu is a second one, so the
+ *  View menu's own items are the first — its submenu opens after it. */
+function openPopups(): readonly HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(".editor-shell-menu-popup[data-open]"),
+  );
+}
+
+/** The radio entries of the submenu that is open, as `[value, checked]` pairs —
+ *  what a screen reader is actually told, rather than what the label reads. */
+function openRadioItems(
+  popup: HTMLElement,
+): readonly (readonly [string, string | null])[] {
+  return Array.from(
+    popup.querySelectorAll<HTMLElement>("[role=menuitemradio]"),
+  ).map((item) => [
+    (item.textContent ?? "").trim(),
+    item.getAttribute("aria-checked"),
+  ]);
 }
 
 /** The item's label inside a named group. */
@@ -499,6 +543,63 @@ it("routes the inspector to tabs on selection and back to document panels", asyn
   dataTab?.click();
   await Promise.resolve();
   expect(layout.hosts.chart.parentElement).not.toBeNull();
+
+  layout.destroy();
+});
+
+it("opens every View setting's choices instead of toggling on a bare click", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const view = viewStub();
+  layout.setBridge(bridgeStub(), view);
+  await Promise.resolve();
+
+  // `act` is not used, for the Insert menu's reason: Base UI's popup store
+  // never settles under jsdom's await, and every read here is straight after
+  // the gesture that caused it.
+  menubarEntry(root, uiCopy.menus.view).click();
+  await Promise.resolve();
+
+  const triggers = menuItems().filter(
+    (item) => item.getAttribute("aria-haspopup") === "menu",
+  );
+  // Each setting must say it opens something. A row that toggles on click while
+  // claiming to be a setting is what left `Chart refresh` one mis-click from a
+  // 1 FPS preview that reads as a hung editor.
+  expect(triggers.map((item) => item.textContent)).toEqual([
+    `${uiCopy.view.dataSource}: ${uiCopy.view.preview}`,
+    `${uiCopy.view.chartRefresh}: ${uiCopy.view.fps30}`,
+    `${uiCopy.view.valueRuns}: ${uiCopy.view.values}`,
+  ]);
+
+  // The trigger keeps naming the current value, so the state is legible without
+  // opening anything — the zoom badge's idiom, which shows `100 %` on the badge
+  // and the three commands inside.
+  for (const trigger of triggers)
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+  // Open the refresh submenu and read the choices as the accessibility tree
+  // does. `aria-checked` is the half no sighted reader needs and every screen
+  // reader does: without it the two states are indistinguishable announcements.
+  triggers[1].click();
+  await Promise.resolve();
+  const submenu = openPopups().find((popup) =>
+    popup.querySelector("[role=menuitemradio]") !== null,
+  );
+  expect(submenu).not.toBeUndefined();
+  expect(openRadioItems(submenu!)).toEqual([
+    [uiCopy.view.fps30, "true"],
+    [uiCopy.view.fps1, "false"],
+  ]);
+
+  // Picking is explicit: only the chosen value reaches the owner, so the
+  // thirty-fold step is a decision rather than a mis-click.
+  const items = Array.from(
+    submenu!.querySelectorAll<HTMLElement>("[role=menuitemradio]"),
+  );
+  items.find((item) => item.textContent?.trim() === uiCopy.view.fps1)?.click();
+  await Promise.resolve();
+  expect(view.setChartRefreshRate).toHaveBeenCalledWith(1);
 
   layout.destroy();
 });

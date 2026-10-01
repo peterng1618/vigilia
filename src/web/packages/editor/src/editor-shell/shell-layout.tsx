@@ -1,6 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { Tabs } from "@base-ui/react/tabs";
 import {
+  Check,
   Images,
   Layers,
   type LucideIcon,
@@ -248,6 +249,64 @@ function insertItem(
   );
 }
 
+/** The tick a checked radio choice carries, reserving its width whether or not
+ *  it is showing so the labels either side of it do not shift as the setting
+ *  changes. */
+const checkSlot = (state: { readonly checked: boolean }): React.CSSProperties => ({
+  display: "inline-block",
+  width: 13,
+  visibility: state.checked ? "visible" : "hidden",
+});
+
+/** One View setting as a submenu of its own values.
+ *
+ *  These were three items that flipped a boolean on click, which read as
+ *  settings and behaved as switches: nothing on screen said the other value
+ *  existed, `Chart refresh` moved 30 FPS to 1 FPS on one mis-click with nothing
+ *  to explain the preview that then looked hung, and no `aria-checked` meant a
+ *  screen reader heard a plain menu item and never which state was current.
+ *  The zoom badge beside them is the idiom already in this shell — a trigger
+ *  naming the current value, a popup listing every one — and the trigger's
+ *  `aria-haspopup` is what now distinguishes the two.
+ *
+ *  The choices stay open after one is picked, so the tick can be seen moving and
+ *  the other value is still one gesture away rather than a reopen.
+ */
+function ViewSetting<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  readonly label: string;
+  readonly value: T;
+  readonly options: readonly (readonly [T, string])[];
+  readonly onChange: (next: T) => void;
+}): React.JSX.Element {
+  const current = options.find(([id]) => id === value)?.[1] ?? "";
+  return (
+    <Menu.SubmenuRoot>
+      <Menu.SubmenuTrigger>{`${label}: ${current}`}</Menu.SubmenuTrigger>
+      <Menu.Portal>
+        <Menu.Positioner className="editor-shell-positioner">
+          <Menu.Popup className="editor-shell-menu-popup">
+            <Menu.RadioGroup value={value} onValueChange={onChange}>
+              {options.map(([id, text]) => (
+                <Menu.RadioItem key={id} value={id}>
+                  <Menu.RadioItemIndicator keepMounted style={checkSlot}>
+                    <Check aria-hidden size={12} strokeWidth={2.5} />
+                  </Menu.RadioItemIndicator>
+                  {text}
+                </Menu.RadioItem>
+              ))}
+            </Menu.RadioGroup>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.SubmenuRoot>
+  );
+}
+
 function ShellMenuBar({
   store,
   getView,
@@ -321,27 +380,42 @@ function ShellMenuBar({
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>
-        {item(
-          `${uiCopy.view.dataSource}: ${source === "preview" ? uiCopy.view.preview : uiCopy.view.live}`,
-          () => {
-            const next = source === "preview" ? "live" : "preview";
+        <ViewSetting
+          label={uiCopy.view.dataSource}
+          value={source}
+          options={[
+            ["preview", uiCopy.view.preview],
+            ["live", uiCopy.view.live],
+          ]}
+          onChange={(next) => {
             getView()?.setSourceMode(next);
             setSource(next);
-          },
-        )}
-        {item(`${uiCopy.view.chartRefresh}: ${rate} FPS`, () => {
-          const next: 1 | 30 = rate === 30 ? 1 : 30;
-          getView()?.setChartRefreshRate(next);
-          setRate(next);
-        })}
-        {item(
-          `${uiCopy.view.valueRuns}: ${runDisplay === "tokens" ? uiCopy.view.tokens : uiCopy.view.values}`,
-          () => {
-            const next = runDisplay === "tokens" ? "values" : "tokens";
+          }}
+        />
+        <ViewSetting
+          label={uiCopy.view.chartRefresh}
+          value={rate}
+          options={[
+            [30, uiCopy.view.fps30],
+            [1, uiCopy.view.fps1],
+          ]}
+          onChange={(next) => {
+            getView()?.setChartRefreshRate(next);
+            setRate(next);
+          }}
+        />
+        <ViewSetting
+          label={uiCopy.view.valueRuns}
+          value={runDisplay}
+          options={[
+            ["values", uiCopy.view.values],
+            ["tokens", uiCopy.view.tokens],
+          ]}
+          onChange={(next) => {
             getView()?.setRunDisplay(next);
             setRunDisplay(next);
-          },
-        )}
+          }}
+        />
       </MenuGroup>
     </nav>
   );
