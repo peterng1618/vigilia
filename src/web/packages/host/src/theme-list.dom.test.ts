@@ -393,7 +393,7 @@ describe("removing a saved theme from a host page", () => {
     await confirm("living-room", "yes");
 
     expect(
-      [...host.querySelectorAll("button[data-theme]")].map(
+      [...host.querySelectorAll<HTMLButtonElement>("button[data-theme]")].map(
         (row) => row.dataset.theme,
       ),
     ).toEqual(["studio"]);
