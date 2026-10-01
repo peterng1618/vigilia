@@ -404,3 +404,47 @@ it("draws locked as a filled lock and unlocked as an outline one", async () => {
   expect(lock("shut")?.getAttribute("class")).toContain("lucide-lock");
   expect(lock("open")?.getAttribute("class")).toContain("lucide-lock-open");
 });
+
+
+it("answers the keys a tree is defined by, and does not nudge", async () => {
+  // The rows declare `role="treeitem"`, and a treeitem whose arrow keys do
+  // nothing is a promise the panel does not keep. The nudge handler owns the
+  // arrow keys on the canvas but defers only for a TEXT ENTRY, and a row is a
+  // `div` — so without the row taking them, an unmodified arrow key navigated
+  // nothing and moved the selected object instead.
+  const renameLayer = vi.fn();
+  const host = await renderPanel(
+    [
+      textRow,
+      { ...textRow, id: "second", name: "second" },
+      { ...textRow, id: "third", name: "third" },
+    ],
+    { renameLayer },
+  );
+  // Attached, because `focus()` on a detached subtree sets nothing.
+  document.body.append(host);
+  const rows = [...host.querySelectorAll<HTMLElement>('[role="treeitem"]')];
+  expect(rows).toHaveLength(3);
+  const first = rows[0]!;
+  first.focus();
+  expect(host.ownerDocument.activeElement).toBe(first);
+
+  const press = async (key: string): Promise<number> => {
+    await act(async () => {
+      host.ownerDocument.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true }),
+      );
+      await Promise.resolve();
+    });
+    return rows.findIndex((row) => row === host.ownerDocument.activeElement);
+  };
+
+  expect(await press("ArrowDown")).toBe(1);
+  expect(await press("ArrowDown")).toBe(2);
+  // Clamped at the ends, the way a tree is.
+  expect(await press("ArrowDown")).toBe(2);
+  expect(await press("ArrowUp")).toBe(1);
+  expect(await press("Home")).toBe(0);
+  expect(await press("End")).toBe(2);
+  host.remove();
+});

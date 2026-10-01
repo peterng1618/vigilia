@@ -125,6 +125,76 @@ function contextRows(
 }
 
 /** One dense row per layer: type icon, name, and the two state icons. */
+export /**
+ * The keys a tree is defined by, on the row that declares the tree.
+ *
+ * The row said `role="treeitem"`, and a treeitem whose arrow keys do nothing is
+ * a promise the panel does not keep — a screen reader announces a tree and then
+ * none of it responds. The nudge handler owns the arrow keys on the canvas, but
+ * it defers only for a TEXT ENTRY, and a row is a `div`, so an unmodified arrow
+ * key reached the nudge and moved the selected object instead. Taking the keys
+ * here and stopping propagation is what lets the list be a list: navigation
+ * while focus is inside it, nudging while it is not.
+ */
+function moveFocus(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  row: LayerRow,
+  bridge: EditorShellBridge | undefined,
+): boolean {
+  const rows = [
+    ...(event.currentTarget.closest("[role=\"tree\"]")?.querySelectorAll<HTMLElement>(
+      "[role=\"treeitem\"]",
+    ) ?? []),
+  ];
+  const at = rows.indexOf(event.currentTarget);
+  if (at < 0) return false;
+  const focus = (index: number): void => {
+    const next = rows[index];
+    if (next !== undefined) next.focus();
+  };
+  const expandable = row.hasChildren;
+
+  switch (event.key) {
+    case "ArrowDown":
+      focus(at + 1);
+      return true;
+    case "ArrowUp":
+      focus(at - 1);
+      return true;
+    case "Home":
+      focus(0);
+      return true;
+    case "End":
+      focus(rows.length - 1);
+      return true;
+    case "ArrowRight":
+      // Expand a collapsed group, or step into an expanded one's first child.
+      if (expandable && row.collapsed === true) {
+        bridge?.setCollapsed(row.id, false);
+        return true;
+      }
+      if (expandable && at + 1 < rows.length) focus(at + 1);
+      return true;
+    case "ArrowLeft": {
+      if (expandable && row.collapsed === false) {
+        bridge?.setCollapsed(row.id, true);
+        return true;
+      }
+      // Otherwise step out to the parent, the level the row names.
+      for (let i = at - 1; i >= 0; i -= 1) {
+        const parent = rows[i];
+        if (Number(parent?.getAttribute("aria-level") ?? 1) < row.depth + 1) {
+          parent?.focus();
+          return true;
+        }
+      }
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
 export function LayerPanel({
   bridge,
 }: {
@@ -267,6 +337,15 @@ export function LayerPanel({
                   event.preventDefault();
                   cancelled.current = false;
                   setEditing(row.id);
+                  return;
+                }
+                if (moveFocus(event, row, bridge)) {
+                  // The nudge handler defers only for a text entry, and a row is
+                  // a `div`, so without this an arrow key navigates the list
+                  // AND nudges the selection.
+                  event.stopPropagation();
+                  event.preventDefault();
+                  return;
                 }
               }}
             >
