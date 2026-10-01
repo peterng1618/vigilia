@@ -264,11 +264,12 @@ describe("LiveRuntime tick", () => {
       }
     });
 
-    // 3.2 s at 4 Hz is 12 sample repaints and at 1 Hz is 3 authored ones. Held
-    // loosely against the frame count so the number states the property — the
-    // loop is no longer per-frame work — rather than pinning two constants to
-    // each other.
-    expect(measures).toBeLessThan(IDLE_FRAMES / 4);
+    // A per-frame loop repaints on every frame: 96 frames at two passes each is
+    // 192 measures here, and across the Starter's 28 text objects it was 7,084
+    // in this same interval on the canvas. 3.2 s at 4 Hz is 12 repaints, so 24.
+    // Held at half the frame count so the number states the property — the loop
+    // is no longer per-frame work — rather than pinning two constants together.
+    expect(measures).toBeLessThan(IDLE_FRAMES / 2);
     await canvas.dispose();
   });
 
@@ -321,7 +322,10 @@ describe("LiveRuntime tick", () => {
     // the saturation square is dragged, and it cannot wait for its own interval
     // to come round.
     let clock = 0;
-    const { canvas, text, runtime } = stage({ now: () => clock });
+    const { canvas, text, runtime } = stage({
+      now: () => clock,
+      bindings: { "cpu-label": [{ id: "load", semanticKey: "cpu.load" }] },
+    });
 
     runtime.setGlobals({
       palette: {
@@ -329,8 +333,40 @@ describe("LiveRuntime tick", () => {
       },
     });
     clock = 1;
-    expect(countingMeasures(() => runtime.tick())).toBe(1);
+    expect(countingMeasures(() => runtime.tick())).toBeGreaterThan(0);
     expect(text.width).toBeGreaterThan(0);
+    await canvas.dispose();
+  });
+
+  it("never shows a bound object its placeholder, however the passes are scheduled", async () => {
+    // The authored pass repaints every object from its authored runs, and a
+    // value run with no sample resolves to its placeholder. The sample pass is
+    // what puts the reading back. So the two are not two repaints: run the
+    // authored one on its own schedule and every reading on the canvas flashes
+    // to its placeholder between them, four times a second, on a dashboard that
+    // never stops moving. This is the assertion that would not have caught it —
+    // the counts all looked right while the screen was wrong.
+    let clock = 0;
+    const { canvas, text, runtime } = stage({
+      now: () => clock,
+      bindings: { "cpu-label": [{ id: "load", semanticKey: "cpu.load" }] },
+    });
+    expect(text.text).toBe("CPU 48%");
+
+    // Every frame of a second, with the palette moving on one of them: the
+    // authored pass is due, the sample pass is not.
+    for (let frame = 1; frame <= 30; frame += 1) {
+      clock = frame * 33;
+      if (frame === 7) {
+        runtime.setGlobals({
+          palette: {
+            accent: { name: "Accent", value: { kind: "solid", color: "#f00" } },
+          },
+        });
+      }
+      runtime.tick();
+      expect(text.text, `frame ${frame}`).toBe("CPU 48%");
+    }
     await canvas.dispose();
   });
 

@@ -25,18 +25,6 @@ import {
  */
 const SAMPLE_TEXT_INTERVAL_MS = 250;
 
-/**
- * How often the authored pass repaints when nothing has asked it to.
- *
- * Authored content is a function of the bindings, the globals, the run display
- * and the object's own runs — none of which the frame clock changes — so the
- * setters ask for their own repaint and this is only the net under an edit that
- * reaches Fabric without passing one, such as a run rewritten by the property
- * panel. It is a second rather than nothing because a repair loop that never
- * runs is a different failure from one that runs late.
- */
-const AUTHORED_TEXT_INTERVAL_MS = 1_000;
-
 /** Runtime samples update Fabric objects without becoming authored editor state. */
 export class LiveRuntime {
   readonly #canvas: StaticCanvas;
@@ -45,9 +33,8 @@ export class LiveRuntime {
   #globals: FabricGlobals | undefined;
   #themeLanguage: string | undefined;
   #runDisplay: RunDisplayMode = DEFAULT_RUN_DISPLAY_MODE;
-  /** Set by every input the authored pass resolves against; cleared by the pass. */
+  /** Set by every input a repaint resolves against; cleared by the repaint. */
   #authoredDue = true;
-  #lastAuthoredMs: number | undefined;
   #lastSampleMs: number | undefined;
   readonly #now: () => number;
 
@@ -146,53 +133,47 @@ export class LiveRuntime {
    *
    * The change-driven half, and what every setter above calls. A repaint asked
    * for is owed in full and at once, which is why this is not the method the
-   * loop calls — see `tick`.
+   * loop calls — `tick` is the same repaint on a slower clock.
    */
   refresh(): void {
+    this.#authoredDue = false;
     this.#paintAuthored();
     this.#paintSample();
-    const now = this.#now();
-    this.#lastAuthoredMs = now;
-    this.#lastSampleMs = now;
+    this.#lastSampleMs = this.#now();
     this.#canvas.requestRenderAll();
   }
 
   /**
    * The refresh loop's own call.
    *
-   * Separate from `refresh` because the loop runs at the author's chart rate —
-   * 30 fps by default — and a chart that is animating does not make a clock's
-   * seconds change any faster. The two passes are repainted on their own
-   * cadences and the canvas is only asked to render when one of them painted
-   * something; an unchanged scene re-rendered is 30 identical pictures a second,
-   * and the charts ask for their own render when they move
+   * Separate from `refresh` only in *when* it runs, never in what it does. The
+   * loop runs at the author's chart rate — 30 fps by default — and a chart that
+   * is animating does not make a clock's seconds change any faster, so the
+   * repaint is on the reading's cadence instead, and the canvas is not asked to
+   * render at all until then: an unchanged scene re-rendered is thirty identical
+   * pictures a second, and the charts request their own render when they move
    * (`chart-manager/index.ts:456`).
+   *
+   * **One interval, not two.** `applyAuthoredText` repaints every object from
+   * its authored runs, and a value run with no sample resolves to its
+   * placeholder; `refreshBoundText` is what puts the reading back. Give each
+   * pass its own cadence and every bound object on the canvas flashes to its
+   * placeholder between them, four times a second. They are halves of one
+   * repaint, so `refresh` runs whole or not at all.
    */
   tick(): void {
     const now = this.#now();
-    let painted = false;
-
     if (
-      this.#authoredDue ||
-      due(now, this.#lastAuthoredMs, AUTHORED_TEXT_INTERVAL_MS)
+      !this.#authoredDue &&
+      !due(now, this.#lastSampleMs, SAMPLE_TEXT_INTERVAL_MS)
     ) {
-      this.#paintAuthored();
-      this.#lastAuthoredMs = now;
-      painted = true;
+      return;
     }
-    if (due(now, this.#lastSampleMs, SAMPLE_TEXT_INTERVAL_MS)) {
-      this.#paintSample();
-      this.#lastSampleMs = now;
-      painted = true;
-    }
-    if (painted) {
-      this.#canvas.requestRenderAll();
-    }
+    this.refresh();
   }
 
   /** Authored content, which a token pass overwrites and this pass restores. */
   #paintAuthored(): void {
-    this.#authoredDue = false;
     // Both passes must repaint every text object: a token pass overwrites an
     // unbound object's text, so switching back has to restore it even though
     // `refreshBoundText` only handles objects a sample resolves. The object
