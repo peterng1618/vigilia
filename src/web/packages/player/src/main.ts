@@ -141,6 +141,7 @@ function startFixtureTheme(
   animate: boolean,
   measurement: MeasurementSystem,
 ): void {
+  declareDocumentLanguage(theme.metadata?.locale);
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get("data") === "live";
   const fake = live ? undefined : createDemoSource(Date.now());
@@ -282,6 +283,7 @@ async function startHostedTheme(
   theme: FabricThemeEnvelope,
   session: DisplaySessionToken,
 ): Promise<void> {
+  declareDocumentLanguage(theme.metadata?.locale);
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
   const measurement = await loadDisplayPreferences(session.fetch);
@@ -594,6 +596,35 @@ function showScaffoldBanner(keyCount: number, themeName: string): void {
     "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
     "background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em";
   document.body.append(banner);
+}
+
+/**
+ * Declares the theme's language on the page that shows it.
+ *
+ * The author's Language setting says what the text on this display is written
+ * in, and the page said `en` whatever it was. `dir` is the half that matters
+ * most and costs nothing to get right: Arabic and Urdu are both offered, and
+ * without it the player's own chrome lays out left-to-right under a theme that
+ * reads right-to-left. Both come from the runtime — `Intl.Locale` knows a
+ * language's script and direction, and a hand-written table of fifteen would
+ * be a worse copy of it that drifts from CLDR.
+ *
+ * The theme's own strings are the author's text and are left exactly as
+ * authored; this declares the page they sit in.
+ */
+function declareDocumentLanguage(locale: string | undefined): void {
+  if (locale === undefined || locale.length === 0) return;
+  try {
+    const { language, script } = new Intl.Locale(locale);
+    const root = document.documentElement;
+    root.lang = script === undefined ? language : `${language}-${script}`;
+    const direction = new Intl.Locale(locale).getTextInfo?.().direction;
+    if (direction === "rtl") root.dir = "rtl";
+    else root.removeAttribute("dir");
+  } catch {
+    // A tag this runtime cannot parse leaves the page as it was, which is the
+    // same place a document with no locale starts.
+  }
 }
 
 /** Shows non-live connection states; a healthy live display needs no badge. */

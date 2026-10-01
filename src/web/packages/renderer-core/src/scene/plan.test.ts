@@ -1005,6 +1005,27 @@ describe("formatNumber", () => {
     expect(formatNumber(45.0, undefined)).toBe("45");
   });
 
+  it("writes the reading in the theme's own number format", () => {
+    // The Language setting says what language this dashboard is in, and a
+    // German reading `17.6` where their keyboard writes `17,6` is the setting
+    // doing nothing — which is what the row recorded.
+    expect(formatNumber(17.6, undefined, "de")).toBe("17,6");
+    expect(formatNumber(17.6, undefined, "fr")).toBe("17,6");
+    expect(formatNumber(17.6, undefined, "ru")).toBe("17,6");
+    expect(formatNumber(17.6, 1, "de")).toBe("17,6");
+    // Explicit precision still holds, and a tag this runtime cannot parse reads
+    // as its own rather than failing a paint.
+    expect(formatNumber(45, 2, "de")).toBe("45,00");
+    expect(formatNumber(17.6, undefined, "not-a-tag")).toBe("17.6");
+  });
+
+  it("leaves the width of a reading where the author laid it out", () => {
+    // Grouping is deliberately off: a dashboard's text sits in boxes an author
+    // sized by hand, and only the separator is worth moving.
+    expect(formatNumber(8667.25, undefined, "en")).toBe("8667.3");
+    expect(formatNumber(8667.25, undefined, "de")).toBe("8667,3");
+  });
+
   it("handles negatives", () => {
     expect(formatNumber(-3.25, 1)).toBe("-3.3");
     expect(formatNumber(-0.04, undefined)).toBe("0");

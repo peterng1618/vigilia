@@ -489,7 +489,7 @@ function formatValueSegment(
       sample.unit,
       context.measurement ?? DEFAULT_MEASUREMENT_SYSTEM,
     );
-    text = formatNumber(converted.value, precision);
+    text = formatNumber(converted.value, precision, context.locale);
     shown = converted.unit;
   } else if (sample.textValue !== undefined) {
     text = formatTextReading(binding, sample.textValue, context.locale);
@@ -534,13 +534,76 @@ function formatTextReading(
 export function formatNumber(
   value: number,
   precision: number | undefined,
+  locale?: string,
 ): string {
+  // `Intl` distinguishes negative zero and prints it; `toFixed`, which this
+  // used, did not. A reading of `-0` on a dashboard is a rounding artefact
+  // dressed as a measurement, and it is exactly the case a sensor hits.
+  const measured = value === 0 ? 0 : value;
+
   if (precision !== undefined) {
-    return value.toFixed(Math.min(Math.max(Math.trunc(precision), 0), 6));
+    const digits = Math.min(Math.max(Math.trunc(precision), 0), 6);
+    return numberFormat(locale, digits, digits).format(measured);
   }
 
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  // At most one decimal, and none where the value has none: `toFixed(1)` used
+  // to decide that itself, and a reading ending `.0` is a place of width an
+  // authored text box then has to be laid out around.
+  const rounded = Math.round(measured * 10) / 10;
+  return numberFormat(
+    locale,
+    0,
+    Number.isInteger(rounded) ? 0 : 1,
+  ).format(rounded === 0 ? 0 : rounded);
+}
+
+// Built once per language per digit pair: this runs per text run per refresh,
+// and constructing a formatter is expensive.
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * The reading in the theme's own number format.
+ *
+ * Grouping is off on purpose. The separator is what a reader recognises — a
+ * German reads `17,6` where the default wrote `17.6` — while grouping changes
+ * how wide every four-digit reading is, and a dashboard lays its text out in
+ * boxes an author sized by hand. A locale's number format is not ours to
+ * second-guess in the one respect that moves the layout.
+ */
+function numberFormat(
+  locale: string | undefined,
+  minimumFractionDigits: number,
+  maximumFractionDigits: number,
+): Intl.NumberFormat {
+  if (locale === undefined) {
+    return new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  const key = `${locale} ${minimumFractionDigits} ${maximumFractionDigits}`;
+  const cached = numberFormatters.get(key);
+  if (cached !== undefined) return cached;
+
+  let created: Intl.NumberFormat;
+  try {
+    created = new Intl.NumberFormat(locale, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  } catch {
+    // A tag the runtime dropped since validation reads as the runtime's own
+    // rather than failing a paint. Validation is what refuses an unusable tag.
+    created = new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  numberFormatters.set(key, created);
+  return created;
 }
 
 export function formatUnit(
