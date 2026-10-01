@@ -48,6 +48,13 @@ export interface ThemeLibraryClient {
   /** Stores the theme's picture, so the library can show one. Optional: a
    * failure here must not fail the save. */
   saveThumbnail?(id: string, png: Uint8Array): Promise<void>;
+  /** Moves the theme's folder to the host's trash. Recoverable from there, so
+   *  this is a removal and not an unlink.
+   *
+   *  Optional, as {@link ThemeLibraryClient.saveThumbnail} is: a client that
+   *  cannot delete must simply not offer deletion, rather than fail at the
+   *  moment the author presses the button. */
+  remove?(id: string): Promise<void>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -188,6 +195,28 @@ export function createThemeLibraryClient(options?: {
       );
       if (!response.ok) {
         throw new Error(`Could not save the thumbnail (${response.status}).`);
+      }
+    },
+
+    async remove(id: string): Promise<void> {
+      if (!THEME_ID_REGEX.test(id)) {
+        throw new Error("Invalid theme id.");
+      }
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(id)}`,
+        { method: "DELETE" },
+      );
+      if (response.status === 404) {
+        throw new Error(await response.text().catch(() => "No such theme."));
+      }
+      if (!response.ok) {
+        // A trash that refused says why, and that reason is the author's: the
+        // theme is still in the library, so this is not a lost document but a
+        // PC that cannot move one to its trash.
+        const errorText = await response.text().catch(() => "");
+        throw new Error(
+          `Could not move "${id}" to the trash (${response.status}): ${errorText}`,
+        );
       }
     },
   };

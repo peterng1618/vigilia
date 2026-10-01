@@ -20,7 +20,7 @@ function envelopeFor(id: string, name: string): FabricThemeEnvelope {
     fabricVersion: "7.4.0",
     id,
     artboard: { width: 1920, height: 1080 },
-    metadata: { name, author: "Ada", locale: "en" },
+    metadata: { name, author: "Ada", themeLanguage: "en" },
     scene: { version: "7.4.0", objects: [] },
   };
 }
@@ -578,7 +578,7 @@ describe("ThemeStore asset reuse", () => {
       ...content,
       envelope: {
         ...content.envelope,
-        metadata: { name: "Renamed", author: "Ada", locale: "en" },
+        metadata: { name: "Renamed", author: "Ada", themeLanguage: "en" },
       },
     });
 
@@ -818,7 +818,7 @@ describe("ThemeStore partial saves", () => {
         ...only(content, "assets/backdrop.png"),
         envelope: {
           ...content.envelope,
-          metadata: { name: "Renamed", author: "Ada", locale: "en" },
+          metadata: { name: "Renamed", author: "Ada", themeLanguage: "en" },
         },
       },
       { base: opened.base },
@@ -1406,7 +1406,7 @@ describe("ThemeStore asset bounds", () => {
         {
           envelope: {
             ...onDisk.envelope,
-            metadata: { name: "Renamed", author: "Ada", locale: "en" },
+            metadata: { name: "Renamed", author: "Ada", themeLanguage: "en" },
           },
           assets: {},
         },
@@ -1416,5 +1416,175 @@ describe("ThemeStore asset bounds", () => {
     expect(
       await fs.readFile(path.join(stored("living-room"), "theme.json"), "utf8"),
     ).toBe(JSON.stringify(onDisk.envelope));
+  });
+});
+
+/**
+ * Removing a theme is the one destructive thing the store does, so what it is
+ * measured on is which folder leaves and which does not. The trash itself is a
+ * child process and is covered by `trash.test.ts`; here it is replaced, so these
+ * are about the store's decisions rather than the platform's.
+ */
+describe("ThemeStore remove", () => {
+  let tmpDir: string;
+  let trashed: string[];
+  let store: ThemeStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-theme-remove-"));
+    trashed = [];
+    store = createThemeStore(tmpDir, {
+      // Stands in for the platform's trash: moves the folder somewhere else,
+      // so "it left the library" and "it is still recoverable" are both true
+      // and neither depends on this machine having a recycle bin.
+      trash: async (folder: string) => {
+        trashed.push(folder);
+        const bin = path.join(tmpDir, ".trashed");
+        await fs.mkdir(bin, { recursive: true });
+        await fs.rename(folder, path.join(bin, path.basename(folder)));
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  const save = (id: string, name: string): ThemeContent => ({
+    envelope: envelopeFor(id, name),
+    assets: {},
+  });
+
+  it("moves the theme's own folder to the trash, and leaves the rest alone", async () => {
+    await store.write("living-room", save("living-room", "Living Room"));
+    await store.write("kitchen", save("kitchen", "Kitchen"));
+
+    await store.remove("living-room");
+
+    // The folder is gone from the library, so the listing cannot offer it.
+    expect((await store.list()).map((entry) => entry.id)).toEqual(["kitchen"]);
+    expect(await store.read("living-room")).toBeUndefined();
+    // And it went to the trash by that name, rather than being unlinked.
+    expect(trashed).toEqual([path.join(tmpDir, "living-room")]);
+    // The author's other work is not collateral.
+    expect(await store.read("kitchen")).toBeDefined();
+  });
+
+  it("takes only the one theme, when the library root holds what is not a theme", async () => {
+    // A real `~/.vigilia/themes/` is not a folder of themes and nothing else.
+    // Measured on this machine before the change: three theme folders, a
+    // `.retired-` scratch folder, three `.vigilia-theme` archives left by the
+    // pre-ADR-0017 store, and `active-theme.json` — settings, in the library.
+    await store.write("living-room", save("living-room", "Living Room"));
+    await store.write("cpu-only", save("cpu-only", "CPU only"));
+    await fs.writeFile(
+      path.join(tmpDir, "active-theme.json"),
+      '{"id":"living-room"}\n',
+    );
+    await fs.writeFile(path.join(tmpDir, "cpu-only.vigilia-theme"), "not a zip");
+    await fs.mkdir(path.join(tmpDir, ".retired-abc.cpu-only"), {
+      recursive: true,
+    });
+
+    await store.remove("living-room");
+
+    // The point of the test: a theme is a folder, so "delete a theme" is a
+    // folder-scoped operation. Anything else sharing that root — host settings
+    // that leaked in, a superseded archive, a crashed save's debris — is not the
+    // author's chosen theme and must survive the delete of one that is.
+    // (`.trashed` is this test's stand-in for the platform's recycle bin.)
+    const remaining = (await fs.readdir(tmpDir))
+      .filter((name) => name !== ".trashed")
+      .sort();
+    expect(remaining).toEqual([
+      ".retired-abc.cpu-only",
+      "active-theme.json",
+      "cpu-only",
+      "cpu-only.vigilia-theme",
+    ]);
+    expect(trashed).toEqual([path.join(tmpDir, "living-room")]);
+  });
+
+  it("takes the whole folder, so a thumbnail inside it goes with the theme", async () => {
+    await store.write("living-room", save("living-room", "Living Room"));
+    await fs.writeFile(
+      path.join(tmpDir, "living-room", "thumbnail.png"),
+      "not really a png",
+    );
+
+    await store.remove("living-room");
+
+    // A picture lives inside the theme it renders (thumbnails.ts), so there is
+    // no second file to delete — and nothing left behind that names the theme.
+    expect(
+      await fs.readdir(path.join(tmpDir, ".trashed", "living-room")),
+    ).toContain("thumbnail.png");
+  });
+
+  it("refuses a folder that is not a theme, and never touches it", async () => {
+    // A directory whose name a theme id could claim but which holds no theme:
+    // the author left it, or a tool did. The listing does not show it, and a
+    // delete that took it would remove something whose loss is unexplained.
+    await fs.mkdir(path.join(tmpDir, "notes"), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, "notes", "shopping.txt"), "milk");
+
+    await expect(store.remove("notes")).resolves.toBe(false);
+    expect(trashed).toEqual([]);
+    expect(
+      await fs.readFile(path.join(tmpDir, "notes", "shopping.txt"), "utf8"),
+    ).toBe("milk");
+  });
+
+  it("answers false for a theme that is not stored", async () => {
+    await expect(store.remove("never-existed")).resolves.toBe(false);
+    expect(trashed).toEqual([]);
+  });
+
+  it("refuses an id that could name a folder it does not own", async () => {
+    for (const id of ["../escape", "", "bad id with spaces"]) {
+      await expect(store.remove(id)).rejects.toThrow("Invalid theme id");
+    }
+    expect(trashed).toEqual([]);
+  });
+
+  it("refuses while a save for that theme is in flight, rather than racing it", async () => {
+    await store.write("living-room", save("living-room", "First"));
+    // A save swaps its folder in with two renames; trashing between them would
+    // take the folder the second one is about to rename into place.
+    await crashSave(
+      store,
+      "living-room",
+      save("living-room", "Second"),
+      "between-renames",
+    );
+
+    await expect(store.remove("living-room")).rejects.toThrow("being saved");
+    expect(trashed).toEqual([]);
+    // The kill moved the theme aside under its `.retired-` name and stopped.
+    // The refused delete is what leaves that recoverable copy alone.
+    expect(await scratchNames(tmpDir, "living-room", "retired")).toHaveLength(
+      1,
+    );
+  });
+
+  it("removes nothing itself when the trash refuses, and says so", async () => {
+    const refusing = createThemeStore(tmpDir, {
+      trash: async () => {
+        throw new Error("This PC has no trash command (gio, trash-put)");
+      },
+    });
+    await refusing.write("living-room", save("living-room", "Living Room"));
+
+    await expect(refusing.remove("living-room")).rejects.toThrow(
+      "trash command",
+    );
+
+    // The promise the delete makes is that nothing is lost when it fails. A
+    // fallback to `fs.rm` here would break it silently, on the one platform
+    // nobody tested.
+    expect(await refusing.read("living-room")).toBeDefined();
+    expect((await refusing.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+    ]);
   });
 });

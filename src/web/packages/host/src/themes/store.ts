@@ -6,6 +6,7 @@ import {
   type FabricThemeEnvelope,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import { moveToTrash } from "./trash.js";
 
 /**
  * A theme is a directory, read and written in place (ADR-0017). The archive
@@ -101,6 +102,15 @@ export class ThemeAssetLimitError extends Error {
   }
 }
 
+/**
+ * How a removal reaches the platform's trash. The default is the real one;
+ * a test substitutes a rename so the store's own decisions can be told apart
+ * from the operating system's.
+ */
+export interface ThemeStoreOptions {
+  readonly trash?: (folder: string) => Promise<void>;
+}
+
 export interface ThemeStore {
   list(): Promise<readonly ThemeStoreEntry[]>;
   read(id: string): Promise<ThemeStoreRecord | undefined>;
@@ -109,6 +119,10 @@ export interface ThemeStore {
     content: ThemeContent,
     options?: ThemeWriteOptions,
   ): Promise<ThemeStoreSave>;
+  /** Moves the theme's folder to the trash. Nothing else is ever removed.
+   *  Answers false, as {@link ThemeStore.read} answers undefined, when the
+   *  library holds no theme under that id. */
+  remove(id: string): Promise<boolean>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -474,7 +488,11 @@ async function entryFor(
   }
 }
 
-export function createThemeStore(directory: string): ThemeStore {
+export function createThemeStore(
+  directory: string,
+  options?: ThemeStoreOptions,
+): ThemeStore {
+  const trash = options?.trash ?? moveToTrash;
   // The ids with a save in flight, so a listing landing inside one does not
   // mistake that save's scratch folders for the debris of a dead one.
   const saving = new Set<string>();
@@ -712,6 +730,39 @@ export function createThemeStore(directory: string): ThemeStore {
       // is computed here rather than read back — a re-read would also be a
       // second chance for something else to have moved underneath.
       return { ...entry, base: contentId(serialized) };
+    },
+
+    /**
+     * Moves the theme's folder to the operating system's trash, and does
+     * nothing else to anything.
+     *
+     * A theme is a folder of authored work (ADR-0017), so this is the one
+     * destructive act the store has, and the trash is what makes it
+     * recoverable — the ruling that put it there, and `docs/decisions/0021` for
+     * how each platform's own trash is reached. There is no fallback to an
+     * unlink: a refused delete is recoverable and a silent one is not.
+     *
+     * A save in flight owns its folder — it swaps it in with two renames — so
+     * a removal that arrived between them would take the folder the second
+     * rename is about to move into place. It is refused instead.
+     */
+    async remove(id: string): Promise<boolean> {
+      if (!isValidThemeId(id)) {
+        throw new Error("Invalid theme id.");
+      }
+      if (saving.has(id)) {
+        throw new Error(
+          `"${id}" is being saved right now; try again in a moment.`,
+        );
+      }
+      // Read first, so only what the library would have listed can be removed.
+      // A directory whose name a theme id could claim but which holds no theme
+      // is somebody's file, and its loss would be unexplained.
+      if ((await readEnvelope(directory, id)) === undefined) {
+        return false;
+      }
+      await trash(path.join(directory, id));
+      return true;
     },
   };
 }

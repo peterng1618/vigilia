@@ -945,7 +945,44 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      sendText(response, 405, "Only GET and PUT are supported.");
+      if (request.method === "DELETE") {
+        // Removing authored work is this PC's business, like saving it: a
+        // paired phone reads themes, it does not lose them.
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(response, 403, "Theme modification is loopback only.");
+          return;
+        }
+        if (!isValidThemeId(rawId)) {
+          sendText(response, 400, "Invalid theme id.");
+          return;
+        }
+
+        try {
+          // The store moves the folder to the OS trash (docs/decisions/0021) and
+          // answers false for anything it would not have listed, so a 404 here
+          // means the same "no such theme" an open would have said.
+          const removed = await themeStore.remove(rawId);
+          sendJson(
+            response,
+            removed ? 200 : 404,
+            removed
+              ? { ok: true }
+              : { error: `No theme "${rawId}" in this library.` },
+          );
+        } catch (error) {
+          // A trash that refused is not a malformed request: nothing was
+          // removed, the theme is exactly where it was, and the author's copy
+          // is intact. The reason is the platform's own, so it travels as is.
+          sendText(
+            response,
+            500,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET, PUT and DELETE are supported.");
       return;
     }
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createThemeLibraryClient,
   ThemeConflictError,
+  type ThemeLibraryClient,
 } from "./theme-library-client.js";
 
 const envelope: FabricThemeEnvelope = {
@@ -10,12 +11,20 @@ const envelope: FabricThemeEnvelope = {
   fabricVersion: "7.4.0",
   id: "living-room",
   artboard: { width: 1920, height: 1080 },
-  metadata: { name: "Living Room", locale: "en" },
+  metadata: { name: "Living Room", themeLanguage: "en" },
   scene: { version: "7.4.0", objects: [] },
 };
 
 /** What a request body costs on the wire, which is the only size that matters. */
 const bytes = (body: string): number => new TextEncoder().encode(body).length;
+
+/** `remove` is optional on the interface, so a test that exercises it says it
+ *  is here rather than reaching through `?.` at every call. */
+function removing(client: ThemeLibraryClient): (id: string) => Promise<void> {
+  const remove = client.remove;
+  if (remove === undefined) throw new Error("this client cannot remove");
+  return remove.bind(client);
+}
 
 describe("ThemeLibraryClient", () => {
   it("saves and opens a theme's content, not an archive", async () => {
@@ -205,6 +214,60 @@ describe("ThemeLibraryClient", () => {
       .save("living-room", { envelope, assets: {} }, { overwrite: true })
       .catch(() => undefined);
     expect(sentBody(mockFetch.mock.calls[1]).overwrite).toBe(true);
+  });
+
+  it("removes a theme with DELETE, and says why when it cannot", async () => {
+    let deletes = 0;
+    const mockFetch = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method !== "DELETE") {
+          return new Response("Not found", { status: 404 });
+        }
+        deletes += 1;
+        // The first delete lands; the second finds it already gone, which is a
+        // different answer from "the host is unreachable" and needs its own word.
+        return deletes === 1
+          ? new Response(JSON.stringify({ ok: true }), { status: 200 })
+          : new Response('No theme "living-room" in this library.', {
+              status: 404,
+            });
+      },
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    const remove = removing(client);
+    await remove("living-room");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/themes/living-room",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+
+    await expect(remove("living-room")).rejects.toThrow(
+      'No theme "living-room"',
+    );
+
+    await expect(remove("../escape")).rejects.toThrow("Invalid theme id");
+  });
+
+  it("passes the host's own reason through when the trash refused", async () => {
+    // Nothing was removed, so the message must not read like a lost document.
+    // The platform's reason is the one the author can act on.
+    const mockFetch = vi.fn(
+      async () =>
+        new Response(
+          "This PC has no trash command (gio, trash-put), so the theme was left alone.",
+          { status: 500 },
+        ),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    await expect(removing(client)("living-room")).rejects.toThrow(
+      "no trash command",
+    );
   });
 
   it("throws descriptive error on open failure", async () => {

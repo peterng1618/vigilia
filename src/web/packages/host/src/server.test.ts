@@ -41,7 +41,7 @@ function createValidPackage(
     fabricVersion: "7.4.0",
     id,
     artboard: { width: 1920, height: 1080 },
-    metadata: { name, locale: "en" },
+    metadata: { name, themeLanguage: "en" },
     ...(semanticKey === undefined
       ? {}
       : {
@@ -117,7 +117,7 @@ function createPackageWithAsset(
     fabricVersion: "7.4.0",
     id: "living-room",
     artboard: { width: 1920, height: 1080 },
-    metadata: { locale: "en" },
+    metadata: { themeLanguage: "en" },
     scene: { version: "7.4.0", objects: [] },
     assets: [
       {
@@ -418,7 +418,7 @@ describe("Host theme routes", () => {
           ...content,
           envelope: {
             ...content.envelope,
-            metadata: { name: "Edited elsewhere", locale: "en" },
+            metadata: { name: "Edited elsewhere", themeLanguage: "en" },
           },
         },
         { base },
@@ -612,6 +612,94 @@ describe("Host theme routes", () => {
       },
     );
     expect(res.status).toBe(403);
+  });
+
+  it("moves a theme to the trash on DELETE, and takes it out of the listing", async () => {
+    const trashed: string[] = [];
+    const dir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-host-delete-test-"),
+    );
+    // The real trash is a child process and a real recycle bin; what is under
+    // test here is the route and the store's decision, so the platform is
+    // replaced with a rename into a scratch folder beside the library.
+    const store = createThemeStore(dir, {
+      trash: async (folder: string) => {
+        trashed.push(folder);
+        await fs.mkdir(path.join(dir, ".trashed"), { recursive: true });
+        await fs.rename(
+          folder,
+          path.join(dir, ".trashed", path.basename(folder)),
+        );
+      },
+    });
+    const deleting = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+    });
+
+    try {
+      await request(
+        deleting.server,
+        "PUT",
+        "/api/themes/living-room",
+        themeBody(validEmptyAssetTheme),
+      );
+      const res = await request(
+        deleting.server,
+        "DELETE",
+        "/api/themes/living-room",
+      );
+
+      expect(res.status).toBe(200);
+      // The route hands the folder to the trash and does nothing else itself,
+      // which is the whole recovery claim (docs/decisions/0021).
+      expect(trashed).toEqual([path.join(dir, "living-room")]);
+      const list = await request(deleting.server, "GET", "/api/themes");
+      expect(
+        (list.json() as { themes: readonly { id: string }[] }).themes,
+      ).toEqual([]);
+    } finally {
+      await deleting.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("forbids DELETE from non-loopback, and 404s a theme it will not remove", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(validEmptyAssetTheme),
+    );
+
+    // Removing authored work is this PC's business, like saving it.
+    expect(
+      (
+        await request(
+          hosted.server,
+          "DELETE",
+          "/api/themes/living-room",
+          undefined,
+          {
+            remoteAddress: "10.0.0.2",
+          },
+        )
+      ).status,
+    ).toBe(403);
+    // A folder the listing would never have shown is a 404, not a removal.
+    expect(
+      (await request(hosted.server, "DELETE", "/api/themes/never-existed"))
+        .status,
+    ).toBe(404);
+    expect(
+      (await request(hosted.server, "DELETE", "/api/themes/..%2Fescape"))
+        .status,
+    ).toBe(400);
+    // Still there: the refusals above cost nothing.
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/living-room")).status,
+    ).toBe(200);
   });
 
   it("reports requested keys no provider answered through /api/health", async () => {
