@@ -88,6 +88,49 @@ function isTextObject(object: FabricObject): boolean {
 }
 
 /**
+ * The object's own drawn edge, when it is not the number the Size fields show.
+ *
+ * `vigiliaText.box` is stored **unscaled** — `assertBoxHeight` puts the object
+ * back at `box.height / scaleY` precisely so the scale can be reapplied by
+ * `boxFrom` — so a text object carrying a scale draws a box larger than the
+ * number in the field. Measured on the running editor: a 140 × 27 box at
+ * `scaleX/scaleY 2` read 140 and **27** in the Size pair and drew an edge of
+ * 280 × 54.
+ *
+ * The field cannot show the drawn edge instead. `write` puts the number the
+ * author types into `vigiliaText.box`, so a Size field reading the edge would
+ * name a number it is about to overwrite — and it would be wrong on the next
+ * render, which is exactly the kind of quiet disagreement this reports instead.
+ *
+ * Only a text object with a box can disagree: for anything else `readField`
+ * already returns the scaled edge, and a box-less text object's height *is*
+ * Fabric's measurement. A difference under one whole unit is the field's own
+ * rounding, not a disagreement.
+ */
+function measuredEdgeOf(
+  object: FabricObject,
+): { readonly width: number; readonly height: number } | undefined {
+  if (!isTextObject(object)) return undefined;
+  const authoredWidth = authoredBoxOf(object, "width");
+  const authoredHeight = authoredBoxOf(object, "height");
+  if (authoredWidth === undefined && authoredHeight === undefined) {
+    return undefined;
+  }
+
+  const drawn = {
+    width: Math.round(object.width * object.scaleX),
+    height: Math.round(object.height * object.scaleY),
+  };
+  const shown = {
+    width: Math.round(authoredWidth ?? drawn.width),
+    height: Math.round(authoredHeight ?? drawn.height),
+  };
+  return drawn.width === shown.width && drawn.height === shown.height
+    ? undefined
+    : drawn;
+}
+
+/**
  * Writes one dimension of the authored box, keeping the other.
  *
  * A text object inserted by the editor has no box yet — its width is Fabric's
@@ -444,6 +487,21 @@ export function createSelectionInspector(
         },
       });
       geometry.append(rotation.row);
+
+      // The Size pair reads the authored box, which is what it writes. Where
+      // the object's own edge is a different number, the author is told which
+      // is which rather than left to compare a panel against a canvas.
+      const edge = measuredEdgeOf(object);
+      if (edge !== undefined) {
+        const line = document.createElement("p");
+        line.className = "vigilia-resolution";
+        line.dataset["vigiliaResolution"] = uiCopy.inspectorFields.size;
+        line.textContent = uiCopy.inspectorFields.sizeDisagrees(
+          `${Math.round(readField(object, "width"))} × ${Math.round(readField(object, "height"))}`,
+          `${edge.width} × ${edge.height}`,
+        );
+        geometry.append(line);
+      }
 
       // Crop sits with the geometry it changes, and only for a selection that
       // can hold one — an image, which is the only kind `canCrop` admits.

@@ -712,4 +712,72 @@ describe("the size of a text object", () => {
     expect(panel.scaleX).toBeCloseTo(0.5, 6);
     expect(panel.get("vigiliaText")).toBeUndefined();
   });
+
+  /**
+   * `vigiliaText.box` is stored **unscaled** — `assertBoxHeight` puts the object
+   * back at `box.height / scaleY` precisely so the scale can be reapplied by
+   * `boxFrom` — so a text object carrying a scale draws a box larger than the
+   * number the Size field shows. Measured on the running editor: a 140 × 27.12
+   * box at `scaleY 2` read **27** in the H field and drew an edge of 54.24.
+   */
+  function scaledCaption(): Textbox {
+    const text = caption();
+    const box = { width: 140, height: 27 };
+    text.set("vigiliaText", {
+      ...(text.get("vigiliaText") as Record<string, unknown>),
+      box,
+    });
+    text.set({ scaleX: 2, scaleY: 2 });
+    // Where the text pass leaves the object's own edges: `assertBoxWidth` and
+    // `assertBoxHeight` assign the authored box straight onto the object,
+    // because a `set` re-enters `initDimensions` and Fabric re-derives the
+    // height from the wrapped text. Assigned rather than set here for the same
+    // reason; left at Fabric's measurement, this would be asserting jsdom's
+    // font metrics rather than the inspector.
+    text.width = box.width;
+    text.height = box.height;
+    return text;
+  }
+
+  const sizeLine = (host: HTMLElement): string | null | undefined =>
+    host.querySelector('[data-vigilia-resolution="Size"]')?.textContent;
+
+  it("says which number the Size fields show, and what the object measures", () => {
+    // The field cannot show the measured edge instead: `write` puts the number
+    // the author types into `vigiliaText.box`, so a field reading the edge
+    // would name a number it is about to overwrite. So it keeps the box and
+    // reports the disagreement, rather than leaving the author to choose
+    // between a number on a panel and a box on a canvas.
+    const { host } = setup(scaledCaption());
+
+    const line = sizeLine(host);
+    expect(line).toContain("authored");
+    expect(line).toContain("280 × 54");
+  });
+
+  it("says nothing when the box and the edge are the same number", () => {
+    const text = caption();
+    text.set("vigiliaText", {
+      ...(text.get("vigiliaText") as Record<string, unknown>),
+      box: { width: text.width, height: text.height },
+    });
+    const { host } = setup(text);
+
+    expect(sizeLine(host)).toBeUndefined();
+  });
+
+  it("says nothing for a shape, whose fields already are its measured edge", () => {
+    const panel = new Rect({ left: 0, top: 0, width: 360, height: 200 });
+    panel.set({ scaleX: 2, scaleY: 2 });
+    const { host } = setup(panel);
+
+    // W reads 360 and the object draws 720, which is the same disagreement —
+    // but there the field *is* the scaled edge, so there is nothing to report.
+    expect(
+      host.querySelector<HTMLInputElement>(
+        '[data-vigilia-geometry="width"]',
+      )?.value,
+    ).toBe("720");
+    expect(sizeLine(host)).toBeUndefined();
+  });
 });

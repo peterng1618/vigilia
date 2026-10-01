@@ -67,6 +67,12 @@ export const uiCopy = {
     /** Row labels for the inspector's paired geometry lines. */
     position: "Position",
     size: "Size",
+    /** A text object whose authored box and its own edge are different numbers.
+        The Size fields cannot show the edge — they write the box — so this
+        names which is which rather than leaving the author to compare a panel
+        against a canvas. */
+    sizeDisagrees: (box: string, drawn: string) =>
+      `Size is the box the text was authored in (${box}). The object measures ${drawn}.`,
     invalidValue: "That value cannot be applied to the selection.",
     nothingSelected: "Select an object to inspect it.",
     /** Shown instead of any field when the selection is locked. */
