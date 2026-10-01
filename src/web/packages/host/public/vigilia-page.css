@@ -101,6 +101,76 @@ a {
   color: inherit;
   font-size: 13px;
 }
+/* Removal stays on the page and is not reversible from here either, so it is
+   drawn as the quietest control on the row: the same size and weight as the
+   edit link, in the muted ink, so the row's own choice stays the loud thing. */
+.theme-delete {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-delete:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.theme-delete:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+/* The row stays exactly where it was when a trash refuses, so the reason is
+   said here, under the button that asked. The row wraps for it, and the note
+   takes a line of its own. */
+.theme-row {
+  flex-wrap: wrap;
+}
+.theme-delete-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* The confirmation is a `<dialog>`, so the platform centres it, traps focus
+   while it is open and gives the focus back on close. Only its skin is here. */
+.theme-confirm {
+  max-width: 30em;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.theme-confirm::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.theme-confirm-lead {
+  /* The question and the theme it names are one sentence split in two, which
+     the markup has to be told about or it runs together as one line. */
+  white-space: pre-line;
+  margin: 0;
+  font-weight: 600;
+}
+.theme-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.theme-confirm-actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
 .theme-option {
   display: flex;
   align-items: center;

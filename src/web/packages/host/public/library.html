@@ -48,7 +48,7 @@
       <div id="status"></div>
     </main>
     <script type="module">
-      import { themeList } from "/settings/theme-list.js";
+      import { deleteTheme, themeList } from "/settings/theme-list.js";
 
       const themesHost = document.querySelector("#themes");
       const status = document.querySelector("#status");
@@ -94,6 +94,10 @@
               // on the dashboard the consumer just chose.
               location.reload();
             },
+            // This is the surface that lists the library, so it is where an
+            // author looks to clear an experiment away. The host moves the
+            // folder to the recycle bin, and says so before they confirm.
+            onDelete: deleteTheme,
           }),
         );
       }

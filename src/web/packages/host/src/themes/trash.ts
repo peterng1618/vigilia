@@ -31,21 +31,26 @@ function appleScriptString(value: string): string {
  * `RecycleBinOption` does not exist, and naming it fails at run time.
  */
 function windows(folder: string): TrashRoute {
+  // Two statements, not five: `Add-Type` and then ONE method call. The
+  // separators belong between the statements, never inside the call's
+  // argument list — a `;` after the opening paren made PowerShell read the
+  // path as its own statement and fail to parse, so the Windows route had
+  // never run. It was asserted as a string and never executed.
+  const call =
+    "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(" +
+    // A single-quoted PowerShell literal escapes by doubling, which is what
+    // a `--themes-dir` holding an apostrophe needs.
+    `'${folder.replaceAll("'", "''")}'` +
+    ", [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs" +
+    ", [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin)";
+
   return {
     command: "powershell.exe",
     args: [
       "-NoProfile",
       "-NonInteractive",
       "-Command",
-      [
-        "Add-Type -AssemblyName Microsoft.VisualBasic",
-        "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(",
-        // A single-quoted PowerShell literal escapes by doubling, which is what
-        // a `--themes-dir` holding an apostrophe needs.
-        `'${folder.replaceAll("'", "''")}'`,
-        ", [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs",
-        ", [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin)",
-      ].join(";"),
+      "Add-Type -AssemblyName Microsoft.VisualBasic; " + call,
     ],
   };
 }

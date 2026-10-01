@@ -41,8 +41,20 @@ function scriptOf(page: string): string {
   return (
     html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1] ?? ""
   ).replace(
-    /^\s*import\b[^\n]*$/m,
-    "const themeList = () => document.createDocumentFragment();",
+    // EVERY imported name, not a hard-coded one. `library.html` imports
+    // `deleteTheme` as well as `themeList`, and a stand-in that named only the
+    // first left the page calling something undefined — which read as three
+    // failures in the editor-link tests and looked like a broken page.
+    /^\s*import\s*\{([^}]*)\}[^\n]*$/gm,
+    (_statement, names: string) =>
+      names
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map(
+          (name) => `const ${name} = () => document.createDocumentFragment();`,
+        )
+        .join("\n"),
   );
 }
 

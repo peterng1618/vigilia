@@ -26,6 +26,16 @@ describe("trashPlan", () => {
     expect(script).toContain("Add-Type -AssemblyName Microsoft.VisualBasic");
     expect(script).toContain("RecycleOption]::SendToRecycleBin");
     expect(script).toContain(folder);
+
+    // Two statements, and ONE separator between them. A `;` inside the argument
+    // list makes PowerShell read the next fragment as a statement of its own
+    // and fail to parse the whole command, so the Windows route never ran at
+    // all — three `toContain` assertions all passed while the command was
+    // unparseable, because none of them looked at where the semicolons were.
+    const statements = script.split(";");
+    expect(statements).toHaveLength(2);
+    expect(statements[1]).toContain("DeleteDirectory(");
+    expect(statements[1]).toContain(folder);
   });
 
   it("escapes an apostrophe in the path for PowerShell's single-quoted literal", () => {

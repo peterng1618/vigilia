@@ -88,7 +88,7 @@
       <div id="status">Loading…</div>
     </main>
     <script type="module">
-      import { themeList } from "/settings/theme-list.js";
+      import { deleteTheme, themeList } from "/settings/theme-list.js";
 
       const status = document.querySelector("#status");
       const groups = document.querySelector("#groups");
@@ -165,6 +165,10 @@
           themeList(themes, {
             active: activeTheme,
             onChoose: chooseTheme,
+            // This page lists the library too, so a Delete that worked on `/`
+            // and was missing here would be the same finding on the next
+            // screen: an author who cannot remove what they made.
+            onDelete: deleteTheme,
             templates,
           }),
         );
