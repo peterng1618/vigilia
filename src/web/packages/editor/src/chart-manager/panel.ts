@@ -134,6 +134,7 @@ export function createChartPropertyPanel(
         const label = document.createElement("label");
         label.textContent = `Binding: ${binding.id}`;
         const select = document.createElement("select");
+        label.htmlFor = select.id = `vigilia-chart-binding-${binding.id}`;
         select.dataset["vigiliaBinding"] = binding.id;
         const keys = new Set([
           binding.semanticKey,
@@ -206,6 +207,11 @@ export function createChartPropertyPanel(
         const input = document.createElement(
           field.kind === "select" ? "select" : "input",
         );
+        // Keyed by the setting itself, so it is unique across every field this
+        // section builds and addressable by name in a test. This panel was the
+        // one place in the shell where neither the control had an id nor its
+        // label an `htmlFor`.
+        label.htmlFor = input.id = `vigilia-chart-setting-${field.property}`;
         input.dataset["vigiliaChartSetting"] = field.property;
         const value = (
           chart.content.settings as unknown as Record<string, unknown>
@@ -316,6 +322,9 @@ function paintPicker(
   const label = document.createElement("label");
   label.textContent = labelText;
   const select = document.createElement("select");
+  // A `multiple` paint row names its slices `palette.0`, `palette.1`, so the id
+  // carries the index — a control per slice, each with its own label.
+  label.htmlFor = select.id = `vigilia-chart-paint-${key.replaceAll(".", "-")}`;
   select.dataset["vigiliaChartPaint"] = key;
   const current = isPaletteReference(value) ? value.ref : "";
   for (const [id, entry] of Object.entries(palette ?? {})) {
@@ -350,6 +359,7 @@ function bindingNumber(
   const label = document.createElement("label");
   label.textContent = labelText;
   const input = document.createElement("input");
+  label.htmlFor = input.id = `vigilia-chart-binding-${bindingId}-${property}`;
   input.dataset["vigiliaBindingField"] = `${bindingId}.${property}`;
   input.type = "number";
   input.value = value === undefined ? "" : String(value);
@@ -382,6 +392,8 @@ function unitDisplay(
   const label = document.createElement("label");
   label.textContent = uiCopy.panels.unitDisplay;
   const select = document.createElement("select");
+  label.htmlFor =
+    select.id = `vigilia-chart-binding-${binding.id}-unit-display`;
   select.dataset["vigiliaBindingField"] = `${binding.id}.unitDisplay`;
   for (const [value, text] of [
     ["", "Default"],
