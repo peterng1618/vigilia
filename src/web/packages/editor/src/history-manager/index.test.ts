@@ -3,7 +3,7 @@ import { EditorHistory } from "./index.js";
 
 describe("EditorHistory", () => {
   it("revives an earlier authored scene without saving the revive", async () => {
-    const canvas = { fire: vi.fn() };
+    const canvas = { fire: vi.fn(), getActiveObject: () => undefined };
     const scenes = [
       { version: "7.4.0", objects: [] },
       { version: "7.4.0", objects: [{ id: "later" }] },
@@ -29,7 +29,7 @@ describe("EditorHistory", () => {
   });
 
   it("raises the commit on the canvas, and only when an entry is recorded", () => {
-    const canvas = { fire: vi.fn() };
+    const canvas = { fire: vi.fn(), getActiveObject: () => undefined };
     let value = 0;
     const history = new EditorHistory({
       canvas: canvas as never,
@@ -55,7 +55,10 @@ describe("EditorHistory", () => {
   it("records one entry for a suspended burst, and none while suspended", async () => {
     let value = 0;
     const history = new EditorHistory({
-      canvas: { fire: () => undefined } as never,
+      canvas: {
+        fire: () => undefined,
+        getActiveObject: () => undefined,
+      } as never,
       serialize: () => ({ value }) as never,
       revive: async (_canvas, scene) => {
         value = (scene as unknown as { value: number }).value;
@@ -76,5 +79,40 @@ describe("EditorHistory", () => {
     expect(value).toBe(1);
     await history.undo();
     expect(value).toBe(0); // straight past the burst: it is ONE entry
+  });
+
+  it("steps one entry per press when two undos are still in flight", async () => {
+    // An author who sees an undo do nothing hits the chord again, and a restore
+    // is asynchronous: both presses reading `#index` before either finishes
+    // land on the same entry, so two presses undo one edit and the rest of the
+    // history looks unreachable.
+    let value = 0;
+    let reviving = 0;
+    const history = new EditorHistory({
+      canvas: {
+        fire: () => undefined,
+        getActiveObject: () => undefined,
+      } as never,
+      serialize: () => ({ value }) as never,
+      revive: async (_canvas, scene) => {
+        reviving += 1;
+        while (reviving > 0) {
+          reviving -= 1;
+          await Promise.resolve();
+        }
+        value = (scene as unknown as { value: number }).value;
+      },
+    });
+    history.reset();
+    value = 1;
+    history.save();
+    value = 2;
+    history.save();
+
+    await Promise.all([history.undo(), history.undo()]);
+
+    expect(value).toBe(0);
+    await history.undo();
+    expect(value).toBe(0);
   });
 });
