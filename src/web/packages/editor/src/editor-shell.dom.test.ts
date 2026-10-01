@@ -481,3 +481,102 @@ describe("editor background media", () => {
     expect(asked, "and a decode afterwards asks for nothing").toBe(0);
   });
 });
+
+describe("one resize path on the host", () => {
+  /** Records every observer the shell builds, so the count of registrations on
+   * the host is observable rather than inferred. jsdom has no ResizeObserver, so
+   * without this the code takes its `typeof === "undefined"` branch and the
+   * whole subject of the test would silently not exist. */
+  function recordObservers(): {
+    onHost: (host: HTMLElement) => number;
+    notifyHost: (host: HTMLElement) => void;
+    restore: () => void;
+  } {
+    const registrations: { target: Element; notify: () => void }[] = [];
+    const original = globalThis.ResizeObserver;
+    class RecordingResizeObserver {
+      constructor(private readonly callback: () => void) {}
+      observe(target: Element): void {
+        registrations.push({ target, notify: this.callback });
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    globalThis.ResizeObserver =
+      RecordingResizeObserver as unknown as typeof ResizeObserver;
+    return {
+      onHost: (host) => registrations.filter((r) => r.target === host).length,
+      notifyHost: (host) => {
+        for (const registration of registrations.filter(
+          (r) => r.target === host,
+        ))
+          registration.notify();
+      },
+      restore: () => {
+        globalThis.ResizeObserver = original as typeof ResizeObserver;
+      },
+    };
+  }
+
+  it("observes the host once, and one host resize is one camera change", async () => {
+    // Two `ResizeObserver`s were registered on the same host, each calling the
+    // same `viewport.resize()`. It was invisible because the refit is derived
+    // and idempotent: the second call reads the box the first one had already
+    // written, decides "still fitted", and fits again to the same place. So the
+    // count, not the canvas, is what has to be asserted.
+    const host = document.createElement("div");
+    const size = { width: 800, height: 600 };
+    Object.defineProperties(host, {
+      clientWidth: { get: () => size.width },
+      clientHeight: { get: () => size.height },
+    });
+    const observers = recordObservers();
+    const shell = await mountEditorShell({
+      host,
+      artboard: { width: 1280, height: 720 },
+    });
+    observers.restore();
+
+    const changed = vi.fn();
+    const off = shell.editor.viewport.onChange(changed);
+    size.width = 600;
+    observers.notifyHost(host);
+    off();
+
+    expect(observers.onHost(host), "resize paths on the host").toBe(1);
+    expect(changed, "camera changes per host resize").toHaveBeenCalledTimes(1);
+    shell.destroy();
+  });
+
+  it("still refits a fitted camera when the host resizes", async () => {
+    // The half that must not be lost with the duplicate: the observer that
+    // stays is the one that decides whether a resize refits, and it decides it
+    // from the box the camera was framed in rather than the new one.
+    const host = document.createElement("div");
+    const size = { width: 1600, height: 900 };
+    Object.defineProperties(host, {
+      clientWidth: { get: () => size.width },
+      clientHeight: { get: () => size.height },
+    });
+    const observers = recordObservers();
+    const shell = await mountEditorShell({
+      host,
+      artboard: { width: 1280, height: 720 },
+    });
+    observers.restore();
+
+    const fitted = shell.editor.viewport.zoom();
+    size.width = 800;
+    observers.notifyHost(host);
+
+    expect(
+      shell.editor.viewport.zoom(),
+      "a fitted camera follows its host",
+    ).toBeLessThan(fitted);
+    expect(
+      shell.editor.canvas.getWidth(),
+      "and the canvas took the host' new box",
+    ).toBe(800);
+    shell.destroy();
+  });
+});

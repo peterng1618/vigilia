@@ -389,7 +389,6 @@ export async function mountEditorShell({
   let globals: Globals | undefined = envelope?.globals;
   host.append(container);
   const paintMemo: PaintMemo = { background: undefined };
-  let resize: ResizeObserver | undefined;
 
   try {
     const editor = createNativeEditor({
@@ -399,12 +398,11 @@ export async function mountEditorShell({
       ...(resolveSceneAsset === undefined ? {} : { resolveSceneAsset }),
     });
     (window as unknown as Record<string, unknown>)[debugKey] = editor;
-    // The host drives the camera, so a host resize only needs the camera told.
-    resize =
-      typeof ResizeObserver === "undefined"
-        ? undefined
-        : new ResizeObserver(() => editor.viewport.resize());
-    resize?.observe(host);
+    // No observer here: `createViewportManager` registers one on the host at
+    // construction and owns the refit decision, reading the box the camera was
+    // framed in before `setDimensions` overwrites it. A second one on the same
+    // host ran that same `resize()` again against the already-updated box, so
+    // it decided "still fitted" from a frame the camera was never in.
 
     // Undo and redo revive the scene through `loadFromJSON`, which drops the
     // plate; the history manager's own post-revive signal is the point at which
@@ -529,7 +527,6 @@ export async function mountEditorShell({
       },
       backdrop: () => media?.backdrop(),
       destroy() {
-        resize?.disconnect();
         glass.dispose();
         media?.destroy();
         scene?.dispose();
@@ -540,7 +537,6 @@ export async function mountEditorShell({
       },
     };
   } catch (error) {
-    resize?.disconnect();
     container.remove();
     throw error;
   }
