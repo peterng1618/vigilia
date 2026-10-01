@@ -18,11 +18,11 @@ import {
   createNewTextDefaults,
   frostedShapeFill,
   NEW_OBJECT_INSET,
-  NEW_PANEL_SIZE,
   NEW_OBJECT_STEP,
+  NEW_PANEL_SIZE,
+  newObjectName,
   newObjectPlacement,
   nextNewObjectPlacement,
-  newObjectName,
   SHAPE_KINDS,
   type ShapeKind,
 } from "./new-object-defaults.js";
@@ -337,6 +337,22 @@ describe("new shape defaults", () => {
       expect(shape.stroke, kind).toBe("#ecf5ff");
     },
   );
+
+  it("fills a new path, because the path it arrives with closes", () => {
+    // Named one at a time because the set-based cases above encode the same
+    // claim as a filter — everything except `polyline` and `line` — and a filter
+    // cannot say which kind it is protecting. The rule is about a shape's data,
+    // not its name: `NEW_PATH` ends in `Z`, so a new path is a closed shape.
+    // `paintPropertyFor` reads the same fact from the other side (an unfilled
+    // Path's paint goes to its stroke), which is why the default is pinned here
+    // rather than left to the two `it.each` sweeps.
+    const shape = createNewShape("shape-path", cardGlobals, "path", placement);
+
+    expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      fill: "palette.panel",
+    });
+    expect(shape.fill).toBe("#081523d9");
+  });
 
   it.each(SHAPE_KINDS)(
     "places a new %s inset, at artboard coordinates",

@@ -282,9 +282,18 @@ export type ShapeKind = (typeof SHAPE_KINDS)[number];
 const NEW_SHAPE_STROKE_WIDTH = 2;
 
 /**
- * An open shape is stroked rather than filled — a polyline, a line and a path
- * are what they are drawn with — so it takes a content token, which is the
- * palette's own answer to "a colour visible against the surface".
+ * An open shape is stroked rather than filled — a polyline and a line are what
+ * they are drawn with — so it takes a content token, which is the palette's own
+ * answer to "a colour visible against the surface".
+ *
+ * A path is not one of the two, and this sentence used to claim it was. It is
+ * filled: `NEW_PATH` closes with `Z`, so a new path arrives as a closed shape
+ * and takes the surface like a rect does. The rule is about a shape's *data*,
+ * not its class, and a path's closedness is whatever the author types — which is
+ * also why `paintPropertyFor` decides from the fill it finds rather than from
+ * the kind. That function is the reason to keep the two apart: it routes an
+ * *unfilled* path's paint to the stroke, so a comment claiming new paths are
+ * stroked was load-bearing and wrong.
  */
 function newShapeStroke(
   globals: FabricGlobals | undefined,
