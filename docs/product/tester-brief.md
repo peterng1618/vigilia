@@ -94,6 +94,17 @@ Append one JSON object per line to `docs/product/backlog.jsonl`. Check with
   what the next attempt should use. Write for someone who was not here.
 - `source: "agent"` for anything you found yourself. `"user"` is theirs.
 
+**Allocate the id in the same step as the append, and advance it per row.** Read
+the highest id from the file and increment as you go. A helper that reads the
+file once and reuses that number for a batch writes every row in the batch with
+the same id — which happened here, and the gate caught it.
+
+**When carrying a finding the user gave you, mark what you verified.** If you
+reproduced it, say how. If you did not, say that plainly and keep their wording
+for what they observed. A row that says *not independently reproduced yet* tells
+the next person which half they are inheriting; a row that implies you measured
+it sends them hunting for a measurement that does not exist.
+
 Put findings in the **live** file. `backlog-archive.jsonl` holds `verified` and
 `withdrawn` rows and is grepped, never read — grep it before filing so you do
 not duplicate a closed finding.
