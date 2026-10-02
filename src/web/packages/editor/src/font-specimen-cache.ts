@@ -6,9 +6,13 @@ interface LoadedFace {
 }
 
 export interface SpecimenCache {
-  /** Requests a face for display. Resolves once the face is resident, or
-   *  rejects if it could not be fetched — the row falls back, it does not
-   *  fail. Calling again for a resident face is a no-op. */
+  /** Requests a face for display. Resolves once the load settles — and it
+   *  always resolves: a fetch that throws, a body that will not read and a
+   *  payload the FontFace rejects all resolve here, because a row effect
+   *  awaiting a rejected ensure is how a picker fails to open. Read
+   *  `resident()` to find out whether the face arrived; an id it does not
+   *  answer for stays on its fallback face. Calling again for a resident
+   *  face is a no-op, and a face whose load threw is fetched again. */
   ensure(face: CuratedFontFace): Promise<void>;
   /** The family name to render with, or undefined while the face is still
    *  loading, so a row can show a fallback face in the meantime. */

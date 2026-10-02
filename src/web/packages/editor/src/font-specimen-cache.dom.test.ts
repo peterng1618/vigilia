@@ -34,6 +34,27 @@ describe("specimen cache", () => {
     expect(fonts.delete).toHaveBeenCalledTimes(faces.length);
   });
 
+  it("keeps several faces resident when rows ask one after another", async () => {
+    const fonts = fakeFonts();
+    const cache = createSpecimenCache({
+      fetch: fetchingOk(),
+      createFontFace: vi.fn(() => ({
+        load: vi.fn().mockResolvedValue(undefined),
+      })),
+      fonts,
+    });
+
+    // How the picker actually arrives: one row at a time as it scrolls into
+    // view. Concurrently, every face clears the entry guard before any load
+    // settles, so only this order can catch a cache that holds one at a time.
+    for (const face of faces) await cache.ensure(face);
+
+    expect(fonts.add).toHaveBeenCalledTimes(faces.length);
+    expect(faces.map((face) => cache.resident(face.id))).toEqual(
+      faces.map((face) => face.family),
+    );
+  });
+
   it("fetches a resident face only once", async () => {
     const fetcher = fetchingOk();
     const cache = createSpecimenCache({
@@ -81,6 +102,83 @@ describe("specimen cache", () => {
     await expect(cache.ensure(faces[0]!)).resolves.toBeUndefined();
     expect(cache.resident(faces[0]!.id)).toBeUndefined();
     expect(fonts.add).not.toHaveBeenCalled();
+  });
+
+  // A browse-time outage throws; it does not answer 404. These three are the
+  // only ways into the cache's catch, so they carry the whole
+  // "keeps its fallback face" promise, and each asserts all of it.
+
+  it("resolves and stays unresident when the download throws", async () => {
+    const fonts = fakeFonts();
+    const createFontFace = vi.fn();
+    const cache = createSpecimenCache({
+      fetch: vi.fn().mockRejectedValue(new Error("network down")),
+      createFontFace,
+      fonts,
+    });
+
+    await expect(cache.ensure(faces[0]!)).resolves.toBeUndefined();
+    expect(createFontFace).not.toHaveBeenCalled();
+    expect(fonts.add).not.toHaveBeenCalled();
+    expect(cache.resident(faces[0]!.id)).toBeUndefined();
+  });
+
+  it("resolves and stays unresident when the body cannot be read", async () => {
+    const fonts = fakeFonts();
+    const response = new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    vi.spyOn(response, "arrayBuffer").mockRejectedValue(
+      new Error("connection reset"),
+    );
+    const createFontFace = vi.fn();
+    const cache = createSpecimenCache({
+      fetch: vi.fn().mockResolvedValue(response),
+      createFontFace,
+      fonts,
+    });
+
+    await expect(cache.ensure(faces[0]!)).resolves.toBeUndefined();
+    expect(createFontFace).not.toHaveBeenCalled();
+    expect(fonts.add).not.toHaveBeenCalled();
+    expect(cache.resident(faces[0]!.id)).toBeUndefined();
+  });
+
+  it("resolves and stays unresident when the payload is not a font", async () => {
+    const fonts = fakeFonts();
+    const cache = createSpecimenCache({
+      fetch: fetchingOk(),
+      createFontFace: vi.fn(() => ({
+        load: vi.fn().mockRejectedValue(new Error("invalid font")),
+      })),
+      fonts,
+    });
+
+    await expect(cache.ensure(faces[0]!)).resolves.toBeUndefined();
+    expect(fonts.add).not.toHaveBeenCalled();
+    expect(cache.resident(faces[0]!.id)).toBeUndefined();
+  });
+
+  it("fetches a face again after its load threw", async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockImplementation(async () => okResponse());
+    const fonts = fakeFonts();
+    const cache = createSpecimenCache({
+      fetch: fetcher,
+      createFontFace: vi.fn(() => ({
+        load: vi.fn().mockResolvedValue(undefined),
+      })),
+      fonts,
+    });
+
+    await cache.ensure(faces[0]!);
+    expect(cache.resident(faces[0]!.id)).toBeUndefined();
+
+    // A transient outage must not poison the row: the stale in-flight entry
+    // has to be cleared, or this second call returns it and does nothing.
+    await cache.ensure(faces[0]!);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(cache.resident(faces[0]!.id)).toBe(faces[0]!.family);
   });
 
   it("does not fetch after release", async () => {
