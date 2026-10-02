@@ -95,7 +95,7 @@ function familyIdOf(pairing, role) {
 
 /**
  * The weight the pairing's author recommended for `h1`, not a uniform 700 —
- * 142 of the 380 pairings recommend something else, and the picker renders
+ * 141 of the 379 pairings recommend something else, and the picker renders
  * whatever this resolves to, so a uniform clamp would present the clamp as
  * the author's choice.
  */
@@ -230,8 +230,9 @@ function faceFor(pairing, role, familyId) {
   // `(family, weight)` is a clamp for a pairing that recommends a weight the
   // family does not ship and not a clamp for one that recommends the weight
   // it does. The cached record keeps whichever pairing reached the face
-  // first, so both are re-stamped here. A cached value would make nine of the
-  // 380 trios tell an author the opposite of the truth.
+  // first, so both are re-stamped here. A cached value puts the wrong flag on
+  // nine of the 379 trios, in both directions — that count is what a
+  // first-touch cache would produce today, not a historical tally.
   return {
     ...faceCache.get(id),
     role,

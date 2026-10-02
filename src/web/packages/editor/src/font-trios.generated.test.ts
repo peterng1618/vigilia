@@ -123,7 +123,7 @@ describe("generated font catalogue", () => {
     );
     // 261, not the design doc's measured 238. That count came from clamping
     // every heading to a uniform 700, which discards the pairing's own `h1`
-    // recommendation for 142 of the 380 pairings and then marks the result
+    // recommendation for 141 of the 379 pairings and then marks the result
     // `clamped` when it is in fact the author's choice. Clamping to the
     // recommendation keeps the extra faces and mislabels fewer.
     expect(GENERATED_FACES).toHaveLength(261);
@@ -163,7 +163,7 @@ describe("generated font catalogue", () => {
   });
 
   it("clamps the 49 headings whose family does not ship the recommended weight", () => {
-    // 49 of the 380 pairings recommend an `h1` weight their heading family
+    // 49 of the 379 pairings recommend an `h1` weight their heading family
     // does not publish, and 20 of those families ship no 700 at all. Anton is
     // one of them, so every trio that wants it as a heading is clamped onto
     // the 400 cut.

@@ -6,7 +6,7 @@
 
 ## The problem
 
-380 upstream pairings × 3 roles = **1140 role faces**, which deduplicate to
+379 upstream pairings × 3 roles = **1137 role faces**, which deduplicate to
 **261 distinct (family, weight) faces** across **174 families**. Each face needs a
 pinned Fontsource artifact URL, a `latin` subset, a real licence, and a weight
 the family actually ships. None of those facts live in the pairing document: a
@@ -162,10 +162,10 @@ off-the-shelf answer.
 
 | Option | Fit | Cost | Risk | Verdict |
 |---|---|---|---|---|
-| Hand-write 261 faces and 380 trios | none of the per-family facts are hand-authorable | unbounded | licence and weight errors are invisible; a Fontsource version bump silently strands 261 URLs | rejected |
+| Hand-write 261 faces and 379 trios | none of the per-family facts are hand-authorable | unbounded | licence and weight errors are invisible; a Fontsource version bump silently strands 261 URLs | rejected |
 | Depend on `@fontsource/*` | registry half solved; **pairing half unsolved** | 174–261 packages, licence review each | no pairing metadata exists to import; dependency surface for a catalogue that changes twice a year | rejected |
 | `next/font/google` at build time | solves fetch-and-self-host for one framework | Next coupling | inapplicable outside Next; pins nothing and emits nothing Vigilia can read | rejected |
-| **Generate a committed module from a pinned revision** | whole shape, and the join/clamp/licence steps are ours either way | one 261-line script, run by hand | the generated file is 261+380 records and must be regenerated on any upstream change — the point of the pin | **chosen** |
+| **Generate a committed module from a pinned revision** | whole shape, and the join/clamp/licence steps are ours either way | one 261-line script, run by hand | the generated file is 261+379 records and must be regenerated on any upstream change — the point of the pin | **chosen** |
 
 ## Rung 6 — probe
 
@@ -174,16 +174,19 @@ Measured 2026-10-02 against Fonttrio commit `8af7098ada0b90f076fbfe260244d11b05d
 - 380 pairing documents fetched; uniform shape; **0** unparseable `--font-*` vars.
   **380 entries, 379 distinct names**: the index lists `playfair-display-roboto`
   twice, both entries pointing at one document — see decision 8 and `vg-116`.
-- 1140 role faces → **174 distinct families**. Every family resolves directly
+- 1137 role faces → **174 distinct families**. Every family resolves directly
   against `api.fontsource.org/v1/fonts/:id`: **0** 404s, **0** without a `latin`
   subset. The name-based fallback the plan sketched was taken **zero** times in
-  1140, so it was deleted rather than kept as dead insurance.
-- Upstream `h1` weight recommendation: **700 × 238, 600 × 77, 800 × 45, 400 × 20**
-  — 380 pairings that do not agree about what a heading is. **49** headings
-  clamp to a cut their family does not ship; 20 families publish no 700 at all.
+  1137, so it was deleted rather than kept as dead insurance.
+- Upstream `h1` weight recommendation over the 379 distinct pairings:
+  **700 × 238, 600 × 77, 800 × 44, 400 × 20** — 141 of the 379 do not agree
+  about what a heading is. **49** headings clamp to a cut their family does not
+  ship; 20 families publish no 700 at all. (The registry's 380th entry, the
+  duplicate, recommended 800, so every count below the entry level is one lower
+  than the entry-level figures the design doc measured.)
 - Faces: **261** clamping each heading to the pairing's own recommendation,
   against **238** clamping every heading to a uniform 700. The 23-face gap is
-  the price of ignoring 142 upstream recommendations, and it is paid into a
+  the price of ignoring 141 upstream recommendations, and it is paid into a
   number the picker displays.
 - Licences over those 261 faces: **251 OFL-1.1, 7 UFL-1.0, 3 Apache-2.0**. The
   10 non-OFL faces — Roboto Slab, Yellowtail and five Ubuntu families — reach
@@ -204,7 +207,7 @@ Concretely:
    the test asserts the output's shape, so a bad refresh is caught by the suite
    rather than by a user looking at a specimen.
 2. **A heading is clamped to the pairing's own `h1` recommendation**, not to a
-   uniform 700. 142 of 380 pairings recommend something else and the picker will
+   uniform 700. 141 of the 379 pairings recommend something else and the picker will
    render the clamped weight, so a uniform clamp would mislabel the author's
    choice as the clamp's. The catalogue therefore carries 261 faces where the
    design doc's measured 238 assumed the uniform rule — recorded here because the
@@ -222,11 +225,12 @@ Concretely:
    `faceFor` re-stamps both on the way out, because the same `(family, weight)`
    can be a clamp for a pairing that recommends a weight the family does not
    ship and not a clamp for one that recommends the weight it does. A value
-   cached on first touch put the wrong flag on 9 of the 380 trios in both
+   cached on first touch put the wrong flag on 9 of the 379 trios in both
    directions — including a body face claiming to be a clamp — and threw
-   nothing. `GENERATED_FACES` keeps the first-touch value for both fields and
-   the generated header says so, because nothing may read them off a
-   standalone face.
+   nothing. That 9 is re-derivable rather than historical: simulate the cache
+   over the 379 and count. `GENERATED_FACES` keeps the first-touch value for
+   both fields and the generated header says so, because nothing may read them
+   off a standalone face.
 5. **An unknown family is a loud throw.** The fallback the plan sketched is
    measured to be dead code; a Fontsource rename should fail generation, not
    resolve through a second lookup path nothing else uses.
