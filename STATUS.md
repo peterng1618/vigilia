@@ -54,6 +54,7 @@ The loop, in order:
 2. **Task 8 carries two open obligations from earlier tasks:** `THIRD-PARTY-NOTICES.md` must declare all three licences, and **`editor-type-preset` must be re-captured, not annotated** — the CDN stub means its ink was always a fallback, but at 400 it looks closer to correct than at 700, so a reader could conclude the face applied when it did not.
 3. **`editor.spec.ts` has never been run in any round of this plan.** It is stubbed at the CDN, so no face URL is proven reachable; that closes in Task 8 or not at all.
 4. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-046, vg-051, vg-056.
+5. **A frontend redesign spec is written and awaiting plans**: [one design, four surfaces](docs/superpowers/specs/2026-10-02-frontend-redesign-design.md), from driving the editor, host and player at 1512×900 and 390×844. It is **not** the active plan and the catalogue still is; the user decides when it is planned.
 
 ## Blockers / unverified
 

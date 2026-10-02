@@ -13,6 +13,7 @@ Keep it to one state plus, at most, a link to the plan.
 
 | Status | Means |
 |---|---|
+| `draft` | Written and reviewed, no plan yet, and not the active work |
 | `active` | Its plan is the one `STATUS.md` names |
 | `in progress` | Its plan exists but is not the active one |
 | `implemented` | Every acceptance item is met or explicitly carried elsewhere |
