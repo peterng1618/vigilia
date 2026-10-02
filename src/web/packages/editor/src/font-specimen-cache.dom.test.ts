@@ -55,6 +55,79 @@ describe("specimen cache", () => {
     );
   });
 
+  it("hands each face its own family, descriptors and bytes", async () => {
+    const fetched: string[] = [];
+    const createFontFace = vi.fn(
+      (
+        _family: string,
+        _source: ArrayBuffer,
+        _descriptors: FontFaceDescriptors,
+      ) => ({ load: vi.fn().mockResolvedValue(undefined) }),
+    );
+    const cache = createSpecimenCache({
+      // The body echoes the URL it was asked for, so the bytes the cache hands
+      // on can only have come from that face's own sourceUrl.
+      fetch: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        fetched.push(url);
+        return new Response(new TextEncoder().encode(url));
+      }),
+      createFontFace,
+      fonts: fakeFonts(),
+    });
+
+    for (const face of faces) await cache.ensure(face);
+
+    // Guard the guard: with one family for all three rows this test would pass
+    // while every specimen rendered identically.
+    expect(new Set(faces.map((face) => face.family)).size).toBe(faces.length);
+    expect(fetched).toEqual(faces.map((face) => face.sourceUrl));
+    expect(createFontFace).toHaveBeenCalledTimes(faces.length);
+    for (const [index, face] of faces.entries()) {
+      const call = createFontFace.mock.calls[index]!;
+      expect(call[0]).toBe(face.family);
+      expect(new TextDecoder().decode(call[1])).toBe(face.sourceUrl);
+      expect(call[2]).toMatchObject({
+        weight: String(face.weight),
+        style: face.style,
+      });
+    }
+  });
+
+  it("reports a face as unresident until its load resolves", async () => {
+    const fonts = fakeFonts();
+    let startLoad = (): void => undefined;
+    const loading = new Promise<void>((resolve) => {
+      startLoad = resolve;
+    });
+    let finishLoad = (): void => undefined;
+    const loaded = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    const cache = createSpecimenCache({
+      fetch: fetchingOk(),
+      createFontFace: () => ({
+        load: () => {
+          startLoad();
+          return loaded;
+        },
+      }),
+      fonts,
+    });
+
+    const pending = cache.ensure(faces[0]!);
+    await loading;
+
+    // Bytes still decoding: the row must stay on its fallback face, because
+    // rendering in the family now would paint with a face that cannot paint.
+    expect(cache.resident(faces[0]!.id)).toBeUndefined();
+    expect(fonts.add).not.toHaveBeenCalled();
+
+    finishLoad();
+    await pending;
+    expect(cache.resident(faces[0]!.id)).toBe(faces[0]!.family);
+  });
+
   it("fetches a resident face only once", async () => {
     const fetcher = fetchingOk();
     const cache = createSpecimenCache({
