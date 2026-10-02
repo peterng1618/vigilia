@@ -35,10 +35,48 @@ function trioById(id: string) {
   return GENERATED_TRIOS.find((trio) => trio.id === id);
 }
 
+/**
+ * The one upstream title that does not name the families it seeds. Upstream
+ * writes `Lead — Heading + Body + Mono` and 15 of the 379 drop the lead, but
+ * `cormorant-garamond-proza-libre` is titled "Cormorant Garamond Proza
+ * Libre" over Proza Libre + Cormorant Garamond + JetBrains Mono — two of the
+ * three run together and the mono is absent.
+ *
+ * Listed rather than waved through, and asserted as an exact set, so a second
+ * offender is red here and a fixed one is red too.
+ */
+const TITLES_THAT_DO_NOT_NAME_THEIR_FAMILIES = [
+  "cormorant-garamond-proza-libre",
+];
+
 describe("generated font catalogue", () => {
   it("carries every pairing from the pinned upstream revision", () => {
-    expect(GENERATED_TRIOS).toHaveLength(380);
+    // 379, not the 380 registry entries. Upstream's index lists
+    // `playfair-display-roboto` twice — once titled for Inter, once for
+    // Roboto — and both entries point at one pairing document, which names
+    // Roboto. The document is the authority on which entry is true, so the
+    // generator keeps the entry whose title matches it and the other never
+    // reaches the catalogue. vg-116 is the upstream half of this.
+    expect(GENERATED_TRIOS).toHaveLength(379);
     expect(GENERATED_SOURCE_REVISION).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it("gives every trio its own id", () => {
+    // A duplicate id would collapse in the picker's `Map` and hide the
+    // second record rather than show the conflict.
+    const ids = GENERATED_TRIOS.map((trio) => trio.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("titles every trio with the families it seeds", () => {
+    // The duplicate above shipped "Playfair Display Inter" over Roboto faces:
+    // a title naming a family the record does not carry, which an author
+    // applying it would see as Inter.
+    const unnamed = GENERATED_TRIOS.filter(
+      (trio) =>
+        !trio.name.endsWith(trio.faces.map((face) => face.family).join(" + ")),
+    ).map((trio) => trio.id);
+    expect(unnamed.sort()).toEqual(TITLES_THAT_DO_NOT_NAME_THEIR_FAMILIES);
   });
 
   it("gives every trio exactly one heading, body and mono face", () => {

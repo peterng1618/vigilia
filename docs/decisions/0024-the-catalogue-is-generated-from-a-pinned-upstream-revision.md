@@ -172,6 +172,8 @@ off-the-shelf answer.
 Measured 2026-10-02 against Fonttrio commit `8af7098ada0b90f076fbfe260244d11b05dd2403`:
 
 - 380 pairing documents fetched; uniform shape; **0** unparseable `--font-*` vars.
+  **380 entries, 379 distinct names**: the index lists `playfair-display-roboto`
+  twice, both entries pointing at one document — see decision 8 and `vg-116`.
 - 1140 role faces → **174 distinct families**. Every family resolves directly
   against `api.fontsource.org/v1/fonts/:id`: **0** 404s, **0** without a `latin`
   subset. The name-based fallback the plan sketched was taken **zero** times in
@@ -233,7 +235,22 @@ Concretely:
    arrival order or the host's ICU collation.
 7. The generator formats its own output with the workspace's `biome` before
    writing, so `npm run format:check` stays green on a regenerated catalogue.
-8. **The emitted module is a deliberate, recorded exception to the 800-line
+8. **One trio per pairing, not per registry entry.** Upstream's index is not
+   one-to-one with its documents: it lists 380 entries for 379 pairings, and
+   `playfair-display-roboto` appears twice — once titled for Inter, once for
+   Roboto — with both entries pointing at one document, which names Roboto.
+   Taking both would emit two records under one id, and the picker builds a
+   `Map` keyed by id, so the second would vanish rather than surface the
+   conflict. The **pairing document is the authority** on which entry is true,
+   because it is what the faces are read from, so the entry whose title matches
+   it wins; **exactly one** match is required and zero or two is a throw, on
+   the same grounds as an unknown family. Matching is done on the index into
+   the ordered fetches, never on arrival order, so the choice does not depend
+   on which entry the network returned first. The consequence is that the
+   catalogue carries **379** trios where the registry has 380 entries — recorded
+   here because the number moved and the reason must survive. The upstream half
+   is `vg-116`.
+9. **The emitted module is a deliberate, recorded exception to the 800-line
    stop**, and `AGENTS.md` asks for the exception to be recorded rather than
    assumed. The number that decides it: **807 KB raw is 28.5 KB brotli**
    (measured, `zlib.brotliCompressSync` quality 11), the file is read once and
@@ -245,7 +262,11 @@ Concretely:
    read once and the simpler module is the cheaper thing to reason about. The
    same paragraph is repeated in the generated file's own header, because the
    next person to open a 28,000-line file in `packages/editor/src/` should see
-   the exemption rather than re-derive it.
+   the exemption rather than re-derive it. *Both self-describing numbers here
+   drift by one regeneration — the header quotes sizes and the comparison table
+   quotes the script's length, and neither can be true forever. That is inherent
+   to a generated header, not a defect to chase; the ledger records the
+   ceiling.*
 
 What this gives up: the catalogue is a snapshot, and refreshing it is a manual
 act that produces a large diff. A Fontsource version bump does not fail a build.

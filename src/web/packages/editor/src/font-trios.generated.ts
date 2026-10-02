@@ -10157,7 +10157,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
   },
   {
     id: "playfair-display-roboto",
-    name: "Playfair Display Inter — Playfair Display + Inter + Inconsolata",
+    name: "Playfair Display Roboto — Playfair Display + Roboto + Inconsolata",
     description:
       "Playfair Display delivers high-end flair, complemented by the elegant and refined tone of Roboto.",
     categories: ["display-sans serif"],
@@ -23769,69 +23769,6 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
         subset: "latin",
         sourceUrl:
           "https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@5.3.0/latin-400-normal.woff2",
-        license: {
-          name: "SIL Open Font License 1.1",
-          url: "https://openfontlicense.org/",
-        },
-        clamped: false,
-      },
-    ],
-  },
-  {
-    id: "playfair-display-roboto",
-    name: "Playfair Display Roboto — Playfair Display + Roboto + Inconsolata",
-    description:
-      "Playfair Display delivers high-end flair, complemented by the elegant and refined tone of Roboto.",
-    categories: ["display-sans serif"],
-    mood: ["editorial", "elegant"],
-    useCase: ["editorial"],
-    superfamily: "serif",
-    faces: [
-      {
-        id: "playfair-display-800",
-        fontId: "playfair-display",
-        family: "Playfair Display",
-        role: "heading",
-        weight: 800,
-        style: "normal",
-        format: "woff2",
-        subset: "latin",
-        sourceUrl:
-          "https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@5.3.0/latin-800-normal.woff2",
-        license: {
-          name: "SIL Open Font License 1.1",
-          url: "https://openfontlicense.org/",
-        },
-        clamped: false,
-      },
-      {
-        id: "roboto-400",
-        fontId: "roboto",
-        family: "Roboto",
-        role: "body",
-        weight: 400,
-        style: "normal",
-        format: "woff2",
-        subset: "latin",
-        sourceUrl:
-          "https://cdn.jsdelivr.net/fontsource/fonts/roboto@5.3.0/latin-400-normal.woff2",
-        license: {
-          name: "SIL Open Font License 1.1",
-          url: "https://openfontlicense.org/",
-        },
-        clamped: false,
-      },
-      {
-        id: "inconsolata-400",
-        fontId: "inconsolata",
-        family: "Inconsolata",
-        role: "mono",
-        weight: 400,
-        style: "normal",
-        format: "woff2",
-        subset: "latin",
-        sourceUrl:
-          "https://cdn.jsdelivr.net/fontsource/fonts/inconsolata@5.3.0/latin-400-normal.woff2",
         license: {
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",

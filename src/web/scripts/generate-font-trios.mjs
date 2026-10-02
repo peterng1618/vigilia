@@ -122,6 +122,52 @@ const pairings = await jsonAll(
   ),
 );
 
+/**
+ * One trio per pairing, not per registry entry.
+ *
+ * Upstream's index is not one-to-one with its documents: at the pinned commit
+ * it lists 380 entries for 379 pairings, and `playfair-display-roboto` appears
+ * twice — once titled "Playfair Display Inter" and once "Playfair Display
+ * Roboto" — with both entries pointing at one pairing document, which names
+ * Roboto. Taking both would emit two records under one id, the first titled
+ * for a family it does not seed.
+ *
+ * The pairing document is the authority on which entry is true, because it is
+ * what the faces are read from, so the entry whose title matches it wins.
+ * Exactly one match is required: none means the index has drifted away from
+ * the documents, and two means the entries cannot be told apart at all.
+ * Either is a throw, on the same grounds as an unknown family — an upstream
+ * index that contradicts itself is something to see, not to guess at.
+ *
+ * Grouped and matched on the index into the ordered fetches above, so the
+ * result never depends on which entry arrived first.
+ */
+function resolvePairings(entries, documents) {
+  const byName = new Map();
+  for (const [index, entry] of entries.entries()) {
+    const group = byName.get(entry.name) ?? [];
+    group.push({ entry, index });
+    byName.set(entry.name, group);
+  }
+
+  const resolved = [];
+  for (const [name, group] of byName) {
+    const matching = group.filter(
+      ({ entry, index }) => entry.title === documents[index].title,
+    );
+    if (matching.length !== 1) {
+      throw new Error(
+        `${name}: ${matching.length} of ${group.length} registry entries match ` +
+          `the pairing document's own title; exactly one must.`,
+      );
+    }
+    resolved.push({ name, ...matching[0] });
+  }
+  return resolved;
+}
+
+const resolvedPairings = resolvePairings(registry.pairings, pairings);
+
 /** `--font-*` per pairing per role, extracted once: the family sweep below
  * and the trio loop both need it, and the pairing document is the only place
  * the answer lives. */
@@ -194,7 +240,7 @@ function faceFor(pairing, role, familyId) {
 }
 
 const trios = [];
-for (const [index, entry] of registry.pairings.entries()) {
+for (const { entry, index } of resolvedPairings) {
   const pairing = pairings[index];
   const faces = ROLES.map((role, at) =>
     faceFor(pairing, role, roleFamilies[index][at]),
