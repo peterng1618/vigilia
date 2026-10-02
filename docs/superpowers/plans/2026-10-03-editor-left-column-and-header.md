@@ -147,7 +147,10 @@ mount and goes stale when the palette changes.
   mount test named *"mounts the editorial palette, menus, rail, inspector and dock
   hosts"*, which names the rail.
 - Browser: select a layer, scroll the layer panel down, switch to Assets and back; the
-  offset is where it was. Edit an asset name, switch panes, come back; it survived.
+  offset is where it was. Switch panes twice and confirm each pane's host node is still
+  the same node it was before — the Assets pane has a `<select>`, a thumbnail and
+  Import/Replace/Remove, so *its own state* is the evidence: change the select, switch
+  away, come back, and it still shows the changed value.
 - Browser: switch palette; the chrome repaints without a reload and the choice survives
   a reload. Check under all six, not the default — Task 2 is what makes five legible.
 
@@ -173,6 +176,15 @@ actually overrides — today it redeclares values identical to `--shell-*`, and 
 redundancy is what the move removes. **Resolve `scripts/reuse-gate.mjs` before the
 first write**: if the gate claims this path, land a `docs/decisions/` note naming what
 was searched and why nothing else owns a shell token scale, or record that it does not.
+
+**Portalled popups are part of this task.** `applyShellPalette` writes the palette
+attribute onto the editor's root element, and Base UI portals every popup to
+`document.body` — which is not a descendant of that root. So a menu, popover or palette
+list renders with the bare `:root` values no matter which palette is chosen. This is
+pre-existing and applies to every Base UI surface, but Task 1 puts a palette *list* in
+the header where it becomes visible under all six palettes. Settle where the attribute
+lives as part of moving the tokens, and prove it on a portalled popup, not only on the
+chrome.
 
 **Failure modes to design against:** an editorial-only declaration moving to `:root` that
 silently changes the default appearance before any palette attribute is applied — the
