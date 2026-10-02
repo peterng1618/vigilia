@@ -24,6 +24,7 @@ import type {
   DisplaySettings,
   DisplaySettingsStore,
 } from "./settings/display.js";
+import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
@@ -77,6 +78,9 @@ export interface HostServerOptions {
   readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
   /** The consumer's display preferences. Omit when the host stores none. */
   readonly display?: DisplaySettingsStore;
+  /** Which curated font trios this author favours. Omit when the host stores
+   *  none — the route then reports that rather than serving an empty list. */
+  readonly fontFavorites?: FontFavoritesStore;
   /** Called after a display change so providers read readings the new way. */
   readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -294,6 +298,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const sessions = options.sessions;
   const devices = options.devices;
   const display = options.display;
+  const fontFavorites = options.fontFavorites;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
@@ -548,6 +553,63 @@ export function createHostServer(options: HostServerOptions): HostServer {
           const saved = await display.write(body);
           options.onDisplayChange?.(saved);
           sendJson(response, 200, { ok: true, settings: saved });
+        } catch (error: unknown) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
+    // Which curated trios this author reaches for. Author state about this PC,
+    // beside the display preferences and out of every theme package; the same
+    // asymmetry as `/api/display`, so a paired display may read what this PC
+    // holds and only this PC may change it.
+    if (url.pathname === "/api/font-favorites") {
+      if (fontFavorites === undefined) {
+        sendText(
+          response,
+          404,
+          "Font favourites are not enabled on this host.",
+        );
+        return;
+      }
+
+      if (request.method === "GET") {
+        if (
+          !isLoopbackRemote(request.socket.remoteAddress) &&
+          !allowed(request, url)
+        ) {
+          sendText(response, 403, "This display is not paired with the host.");
+          return;
+        }
+
+        sendJson(response, 200, { favorites: await fontFavorites.read() });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(
+            response,
+            403,
+            "Font favourites are available on this PC only.",
+          );
+          return;
+        }
+
+        try {
+          const body = JSON.parse(await readBody(request)) as unknown;
+          // The answer is what the editor repaints from, so it carries the
+          // stored list rather than an echo of what was sent.
+          const favorites = await fontFavorites.write(body);
+          sendJson(response, 200, { favorites });
         } catch (error: unknown) {
           sendText(
             response,

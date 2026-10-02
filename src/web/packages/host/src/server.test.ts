@@ -18,6 +18,7 @@ import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -726,6 +727,7 @@ describe("Host theme routes", () => {
         bundles: { player: lanDir, editor: lanDir },
         themeStore: createThemeStore(lanDir),
         display: createDisplaySettingsStore(lanDir),
+        fontFavorites: createFontFavoritesStore(lanDir),
         sessions,
       });
       await request(
@@ -824,6 +826,51 @@ describe("Host theme routes", () => {
             "PUT",
             "/api/display",
             json({ timeZone: "Asia/Tokyo" }),
+            pairedPhone,
+          )
+        ).status,
+      ).toBe(403);
+    });
+
+    it("lets a paired display read this PC's favourites, not change them", async () => {
+      const issued = sessions.create("phone");
+      const lan = { remoteAddress: "192.168.1.50" };
+      const pairedPhone = {
+        ...lan,
+        headers: { "x-vigilia-session": issued.token },
+      };
+
+      // Same asymmetry as `/api/display`, for the same reason: a paired reader
+      // is this PC's own reader and may see what it holds.
+      expect(
+        (
+          await request(
+            paired.server,
+            "GET",
+            "/api/font-favorites",
+            undefined,
+            pairedPhone,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await request(
+            paired.server,
+            "GET",
+            "/api/font-favorites",
+            undefined,
+            lan,
+          )
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await request(
+            paired.server,
+            "PUT",
+            "/api/font-favorites",
+            json({ favorites: ["saas"] }),
             pairedPhone,
           )
         ).status,
@@ -1236,6 +1283,146 @@ describe("Display settings routes", () => {
         )
       ).status,
     ).toBe(403);
+  });
+});
+
+describe("Font favourite routes", () => {
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-favorites-"));
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      fontFavorites: createFontFavoritesStore(tmpDir),
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("starts with no favourites", async () => {
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: [] });
+  });
+
+  it("stores the ids and reads them back", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/font-favorites",
+      json({ favorites: ["exo-2-alegreya-sans", "saas"] }),
+    );
+
+    expect(res.status).toBe(200);
+    // The answer is what the editor repaints from, so it must be the stored
+    // list rather than an echo of the request.
+    expect(res.json()).toEqual({
+      favorites: ["exo-2-alegreya-sans", "saas"],
+    });
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: ["exo-2-alegreya-sans", "saas"] });
+  });
+
+  it("answers with what it stored, not what it was sent", async () => {
+    // A dropped entry must not come back as though the star was kept.
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/font-favorites",
+      json({ favorites: ["a", "a", "../../escape", 1, "b"] }),
+    );
+
+    expect(res.json()).toEqual({ favorites: ["a", "b"] });
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: ["a", "b"] });
+  });
+
+  it("refuses a body that is not JSON", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/font-favorites",
+      "{ not json",
+    );
+
+    expect(res.status).toBe(400);
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: [] });
+  });
+
+  it("keeps a favourite on this PC", async () => {
+    const lan = { remoteAddress: "192.168.1.50" };
+
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          "/api/font-favorites",
+          undefined,
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/font-favorites",
+          json({ favorites: ["saas"] }),
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+    // Refused, not stored: a 403 that still wrote would be a silent success.
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: [] });
+  });
+
+  it("supports only GET and PUT", async () => {
+    // A DELETE that fell through to the static fallback would also answer 405,
+    // so the store is what is asked: a second star in the list proves the route
+    // answered rather than some later handler.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/font-favorites",
+      json({ favorites: ["saas"] }),
+    );
+    const res = await request(hosted.server, "DELETE", "/api/font-favorites");
+
+    expect(res.status).toBe(405);
+    // Refused, not acted on: a 405 that still cleared the list would be a lie.
+    expect(
+      (await request(hosted.server, "GET", "/api/font-favorites")).json(),
+    ).toEqual({ favorites: ["saas"] });
+  });
+
+  it("reports a host that keeps no favourites", async () => {
+    const bare = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    try {
+      const res = await request(bare.server, "GET", "/api/font-favorites");
+
+      expect(res.status).toBe(404);
+      // An unknown path also 404s here, from the static fallback, so the status
+      // alone cannot tell this route's own "not enabled" from "no such route".
+      expect(res.text()).toContain("not enabled");
+    } finally {
+      await bare.close();
+    }
   });
 });
 

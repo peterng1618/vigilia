@@ -17,6 +17,7 @@ import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -113,6 +114,9 @@ export async function run(argv: readonly string[]): Promise<number> {
   const displaySettings = createDisplaySettingsStore(settingsDir);
   // Which theme this host displays; consumer state beside the device choices.
   const activeTheme = createActiveThemeStore(settingsDir);
+  // Which curated font trios this author reaches for. Author preference about
+  // this PC, so it sits with the other settings and never in a theme folder.
+  const fontFavorites = createFontFavoritesStore(settingsDir);
 
   const hosted = createHostServer({
     registry,
@@ -132,6 +136,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     display: displaySettings,
+    fontFavorites,
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     onDeviceAssignment: (assignment) => {
