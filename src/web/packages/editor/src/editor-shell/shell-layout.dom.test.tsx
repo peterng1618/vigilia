@@ -114,7 +114,7 @@ function bridgeStub(
   };
 }
 
-it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => {
+it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
@@ -126,25 +126,34 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   expect(root.querySelector(".editor-shell-dock")?.parentElement).toBe(
     root.querySelector("#stage"),
   );
-  expect(
-    root.querySelector('[aria-label="Editor areas"]')?.children.length,
-  ).toBe(4);
+  // Three segments and the `+`. The rail's fourth entry went with the Settings
+  // pane it held, and a segment with nothing in it is the defect this plan
+  // exists to fix — so the count is a claim about the left column, not a
+  // snapshot of how many icons happen to be there.
+  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(4);
+  expect(root.querySelector(".editor-shell-rail")).toBeNull();
   expect(root.textContent).toContain("File");
   // The Arrange menu is gone: the arrange toolbar above the canvas already
   // carries all eight actions, and the menu offered two of them with nothing
   // saying the rest existed. Asserting its absence is the point — a test that
   // only checked the toolbar would not have noticed it return.
   expect(root.textContent).not.toContain("Arrange");
-  expect(root.querySelector('select[aria-label="Shell palette"]')).not.toBeNull();
+  // The palette moved from the Settings pane to the header, and is a trigger
+  // rather than a select now; it is still reachable and still named.
+  expect(
+    root.querySelector(".editor-shell-header [data-vigilia-palette]"),
+  ).not.toBeNull();
 
   layout.destroy();
 });
 
-/** The rail entry for a pane, found by the accessible name it carries. */
-function railEntry(root: HTMLElement, label: string): HTMLButtonElement {
-  return root.querySelector<HTMLButtonElement>(
-    `.editor-shell-rail button[aria-label="${label}"]`,
-  )!;
+/** The pane bar's segment for a pane, found by the label it shows. */
+function segment(root: HTMLElement, label: string): HTMLButtonElement {
+  const found = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-pane-bar button"),
+  ).find((button) => button.textContent?.trim() === label);
+  if (found === undefined) throw new Error(`No "${label}" pane.`);
+  return found;
 }
 
 /** The menubar trigger for a menu, found by the text it carries. */
@@ -247,35 +256,12 @@ function insertMenuEntry(
   );
 }
 
-it("names every rail entry by its label and draws an icon, not a glyph", () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  const entries = Array.from(
-    root.querySelectorAll<HTMLButtonElement>(".editor-shell-rail button"),
-  );
-  expect(entries.map((entry) => entry.getAttribute("aria-label"))).toEqual([
-    "Layers",
-    "Add",
-    "Assets",
-    "Settings",
-  ]);
-
-  for (const entry of entries) {
-    // The name is `aria-label` and never the content, so swapping a stored
-    // glyph for a Lucide icon cannot strip it.
-    expect(entry.textContent?.trim()).toBe("");
-    expect(entry.querySelector("svg")).not.toBeNull();
-  }
-
-  layout.destroy();
-});
-
-it("collapses the panel when the rail entry for the visible pane is clicked again", async () => {
+it("collapses the panel when the segment for the visible pane is clicked again", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
   const body = root.querySelector<HTMLElement>(".editor-shell-body")!;
-  const layers = railEntry(root, "Layers");
+  const layers = segment(root, uiCopy.rail.layers);
 
   expect(panel.hidden).toBe(false);
   expect(layers.getAttribute("aria-pressed")).toBe("true");
@@ -285,7 +271,7 @@ it("collapses the panel when the rail entry for the visible pane is clicked agai
 
   // Both halves matter: a hidden panel takes no pixels, and a collapsed one
   // leaves the accessibility tree, because a pane an author cannot reach is
-  // worse than one that is merely narrow. The rail keeps saying which pane it
+  // worse than one that is merely narrow. The bar keeps saying which pane it
   // is, and `aria-expanded` is how the closed state is announced.
   expect(panel.hidden).toBe(true);
   expect(body.dataset["collapsed"]).toBe("true");
@@ -306,10 +292,10 @@ it("brings the collapsed panel back on whichever pane is asked for", async () =>
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
 
-  await act(async () => railEntry(root, "Layers").click());
+  await act(async () => segment(root, uiCopy.rail.layers).click());
   expect(panel.hidden).toBe(true);
 
-  await act(async () => railEntry(root, "Assets").click());
+  await act(async () => segment(root, uiCopy.rail.assets).click());
 
   // Reopening brings the pane that was asked for, not the one it closed on.
   expect(panel.hidden).toBe(false);
@@ -324,11 +310,13 @@ it("switches panes without closing when the panel is already open", async () => 
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
 
-  await act(async () => railEntry(root, "Add").click());
+  await act(async () => segment(root, uiCopy.rail.insert).click());
 
   expect(panel.hidden).toBe(false);
   expect(layout.hosts.add.parentElement?.hidden).toBe(false);
-  expect(railEntry(root, "Add").getAttribute("aria-pressed")).toBe("true");
+  expect(segment(root, uiCopy.rail.insert).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
 
   layout.destroy();
 });
@@ -357,9 +345,9 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   // The viewport refits a fitted camera on a resize by itself, so this looks
   // like the leftover it was once assumed to be. It is not: `resize()` holds a
   // camera the author has zoomed or panned, and a panel collapse is the author
-  // handing the canvas 288px on purpose. Delete this and the camera stays where
-  // the author left it while 288px of workspace goes unused.
-  await act(async () => railEntry(root, "Layers").click());
+  // handing the canvas 280px on purpose. Delete this and the camera stays where
+  // the author left it while 280px of workspace goes unused.
+  await act(async () => segment(root, uiCopy.rail.layers).click());
   expect(zoomToFit, "the toggle waits for the viewport, not the frame").not
     .toHaveBeenCalled();
 
@@ -394,7 +382,7 @@ it("leaves the camera alone after a swap between two open panes", async () => {
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
 
-  await act(async () => railEntry(root, "Add").click());
+  await act(async () => segment(root, uiCopy.rail.insert).click());
 
   // A swap changes which pane is showing, not how wide the panel is, so the host
   // does not resize and the viewport never notifies. Anything armed here sits
@@ -439,28 +427,17 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
     await Promise.resolve();
   };
 
-  await act(async () => railEntry(root, "Layers").click());
+  await act(async () => segment(root, uiCopy.rail.layers).click());
   await resized();
   expect(zoomToFit, "the collapse re-framed").toHaveBeenCalledTimes(1);
 
   // The other half of the guard in the test above: this swap *does* hand the
-  // canvas 288px back, so the refit is the point and skipping it would strand
+  // canvas 280px back, so the refit is the point and skipping it would strand
   // the theme at the collapsed zoom.
-  await act(async () => railEntry(root, "Layers").click());
+  await act(async () => segment(root, uiCopy.rail.layers).click());
   await resized();
 
   expect(zoomToFit, "and so does the reopen").toHaveBeenCalledTimes(2);
-
-  layout.destroy();
-});
-
-it("tells a hovering author what the rail entry will do to the panel", () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-
-  // The one that closes says so; the three that open say what they open.
-  expect(railEntry(root, "Layers").title).toBe("Hide Layers");
-  expect(railEntry(root, "Assets").title).toBe("Show Assets");
 
   layout.destroy();
 });
@@ -523,7 +500,7 @@ it("gives the Style tab a panel host instead of a placeholder sentence", () => {
   layout.destroy();
 });
 
-it("shows one rail pane at a time and routes the dock through the bridge", async () => {
+it("shows one pane at a time and routes the dock through the bridge", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const run = vi.fn();

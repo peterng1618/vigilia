@@ -245,6 +245,61 @@ body,
   text-transform: uppercase;
   color: var(--shell-muted);
 }
+/* The shell palette control. It is a trigger, not a `<select>`, so it needs
+   the same surface the other header controls draw on — the old label-and-select
+   in the Settings pane was styled by the pane's own control rules, which the
+   control no longer lives inside. */
+.editor-shell-palette {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 8px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+  cursor: pointer;
+  font: inherit;
+}
+.editor-shell-palette:hover,
+.editor-shell-palette[data-popup-open] {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
+}
+/* The swatch is a chip of the palette it names, painted from that palette's
+   own `--shell-*` tokens through `data-shell-palette` rather than from a colour
+   table here: `palette.ts` is the owner of which palettes exist, and a chip that
+   read the tokens in JS at mount would still be showing the old palette after
+   the choice changed. `inline-block` because a bare `<span>` is inline, and a
+   width on an inline box is not a width. */
+.editor-shell-palette-swatch {
+  flex: none;
+  display: inline-block;
+  vertical-align: -3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+  box-shadow: inset 0 0 0 3px var(--shell-accent);
+}
+/* The popup's rows are blocks by default, which would put the tick, the chip and
+   the name on separate lines; the palette row is the one with three parts. */
+.editor-shell-menu-popup [role="menuitemradio"].editor-shell-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-shell-menu-check {
+  display: inline-block;
+  width: 13px;
+  /* The tick reserves its width whether or not it is showing, so the names do
+     not shift sideways as the palette changes. */
+  visibility: hidden;
+}
+.editor-shell-menu-check[data-checked] {
+  visibility: visible;
+}
 .editor-shell-primary {
   margin-left: auto;
   border: 1px solid var(--shell-primary-bg);
@@ -255,48 +310,59 @@ body,
   cursor: pointer;
   font-weight: 600;
 }
+/* The pane bar heads the left column rather than standing beside it, so the
+   stage gets the rail's 52px back. The bar is above the panel rather than
+   beside it, which is why the areas are named: collapsing has to move the bar
+   across to keep it pressable without the canvas losing the column's width, and
+   per-element `grid-column` would have to be restated for every child to say
+   that. */
 .editor-shell-body {
   display: grid;
-  grid-template-columns: 52px 280px minmax(0, 1fr) 280px;
+  grid-template-areas: "bar stage inspector" "panel stage inspector";
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
   flex: 1;
   padding: 8px;
 }
-/* Collapsing the panel drops its column rather than narrowing it. The aside is
-   `hidden`, so it is no longer a grid item and the three remaining tracks are
-   the rail, the stage and the inspector — the panel's width and one gap both go
-   back to the canvas. */
+/* Collapsing drops the panel rather than narrowing it. The aside is `hidden`,
+   so it is no longer a grid item, and the bar — the only route back to it —
+   widens across the top rather than holding the column open on its own. The
+   panel's 280px and one gap both go back to the canvas. */
 .editor-shell-body[data-collapsed="true"] {
-  grid-template-columns: 52px minmax(0, 1fr) 280px;
+  grid-template-areas: "bar bar bar" "stage stage inspector";
 }
-.editor-shell-rail,
+/* A horizontal segmented header: one segment per pane, the `+` at the end. A
+   row rather than the rail's column, and labelled rather than icon-only, so
+   nothing here needs a hover to say what it opens. */
+.editor-shell-pane-bar {
+  grid-area: bar;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 12px;
+  overflow: visible;
+}
+.editor-shell-panel {
+  grid-area: panel;
+  padding: 12px;
+  color: var(--shell-muted);
+}
+.editor-shell-stage {
+  grid-area: stage;
+}
+.editor-shell-inspector {
+  grid-area: inspector;
+}
 .editor-shell-panel,
 .editor-shell-inspector {
   min-height: 0;
   overflow: auto;
   border-radius: 12px;
 }
-.editor-shell-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  overflow: visible;
-}
-/* The rail is a column of icon controls, and an icon is the whole label.
-   Without an explicit centring box the button stayed `display: block` and the
-   inline SVG sat at the start of the line, 9px left of the button's centre on
-   every entry — which is what made the rail read as misaligned. */
-.editor-shell-rail button {
-  min-height: 38px;
-  font-size: 16px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.editor-shell-rail button,
+.editor-shell-pane-bar button,
 .editor-shell-inspector button,
 .editor-shell-dock button,
 .editor-shell-arrange button {
@@ -306,20 +372,34 @@ body,
   border-radius: 7px;
   cursor: pointer;
 }
-.editor-shell-rail button {
-  min-height: 38px;
+.editor-shell-pane-bar button {
+  flex: 1;
+  min-height: 32px;
+  padding: 0 8px;
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.editor-shell-rail button[aria-pressed="true"] {
+/* The `+` is one fixed mark beside three words that share the row, so it takes
+   its own width rather than a share of the bar's. The button selector above is
+   the more specific pair, so this names the element too. */
+.editor-shell-pane-bar button.editor-shell-pane-bar-add {
+  flex: none;
+  width: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-shell-pane-bar button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+  font-weight: 600;
 }
-.editor-shell-rail button:hover,
+.editor-shell-pane-bar button:hover,
 .editor-shell-dock button:hover,
 .editor-shell-arrange button:hover {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
-}
-.editor-shell-panel {
-  padding: 12px;
-  color: var(--shell-muted);
 }
 .editor-shell-panel h2,
 .editor-shell-inspector h2 {
@@ -880,10 +960,11 @@ body,
 }
 @media (max-width: 980px) {
   .editor-shell-body {
-    grid-template-columns: 52px 240px minmax(0, 1fr);
+    grid-template-areas: "bar stage" "panel stage";
+    grid-template-columns: 240px minmax(0, 1fr);
   }
   .editor-shell-body[data-collapsed="true"] {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-areas: "bar bar" "stage stage";
   }
   .editor-shell-inspector {
     display: none;

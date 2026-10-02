@@ -35,19 +35,20 @@ const glassRefusals: Readonly<Record<string, string>> = {
 export const uiCopy = {
   brand: "Vigilia",
   editor: "Editor",
-  /** The rail's four panes. An entry's icon is a component beside the rail, not
-   *  a mark in this table: a glyph stored as a translatable string is announced
-   *  as a word of its own and cannot inherit a shell colour. */
+  /** The pane bar's three segments, and the two names the bar itself carries.
+   *  A segment's label is its content, so it is also its accessible name; the
+   *  `+` beside them is icon-only and takes its name from `insertObject`
+   *  instead — a glyph stored as a translatable string is announced as a word
+   *  of its own and cannot inherit a shell colour. */
   rail: {
+    /** The bar's own name, so a screen reader is told what the group of
+     *  segments chooses between before it reads each one. */
+    label: "Editor panes",
     layers: "Layers",
-    add: "Add",
+    insert: "Insert",
     assets: "Assets",
-    settings: "Settings",
-    /** What a rail entry does to the panel, for the tooltip. The button's
-        accessible name stays the pane it shows, so a screen reader is told the
-        pane and a hovering author is told the action. */
-    hidePanel: "Hide",
-    showPanel: "Show",
+    /** The `+`, named as what it opens rather than as the mark it draws. */
+    insertObject: "Insert an object",
   },
   inspector: { design: "Design", data: "Data", style: "Style" },
   /** Selection inspector field labels. */

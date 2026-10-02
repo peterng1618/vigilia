@@ -1,5 +1,4 @@
 import { expect, type Page, test } from "@playwright/test";
-import { openRailPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -82,7 +81,8 @@ test.describe("the settings panels name every control", () => {
     );
     await page.goto(EDITOR);
     await page.waitForSelector("[data-vigilia-panel]");
-    await openRailPane(page, "Settings");
+    // No pane is opened first: these panels are document-level, so they are in
+    // the inspector's Design tab whatever the left column is showing.
     // The gradient and delete branches render controls a solid token does not,
     // so the audit has to open the same branches an author opens. A token with
     // other tokens to reassign to is what puts the delete row on screen.

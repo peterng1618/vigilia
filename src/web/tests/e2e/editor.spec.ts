@@ -16,7 +16,7 @@ import {
   objectHandleScenePoint,
   sceneToClient,
 } from "./editor-canvas.js";
-import { openRailPane } from "./editor-rail.js";
+import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Clicks one primitive in the Add pane's shape group. */
@@ -797,7 +797,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openRailPane(page, "Add");
+    await openPane(page, "Insert");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Text" })
@@ -846,7 +846,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openRailPane(page, "Add");
+    await openPane(page, "Insert");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Gauge" })
@@ -890,7 +890,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openRailPane(page, "Add");
+    await openPane(page, "Insert");
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
@@ -916,7 +916,7 @@ test.describe("Fabric editor route", () => {
     // nothing; the inserted panel's fill is the card token and no card
     // shares it — the starter's are all `frost`.
     const panelId = (await activeId(page)) ?? "";
-    const inserted = await clientOfScene(page, panelId);
+    const inserted = await clientOfScene(page, panelId, STARTER_WIDTH);
     await page.mouse.click(inserted.x, inserted.y);
     await expect.poll(() => activeId(page)).toBe(panelId);
     await expect(fill).toHaveValue("palette.panel");
@@ -1005,7 +1005,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openRailPane(page, "Add");
+    await openPane(page, "Insert");
 
     const shapes = page
       .locator('[data-vigilia-panel="add"]')
@@ -1054,7 +1054,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openRailPane(page, "Add");
+    await openPane(page, "Insert");
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
@@ -1923,8 +1923,12 @@ test.describe("Fabric editor route", () => {
     // because it sat above "Media fit" and chose between the same two words.
     // It was the artboard content's fit, it is always contain, and no author
     // sets it — so the panel must not offer it, and must still offer the media's.
+    // No pane is opened first: the artboard panel is document-level, so it is
+    // in the inspector's Design tab whatever the left column is showing.
     await page.goto(EDITOR);
-    await openRailPane(page, "Settings");
+    await page.waitForSelector(
+      "[data-vigilia-artboard-fit-mode], [data-vigilia-background-media-fit]",
+    );
 
     await expect(page.locator("[data-vigilia-artboard-fit-mode]")).toHaveCount(
       0,
@@ -2460,7 +2464,7 @@ test.describe("Fabric editor route", () => {
     // behind a closed pane is not one a person can press. Driving the hidden
     // input directly is the route this finding is about: it stays green while
     // the feature is unreachable, so it proves nothing.
-    await openRailPane(page, "Assets");
+    await openPane(page, "Assets");
     await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
     await expect(page.locator("[data-vigilia-asset-replace]")).toBeVisible();
     await chooseAssetFile(page, "import", {
@@ -2561,7 +2565,7 @@ test.describe("Fabric editor route", () => {
       controls: { tl: true, tr: true, bl: true, br: true },
       hasSelectionGeometry: true,
     });
-    await openRailPane(page, "Assets");
+    await openPane(page, "Assets");
     await page
       .getByRole("heading", { name: "Assets" })
       .scrollIntoViewIfNeeded();
@@ -2599,7 +2603,7 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await openRailPane(page, "Assets");
+    await openPane(page, "Assets");
     await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",

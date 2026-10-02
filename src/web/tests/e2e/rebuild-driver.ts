@@ -1,9 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-// The rail pane's toggle rule has one owner and one guard: this file grew a
+// The pane bar's toggle rule has one owner and one guard: this file grew a
 // second copy of it while the rebuild was being written, which is F1.28's
 // class again.
 import { answerDialogIfShown } from "./editor-canvas.js";
-import { openRailPane } from "./editor-rail.js";
+import { openPane } from "./editor-pane-bar.js";
 
 /**
  * Driving the editor the way an author does.
@@ -141,9 +141,9 @@ export function addButton(page: Page, label: string): Locator {
 
 /** Inserts an object from the Add pane, by the word on the control. */
 export async function insert(page: Page, label: string): Promise<void> {
-  // The rail shows one pane, and selecting a layer switches it to Layers — so
-  // an author comes back to Add the same way this does.
-  await openRailPane(page, "Add");
+  // The bar shows one pane, and selecting a layer switches it to Layers — so
+  // an author comes back to Insert the same way this does.
+  await openPane(page, "Insert");
   // The selection inspector is in the Design tab and a chart's settings are in
   // Data, so a fresh object always brings the author back to Design.
   await openTab(page, "Design");
@@ -172,7 +172,7 @@ export async function insert(page: Page, label: string): Promise<void> {
  * so matching the row's own text is matching all of those too.
  */
 export async function selectLayer(page: Page, name: string): Promise<void> {
-  await openRailPane(page, "Layers");
+  await openPane(page, "Layers");
   await page
     .locator(".vigilia-layer-name")
     // Anchored, because `hasText` is a substring match and `cpu-card` would

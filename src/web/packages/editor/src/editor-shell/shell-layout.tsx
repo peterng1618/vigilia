@@ -1,13 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import { Tabs } from "@base-ui/react/tabs";
-import {
-  Check,
-  Images,
-  Layers,
-  type LucideIcon,
-  Plus,
-  Settings as SettingsIcon,
-} from "lucide-react";
+import { Check } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -20,15 +13,11 @@ import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { LayerPanel } from "./layer-panel.js";
+import { PaneBar, type RailPane } from "./pane-bar.js";
+import { PaletteMenu } from "./palette-menu.js";
 import { SaveState } from "./save-state.js";
 import { ZoomReadout } from "./zoom-readout.js";
-import {
-  applyShellPalette,
-  DEFAULT_SHELL_PALETTE,
-  readShellPalette,
-  shellPalettes,
-  writeShellPalette,
-} from "./palette.js";
+import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
 import {
   DEFAULT_RUN_DISPLAY_MODE,
   type RunDisplayMode,
@@ -36,19 +25,9 @@ import {
 import type { EditorViewControls } from "./session-facade.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
-/** Rail entries own one pane each; the inspector keeps the document panels. */
-export type RailPane = "layers" | "add" | "assets" | "settings";
-export type InspectorTab = "design" | "data" | "style";
+export type { RailPane } from "./pane-bar.js";
 
-/** One icon per rail entry. An icon is a component, not copy (§35), so it lives
- *  beside the rail rather than in `ui-copy.ts`; the label it stands for is the
- *  button's `aria-label`, which is why the marks it replaces can simply go. */
-const RAIL_ICONS: Readonly<Record<RailPane, LucideIcon>> = {
-  layers: Layers,
-  add: Plus,
-  assets: Images,
-  settings: SettingsIcon,
-};
+export type InspectorTab = "design" | "data" | "style";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Layers pane has no node here: the
@@ -445,6 +424,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const store = new SelectionStore();
   const getView = (): EditorViewControls | undefined => view;
 
+  /** The `+` opens the insert popover, which arrives with Task 3; until then
+   *  the bar renders the affordance and this is what it calls.
+   *
+   *  ponytail: inert for one task. Task 3 replaces this with the popover's
+   *  open handler and deletes the `Insert` pane's separate list from the menu
+   *  bar in the same change. */
+  const openInsertPopover = (): void => undefined;
+
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     const [pane, setPane] = useState<RailPane>("layers");
@@ -472,7 +459,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
     /** Each pane's scroll offset, kept across the swap.
      *
-     * The rail is single-panel, so opening Assets really does tear the layer
+     * The bar is single-panel, so opening Assets really does tear the layer
      * list down and build it again — the selection, the inspector's geometry
      * and the canvas handles all survive, and only the scroll was lost. With
      * the Starter's 52 rows and more in a theme an author has built, finding
@@ -480,16 +467,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const scrollOf = useRef(new Map<RailPane, number>());
     const paneBody = useRef<HTMLElement | null>(null);
 
-    const rail: readonly [RailPane, string][] = [
-      ["layers", uiCopy.rail.layers],
-      ["add", uiCopy.rail.add],
-      ["assets", uiCopy.rail.assets],
-      ["settings", uiCopy.rail.settings],
-    ];
-
-    /** The entry already showing closes the panel; any other entry — and the
-     *  closed entry itself — shows it. The canvas is what an author works in,
-     *  so the chrome around it is allowed to get out of the way. */
+    /** The segment already showing closes the panel; any other segment — and
+     *  the closed one itself — shows it. The canvas is what an author works
+     *  in, so the chrome around it is allowed to get out of the way. */
     const choosePane = (id: RailPane): void => {
       if (!collapsed && pane === id) {
         setCollapsed(true);
@@ -526,6 +506,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           <strong>{uiCopy.brand}</strong>
           <span className="editor-shell-tagline">{uiCopy.editor}</span>
           <ShellMenuBar store={store} getView={getView} />
+          <PaletteMenu
+            root={root}
+            storage={storage}
+            palette={palette}
+            onChange={setPalette}
+          />
           <button
             className="editor-shell-primary"
             type="button"
@@ -536,31 +522,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           </button>
         </header>
         <div className="editor-shell-body" data-collapsed={collapsed}>
-          <nav
-            className="editor-shell-rail editor-glass"
-            aria-label="Editor areas"
-          >
-            {rail.map(([id, label]) => {
-              const Icon = RAIL_ICONS[id];
-              // Pressed says which pane is chosen and stays true while the panel
-              // is closed, so the rail still shows what reopening restores;
-              // expanded is how the closed state is announced rather than drawn.
-              const closes = !collapsed && pane === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-label={label}
-                  title={`${closes ? uiCopy.rail.hidePanel : uiCopy.rail.showPanel} ${label}`}
-                  aria-pressed={pane === id}
-                  aria-expanded={!collapsed}
-                  onClick={() => choosePane(id)}
-                >
-                  <Icon aria-hidden size={16} strokeWidth={1.75} />
-                </button>
-              );
-            })}
-          </nav>
+          {/* The bar heads the left column rather than standing beside it, so
+              the canvas gets the rail's 52px back and the segments read as the
+              column's own header rather than a second place to navigate. */}
+          <PaneBar
+            pane={pane}
+            collapsed={collapsed}
+            onChoose={choosePane}
+            onInsert={openInsertPopover}
+          />
           <aside
             className="editor-shell-panel editor-glass"
             hidden={collapsed}
@@ -569,29 +539,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             <div hidden={pane !== "layers"}>
               <LayerPanel bridge={store.bridge} />
             </div>
-            <Host node={hosts.add} hidden={pane !== "add"} />
+            <Host node={hosts.add} hidden={pane !== "insert"} />
             <Host node={hosts.assets} hidden={pane !== "assets"} />
-            <div hidden={pane !== "settings"}>
-              <label className="editor-shell-palette">
-                {uiCopy.palette}
-                <select
-                  aria-label={uiCopy.palette}
-                  value={palette}
-                  onChange={(event) => {
-                    const next = event.target.value as typeof initial;
-                    writeShellPalette(storage ?? window.localStorage, next);
-                    applyShellPalette(root, next);
-                    setPalette(next);
-                  }}
-                >
-                  {shellPalettes.map((entry) => (
-                    <option key={entry} value={entry}>
-                      {entry}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
           </aside>
           <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
             <Host node={hosts.canvas} />
