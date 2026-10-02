@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_FACET_OPTIONS,
   catalogFacets,
   queryFaces,
   queryTrios,
   type CatalogQuery,
 } from "./font-catalog-query.js";
-import { catalogFaces, fontTrio, fontTrios, type FontTrio } from "./font-catalog.js";
+import {
+  catalogFaces,
+  fontTrio,
+  fontTrios,
+  type FontTrio,
+} from "./font-catalog.js";
 
 const none: CatalogQuery = {
   search: "",
@@ -49,14 +55,16 @@ describe("catalogue query", () => {
   it("narrows by a search term in a trio's face families", () => {
     // `cormorant-garamond-proza-libre` is named "Cormorant Garamond Proza
     // Libre" and its description names both body families, so "jetbrains"
-    // reaches it through JetBrains Mono and nothing else. Of 379 trios it is
-    // one of only two reachable by a face family alone, so it is the whole
-    // reason `matches` reads faces at all.
+    // reaches it through JetBrains Mono and nothing else. It is the *only* trio
+    // of 379 reachable by a face family alone — by 2 of the 164 family tokens,
+    // "mono" and "jetbrains" — so this one assertion is the whole reason
+    // `matches` reads faces at all.
     const hits = queryTrios({ ...none, search: "jetbrains" }, []);
-    expect(hits.map((trio) => trio.id)).toContain("cormorant-garamond-proza-libre");
-    expect(
-      `${fontTrio("cormorant-garamond-proza-libre")!.name} ${fontTrio("cormorant-garamond-proza-libre")!.description}`,
-    ).not.toContain("JetBrains");
+    expect(hits.map((trio) => trio.id)).toContain(
+      "cormorant-garamond-proza-libre",
+    );
+    const trio = fontTrio("cormorant-garamond-proza-libre")!;
+    expect(`${trio.name} ${trio.description}`).not.toContain("JetBrains");
   });
 
   it("narrows by a search term in a trio's description", () => {
@@ -140,14 +148,28 @@ describe("catalogue query", () => {
       for (const option of facet.options) {
         expect(option.count).toBe(counts.get(option.value));
       }
-      // Highest frequency first, and the list is capped.
-      expect(facet.options).toHaveLength(Math.min(14, counts.size));
+      // Highest frequency first, and the list is capped at the exported width.
+      expect(facet.options).toHaveLength(
+        Math.min(MAX_FACET_OPTIONS, counts.size),
+      );
       for (const [index, option] of facet.options.entries()) {
         const next = facet.options[index + 1];
         if (next === undefined) continue;
         expect(option.count).toBeGreaterThanOrEqual(next.count);
       }
     }
+
+    // The length assertion above reads the width from the module, so it would
+    // pass at any cap. `mood` and `useCase` both have more surviving values
+    // than any cap worth having (37 and 38), so the only thing pinning the
+    // truncation is the last option named being the cap-th, not the whole
+    // vocabulary. The user found the cap widening to 20 while nothing went red.
+    const mood = facets.find((facet) => facet.field === "mood")!;
+    expect(mood.options).toHaveLength(MAX_FACET_OPTIONS);
+    expect(mood.options.at(-1)!.value).toBe("friendly");
+    expect(countsOf(fontTrios(), "mood").size).toBeGreaterThan(
+      MAX_FACET_OPTIONS,
+    );
   });
 
   it("keeps a superfamily value that only two trios carry", () => {

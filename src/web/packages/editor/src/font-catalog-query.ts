@@ -33,7 +33,11 @@ export interface FacetField {
  * 379 trios — so the vocabulary is taken from the data rather than written by
  * hand, capped at the values worth a chip. */
 const FACET_FIELDS = ["mood", "useCase", "superfamily"] as const;
-const MAX_OPTIONS = 14;
+
+/** How many facet values are worth a chip. Exported because it is a property of
+ * the vocabulary the picker shows, and a test that hardcodes the number instead
+ * would drift from it silently. */
+export const MAX_FACET_OPTIONS = 14;
 
 let facets: readonly FacetField[] | undefined;
 
@@ -55,7 +59,7 @@ export function catalogFacets(): readonly FacetField[] {
           (left, right) =>
             right[1] - left[1] || left[0].localeCompare(right[0]),
         )
-        .slice(0, MAX_OPTIONS)
+        .slice(0, MAX_FACET_OPTIONS)
         .map(([value, count]) => ({ value, count })),
     };
   });
