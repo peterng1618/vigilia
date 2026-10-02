@@ -189,8 +189,29 @@ right-align to a fixed column so the controls form a single vertical edge.
 ## Chrome — a token system, and an honest colour scheme
 
 Four token layers are added where there are none: **spacing, radius, type scale,
-elevation**, on a 4px base unit. These replace 35 px literals, 8 radii and 5 font sizes.
-The 12 `--shell-*` colour tokens are the one layer that already works and stay.
+elevation**. These replace 35 px literals, 8 radii and 5 font sizes.
+
+**Tailwind v4 is the mechanism, and its `@theme` maps onto this codebase's actual
+problem rather than onto a generic one.** Spacing is a single declaration —
+`--spacing: 0.25rem` — from which the whole scale is generated as
+`calc(var(--spacing) * n)`, so the 4px base unit replaces every literal at once rather
+than one migration at a time. Radius, `--text-*` (each carrying its own `--line-height`,
+`--tracking` and `--font-weight`) and `--shadow-*` cover the other three layers.
+
+The important one is **`@theme inline`**, which makes a Tailwind utility reference the
+live variable rather than a copy of it:
+
+```css
+@theme inline {
+  --color-surface: var(--shell-surface);
+  --color-canvas:  var(--vigilia-canvas-bg);
+}
+```
+
+That is what palette switching needs. `applyShellPalette` sets one data attribute on
+`:root` and the CSS cascade does the rest; with `inline`, utilities read that same live
+value, so changing `data-shell-palette` recolours the shell without Tailwind knowing a
+palette exists. Without it, each palette would need its own generated utility set.
 
 - `--vigilia-*` moves into `:root`; `editorial` keeps only what it overrides. Every
   palette then resolves.
@@ -199,10 +220,7 @@ The 12 `--shell-*` colour tokens are the one layer that already works and stay.
 - **The editor follows the system appearance.** `prefers-color-scheme` picks a default;
   the palette picker is an explicit override on top. `index.html` already claims
   `content-scheme="light dark"`, so this makes the claim true instead of removing it.
-- **Tailwind is adopted, not merely installed.** §35 names it, Base UI is already the
-  component library, and a token scale is exactly what its theme block expresses. The
-  hand-authored spacing, radius and type declarations go as utilities replace them.
-  `components.json` is deleted: nothing generates or consumes shadcn, and a config
+- `components.json` is deleted: nothing generates or consumes shadcn, and a config
   implying a component library that does not exist is the same defect as a token that
   resolves to nothing.
 
@@ -293,9 +311,17 @@ no menu archaeology.
 
 ---
 
-## Decisions where another was defensible
+## Ruled during review
 
-Recorded so the review can argue with them.
+Settled by the user, not argued here:
+
+- **Tailwind v4 is adopted.** §35 names it, it is installed, and its `@theme`/`@theme
+  inline` is a better fit than the alternative — `inline` is precisely what a runtime
+  `data-shell-palette` swap needs.
+- **The right column empties on deselect.** Confirmed as the context-aware behaviour the
+  editor wants, not as a loss of information.
+
+## Decisions still open to argument
 
 | Decision | Alternative | Why this one |
 |---|---|---|
@@ -303,11 +329,9 @@ Recorded so the review can argue with them.
 | Drop the rail | Keep it, fix the panes | A navigation level spent on a palette dropdown; 52px of stage for it |
 | Insert and View leave the menus | Keep all five | Both duplicate something better placed; the `+` is more findable than a menu |
 | One properties column, no tabs | Keep tabs, scope each | Tabs *hid* chart data behind a hint sentence; hiding a property is the bug |
-| Right column empties on deselect | Show document properties there | One rule — left is contents, right is the selection — that two scopes can't share a scroll |
 | Arrange merges into the dock | Keep two toolbars | The registry already answers eligibility; two floating bars is a layout duplication |
 | Groups collapsed by default | Expanded by default | 52 rows is the innards; the composition is the top level |
 | Kind as a treatment, not a glyph | A better icon | Only a treatment survives at 280px, and a text row should read its own text |
-| Adopt Tailwind | Remove it, keep hand-authored CSS | §35 names it and it is installed; adopting is smaller than justifying the install |
 | Follow the system appearance | Manual palette only | The meta tag already claims `light dark`; honouring it is cheaper than removing it |
 | Device presets in the zoom control | A real device-preview panel | One canvas, the camera that already exists, no second renderer |
 
