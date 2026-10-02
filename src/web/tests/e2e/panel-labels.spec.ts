@@ -47,6 +47,10 @@ const CONTROLS = [
   "[data-vigilia-palette-stop-color]",
   "[data-vigilia-palette-replacement]",
   "[data-vigilia-palette-delete]",
+  // The header's shell palette, which is not one of the three panels but lost
+  // its name when the `<select aria-label="Shell palette">` became a menu: the
+  // trigger announces its own content, and its content is the current value.
+  "[data-vigilia-palette]",
   // Type presets
   "[data-vigilia-type-preset]",
   "[data-vigilia-type-name]",
@@ -66,7 +70,15 @@ const CONTROLS = [
     output is `- <role> "<name>": <value>`. */
 async function accessibleName(page: Page, selector: string): Promise<string> {
   const snapshot = (await page.locator(selector).first().ariaSnapshot()).trim();
-  return /^-\s*[a-z]+\s*"([^"]*)"/i.exec(snapshot)?.[1] ?? "";
+  return (
+    /^-\s*[a-z]+\s*"([^"]*)"/i.exec(snapshot)?.[1] ??
+    // A name containing ": " makes the YAML emitter quote the whole node, so
+    // it arrives as `- 'button "<name>"': <value>` and the anchored form above
+    // reads nothing. Still a role and still a quoted name inside the quotes,
+    // so a quoted *value* on an unnamed control is not mistaken for a name.
+    /^-\s*'[a-z]+\s*"([^"]*)"'/i.exec(snapshot)?.[1] ??
+    ""
+  );
 }
 
 test.describe("the settings panels name every control", () => {

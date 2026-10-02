@@ -471,18 +471,21 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  the closed one itself — shows it. The canvas is what an author works
      *  in, so the chrome around it is allowed to get out of the way. */
     const choosePane = (id: RailPane): void => {
+      // Read the offset off the DOM rather than off an event: the panel is torn
+      // down by the swap, so anything held in state is already gone by the time
+      // this runs for the next pane. Taken before any branch, because every
+      // branch but the collapse hides the panel and a `display: none` box has
+      // no scroll offset to read — the getter answers 0, so a save taken after
+      // the collapse writes the author's place back as the top of the list.
+      if (!collapsed && paneBody.current !== null) {
+        scrollOf.current.set(pane, paneBody.current.scrollTop);
+      }
       if (!collapsed && pane === id) {
         setCollapsed(true);
         // Collapsing hands the canvas 288px, and the refit runs here too rather
         // than only on a pane swap.
         refitOnViewportChange();
         return;
-      }
-      // Read the offset off the DOM rather than off an event: the panel is torn
-      // down by the swap, so anything held in state is already gone by the time
-      // this runs for the next pane.
-      if (paneBody.current !== null) {
-        scrollOf.current.set(pane, paneBody.current.scrollTop);
       }
       setPane(id);
       setCollapsed(false);

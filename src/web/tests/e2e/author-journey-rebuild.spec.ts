@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
+import { openPane } from "./editor-pane-bar.js";
 import {
   addCard,
   addChart,
@@ -70,7 +71,7 @@ test.describe("the reference composition, built from blank", () => {
 
     expect(await readScene(page)).toEqual([]);
 
-    await page.getByRole("button", { name: "Insert", exact: true }).click();
+    await openPane(page, "Insert");
     const pane = page.locator('[data-vigilia-panel="add"]');
     await expect(pane.getByRole("button")).toHaveCount(13);
     await expect(pane.getByRole("group", { name: "Shape" })).toBeVisible();
@@ -101,7 +102,7 @@ test.describe("the reference composition, built from blank", () => {
     ])
       await addColour(page, name, hex);
 
-    await page.getByRole("button", { name: "Insert", exact: true }).click();
+    await openPane(page, "Insert");
 
     // V I G I L I A — tracked, light, top-left.
     await addText(page, {
@@ -235,7 +236,7 @@ test.describe("the reference composition, built from blank", () => {
       ["VRAM magenta", "#d24bf0"],
     ])
       await addColour(page, name, hex);
-    await page.getByRole("button", { name: "Insert", exact: true }).click();
+    await openPane(page, "Insert");
 
     await addCard(page, {
       name: "cpu-card",
@@ -415,7 +416,7 @@ test.describe("the rest of the composition", () => {
     await page.waitForSelector("#canvas-host canvas");
     await openBlank(page);
     for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-    await page.getByRole("button", { name: "Insert", exact: true }).click();
+    await openPane(page, "Insert");
   });
 
   test("the GPU card", async ({ page }) => {
@@ -867,7 +868,7 @@ test("what the rebuild authored survives the save", async ({
   await page.waitForSelector("#canvas-host canvas");
   await openBlank(page);
   for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-  await page.getByRole("button", { name: "Insert", exact: true }).click();
+  await openPane(page, "Insert");
 
   // The CPU card: the richest region. A frosted panel, a stroked path, a
   // two-run reading and a bound sparkline — every kind of authored state the

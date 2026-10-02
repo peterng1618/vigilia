@@ -1,8 +1,62 @@
 // @vitest-environment jsdom
 
+import { act } from "react";
 import { describe, expect, it } from "vitest";
 import { uiCopy } from "../ui-copy.js";
-import { createShellLayout } from "./shell-layout.js";
+import { createShellLayout, type ShellLayout } from "./shell-layout.js";
+
+/** The bar's segments, by the label they show rather than by the icon they
+ *  used to draw: the rail's entries were named by `title`, and a labelled
+ *  segment has no tooltip to address. */
+function segment(root: HTMLElement, label: string): HTMLButtonElement {
+  return Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-pane-bar button"),
+  ).find((button) => button.textContent?.trim() === label)!;
+}
+
+function panel(root: HTMLElement): HTMLElement {
+  return root.querySelector<HTMLElement>("aside.editor-shell-panel")!;
+}
+
+/** One frame, which is when `choosePane` restores. */
+async function frame(): Promise<void> {
+  await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+}
+
+/** Models the browser's `scrollTop` on a hidden box.
+ *
+ *  jsdom has no layout, so its `scrollTop` round-trips whatever value it was
+ *  given and remembers it while the element is `hidden` — the opposite of the
+ *  browser, where a `display: none` box has no box to scroll and the getter
+ *  answers 0 whatever was last written. An assertion over jsdom's own
+ *  behaviour therefore passes whether or not the offset survives a collapse,
+ *  which is the defect under test; this is the one pin in this file that can
+ *  fail. `editor-pane-bar.spec.ts` pins the same thing against a real browser,
+ *  where the model below is not needed to make it bite. */
+function modelHiddenScrollTop(node: HTMLElement): void {
+  let offset = 0;
+  Object.defineProperty(node, "scrollTop", {
+    get: () => (node.hidden ? 0 : offset),
+    set: (value: number) => {
+      offset = value;
+    },
+    configurable: true,
+  });
+}
+
+/** A shell in a detached-from-layout document, with the layer list's scrollable
+ *  height stated: jsdom does not lay out, and what is under test is the offset
+ *  surviving the swap, not the height that makes it scrollable. */
+function mount(): { readonly layout: ShellLayout; readonly root: HTMLElement } {
+  const root = document.createElement("div");
+  document.body.append(root);
+  const layout = createShellLayout(root);
+  Object.defineProperty(panel(root), "scrollHeight", {
+    value: 5000,
+    configurable: true,
+  });
+  return { layout, root };
+}
 
 /**
  * The pane bar is single-panel, so opening Assets really does take the layer
@@ -13,37 +67,40 @@ import { createShellLayout } from "./shell-layout.js";
  */
 describe("the pane bar keeps each pane where you left it", () => {
   it("returns the layer list to the offset it was scrolled to", async () => {
-    const root = document.createElement("div");
-    document.body.append(root);
-    const layout = createShellLayout(root);
-    // The bar's segments, by the label they show rather than by the icon they
-    // used to draw: the rail's entries were named by `title`, and a labelled
-    // segment has no tooltip to address.
-    const segment = (label: string): HTMLButtonElement =>
-      Array.from(
-        root.querySelectorAll<HTMLButtonElement>(
-          ".editor-shell-pane-bar button",
-        ),
-      ).find((button) => button.textContent?.trim() === label)!;
-    const panel = (): HTMLElement =>
-      root.querySelector<HTMLElement>("aside.editor-shell-panel")!;
+    const { layout, root } = mount();
+    panel(root).scrollTop = 499;
 
-    // jsdom does not lay out, so the scrollable height is stated rather than
-    // measured — what is under test is the offset surviving the swap.
-    const scrollable = Object.defineProperty(panel(), "scrollHeight", {
-      value: 5000,
-      configurable: true,
-    });
-    void scrollable;
-    panel().scrollTop = 499;
+    segment(root, uiCopy.rail.assets).click();
+    await frame();
+    expect(panel(root).scrollTop).toBe(0);
 
-    segment(uiCopy.rail.assets).click();
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-    expect(panel().scrollTop).toBe(0);
+    segment(root, uiCopy.rail.layers).click();
+    await frame();
+    expect(panel(root).scrollTop).toBe(499);
 
-    segment(uiCopy.rail.layers).click();
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-    expect(panel().scrollTop).toBe(499);
+    layout.destroy();
+    root.remove();
+  });
+
+  it("returns it there too when the panel was closed in between", async () => {
+    const { layout, root } = mount();
+    modelHiddenScrollTop(panel(root));
+    panel(root).scrollTop = 499;
+
+    // Collapsing is the step that loses the place. The panel goes `display:
+    // none`, so the offset is only readable before this, and the swap that
+    // follows must not save over what was read here with the 0 a hidden box
+    // answers with.
+    await act(async () => segment(root, uiCopy.rail.layers).click());
+    expect(panel(root).hidden).toBe(true);
+
+    await act(async () => segment(root, uiCopy.rail.assets).click());
+    await frame();
+    expect(panel(root).scrollTop).toBe(0);
+
+    await act(async () => segment(root, uiCopy.rail.layers).click());
+    await frame();
+    expect(panel(root).scrollTop).toBe(499);
 
     layout.destroy();
     root.remove();

@@ -40,20 +40,30 @@ export function PaletteMenu({
   /** The element carrying `data-shell-palette`, so the change repaints. */
   readonly root: HTMLElement;
   /** `undefined` where the browser refuses local storage; the palette then
-   *  holds for the session rather than refusing to be chosen. */
+   *  holds for the session rather than refusing to be chosen, so the write is
+   *  skipped rather than attempted against a store that throws. */
   readonly storage: Storage | undefined;
   readonly palette: ShellPalette;
   readonly onChange: (next: ShellPalette) => void;
 }): React.JSX.Element {
   const choose = (next: ShellPalette): void => {
-    writeShellPalette(storage ?? window.localStorage, next);
+    if (storage !== undefined) writeShellPalette(storage, next);
     applyShellPalette(root, next);
     onChange(next);
   };
 
   return (
     <Menu.Root>
-      <Menu.Trigger className="editor-shell-palette" data-vigilia-palette="">
+      {/* Named for what it chooses, not for the value printed beside the chip:
+          that value is a state, so a trigger left to announce its own content
+          says "editorial, button" and nothing about what editorial is. The
+          `: value` half is the `ViewSetting` idiom this shell already uses —
+          a menu that shows what it is set to has to be able to say it. */}
+      <Menu.Trigger
+        className="editor-shell-palette"
+        data-vigilia-palette=""
+        aria-label={`${uiCopy.palette}: ${palette}`}
+      >
         <Swatch palette={palette} />
         {palette}
       </Menu.Trigger>

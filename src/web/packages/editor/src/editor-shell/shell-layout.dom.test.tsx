@@ -345,8 +345,9 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   // The viewport refits a fitted camera on a resize by itself, so this looks
   // like the leftover it was once assumed to be. It is not: `resize()` holds a
   // camera the author has zoomed or panned, and a panel collapse is the author
-  // handing the canvas 280px on purpose. Delete this and the camera stays where
-  // the author left it while 280px of workspace goes unused.
+  // handing the canvas 288px on purpose — the 280px column and the 8px gap the
+  // panel no longer separates. Delete this and the camera stays where the
+  // author left it while 288px of workspace goes unused.
   await act(async () => segment(root, uiCopy.rail.layers).click());
   expect(zoomToFit, "the toggle waits for the viewport, not the frame").not
     .toHaveBeenCalled();
@@ -431,8 +432,8 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
   await resized();
   expect(zoomToFit, "the collapse re-framed").toHaveBeenCalledTimes(1);
 
-  // The other half of the guard in the test above: this swap *does* hand the
-  // canvas 280px back, so the refit is the point and skipping it would strand
+  // The other half of the guard in the test above: this reopen *does* take the
+  // canvas 288px back, so the refit is the point and skipping it would strand
   // the theme at the collapsed zoom.
   await act(async () => segment(root, uiCopy.rail.layers).click());
   await resized();

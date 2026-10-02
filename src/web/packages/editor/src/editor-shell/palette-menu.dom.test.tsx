@@ -136,10 +136,14 @@ it("shows a swatch of the current palette beside its name", async () => {
   const trigger = host.querySelector("[data-vigilia-palette]");
 
   // The chip paints from the palette's own `--shell-*` tokens through
-  // `data-shell-palette`, so it cannot read once at mount and go stale; the
-  // name beside it is the accessible name, because a swatch alone is not one.
+  // `data-shell-palette`, so it cannot read once at mount and go stale.
   expect(trigger?.querySelector("[data-shell-palette='graphite']")).not.toBeNull();
   expect(trigger?.textContent?.trim()).toBe("graphite");
+  // And the trigger names itself. The value beside the chip is a state, not a
+  // label: left to its own content the button announces "graphite, button",
+  // which says what the shell currently is and nothing about what choosing it
+  // does.
+  expect(trigger?.getAttribute("aria-label")).toBe("Shell palette: graphite");
 });
 
 it("writes the choice through both owners", async () => {

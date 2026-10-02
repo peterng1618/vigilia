@@ -133,7 +133,7 @@ async function reading(
 export async function openBlankComposition(page: Page): Promise<void> {
   await openBlank(page);
   for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-  await page.getByRole("button", { name: "Insert", exact: true }).click();
+  await openPane(page, "Insert");
 }
 
 /** Wordmark, strapline and the clock card. */
