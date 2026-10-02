@@ -1707,7 +1707,14 @@ test.describe("Fabric editor route", () => {
       route.fulfill({ body: Buffer.from([0, 1, 2]) }),
     );
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
-    await page.locator("[data-vigilia-font-face]").selectOption("inter-700");
+    // Read the option the panel offers rather than typing an id: the picker's
+    // rows come from the generated catalogue, so a literal here pins one
+    // revision of it.
+    const faceId = await page
+      .locator("[data-vigilia-font-face] option")
+      .first()
+      .getAttribute("value");
+    await page.locator("[data-vigilia-font-face]").selectOption(faceId!);
     await page.locator("[data-vigilia-font-apply]").click();
     const size = page.locator("[data-vigilia-type-size]");
     await size.fill("34");
@@ -1744,7 +1751,7 @@ test.describe("Fabric editor route", () => {
     expect(reopened.globals.typePresets["36-500"].value).toMatchObject({
       size: 34,
       letterSpacing: 0.25,
-      face: { assetId: "inter-700" },
+      face: { assetId: faceId! },
       trioRole: "heading",
     });
     await page

@@ -1,5 +1,9 @@
 import type { TypePreset } from "@vigilia/renderer-core";
-import { type CuratedFontFace, fontTrios } from "../font-catalog.js";
+import {
+  type CuratedFontFace,
+  catalogFaces,
+  fontTrios,
+} from "../font-catalog.js";
 import { uiCopy } from "../ui-copy.js";
 
 export type TypePresets = Readonly<
@@ -158,7 +162,7 @@ export function createTypePresetPanel(
   };
   const fontControls = (): HTMLElement[] => {
     if (fontActions === undefined) return [];
-    const faces = fontTrios().flatMap((trio) => trio.faces);
+    const faces = catalogFaces();
     const face = document.createElement("select");
     face.dataset["vigiliaFontFace"] = "";
     face.id = `vigilia-type-${++fieldSeq}`;

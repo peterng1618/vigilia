@@ -421,29 +421,30 @@ describe("EditorSession", () => {
     });
 
     const result = await extensions.applyFontTrio("minimal");
+    const heading = fontTrio("minimal")!.faces[0]!;
 
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(result.globals?.typePresets).toMatchObject({
       heading: {
         value: {
-          family: "Inter",
+          family: heading.family,
           size: 32,
-          weight: 700,
-          face: { assetId: "inter-700" },
+          weight: heading.weight,
+          face: { assetId: heading.id },
         },
       },
       metric: {
         value: {
-          family: "Inter",
+          family: heading.family,
           size: 70,
-          weight: 700,
-          face: { assetId: "inter-700" },
+          weight: heading.weight,
+          face: { assetId: heading.id },
         },
       },
       custom: { name: "Custom", value: { family: "Georgia", size: 19 } },
     });
     expect(result.assets).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "inter-700" })]),
+      expect.arrayContaining([expect.objectContaining({ id: heading.id })]),
     );
     expect(shell.editor.historyManager.saveState).toHaveBeenCalledTimes(1);
     extensions.destroy();
@@ -454,6 +455,7 @@ describe("EditorSession", () => {
       "fetch",
       vi.fn(async () => new Response(new Uint8Array([1, 2, 3]))),
     );
+    const body = fontTrio("minimal")!.faces[1]!;
     const shell = {
       editor: {
         canvas: {
@@ -488,11 +490,11 @@ describe("EditorSession", () => {
             heading: {
               name: "Heading",
               value: {
-                family: "Inter",
+                family: "Segoe UI",
                 size: 32,
                 weight: "700",
                 trioRole: "heading",
-                face: { assetId: "inter-700" },
+                face: { assetId: fontTrio("minimal")!.faces[0]!.id },
               },
             },
           },
@@ -511,24 +513,21 @@ describe("EditorSession", () => {
       onSaved: vi.fn(),
     });
 
-    const result = await extensions.applyPresetFace(
-      "heading",
-      fontTrio("minimal")!.faces[1]!,
-    );
+    const result = await extensions.applyPresetFace("heading", body);
 
     expect(result.globals?.typePresets).toMatchObject({
       heading: {
         value: {
-          family: "Inter",
+          family: body.family,
           size: 32,
-          weight: 400,
+          weight: body.weight,
           trioRole: "heading",
-          face: { assetId: "inter-400" },
+          face: { assetId: body.id },
         },
       },
     });
     expect(result.assets).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "inter-400" })]),
+      expect.arrayContaining([expect.objectContaining({ id: body.id })]),
     );
     extensions.destroy();
   });

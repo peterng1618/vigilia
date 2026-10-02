@@ -107,14 +107,14 @@ describe("AssetManager", () => {
     const asset = await manager.adoptFont(face, new Uint8Array([0, 1, 2]));
 
     expect(asset).toMatchObject({
-      id: "inter-700",
+      id: face.id,
       kind: "font",
-      path: "assets/inter-700.woff2",
-      family: "Inter",
-      weight: 700,
+      path: `assets/${face.id}.woff2`,
+      family: face.family,
+      weight: face.weight,
       format: "woff2",
     });
-    expect(manager.assets["assets/inter-700.woff2"]).toEqual(
+    expect(manager.assets[`assets/${face.id}.woff2`]).toEqual(
       new Uint8Array([0, 1, 2]),
     );
   });

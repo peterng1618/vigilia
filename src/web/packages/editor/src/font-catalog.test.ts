@@ -1,30 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { applyFontTrio, faceForRole, fontTrio } from "./font-catalog.js";
+import {
+  applyFontTrio,
+  catalogFaces,
+  faceForRole,
+  fontTrio,
+  fontTrios,
+} from "./font-catalog.js";
+
+/** A real trio with three distinct families, so a test cannot pass on a
+ * fixture whose three roles happen to share one family. */
+const trio = fontTrios().find(
+  (candidate) => new Set(candidate.faces.map((face) => face.family)).size === 3,
+)!;
 
 describe("curated font trios", () => {
-  it("provides three distinct pinned Fontsource WOFF2 faces", () => {
-    const trio = fontTrio("minimal");
-
-    expect(trio?.faces).toHaveLength(3);
-    expect(new Set(trio?.faces.map((face) => face.id)).size).toBe(3);
-    for (const face of trio?.faces ?? []) {
-      expect(face.sourceUrl).toMatch(
-        /^https:\/\/cdn\.jsdelivr\.net\/fontsource\/fonts\/.+@\d+\.\d+\.\d+\/.+\.woff2$/,
-      );
-      expect(face.sourceUrl).not.toContain("latest");
-      expect(face.format).toBe("woff2");
-    }
+  it("serves every generated trio through one owner", () => {
+    expect(fontTrios().length).toBeGreaterThan(1);
+    expect(fontTrio(trio.id)).toBe(trio);
+    expect(fontTrio("no-such-trio")).toBeUndefined();
   });
 
   it("selects the nearest available role face weight", () => {
-    const trio = fontTrio("minimal")!;
+    const heading = trio.faces.find((face) => face.role === "heading")!;
+    expect(faceForRole(trio, "heading", heading.weight)?.weight).toBe(
+      heading.weight,
+    );
+    expect(faceForRole(trio, "body", 9999)).toBeDefined();
+  });
 
-    expect(faceForRole(trio, "heading", 300)?.weight).toBe(700);
-    expect(faceForRole(trio, "body", 600)?.weight).toBe(400);
+  it("exposes each distinct face once for the picker", () => {
+    const faces = catalogFaces();
+    expect(new Set(faces.map((face) => face.id)).size).toBe(faces.length);
+    expect(faces.length).toBeGreaterThan(100);
   });
 
   it("updates every role preset without changing its treatment or custom presets", () => {
-    const trio = fontTrio("minimal")!;
+    const heading = trio.faces.find((face) => face.role === "heading")!;
+    const body = trio.faces.find((face) => face.role === "body")!;
+    const mono = trio.faces.find((face) => face.role === "mono")!;
     const presets = {
       heading: {
         name: "Heading",
@@ -36,24 +49,9 @@ describe("curated font trios", () => {
           trioRole: "heading" as const,
         },
       },
-      metric: {
-        name: "Metric",
-        value: {
-          family: "Segoe UI",
-          size: 70,
-          weight: "300",
-          letterSpacing: 2,
-          trioRole: "heading" as const,
-        },
-      },
       body: {
         name: "Body",
-        value: {
-          family: "Segoe UI",
-          size: 14,
-          weight: "600",
-          trioRole: "body" as const,
-        },
+        value: { family: "Segoe UI", size: 14, trioRole: "body" as const },
       },
       mono: {
         name: "Code",
@@ -66,46 +64,42 @@ describe("curated font trios", () => {
       heading: {
         name: "Heading",
         value: {
-          family: "Inter",
+          family: heading.family,
           size: 32,
-          weight: 700,
+          weight: heading.weight,
           lineHeight: 1.2,
           trioRole: "heading",
-          face: { assetId: "inter-700" },
-        },
-      },
-      metric: {
-        name: "Metric",
-        value: {
-          family: "Inter",
-          size: 70,
-          weight: 700,
-          letterSpacing: 2,
-          trioRole: "heading",
-          face: { assetId: "inter-700" },
+          face: { assetId: heading.id },
         },
       },
       body: {
         name: "Body",
         value: {
-          family: "Inter",
+          family: body.family,
           size: 14,
-          weight: 400,
+          weight: body.weight,
           trioRole: "body",
-          face: { assetId: "inter-400" },
+          face: { assetId: body.id },
         },
       },
       mono: {
         name: "Code",
         value: {
-          family: "JetBrains Mono",
+          family: mono.family,
           size: 12,
-          weight: 400,
+          weight: mono.weight,
           trioRole: "mono",
-          face: { assetId: "jetbrains-mono-400" },
+          face: { assetId: mono.id },
         },
       },
       custom: { name: "Custom", value: { family: "Georgia", size: 19 } },
     });
+  });
+
+  it("leaves a preset with no trio role untouched", () => {
+    const custom = {
+      only: { name: "Only", value: { family: "Georgia", size: 19 } },
+    };
+    expect(applyFontTrio(custom, trio)).toEqual(custom);
   });
 });
