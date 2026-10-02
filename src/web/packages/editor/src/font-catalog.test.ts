@@ -22,28 +22,41 @@ describe("curated font trios", () => {
 
   it("selects the face for a role, and the nearest weight within it", () => {
     // Identity, not a field comparison, on both halves: a trio holds exactly
-    // one face per role, so an unbounded lookup returns the heading face for
-    // every role and still satisfies a definedness or weight assertion. That
-    // bug is silent in a unit test and loud in a shipped theme, because
-    // `applyFontTrio` writes whatever comes back into the body and mono
-    // presets. 9999 is past every weight here, so it selects the whole role.
+    // one face per role, so an unbounded lookup still satisfies a definedness
+    // or weight assertion while returning the wrong face. That bug is silent in
+    // a unit test and loud in a shipped theme, because `applyFontTrio` writes
+    // whatever comes back into every preset holding that role.
     const heading = trio.faces.find((face) => face.role === "heading")!;
     const body = trio.faces.find((face) => face.role === "body")!;
     expect(faceForRole(trio, "heading", heading.weight)).toBe(heading);
+    // 9999 is past every weight in the trio, so the nearest face is the role's
+    // own whatever the sort compares. This pins the role filter alone.
     expect(faceForRole(trio, "body", 9999)).toBe(body);
-    // Nearest within the role: the only body face is nearest to every weight,
-    // so this pins that the sort runs over the role and not over the trio.
-    expect(faceForRole(trio, "body", 1)).toBe(body);
+    // The heading's own weight, asked of the body role. Filtered, the body face
+    // is the only candidate and this passes; unfiltered, the heading face is
+    // nearer to its own weight than the body face is, so it returns that
+    // instead. This catches the same missing filter as 9999 does, at a weight
+    // where the face that leaks in is the heading's own.
+    //
+    // A low weight does not work here: body and mono are both 400 on this trio,
+    // so the nearest-weight sort ties and stable order returns body regardless —
+    // 326 of the 379 trios answer a weight-1 lookup with body either way.
+    //
+    // Neither assertion can catch a broken comparator, and no assertion in this
+    // file could: a trio holds one face per role, so the filtered array has one
+    // element and the sort is a no-op on it. The comparator is only observable
+    // once the filter is already gone.
+    expect(faceForRole(trio, "body", heading.weight)).toBe(body);
   });
 
   it("exposes each distinct face once for the picker", () => {
     const faces = catalogFaces();
     expect(new Set(faces.map((face) => face.id)).size).toBe(faces.length);
     // 261, not the design doc's measured 238. That count came from clamping
-    // every heading to a uniform 700, which discards the pairing's own `h1`
-    // recommendation for 141 of the 379 pairings and marks the result
-    // `clamped` when it is in fact the author's choice. Clamping to the
-    // recommendation keeps those extra faces, so the list is longer.
+    // every heading to a uniform 700, which overwrites the pairing's own `h1`
+    // recommendation for the 146 pairings whose heading is not a 700, and marks
+    // the result `clamped` when it is in fact the author's choice. Clamping to
+    // the recommendation keeps those extra faces, so the list is longer.
     expect(faces).toHaveLength(261);
   });
 

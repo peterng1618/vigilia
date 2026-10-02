@@ -54,6 +54,13 @@ export function catalogFaces(): readonly CuratedFontFace[] {
   return GENERATED_FACES;
 }
 
+/** The face this trio uses for `role`, nearest to `weight`. Every preset
+ * holding that role is rewritten with whatever this returns, so dropping the
+ * role filter does not merely degrade one role — it hands each preset the face
+ * of whichever trio face happens to sit nearest, and the role that owns that
+ * weight is the one that survives. Which role that is depends on the trio: on
+ * `yaldevi-libre-franklin`, where body and mono are both 400, body is returned
+ * for every role and the heading and mono presets take the body's face. */
 export function faceForRole(
   trio: FontTrio,
   role: FontTrioRole,
