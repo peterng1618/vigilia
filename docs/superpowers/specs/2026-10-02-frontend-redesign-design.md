@@ -73,6 +73,54 @@ Not design decisions; this spec does not touch them.
 - Never fabricate a reading. A missing or non-`ok` sample stays a gap.
 - Editor-shell theming stays separate from authored theme globals (§35).
 
+## Every existing authoring capability is preserved
+
+**Stated by the user as a constraint on this redesign.** Nothing an author can do today
+becomes something they cannot do tomorrow. Everything else — layout, navigation,
+naming, density, tokens, type treatment, where a control lives, how it looks — is free.
+
+This is a constraint on *capability*, not on *placement*. The design moves capabilities
+almost everywhere; it may drop none of them. Where a decision below removes a surface,
+the capability moves with it, and the plan's acceptance is a walk of this table.
+
+| Capability today | Lands |
+|---|---|
+| New theme · New from starter · Open package | File menu, unchanged |
+| Save package | **Export** |
+| Release package | **Preserved.** Distinct capability until proven to be one of the other two — see Saving |
+| Save to library | **Publish to this PC**, which additionally makes the theme live |
+| Open library | File menu, unchanged |
+| Undo · Redo · Copy · Cut · Duplicate · Delete | Edit menu, unchanged |
+| Insert text · shapes · charts | The `+` popover in the left column, rendering `insertGroups()` unchanged |
+| **Data source: preview ↔ live** | Canvas-local controls beside the zoom readout |
+| **Chart refresh: 30 ↔ 1 fps** | Canvas-local controls beside the zoom readout |
+| **Value runs: values ↔ tokens** | Canvas-local controls beside the zoom readout |
+| Shell palette | Header swatch opening the palette list |
+| Layer select · drag-reorder · inline rename | Layer panel, unchanged |
+| Layer lock and visibility toggles | Layer rows, shown on hover / selection / when non-default |
+| Group · Ungroup | Contextual toolbar and canvas context menu, from the registry |
+| Object action row (layer panel) | The contextual toolbar — one rendering, not two |
+| Arrange: align and distribute | The contextual toolbar, registry-gated on multi-selection |
+| Stack order: front · forward · backward · back | One **Order** menu beside the toolbar |
+| Dock duplicate · copy · cut · delete | The contextual toolbar |
+| Dock lock | Toolbar toggle; per-row state stays in the layer panel |
+| Canvas context menu | Unchanged, third consumer of the action registry (§172) |
+| Zoom fit · 100% · pan | Zoom control, **plus** the device presets |
+| Select · move · resize · rotate · snap · smart guides · multi-select · enter group · nudge · select-all | Unchanged — this design does not touch canvas mechanics |
+| Selection properties (geometry, rotation, opacity, fill, stroke, border, radius, shadow, frosted glass, blur) | Properties column sections, unchanged fields |
+| Chart data bindings | Properties column **Data** section, no longer behind a tab |
+| Token references and what they resolve to | Properties column **References** section |
+| Artboard and document properties | Left column **Document** tab |
+| Palette · type presets | Left column **Document** tab |
+| Assets | Left column **Assets** tab |
+| Keyboard shortcuts | Unchanged map, now visible in tooltips and a reference |
+| Save state · diagnostics · dirty-work confirmation | Status bar, minus developer text |
+
+Three rows were capability losses in the first draft of this design and are now
+preserved: the three **View** settings had no named home and would have been dropped with
+their menu; **Release package** would have been folded away without being read; and the
+player's availability **reasons** would have become reachable only behind an interaction.
+
 ---
 
 # The editor
@@ -251,9 +299,10 @@ package is before they have made one.
   the displays show. The consequence is in the verb.
 - **Export** — writes a `.zip` to the PC.
 
-`Release package`'s distinct purpose must be **confirmed by reading `#release` before the
-plan decides its fate**, not assumed to be one of the two. If it is Export-with-a-
-thumbnail it folds into Export; if it is something else it earns its own name or goes.
+`Release package` is a **preserved capability**, not a candidate for deletion. Its fate
+is settled only by reading `#release`: if it is Export-with-a-thumbnail it folds into
+Export and says so; if it is something else it keeps its own verb. It does not go on
+inference.
 
 Feedback moves to **a toast beside the action**, not the status bar — at 1512px wide a
 line of text in the bottom-left corner is not feedback, it is a log. The status bar keeps
@@ -281,11 +330,14 @@ built it in.
 theme is `contain`-fitted by design (§53). The defect was that choosing was uninformed,
 and the editor's device presets fix that. Nothing about rendering changes.
 
-What changes is that **diagnostics stop competing with the theme for the best pixels**.
-The availability strip is currently a full-bleed amber banner — roughly 90px of an 844px
-screen, for a message about a monitoring tool the author chose not to run. It becomes a
-small, quiet, corner-anchored marker carrying a count; expanding it is deliberate.
-`availability-notice.ts` already caps reasons at three, and that cap is right. The
+What changes is that **diagnostics stop competing with the theme for the best pixels** —
+and nothing else. The availability strip is currently a full-bleed amber banner, roughly
+90px of an 844px screen, for a message about a monitoring tool the author chose not to
+run. It becomes a small, quiet, corner-anchored marker carrying a count. **The reasons
+themselves stay exactly as available as they are today** — the same three, the same
+wording, the same redaction — reachable by deliberate expansion, because "why is this
+reading missing" is a capability and prominence is the only thing being spent.
+`availability-notice.ts` already caps reasons at three and that cap is right. The
 connection banner gets the same treatment. Amber/red/cyan keep their semantic meaning.
 
 `load-failure.ts` is the one real page, it is well made, and it is not touched.
@@ -349,6 +401,9 @@ The editor carries the first eight.
 
 **Editor**
 
+- **Every row of the capability inventory is walked once, in the browser, at the end.**
+  Nothing is unaccounted for; anything that moved says where. This is the acceptance
+  item that discharges the preservation constraint, and it is a walk, not a diff.
 - The layer panel shows only the starter's top-level groups on open, expanding reaches all
   52 rows, and lock/visibility icons are absent from rows in their default state. A text
   row is identifiable as text without reading its name.
@@ -389,3 +444,7 @@ judged by whether it serves them.
 One precondition, not a design question: `scripts/reuse-gate.mjs` decides whether the
 token-system change needs a note under `docs/decisions/` before its first write. The plan
 resolves that before touching CSS.
+
+The capability inventory is the plan's regression surface. Each phase that moves a
+capability names its row, so a phase cannot quietly drop one and still pass its own
+tests — the walk at the end is what catches a drop nobody thought of.
