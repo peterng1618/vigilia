@@ -13,6 +13,10 @@ const PINNED =
  * pinned revision 10 of the faces are Ubuntu's UFL-1.0 or Apache-2.0, and
  * they reach 15 pairings, so a generator that assumed OFL would misdeclare
  * them.
+ *
+ * Looked up with `Object.hasOwn` and never with a truthiness test: this is a
+ * bare object, so `LICENSE_URLS["constructor"]` is `Object` and would sail
+ * through a guard whose only job is to be loud.
  */
 const LICENSE_URLS = {
   "SIL Open Font License 1.1": "https://openfontlicense.org/",
@@ -21,13 +25,14 @@ const LICENSE_URLS = {
 } as const;
 
 /**
- * A face's `role` in `GENERATED_FACES` is the role it was first requested
- * under and is arbitrary, so role assertions read the trios, where position
- * is the role by construction.
+ * Role and `clamped` are properties of a pairing's *request*, so every
+ * assertion about them reads a trio, where position is the role and the flag
+ * was computed against this pairing's own recommendation. A standalone face in
+ * `GENERATED_FACES` carries whichever pairing reached it first and is not
+ * safe to ask either question of.
  */
-function faceInRole(fontId: string, role: 0 | 1 | 2) {
-  return GENERATED_TRIOS.find((trio) => trio.faces[role].fontId === fontId)
-    ?.faces[role];
+function trioById(id: string) {
+  return GENERATED_TRIOS.find((trio) => trio.id === id);
 }
 
 describe("generated font catalogue", () => {
@@ -52,9 +57,13 @@ describe("generated font catalogue", () => {
 
   it("carries each face's own licence name and URL", () => {
     for (const face of GENERATED_FACES) {
-      const url = LICENSE_URLS[face.license.name as keyof typeof LICENSE_URLS];
-      expect(url, `unmapped licence "${face.license.name}"`).toBeDefined();
-      expect(face.license.url).toBe(url);
+      expect(
+        Object.hasOwn(LICENSE_URLS, face.license.name),
+        `unmapped licence "${face.license.name}"`,
+      ).toBe(true);
+      expect(face.license.url).toBe(
+        LICENSE_URLS[face.license.name as keyof typeof LICENSE_URLS],
+      );
     }
     // The set, not just the mapping: a fourth licence upstream must fail here
     // rather than quietly join the catalogue.
@@ -82,17 +91,50 @@ describe("generated font catalogue", () => {
     expect(GENERATED_FACES).toHaveLength(261);
   });
 
-  it("clamps a heading to a weight its family actually ships", () => {
-    // Anton ships only 400. Upstream recommends 700 for the `headline`
-    // pairing, so that face must be the 400 cut and marked clamped.
-    const anton = faceInRole("anton", 0);
-    expect(anton?.weight).toBe(400);
-    expect(anton?.clamped).toBe(true);
+  it("records a heading's clamp per pairing, not per face", () => {
+    // Both faces below are shared by three pairings, and for the pairing
+    // that reaches each face first the answer is the opposite of what it is
+    // here. A flag cached on first touch therefore gets both wrong, in both
+    // directions, and neither direction throws.
+    //
+    // pt-sans-700: pt-sans-nunito recommends 700, which PT Sans ships;
+    // pt-sans-lora recommends 600, which it does not. Only the second clamps.
+    expect(trioById("pt-sans-lora")?.faces[0]).toMatchObject({
+      id: "pt-sans-700",
+      weight: 700,
+      clamped: true,
+    });
+    // lato-700: lato-merriweather recommends 600, which Lato does not ship;
+    // lato-roboto recommends 700, which it does. Only the first clamps.
+    expect(trioById("lato-roboto")?.faces[0]).toMatchObject({
+      id: "lato-700",
+      weight: 700,
+      clamped: false,
+    });
   });
 
-  it("does not mark a face clamped when the family ships the weight", () => {
-    const inter = faceInRole("inter", 0);
-    expect(inter?.weight).toBe(700);
-    expect(inter?.clamped).toBe(false);
+  it("never marks a body or mono face as a clamp", () => {
+    // gloock-400 is a clamped heading in gloock-instrument-sans, and this was
+    // the one body face in the catalogue that inherited that flag. Only a
+    // heading ever makes a clamp request, so no body or mono face may carry
+    // one however the face was first reached.
+    for (const trio of GENERATED_TRIOS) {
+      expect(trio.faces[1].clamped, trio.id).toBe(false);
+      expect(trio.faces[2].clamped, trio.id).toBe(false);
+    }
+  });
+
+  it("clamps the 49 headings whose family does not ship the recommended weight", () => {
+    // 49 of the 380 pairings recommend an `h1` weight their heading family
+    // does not publish, and 20 of those families ship no 700 at all. Anton is
+    // one of them, so every trio that wants it as a heading is clamped onto
+    // the 400 cut.
+    expect(
+      GENERATED_TRIOS.filter((trio) => trio.faces[0].clamped),
+    ).toHaveLength(49);
+    for (const trio of GENERATED_TRIOS) {
+      if (trio.faces[0].fontId !== "anton") continue;
+      expect(trio.faces[0]).toMatchObject({ weight: 400, clamped: true });
+    }
   });
 });

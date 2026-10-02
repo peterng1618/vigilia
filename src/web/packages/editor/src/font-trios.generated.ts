@@ -6,6 +6,16 @@
 // most, UFL-1.0 and Apache-2.0 for the Ubuntu families, Roboto Slab and
 // Yellowtail. A heading weight is clamped to the nearest the family ships, and
 // `clamped` records when that happened.
+//
+// Read `role` and `clamped` off a trio's faces, never off a standalone face in
+// `GENERATED_FACES`. Both describe a pairing's request rather than the face:
+// a standalone entry carries whichever pairing reached that face first, and
+// the same `(family, weight)` is a clamp for one pairing and not for another.
+//
+// Deliberately past the 800-line stop in AGENTS.md, and the exception is
+// recorded rather than assumed: 807 KB raw is 28.5 KB brotli, the file is
+// read once and never hand-edited, and `npm run size` gates the player
+// rather than the editor. See docs/decisions/0024.
 import type { FontTrioRole } from "./font-catalog.js";
 
 export interface GeneratedFace {
@@ -9230,7 +9240,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "dm-sans-400",
@@ -15507,7 +15517,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "spectral-400",
@@ -15885,7 +15895,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "lora-400",
@@ -16216,7 +16226,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: true,
+        clamped: false,
       },
       {
         id: "source-code-pro-400",
@@ -17515,7 +17525,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "alegreya-sans-400",
@@ -20090,7 +20100,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "dm-serif-text-400",
@@ -21157,7 +21167,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: true,
+        clamped: false,
       },
       {
         id: "roboto-400",
@@ -21409,7 +21419,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: true,
+        clamped: false,
       },
       {
         id: "pt-sans-400",
@@ -22163,7 +22173,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "lora-400",
@@ -22601,7 +22611,7 @@ export const GENERATED_TRIOS: readonly GeneratedTrio[] = [
           name: "SIL Open Font License 1.1",
           url: "https://openfontlicense.org/",
         },
-        clamped: false,
+        clamped: true,
       },
       {
         id: "roboto-mono-400",

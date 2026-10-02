@@ -79,11 +79,12 @@ Searched: Node 22+ global `fetch`, `node:fs/promises`, `JSON.stringify`,
 Found: **the platform covers the transport and the file write outright, and it
 covers the typing by omission.** 554 HTTPS requests (1 registry + 380 pairing
 documents + 174 family documents) run in a bare `node` process with no
-dependency. `import ... with { type: "json" }` would let the generator read the
-pairings without a fetch at all, but only from a checkout it does not have and
-must not clone — it fetches by commit over HTTP so the pin *is* the checkout.
-Strip-types is the wrong tool: the output is consumed by the editor's `tsc`,
-which needs real syntax, not a runtime type strip.
+dependency. `import ... with { type: "json" }` works — probed on Node 24.13.0,
+not assumed — and would let the generator read the pairings without a fetch at
+all, but only from a checkout it does not have and must not clone: it fetches by
+commit over HTTP so the pin *is* the checkout. Strip-types is the wrong tool:
+the output is consumed by the editor's `tsc`, which needs real syntax, not a
+runtime type strip.
 
 The one platform hazard is `localeCompare`. Sorting the 261 faces by it makes
 the emitted bytes a function of the machine's ICU collation, so the same commit
@@ -93,16 +94,19 @@ deterministic option and is what the generator uses.
 
 ## Rung 4 — ecosystem
 
-Searched: the four routes that actually exist for this shape — `@fontsource/*`
+Searched: the five routes that actually exist for this shape — `@fontsource/*`
 as npm dependencies; `next/font/google` build-time fetching; the Google Fonts
 metadata API and `google-webfonts-helper`; the jsDelivr package API
-(`data.jsdelivr.com/v1/package/npm/@fontsource/inter`). **This rung was written
-without live web search — the search tools were not loadable in the session that
-produced the note — so each claim below is about the mechanism, and a reviewer
-wanting live evidence should check `@fontsource/*@5.3.0` (one package per
-family) and the `next/font` build path directly.**
+(`data.jsdelivr.com/v1/package/npm/@fontsource/inter`); and **Fonttrio's own
+per-family documents**, which this rung originally missed. The first four were
+written without live web search — the search tools were not loadable in the
+session that produced the note — so each claim about them is about the
+mechanism, and a reviewer wanting live evidence should check
+`@fontsource/*@5.3.0` (one package per family) and the `next/font` build path
+directly. The fifth was found by the reviewer and probed directly; it is
+recorded below on that evidence.
 
-Found: **four answers, and every one of them solves a different problem.**
+Found: **five answers, and every one of them solves a different problem.**
 
 - *`@fontsource/*` as dependencies.* Gives exactly what is wanted — pinned
   artifacts, `latin` subsets, per-family licence — and costs 174 packages (or
@@ -123,14 +127,36 @@ Found: **four answers, and every one of them solves a different problem.**
 - *jsDelivr package API.* Versions and file listings for a published npm
   package: real, but it answers "which versions exist", not "which weights and
   subsets does this family publish, under what licence".
+- *Fonttrio's own per-family documents* —
+  `GET https://www.fonttrio.xyz/r/{family}.json`. **This is the closest thing to
+  the shape, and it is the one this rung originally missed.** Probed directly
+  during review: `https://www.fonttrio.xyz/r/geist.json` answers 200 with
+  `weight[]`, `subsets[]`, `category` and `variable`. So upstream ships the
+  *registry* half as well as the pairing half, and a generator could have taken
+  all 554 documents from one host instead of joining against a second API.
+
+  It is still not usable, for two measured reasons, and both are load-bearing:
+
+  - **No `npmVersion`.** Nothing in that document can be pinned, and pinning is
+    the entire purpose of the artefact URL — an unpinned `latest` artifact is
+    the one thing `font-trios.generated.test.ts` exists to refuse.
+  - **No licence field at all.** A registry that cannot answer "under what
+    licence" cannot be the one R2 depends on; 10 of the 261 faces are UFL-1.0 or
+    Apache-2.0, and a generator that had to guess would get them wrong in the
+    exact direction the ruling was issued to prevent.
+
+  A second upstream that cannot answer "which version" and "under what licence"
+  is not a cheaper way to build this; it is a way to build the half that was
+  never the hard part.
 
 **Nobody in this search publishes the shape we have**: a curated pairing graph
 joined against a per-family registry, with the request clamped to what the
-registry ships and the result emitted as a licence-carrying typed module. The
-closest existing products each own one half — Fontsource the registry,
-Fonttrio the pairing graph, Google Fonts metadata a third registry — and the
-join, the clamp and the licence attribution are exactly the three steps that
-have no off-the-shelf answer.
+registry ships and the result emitted as a version-pinned, licence-carrying typed
+module. The closest existing products each own part
+of it — Fonttrio owns the pairing graph and a partial registry, Fontsource owns
+the registry, Google Fonts metadata a third registry — and the join, the clamp
+and the licence attribution are exactly the three steps that have no
+off-the-shelf answer.
 
 ## Rung 5 — comparison
 
@@ -139,7 +165,7 @@ have no off-the-shelf answer.
 | Hand-write 261 faces and 380 trios | none of the per-family facts are hand-authorable | unbounded | licence and weight errors are invisible; a Fontsource version bump silently strands 261 URLs | rejected |
 | Depend on `@fontsource/*` | registry half solved; **pairing half unsolved** | 174–261 packages, licence review each | no pairing metadata exists to import; dependency surface for a catalogue that changes twice a year | rejected |
 | `next/font/google` at build time | solves fetch-and-self-host for one framework | Next coupling | inapplicable outside Next; pins nothing and emits nothing Vigilia can read | rejected |
-| **Generate a committed module from a pinned revision** | whole shape, and the join/clamp/licence steps are ours either way | one ~150-line script, run by hand | the generated file is 261+380 records and must be regenerated on any upstream change — the point of the pin | **chosen** |
+| **Generate a committed module from a pinned revision** | whole shape, and the join/clamp/licence steps are ours either way | one 261-line script, run by hand | the generated file is 261+380 records and must be regenerated on any upstream change — the point of the pin | **chosen** |
 
 ## Rung 6 — probe
 
@@ -184,15 +210,42 @@ Concretely:
 3. **Every face carries its own licence name and URL**, taken from Fontsource and
    mapped through a table that *throws* on an unrecognised code. A fallback to
    OFL would be a silent misattribution, which is the failure this whole note
-   exists to prevent.
-4. **An unknown family is a loud throw.** The fallback the plan sketched is
+   exists to prevent. The check is `Object.hasOwn`, not a truthiness test: the
+   table is a bare object, so `LICENSES["constructor"]` is `Object` and would
+   pass a plain guard, after which `JSON.stringify` drops the function and the
+   catalogue ships faces with **no licence field at all**. Measured, both ways:
+   the truthiness form emits all 261 faces licence-less and exits 0; the
+   `Object.hasOwn` form throws and exits 1.
+4. **`role` and `clamped` belong to a pairing's request, not to the face.**
+   `faceFor` re-stamps both on the way out, because the same `(family, weight)`
+   can be a clamp for a pairing that recommends a weight the family does not
+   ship and not a clamp for one that recommends the weight it does. A value
+   cached on first touch put the wrong flag on 9 of the 380 trios in both
+   directions — including a body face claiming to be a clamp — and threw
+   nothing. `GENERATED_FACES` keeps the first-touch value for both fields and
+   the generated header says so, because nothing may read them off a
+   standalone face.
+5. **An unknown family is a loud throw.** The fallback the plan sketched is
    measured to be dead code; a Fontsource rename should fail generation, not
    resolve through a second lookup path nothing else uses.
-5. **Fetches are bounded-concurrent and index-ordered, and the output is sorted
+6. **Fetches are bounded-concurrent and index-ordered, and the output is sorted
    by code point**, so the emitted bytes are a function of the commit and not of
    arrival order or the host's ICU collation.
-6. The generator formats its own output with the workspace's `biome` before
+7. The generator formats its own output with the workspace's `biome` before
    writing, so `npm run format:check` stays green on a regenerated catalogue.
+8. **The emitted module is a deliberate, recorded exception to the 800-line
+   stop**, and `AGENTS.md` asks for the exception to be recorded rather than
+   assumed. The number that decides it: **807 KB raw is 28.5 KB brotli**
+   (measured, `zlib.brotliCompressSync` quality 11), the file is read once and
+   never hand-edited, and `npm run size` gates the **player**, not the editor —
+   so nothing about shipping this reaches a bundle-size budget. The obvious
+   alternative, emitting the 261 faces once and having trios reference them by
+   id, would cut the 696 KB trio block to roughly 110 KB, at the price of a
+   second shape and a resolution step in every consumer. Not taken: the file is
+   read once and the simpler module is the cheaper thing to reason about. The
+   same paragraph is repeated in the generated file's own header, because the
+   next person to open a 28,000-line file in `packages/editor/src/` should see
+   the exemption rather than re-derive it.
 
 What this gives up: the catalogue is a snapshot, and refreshing it is a manual
 act that produces a large diff. A Fontsource version bump does not fail a build.

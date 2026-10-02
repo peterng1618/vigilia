@@ -45,10 +45,10 @@ The loop, in order:
 ## Last completed change
 
 - **The font catalogue is generated and committed: 380 trios, 261 faces, 174 families, from Fonttrio `8af7098`.** `npm run fonts:generate` is manual and nothing in the build or the suite invokes it; the output is `packages/editor/src/font-trios.generated.ts` (807 KB, 28,336 lines) with the commit in `GENERATED_SOURCE_REVISION`. Two runs produce byte-identical output.
-- **The count is 261, not the design doc's measured 238, and the difference is deliberate.** The 238 came from clamping every heading to a uniform 700, which discards the pairing's own `h1` recommendation for 142 of 380 pairings and then marks the author's choice as a clamp. See `docs/decisions/0024`.
+- **The count is 261, not the design doc's measured 238, and `clamped` belongs to a pairing rather than to a face.** The 238 came from clamping every heading to a uniform 700, which discards the pairing's own `h1` recommendation for 142 of 380 pairings and then marks the author's choice as a clamp. `role` and `clamped` are both re-stamped per request, because the same family-weight is a clamp for one pairing and not another; caching them on first touch put the wrong flag on 9 of 380 trios and on one body face. See `docs/decisions/0024`.
 - **Ten faces are not OFL: 7 UFL-1.0 (the Ubuntu families) and 3 Apache-2.0 (Roboto Slab, Yellowtail), reaching 15 pairings.** Each face carries its own licence name and URL, and an unmapped code is a throw rather than a fallback to OFL, so `THIRD-PARTY-NOTICES.md` cannot under-declare a licence by silence.
 - **The family-name fallback the plan sketched was measured dead and deleted** - 0 of 1140 role faces took it. A family Fontsource does not know is now a loud generation failure, which is right for a manual generator.
-- **Suite 2576 across 187 files, 0 failures; typecheck, lint and format clean.** The clamp, the count and the licence set each go red when their rule is disabled.
+- **Suite 2576 across 187 files, 0 failures; typecheck, lint and format clean.** The clamp, the count, the licence set and the per-pairing clamp each go red when their rule is disabled.
 
 ## Next
 
