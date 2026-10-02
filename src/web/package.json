@@ -24,6 +24,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "fonts:generate": "node scripts/generate-font-trios.mjs",
     "size": "npm run size -w @vigilia/player",
     "status:check": "node ../../scripts/check-status.mjs",
     "ownership:sweep": "node ../../scripts/ownership-sweep.mjs",

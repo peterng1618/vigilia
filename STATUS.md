@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-01
+Updated: 2026-10-02
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
@@ -44,16 +44,17 @@ The loop, in order:
 
 ## Last completed change
 
-- **The root verification pass ran: a fresh build, a private host on 8799, and the editor driven.** Three rows closed on measured evidence. **vg-072** now reads 83% / 57% / 37% / 22% at 2048 / 1600 / 1280 / 1024 as the canvas goes 1394 / 946 / 626 / 370, where every width read 83% before; and off fit at 19% it survived two resizes unchanged, with Zoom to fit returning 57% and a further resize refitting to 45%.
-- **vg-084** verified the way round from the row: with network-chart at W 430, clicking 4:1 put Height at 108, 3:1 at 143 and 2:1 at 215 - each the width over its ratio, where the field read 215 through all three - with aria-pressed following at every step.
-- **vg-087 does not reproduce and the row was wrong as filed.** The drag it describes is cross-parent, which the panel refuses by design; between siblings it works, and network-down onto network-up swapped them. All four handlers run on the refused case too. **The real finding is that the refusal is silent**, filed as vg-099, and vg-096's cursor conditional is resolved.
-- **vg-088** verified: the dropdown lists thirteen authored names where it listed ids, the values are still the stored refs, and the selection reads back typePresets.24-400 as Card title. **The rename's label is fine** - Theme language wraps to two lines, and so do Frosted glass, Release version, Background media, Colour token and Letter spacing in the same 72px column.
+- **The font catalogue is generated and committed: 380 trios, 261 faces, 174 families, from Fonttrio `8af7098`.** `npm run fonts:generate` is manual and nothing in the build or the suite invokes it; the output is `packages/editor/src/font-trios.generated.ts` (807 KB, 28,336 lines) with the commit in `GENERATED_SOURCE_REVISION`. Two runs produce byte-identical output.
+- **The count is 261, not the design doc's measured 238, and the difference is deliberate.** The 238 came from clamping every heading to a uniform 700, which discards the pairing's own `h1` recommendation for 142 of 380 pairings and then marks the author's choice as a clamp. See `docs/decisions/0024`.
+- **Ten faces are not OFL: 7 UFL-1.0 (the Ubuntu families) and 3 Apache-2.0 (Roboto Slab, Yellowtail), reaching 15 pairings.** Each face carries its own licence name and URL, and an unmapped code is a throw rather than a fallback to OFL, so `THIRD-PARTY-NOTICES.md` cannot under-declare a licence by silence.
+- **The family-name fallback the plan sketched was measured dead and deleted** - 0 of 1140 role faces took it. A family Fontsource does not know is now a loud generation failure, which is right for a manual generator.
+- **Suite 2576 across 187 files, 0 failures; typecheck, lint and format clean.** The clamp, the count and the licence set each go red when their rule is disabled.
 
 ## Next
 
 1. **Three agents in flight — see Active work.** Verify each claim on canvas before closing its row, and commit anything it left uncommitted: five agents died on this pass and one had a complete verified feature only found by reading `git status`.
 2. **Then the rows nothing owns:** vg-094 the type preset panel is not bound to the selection; vg-104 three owners of "list the document's tokens by name"; vg-028 the chart's occasional leftward slide, still unreproduced after two attempts; and vg-107 every chart repaint asking the whole canvas to redraw, which touches the refresh-rate control the author sets.
-3. **The drain is close to empty.** What remains after those is decision-shaped and is the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-046, vg-051, vg-056. **WHEN THE DRAIN IS EMPTY, `docs/superpowers/plans/2026-09-27-font-trio-catalog.md`** — queued 2026-10-01, 8 tasks, and reconcile it against the code before Task 1, because this pass moved four things directly beside the picker it builds.
+3. **The drain is close to empty.** What remains after those is decision-shaped and is the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-046, vg-051, vg-056. **`docs/superpowers/plans/2026-09-27-font-trio-catalog.md`** — queued 2026-10-01, 8 tasks. **Task 1 has landed; the other seven wait on its review.**
 4. **vg-035 is answered and still needs one call:** the search found one hand-roll in nine panels and the real subject is 841 lines of hand-written CSS with Tailwind installed and unused — but switching the Base-versus-Radix base supersedes the vg-031 ruling, so that is the user's decision.
 
 ## Blockers / unverified
