@@ -43,10 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **The picker is built** (`font-picker/font-picker.tsx`, 29 tests, `21b86b1a`) — searchable, faceted, virtualised at 15 rows against 261 faces. It found a real bug in itself: a `query` object literal rebuilt every render, so the memo never cached and the loading effect re-ran every render — a 23-minute hang, caught by chasing it rather than calling it flaky.
-- **But its review failed, and the failure is the plan's own recurring hazard.** The clamped badge reads `face.clamped` off a standalone catalogue record, which is a *pairing's* answer — disagreements run **both ways**: DM Serif Display 400 shows no badge although the pairing clamps it, and Gloock 400 is badged although it is Gloock's own cut. Two tests lock it in, so a fix must change them together.
-- **Eleven further mutations survived review**, including the whole of the virtualisation arithmetic and `favoritesOnly` — which has no test at all. Full list in the ledger.
-- **Task 5, the host favourites store, approved first pass** — 18 anchored mutations, each sha256-verified before running. It lives in `settingsDir` beside `display.ts` and diffs against it showing three differences.
+- **A pane bar replaced the editor's rail** (`e0171079`, fix round `69f371f8`; plan 1 task 1). Three labelled segments and a `+`; the stage gains 60px at the same window size, measured 860 → 920.
+- **The shell palette moved to the header**, because the rail's Settings pane held nothing else. It renders a swatch plus the palette name and **carries `aria-label="Shell palette: <current>"`** — the old `<select>` was named, and the trigger had briefly lost it.
+- **A collapsed pane no longer loses the author's scroll position.** `choosePane` returned before saving, and a `display: none` element's `scrollTop` getter returns 0, so the later save overwrote the real offset with zero.
+- **The pin that caught it is proven to bite.** With the bug present and no browser model, all 19 jsdom assertions passed — a jsdom pin alone would have been green either way. Two pins now: one modelling the hidden box, one in a real browser. The re-reviewer reverted the source and watched the jsdom one fail with `expected +0 to be 499`.
+- **Filed rather than fixed:** `vg-118` (palette chip paints a token `ember`/`moss`/`plum` never declare) and `vg-119` (two author-journey e2e suites red since 2026-10-02 and excluded from the Playwright config, so nothing runs them).
 
 ## Next
 
