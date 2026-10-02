@@ -5,6 +5,11 @@ export type FontTrioRole = "heading" | "body" | "mono";
 
 export interface CuratedFontFace {
   readonly id: string;
+  /** Which role the pairing asked this face for — not a property of the face.
+   * A standalone face in `GENERATED_FACES` carries whichever pairing reached it
+   * first, so grouping `catalogFaces()` by this files every clamped face under
+   * Heading: all 24 clamped entries are first-touch `role: "heading"`. Read the
+   * role off a trio's face, where position is the role. */
   readonly role: FontTrioRole;
   readonly family: string;
   readonly weight: number;
