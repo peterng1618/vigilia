@@ -34,10 +34,9 @@ export interface FacetField {
  * hand, capped at the values worth a chip. */
 const FACET_FIELDS = ["mood", "useCase", "superfamily"] as const;
 
-/** How many facet values are worth a chip. Exported because it is a property of
- * the vocabulary the picker shows, and a test that hardcodes the number instead
- * would drift from it silently. */
-export const MAX_FACET_OPTIONS = 14;
+/** How many facet values are worth a chip. The test pins the width by naming
+ * the last mood option rather than reading this, so it stays private. */
+const MAX_FACET_OPTIONS = 14;
 
 let facets: readonly FacetField[] | undefined;
 

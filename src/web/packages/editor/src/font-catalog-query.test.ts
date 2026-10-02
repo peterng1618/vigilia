@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  MAX_FACET_OPTIONS,
   catalogFacets,
   queryFaces,
   queryTrios,
@@ -12,6 +11,11 @@ import {
   fontTrios,
   type FontTrio,
 } from "./font-catalog.js";
+
+/** The facet width under test, written out rather than imported. Reading the
+ * source's own constant here would make every width assertion true by
+ * construction; the width is pinned by the last option named below instead. */
+const CAP = 14;
 
 const none: CatalogQuery = {
   search: "",
@@ -85,8 +89,9 @@ describe("catalogue query", () => {
   });
 
   it("finds a face through the trio that seeds it, case-insensitively", () => {
-    // Every one of the 27 trios owning an Inter face says "inter" in its own
-    // text, so this is the owner path: drop it and no face is reachable at all.
+    // All 27 trios owning a family matching /inter/i say "inter" in their own
+    // text — 26 on Inter, and `swiss` on Inter Tight — so this is the owner
+    // path: drop it and no face is reachable at all.
     const said = (trio: FontTrio) =>
       [trio.name, trio.description, ...trio.faces.map((face) => face.family)]
         .join(" ")
@@ -148,10 +153,8 @@ describe("catalogue query", () => {
       for (const option of facet.options) {
         expect(option.count).toBe(counts.get(option.value));
       }
-      // Highest frequency first, and the list is capped at the exported width.
-      expect(facet.options).toHaveLength(
-        Math.min(MAX_FACET_OPTIONS, counts.size),
-      );
+      // Highest frequency first, and the list is capped at the width below.
+      expect(facet.options).toHaveLength(Math.min(CAP, counts.size));
       for (const [index, option] of facet.options.entries()) {
         const next = facet.options[index + 1];
         if (next === undefined) continue;
@@ -159,25 +162,24 @@ describe("catalogue query", () => {
       }
     }
 
-    // The length assertion above reads the width from the module, so it would
-    // pass at any cap. `mood` and `useCase` both have more surviving values
-    // than any cap worth having (37 and 38), so the only thing pinning the
-    // truncation is the last option named being the cap-th, not the whole
-    // vocabulary. The user found the cap widening to 20 while nothing went red.
+    // The length assertion above passes at any cap, so it pins nothing. The
+    // width is pinned by naming the last mood option instead: "friendly" is
+    // the cap-th value at exactly one cap (13 gives "clean", 15 "clear", 20
+    // "systematic"), so a cap change of one either way goes red here. `mood`
+    // and `useCase` both hold more surviving values than the cap (37 and 38),
+    // so the truncation is real and this is the only thing asserting it.
     const mood = facets.find((facet) => facet.field === "mood")!;
-    expect(mood.options).toHaveLength(MAX_FACET_OPTIONS);
+    expect(mood.options).toHaveLength(CAP);
     expect(mood.options.at(-1)!.value).toBe("friendly");
-    expect(countsOf(fontTrios(), "mood").size).toBeGreaterThan(
-      MAX_FACET_OPTIONS,
-    );
+    expect(countsOf(fontTrios(), "mood").size).toBeGreaterThan(CAP);
   });
 
   it("keeps a superfamily value that only two trios carry", () => {
     // `handwriting` is 2, the lowest surviving count in the whole vocabulary,
     // so this pins the threshold at "> 1" rather than "> 2". It does not pin
-    // the singleton filter against a MAX_OPTIONS change: `mood` and `useCase`
-    // keep 37 and 38 values past the filter and the cap shows 14, so the filter
-    // is not observable there, and `superfamily` has no singleton at all.
+    // the singleton filter against a cap change: `mood` and `useCase` keep 37
+    // and 38 values past the filter and the cap shows CAP of them, so the
+    // filter is not observable there, and `superfamily` has no singleton.
     const superfamily = catalogFacets().find(
       (facet) => facet.field === "superfamily",
     )!;
