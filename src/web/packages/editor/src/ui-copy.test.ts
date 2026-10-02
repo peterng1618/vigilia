@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { Canvas, Textbox } from "fabric/es";
+import { createElement } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import { createChartPropertyPanel } from "./chart-manager/panel.js";
+import { catalogFaces, fontTrios } from "./font-catalog.js";
+import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
 import { createRunEditor } from "./selection-inspector/runs.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
@@ -129,6 +134,86 @@ it("leaves the three panels with no copy of their own", () => {
     // of a date in the chosen language.
     .filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
   expect(spoken.filter((text) => !owned.has(text))).toEqual([]);
+});
+
+/**
+ * The font picker says no word the table does not hold.
+ *
+ * The picker is a React island the type-preset panel mounts, so the net above —
+ * which reads the three imperative panels' DOM — does not reach it. A string
+ * literal in `font-picker.tsx` would therefore be invisible to the rule that
+ * exists to catch exactly that, which is why the picker is mounted here
+ * directly rather than waiting for the panel that will host it.
+ *
+ * Data is excluded on purpose, the way it is above: a face's family name, a
+ * trio's name and an upstream facet value are the catalogue's words, not this
+ * component's. The facet values in particular are the tags Fonttrio assigned,
+ * and they round-trip into the query, so a test that demanded the table own
+ * "versatile (107)" would be demanding the table own the catalogue.
+ */
+it("leaves the font picker with no copy of its own", async () => {
+  const root = document.createElement("div");
+  document.body.append(root);
+  const reactRoot = createRoot(root);
+  await act(async () =>
+    reactRoot.render(
+      createElement(FontPicker, {
+        trios: fontTrios(),
+        faces: catalogFaces(),
+        favorites: [],
+        // A cache that never loads, so every row renders its "still coming"
+        // note: the note is copy, and a specimen that arrived would hide it.
+        cache: {
+          ensure: () => new Promise<void>(() => undefined),
+          resident: () => undefined,
+          release: () => undefined,
+        },
+        onApplyTrio: () => undefined,
+        onApplyFace: () => undefined,
+        onToggleFavorite: () => undefined,
+      }),
+    ),
+  );
+
+  const owned = new Set(copy());
+  const spoken = [
+    // Labels and their accessible names: the search field, the three facets,
+    // the sort, the trio chooser, and the two states of the favourite toggle.
+    ...Array.from(root.querySelectorAll("label"), (label) => label.textContent),
+    ...Array.from(root.querySelectorAll("[aria-label]"), (element) =>
+      element.getAttribute("aria-label"),
+    ),
+    // The facet selects' own empty option — the word on the closed control.
+    ...Array.from(
+      root.querySelectorAll("[data-vigilia-font-facet] option:first-of-type"),
+      (option) => option.textContent,
+    ),
+    // The picker's own buttons, minus the rows whose text is a catalogue name.
+    ...Array.from(
+      root.querySelectorAll(
+        "button:not([data-vigilia-font-face-row]):not([data-vigilia-font-trio-row])",
+      ),
+      (button) => button.textContent,
+    ),
+  ]
+    .map((text) => text?.trim() ?? "")
+    .filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
+  expect(spoken.filter((text) => !owned.has(text))).toEqual([]);
+  reactRoot.unmount();
+});
+
+/** The two states of the favourite toggle name two different actions, so a
+ *  screen reader can tell what the press will do. Pinned here beside the copy
+ *  rule rather than only in the picker's own test because both words have to
+ *  come from the table for the rule above to mean anything. */
+it("names both states of the favourite toggle", () => {
+  expect(uiCopy.panels.fontFavorite).not.toBe(uiCopy.panels.fontUnfavorite);
+  for (const word of [
+    uiCopy.panels.fontFavorite,
+    uiCopy.panels.fontUnfavorite,
+  ]) {
+    expect(/\p{S}/u.test(word)).toBe(false);
+  }
 });
 
 /**
