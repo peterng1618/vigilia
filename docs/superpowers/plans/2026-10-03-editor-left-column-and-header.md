@@ -165,9 +165,11 @@ mount and goes stale when the palette changes.
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: `--space-1..6` on a 4px base, `--radius-sm|md|lg`, `--text-xs|sm|md`,
-  `--shadow-raised|overlay`, all on `:root`. Plan 10 converts these to `@theme`, so the
-  names must be the ones `@theme` will use.
+- Produces: `--spacing: 0.25rem` as the single spacing base — **not** `--space-1..6`,
+  which is not a Tailwind namespace and would be six literals for Plan 10 to delete —
+  plus `--radius-sm|md|lg`, `--text-xs|sm|md` and `--shadow-raised|overlay`, all on
+  `:root`. Plan 10 converts these to `@theme`, so the names must be the ones `@theme`
+  will use.
 
 **Constraints:** the twelve `--shell-*` colour tokens are the one layer that already
 works and are untouched. The `--vigilia-*` block moves from
