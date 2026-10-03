@@ -371,11 +371,27 @@ for. `Insert text · shape · chart` is not deprecated by anything in this desig
 
 ### 6. Publishing is continuous
 
-The editor renders **live data on the device**, always — there is no preview/live switch
-to forget to leave on. Publishing answers one question: *put this on the phone*.
+The two sources are **not** a quality setting. They answer different questions:
 
-With LAN on, the phone shows what you are editing. The header carries the address and a
-QR code. §145's "explicit opt-in" becomes a control rather than a CLI flag.
+- **Preview answers for every sensor the theme names**, whether or not this PC has one.
+- **Live answers for what this machine actually reports.**
+
+That distinction is the point, and it is why both stay. An author is usually not building a
+theme for their own machine — they are building one to hand to somebody else — so the theme
+routinely names a sensor the author does not have. A tool that could only show this PC's
+hardware would make that theme unauthorable on the machine it was authored on.
+
+`createPreviewSource` already does this: it takes the theme's keys and answers for each
+from a waveform, so a theme may feature a GPU temperature on a laptop with no discrete
+GPU. **Keep it, keep the switch, and stop describing it as "fake data".** The framing that
+survives is *"what this machine reports"* against *"what the theme asks for."*
+
+The switch stays because it is a real choice with real consequences, and it stays in canvas
+controls where the canvas is (plan 1, task 4) rather than in a menu.
+
+Publishing answers one question: *put this on the phone*. With LAN on, the phone shows what
+you are editing. The header carries the address and a QR code, and §145's "explicit
+opt-in" becomes a control rather than a CLI flag.
 
 ### 7. Keyboard-first
 
@@ -383,7 +399,60 @@ Unlabelled actions are unlearnable, and eighteen of them were on the canvas at o
 action shows its shortcut in its tooltip, one contextual toolbar renders from the existing
 action registry, and `?` opens a reference rendered from the same `PRODUCT_SHORTCUTS` map.
 
-### 8. A chrome that belongs to its own product
+### 8. A chrome that belongs to its own product, on one primitive library
+
+**The problem is not that Base UI is limited. It is that there are two of everything.**
+
+Measured across the editor and player: Base UI is used in **five imports** — `menu` three
+times, `tabs` once, `context-menu` once. Meanwhile `@radix-ui/react-popover` is **already a
+direct dependency**, and `components/ui/popover.tsx` is *shadcn's Popover on Radix*, hand-
+owned, whose own comment records that the colour picker's ecosystem already put a second
+headless library in the tree. So the app has two primitive libraries and **two popover
+implementations** — Base UI's `Menu` for the palette, Radix's `Popover` for the colour
+picker.
+
+**Neither Base UI nor Radix ships a colour picker.** shadcn/ui does, and shadcn is
+copy-paste components you own rather than a library you depend on — which is exactly what
+this repo already does by hand: `colour-picker.tsx`, `colour-maths.ts` and
+`gradient-editor.tsx` exist and work. **So the motivating example does not hold: the colour
+picker is not missing, and switching libraries would not have produced it.**
+
+What the redesign actually needs, and where it is today:
+
+| Need | Have |
+|---|---|
+| menu | Base UI ✓ |
+| tabs | Base UI ✓ |
+| context menu | Base UI ✓ |
+| popover | **both** — the incoherence |
+| colour picker | ours, on Radix popover |
+| dialog (the `?` reference) | **neither** |
+| collapsible (inspector sections) | **neither** |
+
+**Ruling: standardise on Radix as the single primitive library, and migrate the five Base
+UI imports.** It is already a direct dependency, it carries `Dialog`, `Collapsible`,
+`Tooltip` and `Select` — the three the redesign needs and Base UI is not currently used for
+— and the repo already owns components in shadcn's idiom, so this matches how it works
+rather than imposing something new.
+
+**This is a mechanism-boundary change and the reuse gate says so.** A primitive library is
+exactly "an owner where a wrong decision is expensive and invisible" — nothing fails, it
+just renders or behaves wrongly. So it gets a `docs/decisions/` note and the seven rungs
+before its first write, **and it is sequenced as its own plan phase rather than folded into
+layout work**, because migrating the menus touches the same tests that assert their
+behaviour — including the `ResizeObserver` and `getAnimations` stubs those files carry
+specifically because Base UI's popups need them.
+
+Cost if wrong: five files and their tests revert. Cost of *not* deciding it: the redesign
+adds a Dialog and a Collapsible from a third source, and the incoherence compounds.
+
+### 9. Appearance
+
+The editor is warm cream glass; the dashboards it makes are dark and neon. Tailwind v4's
+`@theme` carries the spacing, radius, type and elevation scales; `@theme inline` carries the
+runtime-switched palette so one `data-shell-palette` attribute recolours everything,
+including every portalled popup. The editor follows the OS appearance, with the palette
+picker as an explicit override. Six palettes, six distinguishable things.
 
 The editor is warm cream glass; the dashboards it makes are dark and neon. Tailwind v4's
 `@theme` carries the spacing, radius, type and elevation scales; `@theme inline` carries
