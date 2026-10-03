@@ -433,6 +433,13 @@ Design: [snapping and guide fidelity](../superpowers/specs/2026-09-25-snapping-f
   - After §35, consider a creation/assets/templates rail, central artboard,
     contextual property rail and zoom/status footer. Actions stay visibly
     labelled and keyboard-accessible; this is not a separate agent-mode UI.
+  - **KWGT** is the closest existing analogue to the editor this product wants:
+    a widget authoring tool whose output is a small fixed-size display, built by
+    someone looking at it while authoring. Studied 2026-10-03 for the redesign;
+    its lessons and where it is worse than us are recorded in the redesign spec.
+    Its grouping operation is **lossy** — moving items into a group converts X/Y
+    to padding — which §57's world-appearance guarantee already forbids here.
+    Distinct from [yft-design] and [OpenDesign], which are canvas editors.
   - After §139 storage, consider debounced validated-envelope/package autosave,
     template thumbnails/gallery and export presets. Raw Fabric JSON alone is not
     a document store.

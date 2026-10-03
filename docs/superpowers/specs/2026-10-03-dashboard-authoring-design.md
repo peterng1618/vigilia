@@ -14,6 +14,69 @@ theme" — the display is what the interface is organised around.
 The previous design got this diagnosis right and then spent itself re-arranging the
 chrome. That is the failure this one exists to not repeat.
 
+## What KWGT got right, and what it cost
+
+KWGT is the closest thing to this product that exists — an editor whose output is a small
+fixed-size display, built by someone who is looking at it while they author. It is a far
+better reference here than Figma UI3, which has no equivalent domain at all. Four things
+it taught me, and one place it is worse than us.
+
+**1. The target size is the first decision, not a property.** KWGT's own FAQ says: *"Before
+creating a new preset, you have to resize first. It will remember the dimension."* You pick
+the widget's size on the launcher, then build the preset to fit it. Even the preset format
+carries it — `$si(swidth)$` reads the screen width.
+
+Vigilia has the opposite: the artboard panel offers `Ratio: Custom`, `Orientation: Custom`,
+`Resolution: Custom`. Three "Custom"s as the starting state. The design becomes coherent if
+the **first** thing an author picks is what this is for — *Phone landscape · Phone portrait
+· Wall panel* — and the artboard arrives sized. Custom stays available and stays one click
+away; it is just not where you start.
+
+**2. A group needs a size of its own.** KWGT's Overlap group derives its dimensions from
+its largest child, and the documented workaround is *"add a transparent shape as background
+and give that shape the dimensions you want the group to have."*
+
+That workaround is telling: a container that has no size of its own cannot be laid out
+deliberately. Vigilia's cards already have the right answer sitting in them — **the
+frosted panel *is* the card's box.** Grouping the starter should therefore make the panel
+the group's explicit size, not the largest child. A confirmation from outside, arrived at
+independently.
+
+**3. Configuring a thing and editing its parts are different acts.** KWGT's Komponent — an
+exportable, reusable group — works because *"the globals of the Komponent will become the
+settings of it, so when using the module you will not see the objects inside (unless you
+unlock it) but just the basic settings."*
+
+Two intents, two verbs. **Select** gives you the card's settings. **Enter** gives you its
+parts. The composition panel conflates them today — a disclosure triangle that both reveals
+the children *and* selects the row. They should be separate, because "what can I configure
+here" and "what is inside this" are different questions.
+
+**4. Layer and Position are different questions.** KWGT's per-object property tabs separate
+`Layer` (scale, rotation, anchoring, alignment, time zone — how it presents) from `Position`
+(alignment, margins, anchors, coordinates — where it sits). My earlier sections were
+Content / Appearance / Spends / Geometry, which mixes them. The corrected set:
+
+| Section | The question |
+|---|---|
+| **Content** | What does it show? |
+| **Position** | Where does it sit, and what size? |
+| **Layer** | How does it present — scale, rotation, anchoring, alignment? |
+| **Paint** | What ink, from which tokens? |
+| **Spends** | Read-only: the tokens and presets it resolves to |
+
+**And where we are better.** KWGT's own bug list says *"Move items into the Overlap group,
+Stack group and Komponent will lose the position properties. Because it will work as
+padding instead of X/Y offsets"* — a lossy grouping operation its users document as a
+known issue, alongside a *"4 years long"* inverted-clip-mask bug in the same groups.
+
+§57 already requires group/ungroup to **preserve world appearance**. That is a guarantee
+KWGT cannot make, and it is why this plan authors the starter *as* groups rather than
+grouping it after the fact. Keep that requirement; it is the difference.
+
+Sources: [Groups explained](https://docs.kustom.rocks/docs/general_information/groups_explained/),
+[KWGT FAQ](https://docs.kustom.rocks/docs/faq/faq_kwgt/), [Kustom forum on grouping](https://forum.kustom.rocks/t/group-elements-in-kwgt-custom-widget/7787).
+
 ## What this design must never become
 
 Stated first, because the failure mode is real and this spec walks toward it.
@@ -216,6 +279,16 @@ nothing, on the surface where all the work happens.
   theme at 4000×4000, and a theme at 1672×941 are all authored in the same stage, and
   the lens simply shows what each would look like on a given screen.
 
+**The artboard is chosen from a device, not typed.** Today a new theme opens with
+`Ratio: Custom`, `Orientation: Custom`, `Resolution: Custom` — three "Custom"s as the
+starting state, which asks an author to know a ratio before knowing what the thing is for.
+KWGT's own rule is *"before creating a new preset, you have to resize first; it will
+remember the dimension."*
+
+So the **first** question is what this is for, and the artboard arrives sized:
+*Phone landscape · Phone portrait · Wall panel*. Custom is still there and still one click
+away — this reorders the decision, it does not remove an option.
+
 Orientation stays the author's per-theme choice. What changes is that choosing is
 *informed* rather than a dropdown nobody can picture — and that seeing the consequence
 costs one click rather than a mental calculation.
@@ -234,6 +307,14 @@ Each row carries whatever identifies it without expansion:
   or simply `shape` where that is all it is
 - its **bound key**, where it has one
 
+**Select and enter are different acts.** A disclosure triangle that both reveals the
+children *and* selects the row conflates two questions: *what can I configure here* and
+*what is inside this*. KWGT's Komponent separates them — the component's globals become
+its settings, and you unlock it to see the objects inside. So:
+
+- **select** a row → that thing's settings
+- **enter** a group → its parts, in the panel and on the canvas
+
 Lock and visibility appear only when they are true — hover, selection, or non-default.
 104 icons reading "visible, unlocked" was noise, and that noise is worse the more rows
 there are, which is exactly the case a card-heavy panel would hide.
@@ -243,14 +324,21 @@ Expansion is available and stays available. This is not a flattening; it is a de
 ### 4. The right column describes what the thing *is*
 
 A CPU card is not a rectangle. The first question about one is *which sensor*, not *how
-many pixels wide*. So selecting a card opens:
+many pixels wide*. The sections are the questions, kept separate — **Content** is what it
+shows, **Position** is where it sits, **Layer** is how it presents, **Paint** is what ink.
+Conflating position with presentation is why the current panel reads as a form.
 
-| Section | For a metric card |
+| Section | The question |
 |---|---|
-| **Content** | Shows · Range · Format · Unit |
-| **Appearance** | Type preset · palette tokens spent · glass |
-| **Spends** | the tokens and presets it resolves to, read-only |
-| **Geometry** | collapsed to one line; one gesture opens it |
+| **Content** | What does it show? Shows · Range · Format · Unit |
+| **Position** | Where does it sit, and how big? |
+| **Layer** | How does it present — scale, rotation, anchoring, alignment? |
+| **Paint** | What ink, from which tokens? |
+| **Spends** | Read-only: the tokens and presets it resolves to |
+
+Position and Layer are separate because they are separate questions, and because scaling a
+card and moving it are different mistakes. Geometry as a whole is collapsed by default: an
+author adjusts it once and chooses the binding constantly.
 
 **Every kind gets a column that fits it.** A free shape gets its geometry and fill, at the
 same density and with the same affordances — it is not a lesser selection, it just has
