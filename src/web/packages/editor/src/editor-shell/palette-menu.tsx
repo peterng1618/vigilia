@@ -32,13 +32,10 @@ function Swatch({ palette }: { readonly palette: ShellPalette }): React.JSX.Elem
  *  the idiom the View settings already use in this shell.
  */
 export function PaletteMenu({
-  root,
   storage,
   palette,
   onChange,
 }: {
-  /** The element carrying `data-shell-palette`, so the change repaints. */
-  readonly root: HTMLElement;
   /** `undefined` where the browser refuses local storage; the palette then
    *  holds for the session rather than refusing to be chosen, so the write is
    *  skipped rather than attempted against a store that throws. */
@@ -48,7 +45,7 @@ export function PaletteMenu({
 }): React.JSX.Element {
   const choose = (next: ShellPalette): void => {
     if (storage !== undefined) writeShellPalette(storage, next);
-    applyShellPalette(root, next);
+    applyShellPalette(next);
     onChange(next);
   };
 

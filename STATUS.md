@@ -43,11 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **A pane bar replaced the editor's rail** (`e0171079`, fix round `69f371f8`; plan 1 task 1). Three labelled segments and a `+`; the stage gains 60px at the same window size, measured 860 → 920.
-- **The shell palette moved to the header**, because the rail's Settings pane held nothing else. It renders a swatch plus the palette name and **carries `aria-label="Shell palette: <current>"`** — the old `<select>` was named, and the trigger had briefly lost it.
-- **A collapsed pane no longer loses the author's scroll position.** `choosePane` returned before saving, and a `display: none` element's `scrollTop` getter returns 0, so the later save overwrote the real offset with zero.
-- **The pin that caught it is proven to bite.** With the bug present and no browser model, all 19 jsdom assertions passed — a jsdom pin alone would have been green either way. Two pins now: one modelling the hidden box, one in a real browser. The re-reviewer reverted the source and watched the jsdom one fail with `expected +0 to be 499`.
-- **Filed rather than fixed:** `vg-118` (palette chip paints a token `ember`/`moss`/`plum` never declare) and `vg-119` (two author-journey e2e suites red since 2026-10-02 and excluded from the Playwright config, so nothing runs them).
+- **Every palette resolves; the portalled popups follow it** (plan 1 task 2). `applyShellPalette` wrote the attribute on `#app`, but Base UI portals to `body` — a sibling — so menus rendered cream under all five non-editorial palettes. It writes `document.documentElement` now and takes no element parameter, so the mistake cannot recur.
+- **`--vigilia-*` moved to `:root`**, which is why five of six resolved to nothing: a `var()` with no declaration in scope is invalid at computed-value time and drops the whole declaration. Control text contrast measured 14.9–17.7 across all six.
+- **`vg-118` fixed.** A chip inherited the live palette's surface rather than its own — under graphite, an `ember` chip was a peach ring on dark glass. The swatch joins the token baseline, so a chip is a self-contained scope.
+- **Two orderings are pinned because both were wrong first.** The `:root` control block must precede the palette blocks, or the base wins at equal specificity; and the static half sits beside the CSS while the browser half cannot be jsdom at all.
+- **Filed rather than fixed:** `vg-119` — two author-journey e2e suites red since 2026-10-02 and excluded from the Playwright config, so nothing runs them.
 
 ## Next
 

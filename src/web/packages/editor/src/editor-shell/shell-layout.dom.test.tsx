@@ -118,8 +118,9 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // Fresh profile: editorial is the default and marks the shell root.
-  expect(root.dataset["shellPalette"]).toBe("editorial");
+  // Fresh profile: editorial is the default and marks the document element,
+  // which is what the portalled popups inherit from.
+  expect(document.documentElement.dataset["shellPalette"]).toBe("editorial");
   expect(root.querySelector("#stage")).not.toBeNull();
   expect(root.querySelector("#status")).not.toBeNull();
   expect(root.querySelector("#canvas-host")).not.toBeNull();

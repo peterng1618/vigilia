@@ -404,7 +404,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const storage = readStorage();
   const initial =
     storage === undefined ? DEFAULT_SHELL_PALETTE : readShellPalette(storage);
-  applyShellPalette(root, initial);
+  applyShellPalette(initial);
 
   const hosts: ShellHosts = {
     canvas: element(),
@@ -510,7 +510,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           <span className="editor-shell-tagline">{uiCopy.editor}</span>
           <ShellMenuBar store={store} getView={getView} />
           <PaletteMenu
-            root={root}
             storage={storage}
             palette={palette}
             onChange={setPalette}

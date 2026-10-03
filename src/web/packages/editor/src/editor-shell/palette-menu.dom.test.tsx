@@ -35,7 +35,6 @@ beforeAll(() => {
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
-let shell: HTMLDivElement | undefined;
 
 /** Base UI portals the popup to `body`, so it is read from the document and
  *  not from the mount host. */
@@ -60,12 +59,9 @@ async function mount(
 ): Promise<HTMLElement> {
   host = document.createElement("div");
   document.body.append(host);
-  shell = document.createElement("div");
-  document.body.append(shell);
   root = createRoot(host);
   root.render(
     <PaletteMenu
-      root={shell}
       storage={localStorage}
       palette={palette}
       onChange={onChange}
@@ -79,6 +75,7 @@ async function mount(
 
 beforeEach(() => {
   localStorage.clear();
+  document.documentElement.removeAttribute("data-shell-palette");
 });
 
 /** Base UI unmounts the popup on the next frame, so one test's open menu is
@@ -93,8 +90,7 @@ afterEach(async () => {
   root = undefined;
   host?.remove();
   host = undefined;
-  shell?.remove();
-  shell = undefined;
+  document.documentElement.removeAttribute("data-shell-palette");
 });
 
 it("offers every palette the list owns, and marks the one in force", async () => {
@@ -118,22 +114,9 @@ it("offers every palette the list owns, and marks the one in force", async () =>
 });
 
 it("shows a swatch of the current palette beside its name", async () => {
-  const host = document.createElement("div");
-  document.body.append(host);
-  shell = document.createElement("div");
-  document.body.append(shell);
-  root = createRoot(host);
-  root.render(
-    <PaletteMenu
-      root={shell}
-      storage={localStorage}
-      palette="graphite"
-      onChange={vi.fn()}
-    />,
-  );
-  await flush();
+  await mount("graphite");
 
-  const trigger = host.querySelector("[data-vigilia-palette]");
+  const trigger = host?.querySelector("[data-vigilia-palette]");
 
   // The chip paints from the palette's own `--shell-*` tokens through
   // `data-shell-palette`, so it cannot read once at mount and go stale.
@@ -156,9 +139,9 @@ it("writes the choice through both owners", async () => {
   await flush();
 
   // The two owners are unchanged from the select this replaces: the browser's
-  // own store for the next session, and the shell root's attribute for the
-  // repaint that follows it.
+  // own store for the next session, and the document element's attribute for
+  // the repaint that follows it.
   expect(readShellPalette(localStorage)).toBe("ember");
-  expect(shell?.dataset["shellPalette"]).toBe("ember");
+  expect(document.documentElement.dataset["shellPalette"]).toBe("ember");
   expect(onChange).toHaveBeenCalledWith("ember");
 });

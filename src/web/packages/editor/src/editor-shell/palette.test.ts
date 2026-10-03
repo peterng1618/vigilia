@@ -43,14 +43,15 @@ describe("shell palette", () => {
     }
   });
 
-  it("writes only the shell palette and marks its shell root", () => {
-    const root = document.createElement("main");
-
+  it("writes only the shell palette and marks the document element", () => {
     writeShellPalette(localStorage, "moss");
-    applyShellPalette(root, "moss");
+    applyShellPalette("moss");
 
     expect(localStorage.getItem("vigilia.editor.shell-palette")).toBe("moss");
-    expect(root.dataset["shellPalette"]).toBe("moss");
-    expect(root).not.toHaveProperty("envelope");
+    // The document element rather than the editor's own root, because Base UI
+    // portals every popup to `body` — a sibling of that root, not a descendant —
+    // and a palette attribute below it is invisible to all of them.
+    expect(document.documentElement.dataset["shellPalette"]).toBe("moss");
+    expect(document.documentElement).not.toHaveProperty("envelope");
   });
 });
