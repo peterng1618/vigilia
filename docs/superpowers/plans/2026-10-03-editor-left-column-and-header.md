@@ -188,6 +188,20 @@ the header where it becomes visible under all six palettes. Settle where the att
 lives as part of moving the tokens, and prove it on a portalled popup, not only on the
 chrome.
 
+**Six palettes, six distinguishable things.** `ember`, `moss` and `plum` declare only
+`--shell-accent` and `--shell-warm`, so they render as cream editorial surfaces with a
+coloured ring — a picker offering four options that look nearly alike. Give each of the
+three a surface, and an edge and text colour where the accent alone does not carry
+contrast. They have always been accent variants: before this task every palette shared
+a `:root:not([data-shell-palette="editorial"])` bug and received the glass treatment, so
+they differed by backdrop rather than by surface, and moving the attribute to `:root`
+made the file match its own comment without making them distinct.
+
+*This was filed as `vg-120` and withdrawn on the controller's own reconsideration* — it
+is frontend design, the decision is the controller's, and a near-identical palette
+picker is a papercut in the surface the redesign exists to fix. The withdrawal is
+recorded in `backlog-archive.jsonl` with the reasoning.
+
 **Failure modes to design against:** an editorial-only declaration moving to `:root` that
 silently changes the default appearance before any palette attribute is applied — the
 comment above `:root` says a fresh profile renders editorial on bare `:root`, so the
@@ -200,6 +214,10 @@ move must preserve that.
   computed colour. Today five of the six resolve to nothing — assert the failing case
   first, then watch it pass.
 - Browser: a fresh profile with no `localStorage` renders the editorial palette.
+- Browser: each of the six palettes is distinguishable from editorial by surface, not
+  only by an accent ring. Screenshot all six side by side and compare — the eye is the
+  instrument here, and a computed-value assertion cannot tell a cream chip from an
+  ember one.
 - Static: no `--vigilia-` reference in the file resolves to a declaration scoped to a
   single palette attribute.
 
