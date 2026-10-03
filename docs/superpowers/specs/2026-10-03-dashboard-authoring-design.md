@@ -40,6 +40,52 @@ uncommon one.** Specifically:
 The test for any change in this spec: *does this remove a step, or does it remove a
 freedom?* If the second, it is out.
 
+### Convenience is not a smaller surface
+
+> *We made it convenient for authors to design. Not limit what they could design
+> because we thought that's limited set is what they should care about. A chart might
+> have 50 customizable properties. We thought that would confuse the user, so we show
+> them 10 and lock the other 40 into defaults, hidden. That's wrong.*
+
+The correction is general, and it is aimed at this spec as much as at the code: **order
+and grouping are how you serve convenience. Removal is not.** A long property list is a
+navigability problem, and the answer to a navigability problem is navigation.
+
+So, for every property surface in this design:
+
+- **Every authorable setting is present.** None locked to a default, none hidden.
+- **Ordered by likelihood of use**, so the common path is the first thing read.
+- **Grouped by what the setting is about** — shape, paint, data, time — not by which
+  struct happens to declare it.
+- **Every field carries a hint** saying what it does, in the author's language. Most
+  descriptors ship without one today; the field exists on `SettingsFieldDescriptor` and
+  is underused.
+- **Good defaults**, so an author who touches nothing still gets something worth showing.
+- **The obscure ones at the end, in a collapsed section** — present, findable, and out of
+  the way. Collapsed is not hidden: the count is visible and the section opens.
+
+**Measured, and the codebase already agrees.** `renderer-core/src/charts/settings-fields.ts`
+is headed *"Every scalar setting, per family"* and mostly is. Against the settings types:
+line 11 descriptors of 15 keys, bar 9 of 12, pie 7 of 11, plus paint fields per family.
+So the architecture the principle wants already exists — what is missing is the
+organisation layer, and **two actual holes**:
+
+- **`PieSettings.total` is unreachable** (`vg-121`). Whether a pie sums its parts or
+  divides by a *fixed total with a measurable remainder* is the RAM/storage-ring case,
+  and the renderer computes `remainder`, `overflow` and `complete` against it. An author
+  cannot choose it. That is the principle's exact failure: a real decision removed
+  because the surface looked long without it.
+- **`animation` is unreachable on every family** (`vg-122`).
+
+The file's own header also records a known duplication: `validate.ts`'s
+`validateSettingsRange` is *not* a switch, so a fifth family would be range-checked as a
+pie, and driving it from this table "closes both problems at once."
+
+**The plan's obligation.** The new per-kind inspector renders from these descriptors
+rather than re-curating them, every descriptor gains a group and a hint, and the
+completeness check is a test: a key in a settings type with no descriptor fails. That
+test is the one that would have caught both holes the day they were cut.
+
 ### The case that proves it
 
 *If I want a 1/4 circle as a decorating element, I should be able to place the 3/4 part
@@ -320,6 +366,9 @@ Rendered observation in a real browser (§33).
   selecting a free shape opens that shape's own column, at the same density.
 - With nothing selected the right column is empty and names where to choose from.
 - The `+` offers units **and** primitives, neither greyed, neither described as a fallback.
+- **Every authorable setting of a selected object has a control.** A key in a settings type
+  with no descriptor fails a test, so a property cannot be quietly dropped from the surface
+  without a red gate — the two holes filed today would not have survived it.
 - **A quarter-disc with three quarters of it outside the artboard is authorable, and the
   editor shows exactly the quarter the phone shows.** Marked as bleeding it raises no crop
   notice; unmarked it still does.
