@@ -43,11 +43,10 @@ The loop, in order:
 
 ## Last completed change
 
-- **Every palette resolves; the portalled popups follow it** (plan 1 task 2). `applyShellPalette` wrote the attribute on `#app`, but Base UI portals to `body` — a sibling — so menus rendered cream under all five non-editorial palettes. It writes `document.documentElement` now and takes no element parameter, so the mistake cannot recur.
-- **`--vigilia-*` moved to `:root`**, which is why five of six resolved to nothing: a `var()` with no declaration in scope is invalid at computed-value time and drops the whole declaration. Control text contrast measured 14.9–17.7 across all six.
-- **`vg-118` fixed.** A chip inherited the live palette's surface rather than its own — under graphite, an `ember` chip was a peach ring on dark glass. The swatch joins the token baseline, so a chip is a self-contained scope.
-- **Two orderings are pinned because both were wrong first.** The `:root` control block must precede the palette blocks, or the base wins at equal specificity; and the static half sits beside the CSS while the browser half cannot be jsdom at all.
-- **Filed rather than fixed:** `vg-119` — two author-journey e2e suites red since 2026-10-02 and excluded from the Playwright config, so nothing runs them.
+- **The scale block is an `@theme` override, not a `:root` rule** (plan 1 task 2, fix round 1). Unlayered beats layered whatever the specificity, so `--text-sm`/`--text-xs`/`--radius-md` on `:root` silently outranked Tailwind's own theme and shipped `text-sm` as 12px on a 14px line height. Each `--text-*` now states a 1.25 line height, and `@theme static` keeps the four tokens no utility references from being dropped at build.
+- **`ember`, `moss` and `plum` have surfaces, edges and text of their own**; they were editorial's byte for byte, so the picker offered four options that differed only in a ring. Their accents are deepened to hold 4.5:1 on their own paper, and `light` gets its own.
+- **Editorial's flatness is pinned.** Moving the palette attribute to `:root` made `:root:not([…editorial])` exclude editorial for the first time — the fix working, recorded by nothing. Pinned on `box-shadow`, because this browser computes `backdrop-filter` to `none` under every palette.
+- **Six palettes screenshotted side by side**, palette popover open under each; the eye is the instrument, since every one of those values was individually legitimate.
 
 ## Next
 
@@ -59,8 +58,8 @@ The loop, in order:
 
 ## Blockers / unverified
 
+- **This box is saturated, and both runners misreport it.** `npm run test:e2e`: 42 failed against 36 on the clean base, in files the change does not touch, the two sets differing in both directions; `shell-appearance.spec.ts` is 6/6 in both and `snapping` + `glass-authoring` in isolation are 40/41 on base, 41/41 here. Vitest's threads pool wedged four times (once at startup, once at 26s CPU over 29 minutes of wall clock); `--pool=forks` runs the same tests green.
 - **`FontFace` in jsdom is unverifiable** — jsdom has neither `document.fonts` nor the `FontFace` global, so the specimen cache's suite proves control flow against injected seams and nothing more. Real residency lands in Task 8's browser run, or not at all. **The 261 pinned face URLs are likewise string-shaped; no test contacts jsDelivr.**
 - **A mutation harness that collected zero tests reported as "all mutations survived", and "remove the catch" is a syntax error** — it leaves `try` unclosed, so the mutation never applies and an untouched test looks like a survivor. The spelling that propagates is `try/finally`. Both cost a run on this pass.
 - **vg-115 leaves `src/web/scripts/` ungated for every future agent** — `reuse-gate.mjs:53` resolves paths against the repo root, so its `scripts/` entry matches the repo-root directory only. Filed, cause established, one owner.
-- **vg-116 is ours only as a workaround**: upstream's registry titles disagree with its own documents in two places, and one generator rule stands between the catalogue and shipping a false title.
 - **The POSIX drive→volume join is a real defect, not merely unproven**: `library-devices.ts:53` strips a trailing slash, so a root volume's `/` becomes `""`, the join at line 118 never matches, and **on macOS and Linux every root volume reports as belonging to no drive**. It passes on Windows because `C:` has no trailing slash. Queued behind a decision note — the path is on the reuse-gate watchlist.

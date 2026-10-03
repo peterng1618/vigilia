@@ -22,11 +22,11 @@ body,
 
    The swatch joins this selector because a chip is a *self-contained scope*
    rather than a window onto whatever is in force: it carries the attribute of
-   the palette it NAMES, so `ember`/`moss`/`plum` — which override only the
-   accent — would otherwise inherit the live palette's surface and paint, say,
-   graphite's dark glass behind a peach ring. Declaring the baseline here makes
-   every token a chip paints its own, and the palette blocks below override it
-   by later source order at equal specificity. */
+   the palette it NAMES, and without a declaration here it would inherit the
+   live palette's tokens instead of resolving its own — an ember chip under
+   graphite painted graphite's dark glass behind an ember ring. Declaring the
+   baseline on the chip makes every token it paints its own, and the palette
+   blocks below override it by later source order at equal specificity. */
 :root,
 [data-shell-palette="editorial"],
 .editor-shell-palette-swatch {
@@ -67,8 +67,8 @@ body,
    repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
    either: that holds this same colour under editorial and nothing else, since
    the glass palettes declare a gradient there, and aliasing it painted the
-   whole page gradient onto every button. The one palette that needs a
-   different control surface declares one below. */
+   whole page gradient onto every button. A palette that needs a different
+   control surface declares one below. */
 :root {
   --vigilia-canvas-bg: #26241f;
   --vigilia-text: var(--shell-text);
@@ -105,22 +105,55 @@ body,
   --shell-primary-text: #0a1116;
   --shell-display: system-ui, sans-serif;
   --shell-flat: 0;
-  /* The one `--vigilia-*` token a glass palette overrides. Editorial's paper
+  /* The only `--vigilia-*` token a palette overrides. Editorial's paper
      control is unreadable on graphite's dark chrome, and the backdrop cannot
      be aliased here because it is a gradient. */
   --vigilia-control-bg: #0a1116c9;
 }
+/* `ember`, `moss` and `plum` used to declare an accent and nothing else, so
+   their surface, edge and text were editorial's byte for byte — a picker
+   offering four options that differ only in a ring. Each now carries a tinted
+   paper of its own, an edge and a text colour that read on it, and a control
+   surface one step under it.
+
+   Their accents are deepened from the pastel that named them. A light accent
+   on a light surface carries nothing: `--shell-accent` paints hover colour and
+   the focus ring, so `#ffb36b` on a peach paper was a hover the author could
+   not see. Each is now the same hue at a value that holds 4.5:1 against both
+   its own surface and the glass overlay the non-editorial rules put over it,
+   and the ring still reads as ember, moss or plum. */
 [data-shell-palette="ember"] {
-  --shell-accent: #ffb36b;
+  --shell-backdrop: #e9cdb4;
+  --shell-surface: #f7e2d2;
+  --shell-surface-strong: #fbeade;
+  --shell-edge: #8a4a24;
+  --shell-text: #2e1a0f;
+  --shell-muted: #6d5138;
+  --shell-accent: #8f4208;
   --shell-warm: #ff7e6e;
+  --vigilia-control-bg: #f0d3bc;
 }
 [data-shell-palette="moss"] {
-  --shell-accent: #b7e46b;
+  --shell-backdrop: #cfe0bb;
+  --shell-surface: #e4efd9;
+  --shell-surface-strong: #eff6e7;
+  --shell-edge: #4a6b2c;
+  --shell-text: #1c2a12;
+  --shell-muted: #4f6242;
+  --shell-accent: #38601a;
   --shell-warm: #e8c56a;
+  --vigilia-control-bg: #d8e8c8;
 }
 [data-shell-palette="plum"] {
-  --shell-accent: #d0a6ff;
+  --shell-backdrop: #dccdef;
+  --shell-surface: #ece3f7;
+  --shell-surface-strong: #f3ecfb;
+  --shell-edge: #5f3f86;
+  --shell-text: #241634;
+  --shell-muted: #5a4870;
+  --shell-accent: #543484;
   --shell-warm: #ffb2a1;
+  --vigilia-control-bg: #ded1ef;
 }
 [data-shell-palette="light"] {
   --shell-surface: #eff9f2bf;
@@ -129,19 +162,47 @@ body,
   --shell-text: #102119;
   --shell-muted: #4f6659;
   --shell-backdrop: linear-gradient(145deg, #d8ebe4, #afd4d1);
+  /* The one palette that never declared an accent and inherited editorial's
+     ink, which on mint read as a gap rather than as a choice. */
+  --shell-accent: #1c6b4f;
 }
 
 /* The scale: one 4px spacing base, three radii, three sizes, two elevations.
-   Plan 10 moves these into `@theme`, which is why they carry `@theme`'s names
-   (`--spacing`, `--radius-*`, `--text-*`, `--shadow-*`) and not the shell's. */
-:root {
+   It lives in `@theme`, not on a plain `:root`, and that is load-bearing.
+
+   Tailwind emits its own defaults into `@layer theme`, and an *unlayered*
+   `:root` beats a layered rule whatever its specificity — so declaring these
+   names on `:root` silently overrode `text-sm`, `text-xs` and `rounded-md`
+   across every component that uses them, with no error anywhere. Overriding
+   inside `@theme` is the same intent stated in the layer that owns it, and it
+   also finishes what Plan 10 would otherwise have had to convert.
+
+   The `--text-*` line-height companions are stated, not inherited. Tailwind
+   computes each one for its own size — `--text-sm--line-height` is
+   `calc(1.25 / .875)`, written for 14px — so changing the size alone leaves a
+   ratio belonging to a size the token no longer has. 1.25 is a deliberately
+   tight one: these are labels inside 24–32px rows, where a loose line is what
+   pushes the row out of shape. The shell's own body text stays at its `1.4`,
+   which is a different layer at a different size.
+
+   The values are the editor's existing density, not a new scale — 11/12/13px
+   and an 8px radius are what the shell's stylesheet already uses throughout.
+
+   `static` because Tailwind drops any theme variable no utility references, and
+   four of these are referenced by nothing yet: `--text-md`, `--radius-lg` and
+   both elevations would have been emitted nowhere, which is the same
+   resolves-to-nothing defect the `--vigilia-*` block had. */
+@theme static {
   --spacing: 0.25rem;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --text-xs: 11px;
+  --text-xs--line-height: 1.25;
   --text-sm: 12px;
+  --text-sm--line-height: 1.25;
   --text-md: 13px;
+  --text-md--line-height: 1.25;
   --shadow-raised: 0 12px 28px #0000003d;
   --shadow-overlay: 0 18px 44px #0006;
 }

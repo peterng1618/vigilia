@@ -61,7 +61,9 @@ async function choosePalette(page: Page, palette: Palette): Promise<void> {
   await page.locator("[data-vigilia-palette]").click();
   const popup = page.locator(PALETTE_POPUP);
   await expect(popup).toBeVisible();
-  await popup.getByRole("menuitemradio", { name: palette, exact: true }).click();
+  await popup
+    .getByRole("menuitemradio", { name: palette, exact: true })
+    .click();
   await expect(page.locator("html")).toHaveAttribute(
     "data-shell-palette",
     palette,
@@ -149,7 +151,9 @@ test.describe("shell palettes", () => {
       const portalled = await popup.evaluate(
         (node) => document.getElementById("app")?.contains(node) === false,
       );
-      expect(portalled, "the popup left #app, which is the whole case").toBe(true);
+      expect(portalled, "the popup left #app, which is the whole case").toBe(
+        true,
+      );
 
       const [popupBackground, headerBackground] = await Promise.all([
         popup.evaluate((node) => getComputedStyle(node).backgroundColor),
@@ -172,9 +176,10 @@ test.describe("shell palettes", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
-    // `ember`, `moss` and `plum` override only the accent, so a chip naming one
-    // used to inherit the live palette's surface and paint, under graphite,
-    // graphite's dark glass behind a peach ring.
+    // A chip names a palette it may not be rendering under. `ember`, `moss`
+    // and `plum` declared only an accent, so under graphite a chip naming one
+    // inherited the live palette's surface and painted graphite's dark glass
+    // behind a peach ring.
     await openEditor(page);
     await choosePalette(page, "graphite");
     await page.locator("[data-vigilia-palette]").click();
@@ -182,20 +187,19 @@ test.describe("shell palettes", () => {
     await expect(popup).toBeVisible();
 
     const chips = await popup.evaluate((node) =>
-      [...node.querySelectorAll(".editor-shell-palette-swatch")].map((chip) => ({
-        palette: chip.getAttribute("data-shell-palette"),
-        background: getComputedStyle(chip).backgroundColor,
-        ring: getComputedStyle(chip).boxShadow,
-      })),
+      [...node.querySelectorAll(".editor-shell-palette-swatch")].map(
+        (chip) => ({
+          palette: chip.getAttribute("data-shell-palette"),
+          background: getComputedStyle(chip).backgroundColor,
+          ring: getComputedStyle(chip).boxShadow,
+        }),
+      ),
     );
 
     expect(chips.map((chip) => chip.palette)).toEqual([...PALETTES]);
 
-    // Only two of the six declare a surface of their own — graphite's dark
-    // glass and light's mint — so the other four share editorial's paper by
-    // design, and `editorial` and `light` share its ink accent too. What must
-    // hold is that no chip shows the *live* palette's surface or ring while
-    // naming a different one, which is the defect.
+    // No chip shows the *live* palette's surface or ring while naming a
+    // different one, which is the defect this test was written for.
     const live = chips.find((chip) => chip.palette === "graphite");
     const borrowed = chips.filter(
       (chip) =>
@@ -207,14 +211,146 @@ test.describe("shell palettes", () => {
       "these chips are showing graphite, the palette in force, not their own",
     ).toEqual([]);
 
-    // The four accent palettes each read as themselves: their rings are
-    // distinct, and none is the ink `editorial` and `light` share.
-    const rings = chips.filter(
-      (chip) => chip.palette === "ember" || chip.palette === "moss" || chip.palette === "plum",
-    );
-    expect(new Set(rings.map((chip) => chip.ring)).size).toBe(rings.length);
+    // And all six are surfaces of their own, which is what the picker is for.
+    // `ember`, `moss` and `plum` declared only an accent, so four of the six
+    // chips were byte-identical cream — a computed-value assertion cannot see
+    // that as wrong, because editorial's value is a legitimate value; only the
+    // eye catches a picker offering four options that look alike. Hence this
+    // is the assertion *and* the six screenshots beside it.
+    const surfaces = chips.map((chip) => chip.background);
+    expect(
+      surfaces.filter((surface, i) => surfaces.indexOf(surface) !== i),
+      "two palettes render the same surface, so the picker offers a duplicate",
+    ).toEqual([]);
+    expect(
+      new Set(chips.map((chip) => chip.ring)).size,
+      "two palettes render the same ring",
+    ).toBe(chips.length);
 
     await page.keyboard.press("Escape");
+  });
+
+  /** The scale, as the built bundle actually resolves it.
+   *
+   *  `--text-sm`, `--text-xs` and `--radius-md` were declared on an unlayered
+   *  `:root`, which beats `@layer theme` whatever its specificity — so
+   *  Tailwind's defaults lost globally, and `text-sm` shipped as 12px on
+   *  Tailwind's own 14px line height. Nothing errors when that happens and
+   *  nothing reaches a jsdom assertion either, so it is measured here: a probe
+   *  carrying the class names resolves through exactly the cascade the live
+   *  components resolve through, which is the claim.
+   *
+   *  The four unused tokens are read as variables rather than as utilities —
+   *  `@theme static` emits them, but Tailwind only generates a rule for a class
+   *  some source file uses, and `rounded-lg` is not one yet. */
+  test("the scale resolves to the editor's density", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await openEditor(page);
+
+    const probe = await page.evaluate(() => {
+      // Attached: `getComputedStyle` on a detached node answers "" for
+      // everything, which would make every assertion here pass vacuously.
+      const host = document.createElement("div");
+      host.style.cssText = "position:fixed;top:0;left:0;visibility:hidden";
+      document.body.appendChild(host);
+      // Each probe reads only the property its utility owns. Reading all three
+      // would pin the inherited body font here too, which is not what this
+      // test is about and would break on an unrelated change.
+      const measure = (
+        className: string,
+        properties: readonly string[],
+      ): Record<string, string> => {
+        const node = document.createElement("div");
+        node.className = className;
+        host.appendChild(node);
+        const style = getComputedStyle(node);
+        const read = Object.fromEntries(
+          properties.map((name) => [name, style.getPropertyValue(name)]),
+        );
+        node.remove();
+        return read;
+      };
+      const root = getComputedStyle(document.documentElement);
+      const theme = Object.fromEntries(
+        [
+          "--spacing",
+          "--text-md",
+          "--radius-lg",
+          "--shadow-raised",
+          "--shadow-overlay",
+        ].map((name) => [name, root.getPropertyValue(name).trim()]),
+      );
+      const utilities = {
+        "text-xs": measure("text-xs", ["font-size", "line-height"]),
+        "text-sm": measure("text-sm", ["font-size", "line-height"]),
+        "rounded-sm": measure("rounded-sm", ["border-radius"]),
+        "rounded-md": measure("rounded-md", ["border-radius"]),
+      };
+      host.remove();
+      return { utilities, theme };
+    });
+
+    expect(probe.utilities).toEqual({
+      "text-xs": { "font-size": "11px", "line-height": "13.75px" },
+      "text-sm": { "font-size": "12px", "line-height": "15px" },
+      "rounded-sm": { "border-radius": "4px" },
+      "rounded-md": { "border-radius": "8px" },
+    });
+    expect(probe.theme).toEqual({
+      // `.25rem`, not `0.25rem`: the bundle is minified, and this reads what
+      // the browser resolved rather than what the source says.
+      "--spacing": ".25rem",
+      "--text-md": "13px",
+      "--radius-lg": "12px",
+      "--shadow-raised": "0 12px 28px #0000003d",
+      "--shadow-overlay": "0 18px 44px #0006",
+    });
+  });
+
+  /** Editorial is flat; the glass treatment is the other five's.
+   *
+   *  The three glass rules select `:root:not([data-shell-palette="editorial"])`,
+   *  which excluded editorial only once the palette attribute moved onto
+   *  `documentElement`. Editorial had been receiving the glass against the
+   *  comment above those rules — which say it is the flat one — and nothing
+   *  recorded the change, so a later edit could have put it back unnoticed.
+   *  `box-shadow` is the discriminator rather than `backdrop-filter`: this
+   *  browser computes `backdrop-filter` to `none` under every palette, so it
+   *  would assert nothing at all. */
+  test("editorial is flat and the other five are glass", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await openEditor(page);
+    const header = page.locator(".editor-shell-header");
+
+    await choosePalette(page, "editorial");
+    const flat = await header.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { shadow: style.boxShadow, image: style.backgroundImage };
+    });
+    expect(flat.shadow, "editorial carries the glass shadow").toBe("none");
+    expect(flat.image, "editorial carries the glass gradient").toBe("none");
+
+    for (const palette of PALETTES.filter((p) => p !== "editorial")) {
+      await choosePalette(page, palette);
+      const glass = await header.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return { shadow: style.boxShadow, image: style.backgroundImage };
+      });
+      expect(
+        glass.shadow,
+        `the ${palette} header has no glass shadow`,
+      ).not.toBe("none");
+      expect(
+        glass.image,
+        `the ${palette} header has no glass gradient`,
+      ).not.toBe("none");
+    }
   });
 
   test("a fresh profile with no stored palette renders editorial", async ({
@@ -229,7 +365,9 @@ test.describe("shell palettes", () => {
     // arrives with nothing stored and only this one depends on that.
     await openEditor(page);
 
-    await expect(page.locator("[data-vigilia-palette]")).toHaveText("editorial");
+    await expect(page.locator("[data-vigilia-palette]")).toHaveText(
+      "editorial",
+    );
     await expect(page.locator("html")).toHaveAttribute(
       "data-shell-palette",
       "editorial",

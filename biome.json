@@ -3,6 +3,9 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": { "includes": ["src/web/**/*.ts", "src/web/**/*.json", "src/web/**/*.css"] },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2 },
+  "css": {
+    "parser": { "tailwindDirectives": true }
+  },
   "linter": {
     "enabled": true,
     "rules": {
