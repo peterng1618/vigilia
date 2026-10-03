@@ -1,15 +1,14 @@
 import {
-  ChartColumn,
+  ChartLine,
+  ChartPie,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
-  Folder,
-  Image as ImageIcon,
-  Lock,
+  Gauge,
   type LucideIcon,
-  Square,
-  Type as TypeIcon,
+  Lock,
+  ChartColumn,
   Unlock,
 } from "lucide-react";
 import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
@@ -17,15 +16,23 @@ import { useSyncExternalStore } from "react";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
-import type { LayerKind, LayerRow } from "./layer-tree.js";
+import type { LayerMark, LayerRow } from "./layer-tree.js";
 
-const KIND_ICONS: Readonly<Record<LayerKind, LucideIcon>> = {
-  text: TypeIcon,
-  shape: Square,
-  chart: ChartColumn,
-  group: Folder,
-  image: ImageIcon,
+/**
+ * A chart's family mark, one icon per family the document can name.
+ *
+ * The old column said "chart" to every chart, which is the word a card of eight
+ * charts repeats eight times and the one thing an author scanning for the ring
+ * cannot use. `ChartColumn` is the fallback for a family this build does not
+ * know, so the row still says what it is rather than what it is not.
+ */
+const CHART_ICONS: Readonly<Record<string, LucideIcon>> = {
+  gauge: Gauge,
+  line: ChartLine,
+  bar: ChartColumn,
+  pie: ChartPie,
 };
+const CHART_FALLBACK: LucideIcon = ChartColumn;
 
 /** The twisty is a control like any other, so it is an icon and not a glyph:
  * `▸`/`▾` were announced as words of their own and could not inherit a shell
@@ -59,6 +66,87 @@ function LockStateIcon({ locked }: { readonly locked: boolean }): React.JSX.Elem
       {...(state.fill === undefined ? {} : { fill: state.fill })}
     />
   );
+}
+
+/**
+ * The kind, drawn as the thing rather than as a mark for the thing.
+ *
+ * A text row says its own words in its own face, so one glance answers both
+ * "what is it" and "what does it say"; a chart names its family; a shape shows
+ * the paint it fills with; an image shows its own picture. A group shows
+ * nothing here — the twisty is its mark, and a bold name below says "this holds
+ * others" without a second symbol repeating it.
+ *
+ * Every arm sits in one fixed-width slot, which is what lines the names up. A
+ * group still takes the slot rather than collapsing it, so an eight-card
+ * document has its rows in one column rather than two ragged ones.
+ *
+ * `data-vigilia-layer-mark` names which arm drew, so a browser case can measure
+ * the treatment rather than infer it from the icon's class.
+ */
+function KindMark({ mark }: { readonly mark: LayerMark }): React.JSX.Element {
+  return (
+    <span className="vigilia-layer-mark">
+      {treatment(mark)}
+    </span>
+  );
+}
+
+function treatment(mark: LayerMark): React.JSX.Element | null {
+  switch (mark.kind) {
+    case "text":
+      return (
+        <span
+          data-vigilia-layer-mark="text"
+          className="vigilia-layer-sample"
+          // The face is the object's own, not a panel default: a row that all
+          // wore the shell's face would say nothing about the type it names.
+          style={{
+            fontFamily: mark.family,
+            fontWeight: mark.weight,
+          }}
+          title={mark.text}
+        >
+          {mark.text}
+        </span>
+      );
+    case "chart": {
+      const Icon =
+        mark.family === undefined
+          ? CHART_FALLBACK
+          : (CHART_ICONS[mark.family] ?? CHART_FALLBACK);
+      return (
+        <span data-vigilia-layer-mark="chart" className="vigilia-layer-icon">
+          <Icon aria-hidden size={13} strokeWidth={1.75} />
+        </span>
+      );
+    }
+    case "shape":
+      return (
+        <span
+          data-vigilia-layer-mark="shape"
+          className="vigilia-layer-swatch"
+          // A gradient or a pattern is a paint object, not a colour, and a 10px
+          // swatch cannot show one honestly; the outline then stands alone.
+          {...(mark.paint === undefined
+            ? {}
+            : { style: { background: mark.paint } })}
+          aria-hidden
+        />
+      );
+    case "image":
+      return mark.src === undefined ? null : (
+        <img
+          data-vigilia-layer-mark="image"
+          className="vigilia-layer-thumb"
+          src={mark.src}
+          alt=""
+          aria-hidden
+        />
+      );
+    case "group":
+      return null;
+  }
 }
 
 /** Selection is external mutable state and Fabric owns it, so the projection is
@@ -212,6 +300,13 @@ export function LayerPanel({
 
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
+  // Which row the pointer is over and which holds the keyboard, so the two
+  // state icons can appear for a row the author is about to act on. Both are
+  // ids rather than booleans: one panel state answers for every row, which is
+  // what keeps two hundred rows from re-rendering the whole tree each time the
+  // pointer crosses a line.
+  const [hovered, setHovered] = useState<string | undefined>(undefined);
+  const [focused, setFocused] = useState<string | undefined>(undefined);
 
   // The drag's own state, not React's: a ref set mid-gesture lands without a
   // re-render, so a drop that follows within the same frame cannot see the
@@ -281,9 +376,17 @@ export function LayerPanel({
         aria-describedby={ruleId}
       >
         {rows.map((row, index) => {
-          const Icon = KIND_ICONS[row.kind];
           const Twisty = TWISTY_ICONS[row.collapsed ? "collapsed" : "expanded"];
           const twisty = row.collapsed ? uiCopy.panels.expand : uiCopy.panels.collapse;
+          // The two state icons appear only where they say something: a pointer
+          // or the keyboard is on the row, the row is selected, or the state
+          // itself is not the default. 104 icons reading "visible, unlocked"
+          // was noise that grew with the row count, which is exactly the case a
+          // card-heavy panel hides. Two flags that are both true carry no
+          // information, so a default row carries neither.
+          const attended = hovered === row.id || focused === row.id;
+          const showLock = attended || row.selected || row.locked;
+          const showVisibility = attended || row.selected || !row.visible;
           return (
             <div
               // The row's own id is not unique once an object moves: a stale
@@ -305,6 +408,10 @@ export function LayerPanel({
               // stylesheet rule dims on, and a tree greyed out on open would
               // claim every selectable top-level layer is unreachable.
               data-context={context.size > 0 ? context.has(row.id) : undefined}
+              // A group is a container, and a bold name says so without a mark
+              // repeating it. The stylesheet dims on this rather than on a
+              // class, so the state survives the row's own class list changing.
+              data-kind={row.kind}
               role="treeitem"
               aria-selected={row.selected}
               aria-level={row.depth + 1}
@@ -315,6 +422,23 @@ export function LayerPanel({
               // What the row says, not the key behind it: a tooltip that
               // printed a raw uuid told the author nothing the row did not.
               title={row.name}
+              onMouseEnter={() => setHovered(row.id)}
+              // `mouseleave` rather than `mouseout`: it fires once on leaving
+              // the row, not again for every descendant the pointer crosses on
+              // the way to the row's own buttons.
+              onMouseLeave={() => setHovered(undefined)}
+              // Focus counts as attention for the same reason hover does — a
+              // keyboard author must reach the same controls a pointer reaches.
+              // React's focus/blur bubble, so this also covers the buttons the
+              // row renders once it has focus.
+              onFocus={() => setFocused(row.id)}
+              onBlur={(event) => {
+                // Moving focus to one of the row's own controls is not leaving
+                // it; only focus that leaves the row entirely stands down.
+                if (event.currentTarget.contains(event.relatedTarget as Node | null))
+                  return;
+                setFocused(undefined);
+              }}
               // A row being renamed is a text field: its own drag gesture is
               // selecting text, not restacking the layer.
               draggable={editing !== row.id}
@@ -458,7 +582,7 @@ export function LayerPanel({
               ) : (
                 <span aria-hidden className="vigilia-layer-twisty" />
               )}
-              <Icon aria-hidden size={13} strokeWidth={1.75} />
+              <KindMark mark={row.mark} />
               {editing === row.id ? (
                 <input
                   // biome-ignore lint/a11y/noAutofocus: the field only exists because the author double-clicked the row.
@@ -485,32 +609,63 @@ export function LayerPanel({
               ) : (
                 <span className="vigilia-layer-name">{row.name}</span>
               )}
-              <button
-                type="button"
-                aria-label={row.visible ? uiCopy.panels.hide : uiCopy.panels.show}
-                aria-pressed={row.visible}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  store.mutate(() => bridge?.setLayerVisible(row.id, !row.visible));
-                }}
-              >
-                {row.visible ? (
-                  <Eye aria-hidden size={13} strokeWidth={1.75} />
-                ) : (
-                  <EyeOff aria-hidden size={13} strokeWidth={1.75} />
-                )}
-              </button>
-              <button
-                type="button"
-                aria-label={row.locked ? uiCopy.actions.unlock : uiCopy.actions.lock}
-                aria-pressed={row.locked}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  store.mutate(() => bridge?.setLayerLocked(row.id, !row.locked));
-                }}
-              >
-                <LockStateIcon locked={row.locked} />
-              </button>
+              {/* What the row reads, taken from the document's own binding — and
+                  nothing at all where it reads nothing.
+
+                  That absence is the plain statement, and it is measured rather
+                  than assumed: with a word in this column for an unbound row, 20
+                  of the starter's 23 visible rows printed "Not bound", which is
+                  repeated ink rather than information, and it cost the layer
+                  *name* its width — names fell from 220px to 82px and eleven of
+                  them ended in an ellipsis. A row that reads nothing now says so
+                  by carrying nothing, and never by claiming a key it does not
+                  have. The key's own tooltip still holds the full list. */}
+              {row.bound.length === 0 ? null : (
+                <span
+                  className="vigilia-layer-bound"
+                  title={row.bound.join(uiCopy.panels.boundSeparator)}
+                >
+                  {row.bound.join(uiCopy.panels.boundSeparator)}
+                </span>
+              )}
+              {/* The slot holds its width open whether or not the row draws
+                  anything in it. Measured on canvas, not assumed: with the
+                  space left to the layout, the name jumped as a pointer
+                  arrived and every row the author moved across re-flowed its
+                  own text. The icons are what a default row omits; the room
+                  they need is not. */}
+              <span className="vigilia-layer-state">
+                {showVisibility ? (
+                  <button
+                    type="button"
+                    aria-label={row.visible ? uiCopy.panels.hide : uiCopy.panels.show}
+                    aria-pressed={row.visible}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      store.mutate(() => bridge?.setLayerVisible(row.id, !row.visible));
+                    }}
+                  >
+                    {row.visible ? (
+                      <Eye aria-hidden size={13} strokeWidth={1.75} />
+                    ) : (
+                      <EyeOff aria-hidden size={13} strokeWidth={1.75} />
+                    )}
+                  </button>
+                ) : null}
+                {showLock ? (
+                  <button
+                    type="button"
+                    aria-label={row.locked ? uiCopy.actions.unlock : uiCopy.actions.lock}
+                    aria-pressed={row.locked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      store.mutate(() => bridge?.setLayerLocked(row.id, !row.locked));
+                    }}
+                  >
+                    <LockStateIcon locked={row.locked} />
+                  </button>
+                ) : null}
+              </span>
             </div>
           );
         })}

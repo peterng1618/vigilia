@@ -1,13 +1,55 @@
-import { objectName } from "@vigilia/renderer-core";
-import { VigiliaChart } from "@vigilia/scene-fabric";
-import { type FabricObject, Group } from "fabric/es";
+import {
+  type Binding,
+  CHART_FAMILIES,
+  type ChartFamily,
+  objectName,
+  type TextRun,
+} from "@vigilia/renderer-core";
+import {
+  paintPropertyFor,
+  VIGILIA_TEXT_PROPERTY,
+  VigiliaChart,
+} from "@vigilia/scene-fabric";
+import { type FabricObject, FabricImage, Group } from "fabric/es";
+import { runPlaceholder } from "../run-placeholder.js";
 
 export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
+
+/**
+ * What a row draws in place of a kind glyph.
+ *
+ * Each arm carries the object's own data rather than a symbol standing in for
+ * it, because a 12px glyph cannot survive 280px and this can: a text row says
+ * what it says and in what face, a chart which family it is, a shape the paint
+ * it fills with, an image its own source. A group carries nothing — the twisty
+ * and a bold name are its mark, and a mark of its own would be a third thing
+ * saying the same word.
+ */
+export type LayerMark =
+  | {
+      readonly kind: "text";
+      /** The string the object says, and the face it says it in. */
+      readonly text: string;
+      /** `undefined` when the object names no family, which is not the same as
+       * the shell's own: an undeclared face is left undeclared rather than
+       * guessed at. */
+      readonly family: string | undefined;
+      readonly weight: string | number | undefined;
+    }
+  | { readonly kind: "chart"; readonly family: ChartFamily | undefined }
+  | { readonly kind: "shape"; readonly paint: string | undefined }
+  | { readonly kind: "image"; readonly src: string | undefined }
+  | { readonly kind: "group" };
 
 export interface LayerRow {
   readonly id: string;
   readonly name: string;
   readonly kind: LayerKind;
+  readonly mark: LayerMark;
+  /** The semantic keys this node reads, in the order the document declares
+   * them. Empty for an object bound to nothing, which is a fact about the
+   * document rather than a gap to be filled in. */
+  readonly bound: readonly string[];
   readonly depth: number;
   readonly parentId: string | undefined;
   readonly hasChildren: boolean;
@@ -70,6 +112,111 @@ function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
 }
 
 /**
+ * A text object's own string, and the face it says it in.
+ *
+ * Two owners, both the ones that already own the answers. The string is the
+ * authored runs under `vigiliaText` — literal runs as written, a value run as
+ * the placeholder `run-placeholder` already prints while the author is working,
+ * because a reading is not what the object *says*, it is what it currently
+ * shows. The face is what `applyObjectTypePresets` wrote onto the object from
+ * the first run's type preset: the same family the canvas paints with, read
+ * from the object rather than re-resolved from the document's globals, so a row
+ * can never disagree with the text it names.
+ */
+function textMark(
+  object: FabricObject,
+  bindings: readonly Binding[],
+): LayerMark {
+  const authored = object.get(VIGILIA_TEXT_PROPERTY) as
+    | { readonly runs?: readonly TextRun[] }
+    | undefined;
+  // Fabric's own `text` is what the object draws, so a text object authored
+  // before `vigiliaText` existed still has a string to show rather than a hole.
+  const fallback =
+    typeof object.get("text") === "string" ? object.get("text") : undefined;
+  const runs = authored?.runs;
+  const text =
+    runs === undefined
+      ? fallback
+      : runs
+          .map((run) =>
+            run.kind === "literal" ? run.text : runPlaceholder(run, bindings),
+          )
+          .join("");
+  const family = object.get("fontFamily");
+  const weight = object.get("fontWeight");
+  return {
+    kind: "text",
+    text: text === undefined ? "" : text,
+    family: typeof family === "string" ? family : undefined,
+    weight:
+      typeof weight === "string" || typeof weight === "number"
+        ? weight
+        : undefined,
+  };
+}
+
+/**
+ * A chart's family, when the object names one this build knows.
+ *
+ * An unrecognised family is reported as none rather than defaulted to a
+ * neighbour: the row would then claim a chart is a gauge when the document says
+ * otherwise, which is the one thing a mark must never do.
+ */
+function chartMark(object: FabricObject): LayerMark {
+  const family: unknown = object.get("family");
+  return {
+    kind: "chart",
+    family: CHART_FAMILIES.find((known) => known === family),
+  };
+}
+
+/**
+ * A shape's own paint, read from the property its owner says the paint belongs
+ * on — `paintPropertyFor` is the inspector's own rule and the one that put a
+ * stroked path's ink on its stroke, so the swatch and the canvas agree.
+ *
+ * Fabric keeps a gradient here as a paint object rather than a colour, and a
+ * 10px swatch cannot show one honestly; that row draws its outline alone.
+ */
+function shapeMark(object: FabricObject): LayerMark {
+  const paint: unknown = object.get(paintPropertyFor(object));
+  return {
+    kind: "shape",
+    paint: typeof paint === "string" ? paint : undefined,
+  };
+}
+
+/** An image's own source, so the row shows the picture rather than a symbol for
+ * "there is a picture". Fabric's `getSrc` is the same accessor its own `toObject`
+ * persists, so the thumbnail cannot drift from what a save writes. */
+function imageMark(object: FabricObject): LayerMark {
+  return {
+    kind: "image",
+    src: object instanceof FabricImage ? object.getSrc() : undefined,
+  };
+}
+
+function markOf(
+  object: FabricObject,
+  kind: LayerKind,
+  bindings: readonly Binding[],
+): LayerMark {
+  switch (kind) {
+    case "text":
+      return textMark(object, bindings);
+    case "chart":
+      return chartMark(object);
+    case "shape":
+      return shapeMark(object);
+    case "image":
+      return imageMark(object);
+    case "group":
+      return { kind: "group" };
+  }
+}
+
+/**
  * Projects Fabric's current hierarchy without maintaining a second scene tree.
  *
  * `expanded` names the groups the author has *opened*, and a group with children
@@ -83,13 +230,22 @@ export function projectLayers({
   root,
   selected,
   expanded,
+  bindings,
 }: {
   readonly root: readonly FabricObject[];
   readonly selected: readonly FabricObject[];
   readonly expanded: ReadonlySet<string>;
+  /** The document's semantic bindings, keyed by the same Fabric object ids the
+   * rows carry. Envelope state rather than Fabric state, so it arrives as an
+   * argument: the projection still reads Fabric in and rows out, and a row's
+   * bound key is whatever the document declares rather than a string typed in
+   * beside the object. Absent bindings read as none, which is what a document
+   * that declares none means. */
+  readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
 }): readonly LayerRow[] {
   const rows: LayerRow[] = [];
   const idOf = layerIds();
+  const bound = bindings ?? {};
   const walk = (
     objects: readonly FabricObject[],
     depth: number,
@@ -104,11 +260,14 @@ export function projectLayers({
       const isGroup = object instanceof Group;
       const hasChildren = isGroup && object.getObjects().length > 0;
       const collapsed = hasChildren && !expanded.has(id);
-      if (!hidden)
+      if (!hidden) {
+        const own = bound[id] ?? [];
         rows.push({
           id,
           name: nameOf(object, id, kind),
           kind,
+          mark: markOf(object, kind, own),
+          bound: own.map((entry) => entry.semanticKey),
           depth,
           parentId,
           hasChildren,
@@ -119,6 +278,7 @@ export function projectLayers({
           ),
           selected: selected.includes(object),
         });
+      }
       // Descend into a shut group as well, emitting nothing for what is under
       // it. The fallback id above is *positional* — `layerIds` numbers the
       // id-less by walk order — and `findById`/`ownerOf`/`pathTo` walk the whole

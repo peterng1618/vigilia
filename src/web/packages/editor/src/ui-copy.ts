@@ -382,6 +382,16 @@ export const uiCopy = {
      * it sits in is what tells them apart. */
     hide: "Hide",
     show: "Show",
+    /** Between two keys one chart or label reads. The trends card reads three,
+     * and a space alone would run them together at 280px. Punctuation rather
+     * than a letter, so it cannot be mistaken for part of a key.
+
+     * A row bound to nothing prints nothing here rather than a word saying so —
+     * measured on canvas, not assumed: a word printed on 20 of the starter's 23
+     * visible rows and cost the layer *name* its width, which is repeated ink
+     * against the one thing a layer list must keep readable (§173). What a row
+     * reads is never invented to fill the column. */
+    boundSeparator: " · ",
     rename: "Rename",
     collapse: "Collapse",
     expand: "Expand",

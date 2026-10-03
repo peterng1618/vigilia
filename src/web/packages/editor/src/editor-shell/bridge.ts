@@ -1,4 +1,4 @@
-import { isObjectName } from "@vigilia/renderer-core";
+import { type Binding, isObjectName } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
@@ -86,6 +86,12 @@ function activeKindOf(active: FabricObject | undefined): ActiveKind {
 export function createEditorShellBridge(input: {
   readonly editor: EditorInteraction;
   readonly session: EditorActionFacade;
+  /** The document's semantic bindings, keyed by Fabric object id. Envelope
+   * state the session owns; a layer row reads it so the key it prints is the
+   * document's rather than a string the panel wrote. Optional, and absent reads
+   * as no bindings — a bridge with no document behind it says so rather than
+   * refusing to project. */
+  readonly bindings?: () => Readonly<Record<string, readonly Binding[]>>;
   /** The product's own library capture; see `EditorShellBridge.capture`. */
   readonly capture: () => string | undefined;
 }): EditorShellBridge {
@@ -177,6 +183,10 @@ export function createEditorShellBridge(input: {
       root: canvas.getObjects(),
       selected,
       expanded: openedGroups,
+      // Pulled, never held: bindings are envelope state the session owns, and a
+      // row whose bound key went stale after an edit would name a key the
+      // document no longer declares.
+      ...(input.bindings === undefined ? {} : { bindings: input.bindings() }),
     });
   };
   const selectLayer = (id: string): void => {

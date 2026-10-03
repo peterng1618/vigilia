@@ -193,7 +193,10 @@ state belongs to the shell.
 - **Kind becomes a treatment, not a glyph.** A text row renders its own string in its own
   face at small size, so it reads *what it says and that it is text* in one glance. A chart
   row carries its family mark, a shape row a filled swatch, an image row its thumbnail. A
-  12px glyph cannot survive 280px and this can.
+  12px glyph cannot survive a 280px column and this can. **The column is 340px**, corrected
+  from 280px: measured on the revived starter, 280px could not hold a name, a 40px specimen
+  and a semantic key at once, and every narrower value moved the truncation between those
+  three rather than removing it.
 - **Lock and visibility appear only when they are true** — hover, selection, or
   non-default. 104 icons reading "visible, unlocked" was noise, and the noise grows with
   the row count, which is the case a card-heavy panel would hide.

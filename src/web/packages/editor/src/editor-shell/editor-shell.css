@@ -435,7 +435,14 @@ body,
 .editor-shell-body {
   display: grid;
   grid-template-areas: "bar stage inspector" "panel stage inspector";
-  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  /* The layer panel is 340px because a row now carries three things it did not
+     before: a 40px kind specimen, the name, and the semantic key it reads, plus
+     the 50px the two state controls need when a row is attended. At 280px —
+     measured on canvas, not estimated — the starter's names and its keys could
+     not both be read and one of the two truncated into uselessness; 320px was
+     still six rows short. The canvas is `minmax(0, 1fr)`, so this width comes
+     off the stage rather than off the inspector. */
+  grid-template-columns: 340px minmax(0, 1fr) 280px;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
@@ -445,7 +452,7 @@ body,
 /* Collapsing drops the panel rather than narrowing it. The aside is `hidden`,
    so it is no longer a grid item, and the bar — the only route back to it —
    widens across the top rather than holding the column open on its own. The
-   panel's 280px and one gap both go back to the canvas. */
+   panel's width and one gap both go back to the canvas. */
 .editor-shell-body[data-collapsed="true"] {
   grid-template-areas: "bar bar bar" "stage stage inspector";
 }
@@ -787,9 +794,13 @@ body,
   align-items: center;
   gap: 4px;
   padding-left: calc(6px + var(--layer-depth, 0) * 13px);
+  padding-right: 4px;
   height: 24px;
   overflow: hidden;
   border-radius: 5px;
+  /* The state controls are laid over this edge, so the row is their containing
+     block. */
+  position: relative;
   /* A row is draggable, so it says so the way Fabric's own handles say what
      they do: the pointer changes to the gesture, not to a text I-beam. The
      buttons inside keep their own `pointer` below. */
@@ -910,17 +921,143 @@ body,
 .vigilia-layer-row button:hover {
   border: 0;
 }
-.vigilia-layer-twisty {
+/* The twisty column, whether the row draws one or only reserves its place.
+   Fixed rather than left to its content: measured on canvas, a button-sized
+   twisty next to a 20px placeholder left the column ~4px narrower than the
+   button is wide, and the flexible bound column absorbed the difference — so
+   the *name* re-flowed every time a row gained or lost its twisty. */
+.vigilia-layer-twisty,
+.vigilia-layer-row > button:first-child {
+  flex: 0 0 20px;
   width: 20px;
   display: inline-flex;
   justify-content: center;
 }
-.vigilia-layer-name {
-  flex: 1;
+/* The kind, drawn as the thing. One slot for all five arms, so every row's
+   name starts on the same left edge — which is what makes a column of them
+   scannable at all.
+
+   40px, chosen from the budget rather than from the ideal: measured on canvas,
+   a wider slot bought a longer specimen at the layer name's expense, and every
+   step between 40 and 52 moved the truncation from one column to the other
+   rather than removing it. 40px holds the short labels whole (`CPU`, `RAM`,
+   `VIGILIA`, `Perfor…`) and shows a reading's `@token` far enough to recognise
+   which one, which is what this column is for. A specimen that runs long
+   ellipsises — and its `title` carries the whole string. */
+.vigilia-layer-mark {
+  flex: 0 0 40px;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.vigilia-layer-sample {
+  /* 11px is the smallest the shell reads comfortably, and a specimen is not
+     read — it is recognised, so it clips rather than shrinks. Left-aligned
+     inside the slot so a long word starts where every other one starts. */
+  font-size: 11px;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  justify-content: flex-start;
+  color: var(--shell-text);
+}
+.vigilia-layer-swatch {
+  /* Sized here rather than on `.vigilia-layer-mark`: `flex-basis` sets the
+     main size, so a `width` on the same element would be overridden and a
+     10px swatch would draw as a 40px bar. */
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  /* The outline is what a shape with no flat paint — a gradient, or ink alone —
+     shows instead, so it is always drawn and the fill sits inside it. */
+  border: 1px solid color-mix(in srgb, var(--shell-text) 35%, transparent);
+  box-sizing: border-box;
+}
+.vigilia-layer-thumb {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  object-fit: cover;
+  /* A picture that has not decoded is a hole, not a picture, so the frame is
+     drawn before it arrives rather than after. */
+  background: color-mix(in srgb, var(--shell-text) 12%, transparent);
+}
+/* The name is the row's identity, so it is the one thing that does not give up
+   its width: everything beside it is allowed to shrink first. */
+.vigilia-layer-name {
+  flex: 1 1 auto;
+  min-width: 6ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A group holds others, and a bold name says so without a mark repeating it. */
+.vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
+  font-weight: 600;
+}
+/* The two state icons, laid over the row's right edge rather than held open
+   beside it.
+
+   Both were measured. Reserving 48px of the row's width cost the *name* 48px
+   on every row, permanently — and at 254px that is the difference between a
+   layer name that reads and one that ends in an ellipsis. Leaving the space to
+   the layout instead cost something worse: the name jumped 20–30px the moment a
+   pointer arrived, so every row the author moved across re-flowed its own text.
+   Overlaying costs neither, because the two controls only exist on the row
+   under the pointer, where the author is looking at them rather than reading
+   the key they cover. The bound column is what gives way, and it is the right
+   thing to give way: it is on the row as a fact, and a key is one hover away. */
+.vigilia-layer-state {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* The row's own surface, so a key running underneath is covered rather than
+     showing through the gaps between two icons. */
+  background: var(--shell-surface);
+  border-radius: 4px;
+  padding-left: 6px;
+}
+
+/* What the row reads. Muted so a name still leads the row, and capped so the
+   name keeps the room: a three-key chart would otherwise push the layer's own
+   name to an ellipsis, which is the one thing a layer list must never do. This
+   is what gives way first when a row runs out of width.
+
+   No padding here for the state controls, and that is deliberate after two
+   attempts: padding the column unconditionally cost the key 54px on every row
+   (measured clipping on six of the starter's bound rows), and padding it under
+   a `:has` rule re-flowed the key the instant a pointer arrived — 25–30px of
+   jitter, which is the same problem the overlay was built to remove. The
+   controls now overlay the row's edge and the key's `title` carries the rest. */
+.vigilia-layer-bound {
+  /* Bounded by the row's own edge less the two state controls, which overlay
+     that edge on an attended row. The bound is on the *row*, not on this
+     column: `margin-right` on a flex item reduces the space it takes, where
+     `padding-right` only pads a box whose width is already its content's — and
+     measured on canvas, padding left a 48px overlap in which the icons covered
+     the end of the key on the one row whose key the author was looking at.
+
+     `calc` rather than a fixed 50px because the row is 254px wide inside a
+     280px column at this viewport and 320px at a wide one, and the controls are
+     a fixed size in both. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 50px);
+  margin-right: 50px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--shell-muted);
+  font-size: 11px;
 }
 .vigilia-layer-rename {
   flex: 1;
@@ -1077,7 +1214,10 @@ body,
 @media (max-width: 980px) {
   .editor-shell-body {
     grid-template-areas: "bar stage" "panel stage";
-    grid-template-columns: 240px minmax(0, 1fr);
+    /* 280px rather than the wide layout's 320px, because the stage is sharing
+       a narrow window with it. Below this width a row's specimen gives way
+       before its name does — the same order the row's own flex uses. */
+    grid-template-columns: 280px minmax(0, 1fr);
   }
   .editor-shell-body[data-collapsed="true"] {
     grid-template-areas: "bar bar" "stage stage";

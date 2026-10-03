@@ -235,6 +235,11 @@ async function start(): Promise<void> {
     const bridge = createEditorShellBridge({
       editor: shell.editor,
       session: extensions.actionFacade(),
+      // The envelope is the only owner of a binding, so the layer row's bound
+      // key is pulled from the live session rather than from the copy this
+      // mount opened with — a binding edited afterwards would otherwise leave
+      // the row naming a key the document no longer declares.
+      bindings: () => extensions.envelope.bindings ?? {},
       capture: () =>
         captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
           "image/png",

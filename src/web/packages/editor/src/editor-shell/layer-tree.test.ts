@@ -1,13 +1,24 @@
 // @vitest-environment jsdom
 import {
+  Gradient,
   Group,
+  Path,
   Rect,
   type FabricObject,
   StaticCanvas,
   Textbox,
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { reviveThemeEnvelope } from "@vigilia/scene-fabric";
+import {
+  defaultGaugeSettings,
+  defaultLineSettings,
+  type TextRun,
+} from "@vigilia/renderer-core";
+import {
+  reviveThemeEnvelope,
+  VIGILIA_TEXT_PROPERTY,
+  VigiliaChart,
+} from "@vigilia/scene-fabric";
 import { createNewFabricTheme } from "../new-fabric-theme.js";
 import { findById, ownerOf, pathTo, projectLayers } from "./layer-tree.js";
 
@@ -214,6 +225,201 @@ describe("layer projection", () => {
     const rows = projectLayers({ ...base, root: [group] });
     expect(rows[0]?.collapsed).toBe(true);
     expect(rows[0]?.hasChildren).toBe(true);
+  });
+});
+
+describe("the kind, read as the thing rather than as a mark for it", () => {
+  /** A text object as `buildText` leaves it: the authored runs beside the id,
+   * and the face `applyObjectTypePresets` resolved onto the object. Both are
+   * read here rather than stubbed, because a stub would let the projection
+   * agree with itself about values nothing in a real document holds. */
+  const authoredText = (
+    id: string,
+    runs: readonly TextRun[],
+    face: { family?: string; weight?: string } = {},
+  ): FabricObject => {
+    const object = new Textbox("", {
+      id,
+      ...(face.family === undefined ? {} : { fontFamily: face.family }),
+      ...(face.weight === undefined ? {} : { fontWeight: face.weight }),
+    });
+    object.set(VIGILIA_TEXT_PROPERTY, { runs });
+    return object;
+  };
+
+  it("takes a text row's words and face from the object itself", () => {
+    const object = authoredText(
+      "cpu-card-title",
+      [{ kind: "literal", text: "CPU", typePreset: "typePresets.24-400" }],
+      { family: "Inter, sans-serif", weight: "400" },
+    );
+    const rows = projectLayers({ ...base, root: [object] });
+    // Both owners named in `textMark`: the runs for the string, the object for
+    // the face. A row that re-resolved the preset from globals could not do
+    // this without them, which is why it does not.
+    expect(rows[0]?.mark).toEqual({
+      kind: "text",
+      text: "CPU",
+      family: "Inter, sans-serif",
+      weight: "400",
+    });
+  });
+
+  it("shows a value run as the key it reads, never as a reading", () => {
+    // §83: missing or non-ok telemetry is never fabricated. A row printing the
+    // last number the canvas happened to hold would be a stale reading dressed
+    // as a name, and it would change under the pointer.
+    const object = authoredText("cpu-card-value", [
+      { kind: "value", bindingId: "cpu-card-load" },
+      { kind: "literal", text: "%" },
+    ]);
+    const rows = projectLayers({
+      ...base,
+      root: [object],
+      bindings: {
+        "cpu-card-value": [{ id: "cpu-card-load", semanticKey: "cpu.load" }],
+      },
+    });
+    expect(rows[0]?.mark).toMatchObject({ kind: "text", text: "@cpu.load%" });
+    expect(rows[0]?.bound).toEqual(["cpu.load"]);
+  });
+
+  it("says the run is undeclared rather than inventing a key for it", () => {
+    // The three states stay distinct: a run naming a binding the document does
+    // not declare is a mistake in the theme, and the row must not smooth it
+    // over by printing the id as though it were a key.
+    const object = authoredText("orphan", [
+      { kind: "value", bindingId: "gone" },
+    ]);
+    const rows = projectLayers({ ...base, root: [object] });
+    expect(rows[0]?.mark).toMatchObject({ text: "@(gone: undeclared)" });
+    expect(rows[0]?.bound).toEqual([]);
+  });
+
+  it("takes a shape's swatch from the property its own paint belongs on", () => {
+    // `paintPropertyFor` is the inspector's rule and the one that put a stroked
+    // path's ink on its stroke. Reading the same property here is what stops the
+    // swatch and the canvas disagreeing about what colour a shape is.
+    const filled = new Rect({
+      id: "panel",
+      width: 10,
+      height: 10,
+      fill: "#2ee6a8",
+    });
+    const inked = new Path("M 0 0 L 10 10", {
+      id: "icon",
+      stroke: "#dbeafe",
+      strokeWidth: 3,
+      fill: null,
+    });
+    const rows = projectLayers({ ...base, root: [filled, inked] });
+    const mark = (id: string): unknown =>
+      rows.find((row) => row.id === id)?.mark;
+    expect(mark("panel")).toEqual({ kind: "shape", paint: "#2ee6a8" });
+    expect(mark("icon")).toEqual({ kind: "shape", paint: "#dbeafe" });
+  });
+
+  it("names a chart's family, and names none rather than guessing", () => {
+    const gauge = new VigiliaChart({
+      id: "ram-gauge",
+      family: "gauge",
+      settings: defaultGaugeSettings,
+      width: 10,
+      height: 10,
+    });
+    const rows = projectLayers({ ...base, root: [gauge] });
+    expect(rows[0]?.mark).toEqual({ kind: "chart", family: "gauge" });
+
+    // A family this build does not know is reported as none. Defaulting to a
+    // neighbour would have the row claim a chart is a gauge when the document
+    // says otherwise — the one thing a kind mark must never do. A theme made
+    // by a newer build is the case, so the cast is the point rather than a
+    // convenience: `family` is validated on load, not here.
+    const future = new VigiliaChart({
+      id: "future",
+      family: "radial",
+      settings: defaultGaugeSettings,
+      width: 10,
+      height: 10,
+    } as unknown as ConstructorParameters<typeof VigiliaChart>[0]);
+    const unknown = projectLayers({ ...base, root: [future] });
+    expect(unknown[0]?.mark).toEqual({ kind: "chart", family: undefined });
+  });
+
+  it("draws a group with no mark of its own", () => {
+    const group = new Group([new Rect({ id: "child", width: 10, height: 10 })]);
+    group.set("id", "group");
+    const rows = projectLayers({ ...base, root: [group] });
+    expect(rows[0]?.mark).toEqual({ kind: "group" });
+  });
+
+  it("reads a binding as the document's own key, and none as no key", () => {
+    const bound = new Textbox("hi", { id: "ram-value" });
+    const free = new Textbox("hi", { id: "wordmark" });
+    const rows = projectLayers({
+      ...base,
+      root: [bound, free],
+      bindings: {
+        "ram-value": [{ id: "ram-percent", semanticKey: "ram.used.percent" }],
+      },
+    });
+    // Read from the envelope, not typed in beside the object: a panel that
+    // wrote the key itself would read correctly on the starter and be wrong on
+    // every other theme.
+    expect(rows.find((row) => row.id === "ram-value")?.bound).toEqual([
+      "ram.used.percent",
+    ]);
+    expect(rows.find((row) => row.id === "wordmark")?.bound).toEqual([]);
+  });
+
+  it("keeps every key a chart reads, in the order the document declares them", () => {
+    const trends = new VigiliaChart({
+      id: "trends-chart",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 10,
+      height: 10,
+    });
+    const rows = projectLayers({
+      ...base,
+      root: [trends],
+      bindings: {
+        "trends-chart": [
+          { id: "trends-cpu", semanticKey: "cpu.load" },
+          { id: "trends-gpu", semanticKey: "gpu.load" },
+          { id: "trends-ram", semanticKey: "ram.used.percent" },
+        ],
+      },
+    });
+    // All three, not the first: a chart reading three keys and a row naming one
+    // would make the other two invisible in the one panel that lists layers.
+    expect(rows[0]?.bound).toEqual([
+      "cpu.load",
+      "gpu.load",
+      "ram.used.percent",
+    ]);
+  });
+
+  it("refuses a paint it cannot show rather than coercing one", () => {
+    // Fabric keeps a gradient as a paint object rather than a colour. A 10px
+    // swatch cannot show one honestly, so the row draws its outline alone —
+    // where reaching for the first stop, or for the shape's stroke, would put a
+    // colour on screen that the object does not carry.
+    const gradient = new Rect({
+      id: "wash",
+      width: 10,
+      height: 10,
+      fill: new Gradient({
+        type: "linear",
+        coords: { x1: 0, y1: 0, x2: 1, y2: 0 },
+        colorStops: [
+          { offset: 0, color: "#223047" },
+          { offset: 1, color: "#2ee6a8" },
+        ],
+      }),
+    });
+    const rows = projectLayers({ ...base, root: [gradient] });
+    expect(rows[0]?.mark).toEqual({ kind: "shape", paint: undefined });
   });
 });
 
@@ -443,6 +649,59 @@ describe("the starter theme", () => {
       rows.filter((row) => row.parentId === card).length;
     expect(under("group-cpu-card")).toBe(7);
     expect(under("group-gpu-card")).toBe(CARD_PARTS);
+  });
+
+  it("gives every row a treatment the author can read without its name", async () => {
+    // The claim this whole pass rests on, measured on the revived starter
+    // rather than on fixtures: sixty objects projecting to rows, and every one
+    // of them saying what it is. A row that falls back to nothing here would
+    // pass every fixture-based test above and leave the author with a name and
+    // a blank column.
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+    const rows = projectLayers({
+      ...base,
+      expanded: new Set(
+        canvas
+          .getObjects()
+          .filter((object) => object instanceof Group)
+          .map((group) => String(group.get("id"))),
+      ),
+      root: canvas.getObjects(),
+      bindings: theme.bindings ?? {},
+    });
+
+    expect(rows).toHaveLength(TOTAL_OBJECTS);
+    for (const row of rows) {
+      if (row.kind === "group") {
+        // A group draws no mark; its twisty and a bold name are its mark.
+        expect(row.mark).toEqual({ kind: "group" });
+        continue;
+      }
+      expect(row.mark.kind).toBe(row.kind);
+    }
+    // The four readings that make a card a card, named off the document.
+    const mark = (id: string): unknown =>
+      rows.find((row) => row.id === id)?.mark;
+    expect(mark("cpu-card-title")).toMatchObject({ text: "CPU" });
+    expect(mark("ram-gauge")).toEqual({ kind: "chart", family: "gauge" });
+    expect(rows.find((row) => row.id === "cpu-card-value")?.bound).toEqual([
+      "cpu.load",
+    ]);
+    // The three-key chart, so the column that names several is exercised on the
+    // one object in the starter that reads several.
+    expect(rows.find((row) => row.id === "trends-chart")?.bound).toEqual([
+      "cpu.load",
+      "gpu.load",
+      "ram.used.percent",
+    ]);
+    // And the wordmark, which is a loose label rather than a card — the case
+    // that keeps a card being a fact about the starter.
+    expect(mark("wordmark")).toMatchObject({ text: "VIGILIA" });
   });
 });
 
