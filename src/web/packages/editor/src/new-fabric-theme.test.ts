@@ -16,7 +16,7 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { readThemePackage } from "@vigilia/theme-package";
-import { StaticCanvas } from "fabric/es";
+import { StaticCanvas, Group, type FabricObject } from "fabric/es";
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import {
@@ -41,6 +41,9 @@ type ObjectJson = Readonly<Record<string, unknown>>;
  * borders were located by the transition of its two-pixel outline. Stated here
  * rather than imported from the builder, so the assertion is against the
  * measurement and not against whatever the builder happens to emit.
+ *
+ * The id is the card's **group**, because the group is the card and carries the
+ * panel's measured box; the frosted rectangle inside it is one part.
  */
 const ARTBOARD = { width: 1672, height: 941 } as const;
 
@@ -51,36 +54,54 @@ const CARDS: ReadonlyArray<{
   width: number;
   height: number;
 }> = [
-  { id: "time-card", left: 40, top: 187, width: 367, height: 307 },
-  { id: "cpu-card", left: 421, top: 187, width: 280, height: 307 },
-  { id: "gpu-card", left: 715, top: 187, width: 290, height: 307 },
-  { id: "ram-card", left: 1019, top: 187, width: 299, height: 307 },
-  { id: "vram-card", left: 1332, top: 187, width: 300, height: 307 },
+  { id: "group-time-card", left: 40, top: 187, width: 367, height: 307 },
+  { id: "group-cpu-card", left: 421, top: 187, width: 280, height: 307 },
+  { id: "group-gpu-card", left: 715, top: 187, width: 290, height: 307 },
+  { id: "group-ram-card", left: 1019, top: 187, width: 299, height: 307 },
+  { id: "group-vram-card", left: 1332, top: 187, width: 300, height: 307 },
   // The reference's trends card starts at x 294; this one spans the left
   // column to the 40-unit margin the rest of the composition uses, so the
   // reference's gap for the coffee mug is not reproduced as a hole.
-  { id: "trends-card", left: 40, top: 507, width: 1084, height: 335 },
-  { id: "storage-card", left: 1138, top: 507, width: 494, height: 165 },
-  { id: "network-card", left: 1138, top: 687, width: 494, height: 155 },
+  { id: "group-trends-card", left: 40, top: 507, width: 1084, height: 335 },
+  { id: "group-storage-card", left: 1138, top: 507, width: 494, height: 165 },
+  { id: "group-network-card", left: 1138, top: 687, width: 494, height: 155 },
 ];
 
 const objectsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
   theme.scene.objects as readonly ObjectJson[];
 
+const childrenOf = (object: ObjectJson): readonly ObjectJson[] =>
+  (object["objects"] as readonly ObjectJson[] | undefined) ?? [];
+
+/**
+ * Every object in the document, at any depth.
+ *
+ * The starter's cards are groups, so a walk that stops at `scene.objects` sees
+ * ten objects and would pass every assertion here by checking nothing: the
+ * charts, the icons, the bindings and the prose all live one level down.
+ */
+const nodesOf = (
+  theme: ReturnType<typeof createNewFabricTheme>,
+): readonly ObjectJson[] => {
+  const walk = (list: readonly ObjectJson[]): readonly ObjectJson[] =>
+    list.flatMap((object) => [object, ...walk(childrenOf(object))]);
+  return walk(objectsOf(theme));
+};
+
 const objectById = (
   theme: ReturnType<typeof createNewFabricTheme>,
   id: string,
-) => objectsOf(theme).find((object) => object["id"] === id) ?? {};
+) => nodesOf(theme).find((object) => object["id"] === id) ?? {};
 
 const bindingsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
   theme.bindings ?? {};
 
 const chartsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
-  objectsOf(theme).filter((object) => object["type"] === "VigiliaChart");
+  nodesOf(theme).filter((object) => object["type"] === "VigiliaChart");
 
 /** Every string the document shows as authored prose, across all text runs. */
 const literalText = (theme: ReturnType<typeof createNewFabricTheme>): string =>
-  objectsOf(theme)
+  nodesOf(theme)
     .flatMap((object) => {
       const authored = object["vigiliaText"] as
         | { readonly runs?: ReadonlyArray<Record<string, unknown>> }
@@ -89,6 +110,17 @@ const literalText = (theme: ReturnType<typeof createNewFabricTheme>): string =>
     })
     .filter((text): text is string => typeof text === "string")
     .join("\n");
+
+/** Fabric objects at any depth, so a revived starter is read whole. */
+const fabricObjectsOf = (canvas: StaticCanvas): readonly FabricObject[] => {
+  const walk = (list: readonly FabricObject[]): readonly FabricObject[] =>
+    list.flatMap((object) =>
+      object instanceof Group
+        ? [object, ...walk(object.getObjects())]
+        : [object],
+    );
+  return walk(canvas.getObjects());
+};
 
 describe("the new Fabric document", () => {
   it("starts with a validated v2 dashboard on the reference artboard", () => {
@@ -161,7 +193,7 @@ describe("the new Fabric document", () => {
 
     // A value run names a binding on its own object; pointing at one the object
     // does not declare renders an em dash and an unmapped-key issue instead.
-    for (const object of objectsOf(theme)) {
+    for (const object of nodesOf(theme)) {
       const id = String(object["id"]);
       const runs = (
         object["vigiliaText"] as
@@ -179,6 +211,16 @@ describe("the new Fabric document", () => {
             `${id}: ${String(run["bindingId"])}`,
           ).toBe(true);
     }
+
+    // And the other direction: every binding the document declares is declared
+    // against an object that still exists. Wrapping the cards in groups is
+    // exactly the change that can drop one, and a dropped binding reads on the
+    // display as an em dash with nothing to say why.
+    const ids = new Set(nodesOf(theme).map((object) => String(object["id"])));
+    expect(
+      Object.keys(bindingsOf(theme)).filter((id) => !ids.has(id)),
+      "a binding naming an object this document no longer has",
+    ).toEqual([]);
   });
 
   it("spells system memory `ram`, never the stale `memory.` name", () => {
@@ -309,12 +351,13 @@ describe("the new Fabric document", () => {
 
   it("names every object after the readable id it already carries", () => {
     const theme = createNewFabricTheme();
-    const objects = objectsOf(theme);
+    const objects = nodesOf(theme);
 
     // The showcase theme is the document an author opens to learn from, and a
-    // layer list of 52 UUIDs is the problem F1.8 was about, not an example of
-    // the fix. The builders already chose a readable id beside every object, so
-    // the name is that id promoted — not a second, invented vocabulary.
+    // layer list of fifty-odd UUIDs is the problem F1.8 was about, not an
+    // example of the fix. The builders already chose a readable id beside every
+    // object, so the name is that id promoted — not a second, invented
+    // vocabulary. Read at every depth: the cards' parts are children now.
     for (const object of objects) {
       const id = String(object["id"]);
       expect(object["name"], `${id} has no name`).toBe(id);
@@ -330,8 +373,9 @@ describe("the new Fabric document", () => {
       ).toBeLessThanOrEqual(MAX_OBJECT_NAME_LENGTH);
     }
 
-    // Unique, because a duplicate makes the layer list ambiguous: two rows read
-    // the same and the author cannot tell which one a name refers to.
+    // Unique across the whole document, not just at the top: a card's parts
+    // are one level down now, and two rows reading the same is the same
+    // ambiguity one level deeper.
     const names = objects.map((object) => String(object["name"]));
     expect(names).toHaveLength(new Set(names).size);
 
@@ -367,8 +411,20 @@ describe("the new Fabric document", () => {
       scene: { objects: ReadonlyArray<Record<string, unknown>> };
     };
     const persisted = written.scene.objects;
-    expect(persisted).toHaveLength(objectsOf(theme).length);
-    for (const object of persisted) {
+    const persistedNodes: Array<Record<string, unknown>> = [];
+    const walk = (list: ReadonlyArray<Record<string, unknown>>): void => {
+      for (const object of list) {
+        persistedNodes.push(object);
+        walk(
+          (object["objects"] as
+            | ReadonlyArray<Record<string, unknown>>
+            | undefined) ?? [],
+        );
+      }
+    };
+    walk(persisted);
+    expect(persistedNodes).toHaveLength(nodesOf(theme).length);
+    for (const object of persistedNodes) {
       const id = String(object["id"]);
       expect(object["name"], `${id} lost its name in the saved file`).toBe(id);
     }
@@ -379,6 +435,8 @@ describe("the new Fabric document", () => {
   it("places every reference card on its measured box", () => {
     const theme = createNewFabricTheme();
     for (const card of CARDS) {
+      // The group *is* the card, and it carries the panel's measured box; the
+      // frosted rectangle inside it is one part of that card.
       expect(
         {
           left: objectById(theme, card.id)["left"],
@@ -396,35 +454,48 @@ describe("the new Fabric document", () => {
     }
   });
 
-  it("keeps every object inside the artboard and off each other's card", () => {
+  it("keeps every object inside the artboard, measured where it is drawn", async () => {
+    // Read from the revived canvas rather than from the document's own `left`:
+    // a part inside a group is authored in the group's plane, so its box is only
+    // an artboard box once the group transform has been applied to it. This is
+    // also the assertion that fails if the group-local conversion is wrong.
     const theme = createNewFabricTheme();
     const { width, height } = theme.artboard;
-    for (const object of objectsOf(theme)) {
-      const id = String(object["id"]);
-      const left = Number(object["left"]);
-      const top = Number(object["top"]);
-      expect(Number.isFinite(left) && Number.isFinite(top), id).toBe(true);
-      // Charts are authored around their centre, so their top-left is negative.
-      const w = Number(object["width"] ?? 0);
-      const h = Number(object["height"] ?? 0);
-      const minX = object["originX"] === "center" ? left - w / 2 : left;
-      const minY = object["originY"] === "center" ? top - h / 2 : top;
-      expect(minX, `${id} left`).toBeGreaterThanOrEqual(-1);
-      expect(minY, `${id} top`).toBeGreaterThanOrEqual(-1);
-      expect(minX + w, `${id} right`).toBeLessThanOrEqual(width + 1);
-      expect(minY + h, `${id} bottom`).toBeLessThanOrEqual(height + 1);
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+    const objects = fabricObjectsOf(canvas);
+    expect(
+      objects.length,
+      "no object was measured, so nothing was checked",
+    ).toBeGreaterThan(50);
+    for (const object of objects) {
+      const id = String(object.get("id"));
+      const rect = object.getBoundingRect();
+      expect(rect.left, `${id} left`).toBeGreaterThanOrEqual(-1);
+      expect(rect.top, `${id} top`).toBeGreaterThanOrEqual(-1);
+      expect(rect.left + rect.width, `${id} right`).toBeLessThanOrEqual(
+        width + 1,
+      );
+      expect(rect.top + rect.height, `${id} bottom`).toBeLessThanOrEqual(
+        height + 1,
+      );
     }
+    await canvas.dispose();
   });
 
   it("gives every card the radius and border width measured off the reference", () => {
     const theme = createNewFabricTheme();
     // A card is a stroked Rect; the background is a Rect too, so the match set
-    // is filtered rather than assumed.
-    const cards = objectsOf(theme).filter(
+    // is filtered rather than assumed. The frosted rectangle is inside its card
+    // group now, so the match set is read at every depth.
+    const cards = nodesOf(theme).filter(
       (object) => object["type"] === "Rect" && object["stroke"] !== undefined,
     );
     expect(cards.map((card) => card["id"]).sort()).toEqual(
-      CARDS.map((card) => card.id).sort(),
+      CARDS.map((card) => card.id.replace("group-", "")).sort(),
     );
     // Measured off docs/superpowers/specs/2026-09-26-reference-theme-target.png:
     // the top border occupies rows 187-188 and the left border columns 40-41 of
@@ -438,7 +509,7 @@ describe("the new Fabric document", () => {
 
   it("composes every icon from Lucide, stroked rather than hand-drawn", () => {
     const theme = createNewFabricTheme();
-    const icons = objectsOf(theme).filter((object) =>
+    const icons = nodesOf(theme).filter((object) =>
       String(object["id"]).endsWith("-icon"),
     );
     // Every card the reference shows an icon on: CPU, GPU, RAM, VRAM, trends,
@@ -507,7 +578,7 @@ describe("the new Fabric document", () => {
     await reviveThemeEnvelope(canvas, theme);
     // Keyed off each object's own run reference, not its id: an object id is
     // `ram-value` and the preset it uses is `60-600`.
-    const tracked = canvas.getObjects().filter((object) => {
+    const tracked = fabricObjectsOf(canvas).filter((object) => {
       const authored = object.get("vigiliaText") as
         | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
         | undefined;
@@ -549,7 +620,7 @@ describe("the new Fabric document", () => {
 
     const written: Array<[string, number]> = [];
     const absent: string[] = [];
-    for (const object of canvas.getObjects()) {
+    for (const object of fabricObjectsOf(canvas)) {
       const authored = object.get("vigiliaText") as
         | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
         | undefined;
@@ -661,19 +732,33 @@ describe("the new Fabric document", () => {
     // dissolves the sunset's structure behind the card, and a round trip that
     // quietly fell back to a default would leave a panel that blurs without
     // diffusing — see `docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md`.
-    const authored = cpuCard().find((object) => object["id"] === "cpu-card")?.[
-      "vigiliaGlass"
-    ];
-    const revived = canvas
-      .getObjects()
-      .find((object) => object.get("id") === "cpu-card");
+    const authored = childrenOf(cpuCard()).find(
+      (object) => object["id"] === "cpu-card",
+    )?.["vigiliaGlass"];
+    const revived = fabricObjectsOf(canvas).find(
+      (object) => object.get("id") === "cpu-card",
+    );
     expect(revived?.get("vigiliaGlass")).toEqual(authored);
 
     const saved = serialiseThemeEnvelope(canvas, theme);
+    const savedNodes: Array<Readonly<Record<string, unknown>>> = [];
+    const walkSaved = (
+      list: ReadonlyArray<Readonly<Record<string, unknown>>>,
+    ): void => {
+      for (const object of list) {
+        savedNodes.push(object);
+        walkSaved(
+          (object["objects"] as
+            | ReadonlyArray<Readonly<Record<string, unknown>>>
+            | undefined) ?? [],
+        );
+      }
+    };
+    walkSaved(saved.scene.objects as ReadonlyArray<never>);
     expect(
-      (
-        saved.scene.objects as ReadonlyArray<Readonly<Record<string, unknown>>>
-      ).find((object) => object["id"] === "cpu-card")?.["vigiliaGlass"],
+      savedNodes.find((object) => object["id"] === "cpu-card")?.[
+        "vigiliaGlass"
+      ],
     ).toEqual(authored);
     expect(validateFabricThemeEnvelope(saved).ok).toBe(true);
     await canvas.dispose();
@@ -698,16 +783,18 @@ describe("the new Fabric document", () => {
     expect(saved.artboard.background).toEqual({ ref: "palette.none" });
     expect(saved.assets).toEqual(theme.assets);
 
-    const chart = canvas
-      .getObjects()
-      .find((object) => object.get("id") === "cpu-card-icon");
+    const chart = fabricObjectsOf(canvas).find(
+      (object) => object.get("id") === "cpu-card-icon",
+    );
     expect(chart?.get("strokeWidth")).toBeGreaterThan(0);
     expect(
       (chart?.get("path") as unknown[] | undefined)?.length,
     ).toBeGreaterThan(1);
 
     expect(
-      canvas.getObjects().filter((object) => object instanceof VigiliaChart),
+      fabricObjectsOf(canvas).filter(
+        (object) => object instanceof VigiliaChart,
+      ),
     ).toHaveLength(7);
     const validation = validateFabricThemeEnvelope(saved);
     if (!validation.ok)
@@ -717,6 +804,215 @@ describe("the new Fabric document", () => {
           .join("\n"),
       );
     expect(validation).toMatchObject({ ok: true });
+    await canvas.dispose();
+  });
+});
+
+describe("the starter's cards are groups", () => {
+  /**
+   * Every part every card is made of, by the id it had when the composition was
+   * a flat list of siblings. This is the check that catches a part dropped while
+   * it was being wrapped: the wrap must not renumber, rename or lose one.
+   */
+  const CARD_PARTS: Readonly<Record<string, readonly string[]>> = {
+    "group-time-card": [
+      "time-card",
+      "time",
+      "time-period",
+      "time-rule",
+      "date",
+    ],
+    "group-cpu-card": [
+      "cpu-card",
+      "cpu-card-icon",
+      "cpu-card-title",
+      "cpu-card-value",
+      "cpu-card-caption",
+      "cpu-card-sparkline",
+      "cpu-card-freq",
+    ],
+    "group-gpu-card": [
+      "gpu-card",
+      "gpu-card-icon",
+      "gpu-card-title",
+      "gpu-card-value",
+      "gpu-card-caption",
+      "gpu-card-sparkline",
+      "gpu-card-freq",
+      "gpu-card-temp",
+    ],
+    "group-ram-card": [
+      "ram-card",
+      "ram-card-icon",
+      "ram-card-title",
+      "ram-gauge",
+      "ram-value",
+      "ram-capacity",
+    ],
+    "group-vram-card": [
+      "vram-card",
+      "vram-card-icon",
+      "vram-card-title",
+      "vram-gauge",
+      "vram-value",
+      "vram-capacity",
+    ],
+    "group-trends-card": [
+      "trends-card",
+      "trends-card-icon",
+      "trends-card-title",
+      "trends-legend",
+      "trends-chart",
+    ],
+    "group-storage-card": [
+      "storage-card",
+      "storage-card-icon",
+      "storage-card-title",
+      "storage-card-value",
+      "storage-bar",
+      "storage-card-name",
+      "storage-chevron",
+    ],
+    "group-network-card": [
+      "network-card",
+      "network-card-icon",
+      "network-card-title",
+      "network-down",
+      "network-up",
+      "network-chart",
+    ],
+  };
+
+  it("wraps every card in exactly one group, and loses no part doing it", () => {
+    const theme = createNewFabricTheme();
+    const groups = objectsOf(theme).filter(
+      (object) => object["type"] === "Group",
+    );
+    expect(
+      groups.map((group) => String(group["id"])).sort(),
+      "the layer tree's top level is the eight cards and two loose labels",
+    ).toEqual(Object.keys(CARD_PARTS).sort());
+
+    for (const [id, parts] of Object.entries(CARD_PARTS)) {
+      expect(
+        childrenOf(objectById(theme, id)).map((child) => child["id"]),
+        id,
+      ).toEqual(parts);
+    }
+
+    // Nothing is duplicated and nothing is invented: the document is the eight
+    // groups, their fifty parts and the two loose labels, each named once.
+    const ids = nodesOf(theme).map((object) => String(object["id"]));
+    expect(ids).toHaveLength(new Set(ids).size);
+    expect(
+      [...ids].sort(),
+      "the document gained or lost an object while it was being grouped",
+    ).toEqual(
+      [
+        "wordmark",
+        "strapline",
+        ...Object.values(CARD_PARTS).flat(),
+        ...Object.keys(CARD_PARTS),
+      ].sort(),
+    );
+  });
+
+  it("leaves the wordmark and the strapline loose", () => {
+    // They are not a card, and a design that made every object a group would
+    // be the cage this project is explicitly avoiding.
+    const theme = createNewFabricTheme();
+    expect(
+      objectsOf(theme)
+        .filter((object) => object["type"] !== "Group")
+        .map((object) => object["id"]),
+    ).toEqual(["wordmark", "strapline"]);
+  });
+
+  it("composes a group's transform: moving it moves its parts by the same delta and rewrites none of them", async () => {
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+
+    const group = canvas
+      .getObjects()
+      .find((object) => object.get("id") === "group-cpu-card");
+    if (!(group instanceof Group))
+      throw new Error("the CPU card is not a group");
+    const children = group.getObjects();
+    expect(children.length).toBe(7);
+
+    const delta = 137.5;
+    const before = children.map((child) => ({
+      id: String(child.get("id")),
+      left: child.left,
+      top: child.top,
+      rect: child.getBoundingRect(),
+    }));
+    group.set({ left: group.left + delta });
+    group.setCoords();
+    for (const child of children) child.setCoords();
+
+    // The composition §57 promises, and the reason the conversion was needed:
+    // the parts move with the card, and their own coordinates are untouched —
+    // a child that rewrote its own `left` on the first move would be wrong the
+    // moment it moved again, and wrong immediately on insertion.
+    for (const [index, child] of children.entries()) {
+      const was = before[index];
+      if (was === undefined) throw new Error("a part vanished on the move");
+      const rect = child.getBoundingRect();
+      expect(child.left, `${was.id} rewrote its own left`).toBe(was.left);
+      expect(child.top, `${was.id} rewrote its own top`).toBe(was.top);
+      expect(
+        rect.left - was.rect.left,
+        `${was.id} did not move with the card`,
+      ).toBeCloseTo(delta, 6);
+      expect(
+        rect.top - was.rect.top,
+        `${was.id} did not move with the card`,
+      ).toBeCloseTo(0, 6);
+    }
+    await canvas.dispose();
+  });
+
+  it("puts every card's parts exactly where the flat composition drew them", async () => {
+    // The conversion is one subtraction, so the whole check is that the scene
+    // still measures the same: each frosted panel's world box is its measured
+    // card, and every other part still lands inside the artboard.
+    const theme = createNewFabricTheme();
+    const canvas = new StaticCanvas(undefined, {
+      width: theme.artboard.width,
+      height: theme.artboard.height,
+    });
+    await reviveThemeEnvelope(canvas, theme);
+    const byId = new Map(
+      fabricObjectsOf(canvas).map((object) => [
+        String(object.get("id")),
+        object.getBoundingRect(),
+      ]),
+    );
+    for (const card of CARDS) {
+      const panel = byId.get(card.id.replace("group-", ""));
+      expect(panel, card.id).toBeDefined();
+      // The two-pixel border straddles the authored edge, so the painted box is
+      // two units wider than the authored one and starts on the same edge.
+      expect(
+        {
+          left: panel?.left,
+          top: panel?.top,
+          width: panel?.width,
+          height: panel?.height,
+        },
+        card.id,
+      ).toEqual({
+        left: card.left,
+        top: card.top,
+        width: card.width + 2,
+        height: card.height + 2,
+      });
+    }
     await canvas.dispose();
   });
 });

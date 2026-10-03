@@ -172,8 +172,9 @@ of the editor said another.
 
 Restore the library between probes. Opening the editor and choosing
 `File > Save to library` re-writes the pristine Starter, which is the cheapest
-reset there is. Check you are back at 52 objects and the frost token solid
-before you finish.
+reset there is. Check you are back at the pristine Starter — 60 objects, being
+eight card groups with their fifty parts and two loose labels — and the frost
+token solid before you finish.
 
 ---
 

@@ -28,15 +28,12 @@ import {
   mountFabricScene,
   refreshBoundText,
   reviveThemeEnvelope,
+  sceneBoxesOf,
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
-import { type FabricObject, Group } from "fabric/es";
-import {
-  type ArtboardSize,
-  cropNoticeText,
-  type SceneBox,
-} from "./artboard-crop.js";
+import { Group } from "fabric/es";
+import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { boundSemanticKeys } from "./bound-keys.js";
 import { showLoadFailure } from "./load-failure.js";
@@ -440,6 +437,12 @@ function hydrateCharts(
         );
       }
     }
+    // A chart inside a group is still a chart a reader is watching, so the
+    // walk goes into groups: the starter's cards are groups, and stopping at
+    // the canvas would freeze every reading in the composition at load.
+    if (object instanceof Group) {
+      hydrateCharts(object.getObjects(), bindings, source, palette);
+    }
   }
   // One line per distinct cause: this runs on every refresh cadence, and a
   // display repeating the same refusal every 30 s teaches nobody anything.
@@ -551,7 +554,10 @@ function showCropNotice(
 ): void {
   document.getElementById("vigilia-crop")?.remove();
 
-  const text = cropNoticeText(sceneBoxes(handle.canvas.getObjects()), artboard);
+  const text = cropNoticeText(
+    sceneBoxesOf(handle.canvas.getObjects()),
+    artboard,
+  );
   if (text === undefined) return;
 
   const notice = document.createElement("div");
@@ -565,27 +571,6 @@ function showCropNotice(
     "padding:6px 12px;text-align:center;" +
     "background:#1d2230;color:#c3cde3;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
   topNotices().append(notice);
-}
-
-/** Each object on the canvas, in artboard units. Fabric's `getBoundingRect` is
- *  in the scene plane, which is the artboard's own units before the viewport
- *  transform — the numbers the artboard is measured in. Recursed into groups,
- *  because a group placed half off the artboard takes its children with it and
- *  a reader is missing every one of them. */
-function sceneBoxes(objects: readonly FabricObject[]): SceneBox[] {
-  return objects.flatMap((object) => {
-    const rect = object.getBoundingRect();
-    const box: SceneBox = {
-      visible: object.visible,
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-    return object instanceof Group
-      ? [box, ...sceneBoxes(object.getObjects())]
-      : [box];
-  });
 }
 
 /** Persistent disclosure that displayed values are synthetic. */

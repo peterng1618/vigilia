@@ -3,7 +3,7 @@
 import { createDemoSource } from "@vigilia/fake-source";
 import { objectName } from "@vigilia/renderer-core";
 import { serialiseScene } from "@vigilia/scene-fabric";
-import { FabricImage, Rect } from "fabric/es";
+import { FabricImage, type FabricObject, Group, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mountEditorShell } from "./editor-shell.js";
 import { LiveRuntime } from "./live-runtime.js";
@@ -33,6 +33,51 @@ beforeEach(() => {
   }
 });
 
+/** Fabric objects at any depth: the starter's cards are groups, so a walk that
+ *  stops at the canvas sees ten objects and none of the readings. */
+function objectsDeep(root: readonly FabricObject[]): readonly FabricObject[] {
+  const walk = (list: readonly FabricObject[]): readonly FabricObject[] =>
+    list.flatMap((object) =>
+      object instanceof Group
+        ? [object, ...walk(object.getObjects())]
+        : [object],
+    );
+  return walk(root);
+}
+
+function objectDeepById(
+  canvas: { getObjects(): FabricObject[] },
+  id: string,
+): FabricObject | undefined {
+  return objectsDeep(canvas.getObjects()).find(
+    (object) => object.get("id") === id,
+  );
+}
+
+/** Every object in a serialised scene, at any depth. */
+function sceneNodes(
+  objects: readonly Record<string, unknown>[],
+): ReadonlyArray<Record<string, unknown>> {
+  const walk = (
+    list: readonly Record<string, unknown>[],
+  ): Record<string, unknown>[] =>
+    list.flatMap((object) => [
+      object,
+      ...walk(
+        Array.isArray(object.objects)
+          ? (object.objects as Record<string, unknown>[])
+          : [],
+      ),
+    ]);
+  return walk(objects);
+}
+
+function sceneIds(scene: { objects: readonly unknown[] }): readonly string[] {
+  return sceneNodes(scene.objects as readonly Record<string, unknown>[]).map(
+    (object) => String(object.id),
+  );
+}
+
 describe("a binding cannot outlive its object", () => {
   it("drops the binding when the object is deleted, so saving still works", async () => {
     // The worst defect on the pass: a binding is keyed by its object's id, so a
@@ -54,22 +99,24 @@ describe("a binding cannot outlive its object", () => {
         bindings: { "network-up": [{ id: "b1", semanticKey: "network.up" }] },
       },
     });
-    const bound = shell.editor.canvas
-      .getObjects()
-      .find((object) => object.get("id") === "network-up");
+    const bound = objectDeepById(shell.editor.canvas, "network-up");
     expect(bound).toBeDefined();
 
     shell.snapshot({ ...authored });
-    expect(shell.editor.canvas.remove(bound!).length).toBeGreaterThan(0);
+    // It lives in a card, so it leaves through its group rather than the canvas.
+    const owner = bound!.parent;
+    if (!(owner instanceof Group))
+      throw new Error("the readout is not inside a card group");
+    owner.remove(bound!);
+    expect(owner.getObjects()).not.toContain(bound);
 
     // The half that matters: this threw before, and a throw here means the
     // author's save fails for the rest of the session.
     const after = shell.snapshot({ ...authored }) as unknown as {
       bindings?: Record<string, unknown>;
-      scene: { objects: { id?: string }[] };
+      scene: { objects: readonly unknown[] };
     };
-    const ids = after.scene.objects.map((object) => object.id);
-    expect(ids).not.toContain("network-up");
+    expect(sceneIds(after.scene)).not.toContain("network-up");
     // Only the deleted one goes. The Starter's other 24 bindings still name
     // objects that are there, and dropping those would take readings with them.
     expect(Object.keys(after.bindings ?? {})).not.toContain("network-up");
@@ -97,17 +144,21 @@ describe("the dirty guard and what the renderer paints", () => {
     });
     shell.setGlobals(authored.globals);
 
-    const objects =
-      (
-        authored.scene as {
-          objects?: {
-            id?: string;
-            vigiliaText?: { runs?: { bindingId?: string }[] };
-          }[];
-        }
-      ).objects ?? [];
+    const objects = ((
+      authored.scene as {
+        objects?: {
+          id?: string;
+          objects?: unknown[];
+          vigiliaText?: { runs?: { bindingId?: string }[] };
+        }[];
+      }
+    ).objects ?? []) as ReadonlyArray<{
+      id?: string;
+      objects?: unknown[];
+      vigiliaText?: { runs?: { bindingId?: string }[] };
+    }>;
     const bindings: Record<string, unknown[]> = {};
-    for (const object of objects) {
+    const readRuns = (object: (typeof objects)[number]): void => {
       const runs = (object.vigiliaText?.runs ?? []).filter(
         (run) => run.bindingId,
       );
@@ -117,7 +168,18 @@ describe("the dirty guard and what the renderer paints", () => {
           semanticKey: run.bindingId!,
         }));
       }
-    }
+      // The readings live inside the card groups, so the harness has to read
+      // them there: a walk that stopped at the canvas would find no bound
+      // object at all and would be asserting against an empty set.
+      for (const child of (object.objects ?? []) as typeof objects) {
+        readRuns(child);
+      }
+    };
+    for (const object of objects) readRuns(object);
+    expect(
+      Object.keys(bindings).length,
+      "no bound object was found, so the reading pass proved nothing",
+    ).toBeGreaterThan(0);
 
     const manager = new PersistenceManager(shell.snapshot({ ...authored }), {});
 
@@ -132,11 +194,11 @@ describe("the dirty guard and what the renderer paints", () => {
     // `scene` is an opaque record on the envelope, so this is a look, not a
     // claim about its type.
     const painted = shell.snapshot({ ...authored }) as unknown as {
-      scene: { objects: { id?: string; styles?: unknown }[] };
+      scene: { objects: readonly unknown[] };
     };
-    const styledByPass = painted.scene.objects.filter(
-      (o) => o.styles !== undefined,
-    );
+    const styledByPass = sceneNodes(
+      painted.scene.objects as ReadonlyArray<Record<string, unknown>>,
+    ).filter((object) => object.styles !== undefined);
     expect(styledByPass.length).toBeGreaterThan(0);
 
     // ...and the document has not, because a reading is not an edit. Without

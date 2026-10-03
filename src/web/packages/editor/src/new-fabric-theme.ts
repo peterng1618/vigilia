@@ -190,6 +190,8 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         // The wordmark is tracked by its preset, not by spaces between the
         // letters: a space is a fixed width the font chooses, and it survives
         // into the text the author edits and the reading a screen reader gets.
+        // Neither is a card, and making everything a group would be the cage
+        // this document is written to avoid.
         label("wordmark", 118, 56, 460, 40.68, "VIGILIA", 36, "text", "500"),
         label(
           "strapline",
@@ -202,14 +204,14 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
           "dim",
           "400",
         ),
-        ...clockCard(),
-        ...cpuCard(),
-        ...gpuCard(),
-        ...ramCard(),
-        ...vramCard(),
-        ...trendsCard(),
-        ...storageCard(),
-        ...networkCard(),
+        clockCard(),
+        cpuCard(),
+        gpuCard(),
+        ramCard(),
+        vramCard(),
+        trendsCard(),
+        storageCard(),
+        networkCard(),
       ],
     },
   };

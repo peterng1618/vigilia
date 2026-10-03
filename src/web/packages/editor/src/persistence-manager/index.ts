@@ -182,20 +182,29 @@ function authoredOnly(theme: FabricThemeEnvelope): FabricThemeEnvelope {
     .objects;
   if (!Array.isArray(objects)) return theme;
 
+  // Into groups: the starter's cards are groups, and every reading they carry
+  // lives one level down. A walk that stopped at the canvas would keep those
+  // resolutions in the key and the Starter would read as edited the moment it
+  // opened — which is the defect this function exists to prevent, reintroduced
+  // by the one change that moved the readings a level deeper.
+  const strip = (list: readonly unknown[]): unknown[] =>
+    list.map((object) => {
+      const entry = object as {
+        readonly vigiliaText?: unknown;
+        readonly text?: unknown;
+        readonly styles?: unknown;
+        readonly objects?: readonly unknown[];
+      };
+      const children = Array.isArray(entry.objects)
+        ? { objects: strip(entry.objects) }
+        : {};
+      if (entry.vigiliaText === undefined) return { ...entry, ...children };
+      const { text: _text, styles: _styles, ...rest } = entry;
+      return { ...rest, ...children };
+    });
+
   return {
     ...theme,
-    scene: {
-      ...theme.scene,
-      objects: objects.map((object) => {
-        const entry = object as {
-          readonly vigiliaText?: unknown;
-          readonly text?: unknown;
-          readonly styles?: unknown;
-        };
-        if (entry.vigiliaText === undefined) return object;
-        const { text: _text, styles: _styles, ...rest } = entry;
-        return rest;
-      }),
-    },
+    scene: { ...theme.scene, objects: strip(objects) },
   };
 }

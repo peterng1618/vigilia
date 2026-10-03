@@ -33,6 +33,7 @@ import {
   Canvas,
   classRegistry,
   type FabricObject,
+  Group,
   Point,
   Rect,
 } from "fabric/es";
@@ -129,10 +130,17 @@ function dropDanglingBindings(
   const bindings = input.bindings;
   if (bindings === undefined) return input;
   const live = new Set<string>();
-  for (const object of canvas.getObjects()) {
-    const id = object.get("id");
-    if (typeof id === "string") live.add(id);
-  }
+  // Into groups: a binding is keyed by the id of the object that reads it, and
+  // the starter's cards are groups, so a walk that stops at the canvas would
+  // declare every reading inside a card dangling and strip it on the first save.
+  const visit = (objects: readonly FabricObject[]): void => {
+    for (const object of objects) {
+      const id = object.get("id");
+      if (typeof id === "string") live.add(id);
+      if (object instanceof Group) visit(object.getObjects());
+    }
+  };
+  visit(canvas.getObjects());
   const kept = Object.entries(bindings).filter(([id]) => live.has(id));
   if (kept.length === Object.keys(bindings).length) return input;
   return { ...input, bindings: Object.fromEntries(kept) };

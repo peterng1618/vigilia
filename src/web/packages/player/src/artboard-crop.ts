@@ -1,9 +1,8 @@
 import {
-  bottom,
   countable,
   EDGE_TOLERANCE,
-  outsideBoxes,
-  right,
+  outsideCount,
+  outsideEdges,
   type ArtboardSize,
   type SceneBox,
 } from "@vigilia/scene-fabric";
@@ -33,10 +32,12 @@ export function cropNoticeText(
   boxes: readonly SceneBox[],
   artboard: ArtboardSize,
 ): string | undefined {
-  const counted = boxes.filter(countable);
-  const outside = outsideBoxes(boxes, artboard);
+  // The figure is the one `scene-fabric` counts, so a card that hangs off the
+  // edge is reported once here and once in the editor rather than once per
+  // part here and once per card there.
+  const { outside, counted } = outsideCount(boxes, artboard);
 
-  if (outside.length === 0) {
+  if (outside === 0) {
     return undefined;
   }
 
@@ -44,19 +45,9 @@ export function cropNoticeText(
   // A composition too wide for its frame is the common case — a ratio change
   // narrows the width and leaves the height alone — and naming the side is
   // what tells a reader the frame is too narrow rather than the content wrong.
-  const edges: string[] = [];
-  if (outside.some((box) => right(box) > artboard.width + EDGE_TOLERANCE)) {
-    edges.push(uiCopy.croppedEdges.right);
-  }
-  if (outside.some((box) => bottom(box) > artboard.height + EDGE_TOLERANCE)) {
-    edges.push(uiCopy.croppedEdges.bottom);
-  }
-  if (outside.some((box) => box.left < -EDGE_TOLERANCE)) {
-    edges.push(uiCopy.croppedEdges.left);
-  }
-  if (outside.some((box) => box.top < -EDGE_TOLERANCE)) {
-    edges.push(uiCopy.croppedEdges.top);
-  }
+  const edges = outsideEdges(boxes, artboard).map(
+    (edge) => uiCopy.croppedEdges[edge],
+  );
 
-  return uiCopy.cropped(outside.length, counted.length, edges);
+  return uiCopy.cropped(outside, counted, edges);
 }

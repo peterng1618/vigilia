@@ -6,6 +6,7 @@ import {
 import { type StarterPaletteId } from "./new-fabric-theme-globals.js";
 import { starterIcons } from "./new-fabric-theme-icons.js";
 import {
+  cardGroup,
   chart,
   frostedCard,
   label,
@@ -19,14 +20,17 @@ import {
 /**
  * The reference composition, one builder per card.
  *
- * Every position and size here is a measurement off
+ * Every builder returns one Fabric group over the card's parts, and every
+ * position and size below is still a measurement off
  * `docs/superpowers/specs/2026-09-26-reference-theme-target.png` at 1672 × 941:
  * the card borders were located by the transition of the two-pixel outline, the
  * text and icons by connected components of bright ink inside each card, and the
- * rings by their saturated strokes. Two departures are named in the report — the
- * trends card spans the full left column rather than the reference's 254-unit
- * gap for the coffee mug, and both ring labels share one offset rather than the
- * mockup's 15-unit disagreement between the two cards.
+ * rings by their saturated strokes. `cardGroup` is what turns those artboard
+ * numbers into the group-local ones the document stores, so nothing here has to
+ * be re-measured. Two departures are named in the report — the trends card spans
+ * the full left column rather than the reference's 254-unit gap for the coffee
+ * mug, and both ring labels share one offset rather than the mockup's 15-unit
+ * disagreement between the two cards.
  *
  * What is not here is anything no provider supplies. The reference names its
  * CPU and GPU models and its storage volume; those three captions are bindings
@@ -90,37 +94,50 @@ const valued = (
   { kind: "literal", text: unit, token, size: 20, weight: "400" },
 ];
 
-export function clockCard(): ObjectJson[] {
-  return [
+export function clockCard(): ObjectJson {
+  return cardGroup(
+    "group-time-card",
     frostedCard("time-card", 40, 187, 367, 307),
-    // `hh:mm` with the meridiem on its own object: the reference sets it at a
-    // quarter of the digits' size, and one tracking value is measured once per
-    // object, so two sizes cannot share a text object anyway.
-    valueLabel("time", 76, 214, 264, 122.04, 108, "text", "300", "clock-time"),
-    valueLabel(
-      "time-period",
-      350,
-      294,
-      60,
-      27.12,
-      24,
-      "text",
-      "500",
-      "clock-period",
-    ),
-    path(
-      "time-rule",
-      84,
-      357,
-      [
-        ["M", 0, 0],
-        ["L", 287, 0],
-      ],
-      "rule",
-      2,
-    ),
-    valueLabel("date", 80, 370, 290, 36.16, 32, "text", "400", "clock-date"),
-  ];
+    [
+      // `hh:mm` with the meridiem on its own object: the reference sets it at a
+      // quarter of the digits' size, and one tracking value is measured once per
+      // object, so two sizes cannot share a text object anyway.
+      valueLabel(
+        "time",
+        76,
+        214,
+        264,
+        122.04,
+        108,
+        "text",
+        "300",
+        "clock-time",
+      ),
+      valueLabel(
+        "time-period",
+        350,
+        294,
+        60,
+        27.12,
+        24,
+        "text",
+        "500",
+        "clock-period",
+      ),
+      path(
+        "time-rule",
+        84,
+        357,
+        [
+          ["M", 0, 0],
+          ["L", 287, 0],
+        ],
+        "rule",
+        2,
+      ),
+      valueLabel("date", 80, 370, 290, 36.16, 32, "text", "400", "clock-date"),
+    ],
+  );
 }
 
 /**
@@ -130,112 +147,118 @@ export function clockCard(): ObjectJson[] {
  * this file. The treatment is a `Rect` property the inspector's glass control
  * reads and writes like any other.
  */
-export function cpuCard(): ObjectJson[] {
-  return [
+export function cpuCard(): ObjectJson {
+  return cardGroup(
+    "group-cpu-card",
     frostedCard("cpu-card", 421, 187, 280, 307),
-    path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
-    label("cpu-card-title", 528, 212, 140, 27.12, "CPU", 24, "text"),
-    text(
-      "cpu-card-value",
-      456,
-      258,
-      246,
-      101.7,
-      percent(90, 60, "cpu-card-load"),
-    ),
-    // The reference writes the processor's own name under the figure. It is a
-    // binding, not prose: a theme carries no machine's identity, and a caption
-    // that cannot be read is a gap, never a stand-in model.
-    //
-    // The box runs wider than the value above it, left to the card's own inset:
-    // a model name is longer than the reading column, and "…RTX 3080…" and
-    // "RTX 3080 Ti" are different cards. The type presets are a fixed set, so
-    // shrinking the face is not the lever — 16 is not a preset this document
-    // may use, and the editor refuses the whole theme without one.
-    text("cpu-card-caption", 433, 358, 262, 50, [
-      {
-        kind: "value",
-        bindingId: "cpu-card-model",
-        // `text`, not `dim`. The muted grey was chosen against a card at 72 %
-        // opacity, where this line sat on a near-black field; on a glass that
-        // actually transmits, it measures 3.1:1 against the backdrop and fails
-        // AA for body text. The white token measures 5.4:1 on the same pixels,
-        // and the hierarchy the grey was carrying comes from the 20 px against
-        // the 24 px title instead.
-        token: "text",
-        size: 20,
-        weight: "400",
-      },
-    ]),
-    // `chart` is the one helper that takes Fabric's centre origin, so these are
-    // the box's middle, not its corner.
-    chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
-      ...sparkSettings,
-      area: { ref: "palette.frostArea" },
-      stroke: { ref: "palette.frostInk" },
-      palette: [{ ref: "palette.frostInk" }],
-    }),
-    text(
-      "cpu-card-freq",
-      456,
-      452,
-      220,
-      22.6,
-      valued("cpu-card-clock", " GHz"),
-    ),
-  ];
+    [
+      path("cpu-card-icon", 456, 213, starterIcons.cpu(44), "cpu", 3.6),
+      label("cpu-card-title", 528, 212, 140, 27.12, "CPU", 24, "text"),
+      text(
+        "cpu-card-value",
+        456,
+        258,
+        246,
+        101.7,
+        percent(90, 60, "cpu-card-load"),
+      ),
+      // The reference writes the processor's own name under the figure. It is a
+      // binding, not prose: a theme carries no machine's identity, and a caption
+      // that cannot be read is a gap, never a stand-in model.
+      //
+      // The box runs wider than the value above it, left to the card's own
+      // inset: a model name is longer than the reading column, and "…RTX 3080…"
+      // and "RTX 3080 Ti" are different cards. The type presets are a fixed set,
+      // so shrinking the face is not the lever — 16 is not a preset this
+      // document may use, and the editor refuses the whole theme without one.
+      text("cpu-card-caption", 433, 358, 262, 50, [
+        {
+          kind: "value",
+          bindingId: "cpu-card-model",
+          // `text`, not `dim`. The muted grey was chosen against a card at 72 %
+          // opacity, where this line sat on a near-black field; on a glass that
+          // actually transmits, it measures 3.1:1 against the backdrop and fails
+          // AA for body text. The white token measures 5.4:1 on the same pixels,
+          // and the hierarchy the grey was carrying comes from the 20 px against
+          // the 24 px title instead.
+          token: "text",
+          size: 20,
+          weight: "400",
+        },
+      ]),
+      // `chart` is the one helper that takes Fabric's centre origin, so these
+      // are the box's middle, not its corner.
+      chart("cpu-card-sparkline", 571, 414, 230, 56, "line", {
+        ...sparkSettings,
+        area: { ref: "palette.frostArea" },
+        stroke: { ref: "palette.frostInk" },
+        palette: [{ ref: "palette.frostInk" }],
+      }),
+      text(
+        "cpu-card-freq",
+        456,
+        452,
+        220,
+        22.6,
+        valued("cpu-card-clock", " GHz"),
+      ),
+    ],
+  );
 }
 
-export function gpuCard(): ObjectJson[] {
-  return [
+export function gpuCard(): ObjectJson {
+  return cardGroup(
+    "group-gpu-card",
     frostedCard("gpu-card", 715, 187, 290, 307),
-    path("gpu-card-icon", 748, 213, starterIcons.gpu(48), "gpu", 3.9),
-    label("gpu-card-title", 824, 212, 140, 27.12, "GPU", 24, "text"),
-    text(
-      "gpu-card-value",
-      748,
-      258,
-      246,
-      101.7,
-      percent(90, 60, "gpu-card-load"),
-    ),
-    // The assigned card's name, beside the figures it answers for. Two lines,
-    // for the reason on the CPU card: a truncated model names no card.
-    text("gpu-card-caption", 733, 358, 262, 50, [
-      {
-        kind: "value",
-        bindingId: "gpu-card-model",
-        token: "text",
-        size: 20,
-        weight: "400",
-      },
-    ]),
-    chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
-      ...sparkSettings,
-      area: { ref: "palette.frostArea" },
-      stroke: { ref: "palette.frostInk" },
-      palette: [{ ref: "palette.frostInk" }],
-    }),
-    text(
-      "gpu-card-freq",
-      748,
-      452,
-      132,
-      22.6,
-      valued("gpu-card-clock", " GHz"),
-    ),
-    text("gpu-card-temp", 892, 452, 110, 22.6, [
-      { kind: "literal", text: "| ", token: "text", size: 20, weight: "400" },
-      {
-        kind: "value",
-        bindingId: "gpu-card-temp",
-        token: "text",
-        size: 20,
-        weight: "400",
-        precision: 0,
-      },
-    ]),
-  ];
+    [
+      path("gpu-card-icon", 748, 213, starterIcons.gpu(48), "gpu", 3.9),
+      label("gpu-card-title", 824, 212, 140, 27.12, "GPU", 24, "text"),
+      text(
+        "gpu-card-value",
+        748,
+        258,
+        246,
+        101.7,
+        percent(90, 60, "gpu-card-load"),
+      ),
+      // The assigned card's name, beside the figures it answers for. Two lines,
+      // for the reason on the CPU card: a truncated model names no card.
+      text("gpu-card-caption", 733, 358, 262, 50, [
+        {
+          kind: "value",
+          bindingId: "gpu-card-model",
+          token: "text",
+          size: 20,
+          weight: "400",
+        },
+      ]),
+      chart("gpu-card-sparkline", 870, 414, 240, 56, "line", {
+        ...sparkSettings,
+        area: { ref: "palette.frostArea" },
+        stroke: { ref: "palette.frostInk" },
+        palette: [{ ref: "palette.frostInk" }],
+      }),
+      text(
+        "gpu-card-freq",
+        748,
+        452,
+        132,
+        22.6,
+        valued("gpu-card-clock", " GHz"),
+      ),
+      text("gpu-card-temp", 892, 452, 110, 22.6, [
+        { kind: "literal", text: "| ", token: "text", size: 20, weight: "400" },
+        {
+          kind: "value",
+          bindingId: "gpu-card-temp",
+          token: "text",
+          size: 20,
+          weight: "400",
+          precision: 0,
+        },
+      ]),
+    ],
+  );
 }
 
 /**
@@ -255,97 +278,100 @@ function memoryCard(options: {
   readonly titleLeft: number;
   readonly iconLeft: number;
   readonly fullRing: boolean;
-}): ObjectJson[] {
+}): ObjectJson {
   const { prefix } = options;
-  return [
+  return cardGroup(
+    `group-${options.id}`,
     frostedCard(options.id, options.left, 187, options.width, 307),
-    path(
-      `${prefix}-card-icon`,
-      options.iconLeft,
-      213,
-      starterIcons[prefix](50),
-      prefix,
-      4.1,
-    ),
-    label(
-      `${prefix}-card-title`,
-      options.titleLeft,
-      212,
-      160,
-      27.12,
-      options.title,
-      24,
-      "text",
-    ),
-    chart(`${prefix}-gauge`, options.ringCentreX, 375, 218, 218, "gauge", {
-      ...ringSettings,
-      // A full ring is a settings value on one family, not a second family: the
-      // default 225 -> -45 is the 270-degree arc, and 0 -> 360 closes it.
-      ...(options.fullRing ? { startAngle: 0, endAngle: 360 } : {}),
-      progress: { ref: `palette.${prefix}` },
-    }),
-    // The value and the capacity are ordinary text objects: `buildGaugeOption`
-    // hides `detail` and `axisLabel` outright, so there is no chart-internal
-    // value text to suppress and no choice to make.
-    //
-    // Both sit at the reference's own centre, and they hold it because
-    // `text()` authors `wrap: true` — the box is restored on every refresh, so
-    // the placement arithmetic has the authored width to work from.
-    text(
-      `${prefix}-value`,
-      options.ringCentreX - 90,
-      337,
-      180,
-      67.8,
-      percent(60, 46, `${prefix}-percent`),
-      { align: "center", verticalAlign: "middle" },
-    ),
-    text(
-      `${prefix}-capacity`,
-      options.ringCentreX - 100,
-      406,
-      200,
-      22.6,
-      [
-        {
-          kind: "value",
-          bindingId: `${prefix}-used`,
-          token: "text",
-          size: 20,
-          weight: "400",
-          precision: 1,
-          unitDisplay: "none",
-        },
-        {
-          kind: "literal",
-          text: " / ",
-          token: "text",
-          size: 20,
-          weight: "400",
-        },
-        {
-          kind: "value",
-          bindingId: `${prefix}-total`,
-          token: "text",
-          size: 20,
-          weight: "400",
-          precision: 0,
-          unitDisplay: "none",
-        },
-        {
-          kind: "literal",
-          text: " GB",
-          token: "text",
-          size: 20,
-          weight: "400",
-        },
-      ],
-      { align: "center" },
-    ),
-  ];
+    [
+      path(
+        `${prefix}-card-icon`,
+        options.iconLeft,
+        213,
+        starterIcons[prefix](50),
+        prefix,
+        4.1,
+      ),
+      label(
+        `${prefix}-card-title`,
+        options.titleLeft,
+        212,
+        160,
+        27.12,
+        options.title,
+        24,
+        "text",
+      ),
+      chart(`${prefix}-gauge`, options.ringCentreX, 375, 218, 218, "gauge", {
+        ...ringSettings,
+        // A full ring is a settings value on one family, not a second family:
+        // the default 225 -> -45 is the 270-degree arc, and 0 -> 360 closes it.
+        ...(options.fullRing ? { startAngle: 0, endAngle: 360 } : {}),
+        progress: { ref: `palette.${prefix}` },
+      }),
+      // The value and the capacity are ordinary text objects:
+      // `buildGaugeOption` hides `detail` and `axisLabel` outright, so there is
+      // no chart-internal value text to suppress and no choice to make.
+      //
+      // Both sit at the reference's own centre, and they hold it because
+      // `text()` authors `wrap: true` — the box is restored on every refresh, so
+      // the placement arithmetic has the authored width to work from.
+      text(
+        `${prefix}-value`,
+        options.ringCentreX - 90,
+        337,
+        180,
+        67.8,
+        percent(60, 46, `${prefix}-percent`),
+        { align: "center", verticalAlign: "middle" },
+      ),
+      text(
+        `${prefix}-capacity`,
+        options.ringCentreX - 100,
+        406,
+        200,
+        22.6,
+        [
+          {
+            kind: "value",
+            bindingId: `${prefix}-used`,
+            token: "text",
+            size: 20,
+            weight: "400",
+            precision: 1,
+            unitDisplay: "none",
+          },
+          {
+            kind: "literal",
+            text: " / ",
+            token: "text",
+            size: 20,
+            weight: "400",
+          },
+          {
+            kind: "value",
+            bindingId: `${prefix}-total`,
+            token: "text",
+            size: 20,
+            weight: "400",
+            precision: 0,
+            unitDisplay: "none",
+          },
+          {
+            kind: "literal",
+            text: " GB",
+            token: "text",
+            size: 20,
+            weight: "400",
+          },
+        ],
+        { align: "center" },
+      ),
+    ],
+  );
 }
 
-export function ramCard(): ObjectJson[] {
+export function ramCard(): ObjectJson {
   return memoryCard({
     prefix: "ram",
     id: "ram-card",
@@ -359,7 +385,7 @@ export function ramCard(): ObjectJson[] {
   });
 }
 
-export function vramCard(): ObjectJson[] {
+export function vramCard(): ObjectJson {
   return memoryCard({
     prefix: "vram",
     id: "vram-card",
@@ -373,7 +399,7 @@ export function vramCard(): ObjectJson[] {
   });
 }
 
-export function trendsCard(): ObjectJson[] {
+export function trendsCard(): ObjectJson {
   const legend: Run[] = [];
   for (const [token, name] of [
     ["cpu", "CPU"],
@@ -389,135 +415,160 @@ export function trendsCard(): ObjectJson[] {
       weight: "400",
     });
   }
-  return [
+  return cardGroup(
+    "group-trends-card",
     frostedCard("trends-card", 40, 507, 1084, 335),
-    path("trends-card-icon", 74, 530, starterIcons.trends(34), "cpu", 2.8),
-    label(
-      "trends-card-title",
-      134,
-      528,
-      420,
-      27.12,
-      "Performance Trends",
-      24,
-      "text",
-    ),
-    // The legend is a text object, not a chart setting: `LineSettings` has no
-    // legend property and the settings panel exposes no legend field.
-    text("trends-legend", 680, 528, 390, 22.6, legend, { align: "center" }),
-    chart("trends-chart", 616, 695, 963, 215, "line", {
-      ...plainLine,
-      // Area fill is first-series only, so three filled series are not
-      // expressible; the reference's three strokes are what this keeps.
-      palette: [
-        { ref: "palette.cpu" },
-        { ref: "palette.gpu" },
-        { ref: "palette.ram" },
-      ],
-      stroke: { ref: "palette.cpu" },
-      min: 0,
-      max: 100,
-      showAxes: true,
-      showMarkers: true,
-      markerSize: 3,
-    }),
-  ];
+    [
+      path("trends-card-icon", 74, 530, starterIcons.trends(34), "cpu", 2.8),
+      label(
+        "trends-card-title",
+        134,
+        528,
+        420,
+        27.12,
+        "Performance Trends",
+        24,
+        "text",
+      ),
+      // The legend is a text object, not a chart setting: `LineSettings` has no
+      // legend property and the settings panel exposes no legend field.
+      text("trends-legend", 680, 528, 390, 22.6, legend, { align: "center" }),
+      chart("trends-chart", 616, 695, 963, 215, "line", {
+        ...plainLine,
+        // Area fill is first-series only, so three filled series are not
+        // expressible; the reference's three strokes are what this keeps.
+        palette: [
+          { ref: "palette.cpu" },
+          { ref: "palette.gpu" },
+          { ref: "palette.ram" },
+        ],
+        stroke: { ref: "palette.cpu" },
+        min: 0,
+        max: 100,
+        showAxes: true,
+        showMarkers: true,
+        markerSize: 3,
+      }),
+    ],
+  );
 }
 
-export function storageCard(): ObjectJson[] {
-  return [
+export function storageCard(): ObjectJson {
+  return cardGroup(
+    "group-storage-card",
     frostedCard("storage-card", 1138, 507, 494, 165),
-    path("storage-card-icon", 1170, 528, starterIcons.storage(40), "cpu", 3.3),
-    label("storage-card-title", 1234, 528, 240, 27.12, "Storage", 24, "text"),
-    // The reference writes the share against the card's right edge.
-    text(
-      "storage-card-value",
-      1460,
-      526,
-      200,
-      49.72,
-      [
+    [
+      path(
+        "storage-card-icon",
+        1170,
+        528,
+        starterIcons.storage(40),
+        "cpu",
+        3.3,
+      ),
+      label("storage-card-title", 1234, 528, 240, 27.12, "Storage", 24, "text"),
+      // The reference writes the share against the card's right edge.
+      text(
+        "storage-card-value",
+        1460,
+        526,
+        200,
+        49.72,
+        [
+          {
+            kind: "value",
+            bindingId: "storage-percent",
+            token: "text",
+            size: 44,
+            weight: "600",
+            precision: 0,
+          },
+        ],
+        { align: "center" },
+      ),
+      chart("storage-bar", 1385, 603, 430, 26, "bar", {
+        ...defaultBarSettings,
+        // A track is what makes a bar a progress bar rather than a column.
+        min: 0,
+        max: 100,
+        barWidth: 20,
+        cornerRadius: 10,
+        fill: { ref: "palette.storageFill" },
+        track: { ref: "palette.chartTrack" },
+        // 20 wide is half-radius — a pill. The track states its own rather than
+        // taking the bar's, because the ruling is that the two are independent
+        // and the shipped theme should say what it wants rather than inherit
+        // one.
+        trackCornerRadius: 10,
+      }),
+      // The row the reference puts the volume name and a chevron on. The name is
+      // the selected volume's own: it reads a gap until a consumer picks a
+      // drive, because until then the bar measures every volume at once and no
+      // one volume's name describes that sum. The chevron is not a reading and
+      // claims nothing, so it ships: decorative in this scope, not a navigation
+      // action.
+      text("storage-card-name", 1234, 612, 330, 22.6, [
         {
           kind: "value",
-          bindingId: "storage-percent",
+          bindingId: "storage-card-volume",
           token: "text",
-          size: 44,
-          weight: "600",
-          precision: 0,
+          size: 20,
+          weight: "500",
         },
-      ],
-      { align: "center" },
-    ),
-    chart("storage-bar", 1385, 603, 430, 26, "bar", {
-      ...defaultBarSettings,
-      // A track is what makes a bar a progress bar rather than a column.
-      min: 0,
-      max: 100,
-      barWidth: 20,
-      cornerRadius: 10,
-      fill: { ref: "palette.storageFill" },
-      track: { ref: "palette.chartTrack" },
-      // 20 wide is half-radius — a pill. The track states its own rather than
-      // taking the bar's, because the ruling is that the two are independent and
-      // the shipped theme should say what it wants rather than inherit one.
-      trackCornerRadius: 10,
-    }),
-    // The row the reference puts the volume name and a chevron on. The name is
-    // the selected volume's own: it reads a gap until a consumer picks a drive,
-    // because until then the bar measures every volume at once and no one
-    // volume's name describes that sum. The chevron is not a reading and claims
-    // nothing, so it ships: decorative in this scope, not a navigation action.
-    text("storage-card-name", 1234, 612, 330, 22.6, [
-      {
-        kind: "value",
-        bindingId: "storage-card-volume",
-        token: "text",
-        size: 20,
-        weight: "500",
-      },
-    ]),
-    path("storage-chevron", 1590, 626, starterIcons.chevron(24), "text", 2),
-  ];
+      ]),
+      path("storage-chevron", 1590, 626, starterIcons.chevron(24), "text", 2),
+    ],
+  );
 }
 
-export function networkCard(): ObjectJson[] {
-  return [
+export function networkCard(): ObjectJson {
+  return cardGroup(
+    "group-network-card",
     frostedCard("network-card", 1138, 687, 494, 155),
-    path("network-card-icon", 1170, 706, starterIcons.network(40), "down", 3.3),
-    label("network-card-title", 1230, 704, 240, 27.12, "Network", 24, "text"),
-    // The arrows are typographic marks rather than icon objects: they sit inside
-    // a label whose width changes with the reading, and a separate Path would
-    // not follow it.
-    text("network-down", 1355, 702, 135, 22.6, [
-      { kind: "literal", text: "↓ ", token: "down", size: 20, weight: "500" },
-      {
-        kind: "value",
-        bindingId: "network-download-label",
-        token: "text",
-        size: 20,
-        weight: "500",
-        precision: 1,
-      },
-    ]),
-    text("network-up", 1505, 702, 135, 22.6, [
-      { kind: "literal", text: "↑ ", token: "gpu", size: 20, weight: "500" },
-      {
-        kind: "value",
-        bindingId: "network-upload-label",
-        token: "text",
-        size: 20,
-        weight: "500",
-        precision: 1,
-      },
-    ]),
-    chart("network-chart", 1385, 783, 430, 70, "line", {
-      ...plainLine,
-      palette: [{ ref: "palette.down" }, { ref: "palette.gpu" }],
-      stroke: { ref: "palette.down" },
-      min: 0,
-      showAxes: false,
-      showMarkers: true,
-      markerSize: 3,
-    }),
-  ];
+    [
+      path(
+        "network-card-icon",
+        1170,
+        706,
+        starterIcons.network(40),
+        "down",
+        3.3,
+      ),
+      label("network-card-title", 1230, 704, 240, 27.12, "Network", 24, "text"),
+      // The arrows are typographic marks rather than icon objects: they sit
+      // inside a label whose width changes with the reading, and a separate Path
+      // would not follow it.
+      text("network-down", 1355, 702, 135, 22.6, [
+        { kind: "literal", text: "↓ ", token: "down", size: 20, weight: "500" },
+        {
+          kind: "value",
+          bindingId: "network-download-label",
+          token: "text",
+          size: 20,
+          weight: "500",
+          precision: 1,
+        },
+      ]),
+      text("network-up", 1505, 702, 135, 22.6, [
+        { kind: "literal", text: "↑ ", token: "gpu", size: 20, weight: "500" },
+        {
+          kind: "value",
+          bindingId: "network-upload-label",
+          token: "text",
+          size: 20,
+          weight: "500",
+          precision: 1,
+        },
+      ]),
+      chart("network-chart", 1385, 783, 430, 70, "line", {
+        ...plainLine,
+        palette: [{ ref: "palette.down" }, { ref: "palette.gpu" }],
+        stroke: { ref: "palette.down" },
+        min: 0,
+        showAxes: false,
+        showMarkers: true,
+        markerSize: 3,
+      }),
+    ],
+  );
 }

@@ -17,8 +17,21 @@ function box(over: Partial<SceneBox> = {}): SceneBox {
     top: 0,
     width: 100,
     height: 100,
+    depth: 0,
     ...over,
   };
+}
+
+/** A group's box at depth 0 followed by its own children at depth 1, the order
+ *  `sceneBoxesOf` emits. */
+function group(
+  over: Partial<SceneBox> = {},
+  children: readonly SceneBox[] = [],
+): readonly SceneBox[] {
+  return [
+    box({ depth: 0, ...over }),
+    ...children.map((c) => ({ ...c, depth: 1 })),
+  ];
 }
 
 describe("the artboard crop notice", () => {
@@ -143,5 +156,65 @@ describe("the artboard crop notice", () => {
 
   it("says nothing for an empty scene", () => {
     expect(cropNoticeText([], PORTRAIT)).toBeUndefined();
+  });
+});
+
+/**
+ * A card is a group, and `sceneBoxesOf` hands over the group's box *and* each
+ * child's. These pin the count the group made necessary: the display loses the
+ * card, not the seven boxes inside it.
+ */
+describe("the artboard crop count over a grouped scene", () => {
+  /** The proof pass's failing case as it is now authored: one card, whole,
+   *  hanging off a portrait artboard's right edge. */
+  const croppedCard = group({ left: 1138, top: 100, width: 494, height: 165 }, [
+    box({ left: 1138, top: 100, width: 494, height: 165 }),
+    box({ left: 1170, top: 121, width: 40, height: 40 }),
+    box({ left: 1234, top: 121, width: 240, height: 27 }),
+    box({ left: 1460, top: 119, width: 200, height: 50 }),
+  ]);
+
+  it("counts a card hanging off the edge once, not once per part", () => {
+    expect(cropNoticeText(croppedCard, PORTRAIT)).toBe(
+      "1 of 1 objects are outside this artboard and are not shown — past the right edge",
+    );
+  });
+
+  it("counts a whole card inside as one object plus its parts", () => {
+    expect(
+      cropNoticeText(
+        group({ left: 40, top: 100, width: 494, height: 165 }, [
+          box({ left: 40, top: 100, width: 494, height: 165 }),
+          box({ left: 70, top: 121, width: 40, height: 40 }),
+        ]),
+        PORTRAIT,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("counts a part that leaves a card the artboard does contain", () => {
+    // The group is inside, so it is descended into; the child that is not is
+    // the thing lost, so the child is what the count names. The denominator
+    // is every countable object, exactly as it was before cards were groups.
+    expect(
+      cropNoticeText(
+        group({ left: 40, top: 100, width: 200, height: 100 }, [
+          box({ left: 40, top: 100, width: 200, height: 100 }),
+          box({ left: 1030, top: 100, width: 100, height: 40 }),
+        ]),
+        PORTRAIT,
+      ),
+    ).toBe(
+      "1 of 3 objects are outside this artboard and are not shown — past the right edge",
+    );
+  });
+
+  it("counts each cropped card once beside the loose objects around it", () => {
+    expect(
+      cropNoticeText(
+        [box({ left: 40, top: 40 }), ...croppedCard, ...croppedCard],
+        PORTRAIT,
+      ),
+    ).toContain("2 of 3 objects");
   });
 });

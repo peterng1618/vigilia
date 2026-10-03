@@ -79,6 +79,77 @@ export function frostedCard(
   };
 }
 
+/**
+ * A card as one Fabric group: the frosted panel and the parts that sit on it.
+ *
+ * Fabric puts a child's `left`/`top` in its parent's plane and composes the
+ * parent's transform on top (§57), so a part authored in artboard coordinates
+ * has to be measured from the group's own centre before it goes in. Wrapping
+ * without that step double-applies the group the first time the card moves,
+ * and again the first time it is inserted from the card library — which is the
+ * whole reason a card is a group rather than a naming convention.
+ *
+ * The panel's box is the group's box: the frosted rectangle *is* the card, and
+ * reading it from there is what keeps the two from being stated twice and
+ * drifting apart.
+ */
+export function cardGroup(
+  id: string,
+  panel: ObjectJson,
+  parts: readonly ObjectJson[],
+): ObjectJson {
+  const left = authored(panel, "left");
+  const top = authored(panel, "top");
+  const width = authored(panel, "width");
+  const height = authored(panel, "height");
+  const centre = { x: left + width / 2, y: top + height / 2 };
+  return {
+    type: "Group",
+    id,
+    name: id,
+    left,
+    top,
+    width,
+    height,
+    // The same top-left anchoring every other object here uses, so the group's
+    // own `left`/`top` in the document are the card's measured corner.
+    ...positioned,
+    objects: [panel, ...parts].map((part) => toGroupPlane(part, centre)),
+  };
+}
+
+/** One authored number, or a refusal: a card part with no box has no place. */
+function authored(
+  object: ObjectJson,
+  key: "left" | "top" | "width" | "height",
+): number {
+  const value = object[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(
+      `Card part "${String(object["id"])}" has no authored ${key}.`,
+    );
+  }
+  return value;
+}
+
+/**
+ * A part's position measured from the group's centre.
+ *
+ * The same subtraction for every part whatever its own `originX`/`originY`,
+ * because Fabric resolves an origin against the box on both sides of the
+ * move — the offset cancels and only the anchor point travels.
+ */
+function toGroupPlane(
+  part: ObjectJson,
+  centre: { readonly x: number; readonly y: number },
+): ObjectJson {
+  return {
+    ...part,
+    left: authored(part, "left") - centre.x,
+    top: authored(part, "top") - centre.y,
+  };
+}
+
 /** One run's palette token and type; the size and weight pick the preset. */
 export interface Run {
   readonly kind: "literal" | "value";
