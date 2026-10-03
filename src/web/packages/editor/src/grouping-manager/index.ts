@@ -186,7 +186,16 @@ export function createGroupingManager(
         // `id` is Vigilia's own persisted property, not a Fabric GroupProps key.
         group.set("id", `group-${crypto.randomUUID()}`);
         group.set("name", newObjectName("group"));
-        for (const member of members) canvas.remove(member);
+        for (const member of members) {
+          canvas.remove(member);
+          // `new Group(members)` rewrote each member into group-local
+          // coordinates and left Fabric's cached box at the pre-grouping one.
+          // A reader that does not refresh — `sceneBoxesOf`, and so the
+          // artboard crop count — then reads a box nothing moved. `ungroup()`
+          // refreshes for the same reason; a Group's own `setCoords` only
+          // cascades while `subTargetCheck` is on, which a fresh group never is.
+          member.setCoords();
+        }
         canvas.add(group);
         canvas.setActiveObject(group);
         canvas.requestRenderAll();

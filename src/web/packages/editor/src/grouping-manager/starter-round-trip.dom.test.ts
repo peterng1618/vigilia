@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 
 import {
+  outsideCount,
+  sceneBoxesOf,
+  type SceneBox,
+} from "@vigilia/scene-fabric";
+import {
   ActiveSelection,
   type Canvas,
   type FabricObject,
@@ -86,13 +91,11 @@ function everyObject(canvas: Canvas): FabricObject[] {
  *
  *  `setCoords()` first, and it is load-bearing rather than defensive. Fabric
  *  caches each object's axis-aligned box in `aCoords` and `getBoundingRect()`
- *  reads that cache; only `setCoords` refreshes it, and `renderAll` does not.
- *  `group()` rewrites every member into group-local coordinates and leaves the
- *  cache holding the *pre*-grouping box — measured here as a 70-unit jump on a
- *  400 × 300 canvas that a save and reload then contradicted. `ungroup()`
- *  already calls `setCoords` for exactly this reason. Without it these
- *  assertions would be measuring a cache the code left stale, and would fail
- *  correct code. */
+ *  reads that cache; `group()` used to leave it holding the *pre*-grouping box
+ *  — measured here as a 562-unit jump on the 1672 × 941 starter host (983
+ *  against 421) that a save and reload then contradicted. These assertions are
+ *  about the round trip, so they read the refreshed value and leave the
+ *  un-refreshed one to the test that pins it — the crop count below. */
 function worldBoxes(canvas: Canvas): Map<string, WorldBox> {
   return new Map(
     everyObject(canvas).flatMap((object) => {
@@ -220,16 +223,67 @@ function roundTrip(
   return String(group?.get("id") ?? "");
 }
 
-async function mountStarter() {
+async function mountStarter(artboard?: {
+  readonly width: number;
+  readonly height: number;
+}) {
   const authored = createNewFabricTheme();
   return await mountEditorShell({
     host: hostBox(1672, 941),
-    artboard: authored.artboard,
+    artboard: artboard ?? authored.artboard,
     envelope: authored,
   });
 }
 
 describe("grouping a card's parts on the grouped starter", () => {
+  it("leaves the crop count reading the boxes an author sees", async () => {
+    // 1200×800 rather than the starter's own 1672×941: the starter fits itself,
+    // so nothing is outside at that size and the count is 0 before and after
+    // however wrong the boxes are. Cropped against a smaller frame, grouping
+    // two objects used to move the figure from 5 of 29 to 11 of 30 — `group()`
+    // rewrote every member into group-local coordinates and left Fabric's
+    // `aCoords` cache holding the pre-grouping box, and `sceneBoxesOf` walks
+    // children straight through that cache.
+    const artboard = { width: 1200, height: 800 };
+    const shell = await mountStarter(artboard);
+    const { canvas, groupingManager } = shell.editor;
+    const ids = cardPartIds(canvas, CARD_ID);
+
+    /** The un-refreshed read, deliberately: `sceneBoxesOf` is what the artboard
+     *  panel is handed, and a helper that called `setCoords` first would be
+     *  asserting the fix rather than the defect. */
+    const read = (): SceneBox[] => sceneBoxesOf(canvas.getObjects());
+
+    canvas.discardActiveObject();
+    canvas.setActiveObject(cardGroup(canvas, CARD_ID) as FabricObject);
+    const released = groupingManager.ungroup();
+    expect(released).toHaveLength(CARD_PARTS);
+    const before = outsideCount(read(), artboard);
+
+    selectParts(canvas, ids);
+    groupingManager.group();
+
+    // `outside` alone, not the whole `{outside, counted}` pair: `counted` is
+    // meant to grow by one, because a group is a box *and* its children. The
+    // outside figure is what the panel puts in front of an author, and grouping
+    // nothing into a different place must not change it.
+    expect(
+      outsideCount(read(), artboard).outside,
+      "the crop count moved on a grouping that moved nothing",
+    ).toBe(before.outside);
+
+    // And the boxes themselves, which is the sharper claim: the count could
+    // agree by luck. A forced refresh is what a correct read produces, so any
+    // difference here is a box `group()` left lying.
+    const stale = read();
+    for (const object of everyObject(canvas)) object.setCoords();
+    expect(stale, "the crop count read a box only a refresh corrected").toEqual(
+      read(),
+    );
+
+    shell.destroy();
+  });
+
   it("makes one object out of the parts, in one history entry", async () => {
     const shell = await mountStarter();
     const { canvas, groupingManager, historyManager } = shell.editor;
