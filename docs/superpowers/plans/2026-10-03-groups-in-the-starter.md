@@ -3,7 +3,8 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The starter theme's eight cards become eight Fabric groups, so the layer tree
-shows eight rows instead of fifty-two, a card moves as one object, and a card can be
+shows ten top-level rows instead of fifty-two flat siblings, a card moves as one object,
+and a card can be
 inserted as a unit.
 
 **Architecture:** A document change first, a panel change second. `ThemeNode`'s `group`
@@ -161,7 +162,8 @@ start **collapsed**, which is a default and not persisted viewport state (§67).
 state belongs to the shell.
 
 **Verification:**
-- Unit: the starter projects to eight top-level rows, and expanding reaches every node.
+- Unit: the starter projects to **ten** top-level rows — eight cards plus the wordmark
+  and strapline, which Task 1 leaves loose — and expanding reaches all 60 objects.
 - Unit: **a flat scene still projects correctly.** A theme with no groups produces rows
   with `depth: 0` and no parent — Review Focus 4.
 - Unit: effective visibility and lock descend the ancestor path, and a hidden group's
@@ -209,7 +211,7 @@ Row rhythm 24px, `tabular-nums` on anything numeric. Density per §173: more, no
   confirms it paints.
 - Delete rather than leave passing vacuously: any assertion that a default row carries two
   icons.
-- Browser: eight rows, each identifiable at a glance without reading its name.
+- Browser: ten rows, each identifiable at a glance without reading its name.
 
 **Commit:** `feat(editor): a row says what it is, and is quiet when nothing is wrong`
 
