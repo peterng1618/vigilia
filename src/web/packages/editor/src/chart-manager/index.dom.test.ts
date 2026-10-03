@@ -2,7 +2,7 @@
 import { createDemoSource } from "@vigilia/fake-source";
 import type { Binding } from "@vigilia/renderer-core";
 import {
-  type ChartContent,
+  type GaugeSettings,
   defaultGaugeSettings,
   defaultLineSettings,
 } from "@vigilia/renderer-core";
@@ -510,25 +510,28 @@ describe("ChartManager", () => {
     // dangling global reference is a defect only once it is persisted; the
     // live object could be rewritten at any moment, so asserting on it would
     // pass on a walk that never touches the file.
-    const settings = {
+    //
+    // `GaugeSettings`, not `ChartContent["settings"]` — the union cannot be
+    // narrowed back through `family` under `exactOptionalPropertyTypes`, so
+    // the cast leaves the chart's options unassignable.
+    const settings: GaugeSettings = {
       ...defaultGaugeSettings,
       track: { ref: "palette.ink" },
-    } as ChartContent["settings"];
+    };
     const canvas = new Canvas(document.createElement("canvas"));
-    canvas.add(
-      new Group(
-        [
-          new VigiliaChart({
-            id: "cpu-gauge",
-            family: "gauge",
-            settings,
-            width: 200,
-            height: 200,
-          }),
-        ],
-        { id: "group-cpu-card" },
-      ),
-    );
+    // `GroupProps` carries no `id`; a group is named the way Fabric accepts
+    // one — after construction, the same as the asset panel's own group.
+    const card = new Group([
+      new VigiliaChart({
+        id: "cpu-gauge",
+        family: "gauge",
+        settings,
+        width: 200,
+        height: 200,
+      }),
+    ]);
+    card.set("id", "group-cpu-card");
+    canvas.add(card);
     // The same chart at the root, which the walk already reached — this fails
     // if the descent is fixed by stopping at the top level instead.
     canvas.add(
@@ -562,7 +565,8 @@ describe("ChartManager", () => {
     manager.reassignPaletteReferences("palette.ink", "palette.gpu");
 
     const saved = serialiseScene(canvas);
-    expect(saved.objects[0]!["objects"]![0]!["settings"]).toMatchObject({
+    const children = saved.objects[0]!["objects"] as Record<string, unknown>[];
+    expect(children[0]!["settings"]).toMatchObject({
       track: { ref: "palette.gpu" },
     });
     // And nothing anywhere in the file still names the deleted token.
