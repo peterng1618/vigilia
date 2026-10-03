@@ -89,13 +89,16 @@ function everyObject(canvas: Canvas): FabricObject[] {
  *  even survive a move unchanged. The composed world box *is* the appearance,
  *  and it is what §57 is about.
  *
- *  `setCoords()` first, and it is load-bearing rather than defensive. Fabric
+ *  `setCoords()` first, and it is defensive rather than load-bearing. Fabric
  *  caches each object's axis-aligned box in `aCoords` and `getBoundingRect()`
  *  reads that cache; `group()` used to leave it holding the *pre*-grouping box
  *  — measured here as a 562-unit jump on the 1672 × 941 starter host (983
- *  against 421) that a save and reload then contradicted. These assertions are
- *  about the round trip, so they read the refreshed value and leave the
- *  un-refreshed one to the test that pins it — the crop count below. */
+ *  against 421) that a save and reload then contradicted. `group()` now
+ *  refreshes every member itself, so nothing here depends on the call: these
+ *  five assertions pass without it. It stays because a helper that reads a box
+ *  should not depend on some other owner's discipline to make that box true,
+ *  and the test that pins the staleness itself is the crop count below, which
+ *  deliberately reads unrefreshed. */
 function worldBoxes(canvas: Canvas): Map<string, WorldBox> {
   return new Map(
     everyObject(canvas).flatMap((object) => {

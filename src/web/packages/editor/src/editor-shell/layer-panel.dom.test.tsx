@@ -234,6 +234,63 @@ const contextRows = [
     hasChildren: true, visible: true, locked: false, selected: false },
 ];
 
+it("shows a shut group as one row offering to open, and no children", async () => {
+  // What an author meets on opening the starter: the eight cards are rows, not
+  // sixty. The projection decides that; what this pins is that the panel reads
+  // it as "shut" — a twisty that says expand and points the other way — rather
+  // than as an open group whose children are missing.
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () => root.render(<LayerPanel bridge={bridge([
+    { id: "group", name: "CPU card", kind: "group", depth: 0, parentId: undefined,
+      hasChildren: true, collapsed: true, visible: true, locked: false, selected: false },
+    { id: "loose", name: "Wordmark", kind: "text", depth: 0, parentId: undefined,
+      hasChildren: false, collapsed: false, visible: true, locked: false, selected: false },
+  ])} />));
+
+  const rows = host.querySelectorAll("[data-vigilia-layer]");
+  expect(rows).toHaveLength(2);
+  const twisty = host.querySelector('[aria-label="Expand CPU card"]');
+  expect(twisty?.getAttribute("aria-expanded")).toBe("false");
+  expect(twisty?.querySelector("svg")?.getAttribute("class")).toContain(
+    "lucide-chevron-right",
+  );
+  // The loose object beside it has no twisty at all, so the two rows are not
+  // offering the same affordance.
+  expect(
+    host.querySelector('[aria-label^="Expand"], [aria-label^="Collapse"]'),
+  ).toBe(twisty);
+});
+
+it("opens a shut group from its twisty and closes it again", async () => {
+  // Both directions, because the projection's default means the first press is
+  // now the common one and a twisty that only ever closed would be useless.
+  // The panel holds no state of its own — it re-reads the projection — so the
+  // row is re-rendered from the bridge rather than mutated here.
+  const setCollapsed = vi.fn();
+  const row = {
+    id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined,
+    hasChildren: true, visible: true, locked: false, selected: false,
+  };
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const draw = async (collapsed: boolean) => {
+    await act(async () => root.render(
+      <LayerPanel bridge={bridge([{ ...row, collapsed }], { setCollapsed })} />,
+    ));
+  };
+  await draw(true);
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Expand Group"]')?.click(),
+  );
+  expect(setCollapsed).toHaveBeenLastCalledWith("group", false);
+  await draw(false);
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')?.click(),
+  );
+  expect(setCollapsed).toHaveBeenLastCalledWith("group", true);
+});
+
 it("marks the group whose children are current and dims the rest", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);

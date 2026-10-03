@@ -368,18 +368,21 @@ it("locks through the owning group so a group child stays protected", () => {
   expect(unlockObject).toHaveBeenCalledWith({ object: group });
 });
 
-it("keeps collapse in the bridge and drops the children from the projection", () => {
+it("keeps collapse in the bridge, and opens a group shut to begin with", () => {
   const child = new Rect({ id: "child", width: 10, height: 10 });
   const group = new Group([child]);
   group.set("id", "group");
   const { bridge } = bridgeFor(group);
 
-  expect(bridge.layers().map((row) => row.id)).toEqual(["group", "child"]);
-  bridge.setCollapsed("group", true);
+  // Shut on open, because a group is the default rather than a state the shell
+  // has to record (§67). The flag still lives here, so a remount keeps what the
+  // author opened rather than re-asking them.
   expect(bridge.layers().map((row) => row.id)).toEqual(["group"]);
   expect(bridge.layers()[0]?.collapsed).toBe(true);
   bridge.setCollapsed("group", false);
   expect(bridge.layers().map((row) => row.id)).toEqual(["group", "child"]);
+  bridge.setCollapsed("group", true);
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group"]);
 });
 
 it("notifies subscribers when a layer command changes the projection", () => {

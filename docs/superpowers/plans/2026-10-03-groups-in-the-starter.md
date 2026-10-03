@@ -167,7 +167,10 @@ state belongs to the shell.
 - Unit: effective visibility and lock descend the ancestor path, and a hidden group's
   children read as hidden.
 - Unit: reverse paint order, and `parentId` correct at depth 2 and 3.
-- Browser: the starter's panel shows eight rows on open.
+- Browser: the starter's panel shows ten rows on open — the eight cards, plus `wordmark`
+  and `strapline`, which Task 1 deliberately left loose. (An earlier draft of this line
+  said eight, which is the count of *cards* and not of rows; measured on the revived
+  starter, which has ten roots and sixty objects.)
 
 **Commit:** `feat(editor): the tree follows the document's hierarchy`
 
@@ -251,8 +254,10 @@ the list and the panel renders from it, so the two cannot drift.
 
 Rendered observation in a real browser (§33).
 
-- The starter's layer tree shows **eight rows**, expanding to every node. The change is a
-  document change: the groups exist before any panel is touched.
+- The starter's layer tree shows **ten rows**, expanding to every one of its sixty objects.
+  Eight of the ten are cards; the other two are the wordmark and the strapline, which are
+  loose on purpose. The change is a document change: the groups exist before any panel is
+  touched.
 - **A theme of two hundred loose shapes opens, selects, moves and styles every one of
   them**, and the tree is usable at that size. This is the item that fails if the group
   model turned into a rule.

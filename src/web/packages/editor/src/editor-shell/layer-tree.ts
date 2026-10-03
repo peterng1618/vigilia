@@ -11,7 +11,9 @@ export interface LayerRow {
   readonly depth: number;
   readonly parentId: string | undefined;
   readonly hasChildren: boolean;
-  /** Shut by the author, so the twisty can offer the other direction. */
+  /** Shut, so the twisty offers the other direction. A group with children is
+   * shut until the author opens it, so this is the default rather than a mark
+   * of an action — and never an authored state (§67). */
   readonly collapsed: boolean;
   readonly visible: boolean;
   readonly locked: boolean;
@@ -22,7 +24,10 @@ const ANONYMOUS_ID = "unidentified";
 
 /** Ids for id-less objects still have to be distinct, so the first keeps the
  * plain fallback and the rest are suffixed by walk position. That makes the
- * scheme order-dependent: every walk here reverses the same way. */
+ * scheme order-dependent: every walk here reverses the same way, and every walk
+ * here visits the same objects — a walk that stopped at a shut group would
+ * number its rows differently from `findById` and hand the same id to two
+ * objects. */
 function layerIds(): (object: FabricObject) => string {
   let count = 0;
   return (object) => {
@@ -64,15 +69,24 @@ function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
   return kindLabels[kind];
 }
 
-/** Projects Fabric's current hierarchy without maintaining a second scene tree. */
+/**
+ * Projects Fabric's current hierarchy without maintaining a second scene tree.
+ *
+ * `expanded` names the groups the author has *opened*, and a group with children
+ * is shut until it is in there. That is the whole default: the starter's eight
+ * cards would otherwise open as sixty rows, and shut-by-default is a default
+ * rather than state to store (§67). Holding the exceptions rather than the rule
+ * is also what makes a group created a minute ago shut without anything having
+ * to record it — the shell never enumerates groups to keep the set current.
+ */
 export function projectLayers({
   root,
   selected,
-  collapsed,
+  expanded,
 }: {
   readonly root: readonly FabricObject[];
   readonly selected: readonly FabricObject[];
-  readonly collapsed: ReadonlySet<string>;
+  readonly expanded: ReadonlySet<string>;
 }): readonly LayerRow[] {
   const rows: LayerRow[] = [];
   const idOf = layerIds();
@@ -81,32 +95,41 @@ export function projectLayers({
     depth: number,
     ancestors: readonly FabricObject[],
     parentId: string | undefined,
+    hidden: boolean,
   ): void => {
     for (const object of [...objects].reverse()) {
       const id = idOf(object);
       const kind = kindOf(object);
       const path = [...ancestors, object];
       const isGroup = object instanceof Group;
-      const isCollapsed = collapsed.has(id);
-      rows.push({
-        id,
-        name: nameOf(object, id, kind),
-        kind,
-        depth,
-        parentId,
-        hasChildren: isGroup && object.getObjects().length > 0,
-        collapsed: isCollapsed,
-        visible: path.every((entry) => entry.visible),
-        locked: path.some(
-          (entry) => (entry as { locked?: boolean }).locked === true,
-        ),
-        selected: selected.includes(object),
-      });
-      if (isGroup && !isCollapsed)
-        walk(object.getObjects(), depth + 1, path, id);
+      const hasChildren = isGroup && object.getObjects().length > 0;
+      const collapsed = hasChildren && !expanded.has(id);
+      if (!hidden)
+        rows.push({
+          id,
+          name: nameOf(object, id, kind),
+          kind,
+          depth,
+          parentId,
+          hasChildren,
+          collapsed,
+          visible: path.every((entry) => entry.visible),
+          locked: path.some(
+            (entry) => (entry as { locked?: boolean }).locked === true,
+          ),
+          selected: selected.includes(object),
+        });
+      // Descend into a shut group as well, emitting nothing for what is under
+      // it. The fallback id above is *positional* — `layerIds` numbers the
+      // id-less by walk order — and `findById`/`ownerOf`/`pathTo` walk the whole
+      // document rather than the visible part of it. Stopping at a shut group
+      // would hand the same fallback id to two different objects, so a rename
+      // or a hide would land on whichever one the panel happened to mean.
+      if (isGroup)
+        walk(object.getObjects(), depth + 1, path, id, hidden || collapsed);
     }
   };
-  walk(root, 0, [], undefined);
+  walk(root, 0, [], undefined, false);
   return rows;
 }
 

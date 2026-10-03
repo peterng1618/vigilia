@@ -49,7 +49,8 @@ export interface EditorShellBridge {
   /** Hiding leaves the selection alone; showing reveals the whole ancestor path. */
   setLayerVisible(id: string, visible: boolean): void;
   setLayerLocked(id: string, locked: boolean): void;
-  /** Transient view state: never authored history, never a Fabric write (§67). */
+  /** Transient view state: never authored history, never a Fabric write (§67).
+   * A group with children is shut until this opens it. */
   setCollapsed(id: string, collapsed: boolean): void;
   /** Editor-only display state: never authored history, never a Fabric write. */
   renameLayer(id: string, name: string): void;
@@ -159,8 +160,11 @@ export function createEditorShellBridge(input: {
       .map((object) => (object as { id?: unknown }).id)
       .filter((id): id is string => typeof id === "string");
   // View state lives here, not in the panel: the projection reads it, so a
-  // remount keeps the groups the author shut.
-  const collapsedGroups = new Set<string>();
+  // remount keeps the groups the author opened. It holds the *open* groups
+  // rather than the shut ones, so a group is shut by default — an eight-card
+  // starter opens as ten rows rather than sixty — without this shell having to
+  // enumerate groups to seed anything, and a group created later is shut too.
+  const openedGroups = new Set<string>();
   const layers = (): readonly LayerRow[] => {
     const active = canvas.getActiveObject();
     const selected =
@@ -172,7 +176,7 @@ export function createEditorShellBridge(input: {
     return projectLayers({
       root: canvas.getObjects(),
       selected,
-      collapsed: collapsedGroups,
+      expanded: openedGroups,
     });
   };
   const selectLayer = (id: string): void => {
@@ -213,8 +217,8 @@ export function createEditorShellBridge(input: {
     notify();
   };
   const setCollapsed = (id: string, collapsed: boolean): void => {
-    if (collapsed) collapsedGroups.add(id);
-    else collapsedGroups.delete(id);
+    if (collapsed) openedGroups.delete(id);
+    else openedGroups.add(id);
     notify();
   };
   const renameLayer = (id: string, name: string): void => {
