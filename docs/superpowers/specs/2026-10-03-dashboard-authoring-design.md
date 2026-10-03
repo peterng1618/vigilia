@@ -40,6 +40,42 @@ uncommon one.** Specifically:
 The test for any change in this spec: *does this remove a step, or does it remove a
 freedom?* If the second, it is out.
 
+### The case that proves it
+
+*If I want a 1/4 circle as a decorating element, I should be able to place the 3/4 part
+of it outside the canvas to be clipped.*
+
+Driven in the built editor, 2026-10-03. Three findings, and the third is the one:
+
+1. **There is no arc primitive.** `SHAPE_KINDS` is `["rect", "ellipse", "polygon",
+   "polyline", "line", "path"]`. A quarter-disc is hand-authored as an SVG path, which is
+   what the starter already does for its icons. A bleeding quarter-disc is a basic
+   compositional move and the vocabulary cannot express it.
+
+2. **The clipping machinery is sound.** `adapter.ts` clips the player's canvas to the
+   artboard rect; `scene-fabric/artboard-crop.ts` counts and names the edges that ran off,
+   on both surfaces; `sceneBoxesOf` flattens groups so a group is a box *and* its
+   children. This part is already right.
+
+3. **The editor does not clip, so the author composes against a lie.** Measured:
+   `canvas.clipPath` is `null` on the editor's Fabric canvas. Place a quarter-disc with
+   3/4 hanging off the edge and the editor draws a **full** disc; the phone shows a
+   quarter. And `outsideCount` measures the whole bounding rect, so a deliberate bleed is
+   reported as "1 object outside" — the artboard panel warns and the player raises a crop
+   notice. The intent is invisible to both surfaces.
+
+**A tool that reports deliberate bleed as a fault is a cage that looks helpful.** The
+three fixes, none of which constrains anything:
+
+- **The editor clips to the artboard**, so what an author composes against is what ships.
+- **A `bleeds` flag** on the object. Marked, it is excluded from the crop count and the
+  phone's notice; unmarked, it still warns — so the diagnostic stays honest and stops
+  crying wolf over composition, not just over mistakes.
+- **Arc and wedge in `SHAPE_KINDS`**, with start and end angle in the inspector.
+
+§57's "no automatic reflow" already permits this and nothing has to change about the
+document format. The gap is the editor's preview honesty and the primitive vocabulary.
+
 ## The root cause, found in the code
 
 Driven, then read. The starter theme's cards are **a naming convention, not structure**:
@@ -284,6 +320,9 @@ Rendered observation in a real browser (§33).
   selecting a free shape opens that shape's own column, at the same density.
 - With nothing selected the right column is empty and names where to choose from.
 - The `+` offers units **and** primitives, neither greyed, neither described as a fallback.
+- **A quarter-disc with three quarters of it outside the artboard is authorable, and the
+  editor shows exactly the quarter the phone shows.** Marked as bleeding it raises no crop
+  notice; unmarked it still does.
 - The phone shows the theme while the editor has it open.
 - Six palettes are distinguishable by surface, verified by screenshot rather than by
   computed value — a computed-value assertion passes on three palettes that are
