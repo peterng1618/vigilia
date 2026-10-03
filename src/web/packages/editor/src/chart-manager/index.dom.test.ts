@@ -2,6 +2,7 @@
 import { createDemoSource } from "@vigilia/fake-source";
 import type { Binding } from "@vigilia/renderer-core";
 import {
+  type ChartContent,
   defaultGaugeSettings,
   defaultLineSettings,
 } from "@vigilia/renderer-core";
@@ -10,7 +11,7 @@ import {
   serialiseScene,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
-import { Canvas } from "fabric/es";
+import { Canvas, Group } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { newObjectPlacement } from "../new-object-defaults.js";
@@ -494,6 +495,78 @@ describe("ChartManager", () => {
     expect(saved).not.toHaveProperty("aspect");
     expect(JSON.stringify(saved)).not.toContain("aria-pressed");
     expect(saved["height"]).toBe(200);
+
+    manager.destroy();
+  });
+
+  it("reassigns a grouped chart's paint, so no token is deleted from under it", () => {
+    // §75: deleting a referenced global forces reassignment. A card is a
+    // group, so a chart one level down is the case that bites — and a live
+    // `Group` keeps its children in `_objects` and exposes `getObjects()`, so
+    // a walk reading `object.get("objects")` never descended into one and left
+    // every chart inside a card naming the token the author had just deleted.
+    //
+    // **The claim under test is the saved document, not the canvas.** A
+    // dangling global reference is a defect only once it is persisted; the
+    // live object could be rewritten at any moment, so asserting on it would
+    // pass on a walk that never touches the file.
+    const settings = {
+      ...defaultGaugeSettings,
+      track: { ref: "palette.ink" },
+    } as ChartContent["settings"];
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(
+      new Group(
+        [
+          new VigiliaChart({
+            id: "cpu-gauge",
+            family: "gauge",
+            settings,
+            width: 200,
+            height: 200,
+          }),
+        ],
+        { id: "group-cpu-card" },
+      ),
+    );
+    // The same chart at the root, which the walk already reached — this fails
+    // if the descent is fixed by stopping at the top level instead.
+    canvas.add(
+      new VigiliaChart({
+        id: "ram-gauge",
+        family: "gauge",
+        settings,
+        width: 200,
+        height: 200,
+      }),
+    );
+    const host = document.createElement("div");
+    document.body.append(host);
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      globals: {
+        palette: {
+          ink: { name: "Ink", value: { kind: "solid", color: "#102030" } },
+          gpu: { name: "GPU", value: { kind: "solid", color: "#00b8d9" } },
+        },
+      } as never,
+      panelHost: host,
+    });
+
+    manager.reassignPaletteReferences("palette.ink", "palette.gpu");
+
+    const saved = serialiseScene(canvas);
+    expect(saved.objects[0]!["objects"]![0]!["settings"]).toMatchObject({
+      track: { ref: "palette.gpu" },
+    });
+    // And nothing anywhere in the file still names the deleted token.
+    expect(JSON.stringify(saved)).not.toContain("palette.ink");
 
     manager.destroy();
   });

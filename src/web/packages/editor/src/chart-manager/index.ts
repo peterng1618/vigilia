@@ -9,7 +9,7 @@ import {
   type SampleSource,
 } from "@vigilia/renderer-core";
 import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
-import { Group } from "fabric/es";
+import { type FabricObject, Group } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import {
   createNewChartDefaults,
@@ -288,7 +288,13 @@ export class ChartManager {
   }
 
   reassignPaletteReferences(from: string, to: string): void {
-    const visit = (object: { get(key: string): unknown }): void => {
+    // §75: deleting a referenced global forces reassignment, so a chart still
+    // naming the deleted token would be a dangling reference in the saved
+    // document. A live `Group` keeps its children in `_objects` and exposes
+    // `getObjects()` — it has no `objects` property — so reading
+    // `object.get("objects")` never descended into one and every chart inside
+    // a card kept the token its whole group had just lost.
+    const visit = (object: FabricObject): void => {
       if (object instanceof VigiliaChart) {
         const settings = reassignChartPaintReferences(
           object.settings,
@@ -301,17 +307,7 @@ export class ChartManager {
           if (typeof id === "string") this.#applyChart(id, object);
         }
       }
-      const children = object.get("objects");
-      if (Array.isArray(children))
-        children.forEach((child) => {
-          if (
-            typeof child === "object" &&
-            child !== null &&
-            "get" in child &&
-            typeof child.get === "function"
-          )
-            visit(child as { get(key: string): unknown });
-        });
+      if (object instanceof Group) object.getObjects().forEach(visit);
     };
     this.#editor.canvas.getObjects().forEach(visit);
     this.#editor.canvas.requestRenderAll();
