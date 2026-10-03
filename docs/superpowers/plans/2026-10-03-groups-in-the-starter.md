@@ -52,6 +52,10 @@ exercises. Each is pinned by a test in the task named.
    the panel and the selection code must handle a flat scene as today. Pinned in Task 3.
 5. **The instance a card came from is a fact, not a naming convention.** `provenance`
    survives save and reopen. Pinned in Task 4.
+6. **Grouping must not multiply the crop count.** `sceneBoxesOf` returns a group's box *and*
+   each child's, so once cards are groups one card hanging off the edge would count eight
+   times — and the count's whole job is to let a reader tell a short dashboard from a broken
+   one. Pinned in Task 1.
 
 ---
 
@@ -63,7 +67,9 @@ exercises. Each is pinned by a test in the task named.
 - Modify: `src/web/packages/editor/src/new-fabric-theme-cards.ts` — every `*Card()`
   returns one group wrapping its parts
 - Modify: `src/web/packages/editor/src/new-fabric-theme.ts` — the `scene.objects` spread
+- Modify: `src/web/packages/scene-fabric/src/artboard-crop.ts` — the outside count
 - Test: `src/web/packages/editor/src/new-fabric-theme.test.ts`
+- Test: `src/web/packages/player/src/artboard-crop.test.ts`
 
 **Interfaces:**
 - Consumes: `ObjectJson`, `ThemeNode`'s `group`, `sceneBoxesOf`'s group flattening.
@@ -86,6 +92,12 @@ wrong.
 The wordmark and strapline stay loose — they are not a card, and a design that made
 everything a group would be the cage this project is avoiding.
 
+**This conversion is also a precondition for Task 5.** `instantiateWidget`'s
+`offsetTransform` offsets an inserted **root** and deliberately leaves children alone,
+because child coordinates are group-local. A card authored in artboard coordinates would
+double-apply its own transform the first time it moved *and* the first time it was inserted.
+Converting here makes Task 5 correct for free.
+
 **Verification:**
 - Unit: each card factory returns exactly one group; its children's ids match the set the
   factory produced before, and no id is duplicated across the document.
@@ -94,6 +106,12 @@ everything a group would be the cage this project is avoiding.
 - Unit: **group transform composition.** Set a group's `left`, then assert each child's
   *own* `left` is unchanged while its bounding rect moved by exactly the group's delta.
 - Unit: the wordmark and strapline are not inside a group.
+- **The crop count counts the outermost node that is outside** — `sceneBoxesOf` returns a
+  group's box *and* each child's, so without this one card hanging off the edge counts
+  eight times. A group outside counts once and is not descended into; a group inside whose
+  child is outside counts the child. This is the count's own comment asking to be read:
+  *"which objects the artboard does not contain"*, and what the display loses is the
+  group's contribution, not seven boxes inside it.
 - **Delete** any assertion that pinned the old flat count.
 
 **Commit:** `feat(editor): the starter's cards are groups`
