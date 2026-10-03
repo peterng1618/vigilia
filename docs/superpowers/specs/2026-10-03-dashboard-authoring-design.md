@@ -9,11 +9,36 @@
 **Vigilia is an editor for a phone display that happens to use Fabric.**
 
 Every decision below follows from that one. Not "a canvas editor with a good default
-theme" — the display is what the interface is organised around, and an author selects a
-**card**, not a rectangle.
+theme" — the display is what the interface is organised around.
 
 The previous design got this diagnosis right and then spent itself re-arranging the
 chrome. That is the failure this one exists to not repeat.
+
+## What this design must never become
+
+Stated first, because the failure mode is real and this spec walks toward it.
+
+> **Here's a blank canvas. Let your imagination run wild. We are the best tool at your
+> disposal.**
+
+Every move below removes friction from the common case. **None of them narrows the
+uncommon one.** Specifically:
+
+- **A card is a fact about the starter theme, not a rule about themes.** The reference
+  happens to be eight frosted panels. Another theme may be one full-bleed photograph and
+  a caption, or two hundred loose shapes somebody arranged for the sake of the
+  arrangement. The editor is the tool for all of them.
+- **The device is a lens, not the document.** The artboard keeps whatever dimensions the
+  author chooses (§57: no reflow, whole artboard units). A phone frame shows the artboard
+  *as that display would present it*. It never constrains the artboard's shape.
+- **Components are an accelerator, never a gate.** Inserting a pre-built card is the fast
+  path. Placing a free shape is always available, and a theme made entirely of free shapes
+  is a first-class theme, not a degraded one.
+- **Nothing here may make a thing *impossible*.** Not a card role, not a device shape, not
+  a panel layout.
+
+The test for any change in this spec: *does this remove a step, or does it remove a
+freedom?* If the second, it is out.
 
 ## The root cause, found in the code
 
@@ -61,20 +86,27 @@ this design adds.
 
 ## The design
 
-### 1. A card is the atom
+### 1. Groups are the atom, and the starter should use them
 
 The starter is rebuilt with each card as a **group**: its frosted panel, its icon, its
 title, its value, its sparkline, its caption, as children in group-local coordinates.
 
 Everything else falls out of that:
 
-- the layer tree is **eight rows**, expandable — not a UI change, a document change
+- the layer tree is **eight rows** for *this* theme, expandable — not a UI change, a
+  document change
 - a card moves, scales and transforms as one object; §57's group semantics do the work
 - a card can be inserted as a **unit** with parameters, through `instantiateWidget`
 - selecting a card can offer *the card's* properties rather than the rectangle's
 
 `provenance` records which unit an inserted card came from, so "these two cards are the
 same thing" is a fact in the document rather than a naming coincidence.
+
+**This is a fix to one theme's model, not a product rule.** Groups are the general
+capability and they predate this work; what is new is the starter using them, and a unit
+library built on `instantiateWidget`. A theme the author built from loose shapes keeps
+every one of those shapes selectable, movable and individually styled, and the panel below
+is designed for that case as much as for the card case.
 
 **Blast radius, stated up front.** The starter envelope id `vigilia-demo-dashboard` is
 referenced by `editor.spec.ts`, the host fixtures and the captured evidence. Rebuilding it
@@ -83,38 +115,50 @@ fixing the model, and it is cheaper than carrying a wrong model forever. `AGENTS
 rule applies: if a task cannot change the starter without breaking evidence that exists to
 prove something else, that evidence is re-captured, not preserved.
 
-### 2. The canvas is the device
+### 2. The device is a lens on the canvas
 
-The artboard **is** the display's shape. Today a 1672×941 artboard is letterboxed into a
-desktop window at 55%: a preview of nothing, on the surface where all the work happens.
+Today a 1672×941 artboard is letterboxed into a desktop window at 55%: a preview of
+nothing, on the surface where all the work happens.
 
-- The stage shows the target device, and the device switch — *Phone portrait · Phone
-  landscape · Wall panel · Fit* — **is** the zoom control. There is no second concept of
-  "preview", and no dropdown labelled `Orientation: Custom`.
+- The stage shows the artboard **through a device**, and the device switch — *Phone
+  landscape · Phone portrait · Wall panel · Fit* — **is** the zoom control. There is no
+  second concept of "preview", and no dropdown labelled `Orientation: Custom`.
+- **The default is a landscape phone.** That is the shape the display type usually is, and
+  it is the shape the starter is already drawn in, so the reference composition is
+  correctly framed the moment the editor opens.
 - Device frame, notch and safe areas are visible and accounted for, because the display
   has them.
-- **The starter ships portrait.** The primary display type is a phone (§7, and the
-  reference is worse than useless on one: 22% of the screen, 78% black). A theme is
-  designed for one orientation and the author chooses it once, with the consequence
-  visible at all times.
+- **The artboard keeps whatever dimensions the author chooses.** A device frame shows the
+  artboard as that display would present it — contained, or cropped, per the existing fit
+  rules (§53). It is a lens, not a constraint. A theme that is one photograph at 3:1, a
+  theme at 4000×4000, and a theme at 1672×941 are all authored in the same stage, and
+  the lens simply shows what each would look like on a given screen.
 
 Orientation stays the author's per-theme choice. What changes is that choosing is
-*informed* rather than a dropdown nobody can picture.
+*informed* rather than a dropdown nobody can picture — and that seeing the consequence
+costs one click rather than a mental calculation.
 
-### 3. The composition panel lists cards
+### 3. The composition panel shows whatever the theme is made of
 
-Eight units, not 52 rows. Each row carries:
+Not "eight units". **Whatever the top level actually is**, shown well. For the starter
+that is eight rows, because the starter will be eight groups. For a theme an author built
+from loose shapes it is however many they made — and the panel has to be *good* at two
+hundred rows, not merely correct.
 
-- a **thumbnail** of what the card is
-- its **role** — `gauge · cpu.load`, `ring · mem.used`, `chart · line ×3`, `metric card`
-- its **bound key**, so you read what a card is *about* without expanding anything
+Each row carries whatever identifies it without expansion:
+
+- a **thumbnail** where a thumbnail means something
+- its **role** — `gauge · cpu.load`, `ring · mem.used`, `chart · line ×3`, `metric card`,
+  or simply `shape` where that is all it is
+- its **bound key**, where it has one
 
 Lock and visibility appear only when they are true — hover, selection, or non-default.
-104 icons reading "visible, unlocked" was noise.
+104 icons reading "visible, unlocked" was noise, and that noise is worse the more rows
+there are, which is exactly the case a card-heavy panel would hide.
 
 Expansion is available and stays available. This is not a flattening; it is a default.
 
-### 4. The right column describes what the card *shows*
+### 4. The right column describes what the thing *is*
 
 A CPU card is not a rectangle. The first question about one is *which sensor*, not *how
 many pixels wide*. So selecting a card opens:
@@ -126,6 +170,12 @@ many pixels wide*. So selecting a card opens:
 | **Spends** | the tokens and presets it resolves to, read-only |
 | **Geometry** | collapsed to one line; one gesture opens it |
 
+**Every kind gets a column that fits it.** A free shape gets its geometry and fill, at the
+same density and with the same affordances — it is not a lesser selection, it just has
+different questions. A text run gets typography. A chart gets data and family settings.
+A group gets its bounds and its children's effective appearance. Nothing is unreachable
+because it is not a card.
+
 Geometry is adjusted once. The binding is chosen constantly. §3 says charts and typography
 are first-class; this is the first thing in the UI that acts on it.
 
@@ -134,16 +184,20 @@ selection's, and the document's, which relocates to the left column's Document p
 nothing is selected.
 
 **A property an object's kind does not have is not shown.** A card has no border-radius;
-a text run has no sensor. That is the whole difference between this and a tab strip.
+a text run has no sensor. That is the whole difference between this and a tab strip — and
+it is a statement about which questions apply, not about which objects may exist.
 
-### 5. Insert a unit, not an object
+### 5. Insert a unit *or* a primitive, both first-class
 
-`+` offers the card library — the units the theme has, plus the shipped ones. Inserting
-goes through `instantiateWidget`, so a copy arrives with fresh ids, remapped bindings
-preserving semantic keys, and recorded provenance.
+`+` opens a chooser carrying **both**:
 
-`Insert text · shape · chart` stays available. It is the same editor either way, and
-removing it would take a capability the preservation constraint protects.
+- **Units** — the card library, built on `instantiateWidget`, so a copy arrives with fresh
+  ids, remapped bindings preserving semantic keys, and recorded provenance.
+- **Primitives** — text, shape, chart, image, video, exactly as today.
+
+Neither is the fallback for the other. The unit is the fast path for the common case; the
+primitive is the tool for the case nobody anticipated, which is the case this product is
+for. `Insert text · shape · chart` is not deprecated by anything in this design.
 
 ### 6. Publishing is continuous
 
@@ -175,11 +229,11 @@ corrected.
 
 | # | Plan | The visible change |
 |---|---|---|
-| **1** | **Cards become structure** | 52 rows → 8. The biggest change in the product. |
-| **2** | **The device canvas** | The stage becomes a phone; the starter goes portrait. |
-| **3** | **Unit inspector** | Selecting a card answers *which sensor*. |
-| **4** | **Composition panel** | Thumbnails, roles, keys; quiet lock and eye. |
-| **5** | **Insert a unit** | The `+` inserts cards, through `instantiateWidget`. |
+| **1** | **Groups in the starter** | 52 rows → 8. The biggest change in the product. |
+| **2** | **The device lens** | The stage frames a landscape phone by default; the artboard stays free. |
+| **3** | **The per-kind inspector** | Selecting a card answers *which sensor*; a shape answers its own questions. |
+| **4** | **The composition panel** | Good at eight rows and at two hundred. Thumbnails, roles, keys, quiet lock and eye. |
+| **5** | **Units alongside primitives** | The `+` offers both, neither as the fallback. |
 | **6** | **Publish loop** | Live on the device; QR to the phone. |
 | **7** | **Keyboard** | Shortcuts in tooltips; `?`. |
 | **8** | **Player chrome** | Diagnostics stop eating the phone's best pixels. |
@@ -208,10 +262,11 @@ Untouched by this design.
 
 ## Non-goals
 
-So they are not re-raised: no responsive or multi-orientation themes; no mobile authoring
-(the editor stays desktop-only, §7); no widget *packages* on disk (§139 defers those until
-an authoring workflow exists, and this creates the workflow, not the format); no new
-product surface nobody asked for; no decoration and no scroll-driven motion (§173).
+So they are not re-raised: **no constraint on what a theme may be** — not a card count, not
+a card shape, not a device aspect; no responsive or multi-orientation themes; no mobile
+authoring (the editor stays desktop-only, §7); no widget *packages* on disk (§139 defers
+those until an authoring workflow exists, and this creates the workflow, not the format);
+no new product surface nobody asked for; no decoration and no scroll-driven motion (§173).
 
 ## Acceptance
 
@@ -219,11 +274,16 @@ Rendered observation in a real browser (§33).
 
 - The layer tree shows eight rows for the starter and expands to the full hierarchy. The
   change is a document change: the groups exist before any panel is touched.
+- **A theme of two hundred loose shapes opens, selects, moves and styles every one of
+  them**, and the panel is usable at that size. This is the acceptance item that fails if
+  the card model turned into a rule.
 - A card moves as one object and arrives intact.
-- The stage shows a device at its true proportions; the device switch is the zoom control.
-- Selecting a card opens Content/Appearance/Spends and no property its kind does not have.
+- The stage frames a **landscape phone** by default and the device switch is the zoom
+  control — while an artboard of any dimensions still authors in the same stage.
+- Selecting a card opens Content/Appearance/Spends and no property its kind does not have;
+  selecting a free shape opens that shape's own column, at the same density.
 - With nothing selected the right column is empty and names where to choose from.
-- The `+` inserts a card whose copy carries fresh ids and recorded provenance.
+- The `+` offers units **and** primitives, neither greyed, neither described as a fallback.
 - The phone shows the theme while the editor has it open.
 - Six palettes are distinguishable by surface, verified by screenshot rather than by
   computed value — a computed-value assertion passes on three palettes that are
