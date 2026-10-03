@@ -1,6 +1,7 @@
 # Frontend redesign — the editor leads
 
-- **Status:** draft
+- **Status:** superseded
+- **Superseded by:** [Vigilia — authoring a dashboard, not a canvas](2026-10-03-dashboard-authoring-design.md) — the diagnosis was right and the response was wrong. It diagnosed "Vigilia has no concept of the display it designs for" and then scheduled the fix for that fifth, behind a rail removal, a layer panel and a keyboard pass. It re-arranged chrome rather than changing the product. Kept for its evidence tables, which the successor uses.
 - **Amends:** §35 (application shell), §47 (small display bundle), §64 (rulers/grid/guides
   and snapping), §145 (hosting and settings), §172 (layer tree and one action owner),
   §173 (authored density over decoration), §174 (canvas navigation)
