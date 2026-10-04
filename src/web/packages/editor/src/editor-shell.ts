@@ -149,10 +149,11 @@ function dropDanglingBindings(
 const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
 let nextEditorContainer = 1;
 
-/** Last resolved artboard paint per mounted shell; the plate is only rebuilt
- * when its paint or its size changes. */
+/** Last resolved artboard paint and clip per mounted shell; both are only
+ * rebuilt when their paint or their size changes. */
 interface PaintMemo {
   background: string | undefined;
+  clip: string | undefined;
 }
 
 class SelectionOrderedActiveSelection extends ActiveSelection {
@@ -190,6 +191,33 @@ function artboardPlate(artboard: Artboard, background: unknown): Rect {
   });
 }
 
+/** The artboard clip: the boundary the object layer is cut to, so what the
+ * editor shows is what the display shows.
+ *
+ * Fabric's `clipPath` on the *canvas* is scene-level and is not a per-object
+ * property, which is what `vg-046` requires of a repair here: the crop
+ * manager's authored image clip and the derived text-box clip are both
+ * `FabricObject.clipPath` and neither is read, replaced or serialised by this,
+ * and `canvas.getObjects()` still returns the scene root itself rather than a
+ * wrapper group. `absolutePositioned` puts the rect in artboard units, so the
+ * camera's zoom and pan clip at the board's edge rather than at the canvas'.
+ *
+ * `excludeFromExport` keeps it out of the persisted document, on the same
+ * reasoning as the plate: the boundary belongs to the envelope's artboard, so
+ * a scene document must not carry a second copy of it. */
+function artboardClip(artboard: Artboard): Rect {
+  return new Rect({
+    width: artboard.width,
+    height: artboard.height,
+    left: artboard.width / 2,
+    top: artboard.height / 2,
+    originX: "center",
+    originY: "center",
+    absolutePositioned: true,
+    excludeFromExport: true,
+  });
+}
+
 function applyArtboardPaint(
   editor: EditorInteraction,
   host: HTMLElement,
@@ -212,6 +240,15 @@ function applyArtboardPaint(
   ) {
     memo.background = paintKey;
     editor.canvas.backgroundImage = artboardPlate(artboard, background);
+  }
+  // Same shape as the plate's guard: rebuilt when the board is resized, and
+  // whenever it is missing, which is what `loadFromJSON` — and so every undo —
+  // leaves behind. `reviveScene` restores it too, so this is the belt to that
+  // braces rather than the only copy of the rule.
+  const clipKey = `${artboard.width}x${artboard.height}`;
+  if (clipKey !== memo.clip || !(editor.canvas.clipPath instanceof Rect)) {
+    memo.clip = clipKey;
+    editor.canvas.clipPath = artboardClip(artboard);
   }
   // A revived envelope from before the camera carried the artboard paint here;
   // left set it would cover the pasteboard again.
@@ -247,6 +284,13 @@ function createNativeEditor(input: {
   const canvas = new Canvas(element, {
     width: Math.max(1, host.clientWidth),
     height: Math.max(1, host.clientHeight),
+    // A canvas-level `clipPath` is composited *after* `drawControls`, so a
+    // handle on a partly-outside object is cut away with the rest of it. This
+    // moves the controls above the clip instead — the one flag that decides
+    // whether a clipped selection stays grabbable. Fabric draws both to the
+    // lower canvas in 7.x; the split the flag acts on is lower vs. upper, not
+    // objects vs. handles.
+    controlsAboveOverlay: true,
   });
   const viewport = createViewportManager({
     canvas,
@@ -396,7 +440,7 @@ export async function mountEditorShell({
   let currentArtboard = artboard;
   let globals: Globals | undefined = envelope?.globals;
   host.append(container);
-  const paintMemo: PaintMemo = { background: undefined };
+  const paintMemo: PaintMemo = { background: undefined, clip: undefined };
 
   try {
     const editor = createNativeEditor({
