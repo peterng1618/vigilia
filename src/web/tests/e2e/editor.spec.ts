@@ -1093,17 +1093,21 @@ test.describe("Fabric editor route", () => {
     // body below then asserted the token view and the value view against a
     // setting it had never actually touched, which is why it was red at base
     // as well as here.
+    // **Matched on the label, not on its current value.** The trigger reads
+    // `Value runs: <current>`, so pinning the whole string means the test has to
+    // predict which of the two the menu will be showing when it looks — and a
+    // wrong guess is a 30s wait on an element that exists under another name.
+    // **The menu is opened once.** Picking a radio closes the submenu and
+    // leaves the parent open, so re-clicking `View` closed the whole thing and
+    // the next lookup waited out the budget on a menu that had been dismissed.
     await page.getByRole("button", { name: "View", exact: true }).click();
-    await page
-      .getByRole("menuitem", { name: "Value runs: values", exact: true })
-      .click();
-    await page.getByRole("menuitemradio", { name: "tokens" }).click();
+    const valueRuns = async (mode: "tokens" | "values"): Promise<void> => {
+      await page.getByRole("menuitem", { name: /^Value runs:/ }).click();
+      await page.getByRole("menuitemradio", { name: mode }).click();
+    };
+    await valueRuns("tokens");
     await expect.poll(painted, { timeout: 15_000 }).toContain("cpu.load");
-    await page.getByRole("button", { name: "View", exact: true }).click();
-    await page
-      .getByRole("menuitem", { name: "Value runs: tokens", exact: true })
-      .click();
-    await page.getByRole("menuitemradio", { name: "values" }).click();
+    await valueRuns("values");
     await expect.poll(painted, { timeout: 15_000 }).toMatch(/^\d+%$/);
 
     await captureVisualReview(page, testInfo, "editor-starter-cpu-card");
@@ -2542,14 +2546,28 @@ test.describe("Fabric editor route", () => {
                   control.visible,
                 ]),
               ),
+              // **Against the image's own size, not a magic number.** The
+              // claim is that the corners describe the object that is selected,
+              // and the fixture here is a 16x16 PNG — so a fixed `> 50` was
+              // asserting about a picture size the test stopped using, and it
+              // failed on a perfectly ordinary selection.
               hasSelectionGeometry: (() => {
                 const [topLeft, topRight, bottomRight] = image.getCoords();
+                if (
+                  topLeft === undefined ||
+                  topRight === undefined ||
+                  bottomRight === undefined
+                )
+                  return false;
+                const width =
+                  (image.get("width") as number) *
+                  (image.get("scaleX") as number);
+                const height =
+                  (image.get("height") as number) *
+                  (image.get("scaleY") as number);
                 return (
-                  topLeft !== undefined &&
-                  topRight !== undefined &&
-                  bottomRight !== undefined &&
-                  topRight.x - topLeft.x > 50 &&
-                  bottomRight.y - topRight.y > 50
+                  Math.abs(topRight.x - topLeft.x - width) < 0.5 &&
+                  Math.abs(bottomRight.y - topRight.y - height) < 0.5
                 );
               })(),
             };
@@ -2569,7 +2587,9 @@ test.describe("Fabric editor route", () => {
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
-    expect(saved.parsed.assets["assets/logo.svg"]).toBeDefined();
+    // One declaration, holding the replacement's bytes — the same extension the
+    // import chose, because `replace` refuses a different one.
+    expect(saved.parsed.assets["assets/logo.png"]).toBeDefined();
     expect(saved.parsed.envelope.scene.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -2590,7 +2610,7 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
     await expect(assetReferences(page)).resolves.toContainEqual({
       assetId: "logo",
-      kind: "svg",
+      kind: "image",
     });
   });
 
@@ -4299,7 +4319,13 @@ async function savePackage(page: Page): Promise<{
   const download = page.waitForEvent("download");
   // The File menu owns Save; the old panel section is gone.
   await page.locator("[data-vigilia-save-package]").click();
-  await expect(page.locator("#status")).toHaveText("Theme package saved");
+  // **Contained, not exact.** The status line also carries whatever diagnostic
+  // is on screen, and a diagnostic is retired by the next *committed* edit — so
+  // a save immediately after a refusal reads as both. The claim here is that
+  // the save happened, which is what the contained text states; demanding the
+  // line be empty of everything else would be demanding the shell forget a
+  // message the author has not yet had an edit to replace it.
+  await expect(page.locator("#status")).toContainText("Theme package saved");
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
@@ -4454,14 +4480,38 @@ async function assetReferences(page: Page): Promise<unknown[]> {
         (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas
           .upperCanvasEl?.isConnected,
     )?.[1] as
-      | { canvas: { getObjects(): Array<{ get(name: string): unknown }> } }
+      | {
+          canvas: {
+            getObjects(): Array<{
+              get(name: string): unknown;
+              getObjects?: () => unknown[];
+            }>;
+          };
+        }
       | undefined;
-    return (
-      editor?.canvas
-        .getObjects()
-        .filter((object) => object.get("type") === "image")
-        .map((object) => object.get("vigiliaAsset")) ?? []
-    );
+    // **Groups descended**, for the reason `readSceneObject` exists: a card's
+    // parts are not in `getObjects()`, so a root-only walk reported `[]` for an
+    // image the document demonstrably carried.
+    const found: unknown[] = [];
+    const visit = (
+      objects: readonly {
+        get(name: string): unknown;
+        getObjects?: () => readonly unknown[];
+      }[],
+    ): void => {
+      for (const object of objects) {
+        if (object.get("type") === "image")
+          found.push(object.get("vigiliaAsset"));
+        visit(
+          (object.getObjects?.() ?? []) as readonly {
+            get(name: string): unknown;
+            getObjects?: () => readonly unknown[];
+          }[],
+        );
+      }
+    };
+    visit(editor?.canvas.getObjects() ?? []);
+    return found;
   });
 }
 

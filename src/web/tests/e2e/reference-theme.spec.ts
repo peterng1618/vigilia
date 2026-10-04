@@ -1795,7 +1795,11 @@ function starterBackdropBands(page: Page): Promise<{
       }
       return undefined;
     };
-    const card = find(canvas.getObjects());
+    const card = find(
+      canvas.getObjects() as ReadonlyArray<
+        Obj & { getObjects?: () => readonly Obj[] }
+      >,
+    );
     if (card === undefined)
       throw new Error("the starter lost its frosted card");
     const box = card.getBoundingRect();
@@ -1810,7 +1814,19 @@ function starterBackdropBands(page: Page): Promise<{
         cy < box.top + box.height
       );
     };
-    const hidden = objects.filter(
+    // The card's own parts are hidden along with it, so this walks the whole
+    // document rather than the root list the previous `objects` held.
+    const every: Obj[] = [];
+    const collect = (
+      list: ReadonlyArray<Obj & { getObjects?: () => readonly Obj[] }>,
+    ): void => {
+      for (const entry of list) {
+        every.push(entry);
+        collect(entry.getObjects?.() ?? []);
+      }
+    };
+    collect(canvas.getObjects());
+    const hidden = every.filter(
       (object) => object !== card && centreInside(object),
     );
     const restore = hidden.map((object) => [object, object.get("visible")]);
@@ -1887,7 +1903,7 @@ function starterBackdropBands(page: Page): Promise<{
     // that carry any coverage — near 1 for a one-pixel edge, near 1/16 for one
     // spread across a 16px blur.
     const sharpness = (id: string, radius: number): number => {
-      const object = objects.find((candidate) => candidate.get("id") === id);
+      const object = every.find((candidate) => candidate.get("id") === id);
       if (object === undefined) throw new Error(`the starter lost ${id}`);
       card.set("vigiliaGlass", { blurRadius: radius });
       const rect = object.getBoundingRect();
@@ -1951,7 +1967,7 @@ function starterBackdropBands(page: Page): Promise<{
     // contrast ratio is defined on the linearised value and averaging first
     // would put the number in the wrong space to divide by.
     const lumaUnder = (id: string): number => {
-      const label = objects.find((object) => object.get("id") === id);
+      const label = every.find((object) => object.get("id") === id);
       if (label === undefined) throw new Error(`no ${id}`);
       const rect = label.getBoundingRect();
       const [lx, ly] = toDevice(rect.left + 4, rect.top + rect.height / 2 - 2);
