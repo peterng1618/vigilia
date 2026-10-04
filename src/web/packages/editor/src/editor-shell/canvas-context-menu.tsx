@@ -56,6 +56,9 @@ function creationGroups(session: EditorActionFacade): readonly MenuGroup[] {
           case "text":
             session.addText();
             return;
+          case "card":
+            session.insertCard(object.card);
+            return;
           case "shape":
             session.addShape(object.shape);
             return;

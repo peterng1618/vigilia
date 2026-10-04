@@ -312,7 +312,7 @@ export type {
   InstantiateWidgetResult,
   WidgetIssue,
 } from "./theme/widget.js";
-export { instantiateWidget } from "./theme/widget.js";
+export { createWidgetIdAllocator, instantiateWidget } from "./theme/widget.js";
 export type {
   Fill,
   GaugeSettings,

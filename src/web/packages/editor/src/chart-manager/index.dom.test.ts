@@ -119,6 +119,49 @@ describe("ChartManager", () => {
     ).toBe(settings);
   });
 
+  it("draws a chart it did not create once the document's bindings reach it", () => {
+    // A chart's series *are* its bindings, and this manager held only what it
+    // was constructed with — so a card inserted from the library, whose charts
+    // nothing here ever wrote, arrived with a binding set this side had never
+    // heard of and drew with no series at all. The envelope is the owner; the
+    // chart has to be told when it changed somewhere other than here.
+    const objects: unknown[] = [];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn((chart: unknown) => objects.push(chart)),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const chart = new VigiliaChart({
+      id: "card-sparkline",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 240,
+      height: 160,
+    });
+    objects.push(chart);
+
+    const manager = new ChartManager({
+      editor: { canvas, artboard } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: createDemoSource(0),
+      panelHost: document.body,
+    });
+
+    expect(chart.option?.series).toHaveLength(0);
+
+    manager.setBindings({
+      "card-sparkline": [{ id: "b1", semanticKey: "cpu.load" }],
+    });
+
+    expect(chart.option?.series).toHaveLength(1);
+    manager.destroy();
+    chart.dispose();
+  });
+
   it("places a new chart on the same cascade a shape takes", () => {
     // The defect had two origins: the shapes and the text inset by 40, the
     // charts by their own 120, 80. A gauge inserted after a rectangle therefore

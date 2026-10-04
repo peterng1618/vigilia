@@ -3,6 +3,7 @@ import {
   type ChartFamily,
   type FabricGlobals,
 } from "@vigilia/renderer-core";
+import { CARD_LIBRARY } from "./card-library.js";
 import type { EditorInteraction } from "./editor-interaction.js";
 import {
   createNewShape,
@@ -20,6 +21,12 @@ export interface NewObjectPanel {
 
 export interface NewObjectActions {
   readonly addChart: (family: ChartFamily) => void;
+  /**
+   * Inserts one card as a unit. The session owns this because the copy's
+   * readings are envelope state, and a panel that made its own would hold a
+   * second copy of what the next save writes.
+   */
+  readonly insertCard: (cardId: string) => void | Promise<void>;
 }
 
 /** One object an author can insert, named as the control that inserts it. */
@@ -34,6 +41,11 @@ export type InsertableObject =
       readonly kind: "chart";
       readonly label: string;
       readonly family: ChartFamily;
+    }
+  | {
+      readonly kind: "card";
+      readonly label: string;
+      readonly card: string;
     };
 
 /** One heading's worth of them. A heading is what makes "Line" unambiguous. */
@@ -49,9 +61,20 @@ export interface InsertGroup {
  * render this, because two lists that must agree and do not is how a panel —
  * the object this composition is mostly made of — came to be missing from the
  * menu while the pane had it.
+ *
+ * **Units and primitives are both here, and neither is a fallback for the
+ * other.** The card library is the fast path for the common case and the
+ * primitives are the tool for the case nobody anticipated, which is the case
+ * this product is for (§77, §139). Dropping either is a decision, not a
+ * simplification — the test that pins both sections is what makes it one.
  */
 export function insertGroups(): readonly InsertGroup[] {
   const objects: readonly InsertableObject[] = [
+    ...CARD_LIBRARY.map((unit) => ({
+      kind: "card" as const,
+      label: unit.label,
+      card: unit.id,
+    })),
     { kind: "text", label: uiCopy.panels.text },
     ...SHAPE_KINDS.map((shape) => ({
       kind: "shape" as const,
@@ -83,6 +106,8 @@ function groupOf(object: InsertableObject): string | undefined {
   switch (object.kind) {
     case "text":
       return undefined;
+    case "card":
+      return uiCopy.panels.cards;
     case "shape":
       return uiCopy.panels.shapes;
     case "chart":
@@ -155,32 +180,39 @@ export function createNewObjectPanel(
   heading.textContent = uiCopy.panels.add;
   /**
    * Runs a construction that refuses when the theme has no reference to give
-   * it — a palette without a usable token, or type presets without a body.
-   * Reported through the editor's own diagnostics, because a throw out of a
-   * click handler leaves the author with a button that silently does nothing.
+   * it — a palette without a usable token, type presets without a body, or a
+   * card painted with a global this theme has no token for. Reported through
+   * the editor's own diagnostics, because a throw out of a click handler leaves
+   * the author with a button that silently does nothing.
    *
    * Every construction in this panel goes through it, charts included:
    * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults`
    * with no handler of its own, so an unwrapped chart button would be the only
    * one here that fails silently.
    */
-  const constructing = (build: () => void): void => {
-    try {
-      build();
-    } catch (error) {
+  const constructing = (build: () => void | Promise<void>): void => {
+    const report = (error: unknown): void => {
       editor.errorManager.warn(
         "controls",
         error instanceof Error ? error.message : String(error),
       );
+    };
+    try {
+      // A card is enlivened, so its construction is asynchronous; the refusal
+      // it may raise arrives in the same diagnostics as every sibling's.
+      void Promise.resolve(build()).catch(report);
+    } catch (error) {
+      report(error);
     }
   };
 
   /**
-   * The primitives and the chart families, in a labelled group rather than
-   * twelve more chips: "Line" is both a chart and a shape, and a flat list
-   * would put the same word on two buttons. One construction each — the
-   * defaults module owns what a new shape is, and the canvas and history the
-   * editor already exposes own where it lands and how it is recorded.
+   * The units, the primitives and the chart families, each in a labelled group
+   * rather than twenty more chips: "Line" is both a chart and a shape, and a
+   * flat list would put the same word on two buttons. One construction each —
+   * the card library owns what a card is, the defaults module owns what a new
+   * shape is, and the canvas and history the editor already exposes own where
+   * it lands and how it is recorded.
    */
   const button = (object: InsertableObject): HTMLButtonElement => {
     const control = document.createElement("button");
@@ -188,6 +220,9 @@ export function createNewObjectPanel(
     control.textContent = object.label;
     if (object.kind === "shape") {
       control.dataset["vigiliaPanelAdd"] = object.shape;
+    }
+    if (object.kind === "card") {
+      control.dataset["vigiliaPanelCard"] = object.card;
     }
     control.addEventListener("click", () =>
       constructing(() => {
@@ -198,6 +233,17 @@ export function createNewObjectPanel(
           case "shape":
             insertNewShape(editor, currentGlobals, object.shape);
             return;
+          case "card": {
+            const insert = actions?.insertCard;
+            // Refused rather than ignored: a library button that quietly does
+            // nothing is the one failure an author cannot diagnose.
+            if (insert === undefined) {
+              throw new Error(
+                "The card library needs the editor session that owns the document's bindings.",
+              );
+            }
+            return insert(object.card);
+          }
           case "chart":
             actions?.addChart(object.family);
         }

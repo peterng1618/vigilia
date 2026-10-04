@@ -191,6 +191,8 @@ function keyOf(object: InsertableObject): string {
   switch (object.kind) {
     case "text":
       return "text";
+    case "card":
+      return `card:${object.card}`;
     case "shape":
       return `shape:${object.shape}`;
     case "chart":
@@ -209,6 +211,9 @@ function insertItem(
     switch (object.kind) {
       case "text":
         session?.addText();
+        return;
+      case "card":
+        session?.insertCard(object.card);
         return;
       case "shape":
         session?.addShape(object.shape);

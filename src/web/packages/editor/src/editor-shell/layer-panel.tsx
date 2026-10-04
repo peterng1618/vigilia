@@ -615,12 +615,11 @@ export function LayerPanel({
               {/* What the row reads, taken from the document's own binding — and
                   nothing at all where it reads nothing.
 
-                  That absence is the plain statement, and it is measured rather
-                  than assumed: with a word in this column for an unbound row, 20
-                  of the starter's 23 visible rows printed "Not bound", which is
-                  repeated ink rather than information, and it cost the layer
-                  *name* its width — names fell from 220px to 82px and eleven of
-                  them ended in an ellipsis. A row that reads nothing says so by
+                  That absence is the plain statement. A word repeated down this
+                  column on every row that has nothing to say carries no
+                  information, and it is paid for out of the layer *name*, which
+                  is the one thing a layer list has to keep readable — which is
+                  the density §173 asks for. A row that reads nothing says so by
                   carrying nothing, and never by claiming a key it does not have.
 
                   This is also the only place a row states a key. A treeitem's

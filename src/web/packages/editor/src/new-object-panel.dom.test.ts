@@ -6,6 +6,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { Ellipse, Line, Path, Polygon, Polyline, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { CARD_LIBRARY } from "./card-library.js";
 import { SHAPE_KINDS } from "./new-object-defaults.js";
 import { createNewObjectPanel, insertNewText } from "./new-object-panel.js";
 import { uiCopy } from "./ui-copy.js";
@@ -207,7 +208,7 @@ describe("new object panel", () => {
         textManager: { addText: vi.fn((): unknown => textWithEditing()) },
       } as never,
       undefined,
-      { addChart },
+      { addChart, insertCard: vi.fn() },
     );
 
     chartButton(panel.root, label).click();
@@ -229,6 +230,7 @@ describe("new object panel", () => {
       undefined,
       {
         addChart,
+        insertCard: vi.fn(),
       },
     );
 
@@ -255,10 +257,10 @@ describe("new object panel", () => {
 
     // One list, read by the panel: a shape the author cannot insert is the same
     // gap as a shape with no properties.
-    const group = root.querySelector("fieldset")!;
-    expect(group.querySelector("legend")?.textContent).toBe(
-      uiCopy.panels.shapes,
-    );
+    const group = [...root.querySelectorAll("fieldset")].find(
+      (candidate) =>
+        candidate.querySelector("legend")?.textContent === uiCopy.panels.shapes,
+    )!;
     expect(
       [...group.querySelectorAll("button")].map((button) =>
         button.getAttribute("data-vigilia-panel-add"),
@@ -301,7 +303,11 @@ describe("new object panel", () => {
     const groups = [...root.querySelectorAll("fieldset")];
     expect(
       groups.map((group) => group.querySelector("legend")?.textContent),
-    ).toEqual([uiCopy.panels.shapes, uiCopy.panels.charts]);
+    ).toEqual([
+      uiCopy.panels.cards,
+      uiCopy.panels.shapes,
+      uiCopy.panels.charts,
+    ]);
 
     for (const family of ["gauge", "line", "bar", "pie"] as const) {
       const button = chartButton(root, uiCopy.chartFamilies[family]);
@@ -456,7 +462,11 @@ describe("new object panel", () => {
       },
     );
 
-    root.root.querySelector("button")!.click();
+    // By label, not position: the card group comes first, and "the first
+    // button" was a proxy for "the Text button" before there was a unit above it.
+    [...root.root.querySelectorAll("button")]
+      .find((button) => button.textContent === uiCopy.panels.text)!
+      .click();
 
     expect(addText).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -474,6 +484,101 @@ describe("new object panel", () => {
         }),
       }),
     );
+  });
+});
+
+describe("the chooser offers units and primitives", () => {
+  /** The panel the session builds: a card needs the envelope's bindings. */
+  function chooser(): HTMLElement {
+    return createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+      { addChart: vi.fn(), insertCard: vi.fn() },
+    ).root;
+  }
+
+  function buttonsIn(root: HTMLElement, legend: string): HTMLButtonElement[] {
+    const fieldset = [...root.querySelectorAll("fieldset")].find(
+      (group) => group.querySelector("legend")?.textContent === legend,
+    );
+    return [...(fieldset?.querySelectorAll("button") ?? [])];
+  }
+
+  // THE gate. The unit is the fast path for the common case; the primitive is
+  // the tool for the case nobody anticipated, which is the case this product is
+  // for. Neither greyed, neither described as a fallback — so this test fails
+  // the moment the library quietly becomes the only way in.
+  it("populates both sections and disables neither", () => {
+    const root = chooser();
+
+    const cards = buttonsIn(root, uiCopy.panels.cards);
+    const shapes = buttonsIn(root, uiCopy.panels.shapes);
+    const charts = buttonsIn(root, uiCopy.panels.charts);
+
+    expect(cards).toHaveLength(CARD_LIBRARY.length);
+    expect(shapes).toHaveLength(SHAPE_KINDS.length);
+    expect(charts).toHaveLength(4);
+    // Text stands on its own outside any fieldset, and is still offered.
+    expect(
+      [...root.querySelectorAll("button")].map((b) => b.textContent),
+    ).toContain(uiCopy.panels.text);
+
+    for (const control of root.querySelectorAll("button")) {
+      expect(control.disabled, control.textContent ?? "").toBe(false);
+    }
+  });
+
+  it("calls neither section a fallback", () => {
+    const root = chooser();
+    const spoken = [...root.querySelectorAll("legend, button")]
+      .map((node) => node.textContent ?? "")
+      .join(" ");
+
+    for (const word of ["fallback", "advanced", "basic", "simple", "expert"]) {
+      expect(spoken.toLowerCase(), word).not.toContain(word);
+    }
+  });
+
+  it("delegates a card button to the session, which owns the readings", () => {
+    const insertCard = vi.fn();
+    const root = createNewObjectPanel(
+      document.body,
+      editorStub() as never,
+      palette as never,
+      { addChart: vi.fn(), insertCard },
+    ).root;
+
+    buttonsIn(root, uiCopy.panels.cards)[0]?.click();
+
+    expect(insertCard).toHaveBeenCalledWith(CARD_LIBRARY[0]?.id);
+  });
+
+  it("refuses a card button rather than doing nothing when there is no session", () => {
+    const editor = editorStub();
+    const root = createNewObjectPanel(
+      document.body,
+      editor as never,
+      palette as never,
+    ).root;
+
+    // A library button that quietly does nothing is the one failure an author
+    // cannot diagnose, so it reports through the same diagnostics as every
+    // other construction that refuses.
+    buttonsIn(root, uiCopy.panels.cards)[0]?.click();
+
+    expect(editor.errorManager.warn).toHaveBeenCalledWith(
+      "controls",
+      expect.stringContaining("card library"),
+    );
+  });
+
+  it("names every card for a screen reader, by its own unit", () => {
+    const root = chooser();
+
+    expect(
+      buttonsIn(root, uiCopy.panels.cards).map((b) => b.textContent),
+    ).toEqual(CARD_LIBRARY.map((unit) => unit.label));
   });
 });
 

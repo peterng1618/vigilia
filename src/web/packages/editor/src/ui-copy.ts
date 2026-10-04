@@ -338,6 +338,22 @@ export const uiCopy = {
     path: "Path",
   },
   /**
+   * What each card in the library is called, in the Add pane and on the copy an
+   * insertion leaves in the layer tree. Named for the reading rather than for
+   * where the card sits: two CPU cards are two CPU cards, and the id beside the
+   * name is what tells them apart.
+   */
+  cardLibrary: {
+    time: "Clock",
+    cpu: "CPU",
+    gpu: "GPU",
+    ram: "RAM",
+    vram: "VRAM",
+    trends: "Performance trends",
+    storage: "Storage",
+    network: "Network",
+  },
+  /**
    * Artboard preset labels, shared by the inspector's controls and the
    * new-document chooser. A ratio labels itself; an orientation and a
    * resolution are words of their own, and `2K` is not the `2k` it is stored
@@ -383,14 +399,14 @@ export const uiCopy = {
     hide: "Hide",
     show: "Show",
     /** Between two keys one chart or label reads. The trends card reads three,
-     * and a space alone would run them together at 280px. Punctuation rather
+     * and a space alone would run them together at 340px. Punctuation rather
      * than a letter, so it cannot be mistaken for part of a key.
 
-     * A row bound to nothing prints nothing here rather than a word saying so —
-     * measured on canvas, not assumed: a word printed on 20 of the starter's 23
-     * visible rows and cost the layer *name* its width, which is repeated ink
-     * against the one thing a layer list must keep readable (§173). What a row
-     * reads is never invented to fill the column. */
+     * A row bound to nothing prints nothing here rather than a word saying so.
+     * A word repeated down a column carries no information and is paid for out
+     * of the layer *name*, which is the one thing a layer list has to keep
+     * readable — the density §173 asks for, rather than ink that says "no".
+     */
     boundSeparator: " · ",
     rename: "Rename",
     collapse: "Collapse",
@@ -409,9 +425,16 @@ export const uiCopy = {
         instead. */
     image: "Image",
     group: "Group",
-    /** The Add pane's two construction lists, each a group. A flat chip list
+    /** The Add pane's construction lists, each a group. A flat chip list
         would put the word "Line" on two buttons with nothing to tell them
-        apart — once for the primitive and once for the chart family. */
+        apart — once for the primitive and once for the chart family.
+
+        `cards` is the unit library, and it sits beside the primitives rather
+        than above them: the unit is the fast path for a card, and the primitive
+        is the tool for the case nobody anticipated, which is the case this
+        product is for. Neither is the fallback for the other, so neither group
+        says so. */
+    cards: "Card",
     shapes: "Shape",
     charts: "Chart",
     assets: "Assets",

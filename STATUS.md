@@ -43,18 +43,18 @@ The loop, in order:
 
 ## Last completed change
 
-- **A row says what it is and what it reads** (plan 1 Task 4). `LayerRow` gains a `mark` — a discriminated union with one arm per kind, projected in `layer-tree.ts` from the object itself — and a `bound: readonly string[]` read from the document's own bindings, never typed in. The `KIND_ICONS` table and `uiCopy.panels.unbound` are deleted: a glyph per kind and `Not bound` on 20 of 23 rows were the ink this removes.
-- **Lock and eye appear only when they are true** — hover, keyboard focus, selection, or a non-default state, independently, so a hidden-but-unlocked row shows the eye and not the lock. At rest, nothing selected, zero of the starter's 60 rows draw a control.
-- **The state controls overlay the row's right edge rather than being reserved beside it**, and the key's 50px reservation is scoped by `:has(.vigilia-layer-state button)` to the rows that actually draw them. `:has` asks the controls rather than approximating with `:hover`, which would have left a selected, locked or hidden row with its icons over its own key.
-- **A row announced each of its keys twice**, because a treeitem's accessible name is the concatenation of its columns. `textMark`'s specimen now prints the object's literal runs and lets the bound column be the only place a key appears; an *undeclared* run keeps its placeholder, because nothing else on the row would say so. Chrome's own AX tree reports 0 of 60 rows naming a key more than once.
-- **Measured on canvas at 1600×900, every group open, panel scrollbar in place:** 340px ellipsises 2 of 60 names, 320px ellipsises 4, 280px ellipsises 15. The panel is 340px and the stage 948. The attended row's name narrows 15.83px and no other row moves.
+- **A card is insertable as a unit** (plan 1 Task 5). `card-library.ts` owns the starter's eight cards as units and copies one with `createWidgetIdAllocator` — the rule `instantiateWidget` already owns, now shared — so an insertion is a **copy, not a twin**: fresh ids for the group, every part and every binding, the **same** semantic keys, and `provenance` on the root alone, persisted through `SCENE_PERSISTED_PROPERTIES` so it survives a save and reopen.
+- **`insertGroups()` gains a `card` arm and keeps owning the list**, so the Add pane, the Insert menu and the context menu cannot drift; units and primitives sit side by side, neither greyed, and a test fails if the library becomes the only way in.
+- **A card this theme cannot express is refused, not inserted**: an unresolved global survives to `snapshot`, which validates and throws, so a card that arrived anyway would leave a canvas that looks right and a save that fails for the session, told nothing. `§77` keeps explicit global mapping the author's decision, so `unmapped-global` is reported rather than inlined or dropped.
+- **Two copies of one card were producing one binding id twice**, which the validator refuses — the defect the property above exists to catch. Binding ids live in the envelope, not on the canvas, so the copy now reads the document's bindings as well as its object ids.
+- **`ChartManager` learned bindings** (`setBindings`). A chart's series *are* its bindings, and the manager held only what it was constructed with, so every chart in an inserted card would have drawn with no series at all. `EditorSession#setBindings` now delegates to one `#addBindings` that fans out to the runtime and the charts together.
 
 ## Next
 
-1. **Plan 1 Task 5**: a card can be inserted as a unit, `docs/superpowers/plans/2026-10-03-groups-in-the-starter.md`. Task 4's `mark` and `bound` are already the columns its per-kind inspector will render from.
-2. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
-3. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
-4. **Task 7's landing site may have moved.** It mounts the picker in the type-preset panel, which the redesign moves into the left column's Document tab. Decide the order when the catalogue comes back.
+1. **Plan 1 is complete.** Verify its acceptance in a browser — ten rows expanding to sixty, a card moving as one object, two copies of a card side by side, the `+` offering both — then close the plan and the spec.
+2. **Plan 2: the device lens** (`docs/superpowers/plans/`), which owns the arc and wedge shapes in `SHAPE_KINDS` and editor-side clipping at the artboard.
+3. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
+4. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
 5. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-046, vg-051, vg-056.
 
 ## Blockers / unverified

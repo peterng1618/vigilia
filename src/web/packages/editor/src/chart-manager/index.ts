@@ -255,6 +255,18 @@ export class ChartManager {
     this.refresh();
   }
 
+  /**
+   * The envelope's bindings, whenever they changed somewhere other than here.
+   *
+   * A chart's series **are** its bindings, so a manager still holding only what
+   * it was constructed with draws every chart it did not write itself with no
+   * series at all — which is every chart in an inserted card.
+   */
+  setBindings(bindings: Readonly<Record<string, readonly Binding[]>>): void {
+    this.#bindings = bindings;
+    this.refresh();
+  }
+
   setSource(source: SampleSource): void {
     this.#source = source;
     this.refresh();

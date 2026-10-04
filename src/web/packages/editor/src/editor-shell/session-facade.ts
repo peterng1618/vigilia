@@ -19,6 +19,8 @@ export interface EditorActionFacade {
       the same construction rather than a second copy of it. */
   addShape(kind: ShapeKind): void;
   addChart(family: ChartFamily): void;
+  /** The Insert menu's route to the unit library, for the same reason. */
+  insertCard(cardId: string): void;
   arrange(action: ArrangeAction): boolean;
   canArrange(action: ArrangeAction): boolean;
   undo(): void;

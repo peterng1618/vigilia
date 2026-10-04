@@ -20,6 +20,7 @@ import {
   stepFor,
 } from "./canvas-nudge.js";
 import { ChartManager } from "./chart-manager/index.js";
+import { insertCard } from "./card-library.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
 import {
@@ -393,7 +394,10 @@ export class EditorSession {
       options.panelHosts.add,
       options.shell.editor,
       this.#envelope.globals,
-      { addChart: (family) => this.charts.addChart(family) },
+      {
+        addChart: (family) => this.charts.addChart(family),
+        insertCard: (cardId) => this.#insertCard(cardId),
+      },
     );
     this.#source = options.source;
     this.#runtime = new LiveRuntime({
@@ -543,6 +547,7 @@ export class EditorSession {
       addText: () => insertNewText(editor, this.#envelope.globals),
       addShape: (kind) => insertNewShape(editor, this.#envelope.globals, kind),
       addChart: (family) => this.charts.addChart(family),
+      insertCard: (cardId) => void this.#insertCard(cardId),
       arrange: (action) => applyArrange(editor, action),
       canArrange: (action) => canArrange(editor, action),
       undo: () => void editor.historyManager.undo(),
@@ -1040,12 +1045,39 @@ export class EditorSession {
   }
 
   #setBindings(id: string, bindings: readonly Binding[]): void {
+    this.#addBindings({ [id]: bindings });
+  }
+
+  /**
+   * The one writer of the envelope's bindings, whoever is writing them.
+   *
+   * A single object's list and an inserted card's whole subtree are the same
+   * fact — a reading is keyed by the object that shows it — so they share one
+   * write and one fan-out. Charts are in that fan-out because a chart's series
+   * *are* its bindings: a chart manager holding only what it was constructed
+   * with draws every inserted card's sparkline with no series at all.
+   */
+  #addBindings(additions: Readonly<Record<string, readonly Binding[]>>): void {
     this.#writeEnvelope({
       ...this.#envelope,
-      bindings: { ...this.#envelope.bindings, [id]: bindings },
+      bindings: { ...this.#envelope.bindings, ...additions },
     });
-    this.#runtime.setBindings(this.#envelope.bindings ?? {});
+    const bindings = this.#envelope.bindings ?? {};
+    this.#runtime.setBindings(bindings);
+    this.charts.setBindings(bindings);
     this.#onBindingsChange?.();
+  }
+
+  /** One card, as a unit. The copy's readings are envelope state, so they land
+   * through the one writer above rather than beside it. */
+  async #insertCard(cardId: string): Promise<void> {
+    await insertCard(this.#options.shell.editor, cardId, {
+      globals: this.#envelope.globals,
+      ...(this.#envelope.bindings === undefined
+        ? {}
+        : { bindings: this.#envelope.bindings }),
+      onBindings: (bindings) => this.#addBindings(bindings),
+    });
   }
 
   #setPalette(shell: EditorShell, palette: FabricPalette): void {

@@ -905,9 +905,9 @@ it("prints the bound key the projection reported, and nothing where there is non
   // list for the row that clips it.
   expect(bound("trends")?.textContent).toContain("cpu.load");
   expect(bound("trends")?.textContent).toContain("ram.used.percent");
-  // A row bound to nothing carries nothing. Measured on canvas, not assumed: a
-  // word here printed on 20 of the starter's 23 visible rows and cost the layer
-  // *name* its width, and an unbound row must never claim a key it has not got.
+  // A row bound to nothing carries nothing. A word printed here on every
+  // unbound row would be repeated ink paid for out of the layer *name*, and an
+  // unbound row must never claim a key it has not got.
   expect(bound("panel")).toBeNull();
 });
 
