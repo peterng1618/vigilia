@@ -265,10 +265,15 @@ describe("the kind, read as the thing rather than as a mark for it", () => {
     });
   });
 
-  it("shows a value run as the key it reads, never as a reading", () => {
+  it("says a value run only once, and never as a reading", () => {
     // §83: missing or non-ok telemetry is never fabricated. A row printing the
     // last number the canvas happened to hold would be a stale reading dressed
     // as a name, and it would change under the pointer.
+    //
+    // The key itself is not in the specimen either: the bound column prints it,
+    // one column along, in the document's own words. A treeitem's accessible
+    // name is the concatenation of its columns, so printing it in both said
+    // every binding in the panel twice — on screen and to a screen reader.
     const object = authoredText("cpu-card-value", [
       { kind: "value", bindingId: "cpu-card-load" },
       { kind: "literal", text: "%" },
@@ -280,14 +285,16 @@ describe("the kind, read as the thing rather than as a mark for it", () => {
         "cpu-card-value": [{ id: "cpu-card-load", semanticKey: "cpu.load" }],
       },
     });
-    expect(rows[0]?.mark).toMatchObject({ kind: "text", text: "@cpu.load%" });
+    expect(rows[0]?.mark).toMatchObject({ kind: "text", text: "%" });
     expect(rows[0]?.bound).toEqual(["cpu.load"]);
   });
 
   it("says the run is undeclared rather than inventing a key for it", () => {
     // The three states stay distinct: a run naming a binding the document does
     // not declare is a mistake in the theme, and the row must not smooth it
-    // over by printing the id as though it were a key.
+    // over by printing the id as though it were a key. Nothing else on the row
+    // would say so — the bound column is empty — so this one keeps the
+    // placeholder even though the other case drops it.
     const object = authoredText("orphan", [
       { kind: "value", bindingId: "gone" },
     ]);

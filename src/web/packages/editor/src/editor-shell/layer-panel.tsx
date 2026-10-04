@@ -77,6 +77,9 @@ function LockStateIcon({ locked }: { readonly locked: boolean }): React.JSX.Elem
  * nothing here — the twisty is its mark, and a bold name below says "this holds
  * others" without a second symbol repeating it.
  *
+ * A row whose runs are all value runs therefore shows nothing here: it has no
+ * words of its own, and the bound column beside this one says what it reads.
+ *
  * Every arm sits in one fixed-width slot, which is what lines the names up. A
  * group still takes the slot rather than collapsing it, so an eight-card
  * document has its rows in one column rather than two ragged ones.
@@ -617,9 +620,14 @@ export function LayerPanel({
                   of the starter's 23 visible rows printed "Not bound", which is
                   repeated ink rather than information, and it cost the layer
                   *name* its width — names fell from 220px to 82px and eleven of
-                  them ended in an ellipsis. A row that reads nothing now says so
-                  by carrying nothing, and never by claiming a key it does not
-                  have. The key's own tooltip still holds the full list. */}
+                  them ended in an ellipsis. A row that reads nothing says so by
+                  carrying nothing, and never by claiming a key it does not have.
+
+                  This is also the only place a row states a key. A treeitem's
+                  accessible name is the concatenation of its own columns, so the
+                  `@key` the specimen used to carry as well said every binding in
+                  the panel twice over — which is why the projection no longer
+                  prints one where this column will. */}
               {row.bound.length === 0 ? null : (
                 <span
                   className="vigilia-layer-bound"
@@ -628,12 +636,11 @@ export function LayerPanel({
                   {row.bound.join(uiCopy.panels.boundSeparator)}
                 </span>
               )}
-              {/* The slot holds its width open whether or not the row draws
-                  anything in it. Measured on canvas, not assumed: with the
-                  space left to the layout, the name jumped as a pointer
-                  arrived and every row the author moved across re-flowed its
-                  own text. The icons are what a default row omits; the room
-                  they need is not. */}
+              {/* The controls. The slot itself is always present so the icons
+                  land in the same place on every row; the room they need
+                  beside the key is held open by the stylesheet only on rows
+                  that actually draw them, because holding it open everywhere
+                  cost the *name* 50px on all sixty rows. */}
               <span className="vigilia-layer-state">
                 {showVisibility ? (
                   <button

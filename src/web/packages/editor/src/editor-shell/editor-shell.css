@@ -435,14 +435,20 @@ body,
 .editor-shell-body {
   display: grid;
   grid-template-areas: "bar stage inspector" "panel stage inspector";
-  /* The layer panel is 340px because a row now carries three things it did not
-     before: a 40px kind specimen, the name, and the semantic key it reads, plus
-     the 50px the two state controls need when a row is attended. At 280px —
-     measured on canvas, not estimated — the starter's names and its keys could
-     not both be read and one of the two truncated into uselessness; 320px was
-     still six rows short. The canvas is `minmax(0, 1fr)`, so this width comes
-     off the stage rather than off the inspector. */
-  grid-template-columns: 340px minmax(0, 1fr) 280px;
+  /* The layer panel is 320px because a row now carries three things it did not
+     before: a 40px kind specimen, the name, and the semantic key it reads.
+
+     The room the two state controls need used to be held open on *every* row,
+     including the fifty-three of the starter's sixty that draw none. Scoped to
+     the rows that have them (see `.vigilia-layer-bound`) it is worth 20px of
+     canvas — measured on canvas at 1600×900 with all sixty rows open, six
+     names clip at 280px, the same two at 320px and at 340px, and both of those
+     are rows genuinely longer than a dense row. So 320px holds the legibility
+     this was widened to 340px for and gives the 20px back. The canvas is
+     `minmax(0, 1fr)`, so it comes off the stage, which is the most valuable
+     space in this app: the whole design is that the editor exists to author a
+     phone display. */
+  grid-template-columns: 320px minmax(0, 1fr) 280px;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
@@ -937,12 +943,12 @@ body,
    name starts on the same left edge — which is what makes a column of them
    scannable at all.
 
-   40px, chosen from the budget rather than from the ideal: measured on canvas,
-   a wider slot bought a longer specimen at the layer name's expense, and every
-   step between 40 and 52 moved the truncation from one column to the other
-   rather than removing it. 40px holds the short labels whole (`CPU`, `RAM`,
-   `VIGILIA`, `Perfor…`) and shows a reading's `@token` far enough to recognise
-   which one, which is what this column is for. A specimen that runs long
+   40px, chosen from the budget rather than from the ideal, and kept there after
+   measuring the narrower alternative: on canvas at 320px a 28px slot changed
+   the count of clipped names by zero, and turned every bound row's specimen
+   into a shorter piece of the same noise. Four of the five arms are narrower
+   than 28px, but only the text arm is what this column is *for*, and 40px is
+   what holds `CPU`, `RAM` and `VIGILIA` whole. A specimen that runs long
    ellipsises — and its `title` carries the whole string. */
 .vigilia-layer-mark {
   flex: 0 0 40px;
@@ -1004,14 +1010,15 @@ body,
    beside it.
 
    Both were measured. Reserving 48px of the row's width cost the *name* 48px
-   on every row, permanently — and at 254px that is the difference between a
-   layer name that reads and one that ends in an ellipsis. Leaving the space to
-   the layout instead cost something worse: the name jumped 20–30px the moment a
-   pointer arrived, so every row the author moved across re-flowed its own text.
-   Overlaying costs neither, because the two controls only exist on the row
-   under the pointer, where the author is looking at them rather than reading
-   the key they cover. The bound column is what gives way, and it is the right
-   thing to give way: it is on the row as a fact, and a key is one hover away. */
+   on every row, permanently, on every theme — so the room the controls need is
+   held open only on the rows that draw them, which is the `:has` rule under
+   `.vigilia-layer-bound`. Leaving the space to the layout instead cost
+   something worse: the name jumped 20–30px the moment a pointer arrived, so
+   every row the author moved across re-flowed its own text. Overlaying costs
+   neither, because the two controls only exist on the row under the pointer,
+   where the author is looking at them rather than reading the key they cover.
+   The bound column is what gives way, and it is the right thing to give way:
+   it is on the row as a fact, and a key is one hover away. */
 .vigilia-layer-state {
   position: absolute;
   right: 2px;
@@ -1027,37 +1034,41 @@ body,
   padding-left: 6px;
 }
 
-/* What the row reads. Muted so a name still leads the row, and capped so the
-   name keeps the room: a three-key chart would otherwise push the layer's own
-   name to an ellipsis, which is the one thing a layer list must never do. This
-   is what gives way first when a row runs out of width.
-
-   No padding here for the state controls, and that is deliberate after two
-   attempts: padding the column unconditionally cost the key 54px on every row
-   (measured clipping on six of the starter's bound rows), and padding it under
-   a `:has` rule re-flowed the key the instant a pointer arrived — 25–30px of
-   jitter, which is the same problem the overlay was built to remove. The
-   controls now overlay the row's edge and the key's `title` carries the rest. */
+/* What the row reads. Muted so a name still leads the row, and flexible so a
+   three-key chart gives way before the layer's own name does — the one thing a
+   layer list must never ellipsise. */
 .vigilia-layer-bound {
-  /* Bounded by the row's own edge less the two state controls, which overlay
-     that edge on an attended row. The bound is on the *row*, not on this
-     column: `margin-right` on a flex item reduces the space it takes, where
-     `padding-right` only pads a box whose width is already its content's — and
-     measured on canvas, padding left a 48px overlap in which the icons covered
-     the end of the key on the one row whose key the author was looking at.
-
-     `calc` rather than a fixed 50px because the row is 254px wide inside a
-     280px column at this viewport and 320px at a wide one, and the controls are
-     a fixed size in both. */
   flex: 0 1 auto;
   min-width: 0;
-  max-width: calc(100% - 50px);
-  margin-right: 50px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--shell-muted);
   font-size: 11px;
+}
+/* Room for the two state controls, and only on a row that draws them.
+
+   `:has` asks the controls themselves, so this holds the space open exactly
+   where something would cover the key — hovered, focused, selected, locked or
+   hidden — and nowhere else. Held open on every row instead, it cost the
+   *name* 50px permanently, on all sixty starter rows, most of which show no
+   controls at all; dropping it is what lets the panel be 320px rather than
+   340px at the same legibility.
+
+   The cost falls on the attended row, where the name narrows by whatever the
+   key does not take: measured at 15.8px. That is the price of not taking it
+   from every row in every theme, and it is charged to the one row the author
+   is looking at.
+
+   `margin-right` rather than `padding-right`, and on the bound rather than on
+   the row: padding a flex item whose width is already its content's pads a box
+   that does not move, and measured on canvas that left the icons covering 48px
+   of the end of the key. `calc` rather than a fixed number because the row is
+   294px wide inside the panel's 320px column here and 254px in the narrow
+   layout below, and the controls are a fixed size in both. */
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
+  max-width: calc(100% - 50px);
+  margin-right: 50px;
 }
 .vigilia-layer-rename {
   flex: 1;
@@ -1215,8 +1226,8 @@ body,
   .editor-shell-body {
     grid-template-areas: "bar stage" "panel stage";
     /* 280px rather than the wide layout's 320px, because the stage is sharing
-       a narrow window with it. Below this width a row's specimen gives way
-       before its name does — the same order the row's own flex uses. */
+       a narrow window with it. The bound column is what gives way first, which
+       is the same order the row's own flex uses. */
     grid-template-columns: 280px minmax(0, 1fr);
   }
   .editor-shell-body[data-collapsed="true"] {

@@ -811,7 +811,7 @@ it("restacks the document when a row is dropped on another", async () => {
 // ── A row says what it is ────────────────────────────────────────────────────
 
 it("draws a text row as its own words, in its own face", async () => {
-  // The brief's first subtraction: a 12px `T` glyph cannot survive 280px, and
+  // The brief's first subtraction: a 12px `T` glyph cannot survive 320px, and
   // it answers neither question an author has. The row's own string does both
   // at once — *what it says* and *that it is text* — and its own face says the
   // rest. Read on the declared value: jsdom applies no stylesheet here, so a
@@ -819,12 +819,12 @@ it("draws a text row as its own words, in its own face", async () => {
   // what the browser will paint and is what a browser case confirms.
   const host = await renderPanel([
     layerRow({
-      id: "cpu-card-value",
-      name: "cpu-card-value",
+      id: "wordmark",
+      name: "wordmark",
       kind: "text",
       mark: {
         kind: "text",
-        text: "@cpu.load",
+        text: "VIGILIA",
         family: "Inter, sans-serif",
         weight: "600",
       },
@@ -832,7 +832,7 @@ it("draws a text row as its own words, in its own face", async () => {
   ]);
 
   const sample = host.querySelector<HTMLElement>('[data-vigilia-layer-mark="text"]')!;
-  expect(sample.textContent).toBe("@cpu.load");
+  expect(sample.textContent).toBe("VIGILIA");
   expect(sample.style.fontFamily).toBe("Inter, sans-serif");
   expect(sample.style.fontWeight).toBe("600");
   // The panel declares no face of its own, so the specimen is the only place a

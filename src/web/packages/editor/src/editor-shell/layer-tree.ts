@@ -19,7 +19,7 @@ export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
  * What a row draws in place of a kind glyph.
  *
  * Each arm carries the object's own data rather than a symbol standing in for
- * it, because a 12px glyph cannot survive 280px and this can: a text row says
+ * it, because a 12px glyph cannot survive 320px and this can: a text row says
  * what it says and in what face, a chart which family it is, a shape the paint
  * it fills with, an image its own source. A group carries nothing — the twisty
  * and a bold name are its mark, and a mark of its own would be a third thing
@@ -112,16 +112,41 @@ function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
 }
 
 /**
+ * The row's own words: the literal runs, and a value run only where nothing
+ * else on the row will say it.
+ *
+ * The bound column prints every key this node reads, in the document's own
+ * words, one column along — so a resolvable run's `@key` repeated it on screen
+ * and said it a second time in a treeitem, whose accessible name is the
+ * concatenation of its own columns. Dropping it also stops a row saying `61%`
+ * where the author wrote `cpu.load`: a reading is what the object currently
+ * shows, not what it says. An **undeclared** run keeps the placeholder, because
+ * the bound column says nothing for it and a row that smoothed that over would
+ * claim the run reads nothing at all.
+ */
+function specimen(
+  runs: readonly TextRun[],
+  bindings: readonly Binding[],
+): string {
+  return runs
+    .map((run) => {
+      if (run.kind === "literal") return run.text;
+      return bindings.some((entry) => entry.id === run.bindingId)
+        ? ""
+        : runPlaceholder(run, bindings);
+    })
+    .join("");
+}
+
+/**
  * A text object's own string, and the face it says it in.
  *
  * Two owners, both the ones that already own the answers. The string is the
- * authored runs under `vigiliaText` — literal runs as written, a value run as
- * the placeholder `run-placeholder` already prints while the author is working,
- * because a reading is not what the object *says*, it is what it currently
- * shows. The face is what `applyObjectTypePresets` wrote onto the object from
- * the first run's type preset: the same family the canvas paints with, read
- * from the object rather than re-resolved from the document's globals, so a row
- * can never disagree with the text it names.
+ * authored runs under `vigiliaText`, printed by `specimen`. The face is what
+ * `applyObjectTypePresets` wrote onto the object from the first run's type
+ * preset: the same family the canvas paints with, read from the object rather
+ * than re-resolved from the document's globals, so a row can never disagree
+ * with the text it names.
  */
 function textMark(
   object: FabricObject,
@@ -135,14 +160,7 @@ function textMark(
   const fallback =
     typeof object.get("text") === "string" ? object.get("text") : undefined;
   const runs = authored?.runs;
-  const text =
-    runs === undefined
-      ? fallback
-      : runs
-          .map((run) =>
-            run.kind === "literal" ? run.text : runPlaceholder(run, bindings),
-          )
-          .join("");
+  const text = runs === undefined ? fallback : specimen(runs, bindings);
   const family = object.get("fontFamily");
   const weight = object.get("fontWeight");
   return {
