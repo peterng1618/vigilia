@@ -50,6 +50,29 @@ Vigilia process.
   the wrong plan (ADR-0010). A PreCompact hook snapshots git state and ledger
   tails to `.superpowers/sdd/checkpoint/` and re-injects dispatch state after
   compaction.
+- **A dispatched agent is pulsed, not awaited.** The silence between dispatch and a
+  notification is not evidence that work is happening. Check every running subagent on a
+  cadence — roughly every 30 minutes of expected runtime, and immediately after any task
+  that was expected to finish sooner. A check is three pieces of evidence, not a status
+  field: the agent's state, the modification times of files it owns, and process
+  telemetry for anything long-running. **An empty output file proves nothing** — a healthy
+  subagent's transcript lands only at completion, and a wedged one leaves the same empty
+  file as a healthy one still working.
+- **Three failure shapes cost this its time, and each is caught by a pulse.**
+  A subagent that returns **tool-call syntax as text** rather than executing it, and stops
+  mid-task with its work uncommitted. A subagent that is **resumed and replays its own
+  last state** forever, reporting the same summary with an unchanged tool count. And a
+  subagent that completes having done **nothing at all** — no commit, no report, clean
+  tree. In every case the work is on disk and recoverable, but only if someone looks;
+  check rather than waiting to be asked.
+- **An uncommitted working tree after a subagent stops is work in progress, not garbage.**
+  Read the diff and the report before reconstructing anything: the finished agent's context
+  is lost, and its successor inherits a draft rather than a starting point. If a dispatch
+  record exists and the tree is dirty, that combination is the signal.
+- **A long run holds the machine.** When a subagent runs a full browser suite, expect
+  other work on the box to be slow, and do not read that slowness as a defect. If another
+  session shares the machine or a browser server, a single sample of a flaky spec is not a
+  measurement: re-run it against a previous sample of the same commit before reporting it.
 - Keep the root session through one substantial usable outcome or active phase;
   start a fresh root only at a major phase boundary, when the user asks, or when
   context is unreliable — `STATUS.md` is the handoff. In multi-agent mode the
