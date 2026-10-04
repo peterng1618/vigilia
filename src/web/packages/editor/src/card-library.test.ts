@@ -598,11 +598,18 @@ describe("a card whose repeat mints the suffix a genuine part already holds", ()
     expect(result.ok).toBe(true);
   });
 
-  it("costs no reading, so the fix is not a blank card for a working one", () => {
-    // The repeat alone, with no genuine `-2` beside it: the same card, minus
-    // the collision this round closes. Every reading the first copy carried
-    // must survive the bump, or the fix would trade a failed save for a card
-    // that saves and shows nothing.
+  it("records that the bump costs no reading — a fact, not a pin", () => {
+    // **This cannot fail, and is not counted as coverage.** `cardBindings`
+    // keys off `createNewFabricTheme().bindings`, which has no
+    // `cpu-card-value-2` entry, so the bumped part carries `null` bindings in
+    // *both* arms and the equality below is structurally forced whatever the
+    // bump does — verified by mutation: deleting the `-2` bump loop leaves this
+    // green. The two pins are `mints the repeat past the genuine -2` and
+    // `still serialises and validates`, and both catch that mutation.
+    //
+    // What is worth recording is the property itself: the repeat alone, with no
+    // genuine `-2` beside it, is the same card minus the collision, and every
+    // reading the first copy carried survives the bump.
     const repeatOnly = instantiateCard({
       unit: {
         id: "group-repeat-card",

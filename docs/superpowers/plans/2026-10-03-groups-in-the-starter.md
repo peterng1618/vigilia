@@ -120,7 +120,14 @@ Converting here makes Task 5 correct for free.
 ### Task 2: Group and ungroup are one history entry each
 
 **Files:**
-- Test: `src/web/packages/editor/src/canvas-grouping.test.ts` (new)
+- Test: `src/web/packages/editor/src/grouping-manager/starter-round-trip.dom.test.ts`
+  (new — **not** the `src/web/packages/editor/src/canvas-grouping.test.ts` this
+  plan originally named; recorded here so the next reader is not sent to a file
+  that does not exist. The test sits beside the module it exercises, which is
+  where every other editor test in the repo lives, and all four Review Focus
+  items above are pinned in it: one history entry, undo to flat siblings and
+  redo to the group, world appearance preserved across the round trip, and a
+  group inside a group handled explicitly.)
 
 **Interfaces:**
 - Consumes: `groupingManager`'s existing `group()` / `ungroup()`.

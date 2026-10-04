@@ -107,6 +107,19 @@ two apart is the judgement the map cannot make for itself.
 | Rotation-angle and size indicators | `editor/src/indicator-manager/` |
 | Per-image crop session | `editor/src/crop-manager/` |
 | Imported and rehydrated image pixel bound | `editor/src/image-manager/` |
+| **What a fresh object id looks like** — sanitising, truncation, and the `-N` bump past ids already in the document | `renderer-core/src/theme/widget.ts` (`createWidgetIdAllocator`) |
+| **Minting a new identity for one object** — choosing the prefix that says what kind of thing it is | the manager that creates the kind (`text-manager`, `chart-manager`, `image-manager`, `grouping-manager`, `new-object-panel`) |
+| **Minting ids for a *copy*** — object ids and binding ids together, minted past the destination | `renderer-core/src/theme/widget.ts` (`createWidgetIdAllocator`), used by `editor/src/card-library.ts` and `editor/src/clipboard-manager/` |
+
+**The copy path and the fresh-object path are one job, not two, and only the copy
+path has been folded in.** "A copy is a copy, not a twin" needs an id the
+destination does not hold; "a new object needs an id" needs the same thing. The
+seven creation sites still each inline a prefix plus a `randomUUID`, which is the
+*shape* of the policy without its substance — no truncation, no sanitising, no
+knowledge of what the document already holds, so a collision is possible and
+silent. `ownership:sweep` cannot see this: none of the seven exports an id
+vocabulary, each inlines a string literal, and the sweep reports re-spelled
+vocabularies. Fold them in when a creation site is next edited.
 
 ### Packaged fonts
 

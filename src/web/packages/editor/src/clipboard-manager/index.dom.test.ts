@@ -132,6 +132,46 @@ describe("ClipboardManager", () => {
     expect(pasted).toHaveBeenCalledOnce();
   });
 
+  it("gives two members declaring one id an id each, rather than one id twice", async () => {
+    // `createWidgetIdAllocator` memoises **by original**, so a group whose two
+    // members declare the same id would be handed the same answer twice. That is
+    // the envelope validator's `duplicate-id`: `snapshot()` throws on it and
+    // every later save in the session fails, told nothing.
+    const { canvas, clipboard } = setup();
+    const first = new Rect({ width: 10, height: 10 });
+    first.set("id", "twin");
+    const second = new Rect({ left: 40, width: 10, height: 10 });
+    second.set("id", "twin");
+    const card = new Group([first, second], { subTargetCheck: false });
+    canvas.add(card);
+    canvas.setActiveObject(card);
+
+    expect(await clipboard.duplicate()).toBe(true);
+
+    const ids = (canvas.getObjects()[1] as Group)
+      .getObjects()
+      .map((part) => String(part.get("id")));
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it("mints past the ids the canvas already holds, and reads as a copy", async () => {
+    // Past what is already there *and* legible: one policy for what a fresh id
+    // looks like, shared with the card library's insertion (`card-library.ts`),
+    // rather than a uuid beside it.
+    const { canvas, clipboard } = setup();
+    const object = new Rect({ id: "shape", width: 10, height: 10 });
+    canvas.add(object);
+    canvas.setActiveObject(object);
+
+    await clipboard.copy();
+    await clipboard.paste();
+    await clipboard.paste();
+
+    const ids = canvas.getObjects().map((entry) => String(entry.get("id")));
+    expect(new Set(ids).size).toBe(3);
+    expect(ids).toEqual(["shape", "rect-shape", "rect-shape-2"]);
+  });
+
   it("imports an image file pasted from another application", async () => {
     const { canvas, importImage } = setup();
     const file = new File([new Uint8Array([1])], "shot.png", {

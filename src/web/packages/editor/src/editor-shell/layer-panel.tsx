@@ -304,10 +304,15 @@ export function LayerPanel({
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
   // Which row the pointer is over and which holds the keyboard, so the two
-  // state icons can appear for a row the author is about to act on. Both are
-  // ids rather than booleans: one panel state answers for every row, which is
-  // what keeps two hundred rows from re-rendering the whole tree each time the
-  // pointer crosses a line.
+  // state icons can appear for a row the author is about to act on. Ids rather
+  // than booleans: attention is one property the author has, so one field per
+  // kind holds it, and the answer is an identity comparison per row rather than
+  // a scan of a set that grew with the row count.
+  //
+  // **No row is memoized, so this does not re-render anything less.** Either
+  // state change re-renders the panel and all its rows. What the id form buys
+  // is only the size and lookup of the state — a `Set` of attended ids would
+  // answer the same rows in the same pass.
   const [hovered, setHovered] = useState<string | undefined>(undefined);
   const [focused, setFocused] = useState<string | undefined>(undefined);
 

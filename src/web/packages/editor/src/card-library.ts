@@ -39,6 +39,19 @@ import { uiCopy } from "./ui-copy.js";
  * Fabric-shaped half, and borrows the one piece that is about identity rather
  * than about either model: `createWidgetIdAllocator`, the rule that decides
  * what a fresh id looks like.
+ *
+ * **Scope limit — the copy is faithful in ids, not necessarily in readings.**
+ * `cardBindings` reads the *starter's* bindings map, keyed by the starter's own
+ * part ids, so only the four parts that starter declares can carry a reading.
+ * Inserted into a document whose part ids differ, or one an author has renamed,
+ * every binding comes across as `null` and **no issue is raised** —
+ * `unmapped-global` fires only on `palette.*` / `typePresets.*` string
+ * references, never on bindings. "A duplicated card is still a working card"
+ * therefore holds for a starter-derived document, and the guarantee narrows to
+ * ids everywhere else. The readings are the document's to carry, not this
+ * module's to look up by a key it does not have; closing this needs a binding
+ * reference that survives being copied, which is a format question, not a
+ * lookup.
  */
 
 /** One card an author can insert, named as the control that inserts it. */
@@ -312,11 +325,21 @@ function cardUnit(cardId: string): CardUnit {
 }
 
 /**
- * The card's own slice of the starter's bindings, read rather than restated.
+ * The card's own slice of the **starter's** bindings, read rather than restated.
  *
  * A card and the reference composition are one authoring decision, so a second
  * table of semantic keys here would be a place for the two to drift — and a
  * drifted key is a reading that quietly stops being the one the author meant.
+ *
+ * **The limit this hardcoding costs, stated where a reader meets it:** the key
+ * is the starter's own part id, so only the four parts `createNewFabricTheme`
+ * declares can ever come back carrying a reading. Any other document — one
+ * whose parts carry different ids, or an author's renames — gets bindings of
+ * `null` for every part, silently, because `unmapped-global` inspects only
+ * `palette.*` and `typePresets.*` strings and has no view of bindings at all.
+ * The document's own bindings are the real source and this function cannot
+ * reach them: `insertCard` passes them in to mint *past*, and the copy has to
+ * be buildable without them. See the module docblock.
  */
 function cardBindings(
   card: ObjectJson,

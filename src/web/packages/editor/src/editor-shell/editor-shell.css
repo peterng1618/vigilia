@@ -442,8 +442,8 @@ body,
      scoped to the rows that draw them (see `.vigilia-layer-bound`) rather than
      held open on all sixty — measured on canvas at 1600×900 with every group
      open and the panel's scrollbar in place, 340px ellipsises 2 of the 60
-     names, 320px ellipsises 4 and 280px ellipsises 15. So a 320px column buys
-     20px of canvas with two extra clipped names, and the name is what the
+     names, 320px ellipsises 3 and 280px ellipsises 15. So a 320px column buys
+     20px of canvas with one extra clipped name, and the name is what the
      row's own flex gives up last (`.vigilia-layer-name`). Scoping is
      width-independent, so the panel kept 340px and the stage kept 948.
 
@@ -1065,9 +1065,9 @@ body,
    every row instead, it cost the *name* 50px permanently, on all sixty.
 
    What scoping bought is width independence, not width: 340px clips 2 of the
-   starter's 60 names, 320px clips 4 and 280px clips 15, so the panel kept the
-   340px it was widened to rather than buying canvas with two more ellipsised
-   names.
+   starter's 60 names, 320px clips 3 and 280px clips 15, so the panel kept the
+   340px it was widened to rather than buying canvas with one more ellipsised
+   name.
 
    The cost falls on the attended row, where the name narrows by whatever the
    key does not take: measured at 15.83px on `network-chart`, with every other
