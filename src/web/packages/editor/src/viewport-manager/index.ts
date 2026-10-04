@@ -1,4 +1,11 @@
 import { type Canvas, Point } from "fabric/es";
+import {
+  DEFAULT_DISPLAY_LENS,
+  displayLens,
+  type DisplayLensId,
+  type ScreenRect,
+  screenRect,
+} from "../display-lens.js";
 import { clampPan } from "./pan-bounds.js";
 
 export const MIN_ZOOM = 0.02;
@@ -30,15 +37,26 @@ export interface ViewportManager {
   zoomToSelection(): void;
   reset(): void;
   panBy(deltaX: number, deltaY: number): void;
+  /**
+   * The lens the stage looks through. `undefined` is Fit — the whole stage,
+   * with no display in it.
+   *
+   * **A view preference, never document content** (§67): it is what the camera
+   * is aimed at, in the same way the zoom is, and choosing one writes the
+   * viewport transform and nothing else. A device does not resize, reshape or
+   * record anything about the artboard.
+   */
+  display(): DisplayLensId | undefined;
+  /** Aims the camera at that display, or at the whole stage for `undefined`. */
+  showDisplay(id: DisplayLensId | undefined): void;
   /** Where the artboard draws inside the canvas element, in canvas coordinates
    * — the frame `viewportTransform` is in. Add the canvas's own client offset
    * for page coordinates. */
-  artboardScreenRect(): {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
+  artboardScreenRect(): ScreenRect;
+  /** The display's own screen in canvas coordinates — the window the stage
+   * looks through, and where its frame is drawn. `undefined` under Fit,
+   * because there is no screen to draw. */
+  displayScreenRect(): ScreenRect | undefined;
   /** Re-measure after the host element changed size. A camera that was showing
    * the whole artboard is re-fitted to the new box; one the author has zoomed or
    * panned is held, so a window nudge cannot move a view they set. */
@@ -73,6 +91,16 @@ export function createViewportManager({
       ? undefined
       : new ResizeObserver(() => resize());
 
+  /**
+   * The display the stage looks through, or `undefined` for Fit.
+   *
+   * Starts on the default rather than on Fit, because the starter is drawn
+   * landscape and opening on Fit would letterbox the reference composition on
+   * the very first paint. Read through the lens rather than mirrored into
+   * React: it is camera state, like the zoom.
+   */
+  let lens: DisplayLensId | undefined = DEFAULT_DISPLAY_LENS;
+
   /** An unlaid-out host measures 0; writing that would collapse the canvas. */
   const viewportSize = (): Viewport | undefined => {
     const width = host.clientWidth;
@@ -99,12 +127,7 @@ export function createViewportManager({
    * camera writes. The media layer is a DOM sibling of the canvas, so it only
    * stays aligned with the board if it is told this rect after every camera
    * change. */
-  const artboardScreenRect = (): {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  } => {
+  const artboardScreenRect = (): ScreenRect => {
     const vpt = canvas.viewportTransform;
     const scale = vpt[0];
     const board = artboard();
@@ -114,6 +137,35 @@ export function createViewportManager({
       width: board.width * scale,
       height: board.height * scale,
     };
+  };
+
+  /**
+   * The box the camera frames the artboard inside: the display's screen, or
+   * the whole host under Fit.
+   *
+   * A display is a *window onto* the stage rather than a replacement for it,
+   * which is why it is measured against the host: the author still gets the
+   * whole canvas to work in, and the screen is the part of it the camera
+   * presents through. Its origin is carried because a fit centres the artboard
+   * in *this* box, and that is what makes a wide display letterbox a square
+   * artboard rather than scale it to the corners.
+   */
+  const framingBox = (viewport: Viewport): ScreenRect => {
+    if (lens === undefined) {
+      return {
+        left: 0,
+        top: 0,
+        width: viewport.width,
+        height: viewport.height,
+      };
+    }
+    return screenRect(viewport, displayLens(lens).aspect);
+  };
+
+  const displayScreenRect = (): ScreenRect | undefined => {
+    const viewport = viewportSize();
+    if (viewport === undefined || lens === undefined) return undefined;
+    return screenRect(viewport, displayLens(lens).aspect);
   };
 
   /** Writes the canonical transform back, clamped and ordered. */
@@ -136,20 +188,18 @@ export function createViewportManager({
 
   const zoom = (): number => canvas.getZoom();
 
-  const fitScaleFor = (viewport: Viewport): number => {
+  /** Contain-fit the artboard into `box` — the display's screen when one is
+   *  chosen, the whole host under Fit.
+   *
+   *  Contain, never cover. A display that cropped the artboard to fill itself
+   *  would show the author a composition their display never presents, which
+   *  is the one thing a lens must not do; the bars where the two aspects
+   *  differ are the truth about the mismatch. */
+  const fitScaleFor = (box: ScreenRect): number => {
     const board = artboard();
-    const scale = Math.min(
-      viewport.width / board.width,
-      viewport.height / board.height,
-    );
+    const scale = Math.min(box.width / board.width, box.height / board.height);
     if (!Number.isFinite(scale) || scale <= 0) return zoom();
     return Math.min(Math.max(scale, MIN_ZOOM), MAX_ZOOM);
-  };
-
-  const fitScale = (): number => {
-    const viewport = viewportSize();
-    if (viewport === undefined) return zoom();
-    return fitScaleFor(viewport);
   };
 
   /** Where a fit puts the camera in `viewport`, after the same clamp every
@@ -158,15 +208,19 @@ export function createViewportManager({
   const fitTransformIn = (
     viewport: Viewport,
   ): { scale: number; translateX: number; translateY: number } => {
-    const scale = fitScaleFor(viewport);
+    const box = framingBox(viewport);
+    const scale = fitScaleFor(box);
     const board = artboard();
     const offset = clampPan({
       viewport,
       zoom: scale,
       artboard: board,
+      // Centred in the display's screen rather than in the host. That is the
+      // whole of the difference between a lens and a zoom: the same scale,
+      // framed at the display's shape instead of the window's.
       offset: {
-        x: (viewport.width - board.width * scale) / 2,
-        y: (viewport.height - board.height * scale) / 2,
+        x: box.left + (box.width - board.width * scale) / 2,
+        y: box.top + (box.height - board.height * scale) / 2,
       },
     });
     return { scale, translateX: offset.x, translateY: offset.y };
@@ -193,14 +247,12 @@ export function createViewportManager({
   const zoomToFit = (): void => {
     const viewport = viewportSize();
     if (viewport === undefined) return;
-    const board = artboard();
-    const scale = fitScale();
-    // At fit zoom the artboard is smaller than the host on one axis; centre it.
-    commit(
-      scale,
-      (viewport.width - board.width * scale) / 2,
-      (viewport.height - board.height * scale) / 2,
-    );
+    // Through `fitTransformIn` rather than recomputing the centre here, so a
+    // fit cannot disagree with the predicate that decides whether a resize
+    // should perform one — which is exactly the disagreement that made an
+    // author's pan vanish on the window nudge that was meant to keep it.
+    const { scale, translateX, translateY } = fitTransformIn(viewport);
+    commit(scale, translateX, translateY);
     notify();
   };
 
@@ -254,8 +306,12 @@ export function createViewportManager({
     zoomBy(factor) {
       const viewport = viewportSize();
       if (viewport === undefined) return;
+      // About the framing box's centre, not the host's: under a lens the host
+      // centre is not on the screen, and stepping +/− would walk the camera off
+      // the display a step at a time.
+      const box = framingBox(viewport);
       zoomToPoint(
-        new Point(viewport.width / 2, viewport.height / 2),
+        new Point(box.left + box.width / 2, box.top + box.height / 2),
         zoom() * factor,
       );
     },
@@ -266,9 +322,10 @@ export function createViewportManager({
       const viewport = viewportSize();
       if (viewport === undefined) return;
       const bounds = active.getBoundingRect();
+      const box = framingBox(viewport);
       const scale = Math.min(
-        viewport.width / Math.max(bounds.width, 1),
-        viewport.height / Math.max(bounds.height, 1),
+        box.width / Math.max(bounds.width, 1),
+        box.height / Math.max(bounds.height, 1),
       );
       const next = Math.min(
         Math.max(scale * SELECTION_FIT_FILL, MIN_ZOOM),
@@ -276,17 +333,30 @@ export function createViewportManager({
       );
       commit(
         next,
-        viewport.width / 2 - (bounds.left + bounds.width / 2) * next,
-        viewport.height / 2 - (bounds.top + bounds.height / 2) * next,
+        box.left + box.width / 2 - (bounds.left + bounds.width / 2) * next,
+        box.top + box.height / 2 - (bounds.top + bounds.height / 2) * next,
       );
       notify();
     },
     reset() {
+      // 100 % is an alternative to a display, not a zoom inside one: a screen
+      // drawn around a camera parked at 1:1 would be a frame around nothing.
+      lens = undefined;
       commit(1, 0, 0);
       notify();
     },
     panBy,
     artboardScreenRect,
+    displayScreenRect,
+    display: () => lens,
+    showDisplay(id) {
+      // Re-frames even when the display is unchanged. Choosing the display an
+      // author has zoomed away from is how they get back to the whole
+      // composition, so an early return here would make the control look
+      // broken on exactly the press it exists for.
+      lens = id;
+      zoomToFit();
+    },
     resize,
     onChange(listener) {
       listeners.add(listener);

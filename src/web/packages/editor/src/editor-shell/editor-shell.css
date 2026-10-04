@@ -351,6 +351,23 @@ body,
   background: color-mix(in srgb, var(--shell-text) 12%, transparent);
   outline: none;
 }
+/* The chosen display's tick, in the gutter before the label. A fixed width so
+   the labels stay left-aligned whether or not one is showing: the row that
+   shifts when you pick something is the row you mis-click. `visibility` rather
+   than `display`, so the space is reserved by the label's own indent instead.
+   Base UI keeps the indicator mounted and marks it `data-checked`. */
+.editor-shell-menu-tick {
+  display: inline-block;
+  width: 1em;
+  color: var(--shell-muted);
+  vertical-align: baseline;
+}
+.editor-shell-menu-tick[data-checked] {
+  visibility: visible;
+}
+.editor-shell-menu-tick:not([data-checked]) {
+  visibility: hidden;
+}
 .editor-shell-menu-label {
   display: block;
   padding: 6px 9px 3px;
@@ -1161,11 +1178,27 @@ body,
   z-index: 3;
   right: 12px;
   bottom: 12px;
-  min-width: 54px;
+  /* Wide enough for the longest display name, so choosing one does not resize
+     the trigger under the pointer that chose it. */
+  min-width: 128px;
   padding: 5px 9px;
   border-radius: 8px;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
+  text-align: center;
+}
+/* The display the stage looks through: its screen, drawn where the camera
+   frames through it. Positioned in canvas coordinates by `editor-shell.ts`
+   beside the media layer, because it is a DOM sibling of the canvas rather
+   than a Fabric object — a Fabric frame would be a scene object, and would
+   change what `canvas.getObjects()` means.
+
+   An outline only. It must not cover the artboard or dim the pasteboard: the
+   claim it makes is where the screen's edges are, and anything more would be
+   the lens deciding what the author can see. */
+[data-vigilia-display-screen] {
+  border: 1px solid var(--vigilia-subdued);
+  box-sizing: border-box;
 }
 .editor-shell-inspector {
   padding: 12px;

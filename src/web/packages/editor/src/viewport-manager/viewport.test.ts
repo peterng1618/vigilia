@@ -2,6 +2,7 @@
 
 import { Canvas, Point } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DisplayLensId } from "../display-lens.js";
 import { createViewportManager, MAX_ZOOM, MIN_ZOOM } from "./index.js";
 
 // jsdom cannot drawImage an undecoded img inside Fabric's render pass; a proxy
@@ -27,7 +28,7 @@ beforeEach(() => {
   }
 });
 
-function setup() {
+function setup(options: { lens?: DisplayLensId; fitted?: boolean } = {}) {
   const host = document.createElement("div");
   // Read through a live holder rather than a fixed `value`, so a test can
   // resize the host the way a window does.
@@ -42,6 +43,17 @@ function setup() {
     host,
     artboard: () => ({ width: 1280, height: 720 }),
   });
+  // The camera opens on a display, so a test that means "the whole stage" has
+  // to say Fit rather than inherit whatever the product ships. Left implicit,
+  // the numbers below would be describing the lens and a reader could not tell
+  // which of the two they were reading.
+  //
+  // `fitted: false` leaves the camera at construction instead, for the two
+  // tests whose subject *is* that state — one anchors on the identity
+  // transform and one asserts that construction performs no fit.
+  if (options.fitted !== false) {
+    camera.showDisplay(options.lens);
+  }
   return {
     canvas,
     camera,
@@ -72,7 +84,8 @@ describe("viewport camera", () => {
   });
 
   it("keeps the point under the cursor fixed while zooming", () => {
-    const { canvas, camera } = setup();
+    // Unfitted, because the anchor below reads the identity transform.
+    const { canvas, camera } = setup({ fitted: false });
     // A real MouseEvent, not {x, y}: getScenePoint resolves through getPointer,
     // which reads event.clientX/clientY. A bare object yields NaN on both sides
     // and toBeCloseTo can never pass on NaN.
@@ -250,7 +263,7 @@ describe("viewport camera on a host resize", () => {
     // predicate that read the host — already at its real size by the time the
     // manager is built — would compare identity against that host and could
     // claim a fit nobody chose. `zoomToFit` is what establishes the first view.
-    const { camera } = setup();
+    const { camera } = setup({ fitted: false });
     expect(camera.zoom()).toBe(1);
     expect(camera.artboardScreenRect()).toEqual({
       left: 0,
@@ -258,5 +271,122 @@ describe("viewport camera on a host resize", () => {
       width: 1280,
       height: 720,
     });
+  });
+});
+
+/**
+ * The display is a **lens**: it changes what the camera looks at and at what
+ * shape, and nothing else. Each test below is one of those "nothing else"
+ * claims, because the failure this guards against is not a wrong number on
+ * screen — it is a lens that quietly becomes a document.
+ */
+describe("the display lens", () => {
+  it("opens on a landscape phone, the shape the starter is drawn in", () => {
+    const { camera } = setup({ fitted: false });
+    expect(camera.display()).toBe("phone-landscape");
+  });
+
+  it("frames the artboard to the display's shape, not the window's", () => {
+    const { camera } = setup({ lens: "phone-landscape" });
+    const screen = camera.displayScreenRect();
+    if (screen === undefined) throw new Error("no display screen rect");
+    // The screen carries the display's aspect...
+    expect(screen.width / screen.height).toBeCloseTo(19.5 / 9, 6);
+    // ...and the artboard sits inside it at its own aspect, letterboxed rather
+    // than cropped. This board (16:9) is narrower than a landscape phone
+    // (19.5:9), so it fills the screen's height and leaves bars at the sides.
+    // Cropping to fill them would be the lens deciding what the display shows,
+    // which is the one thing a preview must not do.
+    const board = camera.artboardScreenRect();
+    expect(board.width / board.height).toBeCloseTo(16 / 9, 6);
+    expect(board.left).toBeGreaterThan(screen.left + 1);
+    expect(board.left + board.width).toBeLessThan(
+      screen.left + screen.width - 1,
+    );
+    // And it is centred in the screen, which is itself centred in the stage.
+    expect(board.left + board.width / 2).toBeCloseTo(
+      screen.left + screen.width / 2,
+      6,
+    );
+    expect(board.top + board.height / 2).toBeCloseTo(
+      screen.top + screen.height / 2,
+      6,
+    );
+  });
+
+  it("rotates the screen for a portrait display and keeps the artboard upright", () => {
+    const landscape = setup({ lens: "phone-landscape" }).camera;
+    const portrait = setup({ lens: "phone-portrait" }).camera;
+    const wide = landscape.displayScreenRect();
+    const tall = portrait.displayScreenRect();
+    if (wide === undefined || tall === undefined) {
+      throw new Error("no display screen rect");
+    }
+    // The same phone turned: the exact reciprocal of the landscape aspect,
+    // because a display's two orientations cannot drift apart.
+    expect(tall.width / tall.height).toBeCloseTo(1 / (19.5 / 9), 6);
+    // The artboard does not rotate with it — it is the author's composition,
+    // and a lens that turned the document would be editing rather than showing.
+    expect(
+      portrait.artboardScreenRect().width /
+        portrait.artboardScreenRect().height,
+    ).toBeCloseTo(16 / 9, 6);
+  });
+
+  it("restores the whole-stage fit, one click away", () => {
+    const { camera } = setup({ lens: "wall-panel" });
+    expect(camera.display()).toBe("wall-panel");
+    camera.showDisplay(undefined);
+    expect(camera.display()).toBeUndefined();
+    // Fit is exactly what it was before the display existed: the artboard
+    // contained in the whole stage, and no screen drawn around it.
+    expect(camera.zoom()).toBeCloseTo(1000 / 1280, 5);
+    expect(camera.displayScreenRect()).toBeUndefined();
+  });
+
+  it("keeps a camera the author has moved, rather than re-framing it", () => {
+    // The fight the brief names: a display and a manual zoom both wanting to
+    // own the camera. The author wins, and a host resize must not take it back.
+    const { camera, resizeHost } = setup({ lens: "phone-landscape" });
+    camera.zoomBy(2);
+    const zoomed = camera.zoom();
+
+    resizeHost(1400, 900);
+
+    expect(camera.display(), "the lens is still the one they chose").toBe(
+      "phone-landscape",
+    );
+    expect(camera.zoom(), "and their zoom survived the resize").toBeCloseTo(
+      zoomed,
+      5,
+    );
+  });
+
+  it("re-frames through the same display when the host resizes", () => {
+    const { camera, resizeHost } = setup({ lens: "phone-landscape" });
+    const before = camera.artboardScreenRect();
+    resizeHost(700, 900);
+    const after = camera.artboardScreenRect();
+    // A fitted camera follows its window — that is the property that lets the
+    // shell collapse a panel without stranding the author at the old scale.
+    expect(after.width).toBeLessThan(before.width);
+    expect(after.width / after.height).toBeCloseTo(16 / 9, 6);
+  });
+
+  it("leaves the artboard's authored dimensions exactly as they were", () => {
+    // The lens is a lens: a 3:1 board and a square one are both authored at
+    // their own size, and choosing a display must not reach into either. The
+    // board here is the harness's 1280x720; nothing below may change it.
+    const { camera } = setup({ lens: "wall-panel" });
+    for (const lens of [
+      "phone-portrait",
+      "phone-landscape",
+      undefined,
+    ] as const) {
+      camera.showDisplay(lens);
+      const board = camera.artboardScreenRect();
+      const scale = board.width / 1280;
+      expect(board.height / scale).toBeCloseTo(720, 6);
+    }
   });
 });

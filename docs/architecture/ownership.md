@@ -61,6 +61,8 @@ two apart is the judgement the map cannot make for itself.
 | Concept | Owner |
 |---|---|
 | Canvas mount/disposal, viewport fitting, artboard paint | `editor/src/editor-shell.ts` |
+| **Which displays a theme can be seen through** — their ids and aspect ratios, and the screen rect one becomes | `editor/src/display-lens.ts` |
+| The stage camera — zoom, pan, framing, and the lens it frames through | `editor/src/viewport-manager/` |
 | `EditorInteraction` contract consumed by product panels | `editor/src/editor-interaction.ts` |
 | Text creation | `editor/src/text-manager/` |
 | Image import | `editor/src/image-manager/` |

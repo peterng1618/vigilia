@@ -125,6 +125,7 @@ function wiredSession(): Wired {
         cropManager: idleCrop(),
         viewport: {
           zoom: () => 1,
+          display: () => undefined,
           onChange: () => () => undefined,
         },
         artboard: () => ({ width: 1920, height: 1080 }),
@@ -300,7 +301,11 @@ function bridgeOf(
       canvas,
       // The zoom readout subscribes to it, so an absent camera is a throw
       // rather than an exercise of the shell.
-      viewport: { zoom: () => 1, onChange: () => () => undefined },
+      viewport: {
+        zoom: () => 1,
+        display: () => undefined,
+        onChange: () => () => undefined,
+      },
     } as never,
     destroy: vi.fn(),
   } as unknown as EditorShellBridge;

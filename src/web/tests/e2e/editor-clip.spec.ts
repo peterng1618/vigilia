@@ -249,15 +249,6 @@ test.describe("the editor clips the object layer to the artboard", () => {
   test("a card overhanging the edge shows only its in-board part", async ({
     page,
   }) => {
-    expect(
-      await page.evaluate(
-        () =>
-          (window as unknown as { vigiliaEditorBridge: Bridge })
-            .vigiliaEditorBridge.editor.canvas.clipPath,
-      ),
-      "the editor installs a scene-level clip",
-    ).toBeTruthy();
-
     const m = await arrangeOverhang(page);
 
     // The arrangement has to be the one the assertions below depend on, or
@@ -287,6 +278,19 @@ test.describe("the editor clips the object layer to the artboard", () => {
       await alphaAt(page, outside.x, outside.y),
       "the part hanging off the edge is not, though the card covers that point",
     ).toBe(0);
+
+    // The structural read comes *after* the pixels, deliberately. Asserting it
+    // first meant this test failed on the structure under sabotage and never
+    // reached a pixel, so the pixel assertions — the only ones that can tell a
+    // working clip from a missing one — were never proved to fail at all.
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { vigiliaEditorBridge: Bridge })
+            .vigiliaEditorBridge.editor.canvas.clipPath,
+      ),
+      "and the mechanism doing it is the scene-level clip the row calls for",
+    ).toBeTruthy();
   });
 
   test("the edge follows the board, not the canvas, under zoom and pan", async ({

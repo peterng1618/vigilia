@@ -16,7 +16,7 @@ import { LayerPanel } from "./layer-panel.js";
 import { PaneBar, type RailPane } from "./pane-bar.js";
 import { PaletteMenu } from "./palette-menu.js";
 import { SaveState } from "./save-state.js";
-import { ZoomReadout } from "./zoom-readout.js";
+import { DisplaySwitch } from "./display-switch.js";
 import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
 import {
   DEFAULT_RUN_DISPLAY_MODE,
@@ -565,7 +565,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* The store, not a local: a late-set bridge must reach the readout
                 the same way it reaches the inspector and menus. */}
             {store.bridge === undefined ? null : (
-              <ZoomReadout viewport={store.bridge.editor.viewport} />
+              <DisplaySwitch viewport={store.bridge.editor.viewport} />
             )}
             {/* Renders no DOM of its own: it only binds the canvas's own
                 `contextmenu` listener, so it sits with the stage it listens to. */}

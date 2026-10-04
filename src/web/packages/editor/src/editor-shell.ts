@@ -517,6 +517,30 @@ export async function mountEditorShell({
     editor.viewport.onChange(placeMedia);
     placeMedia();
 
+    const screen = document.createElement("div");
+    screen.dataset["vigiliaDisplayScreen"] = "";
+    screen.style.cssText = "position:absolute;pointer-events:none;";
+    container.prepend(screen);
+    // Also a DOM sibling rather than a Fabric object, and for the same reason
+    // as the media layer above: a Fabric frame would be a scene object, so it
+    // would change what `canvas.getObjects()` means and what `serialiseScene`
+    // writes. Review Focus 1 of this plan is that gate, and this is the cheap
+    // route past it rather than a second one through it.
+    //
+    // Hidden under Fit, because there is no screen to draw then — a frame
+    // around the whole stage would be a device the author never chose.
+    const placeScreen = (): void => {
+      const rect = editor.viewport.displayScreenRect();
+      screen.hidden = rect === undefined;
+      if (rect === undefined) return;
+      screen.style.left = `${rect.left}px`;
+      screen.style.top = `${rect.top}px`;
+      screen.style.width = `${rect.width}px`;
+      screen.style.height = `${rect.height}px`;
+    };
+    editor.viewport.onChange(placeScreen);
+    placeScreen();
+
     // After the media, because a glass panel samples that layer for its backdrop.
     // Always wired, never conditionally: the session replaces the layer through
     // `setBackgroundMedia` *after* this returns, so `media` is undefined here

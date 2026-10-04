@@ -99,16 +99,19 @@ function bridgeStub(
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: facade(),
-    // Only the camera is stubbed: the readout subscribes to it, so an empty
+    // Only the camera is stubbed: the switch subscribes to it, so an empty
     // object here would throw rather than exercise the shell. The shell only
     // reaches `viewport`, so the double cast is the partial stub's whole point;
-    // the `satisfies` is what checks the two members inside it, which the cast
-    // alone would erase.
+    // the `satisfies` is what checks the members inside it, which the cast
+    // alone would erase — and a member the control reads but this stub omits
+    // throws inside the render, taking the whole shell down with it rather
+    // than failing the one assertion about the camera.
     editor: {
       viewport: {
         zoom: () => 1,
+        display: () => undefined,
         onChange: () => () => undefined,
-      } satisfies Pick<ViewportManager, "zoom" | "onChange">,
+      } satisfies Pick<ViewportManager, "zoom" | "display" | "onChange">,
     } as unknown as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,
@@ -333,6 +336,7 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
       canvas: new Canvas(document.createElement("canvas")),
       viewport: {
         zoom: () => 1,
+        display: () => undefined,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -374,6 +378,7 @@ it("leaves the camera alone after a swap between two open panes", async () => {
       canvas: new Canvas(document.createElement("canvas")),
       viewport: {
         zoom: () => 1,
+        display: () => undefined,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -409,6 +414,7 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
       canvas: new Canvas(document.createElement("canvas")),
       viewport: {
         zoom: () => 1,
+        display: () => undefined,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -469,7 +475,11 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
   const bridge = bridgeStub({
     editor: {
       canvas,
-      viewport: { zoom: () => 1, onChange: () => () => undefined },
+      viewport: {
+        zoom: () => 1,
+        display: () => undefined,
+        onChange: () => () => undefined,
+      },
     } as unknown as EditorShellBridge["editor"],
   });
   const manager = createErrorManager(canvas);

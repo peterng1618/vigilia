@@ -1,6 +1,8 @@
 /** Typed package-local visible editor copy (§35). Authored theme text,
  * telemetry values and developer errors stay outside this module. */
 
+import type { DisplayLensId } from "./display-lens.js";
+
 /**
  * One reason per kind, keyed by the kind `renderer-core` is asked with.
  *
@@ -307,12 +309,24 @@ export const uiCopy = {
   canvasMenu: { label: "Canvas actions" },
   /** The stage toolbar's accessible name; the eight buttons carry the labels. */
   arrangeToolbar: { label: "Arrange the selection" },
-  /** The stage camera's readout; `label` is also the control's accessible name. */
-  zoom: {
-    label: "Zoom level",
-    toFit: "Zoom to fit",
+  /** The stage camera's control: the display the stage looks through, and the
+   *  two framings that are not a display. `label` is the control's accessible
+   *  name. The trigger keeps reading the camera's zoom, which predates the
+   *  display and is a capability this change does not remove — a display is
+   *  said by the frame drawn around the stage and by the menu's tick. */
+  display: {
+    label: "Display and zoom",
+    /** The whole stage, with no display in it. */
+    fit: "Fit",
     toSelection: "Zoom to selection",
     actualSize: "100 %",
+    /** One name per lens, keyed by `DisplayLensId` so a lens cannot be added
+     *  to the vocabulary without a label to offer it by. */
+    displays: {
+      "phone-landscape": "Phone landscape",
+      "phone-portrait": "Phone portrait",
+      "wall-panel": "Wall panel",
+    } satisfies Record<DisplayLensId, string>,
   },
   palette: "Shell palette",
   /** Chart family labels, shared by the Add panel and the Insert menu. */
