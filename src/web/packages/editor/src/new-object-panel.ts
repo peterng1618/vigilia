@@ -25,8 +25,12 @@ export interface NewObjectActions {
    * Inserts one card as a unit. The session owns this because the copy's
    * readings are envelope state, and a panel that made its own would hold a
    * second copy of what the next save writes.
+   *
+   * Returns nothing rather than a promise: the session reports a refusal
+   * itself, so every surface that dispatches a card is told once, and this
+   * panel's `constructing` has no rejection left to report a second time.
    */
-  readonly insertCard: (cardId: string) => void | Promise<void>;
+  readonly insertCard: (cardId: string) => void;
 }
 
 /** One object an author can insert, named as the control that inserts it. */
@@ -180,15 +184,15 @@ export function createNewObjectPanel(
   heading.textContent = uiCopy.panels.add;
   /**
    * Runs a construction that refuses when the theme has no reference to give
-   * it — a palette without a usable token, type presets without a body, or a
-   * card painted with a global this theme has no token for. Reported through
-   * the editor's own diagnostics, because a throw out of a click handler leaves
-   * the author with a button that silently does nothing.
+   * it — a palette without a usable token or type presets without a body.
+   * Reported through the editor's own diagnostics, because a throw out of a
+   * click handler leaves the author with a button that silently does nothing.
    *
    * Every construction in this panel goes through it, charts included:
    * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults`
    * with no handler of its own, so an unwrapped chart button would be the only
-   * one here that fails silently.
+   * one here that fails silently. A card's own refusal is reported by the
+   * session, which owns it, so there is nothing here for this to report twice.
    */
   const constructing = (build: () => void | Promise<void>): void => {
     const report = (error: unknown): void => {
@@ -198,8 +202,6 @@ export function createNewObjectPanel(
       );
     };
     try {
-      // A card is enlivened, so its construction is asynchronous; the refusal
-      // it may raise arrives in the same diagnostics as every sibling's.
       void Promise.resolve(build()).catch(report);
     } catch (error) {
       report(error);

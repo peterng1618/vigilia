@@ -111,7 +111,17 @@ interface CopyContext {
   readonly provenance: WidgetProvenance;
   /** How far the root moves; its parts are group-local and stay put (§57). */
   readonly offset: { readonly x: number; readonly y: number };
-  readonly objectIds: ReadonlyMap<string, string>;
+  /**
+   * Every declared object's own id, keyed by **the object** rather than by its
+   * authored id: a card may declare one id twice, and each declaration still
+   * needs an id of its own.
+   */
+  readonly objectIds: ReadonlyMap<ObjectJson, string>;
+  /**
+   * Where an authored id's readings land — its first copy, because a binding id
+   * is unique across the document and two copies cannot both carry them.
+   */
+  readonly firstCopy: ReadonlyMap<string, string>;
   readonly bindingIds: ReadonlyMap<string, string>;
 }
 
@@ -137,14 +147,44 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
 
   // Every id is claimed before anything is rebuilt, so a run pointing at a
   // binding later in the tree resolves to an id that is already spoken for.
-  const objectIds = new Map<string, string>();
+  //
+  // The guard is the one `claim()` in `widget.ts` keeps, and it is the check
+  // the extraction deliberately left behind: two parts declaring one id is the
+  // card's own defect, and without it both copies would sit at the same minted
+  // id, which the envelope validator refuses as `duplicate-id` — leaving the
+  // author with a canvas that looks right and a save that fails for the rest of
+  // the session, told nothing. The duplicate is reported and given an id of its
+  // own, so the copy still serialises.
+  const objectIds = new Map<ObjectJson, string>();
+  const firstCopy = new Map<string, string>();
   const bindingIds = new Map<string, string>();
+  const declared = new Map<string, number>();
   const claim = (object: ObjectJson): void => {
     const id = readId(object);
     if (id !== undefined) {
-      objectIds.set(id, allocateId(id));
-      for (const binding of sourceBindings[id] ?? []) {
-        bindingIds.set(binding.id, allocateId(binding.id));
+      const nth = (declared.get(id) ?? 0) + 1;
+      declared.set(id, nth);
+      if (nth > 1) {
+        issues.push({
+          code: "id-collision",
+          detail:
+            `The ${options.unit.label} card declares "${id}" more than once, so its copies ` +
+            "give each declaration an id of its own.",
+        });
+      }
+      // `allocateId` answers the same original with the same id twice over, so
+      // a repeated declaration is minted under a numbered key: `…-2` reads as
+      // the copy of `…` that a second insertion would have minted anyway.
+      const minted = allocateId(nth === 1 ? id : `${id}-${nth}`);
+      objectIds.set(object, minted);
+      // The first declaration keeps the readings; a binding id is unique across
+      // the document, so a second copy of the same declaration cannot have them
+      // too without the validator refusing the pair.
+      if (nth === 1) {
+        firstCopy.set(id, minted);
+        for (const binding of sourceBindings[id] ?? []) {
+          bindingIds.set(binding.id, allocateId(binding.id));
+        }
       }
     }
     for (const child of childrenOf(object)) claim(child);
@@ -170,6 +210,7 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
       y: options.origin.top - numberAt(card, "top"),
     },
     objectIds,
+    firstCopy,
     bindingIds,
   };
 
@@ -283,13 +324,14 @@ function copyObject(
   context: CopyContext,
   isRoot: boolean,
 ): ObjectJson {
-  const id = readId(object);
   const authored = object[VIGILIA_TEXT_PROPERTY];
   const children = childrenOf(object);
 
   return {
     ...object,
-    ...(id === undefined ? {} : { id: context.objectIds.get(id) ?? id }),
+    ...(context.objectIds.has(object)
+      ? { id: context.objectIds.get(object) }
+      : {}),
     ...(isRoot ? rootOf(object, context) : {}),
     ...(isRecord(authored)
       ? { [VIGILIA_TEXT_PROPERTY]: copyText(authored, context) }
@@ -350,7 +392,7 @@ function copiedBindings(
 ): Readonly<Record<string, readonly Binding[]>> {
   const carried: Record<string, readonly Binding[]> = {};
   for (const [objectId, bindings] of Object.entries(source)) {
-    const copied = context.objectIds.get(objectId);
+    const copied = context.firstCopy.get(objectId);
     if (copied === undefined) continue;
     carried[copied] = bindings.map((binding) => ({
       ...binding,

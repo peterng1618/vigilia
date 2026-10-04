@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 
 import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
+import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
 import { reviveScene, serialiseScene } from "@vigilia/scene-fabric";
-import { Canvas, Group, type FabricObject } from "fabric/es";
+import { Canvas, Group, type FabricObject, util } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CARD_LIBRARY, insertCard, instantiateCard } from "./card-library.js";
+import {
+  CARD_LIBRARY,
+  type CardUnit,
+  insertCard,
+  instantiateCard,
+} from "./card-library.js";
+import { cpuCard } from "./new-fabric-theme-cards.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
 import type { ObjectJson } from "./new-fabric-theme-objects.js";
 import { uiCopy } from "./ui-copy.js";
@@ -60,6 +67,15 @@ function stage(): Canvas {
   element.height = 941;
   document.body.append(element);
   return new Canvas(element);
+}
+
+/** Fabric's own revival, so the serialised scene is the one a save would write. */
+async function enliven(card: ObjectJson): Promise<Canvas> {
+  const canvas = stage();
+  const [object] = await util.enlivenObjects<FabricObject>([card]);
+  if (object === undefined) throw new Error("the card could not be revived");
+  canvas.add(object);
+  return canvas;
 }
 
 /** The surface an insertion writes through: the canvas, the history and the
@@ -384,7 +400,109 @@ describe("a global this theme cannot supply", () => {
       }).issues,
     ).toEqual([]);
   });
+});
 
+/**
+ * A card that declares one id twice.
+ *
+ * `WidgetIssue["id-collision"]` was unreachable from `card-library.ts`: the
+ * `claim` walk minted per authored id with no `has` guard, so both copies took
+ * one id and the envelope validator answered `duplicate-id` — after which
+ * `snapshot()` throws and **every later save in that session fails, reported
+ * nowhere**. That is the same unsaveable-session outcome `insertCard` refuses
+ * to create for `unmapped-global`, arriving by the other door, so the guard is
+ * the one `claim()` in `widget.ts` keeps and the extraction left behind.
+ */
+describe("a card that declares one id twice", () => {
+  /** The CPU card with its title part renamed onto its value part's id. */
+  const DUPLICATE_CARD: CardUnit = {
+    id: "group-duplicate-card",
+    label: "Duplicate",
+    build: () => {
+      const card = cpuCard();
+      const parts = card["objects"] as readonly ObjectJson[];
+      const renamed = parts.map((part) =>
+        part["id"] === "cpu-card-title"
+          ? { ...part, id: "cpu-card-value" }
+          : part,
+      );
+      return { ...card, objects: renamed };
+    },
+  };
+
+  const copied = (): ReturnType<typeof instantiateCard> =>
+    instantiateCard({
+      unit: DUPLICATE_CARD,
+      globals: STARTER_GLOBALS,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+
+  it("reports the collision, by name", () => {
+    const issue = copied().issues.find(
+      (entry) => entry.code === "id-collision",
+    );
+
+    expect(issue).toBeDefined();
+    expect(issue?.detail).toContain("cpu-card-value");
+  });
+
+  it("gives each declaration an id of its own, so nothing collides", () => {
+    const parts = partsOf(copied().card);
+    const ids = parts.map((part) => part["id"]);
+
+    // The defect: both copies at one id is what the validator refuses. The
+    // second is numbered the way a second *insertion* would number it, so a
+    // duplicate reads as a copy rather than as an accident.
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("card-cpu-card-value");
+    expect(ids).toContain("card-cpu-card-value-2");
+  });
+
+  it("still serialises and validates — the session stays saveable", async () => {
+    // The whole reason the guard exists. `validateFabricThemeEnvelope` is what
+    // `snapshot()` calls before every save, and it answers `duplicate-id` for
+    // two objects at one id, so a copy that fails here fails every later save.
+    const copy = copied();
+    const scene = serialiseScene(
+      await enliven(copy.card),
+    ) as unknown as Readonly<Record<string, unknown>>;
+
+    const result = validateFabricThemeEnvelope({
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "duplicate-card",
+      // Carried from the starter rather than restated: the validator requires a
+      // declared language, and a restated one is a second place to forget it.
+      metadata: { themeLanguage: "en" },
+      artboard: { width: 1672, height: 941 },
+      scene,
+      bindings: copy.bindings,
+      globals: STARTER_GLOBALS,
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("keeps the readings on one copy, so no binding id is claimed twice", () => {
+    const copy = copied();
+    const ids = Object.values(copy.bindings).flatMap((list) =>
+      list.map((binding) => binding.id),
+    );
+
+    // A binding id is unique across the document. Two copies of one
+    // declaration cannot both carry them without the validator refusing the
+    // pair, so the first keeps them and the second arrives with none — reported
+    // as the collision it is, rather than as a document that cannot be saved.
+    expect(new Set(ids).size).toBe(ids.length);
+    // The CPU card's four readings survive, under the first declaration's id.
+    expect(ids).toHaveLength(4);
+    expect(Object.keys(copy.bindings)).toContain("card-cpu-card-value");
+    expect(Object.keys(copy.bindings)).not.toContain("card-cpu-card-value-2");
+  });
+});
+
+describe("cards this theme cannot express", () => {
   it("refuses a card the library does not have, by name", async () => {
     await expect(
       insertCard(editorStub(stage()) as never, "group-twin-card", {

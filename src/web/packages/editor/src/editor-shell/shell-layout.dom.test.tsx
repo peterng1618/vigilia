@@ -34,6 +34,7 @@ function facade(): EditorActionFacade {
     addText: vi.fn(),
     addShape: vi.fn(),
     addChart: vi.fn(),
+    insertCard: vi.fn(),
     arrange: vi.fn(() => true),
     canArrange: vi.fn(() => true),
     undo: vi.fn(),
@@ -744,6 +745,13 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   // And the menu runs the same construction rather than a second one.
   insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
   expect(session.addShape).toHaveBeenCalledWith("rect");
+
+  // The card arm, which the suite did not exercise at all: removing
+  // `case "card"` from `insertItem` left 216 tests passing, because every
+  // façade here stubs `insertCard`. The unit is one click, so a menu that
+  // quietly dropped it would offer six shapes, four charts and no card.
+  insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
+  expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
 
   layout.destroy();
 });

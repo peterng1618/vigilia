@@ -420,6 +420,16 @@ export class EditorSession {
     options.shell.editor.clipboardManager.setImageImporter((file) =>
       this.#assets.placeImage(options.shell.editor, file),
     );
+    // Same reason, same shape: a pasted or duplicated object is given a new id
+    // by the clipboard, and a binding is keyed by the object that shows it, so
+    // the copy's readings have to be re-keyed by whoever owns the envelope.
+    // Without this a duplicated card arrives claiming to be a CPU card, shows
+    // nothing, and its runs point at the original's binding ids — which the
+    // validator refuses as a duplicate, so the save fails for the session.
+    options.shell.editor.clipboardManager.setBindings({
+      read: () => this.#envelope.bindings ?? {},
+      write: (bindings) => this.#addBindings(bindings),
+    });
     this.#assetPanel = createAssetPanel(
       options.panelHosts.assets,
       this.#assets,
@@ -547,7 +557,7 @@ export class EditorSession {
       addText: () => insertNewText(editor, this.#envelope.globals),
       addShape: (kind) => insertNewShape(editor, this.#envelope.globals, kind),
       addChart: (family) => this.charts.addChart(family),
-      insertCard: (cardId) => void this.#insertCard(cardId),
+      insertCard: (cardId) => this.#insertCard(cardId),
       arrange: (action) => applyArrange(editor, action),
       canArrange: (action) => canArrange(editor, action),
       undo: () => void editor.historyManager.undo(),
@@ -1069,14 +1079,28 @@ export class EditorSession {
   }
 
   /** One card, as a unit. The copy's readings are envelope state, so they land
-   * through the one writer above rather than beside it. */
-  async #insertCard(cardId: string): Promise<void> {
-    await insertCard(this.#options.shell.editor, cardId, {
+   * through the one writer above rather than beside it.
+   *
+   * **The refusal is reported here rather than thrown at a caller.** Three
+   * surfaces dispatch this — the Add pane, the Insert menu and the canvas
+   * context menu — and two of them hold a `void`, so a thrown refusal reached
+   * nobody on those: the author clicked a card, nothing happened, nothing was
+   * said, and an unhandled rejection went to the console. Reporting at the one
+   * owner is what makes it told once on every surface, and the Add pane's
+   * `constructing` does not double-report because nothing rejects.
+   */
+  #insertCard(cardId: string): void {
+    void insertCard(this.#options.shell.editor, cardId, {
       globals: this.#envelope.globals,
       ...(this.#envelope.bindings === undefined
         ? {}
         : { bindings: this.#envelope.bindings }),
       onBindings: (bindings) => this.#addBindings(bindings),
+    }).catch((error: unknown) => {
+      this.#options.shell.editor.errorManager.warn(
+        "controls",
+        error instanceof Error ? error.message : String(error),
+      );
     });
   }
 

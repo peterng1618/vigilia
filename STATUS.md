@@ -43,11 +43,10 @@ The loop, in order:
 
 ## Last completed change
 
-- **A card is insertable as a unit** (plan 1 Task 5). `card-library.ts` owns the starter's eight cards as units and copies one with `createWidgetIdAllocator` — the rule `instantiateWidget` already owns, now shared — so an insertion is a **copy, not a twin**: fresh ids for the group, every part and every binding, the **same** semantic keys, and `provenance` on the root alone, persisted through `SCENE_PERSISTED_PROPERTIES` so it survives a save and reopen.
-- **`insertGroups()` gains a `card` arm and keeps owning the list**, so the Add pane, the Insert menu and the context menu cannot drift; units and primitives sit side by side, neither greyed, and a test fails if the library becomes the only way in.
-- **A card this theme cannot express is refused, not inserted**: an unresolved global survives to `snapshot`, which validates and throws, so a card that arrived anyway would leave a canvas that looks right and a save that fails for the session, told nothing. `§77` keeps explicit global mapping the author's decision, so `unmapped-global` is reported rather than inlined or dropped.
-- **Two copies of one card were producing one binding id twice**, which the validator refuses — the defect the property above exists to catch. Binding ids live in the envelope, not on the canvas, so the copy now reads the document's bindings as well as its object ids.
-- **`ChartManager` learned bindings** (`setBindings`). A chart's series *are* its bindings, and the manager held only what it was constructed with, so every chart in an inserted card would have drawn with no series at all. `EditorSession#setBindings` now delegates to one `#addBindings` that fans out to the runtime and the charts together.
+- **A refused card now reaches the author on all three surfaces.** `EditorSession#insertCard` reports through the editor's own diagnostics instead of throwing at a caller; the Insert menu and the canvas context menu dispatch through a façade typed `void`, so two of three swallowed the refusal — `File > New`, then `Insert > Card > CPU`, did nothing and said nothing. All three surfaces are driven against a real session on a blank theme.
+- **`id-collision` is detected in `card-library.ts`**, the guard `claim()` in `widget.ts` keeps. Two parts declaring one id gave both copies one id, which the validator refuses — so every later save in that session failed, reported nowhere.
+- **A duplicated object carries its readings.** `reassignIds` minted new object ids and nothing re-keyed the envelope's `bindings`, so a duplicated card claimed to be a CPU card, showed nothing, and printed no key; fresh binding ids plus repointed runs keep it valid. Pre-existing, made visible by Task 5.
+- **The card arm is now covered in both menus.** Deleting `case "card"` from `shell-layout.tsx` left 216 tests passing and from `canvas-context-menu.tsx` 175, because every façade stubbed `insertCard`.
 
 ## Next
 

@@ -107,7 +107,7 @@ describe("EditorSession", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
-      clipboardManager: { setImageImporter: vi.fn() },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -180,7 +180,7 @@ describe("EditorSession", () => {
             getObjects: () => [],
             requestRenderAll: vi.fn(),
           },
-          clipboardManager: { setImageImporter: vi.fn() },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
           textManager: {
             addText: vi.fn(),
             setAuthoringView: vi.fn(),
@@ -243,7 +243,7 @@ describe("EditorSession", () => {
             getObjects: () => [],
             requestRenderAll: vi.fn(),
           },
-          clipboardManager: { setImageImporter: vi.fn() },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
           textManager: {
             addText: vi.fn(),
             setAuthoringView: vi.fn(),
@@ -295,7 +295,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
-        clipboardManager: { setImageImporter: vi.fn() },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -363,7 +363,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
-        clipboardManager: { setImageImporter: vi.fn() },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -465,7 +465,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
-        clipboardManager: { setImageImporter: vi.fn() },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -564,7 +564,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
-        clipboardManager: { setImageImporter: vi.fn() },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -637,7 +637,7 @@ describe("EditorSession", () => {
           getObjects: () => [],
           requestRenderAll: vi.fn(),
         },
-        clipboardManager: { setImageImporter: vi.fn() },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
         textManager: {
           addText: vi.fn(),
           setAuthoringView: vi.fn(),
@@ -705,7 +705,7 @@ describe("EditorSession", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
-      clipboardManager: { setImageImporter: vi.fn() },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -766,7 +766,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
-      clipboardManager: { setImageImporter: vi.fn() },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -883,7 +883,7 @@ describe("a save the host refused", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
-      clipboardManager: { setImageImporter: vi.fn() },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),
@@ -1183,7 +1183,7 @@ describe("a save that carries only what changed", () => {
         getObjects: () => [],
         requestRenderAll: vi.fn(),
       },
-      clipboardManager: { setImageImporter: vi.fn() },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
       textManager: {
         addText: vi.fn(),
         setAuthoringView: vi.fn(),

@@ -1,4 +1,8 @@
-import { SCENE_PERSISTED_PROPERTIES } from "@vigilia/scene-fabric";
+import type { Binding } from "@vigilia/renderer-core";
+import {
+  SCENE_PERSISTED_PROPERTIES,
+  VIGILIA_TEXT_PROPERTY,
+} from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
   type Canvas,
@@ -14,12 +18,28 @@ const PASTE_OFFSET = 10;
 /** What places a pasted image. Returns whatever the importer returns. */
 export type ImageImporter = (file: File) => Promise<unknown>;
 
+/**
+ * What a pasted or duplicated object owes the document, written through the
+ * session. **A copy is a copy, not a twin** — see `carryBindings` below.
+ */
+export interface ClipboardBindings {
+  /** The document's readings, keyed by the id of the object that shows them. */
+  readonly read: () => Readonly<Record<string, readonly Binding[]>>;
+  /** Records a copy's readings under its own ids. Envelope state, so the
+   * session writes rather than this module holding a second copy. */
+  readonly write: (
+    additions: Readonly<Record<string, readonly Binding[]>>,
+  ) => void;
+}
+
 export interface ClipboardManager {
   copy(): Promise<boolean>;
   cut(): Promise<boolean>;
   paste(): Promise<boolean>;
   duplicate(object?: FabricObject): Promise<boolean>;
   setImageImporter(importer: ImageImporter): void;
+  /** Installed by the session, which owns the envelope's bindings. */
+  setBindings(bindings: ClipboardBindings): void;
   destroy(): void;
 }
 
@@ -29,14 +49,91 @@ export interface ClipboardManagerOptions {
   readonly errors: ErrorManager;
   readonly deletion: DeletionManager;
   readonly importImage: ImageManager["importImage"];
+  readonly bindings?: ClipboardBindings;
 }
 
-/** A pasted object needs its own id; a duplicate id fails envelope validation. */
-function reassignIds(object: FabricObject): void {
-  object.set("id", `${object.type}-${crypto.randomUUID()}`);
+/** A pasted object needs its own id; a duplicate id fails envelope validation.
+ *
+ * Returns what each id became, which is how a copy's readings travel with it:
+ * a binding is keyed by the object that shows it, so without this a card comes
+ * back named after a CPU card, shows nothing, and prints no key in the tree.
+ */
+function reassignIds(object: FabricObject, ids: Map<string, string>): void {
+  const from = object.get("id");
+  const to = `${object.type}-${crypto.randomUUID()}`;
+  if (typeof from === "string") ids.set(from, to);
+  object.set("id", to);
   if (object instanceof Group) {
-    for (const child of object.getObjects()) reassignIds(child);
+    for (const child of object.getObjects()) reassignIds(child, ids);
   }
+}
+
+/**
+ * The readings a copy carries, under the copy's own object ids and with fresh
+ * binding ids, and the run `bindingId`s repointed at them.
+ *
+ * **A copy is a copy, not a twin.** Two things have to move together or the
+ * author is handed a lie:
+ *
+ *  - The envelope's `bindings` are keyed by object id, and a pasted object has a
+ *    new one, so its readings are stripped at the next save by the same
+ *    `dropDanglingBindings` that protects a deleted object. The copy arrives
+ *    showing nothing at all.
+ *  - A run names its binding by id, so copying a binding *under the original's
+ *    id* would leave two entries claiming one binding id — the validator's
+ *    `duplicate-id`, and an unsaveable session for the rest of the editing
+ *    session. Fresh binding ids with the runs repointed are the only shape that
+ *    both keeps the readings and keeps the document valid.
+ *
+ * The semantic keys are carried across unchanged: a copy bound to a sensor
+ * nobody else names is not a copy of anything.
+ */
+function carryBindings(
+  object: FabricObject,
+  ids: ReadonlyMap<string, string>,
+  bindings: ClipboardBindings,
+): Readonly<Record<string, readonly Binding[]>> {
+  const held = bindings.read();
+  const carried: Record<string, readonly Binding[]> = {};
+  const repoint = new Map<string, string>();
+  for (const [from, to] of ids) {
+    const readings = held[from];
+    if (readings === undefined || readings.length === 0) continue;
+    carried[to] = readings.map((binding) => {
+      const id = `binding-${crypto.randomUUID()}`;
+      repoint.set(binding.id, id);
+      return { ...binding, id };
+    });
+  }
+  if (repoint.size > 0) repointRuns(object, repoint);
+  return carried;
+}
+
+/** Every value run on the copy, at any depth, pointed at the copy's binding. */
+function repointRuns(
+  object: FabricObject,
+  ids: ReadonlyMap<string, string>,
+): void {
+  const authored = object.get(VIGILIA_TEXT_PROPERTY);
+  if (isRecord(authored) && Array.isArray(authored["runs"])) {
+    object.set(VIGILIA_TEXT_PROPERTY, {
+      ...authored,
+      runs: authored["runs"].map((run) => {
+        if (!isRecord(run) || typeof run["bindingId"] !== "string") return run;
+        return {
+          ...run,
+          bindingId: ids.get(run["bindingId"]) ?? run["bindingId"],
+        };
+      }),
+    });
+  }
+  if (object instanceof Group) {
+    for (const child of object.getObjects()) repointRuns(child, ids);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Replaces the fork's text/shape commit hooks; Vigilia objects only need coords. */
@@ -58,6 +155,7 @@ export function createClipboardManager(
 ): ClipboardManager {
   const { canvas, save, errors, deletion } = options;
   let held: FabricObject | undefined;
+  let documentBindings: ClipboardBindings | undefined = options.bindings;
 
   const add = (clone: FabricObject): void => {
     canvas.discardActiveObject();
@@ -75,13 +173,22 @@ export function createClipboardManager(
 
   const place = async (source: FabricObject): Promise<boolean> => {
     const clone = await cloneOf(source);
-    reassignIds(clone);
+    const ids = new Map<string, string>();
+    reassignIds(clone, ids);
     clone.set({
       left: clone.left + PASTE_OFFSET,
       top: clone.top + PASTE_OFFSET,
     });
     settle(clone);
+    // Before the clone joins the canvas, so the first paint it gets is the one
+    // its own readings resolve — an object that arrived ahead of its bindings
+    // would paint blank once and wait for a tick nothing had yet asked for.
+    const carried =
+      documentBindings === undefined
+        ? {}
+        : carryBindings(clone, ids, documentBindings);
     add(clone);
+    if (Object.keys(carried).length > 0) documentBindings?.write(carried);
     return true;
   };
 
@@ -146,6 +253,14 @@ export function createClipboardManager(
         errors.error("clipboard", "Could not duplicate that selection.", error);
         return false;
       }
+    },
+
+    /** Installed by the session, which owns the envelope's bindings. A paste
+     * with no owner for them is the same defect this fixes, one layer down: the
+     * copy's readings would be stripped at the next save and the author told
+     * nothing. */
+    setBindings(bindings: ClipboardBindings): void {
+      documentBindings = bindings;
     },
 
     /** Replaces the image importer.

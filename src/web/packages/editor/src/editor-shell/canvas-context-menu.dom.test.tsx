@@ -238,6 +238,14 @@ it("routes every creation entry through the façade the way its kind says", asyn
 
   inGroup(uiCopy.panels.charts, uiCopy.chartFamilies.gauge)?.click();
   expect(opened.session.addChart).toHaveBeenCalledWith("gauge");
+
+  // The card arm, which this suite did not exercise at all: deleting
+  // `case "card"` from this file's own switch left 175 tests passing, because
+  // every façade here stubs `insertCard`. A right-click that offered six
+  // shapes, four charts and no card would look identical in this file.
+  inGroup(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
+  expect(opened.session.insertCard).toHaveBeenCalledWith("group-cpu-card");
+
   await opened.close();
 });
 
