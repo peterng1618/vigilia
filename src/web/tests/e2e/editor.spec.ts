@@ -14,6 +14,7 @@ import {
   chooseAssetFile,
   clearSceneX,
   clientOfScene,
+  expandLayer,
   objectHandleScenePoint,
   objectRect,
   sceneToClient,
