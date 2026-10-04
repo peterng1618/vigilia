@@ -157,6 +157,27 @@ export async function objectHandleScenePoint(
 }
 
 /**
+ * Opens a group row in the layer tree, the way an author does.
+ *
+ * **A group's parts are rows only while it is open**, and a document starts
+ * with every group shut — so a spec that names a part's row without this waits
+ * out its whole budget on a locator that never matches, and reports a broken
+ * click rather than a shut tree.
+ *
+ * `button[aria-expanded]` rather than a label prefix: a row carries three
+ * buttons — the twisty, Hide and Lock — so `button[aria-label]` is a
+ * strict-mode violation, and only the twisty declares expansion at all.
+ */
+export async function expandLayer(page: Page, groupId: string): Promise<void> {
+  const twisty = page.locator(
+    `[data-vigilia-layer="${groupId}"] button[aria-expanded]`,
+  );
+  if ((await twisty.getAttribute("aria-expanded")) === "true") return;
+  await twisty.click();
+  await expect(twisty).toHaveAttribute("aria-expanded", "true");
+}
+
+/**
  * A named object's world-space bounding rect, read from the object itself so a
  * fixture tweak cannot leave a test clicking at a stale point.
  */

@@ -4482,18 +4482,6 @@ async function enterStarterCard(page: Page, groupId: string): Promise<void> {
  * it first — the same two steps an author takes. Driven through the button
  * rather than the bridge so the row that appears is the one the panel painted.
  */
-async function expandLayer(page: Page, groupId: string): Promise<void> {
-  // `aria-expanded` rather than the label prefix: a row carries three
-  // buttons — the twisty, Hide and Lock — so `button[aria-label]` is a strict
-  // -mode violation, and only the twisty declares expansion at all.
-  const twisty = page.locator(
-    `[data-vigilia-layer="${groupId}"] button[aria-expanded]`,
-  );
-  await expect(twisty).toHaveAttribute("aria-expanded", "false");
-  await twisty.click();
-  await expect(twisty).toHaveAttribute("aria-expanded", "true");
-}
-
 async function assetReferences(page: Page): Promise<unknown[]> {
   return page.evaluate(() => {
     const editor = Object.entries(

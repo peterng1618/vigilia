@@ -13,6 +13,7 @@ import {
   captureVisualReview,
   chooseAssetFile,
   clientOfScene,
+  expandLayer,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
@@ -585,7 +586,21 @@ test.describe("the reference composition, authored", () => {
     // **Bind** — the starter's own sparkline, pointed at another real key
     // through the select the chart panel owns.
     await openPane(page, "Layers");
-    await page.locator('[data-vigilia-layer="cpu-card-sparkline"]').click();
+    // **`cpu-card-sparkline` is a row only once `group-cpu-card` is open**, and
+    // a click on the row selects the *group*: `bridge.selectLayer` takes
+    // `owner ?? target`, which is right for a layer tree and never selects a
+    // part. The document starts with every group shut, so this waited out its
+    // whole 90 s budget on a row that does not exist; expanding it turns that
+    // into the failure it actually is. The selection then comes from the
+    // canvas, where a double-click enters the group and the manager re-resolves
+    // the child under the pointer — the gesture an author uses.
+    await expandLayer(page, "group-cpu-card");
+    const sparkline = await clientOfScene(
+      page,
+      "cpu-card-sparkline",
+      STARTER_WIDTH,
+    );
+    await page.mouse.dblclick(sparkline.x, sparkline.y);
     await expect.poll(() => activeId(page)).toBe("cpu-card-sparkline");
     // A chart selection routes the inspector to its Data tab, which is where
     // the binding select lives.
