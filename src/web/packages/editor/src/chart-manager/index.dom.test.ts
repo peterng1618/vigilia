@@ -119,6 +119,52 @@ describe("ChartManager", () => {
     ).toBe(settings);
   });
 
+  it("keeps a series' paint when its key is repointed", () => {
+    // **Repointing a chart's key emptied its paint, and unmounted the editor.**
+    // The filter asked whether the *binding object* survived, but the panel
+    // hands over `{ ...binding, semanticKey }` — a fresh object for a binding
+    // nobody touched. So the one gesture every author makes on a chart reported
+    // every series removed: the paint array was emptied, `seriesPaintFor` grew
+    // it back by repeating `current.at(-1)` (which is `undefined`), and the
+    // document carried `palette: [null]`.
+    //
+    // `chartPaint` reads a non-record as "must reference a palette token", so
+    // the next `snapshot()` threw `Invalid Fabric theme` from inside React's
+    // `useSyncExternalStore` — a render-phase throw, which unmounts the shell.
+    // Measured: repointing the starter's own sparkline from `cpu.load` to
+    // `gpu.load` unmounted the editor in 200 ms, which is what
+    // `reference-theme.spec.ts:533` then waited 90 s for a save button to
+    // reappear inside.
+    const settings = {
+      palette: [{ ref: "palette.frostInk" }],
+    } as unknown as Parameters<typeof carriedPaintFor>[1];
+    const before = { id: "cpu-card-spark", semanticKey: "cpu.load" };
+    const after = { id: "cpu-card-spark", semanticKey: "gpu.load" };
+
+    // Same series, new key: the paint is untouched, by identity.
+    expect(carriedPaintFor("line", settings, [before], [after])).toBe(settings);
+
+    // The removed case this filter exists for still works, on `id` now.
+    expect(
+      (
+        carriedPaintFor(
+          "line",
+          {
+            palette: [
+              { ref: "palette.cpu" },
+              { ref: "palette.gpu" },
+            ],
+          } as unknown as Parameters<typeof carriedPaintFor>[1],
+          [
+            { id: "b1", semanticKey: "cpu.load" },
+            { id: "b2", semanticKey: "gpu.load" },
+          ],
+          [{ id: "b1", semanticKey: "gpu.temp" }],
+        ) as { palette: unknown }
+      ).palette,
+    ).toEqual([{ ref: "palette.cpu" }]);
+  });
+
   it("draws a chart it did not create once the document's bindings reach it", () => {
     // A chart's series *are* its bindings, and this manager held only what it
     // was constructed with — so a card inserted from the library, whose charts

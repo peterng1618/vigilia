@@ -73,8 +73,32 @@ export function carriedPaintFor(
     field.property
   ];
   if (!Array.isArray(current)) return settings;
+  // **A series is the same series when its `id` is the same.** `next.includes`
+  // asked whether the *object* survived, and the one caller that repoints a key
+  // hands over `{ ...binding, semanticKey }` — a fresh object for a binding that
+  // was not touched. So changing a chart's key reported every series removed,
+  // the paint array was emptied, and `seriesPaintFor` grew the empty array back
+  // to one entry by repeating `current.at(-1)`, which is `undefined`. The
+  // envelope then carried `palette: [null]`.
+  //
+  // That is not a document the validator can accept: `chartPaint` reads a
+  // non-record as "must reference a palette token", so the *next* `snapshot()`
+  // threw `Invalid Fabric theme`. `isDirty()` runs inside React's
+  // `useSyncExternalStore`, so the throw landed in the render phase and React
+  // unmounted the whole editor — canvas, status line and every panel gone —
+  // which is what `reference-theme.spec.ts:533` then timed out on, waiting 90 s
+  // for a save button that was no longer in the document. Measured: repointing
+  // the starter's own sparkline from `cpu.load` to `gpu.load` unmounted the
+  // editor in 200 ms.
+  //
+  // `id` is the identity a binding is minted with and keyed by everywhere else
+  // (`panel.ts` mints it, the run editor keys its bindings by it), so it is the
+  // identity this filter should have used.
   const kept = previous.flatMap((binding, index) =>
-    next.includes(binding) && index < current.length ? [current[index]] : [],
+    next.some((survivor) => survivor.id === binding.id) &&
+    index < current.length
+      ? [current[index]]
+      : [],
   );
   if (kept.length === current.length) return settings;
   return {
