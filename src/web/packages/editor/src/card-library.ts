@@ -2,13 +2,18 @@ import {
   type Binding,
   createWidgetIdAllocator,
   type FabricGlobals,
+  VIGILIA_NAME_PROPERTY,
   type WidgetIssue,
   type WidgetProvenance,
 } from "@vigilia/renderer-core";
 import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
-import { VIGILIA_NAME_PROPERTY } from "@vigilia/renderer-core";
 import { type FabricObject, Group, util } from "fabric/es";
+import {
+  resolveCardToken,
+  type TokenSubstitution,
+} from "./card-token-mapping.js";
 import type { EditorInteraction } from "./editor-interaction.js";
+import { createNewFabricTheme } from "./new-fabric-theme.js";
 import {
   clockCard,
   cpuCard,
@@ -20,7 +25,6 @@ import {
   vramCard,
 } from "./new-fabric-theme-cards.js";
 import { type ObjectJson } from "./new-fabric-theme-objects.js";
-import { createNewFabricTheme } from "./new-fabric-theme.js";
 import { nextNewObjectPlacement } from "./new-object-defaults.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -98,6 +102,12 @@ export interface CardCopy {
   /** Keyed by the copy's own object ids, never the source's. */
   readonly bindings: Readonly<Record<string, readonly Binding[]>>;
   readonly issues: readonly WidgetIssue[];
+  /**
+   * What the destination theme made the card map onto, for `errorManager` to
+   * name. Empty when every reference resolved exactly, which is the
+   * starter-derived case and the only one an author is not told about.
+   */
+  readonly substitutions: readonly TokenSubstitution[];
 }
 
 export interface InstantiateCardOptions {
@@ -153,6 +163,20 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
   const issues: WidgetIssue[] = [];
   const card = options.unit.build();
   const sourceBindings = cardBindings(card);
+  // Mapped before any id is claimed, because the id map is keyed by object
+  // identity and `mapGlobals` rebuilds every object it touches. Mapping first
+  // means one walk rather than two, and the copy below is the only tree an id
+  // ever has to be found in.
+  const mapping = mapGlobals(card, options.globals);
+  for (const ref of mapping.unmappable) {
+    issues.push({
+      code: "unmapped-global",
+      detail:
+        `The ${options.unit.label} card is painted with "${ref}", and this theme has no token ` +
+        "this could map it onto — a same-named token here may mean something else entirely " +
+        "(§77). Add that token, or give the theme one this job, before inserting it.",
+    });
+  }
   const allocateId = createWidgetIdAllocator(
     COPY_PREFIX,
     [...options.existingIds, ...(options.existingBindingIds ?? [])],
@@ -219,25 +243,14 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
     }
     for (const child of childrenOf(object)) claim(child);
   };
-  claim(card);
-
-  for (const ref of globalRefsOf(card)) {
-    if (resolves(options.globals, ref)) continue;
-    issues.push({
-      code: "unmapped-global",
-      detail:
-        `The ${options.unit.label} card is painted with "${ref}", which this theme has no token for. ` +
-        "Add that token, or map this card onto a token the theme already has, before inserting it — " +
-        "a same-named token here may mean something else entirely (§77).",
-    });
-  }
+  claim(mapping.card);
 
   const context: CopyContext = {
     label: options.unit.label,
     provenance: { widgetId: options.unit.id, widgetName: options.unit.label },
     offset: {
-      x: options.origin.left - numberAt(card, "left"),
-      y: options.origin.top - numberAt(card, "top"),
+      x: options.origin.left - numberAt(mapping.card, "left"),
+      y: options.origin.top - numberAt(mapping.card, "top"),
     },
     objectIds,
     firstCopy,
@@ -245,9 +258,10 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
   };
 
   return {
-    card: copyObject(card, context, true),
+    card: copyObject(mapping.card, context, true),
     bindings: copiedBindings(sourceBindings, context),
     issues,
+    substitutions: mapping.substitutions,
   };
 }
 
@@ -255,11 +269,17 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
  * Inserts one card as a unit: a copy on the canvas, its readings recorded under
  * its own ids, one history entry, left selected.
  *
- * **A card this theme cannot express is refused, not inserted.** An unresolved
- * reference survives to `snapshot`, which validates and throws — so a card that
- * arrived anyway would leave the author with a canvas that looks right and a save
- * that fails for the rest of the session, told nothing. This is the same refusal
- * the Add pane already makes for a theme with no palette token to build from.
+ * **A card this theme cannot express is refused; a card it can express
+ * differently is mapped and named.** The refusal survives for the case that
+ * made it necessary — an unresolved reference survives to `snapshot`, which
+ * validates and throws, so a card that arrived anyway would leave the author
+ * with a canvas that looks right and a save that fails for the rest of the
+ * session, told nothing. What changed is that "this theme has no token for
+ * `palette.cpu`" no longer *is* the answer when the theme has a CPU colour
+ * under another name: `card-token-mapping.ts` resolves the reference first, and
+ * what it had to substitute is reported through `errorManager` naming every
+ * token. On the host's default two-token palette every card used to refuse; now
+ * every card inserts, mapped onto what that theme actually has.
  */
 export async function insertCard(
   editor: EditorInteraction,
@@ -310,11 +330,42 @@ export async function insertCard(
   // the canvas, so an object that arrived ahead of its bindings would paint once
   // blank and wait for a tick nothing had yet asked for.
   editor.canvas.add(object);
+  // **Told here, between the two.** Before the readings, because recording them
+  // resolves every bound run and a document with no source for one throws —
+  // which would swallow the only sentence explaining why the card now looks
+  // different. And before `saveState`, because the shell retires a diagnostic on
+  // the next committed edit, and the edit that would retire this one is this
+  // insert.
+  if (copy.substitutions.length > 0)
+    reportSubstitutions(editor, unit.label, copy.substitutions);
   options.onBindings(copy.bindings);
   editor.canvas.setActiveObject(object);
   editor.historyManager.saveState();
   editor.canvas.requestRenderAll();
   return object;
+}
+
+/**
+ * What the theme made the card map onto, in one line an author can act on.
+ *
+ * Every substituted token is named: a mapping that says only "the card was
+ * adjusted" leaves the author with a card painted in a colour they did not
+ * choose and no way to learn which token to edit. `warn`, not `error`, because
+ * nothing failed — the card is on the canvas and the document saves.
+ */
+function reportSubstitutions(
+  editor: EditorInteraction,
+  cardLabel: string,
+  substitutions: readonly TokenSubstitution[],
+): void {
+  const named = substitutions
+    .map((entry) => `"${entry.from}" → "${entry.to}"`)
+    .join(", ");
+  editor.errorManager.warn(
+    "controls",
+    `The ${cardLabel} card was inserted with ${named}, because this theme has no ` +
+      "token of its own there — edit the card's paint to change it.",
+  );
 }
 
 function cardUnit(cardId: string): CardUnit {
@@ -443,29 +494,78 @@ function copiedBindings(
   return carried;
 }
 
-/** Every global the card names, at any depth, whichever field happens to carry it. */
-function globalRefsOf(value: unknown, found = new Set<string>()): Set<string> {
-  if (typeof value === "string") {
-    if (/^(?:palette|typePresets)\.[A-Za-z0-9_-]+$/.test(value))
-      found.add(value);
-  } else if (Array.isArray(value)) {
-    for (const entry of value) globalRefsOf(entry, found);
-  } else if (isRecord(value)) {
-    for (const entry of Object.values(value)) globalRefsOf(entry, found);
-  }
-  return found;
+interface MappedCard {
+  /** The card with every reference resolved against the destination theme. */
+  readonly card: ObjectJson;
+  /** What was swapped, for `errorManager` to name to the author. */
+  readonly substitutions: readonly TokenSubstitution[];
+  /** References this theme cannot express at all, so the card is refused. */
+  readonly unmappable: readonly string[];
 }
 
-function resolves(globals: FabricGlobals | undefined, ref: string): boolean {
-  const at = ref.indexOf(".");
-  if (at < 0) return false;
-  const group = ref.slice(0, at);
-  const entry = ref.slice(at + 1);
-  if (group === "palette") return globals?.palette?.[entry] !== undefined;
-  if (group === "typePresets") {
-    return globals?.typePresets?.[entry] !== undefined;
-  }
-  return false;
+/**
+ * The card, with every global it names resolved against the document it is
+ * being inserted into.
+ *
+ * One walk, not a collect-then-rewrite pair: a card that named a reference in
+ * a field this module had not been taught about would be caught by the same
+ * recursion that finds the fields it knows, rather than by a second traversal
+ * that has to be kept in step with the first.
+ *
+ * **The invariant this exists to protect: no unresolved `palette.*` or
+ * `typePresets.*` reference ever reaches the document.** An unresolved
+ * reference survives to `snapshot`, which validates and throws, so a card that
+ * arrived anyway would leave the author with a canvas that looks right and a
+ * save that fails for the rest of the session.
+ */
+function mapGlobals(
+  card: ObjectJson,
+  globals: FabricGlobals | undefined,
+): MappedCard {
+  const substitutions: TokenSubstitution[] = [];
+  const unmappable: string[] = [];
+  const resolve = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      if (!/^(?:palette|typePresets)\.[A-Za-z0-9_-]+$/.test(value))
+        return value;
+      const resolved = resolveCardToken(value, globals);
+      if (resolved.ref !== undefined) {
+        if (resolved.substitutedFor !== undefined) {
+          substitutions.push({
+            from: resolved.substitutedFor,
+            to: resolved.ref,
+            reason: "role",
+          });
+        }
+        return resolved.ref;
+      }
+      if (resolved.literal) {
+        substitutions.push({
+          from: value,
+          to: "the card's own type, written onto the object",
+          reason: "literal",
+        });
+        // The run keeps the object-level `fontFamily`/`fontSize`/`fontWeight`
+        // the card already authored; a key whose value is `undefined` is what
+        // dropping it means, and `copyObject`'s spread drops it for us.
+        return undefined;
+      }
+      unmappable.push(value);
+      return value;
+    }
+    if (Array.isArray(value)) return value.map(resolve);
+    if (!isRecord(value)) return value;
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, entry]) => [key, resolve(entry)] as const)
+        .filter(([, entry]) => entry !== undefined),
+    );
+  };
+  return {
+    card: resolve(card) as ObjectJson,
+    substitutions,
+    unmappable,
+  };
 }
 
 /** Every id the canvas already holds, descending into groups. */

@@ -573,6 +573,23 @@ const SURFACE_TOKENS = [
   "charttrack",
 ];
 
+/**
+ * Whether a palette token id names a surface or content ink.
+ *
+ * Exported because two places now ask the same question — what token in *this*
+ * document does this job — and a card mapped against a private copy of the
+ * lists would be a second answer to a question with one right answer: a
+ * surface substituted with an ink colour is a card nobody can read, and the
+ * lists above are already the answer for a *new* object.
+ *
+ * `CARD_SURFACE_TOKENS` is the surface side rather than `SURFACE_TOKENS`,
+ * because `panel` and `frost` are surfaces too and a card asks for them by
+ * name. Matching is case-insensitive for the reason `surfacePalette` gives.
+ */
+export function paletteTokenRole(id: string): "surface" | "ink" {
+  return CARD_SURFACE_TOKENS.includes(id.toLowerCase()) ? "surface" : "ink";
+}
+
 /** The surfaces a *card* takes, ahead of the scene's own: a shape filled with
     the backdrop is that backdrop again, and nothing an author can select. */
 const CARD_SURFACE_TOKENS = ["panel", "frost", ...SURFACE_TOKENS];

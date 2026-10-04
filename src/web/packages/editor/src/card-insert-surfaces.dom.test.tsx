@@ -156,8 +156,24 @@ beforeEach(() => {
   document.body.replaceChildren();
 });
 
-describe("a card this theme cannot express", () => {
-  it("is refused, and the author is told, from the Add pane", async () => {
+/**
+ * A theme whose palette is not the starter's.
+ *
+ * `vg-128`, and the finding that made it a design question rather than a bug.
+ * This is the **blank theme** — `File > New`, ten tokens, none of them a
+ * device's colour — and it is where the ruling bites hardest: **seven of the
+ * eight cards used to be refused here**, because refusing is what kept an
+ * unresolved reference out of a document that `snapshot` validates and throws
+ * on. The refusal was safe and it was unusable, and the library was dead exactly
+ * where an author meets it first.
+ *
+ * So a blank theme now *inserts*, and says what it mapped. The refusal survives
+ * for the theme that genuinely cannot express a card at all, which is a
+ * document with no palette to build from — the Add pane's own rule, and pinned
+ * below through the same three surfaces an author can reach.
+ */
+describe("a card a theme with its own vocabulary cannot name", () => {
+  it("is inserted and mapped, and the author is told, from the Add pane", async () => {
     const { session, errors, canvas } = wiredSession();
     const panel = createNewObjectPanel(document.body, editorOf(canvas, errors), {
       palette: BLANK.globals?.palette ?? {},
@@ -173,16 +189,17 @@ describe("a card this theme cannot express", () => {
     cpu?.click();
     await flush();
 
+    // **Both halves.** The card is on the canvas, and nothing in it is
+    // unresolved: the blank theme has no `palette.cpu`, so the card's icon and
+    // sparkline are painted with the content token it does have. Naming the
+    // substituted token is what makes that editable rather than surprising.
+    expect(canvas.getObjects()).toHaveLength(1);
     expect(told.join(" ")).toContain(uiCopy.cardLibrary.cpu);
-    // Refused rather than inserted: an unresolved reference survives to
-    // `snapshot`, which validates and throws, so a card that arrived anyway
-    // would leave a canvas that looks right and a save that fails for the
-    // session, told nothing.
-    expect(canvas.getObjects()).toHaveLength(0);
+    expect(told.join(" ")).toContain("palette.cpu");
     session.destroy();
   });
 
-  it("is refused, and the author is told, from the Insert menu", async () => {
+  it("is inserted and mapped, and the author is told, from the Insert menu", async () => {
     const { session, errors, canvas } = wiredSession();
     const host = document.createElement("div");
     const layout = createShellLayout(host);
@@ -202,13 +219,13 @@ describe("a card this theme cannot express", () => {
     entry?.click();
     await flush();
 
-    expect(told.join(" ")).toContain(uiCopy.cardLibrary.cpu);
-    expect(canvas.getObjects()).toHaveLength(0);
+    expect(canvas.getObjects()).toHaveLength(1);
+    expect(told.join(" ")).toContain("palette.cpu");
     layout.destroy();
     session.destroy();
   });
 
-  it("is refused, and the author is told, from the canvas context menu", async () => {
+  it("is inserted and mapped, and the author is told, from the canvas context menu", async () => {
     const { session, errors, canvas } = wiredSession();
     const host = document.createElement("div");
     document.body.append(host);
@@ -235,8 +252,8 @@ describe("a card this theme cannot express", () => {
     entry?.click();
     await flush();
 
-    expect(told.join(" ")).toContain(uiCopy.cardLibrary.cpu);
-    expect(canvas.getObjects()).toHaveLength(0);
+    expect(canvas.getObjects()).toHaveLength(1);
+    expect(told.join(" ")).toContain("palette.cpu");
     root.unmount();
     session.destroy();
   });

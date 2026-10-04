@@ -3,7 +3,7 @@
 import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
 import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
 import { reviveScene, serialiseScene } from "@vigilia/scene-fabric";
-import { Canvas, Group, type FabricObject, util } from "fabric/es";
+import { Canvas, type FabricObject, Group, util } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CARD_LIBRARY,
@@ -11,8 +11,8 @@ import {
   insertCard,
   instantiateCard,
 } from "./card-library.js";
-import { cpuCard } from "./new-fabric-theme-cards.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
+import { cpuCard } from "./new-fabric-theme-cards.js";
 import type { ObjectJson } from "./new-fabric-theme-objects.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -399,6 +399,159 @@ describe("a global this theme cannot supply", () => {
         origin: { left: 0, top: 0 },
       }).issues,
     ).toEqual([]);
+  });
+});
+
+/**
+ * A theme whose vocabulary is not the starter's.
+ *
+ * `vg-128`, and the finding that made it a design question rather than a bug:
+ * the old answer was to refuse, which is safe — an unresolved reference reaches
+ * `snapshot`, validates and throws — and unusable, because **on the host's
+ * default two-token palette every card refused and on a blank theme seven of the
+ * eight did**. The library was dead exactly where an author meets it first.
+ *
+ * These are the pins for the replacement. The card is inserted, it carries
+ * nothing the validator will refuse, the author is told what changed, and a
+ * theme that genuinely cannot express the card is still refused.
+ */
+describe("a theme whose vocabulary is not the starter's", () => {
+  /**
+   * Two tokens the card never names, under the ids a theme is *about* rather
+   * than the ids this starter happens to use.
+   *
+   * The role vocabulary (`paletteTokenRole`) reads a token's id, so the fixture
+   * has to use ids the vocabulary recognises — `surface` and `ink` are its own
+   * words, and a theme naming its page `page` rather than `surface` falls to
+   * the "first token this document happens to have" fallback, exactly as a new
+   * object's surface does.
+   */
+  const FOREIGN: FabricGlobals = {
+    palette: {
+      none: STARTER_GLOBALS.palette!["none"],
+      surface: {
+        name: "Surface",
+        value: { kind: "solid", color: "#101418" },
+      },
+      ink: { name: "Ink", value: { kind: "solid", color: "#e8f0fa" } },
+    },
+    typePresets: {
+      label: {
+        name: "Label",
+        value: { family: "Inter, sans-serif", size: 14, trioRole: "body" },
+      },
+    },
+  } as FabricGlobals;
+
+  it("inserts the card rather than refusing it", async () => {
+    const canvas = stage();
+    const editor = editorStub(canvas);
+
+    await insertCard(editor as never, CPU_CARD, {
+      globals: FOREIGN,
+      onBindings: vi.fn(),
+    });
+
+    expect(canvas.getObjects()).toHaveLength(1);
+    expect(copy(canvas)).toBeInstanceOf(Group);
+  });
+
+  it("carries no unresolved reference, so the document still saves", () => {
+    // The pin that matters most. Every other assertion in this block would
+    // pass on a card that looks right and refuses to save — which is the exact
+    // failure the refusal was there to prevent, and the reason this is asserted
+    // against `validateFabricThemeEnvelope` rather than by reading the refs.
+    //
+    // The starter's own artboard is not reused: it names `palette.bars` and
+    // `palette.none`, which this theme does not have, and those two would fail
+    // the assertion for reasons that have nothing to do with the card.
+    const copied = instantiateCard({
+      unit: unit(CPU_CARD),
+      globals: FOREIGN,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+
+    const envelope = {
+      ...createNewFabricTheme(),
+      artboard: {
+        width: 1672,
+        height: 941,
+        background: { ref: "palette.surface" },
+        barColor: { ref: "palette.none" },
+      },
+      globals: FOREIGN,
+      // The starter's own bindings name objects this scene does not carry, so
+      // keeping them would fail the envelope on `unresolved-binding-ref` — the
+      // card's own readings are added below and are what the claim is about.
+      bindings: copied.bindings,
+      scene: { version: "7.4.0", objects: [copied.card] },
+    };
+
+    // `ok`, not a filter on the issue codes: the whole claim is that the
+    // document is saveable, and a card that carried one unresolved reference
+    // among several other issues would pass a filter naming only that one.
+    expect(validateFabricThemeEnvelope(envelope).ok).toBe(true);
+  });
+
+  it("tells the author which tokens were substituted, by name", async () => {
+    const editor = editorStub(stage());
+
+    await insertCard(editor as never, CPU_CARD, {
+      globals: FOREIGN,
+      onBindings: vi.fn(),
+    });
+
+    const [category, message] = editor.errorManager.warn.mock.calls[0]!;
+    expect(category).toBe("controls");
+    // Naming the token is the whole point: a card painted in a colour the
+    // author did not choose, with nothing saying which one to edit, is a card
+    // they cannot correct.
+    expect(message).toContain("palette.frost");
+    expect(message).toContain("palette.text");
+  });
+
+  it("maps by role, so a surface never lands on an ink", () => {
+    const copied = instantiateCard({
+      unit: unit(CPU_CARD),
+      globals: FOREIGN,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+
+    // `frost` is the card's box and `surface` is the theme's; `panelStroke` and
+    // `cpu` are ink and `ink` is the theme's. Answering both by "the first
+    // token" would put the card's own surface on the theme's ink — a caption on
+    // a caption, which is the failure the roles exist to prevent.
+    const panel = partsOf(copied.card)[0];
+    expect(panel?.["vigiliaPaint"]).toEqual({
+      fill: "palette.surface",
+      stroke: "palette.ink",
+    });
+  });
+
+  it("is still refused when the theme has no token to map onto at all", async () => {
+    // A document with no palette cannot express a painted card, and the
+    // validator refuses a literal here too — so the refusal stands. This is the
+    // case the original rule was written for, and it must not have been traded
+    // away for the mapping.
+    await expect(
+      insertCard(editorStub(stage()) as never, CPU_CARD, {
+        globals: undefined,
+        onBindings: vi.fn(),
+      }),
+    ).rejects.toThrow(/palette\.frost/);
+  });
+
+  it("says nothing when every token was already there", async () => {
+    const editor = editorStub(stage());
+
+    await insertCard(editor as never, CPU_CARD, {
+      globals: STARTER_GLOBALS,
+      onBindings: vi.fn(),
+    });
+
+    expect(editor.errorManager.warn).not.toHaveBeenCalled();
   });
 });
 

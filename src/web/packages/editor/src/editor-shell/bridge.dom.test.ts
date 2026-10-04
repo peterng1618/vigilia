@@ -326,6 +326,39 @@ it("projects the entered group's context as ids, never Fabric objects", () => {
   expect(bridge.groupContext()).toEqual(["group"]);
 });
 
+it("expands the entered group in the projection, so the panel agrees with the canvas", () => {
+  // An author who has entered a card is inside it, and a tree still showing
+  // that card shut — with an *Expand* button and no row for the part they are
+  // editing — is telling them they are somewhere they are not. This is the only
+  // place the two surfaces could contradict each other outright, and the
+  // projection is where it is answered: the canvas entry and the panel read the
+  // same context, rather than the panel being told to expand by a second path.
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  let entered: readonly unknown[] = [];
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => entered },
+  });
+
+  const ids = (): readonly string[] =>
+    bridge.layers().map((row: { id: string }) => row.id);
+  expect(ids()).toEqual(["group"]);
+
+  entered = [group];
+  expect(ids()).toEqual(["group", "child"]);
+  expect(
+    bridge.layers().find((row: { id: string }) => row.id === "group")
+      ?.collapsed,
+  ).toBe(false);
+
+  // Leaving collapses it again, because the context no longer names it — and it
+  // is derived, not recorded, so a group the author had opened themselves is
+  // still open when they come back out of some *other* group.
+  entered = [];
+  expect(ids()).toEqual(["group"]);
+});
+
 it("reveals a hidden ancestor path but hides only the requested object", () => {
   const child = new Rect({ id: "child", width: 10, height: 10 });
   // The sibling is hidden on its own account: revealing the child must not

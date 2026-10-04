@@ -171,6 +171,35 @@ export function createEditorShellBridge(input: {
   // starter opens as ten rows rather than sixty — without this shell having to
   // enumerate groups to seed anything, and a group created later is shut too.
   const openedGroups = new Set<string>();
+  /**
+   * What the panel is shown: the author's own openings, plus whatever the
+   * canvas has entered.
+   *
+   * **Derived, not recorded.** A double-click that enters a card makes the
+   * author inside it, and a tree still showing that card shut with an *Expand*
+   * button is telling them they are somewhere they are not — the one place the
+   * panel could contradict the canvas outright. Reading the context here rather
+   * than writing to `openedGroups` from `grouping-manager` is what keeps the two
+   * surfaces on one path: leaving the group shuts it again because the context
+   * no longer names it, and a group the author had opened themselves stays open,
+   * which a recorded expansion would have shut behind them.
+   *
+   * The ancestor path is included because a group is entered by one hop from
+   * whatever was selected, so a nested entry whose parent is shut would
+   * otherwise expand a row the panel never shows.
+   */
+  const expansionFor = (): ReadonlySet<string> => {
+    const entered = groupContext();
+    if (entered.length === 0) return openedGroups;
+    const expanded = new Set(openedGroups);
+    const root = canvas.getObjects();
+    for (const id of entered)
+      for (const ancestor of pathTo(root, id)) {
+        const ancestorId = (ancestor as { id?: unknown }).id;
+        if (typeof ancestorId === "string") expanded.add(ancestorId);
+      }
+    return expanded;
+  };
   const layers = (): readonly LayerRow[] => {
     const active = canvas.getActiveObject();
     const selected =
@@ -182,7 +211,7 @@ export function createEditorShellBridge(input: {
     return projectLayers({
       root: canvas.getObjects(),
       selected,
-      expanded: openedGroups,
+      expanded: expansionFor(),
       // Pulled, never held: bindings are envelope state the session owns, and a
       // row whose bound key went stale after an edit would name a key the
       // document no longer declares.
