@@ -1022,3 +1022,31 @@ it("keeps every row reachable in a scene with two hundred of them", async () => 
   // nothing, so a scene that big opens without 400 icons of noise.
   expect(host.querySelectorAll("[data-vigilia-layer] button")).toHaveLength(0);
 });
+
+it("selects any one of two hundred rows through the panel's own click", async () => {
+  // The "selects" half of *"a theme of two hundred loose shapes opens, selects,
+  // moves and styles every one of them"*. The test above proves every row
+  // **renders**; this proves the click still reaches the bridge for a row deep
+  // in a scene with no group anywhere, which is the case where a selection
+  // quietly resolves to the wrong object — `bridge.selectLayer` deliberately
+  // selects `owner ?? target`, and with no owner every row is its own owner.
+  //
+  // Sampled across the tree rather than at one depth, because a resolver that
+  // only works near the top is not a resolver.
+  const rows = Array.from({ length: 200 }, (_, at) =>
+    layerRow({ id: `loose-${at}`, name: `loose-${at}`, kind: "shape" }),
+  );
+  const selectLayer = vi.fn();
+  const host = await renderPanel(rows, { selectLayer });
+
+  for (const at of [0, 57, 142, 199]) {
+    const id = `loose-${at}`;
+    await act(async () =>
+      host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)?.click(),
+    );
+    // One call, naming that row and nothing else — a panel that answered every
+    // click with the same id would satisfy a count-only assertion.
+    expect(selectLayer.mock.calls).toEqual([[id]]);
+    selectLayer.mockClear();
+  }
+});
