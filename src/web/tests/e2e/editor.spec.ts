@@ -2469,11 +2469,29 @@ test.describe("Fabric editor route", () => {
     // refused replace clears the selection and the geometry below reads the
     // active object.
     await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    // **A PNG that actually decodes, and that is the whole fix.** The previous
+    // fixture was 50 bytes of a truncated PNG — `libpng` rejects it outright —
+    // so the *reopened* document had no image object and the tail of this test
+    // read that as a broken round trip. It was not one: the saved envelope
+    // demonstrably carries `vigiliaAsset: { assetId: "logo", kind: "image" }`
+    // and no `src`, which is exactly right, and Fabric then drops the object
+    // because `fromURL` cannot decode bytes that are not an image. Measured on
+    // the editor at this revision: with the truncated bytes the reopen holds 60
+    // objects and no image; with these, 61 and the image, same id and same
+    // reference.
+    //
+    // **The same 20x20 as the import, and the same reason it matters.** The
+    // selection geometry above is read off the object against its own
+    // `width * scaleX`, which is Fabric's cached size from the *import* —
+    // `replace` swaps bytes and does not re-decode, so a replacement of a
+    // different size leaves the cache describing a picture that is no longer
+    // there. Same size, different pixels: the bytes differ, which is what
+    // "replace" has to prove, and nothing else moves.
     await chooseAssetFile(page, "replace", {
       name: "logo.png",
       mimeType: "image/png",
       buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABJLR0AcHhtczMAAAGH",
+        "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAANUlEQVQ4jWP8////fwYiwAePAmKUMTARpYoEMGrgqIGDwUDG9+75ROUUYsHg9/KogaMGkgEAOzoIbzncHVkAAAAASUVORK5CYII=",
         "base64",
       ),
     });
@@ -4036,6 +4054,12 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toHaveText(
       "Opened reorder.vigilia-theme",
     );
+    // **`child` is a row only once `grp` is open**, and a group opens the way an
+    // author opens it. Without this the drag below waits out its 30 s budget on
+    // a row that does not exist — which reads as a broken drag rather than as a
+    // shut tree. Expanded before `beforePanel` is read, so both order readings
+    // contain the child and the reorder assertion compares like with like.
+    await expandLayer(page, "grp");
 
     const panelOrder = (): Promise<(string | null)[]> =>
       page

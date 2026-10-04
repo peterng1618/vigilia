@@ -4,12 +4,16 @@ import {
   clientOfScene,
   objectHandleScenePoint,
   sceneToClient,
+  worldLeftOf,
 } from "./editor-canvas.js";
 import { isDesktopSurface } from "./surface.js";
 
 // Built editor E2E host, started by Playwright config.
 const EDITOR = "http://127.0.0.1:4174/";
 const ARTBOARD_WIDTH = 800;
+/** Wider than `ARTBOARD_WIDTH`, because the part-level fixture puts two cards
+ *  side by side with a third object between them. */
+const NESTED_ARTBOARD = 1200;
 
 type Kind = "shape" | "text" | "group";
 type Rect = { left: number; top: number; width: number; height: number };
@@ -136,23 +140,26 @@ async function openFixture(
   await expect(page.locator("#status")).toContainText("Opened snapping-");
 }
 
-async function expectActiveTarget(page: Page): Promise<void> {
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const bridge = (
-          window as unknown as {
-            vigiliaEditorBridge: {
-              editor: {
-                canvas: { getActiveObject(): { id?: string } | undefined };
-              };
+/** The id of whatever the canvas currently has selected. */
+async function activeObjectId(page: Page): Promise<unknown> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getActiveObject(): { get(name: string): unknown } | undefined;
             };
-          }
-        ).vigiliaEditorBridge;
-        return bridge.editor.canvas.getActiveObject()?.id;
-      }),
-    )
-    .toBe("mover");
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    return bridge.editor.canvas.getActiveObject()?.get("id");
+  });
+}
+
+async function expectActiveTarget(page: Page): Promise<void> {
+  await expect.poll(() => activeObjectId(page)).toBe("mover");
 }
 
 async function objectRect(page: Page, id: string): Promise<Rect> {
@@ -613,6 +620,189 @@ async function resizeTextSideTo(
   if (options.ctrl) await page.keyboard.up("Control");
   await page.mouse.up();
   return { right, guideRows };
+}
+
+/**
+ * `vg-123`: what a card's *parts* snap to.
+ *
+ * The open question is whether a part inside one card aligns to a part inside
+ * another, and this measures it rather than deciding it. The two resize specs
+ * this file already had resized whole cards, which is what an author drags and
+ * what the product snaps, so part-level targets were left unmeasured — and
+ * `collectSnapSources` walks `canvas.forEachObject`, which enumerates roots
+ * only, so the answer this file records is the one the code gives today.
+ *
+ * The fixture is deliberately asymmetric: `right-card`'s part sits 60 units in
+ * from the card's own left edge, so the part-level line and the card-level
+ * line are 60 apart and no tolerance can confuse them. Three readings are
+ * possible and all three are recorded:
+ *
+ *  - **part** — the edge joined the neighbouring part's world left.
+ *  - **card** — it joined the neighbouring card's world left, which is what
+ *    `forEachObject` yields and the only group line near the part's edges.
+ *  - **none** — it did not snap at all, which the loose-shape control below
+ *    is what rules out.
+ *
+ * The control is the same gesture against a loose shape at the same place:
+ * without it, "landed on the card line" could mean the gesture never snapped
+ * at all, and the reading would be about nothing.
+ */
+test.describe("a part inside a card", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  });
+
+  test("records which objects a part's edge aligns to", async ({ page }) => {
+    await openNestedFixture(page);
+    const partLine = await worldLeftOf(page, "right-card-part");
+    const cardLine = await worldLeftOf(page, "right-card");
+    const looseLine = await worldLeftOf(page, "loose-source");
+
+    // The three lines are far enough apart that no tolerance can confuse them,
+    // and the drag aims at `partLine` alone.
+    expect(Math.abs(partLine - cardLine)).toBeGreaterThan(40);
+    expect(Math.abs(partLine - looseLine)).toBeGreaterThan(40);
+
+    const result = await resizePartInsideCardTo(page, partLine - 2);
+    const landed = result.right;
+
+    /** Recorded rather than asserted, so the run reports the answer without
+     *  deciding it: whether parts should align to parts is the user's call. */
+    const snappedTo = (() => {
+      if (Math.abs(landed - partLine) < SNAPPED_TOLERANCE) return "part";
+      if (Math.abs(landed - cardLine) < SNAPPED_TOLERANCE) return "card";
+      if (Math.abs(landed - looseLine) < SNAPPED_TOLERANCE) return "loose";
+      return "none";
+    })();
+    test.info().annotations.push({
+      type: "vg-123",
+      description: `a resized part aligned to the ${snappedTo} line: ${landed} (part ${partLine}, card ${cardLine}, loose ${looseLine})`,
+    });
+
+    // **The gesture snapped**, which is what the reading rests on and what the
+    // card-level or none answers would otherwise leave open.
+    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+    // And the part actually resized, rather than the drag having been refused.
+    expect(Math.abs(landed - result.raw)).toBeGreaterThan(1);
+  });
+
+  test("the same gesture snaps to a loose shape in the same place", async ({
+    page,
+  }) => {
+    await openNestedFixture(page);
+    const line = await worldLeftOf(page, "loose-source");
+    const result = await resizeLooseShapeTo(page, line - 2);
+    expect(Math.abs(result.right - line)).toBeLessThan(SNAPPED_TOLERANCE);
+    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+  });
+});
+
+/** Two cards with a part inside each, plus one loose shape, on one artboard. */
+async function openNestedFixture(page: Page): Promise<void> {
+  await page.goto(EDITOR);
+  const card = (id: string, left: number) => ({
+    type: "Group",
+    id,
+    left,
+    top: 300,
+    width: 400,
+    height: 200,
+    originX: "left",
+    originY: "top",
+    fill: "transparent",
+    objects: [rect(`${id}-part`, 60, 40, 60)],
+  });
+  const result = writeThemePackage({
+    envelope: {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "snapping-part-level",
+      metadata: { themeLanguage: "en" },
+      artboard: { width: NESTED_ARTBOARD, height: 800 },
+      globals: paint(),
+      scene: {
+        version: "7.4.0",
+        objects: [
+          card("left-card", 100),
+          card("right-card", 700),
+          rect("loose-source", 900, 560),
+        ],
+      },
+    },
+    assets: {},
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.message);
+  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+    name: "snapping-part-level.vigilia-theme",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from(result.bytes),
+  });
+  await expect(page.locator("#status")).toContainText(
+    "Opened snapping-part-level",
+  );
+}
+
+/**
+ * Enters `right-card` and drags its part's `br` handle so the right edge lands
+ * unsnapped at `rawRight`.
+ *
+ * Entering is the double-click the layer tree's own entry uses, because
+ * `bridge.selectLayer` selects the owning group: a single click on the part
+ * hands back the card, and the drag would then be the card's. `objectRect`
+ * reads world space, so the measurement stays comparable across the entry.
+ */
+async function resizePartInsideCardTo(
+  page: Page,
+  rawRight: number,
+): Promise<{ right: number; raw: number; guideRows: number }> {
+  await enterPart(page, "right-card-part");
+  const before = await objectRect(page, "right-card-part");
+  const corner = await objectHandleScenePoint(page, "right-card-part", "br");
+  const from = await sceneToClient(page, NESTED_ARTBOARD, corner.x, corner.y);
+  const target = await sceneToClient(page, NESTED_ARTBOARD, rawRight, corner.y);
+  const travelled = await sceneTravel(page, from, target);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.keyboard.down("Shift");
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+  const rect = await objectRect(page, "right-card-part");
+  const guideRows = await guideRowsAtSceneX(page, rect.left + rect.width);
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+  return {
+    right: rect.left + rect.width,
+    raw: before.left + before.width + travelled,
+    guideRows,
+  };
+}
+
+/** The same drag on a loose shape, which is the control for the above. */
+async function resizeLooseShapeTo(
+  page: Page,
+  rawRight: number,
+): Promise<{ right: number; guideRows: number }> {
+  await page.locator('[data-vigilia-layer="loose-source"]').click();
+  const corner = await objectHandleScenePoint(page, "loose-source", "br");
+  const from = await sceneToClient(page, NESTED_ARTBOARD, corner.x, corner.y);
+  const target = await sceneToClient(page, NESTED_ARTBOARD, rawRight, corner.y);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.keyboard.down("Shift");
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+  const rect = await objectRect(page, "loose-source");
+  const right = rect.left + rect.width;
+  const guideRows = await guideRowsAtSceneX(page, right);
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+  return { right, guideRows };
+}
+
+/** Double-click a part on the canvas, which enters its owning group. */
+async function enterPart(page: Page, id: string): Promise<void> {
+  const centre = await clientOfScene(page, id, NESTED_ARTBOARD);
+  await page.mouse.dblclick(centre.x, centre.y);
+  await expect.poll(() => activeObjectId(page)).toBe(id);
 }
 
 test.describe("text side handle", () => {

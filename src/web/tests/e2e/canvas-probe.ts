@@ -27,6 +27,87 @@ type HandleWindow = typeof window & {
 };
 
 /**
+ * One object's property by id, groups descended.
+ *
+ * The starter's cards are groups, so a card's gauge, value and bar are not in
+ * `getObjects()`; they live inside it. A root-only `.find` reported
+ * `undefined` for `cpu-card` and `storage-bar`, objects the author can see on
+ * the wall, and the assertion failed as a *missing object* rather than as a
+ * search that stopped too early — which is the harder failure to read, because
+ * nothing in it names grouping.
+ *
+ * The adapter is asked first: it indexes what a plan applied, and a scene
+ * revived from a saved package never went through one. The walk is inlined
+ * rather than shared because `page.evaluate` serializes the function it is
+ * handed and cannot reach a module binding; {@link sceneBounds} carries the
+ * same one, and the two cannot drift because neither can be called.
+ */
+export async function sceneProperty(
+  page: Page,
+  nodeId: string,
+  key: string,
+): Promise<unknown> {
+  return page.evaluate(
+    ([id, prop]) => {
+      type Obj = {
+        get(key: string): unknown;
+        getObjects?(): readonly Obj[];
+      };
+      const { handle } = (window as unknown as HandleWindow).vigilia;
+      const adapter = handle["adapter"] as {
+        objectFor(nodeId: string): Obj | undefined;
+      };
+      const canvas = handle["canvas"] as { getObjects(): readonly Obj[] };
+      const find = (objects: readonly Obj[]): Obj | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === id) return candidate;
+          const found = find(candidate.getObjects?.() ?? []);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      return (adapter.objectFor(id) ?? find(canvas.getObjects()))?.get(prop);
+    },
+    [nodeId, key] as const,
+  );
+}
+
+/**
+ * One object's **world** box by id, groups descended.
+ *
+ * World rather than group-local, because a part's own `left` is its position
+ * *inside* its card: reading it told the caller a reading ended at 1645.9 when
+ * the ink it was measuring was somewhere else entirely. `getBoundingRect`
+ * composes the ancestor transform, which is the box a display actually paints.
+ */
+export async function sceneBounds(
+  page: Page,
+  nodeId: string,
+): Promise<{ right: number; width: number } | undefined> {
+  return page.evaluate((id) => {
+    type Obj = {
+      getObjects?(): readonly Obj[];
+      getBoundingRect?: () => { right: number; width: number };
+    };
+    const { handle } = (window as unknown as HandleWindow).vigilia;
+    const canvas = handle["canvas"] as { getObjects(): readonly Obj[] };
+    const find = (objects: readonly Obj[]): Obj | undefined => {
+      for (const candidate of objects) {
+        if ((candidate as { get(id: string): unknown }).get("id") === id)
+          return candidate;
+        const found = find(candidate.getObjects?.() ?? []);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const rect = find(canvas.getObjects())?.getBoundingRect?.();
+    return rect === undefined
+      ? undefined
+      : { right: rect.right, width: rect.width };
+  }, nodeId);
+}
+
+/**
  * Simulated ms advanced per ink attempt, real ms allowed before giving up, and
  * how long to wait between attempts.
  *
@@ -205,7 +286,10 @@ export async function canvasProp(
   nodeId: string,
   key: string,
 ): Promise<string | number | boolean | undefined> {
-  return readObject(page, nodeId, key, isScalar);
+  const value = await sceneProperty(page, nodeId, key);
+  return value !== undefined && value !== null && isScalar(value)
+    ? value
+    : undefined;
 }
 
 /** Presence, for object-valued properties like shadows that cannot cross. */
@@ -215,7 +299,7 @@ export async function canvasHas(
   key: string,
 ): Promise<boolean> {
   // Checked in-page: values like clipPath hold circular refs that do not survive serialization.
-  return (await readObject(page, nodeId, key)) !== undefined;
+  return (await sceneProperty(page, nodeId, key)) !== undefined;
 }
 
 function isScalar(value: unknown): value is string | number | boolean {
@@ -224,40 +308,6 @@ function isScalar(value: unknown): value is string | number | boolean {
     typeof value === "number" ||
     typeof value === "boolean"
   );
-}
-
-/** Read one Fabric property; missing means no such object. */
-async function readObject<T = unknown>(
-  page: Page,
-  nodeId: string,
-  key: string,
-  guard?: (value: unknown) => value is T,
-): Promise<T | undefined> {
-  const value = await page.evaluate(
-    ([id, prop]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle["adapter"] as {
-        objectFor(nodeId: string): { get(key: string): unknown } | undefined;
-      };
-      const canvas = handle["canvas"] as {
-        getObjects(): { get(key: string): unknown }[];
-      };
-      // The adapter indexes what a plan applied, and a scene revived from a
-      // saved package never went through one: there, the canvas is the index.
-      const object =
-        adapter.objectFor(id) ??
-        canvas.getObjects().find((entry) => entry.get("id") === id);
-
-      return object?.get(prop);
-    },
-    [nodeId, key] as const,
-  );
-
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-
-  return guard === undefined || guard(value) ? (value as T) : undefined;
 }
 
 /** True when data ticks update the node without replacing its object. */

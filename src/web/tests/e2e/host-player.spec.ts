@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { canvasProp } from "./canvas-probe.js";
+import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 import {
@@ -25,13 +25,35 @@ import { isDesktopSurface } from "./surface.js";
  * end. `vite preview` cannot cover any of it. */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
+/** The starter envelope's own id, which is what the host library calls it. */
+const STARTER_THEME_ID = "vigilia-demo-dashboard";
 
-/** Save the editor's own document through the host's library route. */
+/**
+ * Save the starter through the host's own library route, as an author would.
+ *
+ * **`New from starter` first, and that is the whole fix.** `boot-theme.ts` opens
+ * the author's most recent save when the URL names no theme — which, against the
+ * host project's shared `--app-dir`, is whichever *fixture* ran last, not the
+ * starter. The save that followed therefore wrote somebody else's document, and
+ * the display then asked the host for `vigilia-demo-dashboard`, which no run had
+ * ever put there. Measured: booting the seeded store opened `bar-0…bar-4` (a
+ * fixture), and after `Save to library` the library still had no
+ * `vigilia-demo-dashboard`.
+ *
+ * Naming the document is the point, so it is asserted rather than assumed: the
+ * ids below are the reference composition's own, and a save that stored anything
+ * else has not saved the starter.
+ */
 async function saveStarterThroughTheHost(page: Page): Promise<void> {
   await page.goto(`${HOST}/editor/`);
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New from starter" }).click();
+  await expect(page.locator("#status")).toContainText(
+    "New theme from the starter",
+  );
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save to library" }).click();
   await expect(page.locator("#status")).toContainText("Saved to library", {
@@ -44,16 +66,15 @@ async function saveStarterThroughTheHost(page: Page): Promise<void> {
  *
  * **This used to be a bare `goto`, and that made every display spec in this file
  * depend on a theme left in the host's on-disk library by an earlier *run*.**
- * The host project's `--app-dir` is a directory, not a fixture: nothing in the
- * suite put `vigilia-demo-dashboard` there, so on a machine that had not run
- * these specs before, each of them asked the host for a theme it did not have
- * and failed at `#artboard canvas.lower-canvas` — a symptom that names the
- * artboard and never mentions the missing document. Saving it here is
- * idempotent, so a spec that already did is unaffected.
+ * The host project's `--app-dir` is a directory, not a fixture, so on a machine
+ * that had not run these specs before each of them asked the host for a theme it
+ * did not have — a symptom that names the artboard and never mentions the
+ * missing document. Saving it here is idempotent, so a spec that already did is
+ * unaffected.
  */
 async function openStarterDisplay(page: Page, query = ""): Promise<void> {
   await saveStarterThroughTheHost(page);
-  await page.goto(`${HOST}/?theme=vigilia-demo-dashboard${query}`);
+  await page.goto(`${HOST}/?theme=${STARTER_THEME_ID}${query}`);
 }
 
 /** The saved document on the display, with at least one live batch arrived. */
@@ -82,6 +103,12 @@ async function openDisplayWithLiveData(page: Page): Promise<void> {
  * `chroma` is saturation, not brightness, and it is the half that matters: a
  * gauge's track is a dark grey ring with plenty of ink and no colour, so an
  * ink count alone passes on a chart that shows nothing the author asked for.
+ *
+ * **Groups descended, for the reason `canvas-probe.ts`'s reader descends.** The
+ * starter's cards are groups, so `storage-bar` and every other chart is inside
+ * one; a root-only pass saw no charts at all and the assertion failed as
+ * `storage-bar is on the display` — a missing object where the author sees a
+ * bar on the wall.
  */
 function chartPixels(page: Page): Promise<
   {
@@ -93,58 +120,60 @@ function chartPixels(page: Page): Promise<
   }[]
 > {
   return page.evaluate(() => {
+    type Obj = {
+      get(name: string): unknown;
+      getObjects?(): readonly Obj[];
+      _element?: HTMLCanvasElement;
+    };
     const canvas = (
       window as unknown as {
-        vigilia?: {
-          handle: {
-            canvas: {
-              getObjects(): Array<{
-                get(name: string): unknown;
-                _element?: HTMLCanvasElement;
-              }>;
-            };
-          };
-        };
+        vigilia?: { handle: { canvas: { getObjects(): readonly Obj[] } } };
       }
     ).vigilia?.handle.canvas;
-    return (canvas?.getObjects() ?? [])
-      .filter((object) => object._element !== undefined)
-      .map((object) => {
-        const element = object._element!;
-        const context = element.getContext("2d");
-        if (context === null) {
-          return {
-            id: String(object.get("id")),
-            ink: -1,
-            chroma: -1,
-            w: 0,
-            h: 0,
-          };
-        }
-        const data = context.getImageData(
-          0,
-          0,
-          element.width,
-          element.height,
-        ).data;
-        let ink = 0;
-        let chroma = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3]! === 0) continue;
-          ink += 1;
-          const r = data[i]!;
-          const g = data[i + 1]!;
-          const b = data[i + 2]!;
-          if (Math.max(r, g, b) - Math.min(r, g, b) > 40) chroma += 1;
-        }
+    const charts: Obj[] = [];
+    const visit = (objects: readonly Obj[] | undefined): void => {
+      for (const object of objects ?? []) {
+        if (object._element !== undefined) charts.push(object);
+        visit(object.getObjects?.());
+      }
+    };
+    visit(canvas?.getObjects());
+    return charts.map((object) => {
+      const element = object._element!;
+      const context = element.getContext("2d");
+      if (context === null) {
         return {
           id: String(object.get("id")),
-          ink,
-          chroma,
-          w: element.width,
-          h: element.height,
+          ink: -1,
+          chroma: -1,
+          w: 0,
+          h: 0,
         };
-      });
+      }
+      const data = context.getImageData(
+        0,
+        0,
+        element.width,
+        element.height,
+      ).data;
+      let ink = 0;
+      let chroma = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3]! === 0) continue;
+        ink += 1;
+        const r = data[i]!;
+        const g = data[i + 1]!;
+        const b = data[i + 2]!;
+        if (Math.max(r, g, b) - Math.min(r, g, b) > 40) chroma += 1;
+      }
+      return {
+        id: String(object.get("id")),
+        ink,
+        chroma,
+        w: element.width,
+        h: element.height,
+      };
+    });
   });
 }
 
@@ -370,45 +399,20 @@ test.describe("hosted player over the real host", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
 
-    await page.goto(`${HOST}/editor/`);
-    await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
-    ).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: "File", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Save to library" }).click();
-    await expect(page.locator("#status")).toContainText("Saved to library", {
-      timeout: 20_000,
-    });
-
     await openStarterDisplay(page);
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await page.waitForTimeout(8000);
-    const measured = await page.evaluate(() => {
-      const canvas = (
-        window as unknown as {
-          vigilia?: {
-            handle: {
-              canvas: {
-                getObjects(): Array<{ get(name: string): unknown }>;
-              };
-            };
-          };
-        }
-      ).vigilia?.handle.canvas;
-      return ["ram-value", "vram-value", "storage-card-value"].map((id) => {
-        const object = canvas
-          ?.getObjects()
-          .find((candidate) => candidate.get("id") === id);
-        const rect = (
-          object as { getBoundingRect?: () => { right: number } } | undefined
-        )?.getBoundingRect?.();
-        return {
-          id,
-          width: Number(object?.get("width") ?? 0),
-          right: Number(rect?.right ?? 0),
-        };
-      });
-    });
+    // **Groups descended, and world.** All three are parts of a card, so the
+    // root-only search this replaced read nothing for them; and `right` is
+    // composed through the ancestor transform, because a part's own `left` is
+    // its position *inside* its card and says nothing about where it lands.
+    const measured = await Promise.all(
+      ["ram-value", "vram-value", "storage-card-value"].map(async (id) => ({
+        id,
+        width: Number((await sceneProperty(page, id, "width")) ?? 0),
+        right: (await sceneBounds(page, id))?.right ?? 0,
+      })),
+    );
     // The authored boxes, per object. The two ring readings are 180 wide and
     // the storage share is 200; asserting one number for all three is a test
     // that can never pass, which is what round one's witness did.
@@ -510,35 +514,19 @@ test.describe("hosted player over the real host", () => {
       .toBeGreaterThan(0);
     await expect(page.locator("#vigilia-connection")).toHaveCount(0);
 
-    const readCard = (): Promise<{
+    /** Read through `sceneProperty`, which descends into groups — the CPU
+     *  card's plate and its value are both parts of `group-cpu-card`, so the
+     *  root-only search this replaced read `undefined` for objects the display
+     *  was showing. */
+    const readCard = async (): Promise<{
       treatment: unknown;
       reading: string;
-    }> =>
-      page.evaluate(() => {
-        const canvas = (
-          window as unknown as {
-            vigilia?: {
-              handle: {
-                canvas: {
-                  getObjects(): Array<{ get(name: string): unknown }>;
-                };
-              };
-            };
-          }
-        ).vigilia?.handle.canvas;
-        const object = canvas
-          ?.getObjects()
-          .find((candidate) => candidate.get("id") === "cpu-card");
-        return {
-          treatment: object?.get("vigiliaGlass"),
-          reading: String(
-            canvas
-              ?.getObjects()
-              .find((candidate) => candidate.get("id") === "cpu-card-value")
-              ?.get("text"),
-          ),
-        };
-      });
+    }> => ({
+      treatment: await sceneProperty(page, "cpu-card", "vigiliaGlass"),
+      reading: String(
+        (await sceneProperty(page, "cpu-card-value", "text")) ?? "—",
+      ),
+    });
 
     // The treatment survived the host's own save, so the player composites it
     // from authored state rather than from a cache the route dropped — and it
@@ -658,16 +646,6 @@ test.describe("hosted player over the real host", () => {
     // Self-contained: the starter reaches the host's library only when a
     // browser saves it, so this does that itself rather than leaning on
     // whichever test happened to run first.
-    await page.goto(`${HOST}/editor/`);
-    await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
-    ).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: "File", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Save to library" }).click();
-    await expect(page.locator("#status")).toContainText("Saved to library", {
-      timeout: 20_000,
-    });
-
     await openStarterDisplay(page, "&data=live");
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await expect
@@ -687,35 +665,38 @@ test.describe("hosted player over the real host", () => {
 
     // The rendered text and the host's own sample for the same key, read in
     // one pass so a repaint between them cannot make this vacuously true.
-    const read = (): Promise<{
+    // **Through `sceneProperty`, which descends into groups**: both captions
+    // are parts of `group-gpu-card`, and the root-only search this replaced
+    // read `""` for them — a caption the display was painting, read as blank.
+    const read = async (): Promise<{
       caption: string;
       reported: string;
       status: string;
       temperature: string;
-    }> =>
-      page.evaluate(() => {
-        const w = window as unknown as {
-          vigilia?: {
-            handle: {
-              canvas: { getObjects(): Array<{ get(name: string): unknown }> };
-            };
-            live?: { source?: { latest(key: string): unknown } };
-          };
-        };
-        const objects = w.vigilia?.handle.canvas.getObjects() ?? [];
-        const text = (id: string): string =>
-          String(objects.find((o) => o.get("id") === id)?.get("text") ?? "");
-        const sample = w.vigilia?.live?.source?.latest("gpu.name") as
-          | { textValue?: string; status?: string }
-          | undefined;
-
-        return {
-          caption: text("gpu-card-caption"),
-          reported: String(sample?.textValue ?? ""),
-          status: String(sample?.status ?? ""),
-          temperature: text("gpu-card-temp"),
-        };
-      });
+    }> => {
+      const sample = await page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              vigilia?: {
+                live?: { source?: { latest(key: string): unknown } };
+              };
+            }
+          ).vigilia?.live?.source?.latest("gpu.name") as
+            | { textValue?: string; status?: string }
+            | undefined,
+      );
+      return {
+        caption: String(
+          (await sceneProperty(page, "gpu-card-caption", "text")) ?? "",
+        ),
+        reported: String(sample?.textValue ?? ""),
+        status: String(sample?.status ?? ""),
+        temperature: String(
+          (await sceneProperty(page, "gpu-card-temp", "text")) ?? "",
+        ),
+      };
+    };
 
     // The card shows what the host said about the card, verbatim: a caption
     // painted from anything else is the misattribution this key exists to stop.
@@ -1085,7 +1066,7 @@ test.describe("a display fed by the real host", () => {
     // place the capture path is exercised end to end: `vite preview` has no
     // thumbnail store.
     const response = await request.get(
-      `${HOST}/api/themes/vigilia-demo-dashboard/thumbnail`,
+      `${HOST}/api/themes/${STARTER_THEME_ID}/thumbnail`,
     );
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toBe("image/png");
@@ -1254,7 +1235,7 @@ test.describe("a display fed by the real host", () => {
           ?.getAttribute("src") ?? "",
     );
     expect(delivered).toBe(
-      "/api/themes/vigilia-demo-dashboard/assets/starter-backdrop.jpg",
+      `/api/themes/${STARTER_THEME_ID}/assets/starter-backdrop.jpg`,
     );
 
     // The card's own contents are hidden while the band is read: `cpu-card` has
@@ -1421,35 +1402,46 @@ test.describe("a display fed by the real host", () => {
     // window — so the condition to wait for is the one being captured: a
     // trends series that actually has points. A sleep would produce a picture
     // of an empty scene and call it evidence.
+    //
+    // **Groups descended**, for the reason every other reader here says it:
+    // `trends-chart` is a part of `group-trends-card`, and the root-only
+    // search this replaced found no chart at all, so the wait ran out its full
+    // 60 s on a series of zero points that was never going to arrive.
     await expect
       .poll(
         async () =>
           page.evaluate(() => {
-            const handle = (
+            type Obj = {
+              get(id: string): unknown;
+              getObjects?(): readonly Obj[];
+            };
+            const canvas = (
               window as unknown as {
                 vigilia?: {
-                  handle: {
-                    canvas: {
-                      getObjects?(): Array<Record<string, unknown>>;
-                    };
-                  };
+                  handle: { canvas?: { getObjects(): readonly Obj[] } };
                 };
               }
-            ).vigilia;
-            const getObjects = handle?.handle.canvas.getObjects;
-            if (typeof getObjects !== "function") return 0;
-            const chart = getObjects
-              .call(handle!.handle.canvas)
-              .find(
-                (object) => object.get("id") === "trends-chart",
-              ) as unknown as
-              | {
-                  _chart?: {
-                    getOption(): { series?: Array<{ data?: unknown[] }> };
-                  };
-                }
-              | undefined;
-            const series = chart?._chart?.getOption().series ?? [];
+            ).vigilia?.handle.canvas;
+            const find = (objects: readonly Obj[]): Obj | undefined => {
+              for (const candidate of objects) {
+                if (candidate.get("id") === "trends-chart") return candidate;
+                const found = find(candidate.getObjects?.() ?? []);
+                if (found !== undefined) return found;
+              }
+              return undefined;
+            };
+            const chart =
+              canvas === undefined ? undefined : find(canvas.getObjects());
+            const series =
+              (
+                chart as
+                  | {
+                      _chart?: {
+                        getOption(): { series?: Array<{ data?: unknown[] }> };
+                      };
+                    }
+                  | undefined
+              )?._chart?.getOption().series ?? [];
             return series.reduce(
               (total, entry) => total + (entry.data?.length ?? 0),
               0,
