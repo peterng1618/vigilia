@@ -516,6 +516,18 @@ Rendered observation in a real browser (§33).
 - **A theme of two hundred loose shapes opens, selects, moves and styles every one of
   them**, and the panel is usable at that size. This is the acceptance item that fails if
   the card model turned into a rule.
+  - **Verified at plan 1's close, in Chromium against the built bundle**, on 200 loose
+    rects with no group anywhere: opens in **223ms** to 200 rows; five rows clicked
+    through the panel in **153–333ms** (median 217); a canvas drag moved one shape by
+    **+209, +63.5** with its authored coordinates and its world bounding rect moving by
+    **exactly** the same delta and its size unchanged; the fill control repainted
+    `#00b8d9` → `#e8b04b` in **12ms**; the panel overflows by **4186px** and a wheel to
+    either end (~2.3s) leaves both end rows visible. Afterwards 200 objects, 200 unique
+    ids, every one still flat, every unedited one at its authored position. Raw output:
+    `.superpowers/sdd/2026-10-03-groups-in-the-starter/e2e-two-hundred-loose-shapes.json`.
+  - **What this item does not claim.** It was verified on one document with no groups,
+    in one viewport, on one machine. It says nothing about a *grouped* 200-shape theme,
+    and nothing about the phone surface.
 - A card moves as one object and arrives intact.
 - The stage frames a **landscape phone** by default and the device switch is the zoom
   control — while an artboard of any dimensions still authors in the same stage.
@@ -542,3 +554,14 @@ Rendered observation in a real browser (§33).
   on the controller's reconsideration rather than left as a decision for the user.
 - **All existing authoring capabilities are preserved**; the inventory that discharges it
   is walked in a browser at the end.
+- **Entering a group on the canvas does not expand it in the layer panel.** Measured at
+  plan 1's close: double-clicking a card's child enters it (`active` becomes the child),
+  and the tree still shows the group collapsed with no child row, because groups start
+  collapsed and §67 keeps collapse state out of the document. Whether entry should expand
+  the tree, or the two are deliberately independent, is a call the surfaces phase owns —
+  **not settled here**, and named rather than fixed.
+- **`vg-128` is the user's ruling.** Every card is refused on the host's default two-token
+  palette, so the card library is unusable where an author most likely starts. Refusing
+  is correct — an unresolved reference reaches `snapshot`, which validates and throws. The
+  open question is whether a card should instead *map* onto the theme's palette. Plan 1
+  did not decide it.
