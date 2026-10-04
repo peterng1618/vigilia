@@ -150,10 +150,7 @@ describe("ChartManager", () => {
         carriedPaintFor(
           "line",
           {
-            palette: [
-              { ref: "palette.cpu" },
-              { ref: "palette.gpu" },
-            ],
+            palette: [{ ref: "palette.cpu" }, { ref: "palette.gpu" }],
           } as unknown as Parameters<typeof carriedPaintFor>[1],
           [
             { id: "b1", semanticKey: "cpu.load" },

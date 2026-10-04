@@ -1748,8 +1748,8 @@ function starterCardBands(
       collect(objects, []);
       const ancestors = new Set<Obj>();
       for (const entry of every)
-        if (entry.object === card) for (const parent of entry.parents)
-          ancestors.add(parent);
+        if (entry.object === card)
+          for (const parent of entry.parents) ancestors.add(parent);
       const restore = every
         .filter(
           (entry) =>
@@ -1757,9 +1757,7 @@ function starterCardBands(
             !ancestors.has(entry.object) &&
             inside(entry.object),
         )
-        .map(
-          (entry) => [entry.object, entry.object.get("visible")] as const,
-        );
+        .map((entry) => [entry.object, entry.object.get("visible")] as const);
       for (const [object] of restore) object.set("visible", false);
 
       const vp = canvas.viewportTransform;
