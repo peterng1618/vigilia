@@ -89,9 +89,10 @@ function takenIds(
  * inline `${object.type}-${randomUUID()}` produced too.
  *
  * One allocator per object **type**, not per object, because the allocator
- * copies what it was given as taken: sharing one per type is what makes a second
- * member declaring an id the first already holds bump rather than repeat it,
- * and it keeps the copy of `taken` linear in the tree rather than quadratic.
+ * copies what it was given as `taken`: a fresh allocator per object would copy
+ * it once per node, so a deep paste is quadratic in the tree. Sharing per type
+ * also preserves the memoisation that makes two members of the same kind share
+ * one sanitisation, which is what the bump below then has to correct for.
  *
  * Returns what each id became, which is how a copy's readings travel with it:
  * a binding is keyed by the object that shows it, so without this a card comes
@@ -119,6 +120,10 @@ function reassignIds(
   // envelope validator's `duplicate-id` and a save that fails for the rest of the
   // session. `taken` is threaded and updated here precisely so that case is
   // visible, and the key bumps rather than the answer repeating.
+  //
+  // Verified rather than reasoned: hoisting the allocator to one per type, which
+  // is what removed the quadratic copy, reintroduced exactly this collision, and
+  // the test that caught it is the one that made this loop load-bearing.
   let minted = allocateId(original);
   for (let nth = 2; taken.has(minted); nth += 1) {
     minted = allocateId(`${original}-${nth}`);
