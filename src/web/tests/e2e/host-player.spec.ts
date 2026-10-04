@@ -1271,13 +1271,17 @@ test.describe("a display fed by the real host", () => {
       "and it is the same part of the photograph, not merely a similar range",
     ).toBeLessThan(photo!.meanLuma * 0.08);
 
-    // Measured on this machine, 2026-09-28, at 1672x941 with this card's
-    // 40-unit radius: the photograph 7.51, the same backdrop under a clear fill
-    // 7.51 sharp / 1.75 diffused, and 1.46 as authored over `palette.frost` at
-    // 18 % — about 1.28 at the 30 % the card's caption contrast sets. The
-    // gradient this replaced has a mean luma step between adjacent columns of
-    // **0.00** at every scale, so a panel over it could not read above zero
-    // however wide the radius was.
+    // Measured on this machine, 2026-10-04, at 1672x941 with this card's 40-unit
+    // radius and its `#0815234d` (30 %-opaque) fill: the same backdrop under a
+    // clear fill reads 7.51 sharp against 1.76 diffused, the authored panel
+    // reads 1.24, and the authored panel at radius 0 reads 5.26. The gradient
+    // this replaced has a mean luma step between adjacent columns of **0.00**
+    // at every scale, so a panel over it could not read above zero however wide
+    // the radius was.
+    //
+    // **The card's own group was being hidden along with its parts**, which is
+    // the whole reason this used to read as the picture showing through the
+    // panel when the panel was not there at all — see `starterCardBands`.
     expect(blurred.rows, "the band covers rows").toBeGreaterThan(20);
 
     // **And it is the glass that did it.** The blur-off control is the same
@@ -1727,9 +1731,35 @@ function starterCardBands(
           cy < cardBox.top + cardBox.height
         );
       };
-      const restore = objects
-        .filter((object) => object !== card && inside(object))
-        .map((object) => [object, object.get("visible")] as const);
+      // **The whole document, and never the card's own ancestors.** This walked
+      // the roots only, which fails twice over: `cpu-card` is a *part* of
+      // `group-cpu-card`, so the one root whose box covers the card was hidden
+      // and took the panel off the canvas with it, and the card's own icon,
+      // title, reading and sparkline — the things a band must not cross — were
+      // never hidden at all because they are not roots. The same substitution
+      // `reference-theme.spec.ts` carries.
+      const every: { object: Obj; parents: Obj[] }[] = [];
+      const collect = (list: Obj[], parents: Obj[]): void => {
+        for (const entry of list) {
+          every.push({ object: entry, parents });
+          collect(entry.getObjects?.() ?? [], [...parents, entry]);
+        }
+      };
+      collect(objects, []);
+      const ancestors = new Set<Obj>();
+      for (const entry of every)
+        if (entry.object === card) for (const parent of entry.parents)
+          ancestors.add(parent);
+      const restore = every
+        .filter(
+          (entry) =>
+            entry.object !== card &&
+            !ancestors.has(entry.object) &&
+            inside(entry.object),
+        )
+        .map(
+          (entry) => [entry.object, entry.object.get("visible")] as const,
+        );
       for (const [object] of restore) object.set("visible", false);
 
       const vp = canvas.viewportTransform;

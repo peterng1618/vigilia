@@ -1587,13 +1587,29 @@ test.describe("the reference composition, captured", () => {
     // starter now carries a packaged photograph, and this measures the change
     // in the mounted editor rather than in the source file.
     //
-    // Measured on this machine, 2026-09-28, at this mount's 0.3744 camera, and
-    // quoted in every threshold below:
+    // Measured on this machine, at this mount's 0.3744 camera, and quoted in
+    // every threshold below. Re-measured 2026-10-04 with the card's parent
+    // group kept out of the probe's hide; every figure below is from that run,
+    // and the two before it are from the run that read the panel while it was
+    // not on the canvas at all:
     //   the photograph itself, read with no product code in the path
-    //                                              contrast 7.45, mean luma 111.4
-    //   the same backdrop under a clear fill       contrast 7.44 sharp / 5.69 blurred
-    //   as authored, over `palette.frost` (72 %)     contrast 1.62
-    //   with the old 85 %-opaque `panel` fill       contrast 0.85  (invisible)
+    //                                              contrast 7.65, mean luma 111.8
+    //   the same backdrop under a clear fill       contrast 7.43 sharp / 1.50 blurred
+    //   as authored, over `palette.frost`            contrast 1.07
+    //
+    // **`getImageData` is the right surface here and the backdrop is in it.**
+    // The media is a DOM sibling *below* the canvas, so a bare canvas read
+    // cannot see it — but the glass panel composites it into the canvas itself
+    // (`glass.ts` paints the media into its own scratch surface and draws that
+    // back through the panel's clip), so a band *inside the panel* reads the
+    // photograph through `getImageData` exactly as the screen shows it. Both
+    // routes were measured side by side against a Playwright screenshot of the
+    // canvas element — which composites the DOM layer for us — and they agree to
+    // the second decimal: 7.43 / 1.50 / 1.07 on both. The screenshot route was
+    // not adopted; it costs ~300 ms a reading and buys nothing here.
+    //
+    // What *did* read 7.58 with no panel involved was the probe hiding
+    // `group-cpu-card` along with the card's own parts — see `starterBackdropBands`.
     const reading = await starterBackdropBands(page);
 
     // **The panel blurs the photograph, at this mount's scale.** The band is
@@ -1622,21 +1638,18 @@ test.describe("the reference composition, captured", () => {
     ).toBeLessThan(reading.photo!.meanLuma * 0.08);
 
     // **The material reads.** The panel's contrast is the fraction of the
-    // blurred backdrop its own fill leaves through: `palette.frost` is 72 %
-    // opaque, so 5.69 x 0.278 = 1.58, and it measures 1.62 — the model to
-    // within 0.04, which is what makes 1.0 a floor with a stated reason
-    // rather than a number that happens to sit below the measurement.
+    // blurred backdrop its own fill leaves through: the authored fill is
+    // `#0815234d`, 30 % opaque, so 1.50 x 0.71 = 1.07 — which is what it
+    // measures, to the second decimal.
     //
     // **What this floor does and does not separate.** The gradient the
     // photograph replaced measures **0.00**, so it cannot pass at any scale —
-    // that is the discrimination being claimed. The card's *old* 85 %-opaque
-    // `panel` fill would read 7.44 x 0.149 = 1.11, which also passes, so this
-    // threshold does **not** discriminate the two fills and is not claimed to.
+    // that is the discrimination being claimed.
     expect(reading.blurred.rows, "the band covers rows").toBeGreaterThan(20);
 
     // **The material under the panel is the photograph, diffused hard.** With
     // the card's 40 artboard units — a 15 px kernel at this mount's 0.3744
-    // camera — the backdrop's range falls 7.43 -> 1.48, a **5.0x** drop, and
+    // camera — the backdrop's range falls 7.43 -> 1.50, a **5.0x** drop, and
     // its column-to-column step 0.74 -> 0.23. Both are read on the range and
     // the step rather than on either alone, because a kernel that wide
     // flattens high frequencies for any backdrop and keeps the low ones.
@@ -1652,10 +1665,10 @@ test.describe("the reference composition, captured", () => {
     ).toBeGreaterThan(reading.clearSharp.contrast * 0.15);
 
     // **The authored panel is that backdrop through a 30 % tint**, so it reads
-    // about 1.08 of 1.48 — the photograph is still *visible through the glass*,
-    // which is the whole claim, and 30 % is the floor the caption's contrast
-    // sets rather than a look. The even gradient this replaced measures 0.00 at
-    // every radius, so 0.6 is a floor with margin and is unreachable by a fill.
+    // 1.07 against the 1.50 the clear fill leaves — the photograph is still
+    // *visible through the glass*, which is the whole claim. The even gradient
+    // this replaced measures 0.00 at every radius, so 0.6 is a floor with margin
+    // and is unreachable by a fill.
     expect(
       reading.blurred.contrast,
       "the frosted panel carries backdrop structure, not an even fill",
@@ -1831,19 +1844,40 @@ function starterBackdropBands(page: Page): Promise<{
     };
     // The card's own parts are hidden along with it, so this walks the whole
     // document rather than the root list the previous `objects` held.
-    const every: Obj[] = [];
+    const every: { object: Obj; parents: readonly Obj[] }[] = [];
     const collect = (
       list: ReadonlyArray<Obj & { getObjects?: () => readonly Obj[] }>,
+      parents: readonly Obj[],
     ): void => {
       for (const entry of list) {
-        every.push(entry);
-        collect(entry.getObjects?.() ?? []);
+        every.push({ object: entry, parents });
+        collect(entry.getObjects?.() ?? [], [...parents, entry]);
       }
     };
-    collect(canvas.getObjects());
-    const hidden = every.filter(
-      (object) => object !== card && centreInside(object),
-    );
+    collect(canvas.getObjects(), []);
+    // **`cpu-card` is a part of `group-cpu-card`, and the group is not one of
+    // its contents.** Hiding what the filter called "inside the card" therefore
+    // hid the card's own parent, which took the panel off the canvas with it —
+    // and a band over a card that is not there reads the photograph *behind* it
+    // unblurred and untinted, whatever radius and fill were authored. Measured:
+    // `clearSharp` and `clearBlurred` read identically at 7.58 and the authored
+    // fill moved nothing, which is the shape of a measurement whose subject was
+    // never on screen. With the ancestor kept, the same three readings are
+    // 7.43 / 1.50 / 1.07 — the numbers this file's header has always quoted. An
+    // ancestor is excluded by identity, because the only other test — a box
+    // test — admits the card itself.
+    const ancestors = new Set<Obj>();
+    for (const entry of every)
+      if (entry.object === card)
+        for (const parent of entry.parents) ancestors.add(parent);
+    const hidden = every
+      .filter(
+        (entry) =>
+          entry.object !== card &&
+          !ancestors.has(entry.object) &&
+          centreInside(entry.object),
+      )
+      .map((entry) => entry.object);
     const restore = hidden.map((object) => [object, object.get("visible")]);
 
     const vp = canvas.viewportTransform;
@@ -1918,7 +1952,9 @@ function starterBackdropBands(page: Page): Promise<{
     // that carry any coverage — near 1 for a one-pixel edge, near 1/16 for one
     // spread across a 16px blur.
     const sharpness = (id: string, radius: number): number => {
-      const object = every.find((candidate) => candidate.get("id") === id);
+      const object = every
+        .map((entry) => entry.object)
+        .find((candidate) => candidate.get("id") === id);
       if (object === undefined) throw new Error(`the starter lost ${id}`);
       card.set("vigiliaGlass", { blurRadius: radius });
       const rect = object.getBoundingRect();
@@ -1982,7 +2018,9 @@ function starterBackdropBands(page: Page): Promise<{
     // contrast ratio is defined on the linearised value and averaging first
     // would put the number in the wrong space to divide by.
     const lumaUnder = (id: string): number => {
-      const label = every.find((object) => object.get("id") === id);
+      const label = every
+        .map((entry) => entry.object)
+        .find((object) => object.get("id") === id);
       if (label === undefined) throw new Error(`no ${id}`);
       const rect = label.getBoundingRect();
       const [lx, ly] = toDevice(rect.left + 4, rect.top + rect.height / 2 - 2);
