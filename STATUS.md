@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-04
+Updated: 2026-10-05
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
@@ -43,19 +43,19 @@ The loop, in order:
 
 ## Last completed change
 
+- **The editor now clips to the artboard, and the handles do not.** A canvas-level `clipPath` in `editor-shell.ts`, the player's own mechanism from `adapter.ts`, plus `controlsAboveOverlay`. `vg-046`'s two rejected routes are unused: a canvas property is not an object's, so neither the crop manager's clip nor the text-box clip is touched, and `getObjects()` is unchanged. **The brief's DOM route was measured wrong for Fabric 7.4**: controls draw to the *lower* canvas (`separateCanvas` was removed in v6), so clipping that element takes the handles too. 9 unit + 3 browser tests, each revert-checked — clip removed fails 3, the flag fails the handle test, a scene Group fails `getObjects()` with "expected 3 but got 1".
+- **A false pass caught before it shipped.** At fit zoom the artboard fills the canvas exactly, so "outside the artboard" read off the backing store and was empty either way — the first unit file passed with the clip deleted. Every sample point now goes through a guard that fails the test when it lands off-canvas.
+- **`editor.spec.ts` "switches chart refresh between 30 and 1 FPS" fails, and did before this change**: a missing `menuitem`, rebuilt from HEAD with no clip in the tree and still red.
 - **Repointing a chart's key unmounted the whole editor.** `carriedPaintFor` asked `next.includes(binding)`, and the panel hands over `{ ...binding, semanticKey }` — a fresh object — so every series read as removed, the paint emptied, and `seriesPaintFor` grew it back to `[null]`. `isDirty()` runs inside React's `useSyncExternalStore`, so the validator's throw landed in the render phase and React unmounted the shell. Measured: 200 ms from click to an empty document. Fixed by matching on `id`; `reference-theme:533` went from a 90 s timeout to 10.5 s, and `host-player` to 28/28.
-- **`editor.spec.ts` called `expandLayer` without importing it**, four commits back in `28c2db3f`. Three tests died on a `ReferenceError` and never ran at all. One import line.
-- **The frosted-card probe was hiding the card's own group, and the diagnosis blamed the wrong surface.** `cpu-card` is a part of `group-cpu-card`, so "hide what is inside the card" took the panel off the canvas; the band read the photograph *behind* it, and `getImageData` was never unable to see the media — the glass panel composites it into the canvas, and both routes measure identically. Readings are 7.43 / 1.50 / 1.07, thresholds untouched.
-- **The chart-palette spec measured two different things with one threshold.** A fixed 8 s sleep straddled a rolling window's fill (sparkline ink 604–1482 at 8 s, 5700–8273 by 30 s), and one absolute chroma floor cannot serve a filled bar (0.469) and a two-pixel stroke (0.112–0.222). Now a poll, and a fraction with an 80x margin over the defect it was written for.
 - **`boot-theme.ts` opens whichever theme ran last.** Filed as `vg-131` with two live observations; not fixed here, because the one-line alternative deletes a documented round trip.
 
 ## Next
 
-1. **Plan 2: the device lens** (`docs/superpowers/plans/`), which owns the arc and wedge shapes in `SHAPE_KINDS` and editor-side clipping at the artboard.
+1. **Plan 2 continues: the device lens** (`docs/superpowers/plans/`). Task 1 landed the editor-side clip; the arc and wedge shapes in `SHAPE_KINDS` are still unconstructible, and the quarter-disc is unconstructible *and* was unclipped.
 2. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
 3. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
 4. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
-5. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-046, vg-051, vg-056.
+5. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-051, vg-056. **`vg-046` drops off this list once player-side parity is measured**, not before — the editor agrees with the phone by construction now, but nothing has put the same overhang in both and compared pixels.
 
 ## Blockers / unverified
 
