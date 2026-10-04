@@ -3,6 +3,7 @@ import { writeThemePackage } from "@vigilia/theme-package";
 import {
   clientOfScene,
   objectHandleScenePoint,
+  objectRect as sceneObjectRect,
   sceneToClient,
   worldLeftOf,
 } from "./editor-canvas.js";
@@ -193,7 +194,11 @@ async function objectRect(page: Page, id: string): Promise<Rect> {
  * only its own two or three rows. A pixel count cannot tell those apart. Reads
  * the rendered pixels because the applied guides are not exposed through the
  * bridge. The colour is `GUIDE_COLOR` (#3D8BF4). */
-async function guideRowsAtSceneX(page: Page, sceneX: number): Promise<number> {
+async function guideRowsAtSceneX(
+  page: Page,
+  sceneX: number,
+  sceneWidth = ARTBOARD_WIDTH,
+): Promise<number> {
   return page.evaluate(
     async ([x, sceneWidth]) => {
       await new Promise((resolve) =>
@@ -259,7 +264,7 @@ async function guideRowsAtSceneX(page: Page, sceneX: number): Promise<number> {
       }
       return rows;
     },
-    [sceneX, ARTBOARD_WIDTH] as const,
+    [sceneX, sceneWidth] as const,
   );
 }
 
@@ -626,69 +631,87 @@ async function resizeTextSideTo(
  * `vg-123`: what a card's *parts* snap to.
  *
  * The open question is whether a part inside one card aligns to a part inside
- * another, and this measures it rather than deciding it. The two resize specs
- * this file already had resized whole cards, which is what an author drags and
- * what the product snaps, so part-level targets were left unmeasured — and
+ * another, and this measures it rather than deciding it. The resize specs this
+ * file already had resized whole cards, which is what an author drags and what
+ * the product snaps, so part-level targets were left unmeasured — and
  * `collectSnapSources` walks `canvas.forEachObject`, which enumerates roots
  * only, so the answer this file records is the one the code gives today.
  *
- * The fixture is deliberately asymmetric: `right-card`'s part sits 60 units in
- * from the card's own left edge, so the part-level line and the card-level
- * line are 60 apart and no tolerance can confuse them. Three readings are
- * possible and all three are recorded:
+ * **The drag aims at the neighbouring part's world left edge, 760.** The
+ * dragged part ends at 220 and the target is 760, so the gesture is
+ * geometrically ordinary; the part line and the card's own left edge (700) are
+ * 60 apart, far beyond the 5-screen-pixel snap threshold, so nothing can land
+ * between them and the landing says which family was a target.
  *
- *  - **part** — the edge joined the neighbouring part's world left.
- *  - **card** — it joined the neighbouring card's world left, which is what
- *    `forEachObject` yields and the only group line near the part's edges.
- *  - **none** — it did not snap at all, which the loose-shape control below
- *    is what rules out.
+ * Three readings are possible and all three are recorded rather than asserted:
  *
- * The control is the same gesture against a loose shape at the same place:
- * without it, "landed on the card line" could mean the gesture never snapped
- * at all, and the reading would be about nothing.
+ *  - **part** — it joined the neighbouring part's edge.
+ *  - **card** — it joined the neighbouring *card's* edge, which is what
+ *    `forEachObject` yields.
+ *  - **none** — it did not snap at all.
+ *
+ * The control below is the same gesture between two loose shapes, which is what
+ * rules out `none` being about the gesture rather than about grouping: without
+ * it a recorded `none` would mean nothing.
  */
 test.describe("a part inside a card", () => {
   test.beforeEach(async ({}, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
   });
 
-  test("records which objects a part's edge aligns to", async ({ page }) => {
+  test("records which objects a part's edge aligns to", async ({
+    page,
+  }, testInfo) => {
     await openNestedFixture(page);
     const partLine = await worldLeftOf(page, "right-card-part");
     const cardLine = await worldLeftOf(page, "right-card");
-    const looseLine = await worldLeftOf(page, "loose-source");
+    const before = await sceneObjectRect(page, "left-card-part");
 
-    // The three lines are far enough apart that no tolerance can confuse them,
+    // The two lines are far enough apart that no tolerance can confuse them,
     // and the drag aims at `partLine` alone.
     expect(Math.abs(partLine - cardLine)).toBeGreaterThan(40);
-    expect(Math.abs(partLine - looseLine)).toBeGreaterThan(40);
+    expect(partLine).toBeGreaterThan(before.left + before.width + 100);
+    // **The part really is inside its card**, which is the premise the whole
+    // reading rests on. Fabric lays a group out from its children's own bounds,
+    // so a fixture that sets the group's `left` without setting the child's
+    // position inside it would put the part somewhere else entirely and the
+    // measurement would be about nothing.
+    const cardBox = await sceneObjectRect(page, "right-card");
+    const target = await sceneObjectRect(page, "right-card-part");
+    expect(target.left).toBeGreaterThan(cardBox.left);
+    expect(target.left + target.width).toBeLessThan(
+      cardBox.left + cardBox.width,
+    );
 
     const result = await resizePartInsideCardTo(page, partLine - 2);
     const landed = result.right;
 
-    /** Recorded rather than asserted, so the run reports the answer without
-     *  deciding it: whether parts should align to parts is the user's call. */
-    const snappedTo = (() => {
-      if (Math.abs(landed - partLine) < SNAPPED_TOLERANCE) return "part";
-      if (Math.abs(landed - cardLine) < SNAPPED_TOLERANCE) return "card";
-      if (Math.abs(landed - looseLine) < SNAPPED_TOLERANCE) return "loose";
-      return "none";
-    })();
-    test.info().annotations.push({
+    /** Recorded rather than asserted: whether parts should align to parts is
+     *  the user's call, and this row exists to hand them the measurement. */
+    const snappedTo =
+      Math.abs(landed - partLine) < SNAPPED_TOLERANCE
+        ? "part"
+        : Math.abs(landed - cardLine) < SNAPPED_TOLERANCE
+          ? "card"
+          : "none";
+    testInfo.annotations.push({
       type: "vg-123",
-      description: `a resized part aligned to the ${snappedTo} line: ${landed} (part ${partLine}, card ${cardLine}, loose ${looseLine})`,
+      description:
+        `a resized part aligned to the ${snappedTo} line: ${landed} ` +
+        `(part ${partLine}, card ${cardLine}, guides ${result.guideRows} rows)`,
     });
 
-    // **The gesture snapped**, which is what the reading rests on and what the
-    // card-level or none answers would otherwise leave open.
-    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
-    // And the part actually resized, rather than the drag having been refused.
-    expect(Math.abs(landed - result.raw)).toBeGreaterThan(1);
+    // The part resized and kept a positive width — a drag that did nothing, or
+    // that flipped the object, is not the measurement.
+    const after = await sceneObjectRect(page, "left-card-part");
+    expect(after.width).toBeGreaterThan(0);
+    expect(
+      Math.abs(landed - result.raw),
+      "the gesture moved the edge rather than being refused",
+    ).toBeLessThan(RAW_TOLERANCE);
   });
 
-  test("the same gesture snaps to a loose shape in the same place", async ({
-    page,
-  }) => {
+  test("the same gesture snaps between two loose shapes", async ({ page }) => {
     await openNestedFixture(page);
     const line = await worldLeftOf(page, "loose-source");
     const result = await resizeLooseShapeTo(page, line - 2);
@@ -697,7 +720,7 @@ test.describe("a part inside a card", () => {
   });
 });
 
-/** Two cards with a part inside each, plus one loose shape, on one artboard. */
+/** Two cards with a part inside each, plus a loose mover and a loose source. */
 async function openNestedFixture(page: Page): Promise<void> {
   await page.goto(EDITOR);
   const card = (id: string, left: number) => ({
@@ -709,7 +732,6 @@ async function openNestedFixture(page: Page): Promise<void> {
     height: 200,
     originX: "left",
     originY: "top",
-    fill: "transparent",
     objects: [rect(`${id}-part`, 60, 40, 60)],
   });
   const result = writeThemePackage({
@@ -725,6 +747,7 @@ async function openNestedFixture(page: Page): Promise<void> {
         objects: [
           card("left-card", 100),
           card("right-card", 700),
+          rect("mover", 300, 560),
           rect("loose-source", 900, 560),
         ],
       },
@@ -744,7 +767,7 @@ async function openNestedFixture(page: Page): Promise<void> {
 }
 
 /**
- * Enters `right-card` and drags its part's `br` handle so the right edge lands
+ * Enters `left-card` and drags its part's `br` handle so the right edge lands
  * unsnapped at `rawRight`.
  *
  * Entering is the double-click the layer tree's own entry uses, because
@@ -756,9 +779,13 @@ async function resizePartInsideCardTo(
   page: Page,
   rawRight: number,
 ): Promise<{ right: number; raw: number; guideRows: number }> {
-  await enterPart(page, "right-card-part");
-  const before = await objectRect(page, "right-card-part");
-  const corner = await objectHandleScenePoint(page, "right-card-part", "br");
+  await enterPart(page, "left-card-part");
+  // **`objectRect` from `editor-canvas.js`, not this file's local one.** The
+  // local reader searches the root list, and a card's part is not in it — it is
+  // inside its group — so it answered `no object with id left-card-part` for
+  // the very object this is about.
+  const before = await sceneObjectRect(page, "left-card-part");
+  const corner = await objectHandleScenePoint(page, "left-card-part", "br");
   const from = await sceneToClient(page, NESTED_ARTBOARD, corner.x, corner.y);
   const target = await sceneToClient(page, NESTED_ARTBOARD, rawRight, corner.y);
   const travelled = await sceneTravel(page, from, target);
@@ -766,8 +793,12 @@ async function resizePartInsideCardTo(
   await page.mouse.down();
   await page.keyboard.down("Shift");
   await page.mouse.move(target.x, target.y, { steps: 12 });
-  const rect = await objectRect(page, "right-card-part");
-  const guideRows = await guideRowsAtSceneX(page, rect.left + rect.width);
+  const rect = await sceneObjectRect(page, "left-card-part");
+  const guideRows = await guideRowsAtSceneX(
+    page,
+    rect.left + rect.width,
+    NESTED_ARTBOARD,
+  );
   await page.mouse.up();
   await page.keyboard.up("Shift");
   return {
@@ -777,22 +808,22 @@ async function resizePartInsideCardTo(
   };
 }
 
-/** The same drag on a loose shape, which is the control for the above. */
+/** The same drag between two loose shapes, which is the control for the above. */
 async function resizeLooseShapeTo(
   page: Page,
   rawRight: number,
 ): Promise<{ right: number; guideRows: number }> {
-  await page.locator('[data-vigilia-layer="loose-source"]').click();
-  const corner = await objectHandleScenePoint(page, "loose-source", "br");
+  await page.locator('[data-vigilia-layer="mover"]').click();
+  const corner = await objectHandleScenePoint(page, "mover", "br");
   const from = await sceneToClient(page, NESTED_ARTBOARD, corner.x, corner.y);
   const target = await sceneToClient(page, NESTED_ARTBOARD, rawRight, corner.y);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.keyboard.down("Shift");
   await page.mouse.move(target.x, target.y, { steps: 12 });
-  const rect = await objectRect(page, "loose-source");
+  const rect = await sceneObjectRect(page, "mover");
   const right = rect.left + rect.width;
-  const guideRows = await guideRowsAtSceneX(page, right);
+  const guideRows = await guideRowsAtSceneX(page, right, NESTED_ARTBOARD);
   await page.mouse.up();
   await page.keyboard.up("Shift");
   return { right, guideRows };
