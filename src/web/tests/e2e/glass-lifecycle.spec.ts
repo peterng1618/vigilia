@@ -59,11 +59,13 @@ test.describe("glass lifecycle in the real editor", () => {
 
     const measurement = await page.evaluate(async () => {
       const scope = window as unknown as Record<string, unknown>;
-      const key = Object.keys(scope).find((candidate) =>
-        candidate.startsWith("vigilia-fabric-editor"),
-      );
       const canvas = (
-        scope[key ?? ""] as
+        Object.entries(scope).find(
+          ([name, value]) =>
+            name.startsWith("vigilia-fabric-editor") &&
+            (value as { canvas?: { upperCanvasEl?: HTMLCanvasElement } }).canvas
+              ?.upperCanvasEl?.isConnected,
+        )?.[1] as
           | {
               canvas: {
                 getObjects(): Array<Record<string, unknown>>;
@@ -74,6 +76,11 @@ test.describe("glass lifecycle in the real editor", () => {
           | undefined
       )?.canvas;
       if (canvas === undefined) throw new Error("no editor canvas is mounted");
+      // **Connected, not merely present.** Opening a package mounts a second
+      // editor and the first is left on `window`; taking the first key found
+      // measured the *previous* document, where this fixture's panel does not
+      // exist, and the test failed as "the fixture has no glass panel" — a
+      // complaint about the fixture made by a search that never looked at it.
       const panel = canvas
         .getObjects()
         .find((object) => object["vigiliaGlass"] !== undefined);

@@ -1,8 +1,21 @@
-import { expect, type Page, test } from "@playwright/test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { glassStripesPng } from "./glass-fixture.js";
+
+/**
+ * The editor preview `playwright.config.ts` starts, as `glass.spec.ts` does.
+ *
+ * **This was `page.goto("/")`, which resolved against `use.baseURL` — the
+ * *player* at 4173.** Every step below is an editor affordance: a theme file
+ * input, `#status`, `canvas.lower-canvas`. On the player, `open()` waited out
+ * its 20 s image poll and then sat on the `#status` expectation for the rest of
+ * the budget, so the test reported a timeout and said nothing whatever about
+ * glass. The 240s/300s budgets were never too small; the page was never the
+ * editor. A relative URL here names the config, and the config names the player.
+ */
+const EDITOR = "http://127.0.0.1:4174/";
 
 /**
  * Does a frosted Circle carry the same material as a frosted Rect of the same
@@ -348,7 +361,7 @@ test.describe("a frosted circle and a frosted rect of the same box", () => {
     test(`carry the same material over the ${backdrop}`, async ({
       page,
     }, testInfo) => {
-      await page.goto("/");
+      await page.goto(EDITOR);
       const shots = {
         rect: await shoot(page, "Rect", backdrop),
         circle: await shoot(page, "Circle", backdrop),

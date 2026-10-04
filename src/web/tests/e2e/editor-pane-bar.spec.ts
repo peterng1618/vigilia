@@ -80,6 +80,21 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
+  // **The premise, not the guard, is what grouping invalidated.** The guard —
+  // read the offset back rather than assuming the write landed, so a list that
+  // cannot scroll fails here instead of passing vacuously — is the point of the
+  // test and is untouched. What changed is the fixture: ten collapsed cards
+  // genuinely no longer overflow a 721px panel, so the guard was being asked
+  // about a document the starter stopped being. Opening every group restores a
+  // tree long enough to scroll *and* keeps the guard's teeth: a panel that
+  // stopped laying out rows at all still fails this.
+  const twisties = page.locator(
+    '[data-vigilia-layer] button[aria-label^="Expand"]',
+  );
+  for (let opened = await twisties.count(); opened > 0; opened -= 1) {
+    await twisties.first().click();
+  }
+
   const list = page.locator(".editor-shell-panel");
   const offset = await list.evaluate((node) => {
     node.scrollTop = 300;

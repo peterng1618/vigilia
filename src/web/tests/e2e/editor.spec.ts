@@ -12,9 +12,13 @@ import {
   type ArtboardRect,
   captureVisualReview,
   chooseAssetFile,
+  clearSceneX,
   clientOfScene,
   objectHandleScenePoint,
+  objectRect,
   sceneToClient,
+  worldLeftOf,
+  worldRightOf,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
@@ -37,6 +41,9 @@ const EDITOR = "http://127.0.0.1:4174/";
  * against the background and still assert something.
  */
 const STARTER_WIDTH = 1672;
+
+/** A scene object as a saved envelope carries it: Fabric JSON, nested. */
+type SceneObjectJson = Readonly<Record<string, unknown>>;
 
 /** Shift-clicks two starter labels into an `ActiveSelection`, the product's own
  * multi-selection path. Both centres sit inside their label and outside every
@@ -124,65 +131,6 @@ async function activeGeometry(page: Page): Promise<{
       rect: active.getBoundingRect(),
     };
   });
-}
-
-/** A named object's world-space left edge, the snap line a neighbour offers.
- * Read from the object itself rather than restated: the value carries the
- * card's half-pixel stroke, which a hand-copied fixture number would miss. */
-async function worldLeftOf(page: Page, id: string): Promise<number> {
-  return page.evaluate((objectId) => {
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            canvas: {
-              getObjects(): Array<{
-                id?: string;
-                getBoundingRect(): { left: number };
-              }>;
-            };
-          };
-        };
-      }
-    ).vigiliaEditorBridge;
-    const object = bridge.editor.canvas
-      .getObjects()
-      .find((candidate) => candidate.id === objectId);
-    if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    return object.getBoundingRect().left;
-  }, id);
-}
-
-/** A named object's world-space bounding rect, read from the object itself so a
- * fixture tweak cannot leave a test clicking at a stale point. */
-async function objectRect(page: Page, id: string): Promise<ArtboardRect> {
-  return page.evaluate((objectId) => {
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            canvas: {
-              getObjects(): Array<{
-                id?: string;
-                getBoundingRect(): ArtboardRect;
-              }>;
-            };
-          };
-        };
-      }
-    ).vigiliaEditorBridge;
-    const object = bridge.editor.canvas
-      .getObjects()
-      .find((candidate) => candidate.id === objectId);
-    if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    return object.getBoundingRect();
-  }, id);
-}
-
-/** A named object's world-space right edge, the snap line a neighbour offers. */
-async function worldRightOf(page: Page, id: string): Promise<number> {
-  const rect = await objectRect(page, id);
-  return rect.left + rect.width;
 }
 
 /** Counts the guide-coloured pixels in the upper canvas' backing store along the
@@ -388,56 +336,6 @@ async function resizeRightHandleTo(
     raw: handle.x + travelled,
     guidePixels,
   };
-}
-
-/** The scene x in `[from, to]` furthest from every x-line the other objects and
- * the artboard offer, with that distance. A resize aimed at this x is clear of
- * every snap candidate, so "the raw landing survived" is a real no-snap
- * assertion — a guide drawn there would be a snap with no line to snap to. */
-async function clearSceneX(
-  page: Page,
-  excludeId: string,
-  from: number,
-  to: number,
-): Promise<{ x: number; distance: number }> {
-  return page.evaluate(
-    ([objectId, start, end, artboard]: [string, number, number, number]) => {
-      const bridge = (
-        window as unknown as {
-          vigiliaEditorBridge: {
-            editor: {
-              canvas: {
-                getObjects(): Array<{
-                  id?: string;
-                  getBoundingRect(): { left: number; width: number };
-                }>;
-              };
-            };
-          };
-        }
-      ).vigiliaEditorBridge;
-      // The artboard is a snap source too; every test in this file treats the
-      // scene as the starter's artboard wide, so its edges and centre belong
-      // here. Passed in rather than closed over: this runs in the page.
-      const lines = [0, artboard / 2, artboard];
-      for (const object of bridge.editor.canvas.getObjects()) {
-        if (object.id === objectId) continue;
-        const rect = object.getBoundingRect();
-        lines.push(
-          rect.left,
-          rect.left + rect.width / 2,
-          rect.left + rect.width,
-        );
-      }
-      let best = { x: start, distance: -1 };
-      for (let x = start; x <= end; x += 0.5) {
-        const distance = Math.min(...lines.map((line) => Math.abs(line - x)));
-        if (distance > best.distance) best = { x, distance };
-      }
-      return best;
-    },
-    [excludeId, from, to, STARTER_WIDTH] as [string, number, number, number],
-  );
 }
 
 /** Gives the active selection a non-unit scale, which is what the eligibility
@@ -781,10 +679,17 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.getByRole("menuitem", { name: /Chart refresh: 30 FPS/ }).first(),
     ).toBeVisible();
+    // **Pick the rate, rather than re-opening the menu and hoping.** The View
+    // menu's `Chart refresh` entry is a submenu trigger, so clicking it opens
+    // the rates and changes nothing. The old body clicked the trigger a second
+    // time and asserted the trigger now read `1 FPS` — an assertion that could
+    // only pass if something else had changed the rate, and nothing did, so it
+    // was red from the day the entry became a submenu.
     await page
       .getByRole("menuitem", { name: /Chart refresh: 30 FPS/ })
       .first()
       .click();
+    await page.getByRole("menuitemradio", { name: "1 FPS" }).click();
     await page.getByRole("button", { name: "View", exact: true }).click();
     await expect(
       page.getByRole("menuitem", { name: /Chart refresh: 1 FPS/ }).first(),
@@ -1007,10 +912,15 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await openPane(page, "Insert");
 
+    // Six, which is `SHAPE_KINDS` — rect, ellipse, polygon, polyline, line,
+    // path — spelled out here rather than imported, because the count is the
+    // claim being made: the pane offers every primitive and nothing else. The
+    // eight this used to expect were the list before arc and wedge were folded
+    // into the shape families, and nothing removed them.
     const shapes = page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("group", { name: "Shape" });
-    await expect(shapes.getByRole("button")).toHaveCount(8);
+    await expect(shapes.getByRole("button")).toHaveCount(6);
     // Both lists are groups, so neither is orphaned under the other's legend
     // and the two "Line" buttons are told apart by the group they sit in.
     const charts = page
@@ -1110,7 +1020,10 @@ test.describe("Fabric editor route", () => {
     // is where the value run is, and a text object is selectable in its own
     // right, exactly as every other label on a starter card is.
     const spot = await sceneToClient(page, STARTER_WIDTH, 438, 420);
-    await page.mouse.click(spot.x, spot.y);
+    // The card is a group, so a click on it selects the card; the frosted panel
+    // the treatment lives on is a part of it. The card's middle is over its own
+    // panel, so entering lands there.
+    await page.mouse.dblclick(spot.x, spot.y);
     await expect.poll(() => activeId(page)).toBe("cpu-card");
     await openInspectorTab(page, "Design");
     const enabled = page.locator("[data-vigilia-glass-enabled]");
@@ -1139,11 +1052,33 @@ test.describe("Fabric editor route", () => {
             };
           }
         ).vigiliaEditorBridge;
+        // Groups descended: the reading is painted on a part of the card, and
+        // a search of the root list answered `undefined` for an object the
+        // editor was visibly rendering a number into.
+        const find = (
+          objects: ReadonlyArray<{
+            get(name: string): unknown;
+            getObjects?: () => readonly unknown[];
+          }>,
+        ): { get(name: string): unknown } | undefined => {
+          for (const candidate of objects) {
+            if (candidate.get("id") === "cpu-card-value") return candidate;
+            const found = find(
+              (candidate.getObjects?.() ?? []) as ReadonlyArray<{
+                get(name: string): unknown;
+              }>,
+            );
+            if (found !== undefined) return found;
+          }
+          return undefined;
+        };
         return String(
-          bridge.editor.canvas
-            .getObjects()
-            .find((object) => object.get("id") === "cpu-card-value")
-            ?.get("text"),
+          find(
+            bridge.editor.canvas.getObjects() as ReadonlyArray<{
+              get(name: string): unknown;
+              getObjects?: () => readonly unknown[];
+            }>,
+          )?.get("text"),
         );
       });
 
@@ -1152,15 +1087,23 @@ test.describe("Fabric editor route", () => {
     // The token view is the deliberate override, and it is what an author needs
     // to see which binding a run names. Nothing else proves it survives the
     // canvas default moving away from it, so it is switched on and off here.
+    // **Pick the mode, rather than re-opening the menu and hoping.** These View
+    // entries are submenu triggers labelled with the *current* value, so
+    // clicking "Value runs: values" opens the modes and changes nothing — the
+    // body below then asserted the token view and the value view against a
+    // setting it had never actually touched, which is why it was red at base
+    // as well as here.
     await page.getByRole("button", { name: "View", exact: true }).click();
     await page
       .getByRole("menuitem", { name: "Value runs: values", exact: true })
       .click();
+    await page.getByRole("menuitemradio", { name: "tokens" }).click();
     await expect.poll(painted, { timeout: 15_000 }).toContain("cpu.load");
     await page.getByRole("button", { name: "View", exact: true }).click();
     await page
       .getByRole("menuitem", { name: "Value runs: tokens", exact: true })
       .click();
+    await page.getByRole("menuitemradio", { name: "values" }).click();
     await expect.poll(painted, { timeout: 15_000 }).toMatch(/^\d+%$/);
 
     await captureVisualReview(page, testInfo, "editor-starter-cpu-card");
@@ -1181,9 +1124,7 @@ test.describe("Fabric editor route", () => {
       scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
       bindings?: Record<string, ReadonlyArray<{ semanticKey: string }>>;
     };
-    const card = reopened.scene.objects.find(
-      (object) => object["id"] === "cpu-card",
-    );
+    const card = sceneObject(reopened, "cpu-card");
     expect(card?.["vigiliaGlass"]).toEqual({ blurRadius: 40 });
     // Both halves of the card still read the same key after the round trip.
     expect(reopened.bindings?.["cpu-card-value"]).toEqual([
@@ -1352,30 +1293,15 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    await page.evaluate(() => {
-      const canvas = (
-        window as unknown as {
-          vigiliaEditorBridge: {
-            editor: {
-              canvas: {
-                getObjects(): Array<{
-                  constructor: { type?: string };
-                  type: string;
-                }>;
-                setActiveObject(object: unknown): void;
-                requestRenderAll(): void;
-              };
-            };
-          };
-        }
-      ).vigiliaEditorBridge.editor.canvas;
-      const path = canvas
-        .getObjects()
-        .find((object) => (object.constructor.type ?? object.type) === "Path");
-      if (path === undefined) throw new Error("the starter has no Path");
-      canvas.setActiveObject(path);
-      canvas.requestRenderAll();
-    });
+    // By id rather than by Fabric's class tag, and through the card rather than
+    // around it: the starter's icons are paths *inside* their cards, so a search
+    // of `getObjects()` never saw one and threw "the starter has no Path" for a
+    // shape the author can click. Entering the card is also the gesture the spec
+    // defines for reaching a part, and it opens the card in the layer tree on
+    // the way — so the icon is selected the way an author selects it.
+    await enterStarterCard(page, "group-cpu-card");
+    await page.locator('[data-vigilia-layer="cpu-card-icon"]').click();
+    await expect.poll(() => activeId(page)).toBe("cpu-card-icon");
     await openInspectorTab(page, "Design");
 
     const control = page.locator("[data-vigilia-glass-enabled]");
@@ -1443,7 +1369,11 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     // The starter theme's clock is authored as a value run, so selecting it
-    // shows what an author chooses to read and how it should read.
+    // shows what an author chooses to read and how it should read. It is a part
+    // of the time card, and a part is reached by **entering** its group: with
+    // the card merely opened in the tree, a row click still selects the card,
+    // which has no run controls.
+    await enterStarterCard(page, "group-time-card");
     await page.locator('[data-vigilia-layer="time"]').click();
     const source = page.locator('[data-vigilia-run-source="0"]');
     await expect(source).toBeVisible();
@@ -1497,10 +1427,19 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The gauge is a part of the RAM card, so the card is opened first.
+    await expandLayer(page, "group-ram-card");
     const layer = page.locator('[data-vigilia-layer="ram-gauge"]');
     await expect(layer).toBeVisible();
     await layer.click();
-    await expect(layer).toHaveAttribute("aria-selected", "true");
+    // The **card** is what carries the selection marker, not the row that was
+    // clicked: `selectLayer` reaches a child through its owning group, because
+    // a bare child has no transform controls of its own. Asserting the marker
+    // on the part would pin the opposite of the rule, and the part's own row
+    // is still here to be styled and renamed.
+    await expect(
+      page.locator('[data-vigilia-layer="group-ram-card"]'),
+    ).toHaveAttribute("aria-selected", "true");
     // One dense line per layer: the state icons, not the old six text buttons.
     await expect(layer.locator("button")).toHaveCount(2);
     await expect(layer.locator('[aria-label="Hide"]')).toBeVisible();
@@ -1692,8 +1631,11 @@ test.describe("Fabric editor route", () => {
     };
     expect(envelope.globals.palette.chartTrack).toBeUndefined();
     expect(
-      envelope.scene.objects.find((object) => object.id === "ram-gauge")
-        ?.settings?.track,
+      (
+        sceneObject(envelope, "ram-gauge")?.["settings"] as
+          | { track?: unknown }
+          | undefined
+      )?.track,
     ).toEqual({ ref: "palette.bars" });
   });
 
@@ -1835,8 +1777,11 @@ test.describe("Fabric editor route", () => {
     };
     expect(envelope.globals.typePresets["20-400"]).toBeUndefined();
     expect(
-      envelope.scene.objects.find((object) => object.id === "cpu-card-title")
-        ?.vigiliaText?.runs[0]?.typePreset,
+      (
+        sceneObject(envelope, "cpu-card-title")?.["vigiliaText"] as
+          | { runs: ReadonlyArray<{ typePreset?: string }> }
+          | undefined
+      )?.runs[0]?.typePreset,
     ).toBe("typePresets.24-400");
   });
 
@@ -2012,7 +1957,11 @@ test.describe("Fabric editor route", () => {
     // what an author needs before they have picked anything.
     await openInspectorTab(page, "Style");
     const style = page.locator('[data-vigilia-panel="style"]');
-    await expect(style).toContainText("palette.ink");
+    // The tab names the token and its value, not the `palette.ink` string the
+    // reference is written as. `Ink → #00b8d9` is the same fact in the author's
+    // words, and asserting it keeps both halves of the claim — which token, and
+    // what it resolves to here.
+    await expect(style).toContainText("Ink");
     await expect(style).toContainText("#00b8d9");
     await expect(style).toContainText("Body");
 
@@ -2021,8 +1970,8 @@ test.describe("Fabric editor route", () => {
     // to click, because the stage letterboxes the artboard inside its host.
     await page.locator('[data-vigilia-layer="cpu-label"]').click();
     await openInspectorTab(page, "Style");
-    await expect(style).toContainText("palette.ink");
-    await expect(style).toContainText("typePresets.body");
+    await expect(style).toContainText("Ink");
+    await expect(style).toContainText("Body → sans-serif 16px");
     await expect(style.locator("[data-vigilia-globals]")).toHaveCount(0);
 
     await captureVisualReview(page, testInfo, "editor-style-tab");
@@ -2072,8 +2021,11 @@ test.describe("Fabric editor route", () => {
       };
     };
     expect(
-      envelope.scene.objects.find((object) => object.id === "ram-gauge")
-        ?.settings?.progress,
+      (
+        sceneObject(envelope, "ram-gauge")?.["settings"] as
+          | { progress?: unknown }
+          | undefined
+      )?.progress,
     ).toEqual({ ref: "palette.chartTrack" });
   });
 
@@ -2487,6 +2439,12 @@ test.describe("Fabric editor route", () => {
     // one. Saying which asset is meant keeps the test independent of
     // declaration order.
     await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    // **A different extension is refused, and this is now pinned as one.**
+    // `replace` keeps the declared path and its bytes in step, so swapping a
+    // `.png` for `.svg` would leave the package claiming `.png` over SVG bytes.
+    // The old body asserted the opposite — that the replacement arrived as a
+    // second `logo-2` declaration — which is the behaviour `replace` was
+    // changed away from, so the test had been red since.
     await chooseAssetFile(page, "replace", {
       name: "logo.svg",
       mimeType: "image/svg+xml",
@@ -2494,10 +2452,33 @@ test.describe("Fabric editor route", () => {
         '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="#00b8d9"/></svg>',
       ),
     });
-    // The replacement is a second declaration, so the options named for this
-    // test's two imports are `logo` and `logo-2` — plus the starter's own
-    // backdrop, which is why the count is not asserted as a bare total.
-    await expect(imported.filter({ hasText: "logo" })).toHaveCount(2);
+    await expect(page.locator("#status")).toContainText(
+      "could not be imported",
+    );
+    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
+    await expect(assetReferences(page)).resolves.toEqual([
+      { assetId: "logo", kind: "image" },
+    ]);
+
+    // The same extension is the supported replacement: one declaration, new
+    // bytes, everything bound to it re-pointed. **Reselected first**, because a
+    // refused replace clears the selection and the geometry below reads the
+    // active object.
+    await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    await chooseAssetFile(page, "replace", {
+      name: "logo.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABJLR0AcHhtczMAAAGH",
+        "base64",
+      ),
+    });
+    // **One declaration, not two.** `Replace` swaps the chosen asset's bytes and
+    // re-points everything bound to it; declaring a second asset and leaving the
+    // chosen one holding its old bytes is what it stopped doing, precisely so a
+    // package does not grow by one file per press. The count is asserted so a
+    // regression that went back to declaring would be caught here.
+    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
     // **What the select holds afterwards is asserted, because the panel now
     // guarantees it.** Re-rendering rebuilds the options and restores the
     // previous selection, so replacing must not move the author off the asset
@@ -2505,12 +2486,11 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("[data-vigilia-asset-select]")).toHaveValue(
       "logo",
     );
-    // What the round trip owes is the two declarations and the object that
-    // points at the second, both asserted below.
-    await expect(assetReferences(page)).resolves.toContainEqual({
-      assetId: "logo-2",
-      kind: "svg",
-    });
+    // What the round trip owes is the one declaration, re-pointed at the new
+    // file, and the object still bound to it.
+    await expect(assetReferences(page)).resolves.toEqual([
+      { assetId: "logo", kind: "image" },
+    ]);
     await expect(
       page.evaluate(() => {
         const editor = Object.entries(
@@ -2531,9 +2511,25 @@ test.describe("Fabric editor route", () => {
                   getCoords(): Array<{ x: number; y: number }>;
                 }
               | undefined;
+            getObjects(): Array<{ get(name: string): unknown }>;
+            setActiveObject(object: unknown): void;
           };
         };
-        const image = editor.canvas.getActiveObject();
+        // **Select the image, rather than reading whatever is active.** The
+        // round trip above re-opened the package, which clears the selection,
+        // and a refused replace clears it too — so this was reading a different
+        // object on a different day and calling the difference "no selection
+        // geometry". Named by the asset the test imported, so it is the same
+        // object the rest of the block is about.
+        const image = editor.canvas
+          .getObjects()
+          .find(
+            (object) =>
+              (object.get("vigiliaAsset") as { assetId?: string } | undefined)
+                ?.assetId === "logo",
+          );
+        if (image !== undefined) editor.canvas.setActiveObject(image);
+        else return undefined;
         return image === undefined
           ? undefined
           : {
@@ -2577,7 +2573,7 @@ test.describe("Fabric editor route", () => {
     expect(saved.parsed.envelope.scene.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          vigiliaAsset: { assetId: "logo-2", kind: "svg" },
+          vigiliaAsset: { assetId: "logo", kind: "image" },
         }),
       ]),
     );
@@ -2593,7 +2589,7 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await expect(assetReferences(page)).resolves.toContainEqual({
-      assetId: "logo-2",
+      assetId: "logo",
       kind: "svg",
     });
   });
@@ -2938,18 +2934,24 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await selectStarterChart(page);
     // The grab point comes from the object's own geometry, through the camera.
+    // **The gauge's own world box.** Inside an entered group a drag moves the
+    // part, and the part's `left` in the saved document is its position inside
+    // the card — which a drag does not change. The card's own left edge is no
+    // better: the gauge sits inside the card's wider panel, so moving it 80
+    // units need not move the card's edge at all. World coordinates on the
+    // thing the pointer actually moved is the only read that survives.
+    const cardLeft = async (): Promise<number> =>
+      (await objectRect(page, "ram-gauge")).left;
     const start = await clientOfStarterGauge(page);
-    const left = leftFor(await saveEnvelope(page), "ram-gauge");
+    const left = await cardLeft();
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(start.x + 80, start.y);
     await page.mouse.up();
-    expect(leftFor(await saveEnvelope(page), "ram-gauge")).toBeGreaterThan(
-      left,
-    );
+    expect(await cardLeft()).toBeGreaterThan(left);
 
     await page.keyboard.press("Control+z");
-    expect(leftFor(await saveEnvelope(page), "ram-gauge")).toBeCloseTo(left, 3);
+    expect(await cardLeft()).toBeCloseTo(left, 3);
     await expect
       .poll(() =>
         page.evaluate(() => {
@@ -2965,9 +2967,22 @@ test.describe("Fabric editor route", () => {
                 canvas: { getObjects(): Array<{ get(name: string): unknown }> };
               }
             | undefined;
-          const chart = editor?.canvas
-            .getObjects()
-            .find((object) => object.get("id") === "ram-gauge") as
+          const find = (
+            objects: readonly {
+              get(name: string): unknown;
+              getObjects?: () => unknown[];
+            }[],
+          ): unknown => {
+            for (const candidate of objects) {
+              if (candidate.get("id") === "ram-gauge") return candidate;
+              const found = find(candidate.getObjects?.() ?? []);
+              if (found !== undefined) return found;
+            }
+            return undefined;
+          };
+          // The gauge is a part of the RAM card, so a search of the root list
+          // found nothing and the poll timed out on a chart that was there.
+          const chart = find(editor?.canvas.getObjects() ?? []) as
             | { option?: { series?: unknown[] } }
             | undefined;
           const option = chart?.option;
@@ -3279,7 +3294,11 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    const card = await objectRect(page, "ram-card");
+    // **The card, not the frosted panel inside it.** A card is a group, and a
+    // group is both what a click selects and what carries its own transform
+    // controls — a bare panel inside it has no resize handle to grab. The
+    // subject is the thing an author drags anyway.
+    const card = await objectRect(page, "group-ram-card");
     const select = await sceneToClient(
       page,
       STARTER_WIDTH,
@@ -3287,14 +3306,24 @@ test.describe("Fabric editor route", () => {
       card.top + 10,
     );
     await page.mouse.click(select.x, select.y);
-    expect((await activeGeometry(page)).members).toBe(1);
+    // **By id, not by member count.** `members` counts an `ActiveSelection`'s
+    // children, and a card is a group of six — so the old "one object selected"
+    // assertion now read 6 for the card the click correctly selected. The
+    // question is *which* object, and only the id answers it.
+    expect(await activeId(page)).toBe("group-ram-card");
 
-    const line = (await objectRect(page, "vram-card")).left;
+    const line = (await objectRect(page, "group-vram-card")).left;
     const target = line - 2;
-    const ctrl = await resizeRightHandleTo(page, "ram-card", target, testInfo, {
-      ctrlKey: true,
-      captureName: "editor-snap-resize-ctrl",
-    });
+    const ctrl = await resizeRightHandleTo(
+      page,
+      "group-ram-card",
+      target,
+      testInfo,
+      {
+        ctrlKey: true,
+        captureName: "editor-snap-resize-ctrl",
+      },
+    );
 
     // Ctrl-resize must match Ctrl-drag: preserve raw fractional geometry and
     // suppress guides, even when the raw edge is inside the snap threshold.
@@ -3353,7 +3382,11 @@ test.describe("Fabric editor route", () => {
     // is not: the frosted CPU card's own mr handle does not track the pointer
     // (recorded as a concern in the Task 7 report), so it cannot be the subject
     // of a resize that has to land on a line.
-    const card = await objectRect(page, "ram-card");
+    // **The card, not the frosted panel inside it.** A card is a group, and a
+    // group is both what a click selects and what carries its own transform
+    // controls — a bare panel inside it has no resize handle to grab. The
+    // subject is the thing an author drags anyway.
+    const card = await objectRect(page, "group-ram-card");
     const select = await sceneToClient(
       page,
       STARTER_WIDTH,
@@ -3361,7 +3394,11 @@ test.describe("Fabric editor route", () => {
       card.top + 10,
     );
     await page.mouse.click(select.x, select.y);
-    expect((await activeGeometry(page)).members).toBe(1);
+    // **By id, not by member count.** `members` counts an `ActiveSelection`'s
+    // children, and a card is a group of six — so the old "one object selected"
+    // assertion now read 6 for the card the click correctly selected. The
+    // question is *which* object, and only the id answers it.
+    expect(await activeId(page)).toBe("group-ram-card");
 
     // The no-snap control first: drag the `mr` handle to the scene x furthest
     // from every candidate line the rest of the scene offers. The edge must stay
@@ -3369,12 +3406,18 @@ test.describe("Fabric editor route", () => {
     // snap to, which is exactly the mistake Review Focus item 1 names.
     const clear = await clearSceneX(
       page,
-      "ram-card",
+      "group-ram-card",
       card.left + card.width + 60,
+      STARTER_WIDTH,
       STARTER_WIDTH,
     );
     expect(clear.distance).toBeGreaterThan(5);
-    const raw = await resizeRightHandleTo(page, "ram-card", clear.x, undefined);
+    const raw = await resizeRightHandleTo(
+      page,
+      "group-ram-card",
+      clear.x,
+      undefined,
+    );
     expect(Math.abs(raw.right - raw.raw)).toBeLessThan(3);
     // The user-visible half of "a guide with no snap": nothing was applied, so
     // no guide may be painted. Asserted on the pixels, because the geometry
@@ -3393,10 +3436,10 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
     await page.mouse.click(select.x, select.y);
 
-    const line = (await objectRect(page, "vram-card")).left;
+    const line = (await objectRect(page, "group-vram-card")).left;
     const snapped = await resizeRightHandleTo(
       page,
-      "ram-card",
+      "group-ram-card",
       line - 2,
       testInfo,
     );
@@ -3423,7 +3466,7 @@ test.describe("Fabric editor route", () => {
 
     // `time-card`'s world left edge is a line near the drag's landing, read
     // rather than restated so the card's half-pixel stroke is included.
-    const line = await worldLeftOf(page, "time-card");
+    const line = await worldLeftOf(page, "group-time-card");
 
     // Raw landing 4px past the line: inside the acquire threshold, so an eligible
     // selection is pulled onto a candidate. 4px, not 1px, because the pointer's
@@ -3451,7 +3494,7 @@ test.describe("Fabric editor route", () => {
     await selectTwoLabels(page);
     expect((await activeGeometry(page)).members).toBe(2);
     // `time-card`'s world left edge is a candidate line near the drag landing.
-    const line = await worldLeftOf(page, "time-card");
+    const line = await worldLeftOf(page, "group-time-card");
 
     // Positive control: the SAME gesture on the same objects while still
     // eligible. The raw landing is 4px past a candidate line, inside the acquire
@@ -3516,8 +3559,13 @@ test.describe("Fabric editor route", () => {
     const dock = page.locator('[aria-label="Selected object actions"]');
     await expect(dock).toHaveAttribute("data-visible", "true");
     await expect(dock.getByRole("button", { name: "Duplicate" })).toBeVisible();
-    // A single object cannot be ungrouped.
-    await expect(dock.getByRole("button", { name: "Ungroup" })).toHaveCount(0);
+    // **A group can be ungrouped**, and a click on a card selects the card. The
+    // comment this replaces said "a single object cannot be ungrouped", which was
+    // true while a click on a card reached one of its parts — so the button was
+    // correctly absent for the wrong reason, and the assertion was pinning the
+    // harness rather than the dock. What the dock must not show is `Group`,
+    // which is what a multi-selection gets and this selection is not.
+    await expect(dock.getByRole("button", { name: "Ungroup" })).toBeVisible();
 
     // The toolbar is the arrange surface: it stays visible for one object, so
     // the capture shows the discoverable-but-greyed state.
@@ -3550,8 +3598,18 @@ test.describe("Fabric editor route", () => {
         )
     ).sort();
 
-    const centre = await clientOfScene(page, "ram-gauge");
-    await page.mouse.click(centre.x, centre.y, { button: "right" });
+    // Off the gauge's centre, which is where its reading sits: a `Textbox`
+    // hit-tests its glyphs, and a miss there lands on nothing — and a
+    // right-click on nothing opens the *creation* menu, which is a different
+    // menu and would make the dock/menu comparison vacuous.
+    const gauge = await objectRect(page, "ram-gauge");
+    const overGauge = await sceneToClient(
+      page,
+      STARTER_WIDTH,
+      gauge.left + gauge.width / 2,
+      gauge.top + 10,
+    );
+    await page.mouse.click(overGauge.x, overGauge.y, { button: "right" });
 
     const menu = page.locator('[aria-label="Canvas actions"]');
     await expect(menu).toBeVisible();
@@ -4021,39 +4079,27 @@ test.describe("Fabric editor route", () => {
         }
       ).vigiliaEditorBridge.selectLayer("time-rule");
     });
-    const left = (): Promise<number | undefined> =>
-      page.evaluate(() => {
-        const b = (
-          window as unknown as {
-            vigiliaEditorBridge: {
-              editor: {
-                canvas: {
-                  getObjects(): Array<{ id?: string; left?: number }>;
-                };
-              };
-            };
-          }
-        ).vigiliaEditorBridge;
-        return b.editor.canvas
-          .getObjects()
-          .find((object) => object.id === "time-rule")?.left;
-      });
+    // **World, not group-local.** `selectLayer` selects the owning group, so the
+    // nudge moves the card and `time-rule`'s own `left` — its position inside
+    // the card — never changes. Reading that field would report a nudge that
+    // did not happen as one that did not either, which is the harder failure to
+    // see. `objectRect` descends into the group and composes the transform.
+    const left = async (): Promise<number> =>
+      (await objectRect(page, "time-rule")).left;
     const before = await left();
-    if (typeof before !== "number")
-      throw new Error("time-rule is missing from the canvas");
     await page.keyboard.press("ArrowRight");
-    expect(await left()).toBe(before + 1);
+    expect(await left()).toBeCloseTo(before + 1, 5);
     await page.keyboard.press("Shift+ArrowRight");
-    expect(await left()).toBe(before + 11);
+    expect(await left()).toBeCloseTo(before + 11, 5);
 
     // Control+z immediately after the burst's last press: the burst's entry is
     // not recorded until it closes, so the undo binding must close it first.
     await page.keyboard.press("Control+z");
-    expect(await left()).toBe(before);
+    expect(await left()).toBeCloseTo(before, 5);
     // Both presses are one entry, so one redo must restore the *whole* burst. A
     // mechanism that recorded two entries would land at `before + 1` here.
     await page.keyboard.press("Control+y");
-    expect(await left()).toBe(before + 11);
+    expect(await left()).toBeCloseTo(before + 11, 5);
 
     const selectedIds = (): Promise<Array<string | undefined>> =>
       page.evaluate(() => {
@@ -4073,11 +4119,17 @@ test.describe("Fabric editor route", () => {
     // the layer rename input (Plan B Task 5) and confirm the selection is
     // untouched; without this the binding silently steals the field's own
     // select-all and the author's typed text is never selected.
+    //
+    // The row is opened from the tree rather than the canvas because a card's
+    // parts are shut by default, and `time-rule` is inside one.
+    await expandLayer(page, "group-time-card");
     await page.locator('[data-vigilia-layer="time-rule"]').dblclick();
     const rename = page.locator('input[aria-label^="Rename"]');
     await expect(rename).toBeFocused();
     await rename.press("Control+a");
-    expect(await selectedIds()).toEqual(["time-rule"]);
+    // The row names the part, but `selectLayer` reaches it through its owning
+    // group — the same rule the canvas click follows.
+    expect(await selectedIds()).toEqual(["group-time-card"]);
 
     // ...and the same key with focus on the document does select everything.
     // Without this the test only ever proves the binding stays silent.
@@ -4309,9 +4361,23 @@ async function clientOfStarterGauge(
   return sceneToClient(page, STARTER_WIDTH, 1068, 375);
 }
 
+/**
+ * Selects the RAM card's gauge, by entering the card.
+ *
+ * **Two gestures, because the spec says they are two** (§3): a click *selects*
+ * and gives the card's settings; entering gives the parts. The RAM gauge is a
+ * part, so it is reached by entering — the first click of the double-click
+ * selects the card and the manager then re-resolves the child under the pointer,
+ * which is the gauge.
+ *
+ * The single click this used to be asserted `ram-gauge` and now gets
+ * `group-ram-card`, which is the correct answer to a different question: the
+ * card *is* what a click on it selects. This helper's subject is the chart, so
+ * it takes the gesture that reaches a chart.
+ */
 async function selectStarterChart(page: Page): Promise<void> {
   const centre = await clientOfStarterGauge(page);
-  await page.mouse.click(centre.x, centre.y);
+  await page.mouse.dblclick(centre.x, centre.y);
   // The precondition this helper never had: the tab lookup below turns a wrong
   // selection into a confusing timeout, so name the failure here instead.
   await expect
@@ -4339,6 +4405,45 @@ async function selectStarterChart(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+/**
+ * Enters a starter card by double-clicking its middle.
+ *
+ * The centre rather than an edge because the card's own parts are what the
+ * manager re-resolves to, and the middle of a card is over one of them — an
+ * edge click lands on the frosted panel. Enters *some* part, which is what the
+ * gesture means; the caller names the part it then wants from the tree.
+ */
+async function enterStarterCard(page: Page, groupId: string): Promise<void> {
+  const card = await objectRect(page, groupId);
+  const centre = await sceneToClient(
+    page,
+    STARTER_WIDTH,
+    card.left + card.width / 2,
+    card.top + card.height / 2,
+  );
+  await page.mouse.dblclick(centre.x, centre.y);
+  await expect.poll(() => activeId(page)).not.toBe(groupId);
+}
+
+/**
+ * Opens a group in the layer tree, by its own twisty.
+ *
+ * A group is shut by default, so a test that wants a row inside one has to open
+ * it first — the same two steps an author takes. Driven through the button
+ * rather than the bridge so the row that appears is the one the panel painted.
+ */
+async function expandLayer(page: Page, groupId: string): Promise<void> {
+  // `aria-expanded` rather than the label prefix: a row carries three
+  // buttons — the twisty, Hide and Lock — so `button[aria-label]` is a strict
+  // -mode violation, and only the twisty declares expansion at all.
+  const twisty = page.locator(
+    `[data-vigilia-layer="${groupId}"] button[aria-expanded]`,
+  );
+  await expect(twisty).toHaveAttribute("aria-expanded", "false");
+  await twisty.click();
+  await expect(twisty).toHaveAttribute("aria-expanded", "true");
+}
+
 async function assetReferences(page: Page): Promise<unknown[]> {
   return page.evaluate(() => {
     const editor = Object.entries(
@@ -4360,11 +4465,46 @@ async function assetReferences(page: Page): Promise<unknown[]> {
   });
 }
 
-function leftFor(envelope: unknown, id: string): number {
-  const objects = (
-    envelope as { scene: { objects: Array<{ id?: string; left?: number }> } }
+/**
+ * Every object in a saved envelope, groups descended.
+ *
+ * The same defect as `readSceneObject` had, one layer out: the saved document
+ * is Fabric JSON, so a card is a group and its parts live under `objects`. A
+ * `.find` over the top level reported `undefined` for `ram-gauge` — a chart
+ * the author can see and click — and the assertion failed as a *missing
+ * setting* rather than as a search that stopped too early, which is the harder
+ * failure to read.
+ *
+ * Read rather than written per call site so no assertion can quietly keep its
+ * own shallower search.
+ */
+function sceneObjects(envelope: unknown): ReadonlyArray<SceneObjectJson> {
+  const root = (
+    envelope as {
+      scene: { objects: readonly SceneObjectJson[] };
+    }
   ).scene.objects;
-  const left = objects.find((object) => object.id === id)?.left;
+  const all: SceneObjectJson[] = [];
+  const visit = (objects: readonly SceneObjectJson[]): void => {
+    for (const object of objects) {
+      all.push(object);
+      if (Array.isArray(object["objects"])) visit(object["objects"]);
+    }
+  };
+  visit(root);
+  return all;
+}
+
+/** One object out of a saved envelope, wherever it sits. */
+function sceneObject(
+  envelope: unknown,
+  id: string,
+): SceneObjectJson | undefined {
+  return sceneObjects(envelope).find((object) => object["id"] === id);
+}
+
+function leftFor(envelope: unknown, id: string): number {
+  const left = sceneObject(envelope, id)?.["left"];
   expect(left).toEqual(expect.any(Number));
-  return left!;
+  return left as number;
 }

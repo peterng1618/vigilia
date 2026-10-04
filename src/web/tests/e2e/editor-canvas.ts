@@ -7,6 +7,9 @@ export type ArtboardRect = {
   height: number;
 };
 
+/** What the page-side reader can be asked for off a scene object. */
+export type SceneRead = "center" | "rect" | "coords";
+
 /** Viewport offsets are canvas-relative, not page coordinates. */
 async function artboardRect(page: Page): Promise<ArtboardRect> {
   return page.evaluate(() =>
@@ -34,52 +37,169 @@ export async function sceneToClient(
   return { x: box.x + rect.left + x * scale, y: box.y + rect.top + y * scale };
 }
 
+/**
+ * One named object, read from wherever in the document it lives.
+ *
+ * **The one search, in one place.** A card's parts are not in
+ * `canvas.getObjects()` — they live inside the group, and the starter is eight
+ * groups over fifty parts — so a helper that searched only the root reported
+ * `no object with id time-card` for an object the author can see on the canvas,
+ * and eleven specs failed on it. `glass-probe.ts` already carried this search
+ * for the same reason.
+ *
+ * Every read is **world** rather than group-local: `getBoundingRect` and
+ * `getCenterPoint` compose the ancestor transform, which is what a pointer
+ * gesture needs. Reading `.left` off a part returns its position *inside* its
+ * card, and the click lands somewhere the author never put anything — a test
+ * that then fails for a reason that names neither grouping nor the bug.
+ *
+ * `read` is named rather than a callback because `page.evaluate` serializes the
+ * function and cannot close over one; a switch inside the page is the honest
+ * spelling of that constraint.
+ */
+export async function readSceneObject<T>(
+  page: Page,
+  id: string,
+  read: SceneRead,
+): Promise<T> {
+  return page.evaluate(
+    ([objectId, what]) => {
+      type SceneObject = {
+        readonly id?: string;
+        readonly getObjects?: () => readonly SceneObject[];
+        readonly getCenterPoint: () => { x: number; y: number };
+        readonly getBoundingRect: () => {
+          left: number;
+          top: number;
+          width: number;
+          height: number;
+        };
+        readonly getCoords: () => Array<{ x: number; y: number }>;
+      };
+      const objects = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: { canvas: { getObjects(): readonly SceneObject[] } };
+          };
+        }
+      ).vigiliaEditorBridge.editor.canvas.getObjects();
+
+      const find = (
+        candidates: readonly SceneObject[],
+      ): SceneObject | undefined => {
+        for (const candidate of candidates) {
+          if (candidate.id === objectId) return candidate;
+          const found = find(candidate.getObjects?.() ?? []);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      const object = find(objects);
+      if (object === undefined)
+        throw new Error(`no object with id ${objectId}`);
+      if (what === "center") return object.getCenterPoint();
+      if (what === "coords") return object.getCoords();
+      return object.getBoundingRect();
+    },
+    [id, read] as const,
+  ) as Promise<T>;
+}
+
 /** Fabric's centre handles every origin; left + width / 2 does not. */
 export async function clientOfScene(
   page: Page,
   id: string,
   sceneWidth = 1280,
 ): Promise<{ x: number; y: number }> {
-  const centre = await page.evaluate((objectId) => {
-    const bridge = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            canvas: {
-              getObjects(): Array<{
-                id?: string;
-                getCenterPoint(): { x: number; y: number };
-              }>;
-            };
-          };
-        };
-      }
-    ).vigiliaEditorBridge;
-    const object = bridge.editor.canvas
-      .getObjects()
-      .find((candidate) => candidate.id === objectId);
-    if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    const point = object.getCenterPoint();
-    return { x: point.x, y: point.y };
-  }, id);
+  const centre = await readSceneObject<{ x: number; y: number }>(
+    page,
+    id,
+    "center",
+  );
   return sceneToClient(page, sceneWidth, centre.x, centre.y);
 }
 
 export type HandleKey = "tl" | "tr" | "br" | "bl" | "ml" | "mr" | "mt" | "mb";
 
-/** The scene point of a named object's resize handle, read from the object's own
+/**
+ * The scene point of a named object's resize handle, read from the object's own
  * corner coordinates: Fabric draws and hit-tests `ml`/`mr` at the midpoint of
  * the two corners on that side, and the corner controls sit on the corners
  * themselves. Reading it rather than restating fixture numbers keeps the grab
  * on the handle after any fixture tweak, and the corners already carry the
- * object's stroke and scale. */
+ * object's stroke and scale.
+ */
 export async function objectHandleScenePoint(
   page: Page,
   id: string,
   key: HandleKey,
 ): Promise<{ x: number; y: number }> {
+  const corners = await readSceneObject<Array<{ x: number; y: number }>>(
+    page,
+    id,
+    "coords",
+  );
+  const [topLeft, topRight, bottomRight, bottomLeft] = corners;
+  if (!topLeft || !topRight || !bottomRight || !bottomLeft)
+    throw new Error(`${id} has no corner coordinates`);
+  const midpoint = (
+    first: { x: number; y: number },
+    second: { x: number; y: number },
+  ) => ({ x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 });
+  if (key === "tl") return topLeft;
+  if (key === "tr") return topRight;
+  if (key === "br") return bottomRight;
+  if (key === "bl") return bottomLeft;
+  if (key === "ml") return midpoint(topLeft, bottomLeft);
+  if (key === "mr") return midpoint(topRight, bottomRight);
+  if (key === "mt") return midpoint(topLeft, topRight);
+  return midpoint(bottomLeft, bottomRight);
+}
+
+/**
+ * A named object's world-space bounding rect, read from the object itself so a
+ * fixture tweak cannot leave a test clicking at a stale point.
+ */
+export async function objectRect(
+  page: Page,
+  id: string,
+): Promise<ArtboardRect> {
+  return readSceneObject<ArtboardRect>(page, id, "rect");
+}
+
+/** A named object's world-space left edge, the snap line a neighbour offers. */
+export async function worldLeftOf(page: Page, id: string): Promise<number> {
+  return (await objectRect(page, id)).left;
+}
+
+/** A named object's world-space right edge, the snap line a neighbour offers. */
+export async function worldRightOf(page: Page, id: string): Promise<number> {
+  const rect = await objectRect(page, id);
+  return rect.left + rect.width;
+}
+
+/**
+ * The scene x in `[from, to]` furthest from every x-line the other objects and
+ * the artboard offer, with that distance. A resize aimed at this x is clear of
+ * every snap candidate, so "the raw landing survived" is a real no-snap
+ * assertion — a guide drawn there would be a snap with no line to snap to.
+ *
+ * **The candidates are the root objects only, and that is the product's own
+ * rule rather than a limit of this helper.** `snap-manager` enumerates
+ * `canvas.forEachObject`, so a card snaps to cards and to loose objects but not
+ * to a part inside a neighbouring card (`vg-123`, filed). Measuring against
+ * anything more would make "clear of every candidate" vacuous in the safe
+ * direction, which is the direction that hides a regression.
+ */
+export async function clearSceneX(
+  page: Page,
+  excludeId: string,
+  from: number,
+  to: number,
+  artboardWidth: number,
+): Promise<{ x: number; distance: number }> {
   return page.evaluate(
-    ([objectId, controlKey]) => {
+    ([objectId, start, end, artboard]: [string, number, number, number]) => {
       const bridge = (
         window as unknown as {
           vigiliaEditorBridge: {
@@ -87,35 +207,34 @@ export async function objectHandleScenePoint(
               canvas: {
                 getObjects(): Array<{
                   id?: string;
-                  getCoords(): Array<{ x: number; y: number }>;
+                  getBoundingRect(): { left: number; width: number };
                 }>;
               };
             };
           };
         }
       ).vigiliaEditorBridge;
-      const object = bridge.editor.canvas
-        .getObjects()
-        .find((candidate) => candidate.id === objectId);
-      if (object === undefined)
-        throw new Error(`no object with id ${objectId}`);
-      const [topLeft, topRight, bottomRight, bottomLeft] = object.getCoords();
-      if (!topLeft || !topRight || !bottomRight || !bottomLeft)
-        throw new Error(`${objectId} has no corner coordinates`);
-      const midpoint = (
-        first: { x: number; y: number },
-        second: { x: number; y: number },
-      ) => ({ x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 });
-      if (controlKey === "tl") return topLeft;
-      if (controlKey === "tr") return topRight;
-      if (controlKey === "br") return bottomRight;
-      if (controlKey === "bl") return bottomLeft;
-      if (controlKey === "ml") return midpoint(topLeft, bottomLeft);
-      if (controlKey === "mr") return midpoint(topRight, bottomRight);
-      if (controlKey === "mt") return midpoint(topLeft, topRight);
-      return midpoint(bottomLeft, bottomRight);
+      // The artboard is a snap source too; every test in this file treats the
+      // scene as the starter's artboard wide, so its edges and centre belong
+      // here. Passed in rather than closed over: this runs in the page.
+      const lines = [0, artboard / 2, artboard];
+      for (const object of bridge.editor.canvas.getObjects()) {
+        if (object.id === objectId) continue;
+        const rect = object.getBoundingRect();
+        lines.push(
+          rect.left,
+          rect.left + rect.width / 2,
+          rect.left + rect.width,
+        );
+      }
+      let best = { x: start, distance: -1 };
+      for (let x = start; x <= end; x += 0.5) {
+        const distance = Math.min(...lines.map((line) => Math.abs(line - x)));
+        if (distance > best.distance) best = { x, distance };
+      }
+      return best;
     },
-    [id, key] as const,
+    [excludeId, from, to, artboardWidth],
   );
 }
 

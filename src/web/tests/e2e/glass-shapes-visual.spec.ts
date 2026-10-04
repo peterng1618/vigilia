@@ -1,6 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 
 /**
@@ -52,7 +52,18 @@ import { writeThemePackage } from "@vigilia/theme-package";
  * detail for the blur to flatten.
  */
 
-const EDITOR = "http://127.0.0.1:4219/";
+/**
+ * The editor preview `playwright.config.ts` already starts, as `glass.spec.ts`
+ * and `glass-authoring.spec.ts` both do.
+ *
+ * **This was `http://127.0.0.1:4219/`, a port nothing in this repo serves** —
+ * not a server that failed to start, but one that was never configured, so the
+ * spec failed at `page.goto` with `ERR_CONNECTION_REFUSED` and every assertion
+ * below it went unrun. A hardcoded port is the failure mode: it names a machine
+ * rather than a fixture, so it survives the removal of whatever once answered
+ * it. The preview port is the repo's own, and the config starts it.
+ */
+const EDITOR = "http://127.0.0.1:4174/";
 
 const ARTBOARD = { width: 900, height: 600 } as const;
 

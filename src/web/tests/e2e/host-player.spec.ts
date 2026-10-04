@@ -39,9 +39,26 @@ async function saveStarterThroughTheHost(page: Page): Promise<void> {
   });
 }
 
+/**
+ * The starter, saved through the host and then shown on the display.
+ *
+ * **This used to be a bare `goto`, and that made every display spec in this file
+ * depend on a theme left in the host's on-disk library by an earlier *run*.**
+ * The host project's `--app-dir` is a directory, not a fixture: nothing in the
+ * suite put `vigilia-demo-dashboard` there, so on a machine that had not run
+ * these specs before, each of them asked the host for a theme it did not have
+ * and failed at `#artboard canvas.lower-canvas` — a symptom that names the
+ * artboard and never mentions the missing document. Saving it here is
+ * idempotent, so a spec that already did is unaffected.
+ */
+async function openStarterDisplay(page: Page, query = ""): Promise<void> {
+  await saveStarterThroughTheHost(page);
+  await page.goto(`${HOST}/?theme=vigilia-demo-dashboard${query}`);
+}
+
 /** The saved document on the display, with at least one live batch arrived. */
 async function openDisplayWithLiveData(page: Page): Promise<void> {
-  await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+  await openStarterDisplay(page, "&data=live");
   await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
   await expect
     .poll(
@@ -363,7 +380,7 @@ test.describe("hosted player over the real host", () => {
       timeout: 20_000,
     });
 
-    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
+    await openStarterDisplay(page);
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await page.waitForTimeout(8000);
     const measured = await page.evaluate(() => {
@@ -472,7 +489,7 @@ test.describe("hosted player over the real host", () => {
     });
 
     // And the player renders the same document, with the card's reading live.
-    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await openStarterDisplay(page, "&data=live");
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
     // The banner is **absent** only once a batch has arrived, so its absence is
     // asserted alongside a positive batch count: a selector that never matches
@@ -651,7 +668,7 @@ test.describe("hosted player over the real host", () => {
       timeout: 20_000,
     });
 
-    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await openStarterDisplay(page, "&data=live");
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await expect
       .poll(
@@ -1210,7 +1227,7 @@ test.describe("a display fed by the real host", () => {
     // 4.46 at its own 0.37 camera scale). 1672x941 is where the starter is
     // designed to be read, and where the registered capture is taken.
     await page.setViewportSize({ width: 1672, height: 941 });
-    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard`);
+    await openStarterDisplay(page);
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await page.waitForFunction(
       () => {
@@ -1348,7 +1365,7 @@ test.describe("a display fed by the real host", () => {
     });
 
     await page.setViewportSize({ width: 1672, height: 941 });
-    await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+    await openStarterDisplay(page, "&data=live");
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await expect
       .poll(
@@ -2021,7 +2038,7 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
       barChroma: number;
       wordmark: Awaited<ReturnType<typeof glyphCoverage>>;
     }> => {
-      await page.goto(`${HOST}/?theme=vigilia-demo-dashboard&data=live`);
+      await openStarterDisplay(page, "&data=live");
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
       await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
       // A gauge with no reading has no datum, and a datum is what the arc is

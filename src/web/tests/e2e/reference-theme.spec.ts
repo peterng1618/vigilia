@@ -351,15 +351,41 @@ function authoredOnly(envelope: Record<string, unknown>): unknown {
   const copy = JSON.parse(JSON.stringify(envelope)) as {
     scene?: { objects?: Array<Record<string, unknown>> };
   };
-  for (const object of copy.scene?.objects ?? []) delete object["styles"];
+  // **Groups descended, because the table is written on the parts.** Fabric
+  // writes `styles` on every `Textbox`, and a card's text runs are parts — so
+  // stripping only the top level left the very table this excludes on most of
+  // the scene, and two saves of the same unchanged document disagreed on it.
+  // The exclusion is the one this function exists to make, so it has to reach
+  // the objects the claim is about.
+  const strip = (objects: Array<Record<string, unknown>> | undefined): void => {
+    for (const object of objects ?? []) {
+      delete object["styles"];
+      if (Array.isArray(object["objects"])) strip(object["objects"]);
+    }
+  };
+  strip(copy.scene?.objects);
   return copy;
 }
 
 function objectsOf(
   envelope: Record<string, unknown>,
 ): readonly Record<string, unknown>[] {
-  const scene = envelope["scene"] as { objects: Record<string, unknown>[] };
-  return scene.objects;
+  const scene = envelope["scene"] as {
+    objects: ReadonlyArray<Record<string, unknown>>;
+  };
+  // **Groups descended.** A card is a group, so a card's parts are not at the
+  // top level and a flat read reported `[]` for "every object carrying a derived
+  // style table" — the assertion passing vacuously rather than failing, which
+  // is the direction that hides the defect it was written to pin.
+  const all: Record<string, unknown>[] = [];
+  const visit = (objects: ReadonlyArray<Record<string, unknown>>): void => {
+    for (const object of objects) {
+      all.push(object);
+      if (Array.isArray(object["objects"])) visit(object["objects"]);
+    }
+  };
+  visit(scene.objects);
+  return all;
 }
 
 test.describe("the reference composition, authored", () => {
@@ -1750,8 +1776,26 @@ function starterBackdropBands(page: Page): Promise<{
         };
       }
     ).vigiliaEditorBridge.editor.canvas;
-    const objects = canvas.getObjects();
-    const card = objects.find((object) => object.get("id") === "cpu-card");
+    // Groups descended: the frosted panel is a part of the CPU card, and a
+    // search of the root list said the starter had lost it.
+    const find = (
+      objects: ReadonlyArray<{
+        get(name: string): unknown;
+        getObjects?: () => unknown[];
+      }>,
+    ): { get(name: string): unknown } | undefined => {
+      for (const candidate of objects) {
+        if (candidate.get("id") === "cpu-card") return candidate;
+        const found = find(
+          (candidate.getObjects?.() ?? []) as ReadonlyArray<{
+            get(name: string): unknown;
+          }>,
+        );
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const card = find(canvas.getObjects());
     if (card === undefined)
       throw new Error("the starter lost its frosted card");
     const box = card.getBoundingRect();
@@ -2387,6 +2431,13 @@ function mediaSrc(page: Page): Promise<string | null> {
  * turns red the moment the gap closes — so neither can be quietly forgotten.
  */
 test.describe("known gaps, pinned", () => {
+  // **Marked, and the mark is the finding.** `objectsOf` read only the top level
+  // of the scene, so before it descended it reported **no** object carrying the
+  // table — on a document whose every text part carries one. The pin had no
+  // teeth and was green for the wrong reason; fixing the search turned it red
+  // for the right one. `test.fail` is what this block's own docblock says it
+  // does, and these two had never been marked.
+  test.fail("a saved object carries no derived per-character style table");
   test("a saved object carries no derived per-character style table", async ({
     page,
   }, testInfo) => {
@@ -2424,6 +2475,10 @@ test.describe("known gaps, pinned", () => {
     ).toEqual([]);
   });
 
+  // Marked for the same reason: this one found nothing for the same reason,
+  // and reports `envelope.scene.objects[10].crossOrigin` once the search can
+  // see the image again.
+  test.fail("a packaged image object saves no runtime object URL");
   test("a packaged image object saves no runtime object URL", async ({
     page,
   }, testInfo) => {
