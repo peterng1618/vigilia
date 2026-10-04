@@ -199,8 +199,16 @@ state belongs to the shell.
   once — 15 of its 60 names ellipsise, against 2 at 340px. Scoping the room the two state
   controls need to the rows that draw them, rather than holding it open on all sixty, is
   what makes 340px affordable; a 320px column was measured and declined, because it
-  ellipsises four names for 20px of canvas and a name is the one thing a layer list must
-  not clip.
+  ellipsises four names for 20px of canvas and the name **gives up last**.
+
+  **Correction: that is a weaker promise than "never", and the weaker one is the true
+  one.** The flex guarantees *ordering* — the name yields after the key, not never — and
+  at 340px `network-chart` and `trends-chart` do ellipsise, needing 81px in a 65px box and
+  174px in a 139px one. A 299px row cannot hold a 40px specimen, a name and a three-key
+  key with nothing truncated. The rule the CSS actually keeps is that the name is the
+  **last** thing to give up its width, so raising the column buys back names in the order
+  an author would choose to lose them. Writing "never" and violating it two rows later
+  would make the rule unusable as authority for the width choice it was used to justify.
 - **Lock and visibility appear only when they are true** — hover, selection, or
   non-default. 104 icons reading "visible, unlocked" was noise, and the noise grows with
   the row count, which is the case a card-heavy panel would hide.
