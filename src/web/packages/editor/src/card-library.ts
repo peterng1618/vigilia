@@ -42,7 +42,8 @@ import { uiCopy } from "./ui-copy.js";
  *
  * **Scope limit — the copy is faithful in ids, not necessarily in readings.**
  * `cardBindings` reads the *starter's* bindings map, keyed by the starter's own
- * part ids, so only the four parts that starter declares can carry a reading.
+ * part ids, so only the parts that map declares can carry a reading — eleven
+ * across the eight cards, four of them the CPU card's, against its seven parts.
  * Inserted into a document whose part ids differ, or one an author has renamed,
  * every binding comes across as `null` and **no issue is raised** —
  * `unmapped-global` fires only on `palette.*` / `typePresets.*` string
@@ -332,14 +333,15 @@ function cardUnit(cardId: string): CardUnit {
  * drifted key is a reading that quietly stops being the one the author meant.
  *
  * **The limit this hardcoding costs, stated where a reader meets it:** the key
- * is the starter's own part id, so only the four parts `createNewFabricTheme`
- * declares can ever come back carrying a reading. Any other document — one
- * whose parts carry different ids, or an author's renames — gets bindings of
- * `null` for every part, silently, because `unmapped-global` inspects only
- * `palette.*` and `typePresets.*` strings and has no view of bindings at all.
- * The document's own bindings are the real source and this function cannot
- * reach them: `insertCard` passes them in to mint *past*, and the copy has to
- * be buildable without them. See the module docblock.
+ * is the starter's own part id, so only the eleven parts
+ * `createNewFabricTheme` declares can ever come back carrying a reading. Any
+ * other document — one whose parts carry different ids, or an author's renames
+ * — gets bindings of `null` for every part, silently, because
+ * `unmapped-global` inspects only `palette.*` and `typePresets.*` strings and
+ * has no view of bindings at all. The document's own bindings are the real
+ * source and this function cannot reach them: `insertCard` passes them in to
+ * mint *past*, and the copy has to be buildable without them. See the module
+ * docblock.
  */
 function cardBindings(
   card: ObjectJson,
