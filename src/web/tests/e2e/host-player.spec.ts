@@ -563,12 +563,43 @@ test.describe("hosted player over the real host", () => {
     // ink on the display. The claim is pixels.
     await saveStarterThroughTheHost(page);
     await openDisplayWithLiveData(page);
-    // The trends series needs points before its stroke exists, so a single
-    // early read would measure an empty chart rather than a broken one.
-    await page.waitForTimeout(8000);
+    // **Waited on, not slept through.** A line chart's ink grows as its rolling
+    // window fills, and the growth is not monotone across runs: measured on four
+    // boots of this same document, `cpu-card-sparkline` carried 0, 30, 16 and 0
+    // lit pixels at 2 s, then 604, 1482, 1058 and 1365 at 8 s, and 5700 to 8273
+    // by 30 s. A fixed 8 s sleep therefore straddles the threshold — the same run
+    // read 480 against a floor of 500 and failed a chart that was painting
+    // correctly — while the bar, whose geometry is fixed by its data rather than
+    // by the window, read 17136 every time. The condition to wait for is the one
+    // being claimed: a sparkline with points in it.
+    await expect
+      .poll(
+        async () => {
+          const charts = await chartPixels(page);
+          return charts.find((chart) => chart.id === "cpu-card-sparkline")?.ink;
+        },
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(500);
 
     const charts = await chartPixels(page);
 
+    // **The colour floor is a fraction of the ink, and had to become one.** A
+    // bar paints filled areas and a sparkline paints a two-pixel stroke, so the
+    // two carry very different proportions of coloured ink even when both are
+    // painting correctly — measured on five settled boots of this same document,
+    // `storage-bar` reads a chroma/ink ratio of 0.469 every time while
+    // `cpu-card-sparkline` ranges 0.112 to 0.222. One absolute count therefore
+    // cannot serve both: at 500 it is 20x too high for the sparkline and barely
+    // a twelfth of the bar's, and a run that happened to settle early failed on
+    // a chart that was drawing its series in colour the whole time.
+    //
+    // A ratio is also the stronger claim rather than a weaker one. The defect
+    // this spec was written for put `itemStyle.color: "transparent"` on the
+    // series, which is a *low coloured fraction* — the track stays, the value
+    // does not — and a fraction is what catches it. An absolute count of
+    // coloured pixels would also pass a chart whose track were black ink, which
+    // is the failure mode the message names.
     for (const id of ["storage-bar", "cpu-card-sparkline"]) {
       const chart = charts.find((candidate) => candidate.id === id);
       expect(chart, `${id} is on the display`).toBeDefined();
@@ -577,9 +608,9 @@ test.describe("hosted player over the real host", () => {
         500,
       );
       expect(
-        chart!.chroma,
-        `${id} paints its value in a colour, not a grey track`,
-      ).toBeGreaterThan(500);
+        chart!.chroma / chart!.ink,
+        `${id} paints its value in a colour, not a grey track (${chart!.chroma} of ${chart!.ink} pixels)`,
+      ).toBeGreaterThan(0.05);
     }
     // And the whole display is not one chart quietly carrying the claim.
     expect(charts.length, "the display's charts").toBeGreaterThan(2);
