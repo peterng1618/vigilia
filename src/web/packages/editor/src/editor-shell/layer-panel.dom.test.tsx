@@ -811,7 +811,7 @@ it("restacks the document when a row is dropped on another", async () => {
 // ── A row says what it is ────────────────────────────────────────────────────
 
 it("draws a text row as its own words, in its own face", async () => {
-  // The brief's first subtraction: a 12px `T` glyph cannot survive 320px, and
+  // The brief's first subtraction: a 12px `T` glyph cannot survive 340px, and
   // it answers neither question an author has. The row's own string does both
   // at once — *what it says* and *that it is text* — and its own face says the
   // rest. Read on the declared value: jsdom applies no stylesheet here, so a

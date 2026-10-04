@@ -435,20 +435,23 @@ body,
 .editor-shell-body {
   display: grid;
   grid-template-areas: "bar stage inspector" "panel stage inspector";
-  /* The layer panel is 320px because a row now carries three things it did not
+  /* The layer panel is 340px because a row now carries three things it did not
      before: a 40px kind specimen, the name, and the semantic key it reads.
 
-     The room the two state controls need used to be held open on *every* row,
-     including the fifty-three of the starter's sixty that draw none. Scoped to
-     the rows that have them (see `.vigilia-layer-bound`) it is worth 20px of
-     canvas — measured on canvas at 1600×900 with all sixty rows open, six
-     names clip at 280px, the same two at 320px and at 340px, and both of those
-     are rows genuinely longer than a dense row. So 320px holds the legibility
-     this was widened to 340px for and gives the 20px back. The canvas is
-     `minmax(0, 1fr)`, so it comes off the stage, which is the most valuable
-     space in this app: the whole design is that the editor exists to author a
-     phone display. */
-  grid-template-columns: 320px minmax(0, 1fr) 280px;
+     The width was worth keeping once the room the two state controls need was
+     scoped to the rows that draw them (see `.vigilia-layer-bound`) rather than
+     held open on all sixty — measured on canvas at 1600×900 with every group
+     open and the panel's scrollbar in place, 340px ellipsises 2 of the 60
+     names, 320px ellipsises 4 and 280px ellipsises 15. So a 320px column buys
+     20px of canvas with two extra clipped names, and the name is what the
+     row's own flex gives up last (`.vigilia-layer-name`). Scoping is
+     width-independent, so the panel kept 340px and the stage kept 948.
+
+     The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage,
+     which is the most valuable space in this app: the whole design is that the
+     editor exists to author a phone display. That is why the 20px was measured
+     and declined rather than taken on faith. */
+  grid-template-columns: 340px minmax(0, 1fr) 280px;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
@@ -944,12 +947,15 @@ body,
    scannable at all.
 
    40px, chosen from the budget rather than from the ideal, and kept there after
-   measuring the narrower alternative: on canvas at 320px a 28px slot changed
-   the count of clipped names by zero, and turned every bound row's specimen
-   into a shorter piece of the same noise. Four of the five arms are narrower
-   than 28px, but only the text arm is what this column is *for*, and 40px is
-   what holds `CPU`, `RAM` and `VIGILIA` whole. A specimen that runs long
-   ellipsises — and its `title` carries the whole string. */
+   measuring the narrower alternative. At 28px the clipped-specimen count goes
+   from 4 to 7, and the three it adds are the ones that should not be shortened:
+   `Storage`, `VRAM` and `VIGILIA`, which are titles rather than noise. At 40px
+   the four that clip are `Network` by 1px, a three-item legend by 60,
+   `Performance Trends` by 56 and `SYSTEM INSIGHTS` by 49 — a legend and a
+   strapline are meant to run long, and 40px still holds `CPU`, `RAM` and
+   `VIGILIA` whole, which is what this column is *for*. Four of the five arms
+   are narrower than 28px. A specimen that runs long ellipsises, and its `title`
+   carries the whole string. */
 .vigilia-layer-mark {
   flex: 0 0 40px;
   min-width: 0;
@@ -1012,13 +1018,17 @@ body,
    Both were measured. Reserving 48px of the row's width cost the *name* 48px
    on every row, permanently, on every theme — so the room the controls need is
    held open only on the rows that draw them, which is the `:has` rule under
-   `.vigilia-layer-bound`. Leaving the space to the layout instead cost
-   something worse: the name jumped 20–30px the moment a pointer arrived, so
-   every row the author moved across re-flowed its own text. Overlaying costs
-   neither, because the two controls only exist on the row under the pointer,
-   where the author is looking at them rather than reading the key they cover.
-   The bound column is what gives way, and it is the right thing to give way:
-   it is on the row as a fact, and a key is one hover away. */
+   `.vigilia-layer-bound`. Overlaying is what makes that rule affordable: the
+   two controls only exist on the row under the pointer, where the author is
+   looking at them rather than reading the key they cover.
+
+   The shift this takes is not nothing, and it is worth naming: the attended
+   row's name narrows by whatever its key does not take — measured at 15.83px
+   on `network-chart` — while every other row holds still. That is the whole
+   cost, charged to the one row the pointer is on, and it is deliberate: the
+   alternative was paying it on all sixty. The bound column is what gives way,
+   and it is the right thing to give way, because it is on the row as a fact
+   and a key is one hover away. */
 .vigilia-layer-state {
   position: absolute;
   right: 2px;
@@ -1050,21 +1060,25 @@ body,
 
    `:has` asks the controls themselves, so this holds the space open exactly
    where something would cover the key — hovered, focused, selected, locked or
-   hidden — and nowhere else. Held open on every row instead, it cost the
-   *name* 50px permanently, on all sixty starter rows, most of which show no
-   controls at all; dropping it is what lets the panel be 320px rather than
-   340px at the same legibility.
+   hidden — and nowhere else. At rest, with nothing selected, zero of the
+   starter's sixty rows draw a control and zero reserve anything. Held open on
+   every row instead, it cost the *name* 50px permanently, on all sixty.
+
+   What scoping bought is width independence, not width: 340px clips 2 of the
+   starter's 60 names, 320px clips 4 and 280px clips 15, so the panel kept the
+   340px it was widened to rather than buying canvas with two more ellipsised
+   names.
 
    The cost falls on the attended row, where the name narrows by whatever the
-   key does not take: measured at 15.8px. That is the price of not taking it
-   from every row in every theme, and it is charged to the one row the author
-   is looking at.
+   key does not take: measured at 15.83px on `network-chart`, with every other
+   row holding still. That is the price of not taking it from every row in
+   every theme, and it is charged to the one row the author is looking at.
 
    `margin-right` rather than `padding-right`, and on the bound rather than on
    the row: padding a flex item whose width is already its content's pads a box
    that does not move, and measured on canvas that left the icons covering 48px
    of the end of the key. `calc` rather than a fixed number because the row is
-   294px wide inside the panel's 320px column here and 254px in the narrow
+   299px wide inside the panel's 340px column here and 239px in the narrow
    layout below, and the controls are a fixed size in both. */
 .vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
   max-width: calc(100% - 50px);
@@ -1225,7 +1239,7 @@ body,
 @media (max-width: 980px) {
   .editor-shell-body {
     grid-template-areas: "bar stage" "panel stage";
-    /* 280px rather than the wide layout's 320px, because the stage is sharing
+    /* 280px rather than the wide layout's 340px, because the stage is sharing
        a narrow window with it. The bound column is what gives way first, which
        is the same order the row's own flex uses. */
     grid-template-columns: 280px minmax(0, 1fr);

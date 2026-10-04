@@ -19,7 +19,7 @@ export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
  * What a row draws in place of a kind glyph.
  *
  * Each arm carries the object's own data rather than a symbol standing in for
- * it, because a 12px glyph cannot survive 320px and this can: a text row says
+ * it, because a 12px glyph cannot survive 340px and this can: a text row says
  * what it says and in what face, a chart which family it is, a shape the paint
  * it fills with, an image its own source. A group carries nothing — the twisty
  * and a bold name are its mark, and a mark of its own would be a third thing

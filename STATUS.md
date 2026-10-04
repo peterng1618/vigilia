@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-03
+Updated: 2026-10-04
 Branch: `claude/superpowers-workflow-cleanup`
 
 ## Current objective
@@ -43,15 +43,15 @@ The loop, in order:
 
 ## Last completed change
 
-- **The layer tree opens the starter as ten rows, not sixty** (plan 1 Task 3). `projectLayers` already walked groups; the missing thing was the default. A group with children is now shut until the author opens it, so the shell holds the ids of the **opened** groups rather than the shut ones — a group created a minute ago is shut with nothing recording it, and no enumeration of groups is needed to keep the set current.
-- **The projection descends into a shut group and emits nothing from it.** The fallback id is *positional* (`layerIds` numbers id-less objects by walk order) and `findById`/`ownerOf`/`pathTo` walk the whole document, so a walk that stopped at a shut group would number its rows differently and hand one id to two objects — a rename or hide would land on the wrong object. Caught by mutation, not by reading: with the descent reverted, exactly one test fails.
-- **A flat scene is pinned as the case this could have broken** — 200 loose shapes, every row at depth 0 with no parent, each individually selectable and resolvable, in reverse paint order. Review Focus 4 is a test, not a sentence.
-- **The brief's "eight top-level rows" is a controller error, measured.** The starter has **ten** roots: eight card groups plus `wordmark` and `strapline`, which Task 1 deliberately left loose. Eight is the count of *cards*. Tests assert ten; the comments say why.
-- **The rider from Task 2 is discharged**: `starter-round-trip`'s header claimed its `setCoords()` was "load-bearing rather than defensive". Verified false — all five tests pass without the call. The comment now says what is true, and **the call stays**: a helper reading a box should not depend on another owner's discipline.
+- **A row says what it is and what it reads** (plan 1 Task 4). `LayerRow` gains a `mark` — a discriminated union with one arm per kind, projected in `layer-tree.ts` from the object itself — and a `bound: readonly string[]` read from the document's own bindings, never typed in. The `KIND_ICONS` table and `uiCopy.panels.unbound` are deleted: a glyph per kind and `Not bound` on 20 of 23 rows were the ink this removes.
+- **Lock and eye appear only when they are true** — hover, keyboard focus, selection, or a non-default state, independently, so a hidden-but-unlocked row shows the eye and not the lock. At rest, nothing selected, zero of the starter's 60 rows draw a control.
+- **The state controls overlay the row's right edge rather than being reserved beside it**, and the key's 50px reservation is scoped by `:has(.vigilia-layer-state button)` to the rows that actually draw them. `:has` asks the controls rather than approximating with `:hover`, which would have left a selected, locked or hidden row with its icons over its own key.
+- **A row announced each of its keys twice**, because a treeitem's accessible name is the concatenation of its columns. `textMark`'s specimen now prints the object's literal runs and lets the bound column be the only place a key appears; an *undeclared* run keeps its placeholder, because nothing else on the row would say so. Chrome's own AX tree reports 0 of 60 rows naming a key more than once.
+- **Measured on canvas at 1600×900, every group open, panel scrollbar in place:** 340px ellipsises 2 of 60 names, 320px ellipsises 4, 280px ellipsises 15. The panel is 340px and the stage 948. The attended row's name narrows 15.83px and no other row moves.
 
 ## Next
 
-1. **Plan 1 Task 4**: rows say what a thing is, `docs/superpowers/plans/2026-10-03-groups-in-the-starter.md` — kind becomes a treatment rather than a glyph, lock and eye appear only when true, a row shows what it is bound to.
+1. **Plan 1 Task 5**: a card can be inserted as a unit, `docs/superpowers/plans/2026-10-03-groups-in-the-starter.md`. Task 4's `mark` and `bound` are already the columns its per-kind inspector will render from.
 2. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
 3. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
 4. **Task 7's landing site may have moved.** It mounts the picker in the type-preset panel, which the redesign moves into the left column's Document tab. Decide the order when the catalogue comes back.
