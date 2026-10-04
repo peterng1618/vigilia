@@ -43,10 +43,9 @@ The loop, in order:
 
 ## Last completed change
 
-- **A refused card now reaches the author on all three surfaces.** `EditorSession#insertCard` reports through the editor's own diagnostics instead of throwing at a caller; the Insert menu and the canvas context menu dispatch through a façade typed `void`, so two of three swallowed the refusal — `File > New`, then `Insert > Card > CPU`, did nothing and said nothing. All three surfaces are driven against a real session on a blank theme.
-- **`id-collision` is detected in `card-library.ts`**, the guard `claim()` in `widget.ts` keeps. Two parts declaring one id gave both copies one id, which the validator refuses — so every later save in that session failed, reported nowhere.
-- **A duplicated object carries its readings.** `reassignIds` minted new object ids and nothing re-keyed the envelope's `bindings`, so a duplicated card claimed to be a CPU card, showed nothing, and printed no key; fresh binding ids plus repointed runs keep it valid. Pre-existing, made visible by Task 5.
-- **The card arm is now covered in both menus.** Deleting `case "card"` from `shell-layout.tsx` left 216 tests passing and from `canvas-context-menu.tsx` 175, because every façade stubbed `insertCard`.
+- **A repeat's `-2` no longer collides with a genuine `-2` part.** `createWidgetIdAllocator` memoises by key, so a card declaring one id twice *and* carrying a part already named `…-2` put two objects at `card-…-2` — silently, since `nth` is 1 there — and every later save in that session failed. The minted value is now checked against what the copy already issued.
+- **The refusal has been seen in a real browser, on all three surfaces.** The one thing jsdom could not show was Base UI's popup teardown: driven in Chromium against the built bundle, the message lands in the footer at (93, 848) 1473×34, no popup stays painted, and `elementFromPoint` at the message's centre returns its own text. Chromium was launched directly, so `ignoreDefaultArgs: ["--hide-scrollbars"]` was passed.
+- **Round 1's four findings stay as they were.** A refused card reaches the author on all three surfaces, `id-collision` is detected, a duplicated object carries its readings, and both menus cover the card arm. Untouched this round.
 
 ## Next
 

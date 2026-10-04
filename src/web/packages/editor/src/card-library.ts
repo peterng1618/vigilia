@@ -159,6 +159,10 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
   const firstCopy = new Map<string, string>();
   const bindingIds = new Map<string, string>();
   const declared = new Map<string, number>();
+  // Every id this copy has been given, so a minted value that repeats one —
+  // the `-2` key of a repeat colliding with a genuine part of that name — is
+  // bumped rather than handed out twice.
+  const issued = new Set<string>();
   const claim = (object: ObjectJson): void => {
     const id = readId(object);
     if (id !== undefined) {
@@ -175,7 +179,19 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
       // `allocateId` answers the same original with the same id twice over, so
       // a repeated declaration is minted under a numbered key: `…-2` reads as
       // the copy of `…` that a second insertion would have minted anyway.
-      const minted = allocateId(nth === 1 ? id : `${id}-${nth}`);
+      //
+      // That key is an id an author may already have written, and the allocator
+      // memoises **by key**, so a card carrying a genuine `…-2` part gets that
+      // part's id back for the repeat — `nth` is 1 there, so no second
+      // `id-collision` is reported and the duplicate is silent: the same two
+      // objects at one id this guard exists to refuse, one level down. So the
+      // minted value is checked against what this copy has already issued and
+      // the key keeps bumping.
+      let minted = allocateId(nth === 1 ? id : `${id}-${nth}`);
+      for (let bump = nth + 1; issued.has(minted); bump += 1) {
+        minted = allocateId(`${id}-${bump}`);
+      }
+      issued.add(minted);
       objectIds.set(object, minted);
       // The first declaration keeps the readings; a binding id is unique across
       // the document, so a second copy of the same declaration cannot have them

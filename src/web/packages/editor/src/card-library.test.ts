@@ -502,6 +502,141 @@ describe("a card that declares one id twice", () => {
   });
 });
 
+/**
+ * A card that declares one id twice *and* carries a part already named `…-2`.
+ *
+ * The `-2` suffix the guard mints a repeated declaration under is a real id an
+ * author may already have written, and `createWidgetIdAllocator` memoises **by
+ * key** — so asking for `…-2` twice answers with the id already issued for the
+ * genuine part. `nth` is 1 for that genuine part, so no second `id-collision`
+ * is reported and `declared` says one, and the duplicate is silent: two objects
+ * at one id, `sceneObject` answers `duplicate-id`, `snapshot()` throws and every
+ * later save in that session fails — the same outcome the guard above exists to
+ * close, arriving by the numbering it introduced.
+ *
+ * No shipped card part carries a `-2` suffix, so nothing here is a regression
+ * anyone can reach today. It is a hole in a guard added one commit ago, and the
+ * pin is what says the hole is closed rather than merely unreached.
+ */
+describe("a card whose repeat mints the suffix a genuine part already holds", () => {
+  /** The CPU card with its title onto its value part's id — a repeat — and one
+   *  extra part genuinely named `cpu-card-value-2`. Both declared at once. */
+  const SUFFIX_CARD: CardUnit = {
+    id: "group-suffix-card",
+    label: "Suffix",
+    build: () => {
+      const card = cpuCard();
+      const parts = card["objects"] as readonly ObjectJson[];
+      const renamed = parts.map((part) =>
+        part["id"] === "cpu-card-title"
+          ? { ...part, id: "cpu-card-value" }
+          : part,
+      );
+      // A ninth part, carrying the icon's own shape so it is a real object and
+      // not a bare record: it claims `cpu-card-value-2` for itself, which is
+      // the id the repeat will mint under.
+      const icon = parts.find((part) => part["id"] === "cpu-card-icon");
+      if (icon === undefined) throw new Error("no icon to clone");
+      return {
+        ...card,
+        objects: [...renamed, { ...icon, id: "cpu-card-value-2" }],
+      };
+    },
+  };
+
+  const copied = (): ReturnType<typeof instantiateCard> =>
+    instantiateCard({
+      unit: SUFFIX_CARD,
+      globals: STARTER_GLOBALS,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+
+  it("reports the collision, by name", () => {
+    const issues = copied().issues.filter(
+      (entry) => entry.code === "id-collision",
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.detail).toContain("cpu-card-value");
+  });
+
+  it("mints the repeat past the genuine `-2`, so no two parts share an id", () => {
+    const ids = partsOf(copied().card).map((part) => part["id"]);
+
+    // The defect: `nth === 1` for the genuine `-2`, so the second `…-2` key
+    // returns the memoised id and both parts sit at it — which the envelope
+    // validator refuses, leaving a canvas that looks right and a save that
+    // fails for the rest of the session, told nothing.
+    expect(ids).toHaveLength(CPU_PARTS + 1);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("card-cpu-card-value-2");
+  });
+
+  it("still serialises and validates — the session stays saveable", async () => {
+    // The claim the test above it pins for one duplicate shape does not cover
+    // this one, so it is stated again here: `validateFabricThemeEnvelope` is
+    // what `snapshot()` calls before every save.
+    const copy = copied();
+    const scene = serialiseScene(
+      await enliven(copy.card),
+    ) as unknown as Readonly<Record<string, unknown>>;
+
+    const result = validateFabricThemeEnvelope({
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "suffix-card",
+      // Carried from the starter rather than restated: the validator requires a
+      // declared language, and a restated one is a second place to forget it.
+      metadata: { themeLanguage: "en" },
+      artboard: { width: 1672, height: 941 },
+      scene,
+      bindings: copy.bindings,
+      globals: STARTER_GLOBALS,
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("costs no reading, so the fix is not a blank card for a working one", () => {
+    // The repeat alone, with no genuine `-2` beside it: the same card, minus
+    // the collision this round closes. Every reading the first copy carried
+    // must survive the bump, or the fix would trade a failed save for a card
+    // that saves and shows nothing.
+    const repeatOnly = instantiateCard({
+      unit: {
+        id: "group-repeat-card",
+        label: "Repeat",
+        build: () => {
+          const card = cpuCard();
+          const parts = card["objects"] as readonly ObjectJson[];
+          return {
+            ...card,
+            objects: parts.map((part) =>
+              part["id"] === "cpu-card-title"
+                ? { ...part, id: "cpu-card-value" }
+                : part,
+            ),
+          };
+        },
+      },
+      globals: STARTER_GLOBALS,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+
+    expect(Object.keys(copied().bindings).sort()).toEqual(
+      Object.keys(repeatOnly.bindings).sort(),
+    );
+    const bindings = Object.values(copied().bindings).flatMap((list) =>
+      list.map((binding) => binding.id),
+    );
+    // And a binding id is unique across the document, so bumping must not have
+    // traded one collision for another.
+    expect(new Set(bindings).size).toBe(bindings.length);
+  });
+});
+
 describe("cards this theme cannot express", () => {
   it("refuses a card the library does not have, by name", async () => {
     await expect(
