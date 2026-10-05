@@ -43,11 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **The stage looks through a display, and the display is a lens.** `editor-shell/display-switch.tsx` replaces `zoom-readout.tsx`: one menu offering Fit, the three displays, Zoom to selection and 100 %, opening on a landscape phone. `display-lens.ts` owns the vocabulary and derives each aspect from `ARTBOARD_RATIOS` rather than restating `19.5:9`; `viewport-manager` frames the artboard inside that screen.
-- **Review Focus 4 holds, measured.** The serialised scene is byte-identical across every choice and `editor:edit-committed` never fires — checked in the browser with `Date.now` frozen, because the starter's live readings move the document on their own (`51%` became `64%` between two reads).
-- **The zoom readout stayed.** The brief says the switch replaces it; putting a display's name on the trigger would have removed the percentage on open, since a display is the default, and two browser specs pin that readout. The display is said by the frame drawn around the stage and by the menu's checkmark.
-- **`editor-clip.spec.ts`'s structural assertion moved after its pixels**, per review: it failed on structure under sabotage and never reached them. Re-verified — with the clip deleted the *pixel* assertion fails, which is what the rider was for.
-- **`vg-132` still flakes and is not ours.** `editor.spec.ts` "switches chart refresh between 30 and 1 FPS" was red before this change and stayed red.
+- **The display switch stopped lying, in three measured ways.** `Menu.RadioItemIndicator` now carries `keepMounted`; without it Base UI unmounted the tick on every unchecked item and all four labels shifted 13px when a display was picked — the CSS comment claimed a guarantee that did not exist.
+- **The Fit tick is read off the camera, not the sentinel.** `reset()` clears the lens, so a tick keyed on the display alone reported 100 % as Fit; `ViewportManager.isFitted()` now derives it from the transform, and a camera at neither a display nor a fit ticks nothing.
+- **`100 %` is no longer labelled Fit anywhere**, and the trigger's accessible name carries the readout it shows (`Display and zoom: 51%`), which it did not before.
+- **`min-width` went 128px → 56px** on the measured need, and the trigger's accessible name now carries the readout it shows (`Display and zoom: 51%`) — it did not before, which is WCAG 2.5.3.
+- **`vg-046`'s two exit criteria are reconciled into one** — the stricter, the row's: measured non-collision with both existing clips, editor and player compared. `vg-132` still flakes and is not ours.
 
 ## Next
 
@@ -55,7 +55,7 @@ The loop, in order:
 2. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
 3. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
 4. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
-5. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-051, vg-056. **`vg-046` drops off this list once player-side parity is measured**, not before — the editor agrees with the phone by construction now, but nothing has put the same overhang in both and compared pixels.
+5. **The queued drain is unchanged** and decision-shaped rows are still the user's: vg-023, vg-029, vg-034, vg-035, vg-036, vg-037, vg-040, vg-041, vg-051, vg-056. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
 
 ## Blockers / unverified
 

@@ -28,6 +28,10 @@ function setup(display: DisplayLensId | undefined = "phone-landscape") {
   const reset = vi.fn();
   const listeners = new Set<() => void>();
   let zoom = 0.5;
+  // The camera's own fit predicate, held separately from the lens because it is:
+  // `reset` clears the lens and leaves the camera at 1:1, which is a camera
+  // state no display describes.
+  let isFitted = false;
   // A stub with every ViewportManager member and no `as never`: the cast would
   // erase a missing member, which is exactly the defect to catch.
   const viewport = {
@@ -42,6 +46,7 @@ function setup(display: DisplayLensId | undefined = "phone-landscape") {
     display: () => display,
     showDisplay,
     displayScreenRect: () => undefined,
+    isFitted: () => isFitted,
     resize: vi.fn(),
     onChange: (listener: () => void) => {
       listeners.add(listener);
@@ -71,6 +76,12 @@ function setup(display: DisplayLensId | undefined = "phone-landscape") {
     setDisplay(value: DisplayLensId | undefined): Promise<void> {
       return act(async () => {
         display = value;
+        for (const listener of listeners) listener();
+      });
+    },
+    setFitted(value: boolean): Promise<void> {
+      return act(async () => {
+        isFitted = value;
         for (const listener of listeners) listener();
       });
     },
@@ -139,7 +150,7 @@ it("offers every display and Fit, and each is one click away", async () => {
 });
 
 it("marks the chosen display in the menu, so the trigger and the menu agree", async () => {
-  const { render, setDisplay } = setup("wall-panel");
+  const { render, setDisplay, setFitted } = setup("wall-panel");
   await render();
 
   const checked = (label: string): boolean =>
@@ -151,6 +162,68 @@ it("marks the chosen display in the menu, so the trigger and the menu agree", as
   expect(checked("Fit"), "and the others are not").toBe(false);
 
   await setDisplay(undefined);
-  expect(checked("Fit"), "Fit is marked when no display is chosen").toBe(true);
+  await setFitted(true);
+  expect(checked("Fit"), "Fit is marked when the camera is fitted").toBe(true);
   expect(checked("Wall panel")).toBe(false);
+});
+
+/** The Fit tick is a claim about the camera, so it has to survive a camera
+ *  that is not fitted. `reset` is the writer that breaks the link: 100 %
+ *  clears the lens and parks the camera at 1:1, and reading the lens alone
+ *  reports that as Fit — the control asserting a framing that is not there.
+ *
+ *  Keyed on the tick rather than on `display()` for the same reason the
+ *  display's own tick is: a sentinel the camera owns can only ever report what
+ *  the camera last set, not where the camera is. */
+it("ticks nothing when the camera is neither a display nor a fit", async () => {
+  const { render, setDisplay, setFitted } = setup();
+  await render();
+
+  const checked = (label: string): boolean =>
+    document
+      .querySelector(`[aria-label="${label}"]`)
+      ?.getAttribute("aria-checked") === "true";
+
+  // 100 %: no display, and not fitted either.
+  await setDisplay(undefined);
+  await setFitted(false);
+  expect(checked("Fit"), "100 % is not Fit").toBe(false);
+  for (const label of ["Phone landscape", "Phone portrait", "Wall panel"]) {
+    expect(checked(label), `${label} is not it either`).toBe(false);
+  }
+
+  // And the reverse: Fit chosen, then zoomed away from.
+  await setFitted(true);
+  expect(checked("Fit"), "a fitted camera ticks Fit").toBe(true);
+  await setFitted(false);
+  expect(checked("Fit"), "and a camera zoomed off the fit does not").toBe(false);
+
+  // A display still ticks under a lens even once the camera has moved within
+  // it: the window is still the window, which is the fact this menu holds.
+  await setDisplay("phone-portrait");
+  expect(checked("Phone portrait")).toBe(true);
+});
+
+/** The gutter the label offset is measured against. Base UI unmounts an
+ *  unchecked indicator unless `keepMounted` is set, so without it the
+ *  indicator exists on exactly one item and every other label sits a gutter
+ *  to the left. Asserted on the DOM here because jsdom has no layout; the
+ *  measured pixel offset is in `tests/e2e/editor-display.spec.ts`. */
+it("gives every item its tick slot, ticked or not, so the labels cannot shift", async () => {
+  const { render, setDisplay } = setup("wall-panel");
+  await render();
+
+  const tickCount = (label: string): number =>
+    document
+      .querySelector(`[aria-label="${label}"]`)
+      ?.querySelectorAll(".editor-shell-menu-tick").length ?? 0;
+
+  expect(tickCount("Wall panel"), "the ticked item").toBe(1);
+  expect(tickCount("Fit"), "an unticked one has the slot too").toBe(1);
+  expect(tickCount("Phone landscape")).toBe(1);
+
+  // The slot survives the tick moving, which is the whole claim.
+  await setDisplay(undefined);
+  expect(tickCount("Fit")).toBe(1);
+  expect(tickCount("Wall panel")).toBe(1);
 });

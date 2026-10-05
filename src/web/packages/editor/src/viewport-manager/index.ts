@@ -1,8 +1,8 @@
 import { type Canvas, Point } from "fabric/es";
 import {
   DEFAULT_DISPLAY_LENS,
-  displayLens,
   type DisplayLensId,
+  displayLens,
   type ScreenRect,
   screenRect,
 } from "../display-lens.js";
@@ -49,6 +49,17 @@ export interface ViewportManager {
   display(): DisplayLensId | undefined;
   /** Aims the camera at that display, or at the whole stage for `undefined`. */
   showDisplay(id: DisplayLensId | undefined): void;
+  /**
+   * Whether the camera is where a fit of what it looks through would have put
+   * it, right now.
+   *
+   * Read from the transform rather than remembered as a flag, for the reason
+   * `resize` reads it the same way: a flag has to be cleared by every writer of
+   * the tuple, and one that misses is a control reporting a framing the camera
+   * is not in. `reset` is the writer that misses — 100 % leaves no display
+   * behind, and no display reads as Fit to anything keyed on it alone.
+   */
+  isFitted(): boolean;
   /** Where the artboard draws inside the canvas element, in canvas coordinates
    * — the frame `viewportTransform` is in. Add the canvas's own client offset
    * for page coordinates. */
@@ -348,6 +359,10 @@ export function createViewportManager({
     panBy,
     artboardScreenRect,
     displayScreenRect,
+    isFitted() {
+      const viewport = viewportSize();
+      return viewport !== undefined && isFittedIn(viewport);
+    },
     display: () => lens,
     showDisplay(id) {
       // Re-frames even when the display is unchanged. Choosing the display an

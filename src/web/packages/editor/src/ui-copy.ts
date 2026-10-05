@@ -310,10 +310,12 @@ export const uiCopy = {
   /** The stage toolbar's accessible name; the eight buttons carry the labels. */
   arrangeToolbar: { label: "Arrange the selection" },
   /** The stage camera's control: the display the stage looks through, and the
-   *  two framings that are not a display. `label` is the control's accessible
-   *  name. The trigger keeps reading the camera's zoom, which predates the
-   *  display and is a capability this change does not remove — a display is
-   *  said by the frame drawn around the stage and by the menu's tick. */
+   *  two framings that are not a display. `label` names what the control is;
+   *  the trigger appends the readout it shows, because an accessible name that
+   *  omits the visible text does not satisfy WCAG 2.5.3. The trigger keeps
+   *  reading the camera's zoom, which predates the display and is a capability
+   *  this change does not remove — a display is said by the frame drawn around
+   *  the stage and by the menu's tick. */
   display: {
     label: "Display and zoom",
     /** The whole stage, with no display in it. */

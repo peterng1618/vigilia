@@ -110,8 +110,12 @@ function bridgeStub(
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: () => () => undefined,
-      } satisfies Pick<ViewportManager, "zoom" | "display" | "onChange">,
+      } satisfies Pick<
+        ViewportManager,
+        "zoom" | "display" | "isFitted" | "onChange"
+      >,
     } as unknown as EditorShellBridge["editor"],
     destroy: vi.fn(),
     ...overrides,
@@ -337,6 +341,7 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -379,6 +384,7 @@ it("leaves the camera alone after a swap between two open panes", async () => {
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -415,6 +421,7 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
@@ -478,6 +485,7 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: () => () => undefined,
       },
     } as unknown as EditorShellBridge["editor"],

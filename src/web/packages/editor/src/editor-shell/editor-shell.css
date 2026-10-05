@@ -352,10 +352,14 @@ body,
   outline: none;
 }
 /* The chosen display's tick, in the gutter before the label. A fixed width so
-   the labels stay left-aligned whether or not one is showing: the row that
-   shifts when you pick something is the row you mis-click. `visibility` rather
-   than `display`, so the space is reserved by the label's own indent instead.
-   Base UI keeps the indicator mounted and marks it `data-checked`. */
+   the labels stay left-aligned whether or not one is showing: picking a
+   display moves *every* label, including the one the pointer is travelling
+   toward. `visibility` rather than `display`, so an unticked row reserves the
+   gutter without painting it.
+
+   The gutter only exists because the indicator is rendered with `keepMounted`
+   (`display-switch.tsx`); Base UI otherwise unmounts it on every unchecked
+   item, and the `:not([data-checked])` rule below would match nothing. */
 .editor-shell-menu-tick {
   display: inline-block;
   width: 1em;
@@ -1178,9 +1182,10 @@ body,
   z-index: 3;
   right: 12px;
   bottom: 12px;
-  /* Wide enough for the longest display name, so choosing one does not resize
-     the trigger under the pointer that chose it. */
-  min-width: 128px;
+  /* Wide enough for the widest readout the camera can reach (`6400 %` at
+     MAX_ZOOM), so zooming does not resize the trigger under the pointer that
+     is zooming. The trigger shows a percentage and never a display name. */
+  min-width: 56px;
   padding: 5px 9px;
   border-radius: 8px;
   font-variant-numeric: tabular-nums;

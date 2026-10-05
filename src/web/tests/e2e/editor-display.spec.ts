@@ -106,6 +106,33 @@ async function chooseDisplay(page: Page, name: string): Promise<void> {
   await page.getByRole("menuitemradio", { name }).click();
 }
 
+/** Where each menu label sits, in page px, measured on the live menu.
+ *
+ *  The label is a text node inside the item, so it is measured through a
+ *  `Range` rather than a bounding box of its own. */
+async function labelOffsets(page: Page): Promise<Record<string, number>> {
+  return page.evaluate(() => {
+    const offsets: Record<string, number> = {};
+    for (const item of document.querySelectorAll('[role="menuitemradio"]')) {
+      const name = item.getAttribute("aria-label") ?? "";
+      const label = [...item.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+      );
+      if (label === undefined) continue;
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      offsets[name] = range.getBoundingClientRect().left;
+    }
+    return offsets;
+  });
+}
+
+/** Opens the display menu on the trigger, leaving the current choice ticked. */
+async function openMenu(page: Page): Promise<void> {
+  await page.locator("[data-vigilia-zoom]").click();
+  await expect(page.getByRole("menu")).toBeVisible();
+}
+
 test.describe("the stage looks through a display", () => {
   test.beforeEach(async ({ page }) => {
     // Before the navigation: see `freezeClock`.
@@ -232,6 +259,95 @@ test.describe("the stage looks through a display", () => {
       await page.locator("[data-vigilia-zoom]").textContent(),
       "and the trigger still reads the camera's scale",
     ).toMatch(/^\d+%$/);
+  });
+
+  test("the menu labels do not move when the tick moves between them", async ({
+    page,
+  }) => {
+    // Measured, because the claim is a pixel one and the CSS that makes it is
+    // dead unless Base UI actually keeps the indicator mounted: `keepMounted`
+    // defaults to false, so without it the tick exists on the checked item
+    // only and every other label sits a gutter-width to the left of it.
+    //
+    // Choosing a display moves *every* label, including the one the pointer is
+    // travelling toward — which is the reason the gutter has to exist.
+    await openMenu(page);
+    const ticked = await labelOffsets(page);
+    expect(Object.keys(ticked), "the menu offered its labels").toHaveLength(4);
+
+    await page.getByRole("menuitemradio", { name: "Wall panel" }).click();
+    await openMenu(page);
+    const moved = await labelOffsets(page);
+
+    for (const [name, before] of Object.entries(ticked)) {
+      expect(
+        Math.abs((moved[name] ?? Number.NaN) - before),
+        `${name} kept its column when the tick moved to another row`,
+      ).toBeLessThan(0.5);
+    }
+
+    // Control: the menu really did re-render with a different tick, or the
+    // comparison above is measuring a menu that never changed.
+    await expect(
+      page.getByRole("menuitemradio", { name: "Wall panel" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await expect(
+      page.getByRole("menuitemradio", { name: "Fit" }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("100 % is not reported to the author as Fit", async ({ page }) => {
+    // The control asserting a camera state that is not true. `reset` clears the
+    // lens and parks the camera at 1:1, and a tick derived from the lens alone
+    // then reads that as Fit — the whole stage framed, which it is not.
+    await page.locator("[data-vigilia-zoom]").click();
+    await page.getByRole("menuitem", { name: "100 %" }).click();
+
+    const camera = () =>
+      page.evaluate(() => {
+        const bridge = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: {
+                viewport: {
+                  zoom(): number;
+                  isFitted(): boolean;
+                  displayScreenRect(): unknown;
+                };
+              };
+            };
+          }
+        ).vigiliaEditorBridge;
+        return {
+          zoom: bridge.editor.viewport.zoom(),
+          fitted: bridge.editor.viewport.isFitted(),
+          screen: bridge.editor.viewport.displayScreenRect() !== undefined,
+        };
+      });
+
+    const after = await camera();
+    expect(after.zoom, "the camera is at its own scale").toBe(1);
+    expect(after.screen, "and there is no screen drawn around 1:1").toBe(false);
+    expect(after.fitted, "which is not a fit").toBe(false);
+
+    await openMenu(page);
+    // Nothing ticked at all: the camera is at a framing this menu does not
+    // offer, and the honest report of that is silence.
+    await expect(
+      page.getByRole("menuitemradio", { name: "Fit" }),
+    ).toHaveAttribute("aria-checked", "false");
+
+    // And the reverse shape: Fit chosen, then zoomed off it by hand.
+    await page.getByRole("menuitemradio", { name: "Fit" }).click();
+    await openMenu(page);
+    await expect(
+      page.getByRole("menuitemradio", { name: "Fit" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("menuitem", { name: "100 %" }).click();
+    await openMenu(page);
+    await expect(
+      page.getByRole("menuitemradio", { name: "Fit" }),
+    ).toHaveAttribute("aria-checked", "false");
   });
 
   test("choosing a display changes the view and leaves the document alone", async ({

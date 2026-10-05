@@ -25,6 +25,7 @@ function setup() {
     display: () => undefined,
     showDisplay: vi.fn(),
     displayScreenRect: () => undefined,
+    isFitted: () => false,
     resize: vi.fn(),
     // Declared by Task 1's ViewportManager; navigation does not call it, but the
     // stub has to satisfy the interface or this call does not compile.

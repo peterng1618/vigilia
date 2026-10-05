@@ -126,6 +126,7 @@ function wiredSession(): Wired {
         viewport: {
           zoom: () => 1,
           display: () => undefined,
+          isFitted: () => false,
           onChange: () => () => undefined,
         },
         artboard: () => ({ width: 1920, height: 1080 }),
@@ -304,6 +305,7 @@ function bridgeOf(
       viewport: {
         zoom: () => 1,
         display: () => undefined,
+        isFitted: () => false,
         onChange: () => () => undefined,
       },
     } as never,

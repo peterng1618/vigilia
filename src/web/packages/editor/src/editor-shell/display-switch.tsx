@@ -26,9 +26,22 @@ function useDisplay(viewport: ViewportManager): DisplayLensId | undefined {
   return useSyncExternalStore(subscribe, () => viewport.display());
 }
 
-/** The radio value standing for "no display", because `undefined` is what the
- *  camera reports under Fit and a radio group compares by identity. */
+function useIsFitted(viewport: ViewportManager): boolean {
+  const subscribe = useCallback(
+    (listener: () => void) => viewport.onChange(listener),
+    [viewport],
+  );
+  return useSyncExternalStore(subscribe, () => viewport.isFitted());
+}
+
+/** The radio value standing for Fit — the whole stage, with no display in it. */
 const NO_DISPLAY = "";
+
+/** The radio value for a camera that is neither looking through a display nor
+ *  fitted. No item carries it, so the menu ticks nothing rather than ticking
+ *  the nearest thing: 100 % clears the display and is not a fit, and reporting
+ *  it as Fit is the control asserting a framing the camera is not in. */
+const NEITHER = "neither";
 
 export function DisplaySwitch({
   viewport,
@@ -37,12 +50,20 @@ export function DisplaySwitch({
 }): React.JSX.Element {
   const zoom = useZoom(viewport);
   const display = useDisplay(viewport);
+  const isFitted = useIsFitted(viewport);
+  const percent = `${Math.round(zoom * 100)}%`;
 
   return (
     <Menu.Root>
       <Menu.Trigger
         className="editor-shell-zoom editor-glass"
-        aria-label={uiCopy.display.label}
+        // The name carries the concept *and* the readout, because the readout
+        // is also the visible text: WCAG 2.5.3 asks an accessible name to
+        // contain what is on screen, and "Display and zoom" over a button that
+        // says "51%" contains none of it. Naming it the other way round —
+        // dropping the label and letting "51%" stand alone — would leave a
+        // control no voice user could ask for by what it is.
+        aria-label={`${uiCopy.display.label}: ${percent}`}
         data-vigilia-zoom=""
       >
         {/* The zoom, always — never the display's name.
@@ -54,7 +75,7 @@ export function DisplaySwitch({
          * word, and by the checkmark in this menu. Putting the name here
          * instead would have made the percentage disappear whenever a display
          * was chosen — which is the default. */}
-        {`${Math.round(zoom * 100)}%`}
+        {percent}
       </Menu.Trigger>
       <Menu.Portal keepMounted>
         <Menu.Positioner className="editor-shell-positioner">
@@ -62,9 +83,14 @@ export function DisplaySwitch({
             {/* Fit and the three displays are one radio group because they are
                 one fact: what the stage looks through. Split into checkable
                 and plain items, `Fit` could sit unselected while a display
-                stayed ticked — a menu holding two answers to one question. */}
+                stayed ticked — a menu holding two answers to one question.
+
+                The tick is read off the camera, not off the display alone:
+                `display()` answers "which window", and Fit is a camera
+                position rather than a window, so a cleared lens with a manual
+                zoom is neither and says nothing. */}
             <Menu.RadioGroup
-              value={display ?? NO_DISPLAY}
+              value={display ?? (isFitted ? NO_DISPLAY : NEITHER)}
               onValueChange={(value: string) =>
                 viewport.showDisplay(
                   value === NO_DISPLAY ? undefined : (value as DisplayLensId),
@@ -76,7 +102,14 @@ export function DisplaySwitch({
                 closeOnClick
                 aria-label={uiCopy.display.fit}
               >
-                <Menu.RadioItemIndicator className="editor-shell-menu-tick">
+                {/* `keepMounted` is what makes the gutter exist at all: the
+                    indicator defaults to unmounted when its item is not the
+                    checked one, so without it every label but the ticked one's
+                    sits a gutter-width to the left. */}
+                <Menu.RadioItemIndicator
+                  className="editor-shell-menu-tick"
+                  keepMounted
+                >
                   {"•"}
                 </Menu.RadioItemIndicator>
                 {uiCopy.display.fit}
@@ -88,7 +121,10 @@ export function DisplaySwitch({
                   closeOnClick
                   aria-label={uiCopy.display.displays[lens.id]}
                 >
-                  <Menu.RadioItemIndicator className="editor-shell-menu-tick">
+                  <Menu.RadioItemIndicator
+                    className="editor-shell-menu-tick"
+                    keepMounted
+                  >
                     {"•"}
                   </Menu.RadioItemIndicator>
                   {uiCopy.display.displays[lens.id]}

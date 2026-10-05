@@ -362,6 +362,27 @@ describe("the display lens", () => {
     );
   });
 
+  it("reports the camera's fit, so the menu's tick can be read off the camera", () => {
+    const { camera } = setup({ lens: "phone-landscape" });
+    expect(camera.isFitted(), "choosing a display fits through it").toBe(true);
+
+    // The defect this predicate exists for: `reset` clears the lens and parks
+    // the camera at 1:1, which `display()` alone reports as Fit.
+    camera.reset();
+    expect(camera.display()).toBeUndefined();
+    expect(camera.isFitted(), "100 % is not a fit").toBe(false);
+
+    // And the camera the author moved off the fit, under Fit rather than 100 %.
+    camera.showDisplay(undefined);
+    expect(camera.isFitted()).toBe(true);
+    camera.zoomBy(2);
+    expect(camera.isFitted(), "a zoom the author made is not a fit").toBe(
+      false,
+    );
+    camera.zoomToFit();
+    expect(camera.isFitted(), "and a refit is").toBe(true);
+  });
+
   it("re-frames through the same display when the host resizes", () => {
     const { camera, resizeHost } = setup({ lens: "phone-landscape" });
     const before = camera.artboardScreenRect();
