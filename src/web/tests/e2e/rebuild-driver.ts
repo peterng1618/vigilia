@@ -211,9 +211,11 @@ export async function choose(
   //
   // So a missing option is named, with the options that were offered. It is the
   // difference between "these are your options" and "waited".
-  const offered = await control.locator("option").evaluateAll((options) =>
-    options.map((option) => option.getAttribute("value")),
-  );
+  const offered = await control
+    .locator("option")
+    .evaluateAll((options) =>
+      options.map((option) => option.getAttribute("value")),
+    );
   if (!offered.includes(value)) {
     throw new Error(
       `${selector} has no option "${value}". It offers: ${

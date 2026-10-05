@@ -6,7 +6,6 @@ import {
   addChart,
   addColour,
   addText,
-  choose,
   chooseToken,
   fill,
   insert,

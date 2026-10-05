@@ -209,41 +209,41 @@ describe("the editor on a URL that names nothing", () => {
   });
 
   it("does not hand a dead ?theme= the author's most recent save", async () => {
-  // THE DECISION this file records, and the round trip that was wrong.
-  //
-  // This test used to pin the opposite: a dead `?theme=` fell through to
-  // `latestOwnTheme` and landed on "EDITED BY HAND". It was defended as "the
-  // author's own work, and sending them to the template instead would put the
-  // loss straight back for whoever's bookmark died" — but there is no loss to
-  // put back. The theme is already gone; the question is only what replaces it,
-  // and the two candidates are not equivalent. The template is a document the
-  // author can SEE they were not given. "Whatever ran last" is a document that
-  // looks like their work, mounts as their work, and takes their next Save.
-  //
-  // So the round trip that survives is the one this file's other describe
-  // pins: a URL that names NOTHING resumes the author's own most recent save,
-  // because closing the tab and coming back is the ordinary case and the
-  // store is single-author (`~/.vigilia/themes/` under `os.homedir()`, loopback
-  // host, no account). A URL that names something and cannot have it is a
-  // different question, and it is answered with nothing.
-  const client = clientOpening(content);
-  client.list = vi.fn(async () => [
-    {
-      id: "edited-by-hand",
-      name: "Last",
-      updatedAt: "2026-10-01T09:00:00.000Z",
-    },
-  ]);
-  client.open = vi.fn(async (id: string) => {
-    if (id === "deleted-long-ago") throw new Error("Could not open (404).");
-    return content;
-  });
+    // THE DECISION this file records, and the round trip that was wrong.
+    //
+    // This test used to pin the opposite: a dead `?theme=` fell through to
+    // `latestOwnTheme` and landed on "EDITED BY HAND". It was defended as "the
+    // author's own work, and sending them to the template instead would put the
+    // loss straight back for whoever's bookmark died" — but there is no loss to
+    // put back. The theme is already gone; the question is only what replaces it,
+    // and the two candidates are not equivalent. The template is a document the
+    // author can SEE they were not given. "Whatever ran last" is a document that
+    // looks like their work, mounts as their work, and takes their next Save.
+    //
+    // So the round trip that survives is the one this file's other describe
+    // pins: a URL that names NOTHING resumes the author's own most recent save,
+    // because closing the tab and coming back is the ordinary case and the
+    // store is single-author (`~/.vigilia/themes/` under `os.homedir()`, loopback
+    // host, no account). A URL that names something and cannot have it is a
+    // different question, and it is answered with nothing.
+    const client = clientOpening(content);
+    client.list = vi.fn(async () => [
+      {
+        id: "edited-by-hand",
+        name: "Last",
+        updatedAt: "2026-10-01T09:00:00.000Z",
+      },
+    ]);
+    client.open = vi.fn(async (id: string) => {
+      if (id === "deleted-long-ago") throw new Error("Could not open (404).");
+      return content;
+    });
 
-  await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
-    undefined,
-  );
-  // Asked once, for the bookmark, and did not go looking for a substitute.
-  expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");
-  expect(client.list).not.toHaveBeenCalled();
-});
+    await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
+      undefined,
+    );
+    // Asked once, for the bookmark, and did not go looking for a substitute.
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");
+    expect(client.list).not.toHaveBeenCalled();
+  });
 });

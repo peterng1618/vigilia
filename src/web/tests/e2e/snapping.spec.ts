@@ -296,9 +296,7 @@ const GUIDE_ROWS_ABSENT = 0.08;
 /** How many device rows the artboard is tall at the present camera. */
 async function artboardDeviceRows(page: Page): Promise<number> {
   const zoom = await liveZoom(page);
-  const dpr = await page.evaluate(
-    () => window.devicePixelRatio ?? 1,
-  );
+  const dpr = await page.evaluate(() => window.devicePixelRatio ?? 1);
   return ARTBOARD_HEIGHT * zoom * dpr;
 }
 
@@ -600,8 +598,12 @@ for (const kind of ["shape", "text", "group"] as const) {
         const line = (await objectRect(page, "source")).left;
         const result = await perform(page, line - 2);
         await expectActiveTarget(page);
-        expect(Math.abs(edge(result) - line)).toBeLessThan(await snappedTolerance(page));
-        expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+        expect(Math.abs(edge(result) - line)).toBeLessThan(
+          await snappedTolerance(page),
+        );
+        expect(result.guideRows).toBeGreaterThan(
+          GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+        );
       });
 
       test(`${gesture} hold re-plans every pointer step`, async ({ page }) => {
@@ -640,8 +642,12 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(Math.abs(result.first - clear.x)).toBeLessThan(
           await rawTolerance(page),
         );
-        expect(Math.abs(result.second - line)).toBeLessThan(await snappedTolerance(page));
-        expect(result.rows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+        expect(Math.abs(result.second - line)).toBeLessThan(
+          await snappedTolerance(page),
+        );
+        expect(result.rows).toBeGreaterThan(
+          GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+        );
       });
 
       test(`${gesture} hold releases past the guide threshold`, async ({
@@ -650,8 +656,12 @@ for (const kind of ["shape", "text", "group"] as const) {
         await openFixture(page, kind);
         const line = (await objectRect(page, "source")).left;
         const held = await perform(page, line - 2, { release: false });
-        expect(Math.abs(edge(held) - line)).toBeLessThan(await snappedTolerance(page));
-        expect(held.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+        expect(Math.abs(edge(held) - line)).toBeLessThan(
+          await snappedTolerance(page),
+        );
+        expect(held.guideRows).toBeGreaterThan(
+          GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+        );
         const before = await objectRect(page, "mover");
         const point = await sceneToClient(
           page,
@@ -666,7 +676,7 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(position).toBeGreaterThan(line + 10);
         expect(await guideRowsAtSceneX(page, line)).toBeLessThan(
           GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)),
-          );
+        );
         // A held resize leaves Shift down with the button; this gesture ends here.
         await page.mouse.up();
         if (gesture === "resizing") await page.keyboard.up("Shift");
@@ -682,7 +692,9 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(Math.abs(edge(result) - result.raw)).toBeLessThan(
           await rawTolerance(page),
         );
-        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
+        expect(result.guideRows).toBeLessThan(
+          GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)),
+        );
       });
 
       test(`${gesture} Ctrl keeps raw geometry near a guide`, async ({
@@ -698,7 +710,9 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(Math.abs(edge(result) - line)).toBeGreaterThan(
           await refusedSnapTolerance(page),
         );
-        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
+        expect(result.guideRows).toBeLessThan(
+          GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)),
+        );
       });
     }
 
@@ -710,7 +724,9 @@ for (const kind of ["shape", "text", "group"] as const) {
       const midpoint = (left.left + left.width + right.left - mover.width) / 2;
       const result = await moveTo(page, midpoint - 2);
       await expectActiveTarget(page);
-      expect(Math.abs(result.left - midpoint)).toBeLessThan(await snappedTolerance(page));
+      expect(Math.abs(result.left - midpoint)).toBeLessThan(
+        await snappedTolerance(page),
+      );
       expect(
         Math.abs(
           result.left -
@@ -718,7 +734,9 @@ for (const kind of ["shape", "text", "group"] as const) {
             (right.left - (result.left + mover.width)),
         ),
       ).toBeLessThan(await snappedTolerance(page));
-      expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+      expect(result.guideRows).toBeGreaterThan(
+        GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+      );
     });
   });
 }
@@ -839,8 +857,12 @@ test.describe("a part inside a card", () => {
     await openNestedFixture(page);
     const line = await worldLeftOf(page, "loose-source");
     const result = await resizeLooseShapeTo(page, line - 2);
-    expect(Math.abs(result.right - line)).toBeLessThan(await snappedTolerance(page));
-    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+    expect(Math.abs(result.right - line)).toBeLessThan(
+      await snappedTolerance(page),
+    );
+    expect(result.guideRows).toBeGreaterThan(
+      GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+    );
   });
 });
 
@@ -972,8 +994,12 @@ test.describe("text side handle", () => {
     const line = (await objectRect(page, "source")).left;
     const result = await resizeTextSideTo(page, line - 3);
     await expectActiveTarget(page);
-    expect(Math.abs(result.right - line)).toBeLessThan(await snappedTolerance(page));
-    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
+    expect(Math.abs(result.right - line)).toBeLessThan(
+      await snappedTolerance(page),
+    );
+    expect(result.guideRows).toBeGreaterThan(
+      GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+    );
   });
 
   test("resizing a side handle keeps raw geometry under Ctrl", async ({
@@ -986,6 +1012,8 @@ test.describe("text side handle", () => {
     expect(Math.abs(result.right - line)).toBeGreaterThan(
       await refusedSnapTolerance(page),
     );
-    expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
+    expect(result.guideRows).toBeLessThan(
+      GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)),
+    );
   });
 });

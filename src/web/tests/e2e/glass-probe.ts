@@ -368,7 +368,10 @@ export function assertBlur(reading: Reading, label: string): void {
   // present. The floor only has to say "the band was not degenerate": a band of
   // zero rows would make every column mean a division by zero, which is the
   // failure worth refusing.
-  expect(reading.bandRows, `${label}: the backdrop band covers rows`).toBeGreaterThan(0);
+  expect(
+    reading.bandRows,
+    `${label}: the backdrop band covers rows`,
+  ).toBeGreaterThan(0);
   expect(reading.mediaReady, `${label}: the media has pixels`).toBe(true);
   expect(
     reference.brightest - reference.darkest,
