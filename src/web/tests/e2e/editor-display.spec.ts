@@ -14,9 +14,13 @@ import { expect, type Page, test } from "@playwright/test";
  * which is why the bars are asserted as bars and not as emptiness.
  */
 
-/** Relative, so the proof runs against whichever preview the config started
- *  rather than the shared one on 4174 that other agent sessions also use. */
-const EDITOR = "/";
+/** The editor preview every editor spec in this suite drives, named outright.
+ *
+ *  Relative (`"/"`) would resolve against `baseURL`, which is 4173 — the
+ *  *player* — and the whole file would wait for `#vigilia-fabric-editor` that
+ *  is not there. That is what an exclusion list would have papered over
+ *  instead: the spec would stay out of the default gate rather than join it. */
+const EDITOR = "http://127.0.0.1:4174/";
 
 /** The starter's artboard, as the theme declares it. */
 const STARTER = { width: 1672, height: 941 } as const;

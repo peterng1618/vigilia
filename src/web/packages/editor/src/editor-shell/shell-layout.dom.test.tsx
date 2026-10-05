@@ -700,7 +700,9 @@ it("opens every View setting's choices instead of toggling on a bare click", asy
   // Open the refresh submenu and read the choices as the accessibility tree
   // does. `aria-checked` is the half no sighted reader needs and every screen
   // reader does: without it the two states are indistinguishable announcements.
-  triggers[1].click();
+  const refresh = triggers[1];
+  if (refresh === undefined) throw new Error("No chart refresh setting.");
+  refresh.click();
   await Promise.resolve();
   const submenu = openPopups().find((popup) =>
     popup.querySelector("[role=menuitemradio]") !== null,
