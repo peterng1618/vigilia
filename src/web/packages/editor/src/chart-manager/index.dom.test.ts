@@ -162,6 +162,53 @@ describe("ChartManager", () => {
     ).toEqual([{ ref: "palette.cpu" }]);
   });
 
+  it("keeps a chart's colour when a series is bound to it or unbound from it", () => {
+    // **Binding a series to a chart emptied its own property panel.** An author
+    // who bound a reading could not then choose the series colour: the panel went
+    // from `[stroke, palette.0]` to `[]`, measured in live DOM.
+    //
+    // The filter walked `previous` and kept only entries whose series survived,
+    // so an empty `previous` — binding the *first* series — kept nothing at all.
+    // Unbinding the last one emptied it from the other side. `seriesPaintFor`
+    // then regrew the empty array by repeating `current.at(-1)`, which is
+    // `undefined`, so the envelope carried `palette: [null]`: a paint entry that
+    // is not a record, which the validator refuses and no picker can render.
+    const line = (entries: readonly unknown[]) =>
+      ({ palette: entries }) as unknown as Parameters<
+        typeof carriedPaintFor
+      >[1];
+    const paletteOf = (settings: unknown): unknown =>
+      (settings as { palette: unknown }).palette;
+
+    // Binding the first series to a chart inserted from the Add pane.
+    expect(
+      paletteOf(
+        carriedPaintFor(
+          "line",
+          line([{ ref: "palette.series" }]),
+          [],
+          [{ id: "b1", semanticKey: "cpu.load" }],
+        ),
+      ),
+    ).toEqual([{ ref: "palette.series" }]);
+
+    // Unbinding the last one: the series is gone, but the slot it is chosen into
+    // is not, and `seriesPaintFor` still guarantees one.
+    expect(
+      paletteOf(
+        carriedPaintFor(
+          "line",
+          line([{ ref: "palette.cpu" }, { ref: "palette.gpu" }]),
+          [
+            { id: "b1", semanticKey: "cpu.load" },
+            { id: "b2", semanticKey: "gpu.load" },
+          ],
+          [],
+        ),
+      ),
+    ).toEqual([{ ref: "palette.cpu" }]);
+  });
+
   it("draws a chart it did not create once the document's bindings reach it", () => {
     // A chart's series *are* its bindings, and this manager held only what it
     // was constructed with — so a card inserted from the library, whose charts

@@ -2024,6 +2024,55 @@ test.describe("Fabric editor route", () => {
     });
   });
 
+  test("still offers the series colour after binding a chart's first series", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    // **Binding a series to a chart emptied its own property panel**, so an
+    // author who bound a reading could not then choose the series colour. The
+    // paint filter kept only entries whose series survived, so an empty
+    // `previous` — the *first* series — kept nothing, and `palette: [null]` is
+    // not something the picker can render. Measured before the fix: this
+    // selector list went from `[stroke, palette.0]` to `[]`.
+    await page.goto(EDITOR);
+    await openPane(page, "Insert");
+    // "Line" is both a chart family and a primitive, so the Chart group is what
+    // tells the two apart. A gauge's paints are not per-series, which is why the
+    // family has to be the one whose `palette` field repeats with the series.
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("group", { name: "Chart" })
+      .getByRole("button", { name: "Line", exact: true })
+      .click();
+    // A chart's paint pickers are on the Data tab; Design only summarises them.
+    await openInspectorTab(page, "Data");
+
+    // The key carries the index — `palette.0` — which is the token the original
+    // DOM read named, `[stroke, palette.0]` before and `[]` after.
+    const seriesPaint = page.locator('[data-vigilia-chart-paint="palette.0"]');
+    await expect
+      .poll(() => seriesPaint.count(), {
+        message: "a new line chart offers a series colour to choose",
+      })
+      .toBeGreaterThan(0);
+
+    // And the gesture that emptied it: binding the first series must leave the
+    // control in place rather than take it away.
+    await page
+      .locator("[data-vigilia-chart-binding-add]")
+      .selectOption("cpu.load");
+    // The paint first, because that is the reported symptom and the binding row
+    // is downstream of it: with the bug in place the whole panel content goes,
+    // so asserting the row first would report the crash rather than the loss.
+    await expect
+      .poll(() => seriesPaint.count(), {
+        message: "binding a series leaves the chart's series colour offered",
+      })
+      .toBeGreaterThan(0);
+    await expect(page.locator("[data-vigilia-binding]")).toHaveCount(1);
+  });
+
   test("persists selected chart paint as a palette reference", async ({
     page,
   }, testInfo) => {

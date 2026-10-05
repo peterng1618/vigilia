@@ -94,16 +94,39 @@ export function carriedPaintFor(
   // `id` is the identity a binding is minted with and keyed by everywhere else
   // (`panel.ts` mints it, the run editor keys its bindings by it), so it is the
   // identity this filter should have used.
-  const kept = previous.flatMap((binding, index) =>
-    next.some((survivor) => survivor.id === binding.id) &&
-    index < current.length
-      ? [current[index]]
-      : [],
+  //
+  // **The same filter also emptied the paint in the other two directions.**
+  // A paint entry belongs to a *position*, and a position only means something
+  // when a series stood there. Binding the first series to a chart inserted
+  // from the Add pane reported every entry removed — `previous` was empty, so
+  // nothing survived it — and unbinding the last one did the same from the
+  // other side. Either way `seriesPaintFor` regrew the empty array by repeating
+  // `current.at(-1)`, which is `undefined`, so the envelope carried
+  // `palette: [null]` and the panel rendered no colour control at all: **an
+  // author who bound a series to a chart could not then choose its colour.**
+  // Measured, the reported DOM read going from `[stroke, palette.0]` to `[]` on
+  // the chart's own property panel.
+  //
+  // So an entry is dropped only when the series it paints is *known* to be gone,
+  // which is a claim about `previous` rather than about `next`: an entry with no
+  // series behind it was never bound, so there is nothing to have removed.
+  const kept = current.filter(
+    (_paint, index) =>
+      index >= previous.length ||
+      previous[index]?.id === next[index]?.id ||
+      next.some((survivor) => survivor.id === previous[index]?.id),
   );
-  if (kept.length === current.length) return settings;
+  // `seriesPaintFor` guarantees a chart at least one series slot to colour, so a
+  // filter that returned nothing here would be regrown from `undefined` rather
+  // than from a colour. Unbinding the last series therefore keeps the first
+  // entry: the series is gone, but the slot it will be chosen into is not, and
+  // an author binding again is choosing a colour, not declaring a default.
+  const surviving =
+    kept.length === 0 && current.length > 0 ? [current[0]!] : kept;
+  if (surviving.length === current.length) return settings;
   return {
     ...settings,
-    [field.property]: kept,
+    [field.property]: surviving,
   } as ChartContent["settings"];
 }
 

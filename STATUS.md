@@ -1,7 +1,7 @@
 # Vigilia status
 
 Updated: 2026-10-05
-Branch: `claude/superpowers-workflow-cleanup`
+Branch: `develop`
 
 ## Current objective
 
@@ -43,22 +43,21 @@ The loop, in order:
 
 ## Last completed change
 
-- **Nine queued rows drained; five closed `verified`, two refuted-or-resolved, two filed.** vitest **2787 in 199 files**, typecheck, lint and format all exit 0.
-- **Four rows were wrong as filed and said so.** `vg-113`'s "ask Intl" is refuted by the platform (no word exists for any of the four) and by `§35`, which rules product UI copy out of localisation. `vg-119`'s "no such attribute exists anywhere in `packages/editor/src`" is false — `data-vigilia-panel-*` is emitted and asserted. `vg-135`'s "jsdom stops firing rAF" is false: rAF fires in 18 ms and the stall is a **one-shot ~50 s block inside a single synchronous click**.
-- **`vg-137` fixed the class, not the five, and the sabotage proves it**: `DEFAULT_DISPLAY_LENS = phone-portrait` rebuilt goes 81/86 → **85/86**. The remaining one is filed as `vg-138` — it lands 100 scene units, a quarter of the artboard, so it is no snap at all rather than a test reading the camera wrong.
-- **`vg-139` is the more serious find**: binding a series to a chart **empties its own property panel** (live DOM: `[stroke, palette.0]` before, `[]` after), because the envelope's `bindings` is a flat array while `ChartManager.setBindings` is handed a record keyed by object id. `index.dom.test.ts` covers the path and passes — it never takes the session round trip.
+- **`vg-139` fixed, and the cause as filed was wrong.** It claimed the envelope declares `bindings` as a flat array and disagreed with `ChartManager`; both shapes are the same record (`fabric-envelope.ts:34`, enforced at `fabric-envelope-validate.ts:790`), so no decision and no reuse-gate note were owed.
+- **The real cause was `carriedPaintFor`'s filter**: it kept a paint entry only when the series at that index survived, so binding the *first* series (`previous` empty) kept nothing and unbinding the last emptied it from the other side. `seriesPaintFor` regrew the empty array by repeating `current.at(-1)` — `undefined` — so the envelope carried `palette: [null]` and the author could not choose the series colour.
+- **Measured, then sabotaged, in both surfaces.** `carriedPaintFor("line", {palette:[…]}, [], [b1])` returned `[]`; with the fix the unit tests pass, and the new e2e — insert a Line chart, read `data-vigilia-chart-paint="palette.0"` on the Data tab, bind `cpu.load` — passes with the fix and fails with the old filter rebuilt.
+- **Gates green:** typecheck, lint, format, editor vitest **1318 in 102 files**, plus the two chart-manager suites at 28.
 
 ## Next
 
-1. **`vg-139` next, and it needs a decision before a patch.** The bindings shape is under `renderer-core/src/theme/`, which the reuse gate watchlists, so landing the note comes before the first write.
-2. **Plan 2 continues: the device lens** (`docs/superpowers/plans/`). Tasks 1 and 2 landed — the editor-side clip and the display switch. Task 3 asks a new theme what it is for, and the arc and wedge shapes in `SHAPE_KINDS` are still unconstructible.
-3. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
-4. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted. `#release` must be read before `Release package`'s verb is decided — a preserved capability, not a deletable one.
-5. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
+1. **Plan 2 continues: the device lens** (`docs/superpowers/plans/`). Tasks 1 and 2 landed — the editor-side clip and the display switch. Task 3 asks a new theme what it is for, and the arc and wedge shapes in `SHAPE_KINDS` are still unconstructible.
+2. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
+3. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted. `#release` must be read before `Release package`'s verb is decided — a preserved capability, not a deletable one.
+4. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
+5. **Drive the product again.** `vg-139` was found by fixing a neighbouring row and named a cause that was wrong on inspection; the rest of the sweep's rows were read, not driven. The next find is whatever the editor does when used.
 
 ## Blockers / unverified
 
-- **`vg-139` is the one that matters and it is not fixed.** Binding a series to a chart empties its own property panel, so an author cannot set the series colour. The owner is the **bindings shape** — the envelope declares a flat array, `ChartManager.setBindings` is handed a record — and one of the two has to become the other. The envelope is the persisted contract under `renderer-core/src/theme/`, so this is a decision, not a patch. **Not verified by hand in a browser**; the evidence is the live DOM read the rebuild driver takes.
 - **`vg-135` is diagnosed to a single line and still open.** Not dead rAF and not a leaked mount: a bare `setTimeout(0)` costs **2 ms before** the View-menu click and **58 592 ms after**, and the frames around it are 18 ms. `BASE_UI_ANIMATIONS_DISABLED` and removing the `getAnimations` stub both leave it slow, so those are ruled out. The next step is timing the synchronous span *inside* the click, not around it.
 - **`vg-123`, card-to-card snap granularity, is still open.** Measured: a resized part inside a card lands **956.55** aiming at the part line **960** with **0 guide rows**, while the same gesture between two loose shapes snaps. **Whether parts *should* align to parts stays the user's.** The 200-shape acceptance probe was not re-run.
 - **A Playwright 1.63.0 teardown defect remains unfixed and is not ours to fix**: `browserContext.close: ENOENT … traces/…`, the browser flushing trace files into `tracesDir` after `WorkerHost.onExit` has removed it (`runner/index.js:5478`). `use.trace: "off"` removes it and the traces with it; not taken.
