@@ -64,6 +64,26 @@ export interface LayerRow {
 
 const ANONYMOUS_ID = "unidentified";
 
+/**
+ * Whether the panel lists this object at all.
+ *
+ * An `excludeFromExport` object is the editor's own scaffolding rather than the
+ * author's: the artboard plate and clip, and the crop frame a mid-crop session
+ * draws over the image. The scene they belong to is defined by what a save
+ * writes, and a save writes none of them, so a row for one is a row acting on
+ * something that will not be there next time — and the frame carries no id, so
+ * it would render as `unidentified` and answer to `findById` under that name.
+ *
+ * Every walk here asks this, not just the projection. The anonymous fallback id
+ * is *positional* (`layerIds` numbers id-less objects in walk order), so a walk
+ * that skipped an excluded object and one that did not would hand the same id
+ * to different objects — which is the invariant the comment on `layerIds`
+ * already depends on.
+ */
+function isListed(object: FabricObject): boolean {
+  return (object as { excludeFromExport?: boolean }).excludeFromExport !== true;
+}
+
 /** Ids for id-less objects still have to be distinct, so the first keeps the
  * plain fallback and the rest are suffixed by walk position. That makes the
  * scheme order-dependent: every walk here reverses the same way, and every walk
@@ -272,6 +292,7 @@ export function projectLayers({
     hidden: boolean,
   ): void => {
     for (const object of [...objects].reverse()) {
+      if (!isListed(object)) continue;
       const id = idOf(object);
       const kind = kindOf(object);
       const path = [...ancestors, object];
@@ -323,6 +344,7 @@ export function findById(
     objects: readonly FabricObject[],
   ): FabricObject | undefined => {
     for (const object of [...objects].reverse()) {
+      if (!isListed(object)) continue;
       if (idOf(object) === id) return object;
       if (object instanceof Group) {
         const found = search(object.getObjects());
@@ -357,6 +379,7 @@ export function pathTo(
     path: readonly FabricObject[],
   ): readonly FabricObject[] | undefined => {
     for (const object of [...objects].reverse()) {
+      if (!isListed(object)) continue;
       const next = [...path, object];
       if (idOf(object) === id) return next;
       if (object instanceof Group) {

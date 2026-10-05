@@ -205,6 +205,38 @@ describe("layer projection", () => {
     expect(rows[0]?.name).toBe("unidentified");
   });
 
+  it("lists nothing a save would drop, so editor scaffolding is not a row", () => {
+    // The shape vg-125 measured: the crop frame a mid-crop session draws over
+    // the image carries no id, so before the filter it was a row literally named
+    // `unidentified`, and `findById("unidentified")` resolved to it — an author
+    // could rename the crop frame and have it vanish on cancel.
+    const image = new Rect({ id: "image-1", width: 10, height: 10 });
+    const frame = new Rect({ width: 10, height: 10, excludeFromExport: true });
+    const rows = projectLayers({ ...base, root: [image, frame] });
+    expect(rows.map((row) => row.id)).toEqual(["image-1"]);
+    // Every walk agrees, so the id the panel drew resolves to the object it drew.
+    expect(findById([image, frame], rows[0]!.id)).toBe(image);
+    // And it does not consume a fallback id, or the numbering the projection
+    // hands out would disagree with the numbering `findById` counts by.
+    expect(findById([image, frame], "unidentified")).toBeUndefined();
+  });
+
+  it("skips an excluded object nested inside a listed group", () => {
+    const member = new Rect({ id: "member", width: 10, height: 10 });
+    const excluded = new Rect({
+      width: 10,
+      height: 10,
+      excludeFromExport: true,
+    });
+    const group = new Group([member, excluded]);
+    group.set("id", "group");
+    const rows = projectLayers({ ...opened("group"), root: [group] });
+    expect(rows.map((row) => row.id)).toEqual(["group", "member"]);
+    expect(findById([group], "member")).toBe(member);
+    expect(pathTo([group], "member")).toHaveLength(2);
+    expect(ownerOf([group], "member")).toBe(group);
+  });
+
   it("falls back to the kind when neither the name nor the id is usable", () => {
     // Whitespace counts as unusable: a blank row tells the author nothing.
     const rect = new Rect({ id: "   ", width: 10, height: 10, name: "  " });

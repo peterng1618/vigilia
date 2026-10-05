@@ -53,7 +53,26 @@ function isWatched(path) {
   const rel = posix(relative(ROOT, resolve(ROOT, path)));
   if (rel.startsWith("..")) return false;
   if (/\.(test|dom\.test)\.[cm]?[jt]sx?$/.test(rel)) return false;
-  return WATCHLIST.some((w) => (w.endsWith("/") ? rel.startsWith(w) : rel === w));
+  return WATCHLIST.some((w) =>
+    w.endsWith("/") ? matchesDirectory(posix(relative(ROOT, resolve(ROOT, w))), rel) : rel === w,
+  );
+}
+
+/**
+ * Directory entries: a bare name matches at any depth, an anchored one does not.
+ *
+ * `scripts/` claims a *kind* of path rather than a location — the repo has a
+ * second `scripts/` under `src/web/`, and it was ungated while the watchlist
+ * read as saying otherwise. This is the rule git already applies to a bare
+ * gitignore pattern and the one `AGENTS.md` states for this repo, so the
+ * watchlist is now readable the same way. An entry carrying a `/` keeps its
+ * meaning exactly: `glass.ts` names that file at that path, not any file of
+ * that name. See docs/decisions/0025.
+ */
+function matchesDirectory(entry, rel) {
+  const base = entry.replace(/\/$/, "");
+  if (!base.includes("/")) return rel.split("/").includes(base);
+  return rel === base || rel.startsWith(`${base}/`);
 }
 
 /**
@@ -126,6 +145,7 @@ if (process.argv.includes("--self-test")) {
   const claimed = [
     "src/web/packages/scene-fabric/src/glass.ts",
     "src/web/packages/renderer-core/src/theme/",
+    "src/web/scripts/generate-font-trios.mjs",
   ];
   const abs = (p) => `${ROOT}/${p}`;
   const cases = [
@@ -135,6 +155,9 @@ if (process.argv.includes("--self-test")) {
     ["allows a path outside the watchlist", abs("src/web/packages/editor/src/ui-copy.ts"), 0],
     ["allows a test on a watchlisted path", abs("src/web/packages/host/src/providers/lhm.test.ts"), 0],
     ["refuses a watchlisted file in a watched directory", abs("scripts/anything.mjs"), 2],
+    ["refuses a bare directory entry at any depth", abs("src/web/scripts/anything.mjs"), 2],
+    ["allows a bare directory entry its own note claims", abs("src/web/scripts/generate-font-trios.mjs"), 0],
+    ["still anchors an entry that carries a path", abs("src/web/packages/scene-fabric/src/unrelated.ts"), 0],
     ["allows an empty path", "", 0],
   ];
   let failed = 0;
