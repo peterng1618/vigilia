@@ -11,7 +11,7 @@ import { sceneBoxesOf } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { type ArtboardSize, artboardSize } from "./artboard-presets.js";
+import type { ArtboardSize } from "./artboard-presets.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { createAssetPanel } from "./asset-manager/panel.js";
 import {
@@ -19,8 +19,8 @@ import {
   createCanvasNudge,
   stepFor,
 } from "./canvas-nudge.js";
-import { ChartManager } from "./chart-manager/index.js";
 import { insertCard } from "./card-library.js";
+import { ChartManager } from "./chart-manager/index.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
 import {
@@ -34,7 +34,7 @@ import {
   type IndicatorManager,
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
-import { chooseArtboardPreset } from "./new-document-chooser.js";
+import { chooseArtboardSize } from "./new-document-chooser.js";
 import {
   createNewObjectPanel,
   insertNewShape,
@@ -908,15 +908,14 @@ export class EditorSession {
     // The chooser first, then the replacement question: an author who opens
     // `New` and then thinks better of it must not be asked to confirm
     // discarding their work on the way to deciding they wanted none of it.
-    // It opens on the artboard being replaced, so a document already settled
-    // on portrait is not thrown back to landscape without being asked.
-    const preset = await chooseArtboardPreset(this.#envelope.artboard);
-    if (preset === undefined) return;
+    // It opens on the display the artboard being replaced is, so a document
+    // already settled on a phone portrait is not thrown back to a wall panel
+    // without being asked.
+    const artboard = await chooseArtboardSize(this.#envelope.artboard);
+    if (artboard === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
     this.#libraryBase = undefined;
-    await options.onNew(
-      artboardSize(preset.ratio, preset.resolution, preset.orientation),
-    );
+    await options.onNew(artboard);
   }
 
   async #newFromStarter(options: EditorSessionOptions): Promise<void> {

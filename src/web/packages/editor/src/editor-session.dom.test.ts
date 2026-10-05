@@ -69,16 +69,14 @@ import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
 import { ThemeConflictError } from "./theme-library-client.js";
 
 /** What the chooser answered, per test. The chooser is a modal dialog with no
-    jsdom implementation, so it is stubbed here and driven where it is real. */
+    jsdom implementation, so it is stubbed here and driven where it is real.
+    A size, not a preset: three of the four ways to reach one in the chooser
+    are a preset and one is an author's own dimensions. */
 const chooserMock = vi.hoisted(() =>
-  vi.fn(async () => ({
-    ratio: "16:9" as const,
-    resolution: "1080p" as const,
-    orientation: "landscape" as const,
-  })),
+  vi.fn(async () => ({ width: 1920, height: 1080 })),
 );
 vi.mock("./new-document-chooser.js", () => ({
-  chooseArtboardPreset: () => chooserMock(),
+  chooseArtboardSize: () => chooserMock(),
 }));
 
 const envelope: FabricThemeEnvelope = {
@@ -208,16 +206,11 @@ describe("EditorSession", () => {
     });
     const session = extensions.actionFacade();
 
-    chooserMock.mockResolvedValueOnce({
-      ratio: "4:3",
-      resolution: "2k",
-      orientation: "portrait",
-    } as never);
+    chooserMock.mockResolvedValueOnce({ width: 1440, height: 1920 } as never);
     await session.newDocument();
-    // The three ids the author picked, resolved into the size they mean: 4:3
-    // portrait at 2K is 1440 wide by 1920 high, the short edge being the width
-    // once the orientation swaps. The chooser owns that arithmetic, so the
-    // session must not restate it.
+    // The size the author settled on, passed through whole: 4:3 portrait at 2K
+    // is 1440 wide by 1920 high, and the arithmetic that got there is the
+    // chooser's, not the session's.
     expect(onNew).toHaveBeenCalledWith({ width: 1440, height: 1920 });
 
     // A chooser dismissed resolves nothing, and a New that creates nothing must

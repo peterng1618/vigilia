@@ -100,6 +100,10 @@ export async function readObject(
 /**
  * A blank theme at the size the reference composition is drawn at, opened
  * through the real `New` menu and the real chooser.
+ *
+ * The chooser asks for the display first and keeps the ratio and resolution
+ * behind **Custom**, so asking for a particular preset means choosing Custom
+ * first — which is also the path an author takes.
  */
 export async function openBlank(
   page: Page,
@@ -114,6 +118,7 @@ export async function openBlank(
     hasText: "Choose an artboard size",
   });
   await expect(chooser).toBeVisible();
+  await chooser.locator("[data-vigilia-new-document-display]").selectOption("");
   await chooser
     .locator("[data-vigilia-new-document-ratio]")
     .selectOption(ratio);

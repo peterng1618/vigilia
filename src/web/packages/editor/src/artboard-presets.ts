@@ -55,6 +55,11 @@ export interface ArtboardPresetChoice {
   readonly orientation: ArtboardOrientation;
 }
 
+/** A ratio and an orientation with no resolution attached: the shape something
+    is measured in. What a display says — a display is a shape of screen, and
+    the resolution stays the author's later choice on the panel. */
+export type ArtboardShape = Pick<ArtboardPresetChoice, "ratio" | "orientation">;
+
 /** Portrait is landscape with the two edges swapped, so one number per entry
     covers both and the two orientations cannot drift apart. */
 export function artboardSize(

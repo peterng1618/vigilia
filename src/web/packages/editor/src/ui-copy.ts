@@ -215,11 +215,17 @@ export const uiCopy = {
     openLibrary: "Open library",
     saveLibrary: "Save to library",
   },
-  /** The chooser `New` opens before the document exists. Its three control
-   *  labels are the artboard panel's own — one preset list, two uses — so only
-   *  the words this surface adds are here. */
+  /** The chooser `New` opens before the document exists. The first control is
+   *  the display a theme is for, and its entries are the display switch's own
+   *  names — one vocabulary, one place it is worded. Behind **Custom** sit the
+   *  artboard panel's own three labels, so only the two words this surface adds
+   *  are here. */
   newDocument: {
     chooseSize: "Choose an artboard size",
+    /** The first question. Named as what it decides — where this theme will be
+     *  seen — rather than by the aspect it derives. */
+    display: "Display",
+    custom: "Custom size",
     create: "Create",
     cancel: "Cancel",
   },

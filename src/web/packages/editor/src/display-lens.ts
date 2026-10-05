@@ -1,4 +1,8 @@
-import { ARTBOARD_RATIOS, type ArtboardRatioId } from "./artboard-presets.js";
+import {
+  ARTBOARD_RATIOS,
+  type ArtboardRatioId,
+  type ArtboardShape,
+} from "./artboard-presets.js";
 
 /**
  * The displays a theme can be seen through, and the lens the stage looks
@@ -20,6 +24,14 @@ export interface DisplayLens {
   readonly id: DisplayLensId;
   /** Width ÷ height of the display's screen. */
   readonly aspect: number;
+  /** The artboard shape this display is measured in, and what a new theme
+   *  arrives at when the author says which display it is for.
+   *
+   *  **A shape, never a size.** No resolution: a display says what shape the
+   *  screen is, and a resolution is the author's later choice in the panel.
+   *  Fixing one here would be the redesign's own failure — silently settling
+   *  a second thing nobody asked about. */
+  readonly shape: ArtboardShape;
 }
 
 /**
@@ -41,18 +53,28 @@ function ratioOf(id: ArtboardRatioId): number {
   return found.ratio;
 }
 
-const phone = ratioOf("19.5:9");
-const wall = ratioOf("16:9");
+/** A lens's aspect, read from the shape it names rather than written beside
+ *  it — the same reason `ratioOf` exists, one step further on. Portrait is the
+ *  same display turned, so one ratio covers both orientations and the two
+ *  cannot drift apart, which is also why `artboardSize` swaps its edges. */
+function lens(id: DisplayLensId, shape: ArtboardShape): DisplayLens {
+  const wide = ratioOf(shape.ratio);
+  return {
+    id,
+    shape,
+    aspect: shape.orientation === "portrait" ? 1 / wide : wide,
+  };
+}
 
-/**
- * Portrait is the same display turned, so one number covers both and the two
- * orientations cannot drift apart — the reason `artboardSize` swaps its edges
- * rather than restating them.
- */
+/** The two physical displays, named by the ratio each is measured in. The
+ *  phone's two entries share one ratio rather than two spellings of it. */
+const phone: ArtboardShape = { ratio: "19.5:9", orientation: "landscape" };
+const wall: ArtboardShape = { ratio: "16:9", orientation: "landscape" };
+
 export const DISPLAY_LENSES: readonly DisplayLens[] = [
-  { id: "phone-landscape", aspect: phone },
-  { id: "phone-portrait", aspect: 1 / phone },
-  { id: "wall-panel", aspect: wall },
+  lens("phone-landscape", phone),
+  lens("phone-portrait", { ratio: phone.ratio, orientation: "portrait" }),
+  lens("wall-panel", wall),
 ];
 
 /**
