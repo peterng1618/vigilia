@@ -154,6 +154,12 @@ describe("the new-document chooser", () => {
     type(dialog, "width", "4000");
     type(dialog, "height", "4000");
 
+    // And the number on screen is the one being created, live. A confirmed
+    // size that disagrees with the readout is the whole class of defect this
+    // dialog exists to remove, and the readout is the only place the author
+    // could have caught it.
+    expect(dialog.textContent).toContain("4000 × 4000");
+
     create(dialog);
     await expect(pending).resolves.toEqual({ width: 4000, height: 4000 });
   });
