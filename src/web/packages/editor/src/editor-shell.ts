@@ -255,7 +255,12 @@ function applyArtboardPaint(
   editor.canvas.backgroundColor = "";
   host.style.background =
     cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
-  applyObjectPalettePaints(editor.canvas, globals);
+  applyObjectPalettePaints(editor.canvas, globals, {
+    // A document may ask for paint the product will not draw — a filled arc, say.
+    // Said through the shell's own warning channel, beside the glass and media
+    // reports, so a document that opens having lost something is not silent.
+    onRefusedPaint: (message) => editor.errorManager.warn("paint", message),
+  });
   applyObjectTypePresets(editor.canvas, globals);
   editor.canvas.requestRenderAll();
 }

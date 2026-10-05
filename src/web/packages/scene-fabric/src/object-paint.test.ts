@@ -159,6 +159,33 @@ describe("an arc that carries a fill", () => {
     });
   });
 
+  it("keeps the authored reference, because refusing a fill is not deleting it", () => {
+    // The refusal is about what is **drawn**, and it is re-applied on every load,
+    // so nothing depends on the reference being removed to survive. Removing it
+    // costs the author their document instead: `vigiliaPaint` is a persisted
+    // property, so dropping the key is written into the next save, and an author
+    // who opens a theme carrying a hand-authored filled arc loses that fill for
+    // good with nothing said. A retained reference paints nothing either way.
+    const scene = serialiseScene(canvasOf(filledArc()));
+    const revived = new StaticCanvas(undefined, { width: 200, height: 200 });
+
+    return reviveScene(revived, scene).then(() => {
+      applyObjectPalettePaints(revived, globals);
+      const back = revived.getObjects()[0] as Arc;
+
+      expect(back.fill, "paints no fill").toBe("");
+      expect(back.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+        fill: "palette.cpu",
+      });
+      // And the assertion that would have caught it: the reference survives a
+      // further save, so a document opened and closed is not quietly rewritten.
+      const saved = serialiseScene(revived);
+      expect(saved.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+        fill: "palette.cpu",
+      });
+    });
+  });
+
   it("still fills a polyline that carries one, as it always has", () => {
     // The exception is arc-specific and has to stay that way: this rule has
     // always let a fill win for every other shape, and a polyline with a fill
@@ -193,3 +220,66 @@ describe("an arc that carries a fill", () => {
     expect(wedge.fill).toBe("#4da3ff");
   });
 });
+
+/**
+ * A refused fill is said out loud.
+ *
+ * An author cannot set a fill on an arc through the inspector, so the only way
+ * one arrives is a document written by hand or by an older build. It then opens,
+ * paints no fill, and shows "Ink: not set" — with nothing said, the author
+ * cannot tell that their document asked for something the editor declined to
+ * draw. `glassRefused` is the house's existing sentence for a shape the product
+ * will not draw the way a document asks, and this is the same situation.
+ */
+describe("a refusal the author is told about", () => {
+  it("reports the arc and names the shape, once", async () => {
+    const reported: string[] = [];
+    const scene = serialiseScene(canvasOf(filledArcForRefusal()));
+    const revived = new StaticCanvas(undefined, { width: 200, height: 200 });
+    await reviveScene(revived, scene);
+
+    applyObjectPalettePaints(revived, globals, {
+      onRefusedPaint: (message) => reported.push(message),
+    });
+
+    // Once, not once per property or per pass: a re-applied palette change must
+    // not become a stream of the same sentence.
+    expect(reported).toHaveLength(1);
+    // Names the shape, because "an author picked that" is what they need told.
+    expect(reported[0]).toMatch(/arc/i);
+  });
+
+  it("says nothing for a shape whose fill was honoured", async () => {
+    const reported: string[] = [];
+    const wedge = new Wedge({
+      left: 0,
+      top: 0,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+    });
+    wedge.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+
+    applyObjectPalettePaints(canvasOf(wedge), globals, {
+      onRefusedPaint: (message) => reported.push(message),
+    });
+
+    expect(reported).toEqual([]);
+  });
+});
+
+/** The same hand-authored filled arc, named here so both describes can build it. */
+function filledArcForRefusal(): Arc {
+  const arc = new Arc({
+    left: 0,
+    top: 0,
+    radius: 100,
+    startAngle: 0,
+    endAngle: 90,
+    fill: "#4da3ff",
+    stroke: "",
+  });
+  arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+  return arc;
+}

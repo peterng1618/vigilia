@@ -451,44 +451,21 @@ describe("glass on the closed shapes", () => {
 });
 
 /**
- * The clip and the fill are the same five canvas calls, and they are one call.
+ * What the two surfaces do with a sweep, and what these cases can show about it.
  *
- * Two copies of the sector path is two chances to spell the angle conversion
- * differently, and the two already differed once — `glass.ts` had a `radians()`
- * helper while the shape inlined the multiply. When they drift the frost clips
- * to a region the shape does not paint, which renders wrong and throws nothing.
- * These cases assert the shared helper is what both sides draw, by measuring the
- * region the glass composite actually covers.
+ * The sector path is one function called by the wedge's own `_render` and by the
+ * frost's clip, because two copies is two chances to spell the angle conversion
+ * differently and the two already differed once — `glass.ts` had a `radians()`
+ * helper while the shape inlined the multiply. When they drift, the frost clips
+ * to a region the shape does not paint: wrong, and silent.
+ *
+ * **These cases show agreement, not sharing.** A duplicated copy that happens to
+ * agree would pass them, so what is pinned is that the two surfaces cover the same
+ * region — which is the property that actually matters and the one a drifted copy
+ * breaks. Sharing is settled by reading `sector-object.ts`, not by a test: no
+ * rendered output can distinguish one call from two that agree.
  */
-describe("the sector path is one owner", () => {
-  it("clips a wedge to the region the wedge itself paints", () => {
-    // Proved through the composite rather than by reading the source: the
-    // backdrop reaches (112,112), which is inside the sector and outside the
-    // chord, and not (118,118), which is on the arc's bulge side of the chord.
-    // A second copy of the path with a different angle conversion moves that
-    // boundary and turns this red.
-    //
-    // The glass property is spread from a value for the reason the cases above
-    // spread `GLASS`: Fabric infers its options type from a literal, and the
-    // inferred type has no room for the authored `vigiliaGlass`.
-    const wedge = (withGlass: boolean): Wedge => {
-      const options = {
-        left: 100,
-        top: 100,
-        radius: 30,
-        startAngle: 0,
-        endAngle: 90,
-        fill: "transparent",
-      };
-      return new Wedge({ ...options, ...(withGlass ? GLASS : {}) });
-    };
-    const { s, without } = frosted(wedge);
-
-    expect(s.pixel(112, 112)[3]).toBe(255);
-    expect(without.pixel(112, 112)[3]).toBeLessThan(255);
-    expect(s.pixel(78, 78)).toEqual(without.pixel(78, 78));
-  });
-
+describe("the two surfaces of a sweep", () => {
   it("refuses an arc rather than clipping it to a region it has no interior for", () => {
     // An arc paints a curve, so there is nothing to sample the backdrop through.
     // `localPath` says so itself rather than letting the `Circle` arm it extends

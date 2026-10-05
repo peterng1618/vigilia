@@ -11,6 +11,7 @@ export type EditorErrorCategory =
   | "crop"
   | "image"
   | "background-media"
+  | "paint"
   | "glass";
 
 export interface EditorDiagnostic {
