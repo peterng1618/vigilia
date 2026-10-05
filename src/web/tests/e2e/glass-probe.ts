@@ -255,10 +255,23 @@ export async function readGlass(
       const height = panelBottom - y0;
       // A third of the way down, a quarter of the panel's height: inside the
       // straight part of the rounded path at any panel size, clear of the border.
+      //
+      // **Both halves of the band measure the same thing, in device pixels.**
+      // `height` is already `panelBottom - y0` through `toDevice`, so it carries
+      // the camera's zoom and the retina factor. The old floor beside it was a
+      // bare `8` — device rows, written for the zoom it was authored at — so the
+      // two halves of one expression disagreed about which space they were in,
+      // and which half won depended on the lens. Deriving the floor from the
+      // same measurement is what makes this camera-independent: a quarter of the
+      // panel at any zoom, with the floor as a *fraction* of it rather than a
+      // row count that only one zoom satisfies. `Math.max(1, …)` keeps a panel
+      // the camera has shrunk to sub-pixel from producing a zero-row band, which
+      // would make every mean a division by zero.
+      const bandHeight = Math.max(1, Math.floor(height * 0.25));
       const bandTop = Math.round(y0 + height * 0.3);
       const bandBottom = Math.min(
         Math.round(panelBottom) - 1,
-        bandTop + Math.max(8, Math.floor(height * 0.25)) - 1,
+        bandTop + bandHeight - 1,
       );
 
       /** Column means, and the extrema **of those means**. Taking the extrema
@@ -346,10 +359,16 @@ export function assertBlur(reading: Reading, label: string): void {
   const { glass, reference } = reading;
   // Match set first: the band covers rows, and the media has the contrast every
   // comparison below is measured against.
-  expect(
-    reading.bandRows,
-    `${label}: the backdrop band covers rows`,
-  ).toBeGreaterThan(8);
+  //
+  // **One row is the floor, not eight.** `bandRows` is measured from the
+  // panel's own device box through `viewportTransform`, so it shrinks with the
+  // camera — and a floor of 8 was a floor on the zoom it was written at, the
+  // same defect `RAW_TOLERANCE` and the guide-row bounds had. At the portrait
+  // lens the band lands on exactly 8 and fails with the backdrop plainly
+  // present. The floor only has to say "the band was not degenerate": a band of
+  // zero rows would make every column mean a division by zero, which is the
+  // failure worth refusing.
+  expect(reading.bandRows, `${label}: the backdrop band covers rows`).toBeGreaterThan(0);
   expect(reading.mediaReady, `${label}: the media has pixels`).toBe(true);
   expect(
     reference.brightest - reference.darkest,

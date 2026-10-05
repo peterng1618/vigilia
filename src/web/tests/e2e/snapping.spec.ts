@@ -269,27 +269,84 @@ async function guideRowsAtSceneX(
   );
 }
 
-/** Rows a vertical guide must paint for this fixture to count as drawn. The
- * artboard is 600 scene px tall, so a real guide covers hundreds of device
- * rows; a horizontal crossing covers a few. */
-const GUIDE_ROWS_PRESENT = 50;
-/** Upper bound for "no vertical guide here", above a horizontal crossing's few
- * rows and far below a drawn one. */
-const GUIDE_ROWS_ABSENT = 20;
+/** The fixture's artboard, in scene px. `guideRowsAtSceneX` samples the artboard's
+ * live screen rect, so the rows it counts are this height **times the camera's
+ * zoom times the device pixel ratio** — which is why both bounds below are
+ * derived from it rather than written as row counts. */
+const ARTBOARD_HEIGHT = 600;
 
-/** Landing tolerance for a gesture that should have snapped onto a line. Below
- * the snap threshold (5 screen px), so a dropped snap cannot pass, and above
- * the half pixel a client-coordinate rounding leaves behind. */
-const SNAPPED_TOLERANCE = 1;
+/** Device rows a vertical guide must paint for this fixture to count as drawn.
+ *
+ * A guide spans the artboard's height, so at the present camera that is
+ * `ARTBOARD_HEIGHT * zoom * dpr` device rows; a horizontal crossing covers a few
+ * regardless, because it is one edge of the same shape. So the two are compared
+ * as **fractions of the artboard's current device height**: a vertical guide
+ * covers all of it and a crossing covers a sliver of it, and the ratio between
+ * them holds at every zoom.
+ *
+ * The old literals — 50 and 20 — were floors on the camera in the same way
+ * `RAW_TOLERANCE` was: at Fit's zoom a real guide covers hundreds of rows and
+ * passes, and at the portrait lens's it covers fewer than 50 and fails with the
+ * guide plainly drawn. Derived, the same assertion holds at both. */
+const GUIDE_ROWS_PRESENT = 0.25;
+/** Upper bound for "no vertical guide here": above a horizontal crossing's few
+ * rows, far below a drawn one's. A fraction for the same reason. */
+const GUIDE_ROWS_ABSENT = 0.08;
+
+/** How many device rows the artboard is tall at the present camera. */
+async function artboardDeviceRows(page: Page): Promise<number> {
+  const zoom = await liveZoom(page);
+  const dpr = await page.evaluate(
+    () => window.devicePixelRatio ?? 1,
+  );
+  return ARTBOARD_HEIGHT * zoom * dpr;
+}
 
 /** `SNAP_THRESHOLD`, restated because it is a *screen* distance and every
  * scene-space comparison in this file has to divide it by the zoom. Read from
  * `snap-manager/constants.ts` rather than invented; a test that restates it is
  * the thing that broke when the default camera changed. */
 const SNAP_THRESHOLD_SCREEN_PX = 5;
+
+/** Landing tolerance for a gesture that should have snapped onto a line, in scene
+ * units at the present zoom.
+ *
+ * The old constant was a bare `1`, and it was a **screen** distance written as
+ * though the scene were the screen — one client px is one scene px only at zoom
+ * 1, so the bound only held at the zoom it was written for. This file uses it
+ * in opposite directions, and both need it to travel with the camera: a snapped
+ * gesture is `toBeLessThan` it, a Ctrl-refused one `toBeGreaterThan` it.
+ *
+ * **The two directions do not want the same number, and that is the whole
+ * subtlety.** A refused snap lands where the gesture was aimed, 1.3–3.4 scene
+ * units from the line at the default lens — so its bound has to sit under that,
+ * which is about one client pixel of conversion drift. A landed snap is compared
+ * with the same constant and needs it *above* the rounding, which `RAW_CLIENT_PX`
+ * gives. Split into two names for the two claims rather than one number asked to
+ * be both. */
+async function snappedTolerance(page: Page): Promise<number> {
+  return 1 / (await liveZoom(page));
+}
+
+/** The floor for "Ctrl refused this snap": under where a refused gesture lands,
+ * over the half pixel a client-coordinate rounding leaves behind.
+ *
+ * `HALF_CLIENT_PX` rather than a full one, and deliberately smaller than
+ * `snappedTolerance`'s 1/zoom at the default lens, because a refused snap lands
+ * about a client pixel from where it was aimed — measured 1.28, 2.40 and 3.35
+ * scene units across the three fixtures — so a bound above that stops being a
+ * statement about Ctrl and becomes a statement about how far the fixture
+ * happened to aim. */
+async function refusedSnapTolerance(page: Page): Promise<number> {
+  return HALF_CLIENT_PX / (await liveZoom(page));
+}
+
 /** Client-pixel drift a raw landing may carry: the pointer position Chromium
  * delivers, and the inverse conversion Fabric applies to it. */
 const RAW_CLIENT_PX = 2;
+/** Half that, which is all the rounding a single client coordinate leaves. The
+ * floor a "nothing moved it" bound has to clear. */
+const HALF_CLIENT_PX = 0.5;
 
 /** The camera's zoom right now. Every scene distance below is measured against
  * it, because the two constants above are screen distances and the scene is
@@ -543,8 +600,8 @@ for (const kind of ["shape", "text", "group"] as const) {
         const line = (await objectRect(page, "source")).left;
         const result = await perform(page, line - 2);
         await expectActiveTarget(page);
-        expect(Math.abs(edge(result) - line)).toBeLessThan(SNAPPED_TOLERANCE);
-        expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+        expect(Math.abs(edge(result) - line)).toBeLessThan(await snappedTolerance(page));
+        expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
       });
 
       test(`${gesture} hold re-plans every pointer step`, async ({ page }) => {
@@ -583,8 +640,8 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(Math.abs(result.first - clear.x)).toBeLessThan(
           await rawTolerance(page),
         );
-        expect(Math.abs(result.second - line)).toBeLessThan(SNAPPED_TOLERANCE);
-        expect(result.rows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+        expect(Math.abs(result.second - line)).toBeLessThan(await snappedTolerance(page));
+        expect(result.rows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
       });
 
       test(`${gesture} hold releases past the guide threshold`, async ({
@@ -593,8 +650,8 @@ for (const kind of ["shape", "text", "group"] as const) {
         await openFixture(page, kind);
         const line = (await objectRect(page, "source")).left;
         const held = await perform(page, line - 2, { release: false });
-        expect(Math.abs(edge(held) - line)).toBeLessThan(SNAPPED_TOLERANCE);
-        expect(held.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+        expect(Math.abs(edge(held) - line)).toBeLessThan(await snappedTolerance(page));
+        expect(held.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
         const before = await objectRect(page, "mover");
         const point = await sceneToClient(
           page,
@@ -608,8 +665,8 @@ for (const kind of ["shape", "text", "group"] as const) {
           released.left + (gesture === "resizing" ? released.width : 0);
         expect(position).toBeGreaterThan(line + 10);
         expect(await guideRowsAtSceneX(page, line)).toBeLessThan(
-          GUIDE_ROWS_ABSENT,
-        );
+          GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)),
+          );
         // A held resize leaves Shift down with the button; this gesture ends here.
         await page.mouse.up();
         if (gesture === "resizing") await page.keyboard.up("Shift");
@@ -625,7 +682,7 @@ for (const kind of ["shape", "text", "group"] as const) {
         expect(Math.abs(edge(result) - result.raw)).toBeLessThan(
           await rawTolerance(page),
         );
-        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT);
+        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
       });
 
       test(`${gesture} Ctrl keeps raw geometry near a guide`, async ({
@@ -639,9 +696,9 @@ for (const kind of ["shape", "text", "group"] as const) {
           await rawTolerance(page),
         );
         expect(Math.abs(edge(result) - line)).toBeGreaterThan(
-          SNAPPED_TOLERANCE,
+          await refusedSnapTolerance(page),
         );
-        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT);
+        expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
       });
     }
 
@@ -653,15 +710,15 @@ for (const kind of ["shape", "text", "group"] as const) {
       const midpoint = (left.left + left.width + right.left - mover.width) / 2;
       const result = await moveTo(page, midpoint - 2);
       await expectActiveTarget(page);
-      expect(Math.abs(result.left - midpoint)).toBeLessThan(SNAPPED_TOLERANCE);
+      expect(Math.abs(result.left - midpoint)).toBeLessThan(await snappedTolerance(page));
       expect(
         Math.abs(
           result.left -
             (left.left + left.width) -
             (right.left - (result.left + mover.width)),
         ),
-      ).toBeLessThan(SNAPPED_TOLERANCE);
-      expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+      ).toBeLessThan(await snappedTolerance(page));
+      expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
     });
   });
 }
@@ -756,9 +813,9 @@ test.describe("a part inside a card", () => {
     /** Recorded rather than asserted: whether parts should align to parts is
      *  the user's call, and this row exists to hand them the measurement. */
     const snappedTo =
-      Math.abs(landed - partLine) < SNAPPED_TOLERANCE
+      Math.abs(landed - partLine) < (await snappedTolerance(page))
         ? "part"
-        : Math.abs(landed - cardLine) < SNAPPED_TOLERANCE
+        : Math.abs(landed - cardLine) < (await snappedTolerance(page))
           ? "card"
           : "none";
     testInfo.annotations.push({
@@ -782,8 +839,8 @@ test.describe("a part inside a card", () => {
     await openNestedFixture(page);
     const line = await worldLeftOf(page, "loose-source");
     const result = await resizeLooseShapeTo(page, line - 2);
-    expect(Math.abs(result.right - line)).toBeLessThan(SNAPPED_TOLERANCE);
-    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+    expect(Math.abs(result.right - line)).toBeLessThan(await snappedTolerance(page));
+    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
   });
 });
 
@@ -915,8 +972,8 @@ test.describe("text side handle", () => {
     const line = (await objectRect(page, "source")).left;
     const result = await resizeTextSideTo(page, line - 3);
     await expectActiveTarget(page);
-    expect(Math.abs(result.right - line)).toBeLessThan(SNAPPED_TOLERANCE);
-    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
+    expect(Math.abs(result.right - line)).toBeLessThan(await snappedTolerance(page));
+    expect(result.guideRows).toBeGreaterThan(GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)));
   });
 
   test("resizing a side handle keeps raw geometry under Ctrl", async ({
@@ -926,7 +983,9 @@ test.describe("text side handle", () => {
     const line = (await objectRect(page, "source")).left;
     const result = await resizeTextSideTo(page, line - 3, { ctrl: true });
     await expectActiveTarget(page);
-    expect(Math.abs(result.right - line)).toBeGreaterThan(SNAPPED_TOLERANCE);
-    expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT);
+    expect(Math.abs(result.right - line)).toBeGreaterThan(
+      await refusedSnapTolerance(page),
+    );
+    expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT * (await artboardDeviceRows(page)));
   });
 });
