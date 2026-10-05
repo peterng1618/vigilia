@@ -31,7 +31,7 @@ import {
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { type Stage, stage } from "./glass-test-stage.js";
-import { Wedge } from "./sector-object.js";
+import { Arc, Wedge } from "./sector-object.js";
 
 /** A solid magenta backdrop, so the frosted region is unmistakable. */
 function magenta(): Stage {
@@ -447,5 +447,65 @@ describe("glass on the closed shapes", () => {
     // 31.1 from the centre, outside the disc and so outside any sweep of it.
     expect(s.pixel(78, 78)).toEqual(without.pixel(78, 78));
     expect(without.pixel(78, 78)[3]).toBe(0);
+  });
+});
+
+/**
+ * The clip and the fill are the same five canvas calls, and they are one call.
+ *
+ * Two copies of the sector path is two chances to spell the angle conversion
+ * differently, and the two already differed once — `glass.ts` had a `radians()`
+ * helper while the shape inlined the multiply. When they drift the frost clips
+ * to a region the shape does not paint, which renders wrong and throws nothing.
+ * These cases assert the shared helper is what both sides draw, by measuring the
+ * region the glass composite actually covers.
+ */
+describe("the sector path is one owner", () => {
+  it("clips a wedge to the region the wedge itself paints", () => {
+    // Proved through the composite rather than by reading the source: the
+    // backdrop reaches (112,112), which is inside the sector and outside the
+    // chord, and not (118,118), which is on the arc's bulge side of the chord.
+    // A second copy of the path with a different angle conversion moves that
+    // boundary and turns this red.
+    //
+    // The glass property is spread from a value for the reason the cases above
+    // spread `GLASS`: Fabric infers its options type from a literal, and the
+    // inferred type has no room for the authored `vigiliaGlass`.
+    const wedge = (withGlass: boolean): Wedge => {
+      const options = {
+        left: 100,
+        top: 100,
+        radius: 30,
+        startAngle: 0,
+        endAngle: 90,
+        fill: "transparent",
+      };
+      return new Wedge({ ...options, ...(withGlass ? GLASS : {}) });
+    };
+    const { s, without } = frosted(wedge);
+
+    expect(s.pixel(112, 112)[3]).toBe(255);
+    expect(without.pixel(112, 112)[3]).toBeLessThan(255);
+    expect(s.pixel(78, 78)).toEqual(without.pixel(78, 78));
+  });
+
+  it("refuses an arc rather than clipping it to a region it has no interior for", () => {
+    // An arc paints a curve, so there is nothing to sample the backdrop through.
+    // `localPath` says so itself rather than letting the `Circle` arm it extends
+    // stand in, and the composite is the observable: nothing is drawn at all.
+    const stage = magenta();
+    const options = {
+      left: 100,
+      top: 100,
+      radius: 30,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "transparent",
+    };
+    stage.canvas.add(new Arc({ ...options, ...GLASS }));
+    stage.canvas.renderAll();
+
+    expect(stage.draws, "nothing composites").toHaveLength(0);
+    expect(stage.errors[0]).toContain("no closed path to clip");
   });
 });

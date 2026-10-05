@@ -67,19 +67,40 @@ const cardGlobals = {
 /**
  * A shape that is drawn rather than stroked: the ones an author fills.
  *
- * Spelled out rather than filtered by exclusion, because the swept kinds added
- * the third open shape and a filter that subtracts two of the three reads as a
- * rule that has not been kept up to date. `arc` is open for the same reason a
- * polyline is — it has no interior — and a wedge is not, being a region.
+ * **Listed, not derived by exclusion.** An exclusion filter cannot be wrong in
+ * one direction: a kind added to `SHAPE_KINDS` and named in neither list falls
+ * into this one by default, so it would be swept as filled without anyone
+ * deciding that, and no partition check would notice. Naming every member means
+ * a new kind has to be classified here on purpose, and the check below fails
+ * until it is. `arc` is open for the reason a polyline is: it has no interior.
  */
-const CLOSED_KINDS = SHAPE_KINDS.filter(
-  (kind) => kind !== "polyline" && kind !== "line" && kind !== "arc",
-);
+const CLOSED_KINDS: readonly ShapeKind[] = [
+  "rect",
+  "ellipse",
+  "polygon",
+  "path",
+  "wedge",
+];
 
 /** The other half of the same rule: an open shape is stroked, not filled. */
-const OPEN_KINDS: readonly ShapeKind[] = SHAPE_KINDS.filter(
-  (kind) => kind === "polyline" || kind === "line" || kind === "arc",
-);
+const OPEN_KINDS: readonly ShapeKind[] = ["polyline", "line", "arc"];
+
+/**
+ * The two lists must account for every kind, and for no kind twice.
+ *
+ * With both spelled out, adding a kind to `SHAPE_KINDS` and to neither list
+ * leaves it in no sweep at all — checked as neither filled nor stroked, which is
+ * a silent gap rather than a red one. This is what turns that into a failure.
+ */
+it("partitions every kind into filled or stroked, with none in both", () => {
+  expect([...CLOSED_KINDS, ...OPEN_KINDS].sort()).toEqual(
+    [...SHAPE_KINDS].sort(),
+  );
+  // And no kind is claimed by both, which the sorted comparison alone would not
+  // catch if one appeared twice and another not at all.
+  const overlap = CLOSED_KINDS.filter((kind) => OPEN_KINDS.includes(kind));
+  expect(overlap).toEqual([]);
+});
 
 /**
  * The first cascade slot, which is where every one of these objects was placed

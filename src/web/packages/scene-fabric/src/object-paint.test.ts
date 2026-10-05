@@ -10,7 +10,7 @@
  */
 
 import type { Globals } from "@vigilia/renderer-core";
-import { Circle, Path, Rect, StaticCanvas } from "fabric/es";
+import { Circle, Path, Polyline, Rect, StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
   applyObjectPalettePaints,
@@ -18,6 +18,7 @@ import {
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 import { reviveScene, serialiseScene } from "./persist.js";
+import { Arc, Wedge } from "./sector-object.js";
 
 const globals = {
   palette: {
@@ -100,5 +101,95 @@ describe("a stroke reference round-trips like a fill one", () => {
     expect(back.stroke).toBe("#ecf5ff");
     // And the revived object is still read as a stroked path, not a filled one.
     expect(paintPropertyFor(back)).toBe("stroke");
+  });
+});
+
+/**
+ * A filled `Arc`, and the figure it would paint.
+ *
+ * The misreading this refuses is not hypothetical: an `Arc` is a `Circle`, and a
+ * fill under `ctx.arc` closes the subpath with a straight chord. Measured on a
+ * radius-80 sweep, a filled 0–90° arc paints **1933** pixels where a quarter-disc
+ * is **5027**. An author who fills an arc is asking for a shape the product
+ * cannot draw correctly, so the fill is refused rather than honoured — and the
+ * refusal has to reach the object, because a warning nobody reads leaves exactly
+ * the chord on the canvas.
+ */
+describe("an arc that carries a fill", () => {
+  /** A hand-authored filled arc, as a saved theme would carry it. */
+  const filledArc = (): Arc => {
+    const arc = new Arc({
+      left: 0,
+      top: 0,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+      stroke: "",
+    });
+    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    return arc;
+  };
+
+  it("refuses the fill, so the shape keeps the stroke it can draw", () => {
+    const arc = filledArc();
+    const canvas = canvasOf(arc);
+
+    applyObjectPalettePaints(canvas, globals);
+
+    // The fill is gone rather than resolved, so Fabric draws the curve and not
+    // the chord. Leaving the resolved colour in place is what this rules out.
+    expect(arc.fill).toBe("");
+    expect(paintPropertyFor(arc)).toBe("stroke");
+  });
+
+  it("refuses it through a save and reopen, which is how it arrives", () => {
+    // The editor's own defaults cannot produce this — `newShapeStroke` gives an
+    // arc no fill — so the only route is a theme written by hand or by an older
+    // build. Going through `reviveScene` proves the refusal is not an artefact
+    // of the live object being freshly constructed.
+    const scene = serialiseScene(canvasOf(filledArc()));
+    const revived = new StaticCanvas(undefined, { width: 200, height: 200 });
+    return reviveScene(revived, scene).then(() => {
+      applyObjectPalettePaints(revived, globals);
+      const back = revived.getObjects()[0] as Arc;
+
+      expect(back.fill).toBe("");
+      expect(paintPropertyFor(back)).toBe("stroke");
+    });
+  });
+
+  it("still fills a polyline that carries one, as it always has", () => {
+    // The exception is arc-specific and has to stay that way: this rule has
+    // always let a fill win for every other shape, and a polyline with a fill
+    // fills.
+    const polyline = new Polyline([
+      { x: 0, y: 0 },
+      { x: 40, y: 40 },
+    ]);
+    polyline.set({ fill: "#4da3ff", stroke: "" });
+    polyline.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+
+    applyObjectPalettePaints(canvasOf(polyline), globals);
+
+    expect(polyline.fill).toBe("#4da3ff");
+  });
+
+  it("still fills a wedge, whose sector is a region it really has", () => {
+    const wedge = new Wedge({
+      left: 0,
+      top: 0,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+    });
+    wedge.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+
+    applyObjectPalettePaints(canvasOf(wedge), globals);
+
+    // The contrast case: refusing this one would be refusing the figure the
+    // product added the kind to draw.
+    expect(wedge.fill).toBe("#4da3ff");
   });
 });

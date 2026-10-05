@@ -60,8 +60,30 @@ type PaintableObject = {
  * closed shape.
  */
 export function paintPropertyFor(object: FabricObject): "fill" | "stroke" {
+  if (refusesFill(object)) return "stroke";
   if (objectHasFill(object)) return "fill";
-  return object instanceof Path || object instanceof Arc ? "stroke" : "fill";
+  return object instanceof Path ? "stroke" : "fill";
+}
+
+/**
+ * Whether this shape may carry a fill at all.
+ *
+ * The one exception, and it is about geometry rather than taste. Every shape here
+ * fills the region its own path encloses — a polyline with a fill has always
+ * filled, and a wedge's sector is a region it really has. An arc is not: a fill
+ * under `ctx.arc` closes the subpath with a straight chord, so the figure drawn
+ * is a circular segment. Measured on a radius-80 sweep, that is 1933 painted
+ * pixels where a quarter-disc is 5027 — a shape the author did not ask for and
+ * cannot see the difference in.
+ *
+ * So an authored fill is dropped rather than resolved. The alternative, honouring
+ * it, is the misleading figure this kind was added to eliminate; and a warning
+ * alone would leave that chord on the canvas, which is the silent wrong render
+ * this refusal exists to prevent. Nothing throws either way — the shape stays
+ * selectable and keeps its stroke.
+ */
+function refusesFill(object: unknown): boolean {
+  return object instanceof Arc;
 }
 
 /** Fabric spells "no fill" three ways across revival, the inspector and authoring. */
@@ -93,6 +115,16 @@ function applyPaints(
     const refs = object.get(VIGILIA_PAINT_PROPERTY);
     if (isPaintRefs(refs)) {
       for (const [property, ref] of Object.entries(refs)) {
+        // An arc's fill is refused at the write, not only at the read: leaving
+        // the resolved colour on the object is the chord on the canvas, and the
+        // reference is dropped with it so the refusal survives the next reopen
+        // rather than being undone by a later palette change.
+        if (property === "fill" && refusesFill(object)) {
+          object.set("fill", "");
+          delete (refs as { fill?: `palette.${string}` }).fill;
+          object.set(VIGILIA_PAINT_PROPERTY, refs);
+          continue;
+        }
         const value = globals?.palette?.[ref.slice("palette.".length)]?.value;
         const paint = fabricArtboardPaint(
           value,

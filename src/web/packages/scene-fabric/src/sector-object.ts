@@ -53,29 +53,48 @@ export class Wedge extends Circle {
    * The sector, as `Circle` draws an arc plus the two radii that close it.
    *
    * Written out rather than delegated, because `Circle._render` is exactly the
-   * behaviour being corrected. Its `beginPath`/`arc` pair is kept — the arc is
-   * the same arc — and only the closing is added.
+   * behaviour being corrected — but the path itself is {@link sectorPath}, not a
+   * second copy of it.
    */
   override _render(ctx: CanvasRenderingContext2D): void {
-    const start = (this.startAngle * Math.PI) / 180;
-    ctx.beginPath();
-    // The centre first, then out to where the sweep begins, so the region
-    // enclosed is between the two radii rather than the region under the arc.
-    // `arc` joins from the current point, so this is also what keeps the join
-    // from cutting the corner.
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(start) * this.radius, Math.sin(start) * this.radius);
-    ctx.arc(
-      0,
-      0,
+    sectorPath(
+      ctx,
       this.radius,
-      start,
-      (this.endAngle * Math.PI) / 180,
+      this.startAngle,
+      this.endAngle,
       this.counterClockwise,
     );
-    ctx.closePath();
     this._renderPaintInOrder(ctx);
   }
+}
+
+/**
+ * A closed sweep in a context already translated to the object's own centre,
+ * which is where both callers draw it: Fabric's default origin is `center`, so
+ * `calcTransformMatrix` puts the centre at the translation.
+ *
+ * One helper because the frost has to clip to **the figure the shape paints**.
+ * Two copies of these five calls is two chances to spell the angle conversion
+ * differently, and when they drift the frost samples the backdrop through a
+ * region the shape does not cover — a wrong render that throws nothing.
+ */
+export function sectorPath(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  startDegrees: number,
+  endDegrees: number,
+  counterClockwise: boolean,
+): void {
+  const start = (startDegrees * Math.PI) / 180;
+  ctx.beginPath();
+  // The centre first, then out to where the sweep begins, so the region
+  // enclosed is between the two radii rather than the region under the arc.
+  // `arc` joins from the current point, so this is also what keeps the join from
+  // cutting the corner.
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(start) * radius, Math.sin(start) * radius);
+  ctx.arc(0, 0, radius, start, (endDegrees * Math.PI) / 180, counterClockwise);
+  ctx.closePath();
 }
 
 // Without these lines `loadFromJSON` cannot revive an `"Arc"` or a `"Wedge"`,
