@@ -20,11 +20,25 @@ import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
 import { uiCopy } from "./ui-copy.js";
 
+/**
+ * The canvas's own event surface, which is all this panel needs from it.
+ *
+ * Narrow on purpose: the panel measures a scene and prints a figure, so pulling
+ * in the editor's whole interaction surface for `on` and `off` would be a
+ * dependency on crop and text management this panel never touches.
+ */
+interface CanvasEvents {
+  on(event: string, handler: () => void): void;
+  off(event: string, handler: () => void): void;
+}
+
 export interface ArtboardPanel {
   readonly root: HTMLElement;
   render(artboard: Artboard, metadata?: ThemeMetadata): void;
   setGlobals(globals: Globals | undefined): void;
   setAssets(assets: readonly AssetReference[]): void;
+  /** Releases the canvas subscription. */
+  destroy(): void;
 }
 
 export interface ThemeSettingsOptions {
@@ -44,6 +58,10 @@ export function createArtboardPanel(
      *  Optional, and the panel is truthful without it — it falls back to the
      *  rule alone rather than claiming a number it cannot read. */
     readonly sceneBoxes?: () => readonly SceneBox[];
+    /** Subscribed so the figure follows the scene. Without it the panel is a
+     *  rule with a number that only refreshes when the artboard itself changes,
+     *  so an author marking a deliberate bleed sees no change at all. */
+    readonly canvasEvents?: CanvasEvents;
   } = {},
 ): ArtboardPanel {
   const root = document.createElement("section");
@@ -225,6 +243,21 @@ export function createArtboardPanel(
   // `current` is not assigned yet, and measuring against it would read the
   // artboard off undefined.
   sizeNote.textContent = uiCopy.panels.artboardSizeNote;
+
+  /**
+   * The one writer of the note, so `render` and the canvas subscription cannot
+   * disagree about it.
+   *
+   * Recomputing the **note only**, not the whole panel: an `object:modified`
+   * arrives on every transform and on every property edit, and a full `render`
+   * would rebuild the size and ratio inputs out from under an author who is
+   * typing in one of them.
+   */
+  const refreshNote = (): void => {
+    sizeNote.textContent =
+      current === undefined ? uiCopy.panels.artboardSizeNote : sceneNote();
+  };
+  options.canvasEvents?.on("object:modified", refreshNote);
   // The row is a wrapping flex line, so the note takes a line of its own the
   // way the shell's own error line does. Styled here rather than in the shell
   // stylesheet because the panel is this module's own markup, and this is the
@@ -335,7 +368,7 @@ export function createArtboardPanel(
     current = artboard;
     // Now that the size is known, the note can say what the frame holds rather
     // than only the rule.
-    sizeNote.textContent = sceneNote();
+    refreshNote();
     currentMetadata = metadata;
     size.setValues(artboard.width, artboard.height);
     artboardWidth = artboard.width;
@@ -370,6 +403,10 @@ export function createArtboardPanel(
       media.select.replaceChildren();
       refreshMediaOptions(media.select, assets);
       media.select.value = selected;
+    },
+    destroy() {
+      options.canvasEvents?.off("object:modified", refreshNote);
+      root.remove();
     },
   };
 }

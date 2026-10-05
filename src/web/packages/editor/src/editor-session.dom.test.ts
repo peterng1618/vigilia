@@ -1431,5 +1431,8 @@ function panel() {
     render: vi.fn(),
     setAssets: vi.fn(),
     setGlobals: vi.fn(),
+    // The panel now owns a canvas subscription, so tearing the session down has
+    // to release it — the double had no `destroy` and the session called one.
+    destroy: vi.fn(),
   };
 }

@@ -117,6 +117,20 @@ passed **2/2 green** while the `reviveThemeEnvelope` cases went red. That is the
 measurement that settles the question: an editor-side test **cannot** detect this
 class of defect, because the editor is not where the defect was.
 
+**What the rendered capture discharges, and what it does not.**
+`docs/evidence/screenshots/editor-arc-and-wedge-desktop-chromium.png` (captured by
+`editor.spec.ts`, Task 5 of the device-lens plan) shows the **wedge** as a filled
+quarter-disc, which is the claim this note's pixels make, legibly.
+
+It does **not** discharge the arc. The reviewer could not isolate a thin open curve
+attributable to the `Arc`: the starter's RAM card carries its own donut gauge in the
+same pixels, and under gamma lifting the candidate merges with it. **The arc is
+discharged by measurement, not by the image** — the 1933-vs-5027 figures above and
+the saved-document assertions in `editor.spec.ts`, which read an arc as stroked with
+no fill and a wedge as filled. This is recorded here so the capture is not later
+cited for both primitives; a screenshot that proves one of two things is worse than
+none if it is read as proving both.
+
 ## Decision
 
 **The fill is refused at revival, in `reviveScene`, and the refusal is one exported

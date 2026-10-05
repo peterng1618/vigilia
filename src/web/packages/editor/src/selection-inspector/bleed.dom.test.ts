@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { objectBleeds, VIGILIA_BLEEDS_PROPERTY } from "@vigilia/renderer-core";
-import { outsideCount } from "@vigilia/scene-fabric";
+import { outsideCount, sceneBoxesOf } from "@vigilia/scene-fabric";
 import { Circle, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { createArtboardPanel } from "../artboard-panel.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 
@@ -54,9 +55,59 @@ function tick(field: HTMLInputElement, checked: boolean): void {
   field.dispatchEvent(new Event("change"));
 }
 
-/** Straddling the right edge, so it is a crop unless something says otherwise. */
+/**
+ * One canvas's event surface, shared by the control and the panel.
+ *
+ * Fabric's own emitter reduced to the three methods the two surfaces use, so
+ * the test exercises a real subscription rather than asserting that a stub was
+ * called — the panel's `on` really receives the control's `fire`.
+ */
+function sharedCanvas(active: Rect): {
+  getActiveObject(): Rect;
+  getObjects(): readonly Rect[];
+  requestRenderAll(): void;
+  on(event: string, handler: () => void): void;
+  off(event: string, handler: () => void): void;
+  fire(event: string): void;
+} {
+  const handlers = new Map<string, Set<() => void>>();
+  return {
+    getActiveObject: () => active,
+    getObjects: () => [active],
+    requestRenderAll: () => {},
+    on: (event, handler) => {
+      const set = handlers.get(event) ?? new Set();
+      set.add(handler);
+      handlers.set(event, set);
+    },
+    off: (event, handler) => {
+      handlers.get(event)?.delete(handler);
+    },
+    fire: (event) => {
+      for (const handler of handlers.get(event) ?? []) handler();
+    },
+  };
+}
+
+/**
+ * Straddling the right edge, so it is a crop unless something says otherwise.
+ *
+ * The origins are stated because Fabric revives `center` by default, which makes
+ * `left` the middle rather than the near edge: at the default the box runs
+ * 899.5…1000.5, and 1000.5 is *inside* the one-unit edge tolerance, so the shape
+ * would read as fitting and this figure would never move. The same trap
+ * `player/src/artboard-crop.test.ts` pins for a display.
+ */
 function straddling(): Rect {
-  return new Rect({ id: "orb", left: 950, top: 100, width: 100, height: 100 });
+  return new Rect({
+    id: "orb",
+    left: 950,
+    top: 100,
+    width: 100,
+    height: 100,
+    originX: "left",
+    originY: "top",
+  });
 }
 
 describe("marking a deliberate bleed in the inspector", () => {
@@ -135,17 +186,58 @@ describe("marking a deliberate bleed in the inspector", () => {
     host.remove();
   });
 
-  it("tells the shell the object changed, so the artboard count re-reads", () => {
-    // The count lives in another panel and is recomputed on render. An edit
-    // that did not announce itself would leave the figure beside the size
-    // showing the number from before the mark — the control appearing to do
-    // nothing on the surface that states it.
+  it("changes the figure the author reads, through the real control", () => {
+    // **This test is the point, and it is here because the first version of it
+    // was not.** That version asserted `fire("object:modified")` had been
+    // called — the mechanism — under a name claiming the outcome. It passed
+    // while the artboard panel, which had **no canvas subscription at all**,
+    // went on printing "1 of 1 objects are now outside" after the author ticked
+    // the box. The brief's promise, "marked, it is silent", held on the phone
+    // and not in the editor.
+    //
+    // So this drives the whole path and reads the **number**: real control, real
+    // property, real event, real subscription, real figure. If any link is
+    // removed the note does not move, and this fails on the text.
     const object = straddling();
-    const { host, fire, field } = setup(object);
+    const canvas = sharedCanvas(object);
+    const host = document.createElement("div");
+    const panelHost = document.createElement("div");
+    const panel = createArtboardPanel(panelHost, undefined, vi.fn(), {
+      sceneBoxes: () => sceneBoxesOf(canvas.getObjects() as never[]),
+      canvasEvents: canvas,
+    });
+    panel.render({ width: 1000, height: 1000 });
+    createSelectionInspector(host, {
+      editor: {
+        canvas,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+        cropManager: idleCrop(),
+      } as never,
+      globals: { palette: {} } as never,
+      refreshGlass: vi.fn(),
+    });
 
-    tick(field<HTMLInputElement>("[data-vigilia-bleeds]"), true);
+    const note = (): string =>
+      panelHost.querySelector("[data-vigilia-artboard-note]")?.textContent ??
+      "";
+    expect(note(), "an unmarked overhang is reported").toContain(
+      "1 of 1 objects are now outside",
+    );
 
-    expect(fire.mock.calls.map(([name]) => name)).toContain("object:modified");
+    tick(host.querySelector<HTMLInputElement>("[data-vigilia-bleeds]")!, true);
+
+    expect(objectBleeds(object)).toBe(true);
+    expect(
+      note(),
+      "the figure the author reads has followed the mark",
+    ).not.toContain("are now outside");
+
+    // And back, so the checkbox is shown to be a control rather than a latch.
+    tick(host.querySelector<HTMLInputElement>("[data-vigilia-bleeds]")!, false);
+
+    expect(note()).toContain("1 of 1 objects are now outside");
+    panel.destroy();
     host.remove();
   });
 

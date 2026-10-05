@@ -300,6 +300,16 @@ export class EditorSession {
         // given the scene now that the counting lives with it.
         sceneBoxes: () =>
           sceneBoxesOf(options.shell.editor.canvas.getObjects()),
+        // The figure is derived, so it needs the event that says the scene
+        // moved. Without it the panel prints a number that only refreshes when
+        // the artboard changes, and an author marking a deliberate bleed sees
+        // no change on the surface they are looking at.
+        canvasEvents: {
+          on: (event, handler) =>
+            options.shell.editor.canvas.on(event as never, handler as never),
+          off: (event, handler) =>
+            options.shell.editor.canvas.off(event as never, handler as never),
+        },
       },
     );
     this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);
@@ -669,7 +679,7 @@ export class EditorSession {
     this.charts.destroy();
     this.#selection.root.remove();
     this.#style.destroy();
-    this.#artboard.root.remove();
+    this.#artboard.destroy();
     this.#palette.root.remove();
     this.#types.root.remove();
     this.#newObjects.root.remove();
