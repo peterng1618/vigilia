@@ -19,10 +19,9 @@ import {
 import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { uiCopy } from "./ui-copy.js";
 
-/** The option value that means "not one of the three", and the size it opens.
- *  A display carries no resolution, so a document picked by display takes the
- *  resolution a new document has always opened at — settled once, here, and
- *  the author's to change in the panel. */
+/** The option value that means "not one of the three". A document picked by
+ *  display takes the default resolution — see `DisplayLens.shape` — and the
+ *  author changes it in the panel. */
 const CUSTOM = "";
 
 /**
@@ -60,15 +59,20 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   heading.className = "vigilia-dialog-lead";
   heading.textContent = uiCopy.newDocument.chooseSize;
 
+  /** The preset this dialog opens on, and the size that follows from it. */
+  const preset = nearestArtboardPreset(current);
+  const opening = artboardSize(
+    preset.ratio,
+    preset.resolution,
+    preset.orientation,
+  );
+
   /** The size the author has settled on, and the one they are answering with.
    *  One number rather than three, because it is read back at the answer from
    *  the fields themselves — a later change to the palette cannot alter what
-   *  was agreed. */
-  let chosen: ArtboardSize = artboardSize(
-    DEFAULT_ARTBOARD_PRESET.ratio,
-    DEFAULT_ARTBOARD_PRESET.resolution,
-    DEFAULT_ARTBOARD_PRESET.orientation,
-  );
+   *  was agreed. Seeded with the opening size, which is what the two free
+   *  fields below are built with. */
+  let chosen: ArtboardSize = opening;
 
   const display = selectControl(
     "display",
@@ -77,19 +81,14 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
       custom.hidden = value !== CUSTOM;
       if (value === CUSTOM) return;
       const shape = displayLens(value as DisplayLensId).shape;
-      adopt(
-        artboardSize(
-          shape.ratio,
-          DEFAULT_ARTBOARD_PRESET.resolution,
-          shape.orientation,
-        ),
+      // Through `derive`, the one writer of the three selects: a display chosen
+      // from the list must not leave the technical controls naming a size the
+      // dialog is no longer offering.
+      derive(
+        shape.ratio,
+        shape.orientation,
+        DEFAULT_ARTBOARD_PRESET.resolution,
       );
-      // The technical controls are the same answer another way, so they follow
-      // rather than keep naming a size the dialog is no longer offering: Custom
-      // must not open on controls that deny what is on screen.
-      ratio.select.value = shape.ratio;
-      orientation.select.value = shape.orientation;
-      resolution.select.value = DEFAULT_ARTBOARD_PRESET.resolution;
     },
   );
   for (const lens of DISPLAY_LENSES) {
@@ -105,7 +104,6 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   custom.dataset["vigiliaNewDocumentCustom"] = "";
   custom.hidden = true;
 
-  const preset = nearestArtboardPreset(current);
   const ratio = selectControl("ratio", uiCopy.panels.ratio, (value) => {
     chosen = derive(
       value as ArtboardRatioId,
@@ -185,20 +183,16 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     size.textContent = `${chosen.width} × ${chosen.height}`;
   }
 
-  /** One preset id off a control that may be showing Custom, or the default
-   *  it started on — the same reading `submitPreset` takes in the panel. */
-  function presetId<T extends string>(
-    select: HTMLSelectElement,
-    fallback: T,
-  ): T {
-    return (select.value === "" ? fallback : select.value) as T;
-  }
+  /** The three ids, read off the selects. None of them carries a Custom option,
+   *  so every value is one the option list wrote; an id nothing names would be
+   *  collapsed to `""` by the DOM, and `artboardSize` refuses that rather than
+   *  answering a size nobody chose. */
   const readRatio = (): ArtboardRatioId =>
-    presetId(ratio.select, DEFAULT_ARTBOARD_PRESET.ratio);
+    ratio.select.value as ArtboardRatioId;
   const readOrientation = (): ArtboardOrientation =>
-    presetId(orientation.select, DEFAULT_ARTBOARD_PRESET.orientation);
+    orientation.select.value as ArtboardOrientation;
   const readResolution = (): ArtboardResolutionId =>
-    presetId(resolution.select, DEFAULT_ARTBOARD_PRESET.resolution);
+    resolution.select.value as ArtboardResolutionId;
 
   /** A preset named by two of the three dropdowns and derived whole, so no
    *  control is left reading a preset the size is not at. */
@@ -215,13 +209,10 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     return derived;
   }
 
-  /**
-   * The one writer of the size: the two free fields and the readout together,
-   * so the answer read at confirm time and the number shown cannot be two
-   * different sizes. It writes the fields even when they are hidden — the
-   * answer is read off them, so a display chosen from the list would otherwise
-   * confirm whatever size the last hidden control happened to hold.
-   */
+  /** The one writer of the size: the two free fields and the readout together,
+   *  so the answer read at confirm time and the number shown cannot be two
+   *  different sizes. It writes the fields even when hidden — the answer is
+   *  read off them. */
   function adopt(next: ArtboardSize): void {
     chosen = next;
     dimensions.setValues(next.width, next.height);
@@ -240,7 +231,7 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   resolution.select.value = preset.resolution;
   display.select.value = openingDisplay(preset);
   custom.hidden = display.select.value !== CUSTOM;
-  adopt(artboardSize(preset.ratio, preset.resolution, preset.orientation));
+  adopt(opening);
 
   const create = document.createElement("button");
   create.type = "button";

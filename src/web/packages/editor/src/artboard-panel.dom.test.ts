@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
-import { instantIn, parseInstant } from "@vigilia/renderer-core";
+import {
+  instantIn,
+  parseInstant,
+  validateFabricThemeEnvelope,
+} from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
+import { createBlankFabricTheme } from "./new-fabric-theme.js";
+import { parseThemePackage, serializeThemePackage } from "./persist.js";
 
 /** The platform's own spelling of a date's month and weekday, at UTC — the
     convention `names.ts` formats at, derived here without importing it, so a
@@ -479,5 +485,81 @@ describe("artboard presets in the panel", () => {
     )!;
     const note = panel.root.querySelector("[data-vigilia-artboard-note]")!;
     expect(width.getAttribute("aria-describedby")).toBe(note.id);
+  });
+});
+
+/**
+ * Review Focus 6: a theme of any shape still authors.
+ *
+ * The chooser can reach these two sizes and the panel can display them, but
+ * neither fact is this claim. What is missing is the whole cycle — create,
+ * load, edit, save — for a size no preset names, because each of those is a
+ * place that could quietly round a 3:1 back to 16:9. The controls reading
+ * Custom is the panel's existing behaviour for a typed size, pinned here
+ * because it is what makes the edit step below meaningful rather than a guess.
+ */
+describe.each([
+  ["a 3:1 board", { width: 3000, height: 1000 }],
+  ["a 4000 × 4000 theme", { width: 4000, height: 4000 }],
+])("%s", (_label, size) => {
+  it("creates, loads, edits and saves without leaving its shape", () => {
+    const created = createBlankFabricTheme(size);
+    expect(validateFabricThemeEnvelope(created)).toEqual({
+      ok: true,
+      envelope: created,
+    });
+
+    // Load: the panel reads a size no preset names as Custom on all three,
+    // rather than claiming a preset the document is not at.
+    const change = vi.fn();
+    const panel = createArtboardPanel(document.body, undefined, change);
+    panel.render(created.artboard);
+    expect(presets(panel.root)).toMatchObject({
+      ratio: expect.objectContaining({ value: "" }),
+      orientation: expect.objectContaining({ value: "" }),
+      resolution: expect.objectContaining({ value: "" }),
+    });
+
+    // Edit: the free fields carry the shape, so a change keeps the other edge.
+    const width = panel.root.querySelector<HTMLInputElement>(
+      "[data-vigilia-artboard-width]",
+    )!;
+    width.value = String(size.width + 100);
+    width.dispatchEvent(new Event("change"));
+    const edited = change.mock.lastCall?.[0] as typeof created.artboard;
+    expect(edited).toMatchObject({
+      width: size.width + 100,
+      height: size.height,
+    });
+
+    // Save: the edited document is a valid one, and it comes back out of a
+    // package at the size it was saved at — no step between may round it back
+    // to a preset.
+    const saved = { ...created, artboard: edited };
+    expect(validateFabricThemeEnvelope(saved)).toEqual({
+      ok: true,
+      envelope: saved,
+    });
+    const pkg = serializeThemePackage(saved);
+    expect(pkg.ok).toBe(true);
+    if (!pkg.ok) return;
+    const parsed = parseThemePackage(pkg.bytes);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.envelope.artboard).toMatchObject({
+      width: size.width + 100,
+      height: size.height,
+    });
+
+    // And the reopened document still reads as Custom, so the cycle ends
+    // where it started rather than stranding the author on a size the three
+    // controls deny.
+    const reopened = createArtboardPanel(document.body, undefined, vi.fn());
+    reopened.render(parsed.envelope.artboard);
+    expect(presets(reopened.root)).toMatchObject({
+      ratio: expect.objectContaining({ value: "" }),
+      orientation: expect.objectContaining({ value: "" }),
+      resolution: expect.objectContaining({ value: "" }),
+    });
   });
 });

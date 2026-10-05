@@ -56,8 +56,8 @@ export interface ArtboardPresetChoice {
 }
 
 /** A ratio and an orientation with no resolution attached: the shape something
-    is measured in. What a display says — a display is a shape of screen, and
-    the resolution stays the author's later choice on the panel. */
+    is measured in. Carries no resolution because a display says a shape and the
+    resolution is the author's later choice — argued at `DisplayLens.shape`. */
 export type ArtboardShape = Pick<ArtboardPresetChoice, "ratio" | "orientation">;
 
 /** Portrait is landscape with the two edges swapped, so one number per entry

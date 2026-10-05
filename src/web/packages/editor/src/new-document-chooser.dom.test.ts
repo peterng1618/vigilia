@@ -64,6 +64,23 @@ describe("the new-document chooser", () => {
     ).toBe("Custom size");
   });
 
+  it("opens a theme with no document on the wall panel, at 1920 × 1080", async () => {
+    // A product decision rather than an accident, so it is asserted rather than
+    // left for a reader to re-derive: `DEFAULT_ARTBOARD_PRESET` is 16:9
+    // landscape, `openingDisplay` matches that shape against the lenses, and it
+    // lands on the wall. "Wall panel" is the honest label because a starter
+    // theme is 1672 × 941 — also 16:9 — so the shape a new theme actually opens
+    // at is the wall's, not a fallback the chooser had to settle for.
+    const pending = chooseArtboardSize();
+    const dialog = opened();
+
+    expect(read(dialog, "display")).toBe("wall-panel");
+    expect(dialog.textContent).toContain("1920 × 1080");
+
+    create(dialog);
+    await expect(pending).resolves.toEqual({ width: 1920, height: 1080 });
+  });
+
   it("opens on the display the document it would replace is at", async () => {
     // 19.5:9 portrait is a phone hung upright, so it is offered back rather
     // than reset — the same finding as before, asked as the right question.
@@ -78,6 +95,26 @@ describe("the new-document chooser", () => {
 
     create(dialog);
     await expect(pending).resolves.toEqual({ width: 1080, height: 2340 });
+  });
+
+  it("opens a shape no display frames on Custom, with that shape already chosen", async () => {
+    // 4:3 is a shape the preset tables name and no display lens is, so the
+    // fallback branch of `openingDisplay` is the one taken here. It is the
+    // branch that makes "does not silently open on a display that is not its
+    // shape" true: 1280 × 960 comes back as a 4:3 document, with the ratio and
+    // orientation already naming it, rather than framed as a phone or a wall.
+    const pending = chooseArtboardSize({ width: 1280, height: 960 });
+    const dialog = opened();
+
+    expect(read(dialog, "display")).toBe("");
+    expect(customQuestion(dialog).hidden).toBe(false);
+    expect(read(dialog, "ratio")).toBe("4:3");
+    expect(read(dialog, "orientation")).toBe("landscape");
+
+    create(dialog);
+    const size = await pending;
+    // The nearest preset the shape has, at the resolution it always opened at.
+    expect(size).toEqual({ width: 1440, height: 1080 });
   });
 
   it.each([
@@ -107,8 +144,34 @@ describe("the new-document chooser", () => {
 
     set(dialog, "display", "");
     expect(customQuestion(dialog).hidden).toBe(false);
-    // One click, not a second dialog and not a menu elsewhere.
-    expect(display(dialog)).toContain("");
+    // The control took the answer, rather than only offering Custom and
+    // leaving the author to find it — and it is the same control the three
+    // displays are on, not a second dialog or a menu elsewhere.
+    expect(read(dialog, "display")).toBe("");
+  });
+
+  it("keeps the technical controls naming the display's own shape", () => {
+    // Custom revealed after a display must not open on controls that deny what
+    // is on screen: the display and the three dropdowns are the same answer
+    // written twice, and `derive` is the one writer of the second.
+    const dialog = newDocumentChooser();
+
+    set(dialog, "display", "phone-portrait");
+    expect({
+      ratio: read(dialog, "ratio"),
+      orientation: read(dialog, "orientation"),
+      resolution: read(dialog, "resolution"),
+    }).toEqual({
+      ratio: "19.5:9",
+      orientation: "portrait",
+      resolution: "1080p",
+    });
+
+    set(dialog, "display", "");
+    expect(customQuestion(dialog).hidden).toBe(false);
+    expect(read(dialog, "ratio")).toBe("19.5:9");
+    expect(read(dialog, "orientation")).toBe("portrait");
+    expect(dialog.textContent).toContain("1080 × 2340");
   });
 
   it("offers every size the dropdowns could express before", async () => {
