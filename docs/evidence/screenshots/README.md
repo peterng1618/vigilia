@@ -36,7 +36,7 @@ result, not merely a mounted editor.
 | Open | Valid, invalid or incompatible file | add when changed |
 | History | Save changed document or undo visible drag | add when changed |
 | Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-guides` / `snaps a dragged object`; `editor-snap-resize` / `snaps a resized object`; `editor-snap-resize-ctrl` / `Ctrl-resizes near a neighbour without snapping or showing a guide`; `editor-rotation-indicator` / `rotation-angle indicator`; `editor-toolbar` / `captures the canvas dock over a selected object`; `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` |
-| Object tools | Add/edit shape, text, image or SVG | add when integration changes |
+| Object tools | Add/edit shape, text, image or SVG | `editor-arc-and-wedge` / `captures an arc and a wedge on the canvas` |
 | Panel authoring | Insert a panel and set its fill, border, radius and shadow | `editor-panel-authoring` / `authors a panel from the Add panel` |
 | Glass authoring | Turn frosted glass on for a panel over a real backdrop and set its blur radius | `editor-glass-authoring` / `gives an ordinary panel a real, measured backdrop blur` |
 | Starter composition | Select the starter's frosted CPU card and read its live value | `editor-starter-cpu-card` / `ships the starter's frosted CPU card` |

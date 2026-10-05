@@ -21,6 +21,7 @@ import {
   resolveTypePreset,
   typePresetOf,
 } from "./appearance.js";
+import { createBleedField } from "./bleed.js";
 import { createCropRow } from "./crop.js";
 import { createGlassFields } from "./glass.js";
 import { createPanelFields } from "./panel.js";
@@ -507,6 +508,17 @@ export function createSelectionInspector(
       // can hold one — an image, which is the only kind `canCrop` admits.
       const crop = createCropRow(editor, object, stillTarget);
       if (crop !== undefined) geometry.append(crop);
+
+      // The mark that says this object's overhang is deliberate. It is beside
+      // crop rather than under appearance because what it changes is the crop
+      // notice both surfaces print, not how the object paints.
+      geometry.append(
+        createBleedField(context(), object, {
+          stillTarget: () => stillTarget(object),
+          commit,
+          onChange: render,
+        }),
+      );
 
       root.append(geometry);
     }

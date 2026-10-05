@@ -4,6 +4,7 @@ import {
   parseInstant,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import type { SceneBox } from "@vigilia/scene-fabric";
 import { describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import { createBlankFabricTheme } from "./new-fabric-theme.js";
@@ -474,6 +475,39 @@ describe("artboard presets in the panel", () => {
       "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
     );
     expect(note?.getAttribute("role")).toBe("note");
+  });
+
+  it("counts the scene it is given, and leaves a marked object out of it", () => {
+    // The panel's half of the defect. It reads `sceneBoxesOf`'s output, so the
+    // mark has to arrive on the box rather than being re-derived here — a second
+    // reader of the property would be a second chance for the editor's figure
+    // and the player's notice to disagree about the same theme.
+    const boxes: SceneBox[] = [
+      {
+        visible: true,
+        bleeds: false,
+        left: 950,
+        top: 100,
+        width: 100,
+        height: 100,
+        depth: 0,
+      },
+    ];
+    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
+      sceneBoxes: () => boxes,
+    });
+    const note = (): string =>
+      panel.root.querySelector("[data-vigilia-artboard-note]")?.textContent ??
+      "";
+
+    panel.render({ width: 1000, height: 1000 });
+    expect(note()).toContain("1 of 1 objects are now outside");
+
+    boxes[0] = { ...boxes[0]!, bleeds: true };
+    panel.render({ width: 1000, height: 1000 });
+
+    expect(note()).not.toContain("are now outside");
+    panel.root.remove();
   });
 
   it("describes the width box with that note, so it reaches a screen reader too", () => {

@@ -6,6 +6,7 @@ import {
   MAX_NODE_DEPTH,
   STABLE_ID_PATTERN,
 } from "./document.js";
+import { isBleedMark, VIGILIA_BLEEDS_PROPERTY } from "./bleed.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 import {
   isGlassTreatment,
@@ -1031,6 +1032,7 @@ function sceneObject(
   }
   objectGlass(value, path, issues);
   objectName(value, path, issues);
+  objectBleeds(value, path, issues);
   if (!jsonSafe(value, path, depth, issues)) return;
   if (value["objects"] !== undefined) {
     if (!Array.isArray(value["objects"])) {
@@ -1107,6 +1109,32 @@ function objectName(
       "invalid-fabric-scene",
       `${path}/${VIGILIA_NAME_PROPERTY}`,
       "A Fabric object name must be a non-blank string, so the layer list has something to show.",
+    ),
+  );
+}
+
+/**
+ * The mark that says a crop is deliberate, refused before revival rather than
+ * coerced. Absence is legal and means the object is not marked — a scene
+ * authored before the flag still opens — so only a present value that is not
+ * exactly `true` is a refusal.
+ *
+ * `false` is refused rather than accepted because the flag's whole shape is
+ * that only the deviation is written: a document carrying `vigiliaBleeds:
+ * false` on every object is one an author has to diff to read.
+ */
+function objectBleeds(
+  value: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const bleeds = value[VIGILIA_BLEEDS_PROPERTY];
+  if (bleeds === undefined || isBleedMark(bleeds)) return;
+  issues.push(
+    issue(
+      "invalid-fabric-scene",
+      `${path}/${VIGILIA_BLEEDS_PROPERTY}`,
+      "A Fabric object bleed mark must be exactly true, so an unmarked object carries no key at all.",
     ),
   );
 }

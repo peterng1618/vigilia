@@ -1,3 +1,4 @@
+import { objectBleeds } from "@vigilia/renderer-core";
 import { type FabricObject, Group } from "fabric/es";
 
 /**
@@ -18,6 +19,14 @@ import { type FabricObject, Group } from "fabric/es";
 /** One object in artboard units, as Fabric reports it for the scene plane. */
 export interface SceneBox {
   readonly visible: boolean;
+  /**
+   * Whether the author marked this object's overhang as deliberate.
+   *
+   * False is the default and not a third state: `objectBleeds` reads absence
+   * and a malformed value alike as "not marked", so a scene authored before
+   * the flag — and a file too broken to trust — count exactly as they did.
+   */
+  readonly bleeds: boolean;
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -49,10 +58,31 @@ export const EDGE_TOLERANCE = 1;
 /**
  * Objects that can count. An object the author hid is not cropped, so counting
  * it would put a false cause next to the real one; an object with no area
- * paints nothing at any position. Both are the author's own doing.
+ * paints nothing at any position; an object the author marked as bleeding has
+ * already been said to run off on purpose. All three are the author's own doing.
+ *
+ * The exclusion lives here rather than in a branch of each reader because
+ * `outsideCount`, `outsideEdges` and `outsideBoxes` all go through
+ * `countedBoxes`, and both surfaces are handed boxes by `sceneBoxesOf`. A mark
+ * honoured anywhere else would let the editor's count and the player's notice
+ * disagree about the same theme — the split this flag exists to close.
+ *
+ * **A marked box is skipped, not descended-past.** The mark silences the object
+ * it is on and nothing else: the walk carries on into a marked group's children,
+ * each judged for itself. That is the plan's stated behaviour twice over — "a
+ * marked object hiding a *real* problem (it must not suppress warnings about its
+ * own internal parts)", and "marking a group does not silence its children" — and
+ * a watermark here would suppress exactly the internal-part warning they are
+ * about. An author who marks a card and still sees a notice for a panel that
+ * genuinely sits outside it is being told something true.
+ *
+ * It also means a marked card that hangs off the edge reports once per part. That
+ * is a real cost and it is **not settled here**: whether that is noise the plan
+ * has not anticipated is a question above this file, not one a task answers by
+ * editing the traversal.
  */
 export function countable(box: SceneBox): boolean {
-  return box.visible && box.width > 0 && box.height > 0;
+  return box.visible && !box.bleeds && box.width > 0 && box.height > 0;
 }
 
 export function right(box: SceneBox): number {
@@ -170,6 +200,10 @@ export function sceneBoxesOf(
     if (rect === undefined) return [];
     const box: SceneBox = {
       visible: object.visible,
+      // Read here, once, so both surfaces see the same mark. The editor writes
+      // the property and the phone reads the box; a second read site would be a
+      // second chance for the two to disagree.
+      bleeds: objectBleeds(object),
       left: rect.left,
       top: rect.top,
       width: rect.width,

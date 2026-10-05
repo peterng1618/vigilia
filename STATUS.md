@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-05
+Updated: 2026-10-06
 Branch: `develop`
 
 ## Current objective
@@ -43,10 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **`vg-139` fixed, and the cause as filed was wrong.** It claimed the envelope declares `bindings` as a flat array and disagreed with `ChartManager`; both shapes are the same record (`fabric-envelope.ts:34`, enforced at `fabric-envelope-validate.ts:790`), so no decision and no reuse-gate note were owed.
-- **The real cause was `carriedPaintFor`'s filter**: it kept a paint entry only when the series at that index survived, so binding the *first* series (`previous` empty) kept nothing and unbinding the last emptied it from the other side. `seriesPaintFor` regrew the empty array by repeating `current.at(-1)` — `undefined` — so the envelope carried `palette: [null]` and the author could not choose the series colour.
-- **Measured, then sabotaged, in both surfaces.** `carriedPaintFor("line", {palette:[…]}, [], [b1])` returned `[]`; with the fix the unit tests pass, and the new e2e — insert a Line chart, read `data-vigilia-chart-paint="palette.0"` on the Data tab, bind `cpu.load` — passes with the fix and fails with the old filter rebuilt.
-- **Gates green:** typecheck, lint, format, editor vitest **1318 in 102 files**, plus the two chart-manager suites at 28.
+- **`vigiliaBleeds` marks a crop as deliberate; the count and the notice both honour it.** `outsideCount` measured a straddling object's whole rect — right as a measurement, wrong as a verdict, since an author bleeding a quarter-disc was told "1 object outside" by the panel and by a phone.
+- **A Fabric custom property, not a `NodeBase` field**, which is the v1 widget tree and reaches no saved theme. Validated beside the name and glass checks; `SceneBox.bleeds` is read once in `sceneBoxesOf`, so the two surfaces cannot drift.
+- **Three traps, each found by sabotaging and watching what failed:** Fabric drops an unlisted property on save with no error; `false` had to be absence; and a case had to exist **per surface** — disabling the group behaviour turned `scene-fabric` red and left the *player* green.
+- **A marked group does not speak for its parts**, so a card hanging off the edge reports once per part. A first version suppressed that with the depth watermark; reverted, because it hides a panel genuinely outside the artboard. Open question for the user in ADR-0027.
+- **Proved on the real host** with two seeded themes differing in one boolean; Task 4's arc and wedge captured and looked at for the first time. Gates green: typecheck, lint, 2903 vitest in 204 files, 4 new host specs.
 
 ## Next
 

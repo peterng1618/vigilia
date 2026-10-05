@@ -1119,6 +1119,75 @@ describe("an object's authored display name", () => {
   });
 });
 
+describe("a deliberate bleed", () => {
+  function withObjects(objects: readonly unknown[]): Record<string, unknown> {
+    // The shared fixture binds a chart; these cases replace the scene, so the
+    // binding would fail for an unrelated reason and hide the real one.
+    return withoutKey(
+      { ...envelope(), scene: { version: "7.4.0", objects } },
+      "bindings",
+    );
+  }
+
+  it("accepts the mark, and treats absence as not bleeding", () => {
+    // Absence must stay legal forever: a scene authored before the flag
+    // existed is not invalid because it lacks the property.
+    expect(
+      validateFabricThemeEnvelope(withObjects([{ type: "Rect", id: "panel" }]))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([{ type: "Rect", id: "panel", vigiliaBleeds: true }]),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("refuses anything that is not exactly true", () => {
+    // The envelope is the trust boundary, and the narrowness is the design:
+    // `false` is the value a document would carry on every object if the flag
+    // were a plain boolean, and a file full of them is a document nobody can
+    // read by eye. So it is refused rather than kept.
+    for (const value of [false, 0, 1, "true", null, {}, []]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type: "Rect", id: "panel", vigiliaBleeds: value }]),
+        ),
+        JSON.stringify(value),
+      ).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: "/scene/objects/0/vigiliaBleeds" }),
+        ]),
+      });
+    }
+  });
+
+  it("validates a nested mark at the child's own path", () => {
+    // The scene walk is the only thing that reaches a group child, so a mark
+    // validated only at the top level would let a bad nested value through.
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          {
+            type: "Group",
+            id: "card",
+            vigiliaBleeds: true,
+            objects: [{ type: "Rect", id: "inner", vigiliaBleeds: "yes" }],
+          },
+        ]),
+      ),
+    ).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: "/scene/objects/0/objects/0/vigiliaBleeds",
+        }),
+      ]),
+    });
+  });
+});
+
 describe("a text object's fixed box", () => {
   const withBox = (box: unknown): Record<string, unknown> => {
     const base = envelope();

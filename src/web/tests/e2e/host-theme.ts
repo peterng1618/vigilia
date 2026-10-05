@@ -39,6 +39,32 @@ export const HOST_GROUPED_THEME_ID = "e2e-grouped-glass";
  *  reaches a display is the URL its asset resolver builds, so this is the
  *  fixture that covers it. */
 export const HOST_MEDIA_THEME_ID = "e2e-media";
+/**
+ * Two quarter-discs hanging off opposite edges of a 640 × 360 artboard: the
+ * right one **marked** as a deliberate bleed, the left one not.
+ *
+ * Opposite sides on purpose. The notice names the side, so a reader of the
+ * sentence can tell which object produced it — if the marked one were still
+ * being counted, the sentence would gain "and past the right edge" and the test
+ * would fail on a word rather than on a count.
+ *
+ * **The disc is placed so part of it survives the clip.** A `Wedge` swept 0°–90°
+ * occupies the bottom-right quadrant of its own centre, so a centre near the
+ * artboard's edge puts half the shape on the canvas and half past it. Placing
+ * the whole quadrant outside would render nothing at all and pass every notice
+ * assertion while showing the author an empty frame.
+ */
+export const HOST_BLEED_THEME_ID = "e2e-bleed";
+/**
+ * The same scene with **both** overhangs marked, so the display has nothing
+ * left to complain about.
+ *
+ * A twin rather than a mutation of {@link HOST_BLEED_THEME_ID}: writing to the
+ * shared store mid-suite would leave the marked version behind for whichever
+ * spec ran next, and the pair is only meaningful if each is read exactly as it
+ * was seeded.
+ */
+export const HOST_BLEED_ALL_THEME_ID = "e2e-bleed-all";
 /** The host's app folder; it owns both the library and the settings beside it. */
 export const HOST_APP_DIR = path.join(here, "..", "..", ".e2e-host-app");
 /** The library itself, where each theme is one folder (ADR-0017). */
@@ -262,6 +288,107 @@ const mediaEnvelope = {
   ],
   scene: { version: "7.4.0" as const, objects: [] },
 };
+
+/**
+ * A deliberate bleed and an accidental one, on opposite edges of the same frame.
+ *
+ * Three objects, and the third exists so the frame is not a test of emptiness:
+ * an **open arc**, stroked and unfilled, well inside the artboard. A scene of
+ * two clipped quarters and nothing else would render almost nothing, and a
+ * reader could not tell "the mark worked" from "the display drew nothing".
+ *
+ * The geometry is worked out rather than eyeballed, because `Wedge` sweeps the
+ * quadrant below and right of its own centre: `left`/`top` are the bounding
+ * box's corner and the centre is `left + radius`, `top + radius`.
+ *   - bleeding-quarter: centre (560, 200), radius 140 → x 560…700, and the
+ *     artboard ends at 640, so 60 units are cut and 80 are drawn.
+ *   - stray-quarter: swept 90°–180° so it occupies the *left* quadrant, centre
+ *     (80, 200) → x −60…80, so 60 units are cut past the left edge.
+ */
+const bleedEnvelope = (id: string, markBoth: boolean) => ({
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id,
+  metadata: { name: "E2E deliberate bleed", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 360,
+    contentFit: "contain" as const,
+    background: { ref: "palette.bar" as const },
+    barColor: { ref: "palette.bar" as const },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      ink: { name: "Ink", value: { kind: "solid" as const, color: "#e8ecf3" } },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+    },
+    typePresets: {},
+  },
+  assets: [],
+  scene: {
+    version: "7.4.0" as const,
+    objects: [
+      {
+        type: "Wedge" as const,
+        version: "7.4.0" as const,
+        originX: "left" as const,
+        originY: "top" as const,
+        left: 420,
+        top: 60,
+        radius: 140,
+        startAngle: 0,
+        endAngle: 90,
+        fill: "#e8ecf3",
+        id: "bleeding-quarter",
+        // Resolved paint is a cache; the authored owner is a palette token, and
+        // the validator refuses a resolved colour with no token behind it. The
+        // literal is what a display draws, since the player resolves no palette
+        // paints of its own (ADR-0026).
+        vigiliaPaint: { fill: "palette.ink" },
+        vigiliaBleeds: true as const,
+      },
+      {
+        type: "Wedge" as const,
+        version: "7.4.0" as const,
+        originX: "left" as const,
+        originY: "top" as const,
+        left: -60,
+        top: 60,
+        radius: 140,
+        startAngle: 90,
+        endAngle: 180,
+        fill: "#e8ecf3",
+        id: "stray-quarter",
+        vigiliaPaint: { fill: "palette.ink" },
+        ...(markBoth ? { vigiliaBleeds: true as const } : {}),
+      },
+      {
+        // An arc is an **open sweep**: no interior, so no fill, and it draws as
+        // a curve. A fill would close it with a chord and make it a circular
+        // segment, which is why the treatment is refused at revival (ADR-0026).
+        type: "Arc" as const,
+        version: "7.4.0" as const,
+        originX: "left" as const,
+        originY: "top" as const,
+        left: 100,
+        top: 100,
+        radius: 70,
+        startAngle: 0,
+        endAngle: 90,
+        stroke: "#e8ecf3",
+        strokeWidth: 6,
+        strokeLineCap: "round" as const,
+        fill: "",
+        id: "open-arc",
+        vigiliaPaint: { stroke: "palette.ink" },
+      },
+    ],
+  },
+});
 
 /** Artboard units per bar, alternating light and dark. Four times the widest
  *  blur the panels author, so a real blur flattens each bar's step and a tint
@@ -609,6 +736,8 @@ export async function seedHostTheme(): Promise<void> {
     }),
     groupedGlassEnvelope,
     mediaEnvelope,
+    bleedEnvelope(HOST_BLEED_THEME_ID, false),
+    bleedEnvelope(HOST_BLEED_ALL_THEME_ID, true),
     // **A key nothing can report.** The envelope validator only checks that a
     // semantic key is a string of 1-120 characters, so this is a well-formed
     // package that a display must render as a gap.

@@ -1159,6 +1159,80 @@ test.describe("Fabric editor route", () => {
     ]);
   });
 
+  test("captures an arc and a wedge on the canvas for visual review", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    // Task 4 shipped both primitives and **nobody had looked at one**. The
+    // geometry assertions say an arc is an open sweep and a wedge a closed
+    // quarter-disc; only a picture says whether the thing on the canvas looks
+    // like the word. Captured from the Add pane, so what is photographed is
+    // what an author gets rather than a hand-placed shape.
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    await openPane(page, "Insert");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Arc", exact: true })
+      .click();
+    await openPane(page, "Insert");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("button", { name: "Wedge", exact: true })
+      .click();
+
+    // Both arrived at the quarter turn the Add pane hands over, and they are
+    // not the same shape: an open sweep has no interior to fill, so it is
+    // stroked, while the sector is a region and takes the fill. A filled arc
+    // closes with a chord and draws a circular segment — refused at revival
+    // (ADR-0026) — so this is what makes the two pictures mean different things.
+    //
+    // Read from the **saved document**, not from the live objects: Fabric gives
+    // every shape a runtime default `fill`, so a live read cannot tell an
+    // authored fill from the one Fabric supplied, and the first version of this
+    // assertion read `true` for an arc the Add pane never filled.
+    const envelope = (await saveEnvelope(page)) as {
+      scene: { objects: Array<Record<string, unknown>> };
+    };
+    const shapes = envelope.scene.objects
+      .filter((object) => {
+        const type = String(object["type"] ?? "").toLowerCase();
+        return type === "arc" || type === "wedge";
+      })
+      .map((object) => ({
+        type: String(object["type"] ?? "").toLowerCase(),
+        // Zero is Fabric's own default, and the serialiser writes authored
+        // deviations only — so an absent `startAngle` **is** a start of 0. The
+        // same rule that keeps a document free of `vigiliaBleeds: false`.
+        startAngle: object["startAngle"] ?? 0,
+        endAngle: object["endAngle"],
+        // `null` is how Fabric spells "no fill", and the Add pane writes exactly that
+        // for an arc — so an absent key and a null one both mean unfilled.
+        filled: object["fill"] != null && object["fill"] !== "",
+        stroked: object["stroke"] != null && object["stroke"] !== "",
+      }));
+
+    const arc = shapes.find((shape) => shape.type === "arc");
+    const wedge = shapes.find((shape) => shape.type === "wedge");
+    expect(arc, "the Add pane inserted an arc").toBeDefined();
+    expect(wedge, "the Add pane inserted a wedge").toBeDefined();
+    // The quarter turn is what the primitive is for: a quarter-disc without
+    // hand-authoring an SVG path.
+    expect([arc?.startAngle, arc?.endAngle]).toEqual([0, 90]);
+    expect([wedge?.startAngle, wedge?.endAngle]).toEqual([0, 90]);
+    expect(arc?.filled, "an arc has no interior, so it is not filled").toBe(
+      false,
+    );
+    expect(arc?.stroked, "an arc is a curve, so it is stroked").toBe(true);
+    expect(wedge?.filled, "a wedge is a region, so it is filled").toBe(true);
+
+    await captureVisualReview(page, testInfo, "editor-arc-and-wedge");
+  });
+
   test("captures the mounted editor for visual review", async ({
     page,
   }, testInfo) => {

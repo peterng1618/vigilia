@@ -153,6 +153,7 @@
       "type": "object",
       "properties": {
         "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" },
+        "vigiliaBleeds": { "const": true },
         "name": { "$ref": "#/$defs/objectName" }
       },
       "allOf": [

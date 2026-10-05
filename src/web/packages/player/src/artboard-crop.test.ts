@@ -13,6 +13,7 @@ const PORTRAIT: ArtboardSize = { width: 1080, height: 2340 };
 function box(over: Partial<SceneBox> = {}): SceneBox {
   return {
     visible: true,
+    bleeds: false,
     left: 0,
     top: 0,
     width: 100,
@@ -156,6 +157,86 @@ describe("the artboard crop notice", () => {
 
   it("says nothing for an empty scene", () => {
     expect(cropNoticeText([], PORTRAIT)).toBeUndefined();
+  });
+});
+
+/**
+ * A crop the author meant is not something a reader should be told about.
+ *
+ * These are the **player's** cases, and they exist separately from the counting
+ * tests in `scene-fabric` because the notice is the sentence a reader actually
+ * reads. A defect where the editor's count excluded a marked object and the
+ * player's notice did not would leave both suites green — each surface's own
+ * test would still be asserting the old behaviour — and would show up only on a
+ * phone, which is the exact split that made the filled arc look like a chord on
+ * the display and a curve in the editor.
+ */
+describe("the artboard crop notice over a deliberate bleed", () => {
+  it("says nothing about a marked object running off the edge", () => {
+    expect(
+      cropNoticeText([box({ left: 1030, width: 100, bleeds: true })], PORTRAIT),
+    ).toBeUndefined();
+  });
+
+  it("still tells a reader about an unmarked one in the same place", () => {
+    // The half that matters most. Marking silences the diagnostic for that one
+    // object; it does not stop the diagnostic.
+    expect(cropNoticeText([box({ left: 1030, width: 100 })], PORTRAIT)).toBe(
+      "1 of 1 objects are outside this artboard and are not shown — past the right edge",
+    );
+  });
+
+  it("counts the marked one out of the total a proportion is taken over", () => {
+    // One marked quarter-disc and one panel that genuinely fell off: the reader
+    // is told about the panel, and the total is the objects that could be lost
+    // rather than the whole scene.
+    expect(
+      cropNoticeText(
+        [
+          box({ left: 40, top: 40 }),
+          box({ left: 1030, width: 100, bleeds: true }),
+          box({ left: 1030, width: 100 }),
+        ],
+        PORTRAIT,
+      ),
+    ).toBe(
+      "1 of 2 objects are outside this artboard and are not shown — past the right edge",
+    );
+  });
+
+  it("says nothing for a marked card whose parts are inside it", () => {
+    expect(
+      cropNoticeText(
+        group({ left: 40, top: 100, width: 494, height: 165, bleeds: true }, [
+          box({ left: 40, top: 100, width: 494, height: 165 }),
+          box({ left: 70, top: 121, width: 40, height: 40 }),
+        ]),
+        PORTRAIT,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("still reports the parts of a marked card that hangs off the edge", () => {
+    // The inverted case on **this** surface, and the one that distinguishes the
+    // plan's behaviour from a depth watermark. A watermark set on the marked
+    // card would skip every child and this reader would be told nothing — which
+    // is the plan's own failure mode, a marked object hiding a *real* problem.
+    //
+    // Pinned here as well as in `scene-fabric` because the two surfaces read
+    // through shared code, and a case that exists on only one of them cannot
+    // tell a shared fix from a shared blind spot.
+    expect(
+      cropNoticeText(
+        group({ left: 1138, top: 100, width: 494, height: 165, bleeds: true }, [
+          box({ left: 1138, top: 100, width: 494, height: 165 }),
+          box({ left: 1170, top: 121, width: 40, height: 40 }),
+          box({ left: 1234, top: 121, width: 240, height: 27 }),
+        ]),
+        PORTRAIT,
+      ),
+    ).toBe(
+      "3 of 3 objects are outside this artboard and are not shown — past the right edge",
+    );
   });
 });
 

@@ -126,6 +126,13 @@ export const uiCopy = {
     glassRefused: (kind: string) =>
       glassRefusals[kind] ??
       `${kind} is not a shape frosted glass can be applied to.`,
+    /** The mark that says this object's overhang is deliberate. Named as what
+     * it is rather than as "ignore the warning", because the author is
+     * describing the composition and not asking for silence. Kept to two
+     * lines like "Border width" beside it — the inspector's label column is
+     * 72px, and the longer wording wrapped to three and pushed its own
+     * checkbox out of line with every other field in the column. */
+    bleeds: "Deliberate bleed",
     opacity: "Opacity %",
     paint: "Paint",
     notSet: "not set",

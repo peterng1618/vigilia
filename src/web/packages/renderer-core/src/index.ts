@@ -273,6 +273,16 @@ export { fabricEnvelopeInputFor } from "./theme/fabric-envelope.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 export type { GlassTreatment } from "./theme/glass.js";
+// The reader, the property name and the guard are the external contract, for the
+// same reason the glass ones are. An editor control that accepts the mark must
+// ask `isBleedMark` rather than write `true` and hope: the flag's narrowness is
+// what keeps a document from carrying `vigiliaBleeds: false` on every object in
+// it, and a control that wrote the boolean would quietly undo that.
+export {
+  isBleedMark,
+  objectBleeds,
+  VIGILIA_BLEEDS_PROPERTY,
+} from "./theme/bleed.js";
 // The reader, the property name, the guard and the bound are the external
 // contract. The guard is external because a control that decides the membership
 // of the set itself is a second owner of it: it agrees with `GLASS_OBJECT_TYPES`

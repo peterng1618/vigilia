@@ -175,6 +175,23 @@ describe("published Fabric theme schema", () => {
     ).toEqual({ $ref: "#/$defs/objectName" });
   });
 
+  it("publishes the bleed mark at the narrowness the validator refuses", () => {
+    // Same reason as the two bounds above: the published key is the contract an
+    // outside tool authors against, and `const: true` is what keeps it agreeing
+    // with the validator rather than inviting `vigiliaBleeds: false` on every
+    // object in a hand-written theme.
+    const document = schema();
+
+    expect(
+      (
+        document.$defs["fabricObject"]!["properties"] as Record<
+          string,
+          Record<string, unknown>
+        >
+      )["vigiliaBleeds"],
+    ).toEqual({ const: true });
+  });
+
   it("discriminates fully declared WOFF2 font assets from other assets", () => {
     const document = schema();
     const asset = document.$defs["assetReference"]!;

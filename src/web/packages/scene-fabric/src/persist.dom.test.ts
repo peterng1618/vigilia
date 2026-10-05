@@ -3,11 +3,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  objectBleeds,
   buildLineOption,
   defaultLineSettings,
   glassTreatment,
   objectName,
   type Sample,
+  VIGILIA_BLEEDS_PROPERTY,
   VIGILIA_GLASS_PROPERTY,
   VIGILIA_NAME_PROPERTY,
   validateFabricThemeEnvelope,
@@ -1163,6 +1165,71 @@ describe("a settings object cannot be mutated in place", () => {
   });
 });
 
+/**
+ * The mark a deliberate bleed leaves in the file.
+ *
+ * This is the trap the whole feature can fail in silently: `serialiseScene`
+ * passes `SCENE_PERSISTED_PROPERTIES` to `canvas.toObject(...)`, and Fabric
+ * persists **only** the properties it is given. A custom property absent from
+ * that list is dropped on save — no error, no warning, and the editor keeps
+ * working perfectly because the editor never re-reads the file. So the flag
+ * that makes the diagnostic honest on screen would make it dishonest on every
+ * other machine, and nothing would fail.
+ *
+ * The second half of the case is the one a "did it save?" assertion usually
+ * forgets: **nothing else in the document changes.** A property that leaked
+ * onto a sibling, or an object that serialised differently because it was
+ * marked, is the split this plan has been repeatedly bitten by.
+ */
+describe("a deliberate bleed survives a save", () => {
+  it("carries the mark onto the file and back", async () => {
+    // A value rather than a fresh literal: Fabric infers its options type from one
+    // and `CircleProps` has no room for the authored `id`. The same trap
+    // `new-object-defaults.ts` documents for its own arc branch.
+    const options = { id: "quarter" } as const;
+    const quarter = new Wedge({ ...options, radius: 80 });
+    const panel = new Rect({ id: "panel", width: 200, height: 120 });
+    quarter.set(VIGILIA_BLEEDS_PROPERTY, true);
+    const scene = serialiseScene(canvasOf(quarter, panel));
+
+    expect(
+      scene.objects.map((object) => object[VIGILIA_BLEEDS_PROPERTY]),
+    ).toEqual([true, undefined]);
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, scene);
+
+    expect(objectBleeds(revived.getObjects()[0]!)).toBe(true);
+    expect(objectBleeds(revived.getObjects()[1]!)).toBe(false);
+  });
+
+  it("changes nothing else in the document", async () => {
+    // The mark is one boolean on one object. An unmarked object beside a marked
+    // one must serialise byte-identically to the same object beside nothing.
+    const marked = new Rect({ id: "a", width: 200, height: 120 });
+    const plain = new Rect({ id: "a", width: 200, height: 120 });
+    marked.set(VIGILIA_BLEEDS_PROPERTY, true);
+
+    const withMark = serialiseScene(canvasOf(marked));
+    const without = serialiseScene(canvasOf(plain));
+
+    expect(withMark.objects[0]).toEqual({
+      ...without.objects[0],
+      [VIGILIA_BLEEDS_PROPERTY]: true,
+    });
+  });
+
+  it("writes no mark at all when none was authored", async () => {
+    // The narrowing is what keeps a document from carrying `vigiliaBleeds:
+    // false` on every object in it. Fabric omits a default-valued key, and a
+    // boolean written as `false` would have to be written explicitly — which is
+    // why the reader accepts `true` and nothing else.
+    const scene = serialiseScene(canvasOf(new Rect({ id: "panel" })));
+
+    expect(VIGILIA_BLEEDS_PROPERTY in (scene.objects[0] ?? {})).toBe(false);
+  });
+});
+
 describe("there is exactly one owner of scene serialisation", () => {
   it("is the only module in the package that calls toObject", () => {
     // A grep, not a judgement. The rule it enforces — every save passes
@@ -1221,6 +1288,7 @@ describe("there is exactly one owner of scene serialisation", () => {
       VIGILIA_PAINT_PROPERTY,
       VIGILIA_ASSET_PROPERTY,
       VIGILIA_GLASS_PROPERTY,
+      VIGILIA_BLEEDS_PROPERTY,
       // Which unit an inserted card was copied from (§77). Named literally
       // rather than through a constant, because there is no Fabric-side
       // constant for it and one would have a single reader.
