@@ -139,15 +139,13 @@ function applyPaints(
     const refs = object.get(VIGILIA_PAINT_PROPERTY);
     if (isPaintRefs(refs)) {
       for (const [property, ref] of Object.entries(refs)) {
-        // An arc's fill is refused at the write, not only at the read: leaving
-        // the resolved colour on the object is the chord on the canvas. The
-        // reference is kept — `vigiliaPaint` is persisted, so dropping it would
-        // rewrite the author's document on the next save, and the refusal is
-        // re-applied on every load, so nothing depends on its removal.
-        //
-        // This branch reads the **reference**, not the resolved fill, which is why
-        // it still has work to do after `reviveScene` cleared the fill: it is what
-        // tells the author. `reviveScene` withholds the paint; this says so.
+        // Revival refuses at the read — the revived arc's own fill is withheld —
+        // and this refuses at the write, because the pass runs after revival and
+        // would otherwise re-resolve the reference onto the object. Both are
+        // load-bearing for the render: drop this branch and the chord is back on
+        // the editor canvas. The reference is kept — `vigiliaPaint` is persisted,
+        // so dropping it rewrites the author's document on the next save, and the
+        // refusal is re-applied on every load regardless.
         if (property === "fill" && refusesFill(object)) {
           object.set("fill", "");
           options.onRefusedPaint?.(ARC_FILL_REFUSED);

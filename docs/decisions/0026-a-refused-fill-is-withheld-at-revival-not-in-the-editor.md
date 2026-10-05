@@ -132,11 +132,17 @@ Three things follow, and each was a defect before it was a decision:
 1. **The authored reference is kept.** `vigiliaPaint` is in
    `SCENE_PERSISTED_PROPERTIES`, so deleting the key writes into the next save —
    data loss, not a tidy-up. Refusing a fill is not deleting it.
-2. **The editor's paint-pass branch stays.** It reads the **reference**, not the
-   resolved fill that revival has cleared, so it is what *tells the author*. Revival
-   withholds the paint; the pass says so. **No regression test can hold this
-   split**, because the failure is a missing message rather than a wrong figure —
-   which is why both comments carry it and this note exists.
+2. **The editor's paint-pass branch stays, and it is load-bearing for the render
+   rather than only for the message.** Revival refuses **at the read** — the
+   revived arc's own fill is withheld — but the editor runs the paint pass
+   *after* `reviveThemeEnvelope` (`editor-shell.ts:474`, then `:488`), and that
+   pass reads the **reference**, not the fill revival cleared. Without this
+   branch the pass re-resolves the palette colour onto the object and the chord
+   is back on the editor canvas while a display stays correct — the very split
+   this work closed. Both refusals are therefore load-bearing for the render, and
+   every part of the branch is pinned: removing it turns three cases red on
+   `back.fill`, and removing the `onRefusedPaint` notification alone turns a
+   fourth red on the reported message.
 3. **`refusesFill` stays a single `instanceof Arc`.** Two owners would be the defect
    this task spent itself correcting; the new call site restates nothing.
 
