@@ -691,7 +691,25 @@ test.describe("Fabric editor route", () => {
       .first()
       .click();
     await page.getByRole("menuitemradio", { name: "1 FPS" }).click();
-    await page.getByRole("button", { name: "View", exact: true }).click();
+
+    // **Read the trigger in the menu that is already open. Do not re-open it.**
+    //
+    // This was the flake: measured 3 failures in 12 and 3 in 24 on an unmodified
+    // tree, every one of them `element(s) not found` waiting for
+    // `Chart refresh: 1 FPS`. The re-open was the defect. Picking a radio in
+    // this submenu does **not** close the menu — measured after the click, the
+    // View trigger is still `aria-expanded="true"` and the menu already lists
+    // `Chart refresh: 1 FPS` — so the second `View` click TOGGLED the open menu
+    // SHUT, and the assertion then waited out its five seconds looking inside a
+    // menu that was no longer there. Whether the label had committed by then was
+    // the race, and the re-open is what made it matter.
+    //
+    // Two earlier attempts are the reason the wait is not simply a longer one.
+    // Asserting the popup left the DOM failed 24 of 48, because Base UI keeps a
+    // closed popup mounted and only drops `data-open`. Asserting
+    // `aria-expanded === "false"` failed 24 of 48 for the same reason in the
+    // other direction: the menu never closes, so it never becomes false. Both
+    // were fixing a race that was never the problem.
     await expect(
       page.getByRole("menuitem", { name: /Chart refresh: 1 FPS/ }).first(),
     ).toBeVisible();
