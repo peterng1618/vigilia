@@ -53,9 +53,8 @@ The loop, in order:
 1. **`vg-139` next, and it needs a decision before a patch.** The bindings shape is under `renderer-core/src/theme/`, which the reuse gate watchlists, so landing the note comes before the first write.
 2. **Plan 2 continues: the device lens** (`docs/superpowers/plans/`). Tasks 1 and 2 landed — the editor-side clip and the display switch. Task 3 asks a new theme what it is for, and the arc and wedge shapes in `SHAPE_KINDS` are still unconstructible.
 3. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
-4. **`#release` must be read before `Release package`'s verb is decided** — a preserved capability, not a deletable one. It is the last unresolved item from the superseded design.
-5. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted.
-6. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
+4. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted. `#release` must be read before `Release package`'s verb is decided — a preserved capability, not a deletable one.
+5. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
 
 ## Blockers / unverified
 
