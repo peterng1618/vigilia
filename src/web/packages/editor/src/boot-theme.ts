@@ -13,14 +13,27 @@ import type {
  * write-only surface: the editor could put one in the library and nothing
  * could ever read it again.
  *
- * An id this host does not have is not an error. A bookmark outlives the theme
- * it points at, and a dead one must open the editor's own default rather than
- * a page that says nothing useful.
+ * **A URL that names a theme opens that theme or nothing.** A dead id is not
+ * an error — a bookmark outlives the theme it points at — but it is not an
+ * invitation to open a *different* document. The author asked for one
+ * specific thing; answering with whatever ran last hands them a document they
+ * did not choose, and the next Save writes over it. Falling back to the
+ * template is the right size of answer: a visible blank document they can see
+ * they were not given, rather than an invisible one they cannot.
  *
  * With no id in the URL the author's own most recent save is what opens,
  * because closing the tab and coming back to the theme they were working on is
  * the ordinary round trip and the template is not it. `New theme` and `New from
  * starter` are what a blank document means, and they stay where they were.
+ *
+ * **The store this assumes is single-author, and that is what makes the
+ * fallback safe.** `~/.vigilia/themes/` under `os.homedir()` (`cli/args.ts`),
+ * with the host on loopback and no account, session or per-author scope
+ * anywhere in it. So "the most recent save" is the person at the keyboard, not
+ * a colleague's — which is why resuming is right here and would be wrong on a
+ * shared store. If the store ever grows an author identity, this is the line
+ * that has to change with it: scope the resume to the author rather than
+ * dropping it, or the round trip and the safety go together.
  */
 export async function bootTheme(
   search: string,
@@ -28,11 +41,8 @@ export async function bootTheme(
 ): Promise<ThemeLibraryContent | undefined> {
   const id = new URLSearchParams(search).get("theme");
   if (id !== null && id !== "") {
-    const named = await openQuietly(client, id);
-    if (named !== undefined) return named;
+    return openQuietly(client, id);
   }
-  // A dead id and no id land in the same place, which is the promise the URL
-  // form made before there was a fallback: what a bare `/editor/` gives.
   return latestOwnTheme(client);
 }
 

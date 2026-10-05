@@ -19,6 +19,13 @@ import type {
  * closes the tab and opens the editor again got the template, with their work
  * still on the host and nothing said. So a URL that names nothing opens what
  * they saved last, which is what "coming back" means.
+ *
+ * **The two questions are not the same question.** A URL that names nothing
+ * resumes the author's own last save. A URL that names a theme this host does
+ * not have opens NOTHING, because answering with a different document is the
+ * defect: the author asked for one specific theme, gets handed another, and
+ * the next Save writes over it. This file used to pin the opposite, and the
+ * case that changed is called out by name where it changed.
  */
 
 /** A saved theme, named and identified so a test cannot pass on either count:
@@ -76,12 +83,24 @@ describe("the editor on a URL that names a theme", () => {
     expect(opened?.base).toBe("base-as-stored");
   });
 
-  it("falls back to the editor's own default on a theme this host does not have", async () => {
-    // A bookmark outlives the theme it points at. An error page says nothing
-    // an author can act on; the editor's default is what a bare `/editor/`
-    // gives, and it is a document they can work in.
+  it("opens nothing when the theme this host does not have", async () => {
+    // A bookmark outlives the theme it points at, and an error page says
+    // nothing an author can act on — so nothing is opened and the editor
+    // mounts its own default, which is visible and clearly not what the URL
+    // asked for.
+    //
+    // What it must NOT do is open a different saved document. The author named
+    // one specific theme; answering with whatever ran last hands them a
+    // document they did not choose, and the next Save writes over it. That was
+    // the fall-through this test used to pin.
     const client: ThemeLibraryClient = {
-      list: vi.fn(async () => []),
+      list: vi.fn(async () => [
+        {
+          id: "someone-elses-work",
+          name: "Last",
+          updatedAt: "2026-10-01T09:00:00.000Z",
+        },
+      ]),
       open: vi.fn(async () => {
         throw new Error("Could not open theme (404).");
       }),
@@ -91,6 +110,8 @@ describe("the editor on a URL that names a theme", () => {
     await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
       undefined,
     );
+    // The point of the case: the store held something, and it was not opened.
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");
   });
 
   it("asks for nothing when the author has saved nothing", async () => {
@@ -130,6 +151,9 @@ describe("the editor on a URL that names a theme", () => {
   });
 
   it("treats an empty id as no id, and comes back to the author's own work", async () => {
+    // `?theme=` names nothing, so it is the bare-URL case and resumes — the
+    // empty string is not a theme id that happens to be missing, which is the
+    // distinction the previous case draws.
     const client = clientOpening(content);
 
     await bootTheme("?theme=", client);
@@ -184,30 +208,42 @@ describe("the editor on a URL that names nothing", () => {
     expect(client.open).toHaveBeenCalledExactlyOnceWith("edited-by-hand");
   });
 
-  it("gives a dead ?theme= the same thing a bare URL gives", async () => {
-    // The promise the URL form already made: a bookmark outlives its theme,
-    // and what opens instead is the editor's own default rather than a page
-    // that says nothing useful. With a fallback in place that default is the
-    // author's own work — sending them to the template instead would put the
-    // loss straight back for whoever's bookmark died.
-    const client = clientOpening(content);
-    client.list = vi.fn(async () => [
-      {
-        id: "edited-by-hand",
-        name: "Last",
-        updatedAt: "2026-10-01T09:00:00.000Z",
-      },
-    ]);
-    client.open = vi.fn(async (id: string) => {
-      if (id === "deleted-long-ago") throw new Error("Could not open (404).");
-      return content;
-    });
-
-    const opened = await bootTheme("?theme=deleted-long-ago", client);
-
-    // Asked for the bookmark first, then settled on the author's own work —
-    // both calls happen, so this is about what it ended on.
-    expect(client.open).toHaveBeenNthCalledWith(1, "deleted-long-ago");
-    expect(opened?.envelope.metadata?.name).toBe("EDITED BY HAND");
+  it("does not hand a dead ?theme= the author's most recent save", async () => {
+  // THE DECISION this file records, and the round trip that was wrong.
+  //
+  // This test used to pin the opposite: a dead `?theme=` fell through to
+  // `latestOwnTheme` and landed on "EDITED BY HAND". It was defended as "the
+  // author's own work, and sending them to the template instead would put the
+  // loss straight back for whoever's bookmark died" — but there is no loss to
+  // put back. The theme is already gone; the question is only what replaces it,
+  // and the two candidates are not equivalent. The template is a document the
+  // author can SEE they were not given. "Whatever ran last" is a document that
+  // looks like their work, mounts as their work, and takes their next Save.
+  //
+  // So the round trip that survives is the one this file's other describe
+  // pins: a URL that names NOTHING resumes the author's own most recent save,
+  // because closing the tab and coming back is the ordinary case and the
+  // store is single-author (`~/.vigilia/themes/` under `os.homedir()`, loopback
+  // host, no account). A URL that names something and cannot have it is a
+  // different question, and it is answered with nothing.
+  const client = clientOpening(content);
+  client.list = vi.fn(async () => [
+    {
+      id: "edited-by-hand",
+      name: "Last",
+      updatedAt: "2026-10-01T09:00:00.000Z",
+    },
+  ]);
+  client.open = vi.fn(async (id: string) => {
+    if (id === "deleted-long-ago") throw new Error("Could not open (404).");
+    return content;
   });
+
+  await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
+    undefined,
+  );
+  // Asked once, for the bookmark, and did not go looking for a substitute.
+  expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");
+  expect(client.list).not.toHaveBeenCalled();
+});
 });
