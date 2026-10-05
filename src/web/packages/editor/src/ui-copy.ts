@@ -105,6 +105,11 @@ export const uiCopy = {
     shapeStart: "Start",
     shapeEnd: "End",
     shapePath: "Path data",
+    /** The two ends of a swept curve, in degrees. "Angle" is what makes them
+        different from the line's own `Start`/`End` endpoints one row up: the
+        numbers are positions round a circle rather than points in the box. */
+    shapeStartAngle: "Start angle",
+    shapeEndAngle: "End angle",
     /** The frosted-glass treatment and its one parameter. */
     glassEnabled: "Frosted glass",
     glassBlur: "Glass blur",
@@ -358,6 +363,8 @@ export const uiCopy = {
     polyline: "Polyline",
     line: "Line",
     path: "Path",
+    arc: "Arc",
+    wedge: "Wedge",
   },
   /**
    * What each card in the library is called, in the Add pane and on the copy an

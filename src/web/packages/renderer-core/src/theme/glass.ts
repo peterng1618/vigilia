@@ -40,6 +40,7 @@ const GLASS_OBJECT_TYPES: ReadonlySet<string> = new Set([
   "Ellipse",
   "Triangle",
   "Polygon",
+  "Wedge",
   "Group",
 ]);
 

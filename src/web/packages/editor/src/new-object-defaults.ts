@@ -13,6 +13,8 @@ import {
   fabricArtboardPaint,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
+  Arc,
+  Wedge,
 } from "@vigilia/scene-fabric";
 import {
   Ellipse,
@@ -262,6 +264,14 @@ export function createNewPanelDefaults(
  * The primitive shapes Fabric 7 ships, in the order the Add pane offers them.
  * One list: the pane's buttons, the geometry below and the inspector's own
  * fields all read it, so a shape is never described in two places.
+ *
+ * `arc` and `wedge` are the two Fabric 7 does **not** ship, and they are here
+ * for the reason the spec gives: a quarter-disc is a basic compositional move
+ * that could only be had by hand-authoring an SVG path. Neither needs new
+ * geometry for the open sweep — `Circle` already carries both angles — so what
+ * each one is really for is a `type` of its own, and `Wedge` additionally draws
+ * the sector, because a fill under `ctx.arc` closes with a chord and draws a
+ * segment rather than a quarter-disc.
  */
 export const SHAPE_KINDS = [
   "rect",
@@ -270,9 +280,21 @@ export const SHAPE_KINDS = [
   "polyline",
   "line",
   "path",
+  "arc",
+  "wedge",
 ] as const;
 
 export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
+/**
+ * The sweep a new arc or wedge arrives at: a quarter turn from the top.
+ *
+ * The quarter-disc is the move this primitive exists for, so it is what the
+ * button gives rather than something the author has to discover and re-angle —
+ * and it is also the shape a reader recognises as "this is the curved thing"
+ * before they have touched a field.
+ */
+export const NEW_SWEEP_DEGREES = 90;
 
 /**
  * A stroke wide enough to read at artboard scale, and the round caps and joins
@@ -441,6 +463,37 @@ export function createNewShape(
         name,
         ...newShapeSurface(globals, placement),
       });
+    case "arc": {
+      // **Stroked, like a polyline and a line.** A sweep has no interior of its
+      // own — what it encloses is the region between the curve and its chord,
+      // which is not what an author pointing at a curve means. The class draws
+      // `Circle`'s arc unchanged and exists for its own `type`: saved as a
+      // `Circle` an arc is indistinguishable from a full disc, and a disc is
+      // glassable where an arc is not.
+      //
+      // A value rather than a fresh literal, for the reason the polygon branch
+      // gives: Fabric infers its options type from one, and the inferred type
+      // has no room for the authored `id`.
+      const options = { id, name, ...newShapeStroke(globals, placement) };
+      return new Arc({
+        ...options,
+        radius: width / 2,
+        startAngle: 0,
+        endAngle: NEW_SWEEP_DEGREES,
+      });
+    }
+    case "wedge": {
+      // The same sweep with the two radii, so the sector is a region and can be
+      // filled like any other closed shape. The class is the only place the
+      // chord-vs-sector difference is settled; see `Wedge`.
+      const options = { id, name, ...newShapeSurface(globals, placement) };
+      return new Wedge({
+        ...options,
+        radius: width / 2,
+        startAngle: 0,
+        endAngle: NEW_SWEEP_DEGREES,
+      });
+    }
   }
 }
 

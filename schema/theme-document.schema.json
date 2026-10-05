@@ -161,7 +161,7 @@
           "then": {
             "properties": {
               "type": {
-                "enum": ["Rect", "Circle", "Ellipse", "Triangle", "Polygon", "Group"]
+                "enum": ["Rect", "Circle", "Ellipse", "Triangle", "Polygon", "Wedge", "Group"]
               }
             }
           }

@@ -67,6 +67,7 @@ export {
   paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
+export { Arc, Wedge } from "./sector-object.js";
 export {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,

@@ -10,6 +10,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { classRegistry, type FabricObject } from "fabric/es";
 import { describe, expect, it } from "vitest";
+import { insertGroups } from "./new-object-panel.js";
 import {
   createNewChartDefaults,
   createNewPaintDefaults,
@@ -63,9 +64,21 @@ const cardGlobals = {
   },
 };
 
-/** A shape that is drawn rather than stroked: the ones an author fills. */
+/**
+ * A shape that is drawn rather than stroked: the ones an author fills.
+ *
+ * Spelled out rather than filtered by exclusion, because the swept kinds added
+ * the third open shape and a filter that subtracts two of the three reads as a
+ * rule that has not been kept up to date. `arc` is open for the same reason a
+ * polyline is — it has no interior — and a wedge is not, being a region.
+ */
 const CLOSED_KINDS = SHAPE_KINDS.filter(
-  (kind) => kind !== "polyline" && kind !== "line",
+  (kind) => kind !== "polyline" && kind !== "line" && kind !== "arc",
+);
+
+/** The other half of the same rule: an open shape is stroked, not filled. */
+const OPEN_KINDS: readonly ShapeKind[] = SHAPE_KINDS.filter(
+  (kind) => kind === "polyline" || kind === "line" || kind === "arc",
 );
 
 /**
@@ -83,6 +96,10 @@ const placement = newObjectPlacement(0, { width: 1920, height: 1080 });
  * there an interior to sample the backdrop through?", and a `Path` cannot
  * answer that: its closedness is whatever the author typed. Confusing the two
  * is how an open shape ends up with a blur under nothing.
+ *
+ * The two swept kinds differ from each other here for the same reason, and it
+ * is the reason they are two kinds at all: a `wedge` is a region and can be
+ * frosted, and an `arc` is a curve with nothing to sample through.
  */
 const GLASS_KINDS: ReadonlySet<string> = new Set([
   "rect",
@@ -90,6 +107,7 @@ const GLASS_KINDS: ReadonlySet<string> = new Set([
   "ellipse",
   "triangle",
   "polygon",
+  "wedge",
 ]);
 
 /** The same palette plus the frosted surface: the pair a glass card needs. */
@@ -319,7 +337,7 @@ describe("new shape defaults", () => {
     }
   });
 
-  it.each(["polyline", "line"] as const)(
+  it.each(OPEN_KINDS)(
     "strokes an open %s with a content token rather than a surface",
     (kind) => {
       // The other half of the same rule: an open shape is stroked, and a
@@ -383,7 +401,7 @@ describe("new shape defaults", () => {
 
       // The saved document is only palette-reassignable if the shape carries its
       // own reference. An open shape is stroked, so it references a stroke.
-      const stroked = kind === "polyline" || kind === "line";
+      const stroked = OPEN_KINDS.includes(kind);
       expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
         [stroked ? "stroke" : "fill"]: stroked
           ? "palette.ink"
@@ -539,6 +557,88 @@ describe("a new shape through the persisted envelope", () => {
   });
 });
 
+/**
+ * The sweep, through save and reopen.
+ *
+ * An angle that survives only in memory is an angle the author loses on the
+ * first reload, which is the difference between a primitive and a drawing
+ * tool. Every value the inspector writes is asserted here as *saved* JSON and
+ * then read back through the same registry `loadFromJSON` uses, so a kind that
+ * revives into something else — the failure a rectangle fallback would produce
+ * — cannot pass by reviving at all.
+ */
+describe("a swept angle through the persisted envelope", () => {
+  // Spelled out rather than filtered from `SHAPE_KINDS`: a filter yields an
+  // empty sweep while the kinds are missing, and an `it.each` over nothing
+  // collects no cases at all — which passes for a suite that is doing its job.
+  const SWEPT = ["arc", "wedge"] as const;
+
+  const SWEEPS: readonly [number, number][] = [
+    [0, 90],
+    [45, 270],
+    [270, 360],
+  ];
+
+  it("puts both kinds in the one list every surface reads", () => {
+    // The single list is the guard against drift: the Add pane, the Insert menu
+    // and the inspector all read `SHAPE_KINDS`, so a kind absent from it cannot
+    // be inserted anywhere and a kind present in two lists can disagree.
+    for (const kind of SWEPT) {
+      expect(SHAPE_KINDS, kind).toContain(kind);
+    }
+  });
+
+  it("offers both kinds in the groups the Add pane and the Insert menu share", () => {
+    // The list is only half the claim; what an author can actually insert is
+    // `insertGroups`, which is what both surfaces render. Asserting against the
+    // list alone would pass with a group builder that filtered the new kinds
+    // out — and the shape would then be namable but not insertable.
+    const shapes = insertGroups()
+      .flatMap((group) => group.objects)
+      .filter((object) => object.kind === "shape")
+      .map((object) => object.shape);
+
+    for (const kind of SWEPT) {
+      expect(shapes, kind).toContain(kind);
+      // And it arrives under the name the label table gives it, or the layer
+      // list falls back to something else the moment it is inserted.
+      expect(newObjectName(kind), kind).toBe(uiCopy.shapeKinds[kind]);
+    }
+  });
+
+  it.each(SWEPT)(
+    "a %s keeps both angles across save and reopen",
+    async (kind) => {
+      for (const [start, end] of SWEEPS) {
+        const before = saved(
+          createNewShape(`shape-${kind}`, globals, kind, placement),
+        );
+        before["startAngle"] = start;
+        before["endAngle"] = end;
+
+        const revived = await revive(before);
+        const after = saved(revived);
+
+        expect(after["startAngle"], `${kind} ${start}–${end}`).toBe(start);
+        expect(after["endAngle"], `${kind} ${start}–${end}`).toBe(end);
+      }
+    },
+  );
+
+  it.each(SWEPT)(
+    "a %s arrives at the quarter-disc the vocabulary could not say",
+    (kind) => {
+      // The case from the spec: a quarter-disc used to be a hand-authored SVG
+      // path. These two are what replaced that, and the default has to be the
+      // move rather than something an author has to discover and re-angle.
+      const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
+
+      expect(shape.get("startAngle")).toBe(0);
+      expect(shape.get("endAngle")).toBe(90);
+    },
+  );
+});
+
 /** The one property a kind owns that no other kind has. An ellipse owns none —
     it is width and height like a rectangle — so its kind is what is checked. */
 function ownPropertyOf(kind: ShapeKind): string {
@@ -556,6 +656,11 @@ function ownPropertyOf(kind: ShapeKind): string {
       return "x2";
     case "path":
       return "path";
+    // Both swept kinds own their two angles, and an arc owns nothing else:
+    // it is a circle's radii with the sector's closing lines left off.
+    case "arc":
+    case "wedge":
+      return "startAngle";
   }
 }
 

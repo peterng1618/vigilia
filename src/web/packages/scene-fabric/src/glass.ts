@@ -9,6 +9,7 @@ import {
   Triangle,
   type StaticCanvas,
 } from "fabric/es";
+import { Wedge } from "./sector-object.js";
 
 /**
  * Backdrop blur for authored glass panels. A panel samples the surface Fabric is
@@ -617,6 +618,30 @@ function localPath(
   ctx: CanvasRenderingContext2D,
   object: FabricObject,
 ): boolean {
+  // Before the `Circle` branch it extends, and for the same reason `Wedge`
+  // extends `Circle`: this branch clips to the **arc** between two angles, but a
+  // wedge paints the **sector** — the arc plus the two radii. Inheriting it
+  // would sample the backdrop through the crescent the wedge covers and
+  // nowhere else, so the frost would sit on the wrong region and the triangle
+  // between the radii would be left sharp.
+  if (object instanceof Wedge) {
+    const r = positive(object, "radius");
+    if (r === undefined) return false;
+    const start = number(object, "startAngle") ?? 0;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(radians(start)) * r, Math.sin(radians(start)) * r);
+    ctx.arc(
+      0,
+      0,
+      r,
+      radians(start),
+      radians(number(object, "endAngle") ?? 360),
+      object.counterClockwise,
+    );
+    ctx.closePath();
+    return true;
+  }
   if (object instanceof Circle) {
     // The authored sweep, not a whole turn: a half-disc's blur must not reach
     // the half it does not paint. Absent angles are Fabric's own 0/360.

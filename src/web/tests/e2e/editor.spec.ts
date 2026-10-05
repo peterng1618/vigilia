@@ -931,15 +931,16 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await openPane(page, "Insert");
 
-    // Six, which is `SHAPE_KINDS` — rect, ellipse, polygon, polyline, line,
-    // path — spelled out here rather than imported, because the count is the
-    // claim being made: the pane offers every primitive and nothing else. The
-    // eight this used to expect were the list before arc and wedge were folded
-    // into the shape families, and nothing removed them.
+    // Eight, which is `SHAPE_KINDS` — rect, ellipse, polygon, polyline, line,
+    // path, arc, wedge — spelled out here rather than imported, because the
+    // count is the claim being made: the pane offers every primitive and
+    // nothing else. The six this used to expect were the list before the swept
+    // pair arrived, which is the same count the list had after circle and
+    // triangle were folded into their families (vg-078).
     const shapes = page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("group", { name: "Shape" });
-    await expect(shapes.getByRole("button")).toHaveCount(6);
+    await expect(shapes.getByRole("button")).toHaveCount(8);
     // Both lists are groups, so neither is orphaned under the other's legend
     // and the two "Line" buttons are told apart by the group they sit in.
     const charts = page

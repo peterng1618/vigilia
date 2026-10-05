@@ -31,6 +31,7 @@ import {
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { type Stage, stage } from "./glass-test-stage.js";
+import { Wedge } from "./sector-object.js";
 
 /** A solid magenta backdrop, so the frosted region is unmistakable. */
 function magenta(): Stage {
@@ -399,5 +400,52 @@ describe("glass on the closed shapes", () => {
     const polyline = s.canvas.getObjects()[0] as Polyline;
     expect(polyline).toBeInstanceOf(Polyline);
     expect(polyline).not.toBeInstanceOf(Polygon);
+  });
+
+  /**
+   * The probe that only a **sector** clip passes.
+   *
+   * A `Wedge` extends `Circle`, so the circle's clip path — `ctx.ellipse` from
+   * `startAngle` to `endAngle` — is inherited for free, and as a clip path that
+   * arc is closed by its **chord**, not by the two radii. The chord cuts the
+   * sector's own area in half: a 90° sweep of radius 30 is 707 units² as a
+   * sector and 257 as the segment that chord encloses. So the frost would cover
+   * the crescent along the arc while the triangle beside the centre — most of
+   * what a wedge paints — stayed sharp.
+   *
+   * The probe is therefore inside the sector and on the **centre side of the
+   * chord**, which is the region the inherited clip excludes. A point merely
+   * inside the sweep cannot tell the two apart: both clips cover it, which is
+   * why this one is placed and not chosen by eye.
+   */
+  it("clips a wedge to the sector, not to the chord its parent would clip", () => {
+    // radius 30 at (100,100), swept 0..90. The chord joins (130,100) to
+    // (100,130), so it is the line x + y = 230. (112,112) is 17.0 from the
+    // centre — well inside the disc — and x + y = 224, so it sits on the centre
+    // side of the chord, inside the sector and outside the segment.
+    const { s, without } = frosted(
+      (withGlass) =>
+        new Wedge({
+          left: 100,
+          top: 100,
+          radius: 30,
+          startAngle: 0,
+          endAngle: 90,
+          fill: "transparent",
+          ...(withGlass ? GLASS : {}),
+        }),
+    );
+    expect(s.errors).toEqual([]);
+    expect(s.draws, "the wedge composites").toHaveLength(1);
+
+    // The half that fails without the sector branch: inside the wedge, so the
+    // backdrop has to reach it. The inherited chord clip leaves it clear.
+    expect(s.pixel(112, 112)[3], "inside the sector").toBe(255);
+    expect(without.pixel(112, 112)[3]).toBeLessThan(255);
+
+    // And the other half, so the fix is not "clip to the whole box": (78,78) is
+    // 31.1 from the centre, outside the disc and so outside any sweep of it.
+    expect(s.pixel(78, 78)).toEqual(without.pixel(78, 78));
+    expect(without.pixel(78, 78)[3]).toBe(0);
   });
 });

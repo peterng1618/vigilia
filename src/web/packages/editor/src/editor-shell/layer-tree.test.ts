@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { Arc } from "@vigilia/scene-fabric";
 import {
   Gradient,
   Group,
@@ -351,11 +352,28 @@ describe("the kind, read as the thing rather than as a mark for it", () => {
       strokeWidth: 3,
       fill: null,
     });
-    const rows = projectLayers({ ...base, root: [filled, inked] });
+    // A value rather than a fresh literal, for the reason the production file
+    // gives: Fabric infers its options type from one, and the inferred type has
+    // no room for the authored `id`.
+    const arcOptions = {
+      id: "arc",
+      radius: 10,
+      startAngle: 0,
+      endAngle: 90,
+      stroke: "#f59e0b",
+      strokeWidth: 3,
+      fill: null,
+    };
+    const swept = new Arc(arcOptions);
+    const rows = projectLayers({ ...base, root: [filled, inked, swept] });
     const mark = (id: string): unknown =>
       rows.find((row) => row.id === id)?.mark;
     expect(mark("panel")).toEqual({ kind: "shape", paint: "#2ee6a8" });
     expect(mark("icon")).toEqual({ kind: "shape", paint: "#dbeafe" });
+    // An arc is the third unfilled shape, and the same disagreement is waiting
+    // for it: a row reading `fill` off a shape whose paint is on its stroke
+    // shows nothing at all, so the layer list and the canvas name two colours.
+    expect(mark("arc")).toEqual({ kind: "shape", paint: "#f59e0b" });
   });
 
   it("names a chart's family, and names none rather than guessing", () => {

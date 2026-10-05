@@ -4,6 +4,8 @@ import {
   type FabricPaintRefs,
   paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
+  Arc,
+  Wedge,
 } from "@vigilia/scene-fabric";
 import {
   Circle,
@@ -72,6 +74,12 @@ export interface PanelFieldHooks {
  *
  * Checked on the live class rather than the persisted `"type"` string: Fabric
  * lowercases `object.type`, and only the scene JSON spells it `Rect`.
+ *
+ * `Arc` and `Wedge` are named even though both extend `Circle` and are already
+ * admitted by that arm. A kind listed only by its parent reads as an oversight
+ * to the next reader, and the day someone drops `Circle` from this list — it
+ * owns no radius field of its own — the two swept kinds lose their material
+ * without anything here saying so.
  */
 export function supportsPanelFields(object: FabricObject): boolean {
   return (
@@ -82,8 +90,28 @@ export function supportsPanelFields(object: FabricObject): boolean {
     object instanceof Polygon ||
     object instanceof Polyline ||
     object instanceof Line ||
-    object instanceof Path
+    object instanceof Path ||
+    object instanceof Arc ||
+    object instanceof Wedge
   );
+}
+
+/**
+ * Whether this shape's own geometry includes the two ends of a sweep.
+ *
+ * Asked on the class, and that is the whole point: `Circle` carries
+ * `startAngle`/`endAngle` of its own and defaults them to 0 and 360, so a full
+ * disc and a closed-up arc are the same pair of numbers. A gate that read the
+ * values would take the fields away exactly when an author had swept a shape
+ * all the way round, and they would only come back on a reload — and a gate that
+ * read the layer's *name* instead would take them away when an author renamed
+ * the row, which is the same defect wearing a different hat.
+ *
+ * `Wedge` extends `Circle` and `Arc` extends it too, so both kinds are named
+ * once here and neither can be added without being seen.
+ */
+function hasSweep(object: FabricObject): boolean {
+  return object instanceof Arc || object instanceof Wedge;
 }
 
 /** The object's own stored references. Only `writeRef` writes, and it spreads
@@ -371,6 +399,15 @@ const MAX_POLYGON_SIDES = 32;
 /** A polyline with fewer than two corners has no length to draw. */
 const MIN_POLYLINE_POINTS = 2;
 
+/**
+ * The bounds on a sweep's ends. Fabric's own `Circle` documents `startAngle` as
+ * 0–359 and `endAngle` as 1–360, and the full turn is 360 rather than 0, so the
+ * two ends share one closed range rather than each having a half-open one the
+ * other cannot satisfy.
+ */
+const MIN_SWEEP_DEGREES = 0;
+const MAX_SWEEP_DEGREES = 360;
+
 let shapeFieldSeq = 0;
 
 /**
@@ -497,6 +534,36 @@ function createShapeFields(
     rows.push(
       ends(uiCopy.inspectorFields.shapeStart, "x1", "y1"),
       ends(uiCopy.inspectorFields.shapeEnd, "x2", "y2"),
+    );
+  }
+
+  if (hasSweep(object)) {
+    // Bounded at both ends, and deliberately *not* cross-checked against each
+    // other: a start past its end is a legal full turn expressed the other way
+    // round, and Fabric draws it. Refusing it would mean a second rule about
+    // what a sweep means, held here as well as in the geometry. What is refused
+    // is a value outside 0–360, by the field's own bound.
+    rows.push(
+      ...(["startAngle", "endAngle"] as const).map(
+        (key) =>
+          numberField({
+            label:
+              key === "startAngle"
+                ? uiCopy.inspectorFields.shapeStartAngle
+                : uiCopy.inspectorFields.shapeEndAngle,
+            value: object.get(key) as number,
+            min: MIN_SWEEP_DEGREES,
+            max: MAX_SWEEP_DEGREES,
+            data: "vigiliaShapeAngle",
+            dataValue: key,
+            invalidMessage: uiCopy.inspectorFields.invalidValue,
+            onReject: refused,
+            // Both angles are the object's own Fabric properties, so the write is
+            // the same one a save makes and a reopen reads — there is no second
+            // copy of the sweep for this panel to disagree with.
+            onCommit: (value) => commit(() => object.set(key, value)),
+          }).row,
+      ),
     );
   }
 

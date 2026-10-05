@@ -13,6 +13,7 @@ import {
   Triangle,
 } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { createNewShape } from "../new-object-defaults.js";
 import { createSelectionInspector } from "./index.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 
@@ -116,6 +117,11 @@ const SHAPES = [
   ["polyline", () => new Polyline([...CORNERS], PLACED)],
   ["line", () => new Line([0, 0, 100, 50], PLACED)],
   ["path", () => new Path("M 0 0 L 100 0 L 0 50 Z", PLACED)],
+  ["arc", () => createNewShape("arc", globals, "arc", { left: 0, top: 0 })],
+  [
+    "wedge",
+    () => createNewShape("wedge", globals, "wedge", { left: 0, top: 0 }),
+  ],
 ] as const;
 describe("panel fields in the selection inspector", () => {
   it("offers fill, stroke, border width and corner radius for a panel", () => {
@@ -416,20 +422,34 @@ describe("panel fields in the selection inspector", () => {
 });
 
 describe("shape material and a shape's own fields", () => {
-  it.each(SHAPES)("offers the material fields for a %s", (_kind, build) => {
+  it.each(SHAPES)("offers the material fields for a %s", (kind, build) => {
     const { host } = setup(build());
 
     // Every one of these classes owns a fill, a stroke, a border width and a
     // shadow. Offering them for one kind only would leave a shape that can be
     // placed and not coloured.
     for (const selector of [
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
       "[data-vigilia-panel-border]",
       "[data-vigilia-panel-shadow]",
     ]) {
       expect(host.querySelector(selector), selector).not.toBeNull();
     }
+
+    // One control on the paint, not two — and which property it writes is the
+    // scene's own decision, from `paintPropertyFor`. An unfilled open shape
+    // (a polyline, a line, an arc) is ink rather than fill, so it offers the
+    // one labelled control; everything else offers Fill *and* Stroke, since a
+    // closed shape legitimately paints either. `ink.dom.test.ts` is what
+    // proves the unfilled case does not flood.
+    const strokeOnly = kind === "arc";
+    expect(
+      host.querySelector("[data-vigilia-panel-fill]"),
+      kind,
+    ).not.toBeNull();
+    expect(
+      host.querySelector("[data-vigilia-panel-stroke]") !== null,
+      kind,
+    ).toBe(!strokeOnly);
   });
 
   it.each(SHAPES)(
@@ -660,5 +680,101 @@ describe("a shape whose geometry the author retypes", () => {
 
     expect(line.scaleX).toBe(1);
     expect(line.scaleY).toBe(1);
+  });
+});
+
+/**
+ * The failure mode the brief names: a kind the panel's gate does not admit is
+ * inserted and cannot be shaped. Nothing errors — the object arrives, is
+ * selectable, and simply has no fields — so these cases assert the fields are
+ * *present*, and then that a typed angle reaches the object.
+ */
+describe("the angles of a swept shape", () => {
+  const SWEPT = ["arc", "wedge"] as const;
+
+  /**
+   * Both angle fields share one `data-` name and are told apart by its value,
+   * the way a line's four endpoint boxes already are: they are one kind of
+   * number about one thing, so they are one selector with a key rather than two
+   * unrelated names that could drift apart.
+   */
+  const ANGLE = {
+    start: '[data-vigilia-shape-angle="startAngle"]',
+    end: '[data-vigilia-shape-angle="endAngle"]',
+  } as const;
+
+  /** A new shape of a swept kind, narrowed to the class that owns the angles. */
+  function swept(kind: (typeof SWEPT)[number]): Circle {
+    return createNewShape(kind, globals, kind, {
+      left: 0,
+      top: 0,
+    }) as Circle;
+  }
+
+  it.each(SWEPT)("offers a start and an end angle for a %s", (kind) => {
+    const { host } = setup(swept(kind));
+
+    expect(host.querySelector(ANGLE.start), kind).not.toBeNull();
+    expect(host.querySelector(ANGLE.end), kind).not.toBeNull();
+  });
+
+  it.each(SWEPT)("writes a typed %s angle onto the object", (kind) => {
+    const shape = swept(kind);
+    const { field, history } = setup(shape);
+
+    type(field<HTMLInputElement>(ANGLE.end), "270");
+
+    expect(shape.endAngle).toBe(270);
+    expect(history.saveState).toHaveBeenCalled();
+  });
+
+  it("keeps offering the angles when the author sweeps a full turn", () => {
+    // The gate is the class, never the current numbers. A circle's own defaults
+    // are 0° and 360°, so a gate that asked "is this the default sweep?" would
+    // take the fields away the moment an author closed an arc back up — and an
+    // author whose controls vanish mid-edit has to reload to get them back.
+    const shape = swept("arc");
+    shape.set({ startAngle: 0, endAngle: 360 });
+    const { host } = setup(shape);
+
+    expect(host.querySelector(ANGLE.start)).not.toBeNull();
+    expect(host.querySelector(ANGLE.end)).not.toBeNull();
+  });
+
+  it("offers no angle fields to a shape that carries no sweep", () => {
+    // The converse guard. A rectangle owns no angles, and a control that wrote
+    // one would write a property nothing on that object reads.
+    const { host } = setup(
+      new Rect({ ...PLACED, width: 360, height: 200, rx: 10, ry: 10 }),
+    );
+
+    expect(host.querySelector(ANGLE.start)).toBeNull();
+    expect(host.querySelector(ANGLE.end)).toBeNull();
+  });
+
+  it("lands an angle past 360 on the bound rather than coercing it", () => {
+    // The bound teaches itself: `numberField` puts an out-of-range value on the
+    // bound it crossed. What must never happen is a wrap — an angle of 450
+    // drawn as 90 is a shape the author did not ask for and cannot see the
+    // difference in.
+    const shape = swept("wedge");
+    const { field } = setup(shape);
+
+    type(field<HTMLInputElement>(ANGLE.end), "450");
+
+    expect(shape.endAngle).toBe(360);
+  });
+
+  it("refuses an emptied angle box rather than reading it as zero", () => {
+    const shape = swept("arc");
+    shape.set("startAngle", 45);
+    const { field, history } = setup(shape);
+
+    type(field<HTMLInputElement>(ANGLE.start), "");
+
+    // `Number("")` is 0, so an emptied box must leave the object alone rather
+    // than snapping the sweep back to the top of the circle.
+    expect(shape.startAngle).toBe(45);
+    expect(history.saveState).not.toHaveBeenCalled();
   });
 });

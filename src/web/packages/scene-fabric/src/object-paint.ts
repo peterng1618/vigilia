@@ -7,6 +7,7 @@ import {
   type StaticCanvas,
 } from "fabric/es";
 import { fabricArtboardPaint } from "./artboard-paint.js";
+import { Arc } from "./sector-object.js";
 
 /** Persisted semantic palette references for Fabric object paint properties. */
 export const VIGILIA_PAINT_PROPERTY = "vigiliaPaint";
@@ -52,9 +53,15 @@ type PaintableObject = {
  * Everything else is untouched. A path that arrives filled — a filled author's
  * glyph, the new-path default — keeps filling the region it encloses, and so
  * does a rounded card or a chevron.
+ *
+ * An unfilled arc is the same case for the same reason: it is stroked, and what
+ * it spans is the region between the curve and its chord, which filling would
+ * flood. Its wedge is not — a sector is a region, so it fills like any other
+ * closed shape.
  */
 export function paintPropertyFor(object: FabricObject): "fill" | "stroke" {
-  return object instanceof Path && !objectHasFill(object) ? "stroke" : "fill";
+  if (objectHasFill(object)) return "fill";
+  return object instanceof Path || object instanceof Arc ? "stroke" : "fill";
 }
 
 /** Fabric spells "no fill" three ways across revival, the inspector and authoring. */
