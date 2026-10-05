@@ -272,7 +272,6 @@ function mountPanels(): { root: HTMLElement } {
   );
 
   root.append(newDocumentChooser({ width: 1280, height: 720 }));
-  // TEMP-NEGATIVE-CHECK
 
   return { root };
 }

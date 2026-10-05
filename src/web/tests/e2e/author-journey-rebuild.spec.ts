@@ -73,9 +73,23 @@ test.describe("the reference composition, built from blank", () => {
 
     await openPane(page, "Insert");
     const pane = page.locator('[data-vigilia-panel="add"]');
-    await expect(pane.getByRole("button")).toHaveCount(13);
+    // **What the pane offers, not how many buttons that is.** The count was 13
+    // written at a moment when the pane held 13 buttons, and every insertion
+    // since — shapes, charts, the card library — moved it, so the assertion went
+    // red on a suite that had not lost anything. A number here is a claim about
+    // today's inventory and nothing else; the groups below are the claim that
+    // was actually meant, and they fail if a group disappears rather than if
+    // somebody adds a button.
     await expect(pane.getByRole("group", { name: "Shape" })).toBeVisible();
     await expect(pane.getByRole("group", { name: "Chart" })).toBeVisible();
+    // And every group offers at least one control, so an empty group cannot
+    // satisfy a visibility check.
+    for (const group of await pane.getByRole("group").all()) {
+      expect(
+        await group.getByRole("button").count(),
+        "an offered group offers something",
+      ).toBeGreaterThan(0);
+    }
 
     // The inspector's own read of what the document offers, so "populated" is
     // measured rather than assumed.
@@ -113,7 +127,7 @@ test.describe("the reference composition, built from blank", () => {
       w: 320,
       h: 46,
       preset: "typePresets.46-600",
-      colour: "text",
+      colour: "palette.text",
     });
 
     // S Y S T E M   I N S I G H T S — smaller, tracked wider still.
@@ -125,7 +139,7 @@ test.describe("the reference composition, built from blank", () => {
       w: 300,
       h: 20,
       preset: "typePresets.17-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
 
     // The clock card: a frosted panel, outlined, with a generous radius.
@@ -152,7 +166,7 @@ test.describe("the reference composition, built from blank", () => {
       w: 300,
       h: 90,
       preset: "typePresets.108-300",
-      colour: "text",
+      colour: "palette.text",
     });
     await selectLayer(page, "time");
     await page
@@ -175,9 +189,11 @@ test.describe("the reference composition, built from blank", () => {
     await insert(page, "Path");
     await setName(page, "time-rule");
     await place(page, { x: 72, y: 352, w: 306, h: 2 });
-    // A rule is a stroke, not a shape: a path arrives filled, and the Fill
-    // picker's own "not set" is the only way to say so.
-    await choose(page, "[data-vigilia-panel-fill]", "");
+    // A rule is a stroke, not a shape. On a path that arrives with no fill the
+    // inspector offers **one** paint control and it writes the stroke — see
+    // `paintPropertyFor` — so there is no separate Fill picker to clear, and
+    // asking for `[data-vigilia-panel-fill]` waits for a control this shape
+    // deliberately does not render. Which token goes on it is the whole choice.
     await chooseToken(page, "[data-vigilia-panel-stroke]", "Rule");
     await fill(page, "[data-vigilia-panel-border]", 1);
 
@@ -189,7 +205,7 @@ test.describe("the reference composition, built from blank", () => {
       w: 306,
       h: 34,
       preset: "typePresets.24-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await selectLayer(page, "date");
     await page
@@ -253,7 +269,7 @@ test.describe("the reference composition, built from blank", () => {
     await insert(page, "Path");
     await setName(page, "cpu-card-icon");
     await place(page, { x: 452, y: 218, w: 28, h: 28 });
-    await choose(page, "[data-vigilia-panel-fill]", "");
+    // A path with no fill paints its stroke, so this one control is both.
     await chooseToken(page, "[data-vigilia-panel-stroke]", "CPU blue");
     await fill(page, "[data-vigilia-panel-border]", 2);
 
@@ -265,7 +281,7 @@ test.describe("the reference composition, built from blank", () => {
       w: 120,
       h: 22,
       preset: "typePresets.24-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
 
     // **32** and **%** — a reading and a unit on one object. This is the step
@@ -348,7 +364,7 @@ async function glyph(
   await insert(page, "Path");
   await setName(page, name);
   await place(page, box);
-  await choose(page, "[data-vigilia-panel-fill]", "");
+  // A path with no fill paints its stroke, so this one control is both.
   await chooseToken(page, "[data-vigilia-panel-stroke]", token);
   await fill(page, "[data-vigilia-panel-border]", 2);
   await fill(page, "[data-vigilia-shape-path]", data);
@@ -392,7 +408,7 @@ async function reading(
     w: box.w,
     h: box.h,
     preset: "typePresets.60-600",
-    colour: "text",
+    colour: "palette.text",
   });
   await selectLayer(page, name);
   // The run editor lives in Design, and a chart's settings live in Data — so
@@ -445,7 +461,7 @@ test.describe("the rest of the composition", () => {
       w: 120,
       h: 22,
       preset: "typePresets.24-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await reading(
       page,
@@ -466,7 +482,7 @@ test.describe("the rest of the composition", () => {
       w: 240,
       h: 24,
       preset: "typePresets.20-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await addChart(page, {
       family: "Line",
@@ -526,7 +542,7 @@ test.describe("the rest of the composition", () => {
       w: 120,
       h: 22,
       preset: "typePresets.24-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await addChart(page, {
       family: "Gauge",
@@ -563,7 +579,7 @@ test.describe("the rest of the composition", () => {
       w: 220,
       h: 24,
       preset: "typePresets.20-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
 
     // VRAM: the same card, a closed ring, a different colour.
@@ -592,7 +608,7 @@ test.describe("the rest of the composition", () => {
       w: 120,
       h: 22,
       preset: "typePresets.24-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await addChart(page, {
       family: "Gauge",
@@ -627,7 +643,7 @@ test.describe("the rest of the composition", () => {
       w: 220,
       h: 24,
       preset: "typePresets.20-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await page.screenshot({ path: SHOT("05-memory-rings") });
 
@@ -681,7 +697,7 @@ test.describe("the rest of the composition", () => {
       w: 320,
       h: 26,
       preset: "typePresets.24-400",
-      colour: "text",
+      colour: "palette.text",
     });
     // Three series, three sensors, three tokens — the shape the chart panel
     // could not reach at all before F2.2.
@@ -733,7 +749,7 @@ test.describe("the rest of the composition", () => {
       w: 180,
       h: 26,
       preset: "typePresets.24-400",
-      colour: "text",
+      colour: "palette.text",
     });
     await addText(page, {
       name: "storage-card-value",
@@ -743,7 +759,7 @@ test.describe("the rest of the composition", () => {
       w: 120,
       h: 38,
       preset: "typePresets.36-500",
-      colour: "text",
+      colour: "palette.text",
     });
     await selectLayer(page, "storage-card-value");
     await page.locator("[data-vigilia-run-add]").click();
@@ -777,7 +793,7 @@ test.describe("the rest of the composition", () => {
       w: 260,
       h: 24,
       preset: "typePresets.20-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await page.screenshot({ path: SHOT("07-storage") });
 
@@ -809,7 +825,7 @@ test.describe("the rest of the composition", () => {
       w: 180,
       h: 26,
       preset: "typePresets.24-400",
-      colour: "text",
+      colour: "palette.text",
     });
     await addText(page, {
       name: "network-down",
@@ -819,7 +835,7 @@ test.describe("the rest of the composition", () => {
       w: 160,
       h: 22,
       preset: "typePresets.20-400",
-      colour: "text",
+      colour: "palette.text",
     });
     await addText(page, {
       name: "network-up",
@@ -829,7 +845,7 @@ test.describe("the rest of the composition", () => {
       w: 160,
       h: 22,
       preset: "typePresets.20-400",
-      colour: "dim",
+      colour: "palette.dim",
     });
     await addChart(page, {
       family: "Line",
@@ -898,7 +914,7 @@ test("what the rebuild authored survives the save", async ({
     w: 220,
     h: 60,
     preset: "typePresets.60-600",
-    colour: "text",
+    colour: "palette.text",
   });
   await selectLayer(page, "cpu-card-value");
   await page.locator('[data-vigilia-run-source="0"]').selectOption("cpu.load");

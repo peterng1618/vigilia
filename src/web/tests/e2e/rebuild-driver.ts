@@ -202,6 +202,25 @@ export async function choose(
   value: string,
 ): Promise<void> {
   const control = page.locator(selector).first();
+  // **A token dropdown is only as good as its tokens.** The run-colour and
+  // run-preset selects list what the *document* declares, so a value the
+  // document does not carry cannot be chosen — and `selectOption` retries that
+  // until the test's whole budget is gone. That is what made every one of these
+  // nine red on a document nobody had broken: the first error was a 30-second
+  // timeout naming a suite rather than a defect.
+  //
+  // So a missing option is named, with the options that were offered. It is the
+  // difference between "these are your options" and "waited".
+  const offered = await control.locator("option").evaluateAll((options) =>
+    options.map((option) => option.getAttribute("value")),
+  );
+  if (!offered.includes(value)) {
+    throw new Error(
+      `${selector} has no option "${value}". It offers: ${
+        offered.map((entry) => JSON.stringify(entry)).join(", ") || "(none)"
+      }`,
+    );
+  }
   await control.scrollIntoViewIfNeeded();
   await control.selectOption(value);
 }
@@ -270,6 +289,14 @@ export async function chooseToken(
   label: string,
 ): Promise<void> {
   const control = page.locator(selector).first();
+  // Same reasoning as `choose`: a control this shape does not render should say
+  // so in one line, rather than spending the budget on a `scrollIntoViewIfNeeded`
+  // that is waiting for something that will never arrive. That is the difference
+  // between the eight failures this suite had — every one a bare 30 s timeout —
+  // and the errors it now reports.
+  if ((await control.count()) === 0) {
+    throw new Error(`no control matches ${selector} on this selection`);
+  }
   await control.scrollIntoViewIfNeeded();
   const value = await control
     .locator("option")
@@ -351,6 +378,16 @@ export async function addChart(
     // Scrolled first: the Data tab's panel is inside a scrolling inspector, and
     // `selectOption` waits for visibility rather than scrolling to it.
     const chooser = page.locator("[data-vigilia-chart-binding-add]");
+    // The last of the three waits that spent this suite's whole budget saying
+    // nothing. `scrollIntoViewIfNeeded` on a control that is not there waits for
+    // the test timeout, and the test that reports it names neither the selector
+    // nor the state — which is how a product defect (vg-139) hid behind four
+    // suites' worth of 30-second timeouts.
+    if ((await chooser.count()) === 0) {
+      throw new Error(
+        "the chart panel has no series chooser, so no series can be bound",
+      );
+    }
     await chooser.scrollIntoViewIfNeeded();
     await chooser.selectOption(key);
   }
@@ -359,10 +396,11 @@ export async function addChart(
     // A line's data colour is its *series* paint, one entry per series; a
     // gauge's and a bar's is a single field. `chartPaintFieldsFor` is what says
     // which, and the panel's own attribute is what the author clicks.
+    const family = chart.family.toLowerCase();
     const key =
-      chart.family === "Line" || chart.family === "Pie"
+      family === "line" || family === "pie"
         ? `palette.${index}`
-        : PAINT_KEY[chart.family];
+        : PAINT_KEY[family];
     await chooseToken(page, `[data-vigilia-chart-paint="${key}"]`, token);
   }
 }
@@ -371,8 +409,20 @@ export async function addChart(
  * The paint field each family paints its data through, as
  * `chartPaintFieldsFor` declares it. A family's *series* palette is the one
  * that repeats, so its key is the base and the index is the slot.
+ *
+ * **Keyed by the family's own name, which is lower case.** `CHART_FAMILIES` is
+ * `["gauge", "line", "bar", "pie"]` and `chart.family` carries one of those —
+ * measured live as `line` on the object behind the Data tab. The Add pane's
+ * button is the capitalised *label*, and `insert` matches on the label, so this
+ * driver was holding the label in `family` and comparing it against a value that
+ * is never the label. The lookup missed, so `PAINT_KEY[family]` was `undefined`
+ * and the selector it built matched nothing.
+ *
+ * So the family is normalised to its own spelling before it is used as a key,
+ * which is what lets the spec keep naming charts the way an author reads them
+ * ("Line") without the driver mistaking that for the stored value.
  */
 const PAINT_KEY: Readonly<Record<string, string>> = {
-  Gauge: "progress",
-  Bar: "fill",
+  gauge: "progress",
+  bar: "fill",
 };
