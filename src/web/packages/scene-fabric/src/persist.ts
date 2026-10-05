@@ -8,6 +8,7 @@ import {
   Circle,
   classRegistry,
   version as fabricVersion,
+  type FabricObject,
   Group,
   Path,
   Rect,
@@ -21,7 +22,7 @@ import {
   isFabricAssetReference,
   VIGILIA_ASSET_PROPERTY,
 } from "./object-asset.js";
-import { VIGILIA_PAINT_PROPERTY } from "./object-paint.js";
+import { VIGILIA_PAINT_PROPERTY, refusesFill } from "./object-paint.js";
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON
 // may revive instead of relying on another renderer import to do it first.
@@ -125,6 +126,28 @@ export async function reviveScene(
   await canvas.loadFromJSON(resolveAssetSources(scene, resolveAsset));
   if (clipPath !== undefined) canvas.clipPath = clipPath;
   if (backgroundColor !== undefined) canvas.backgroundColor = backgroundColor;
+  refuseUndrawablePaint(canvas.getObjects());
+}
+
+/**
+ * Withholds paint the product will not draw, on **every** surface.
+ *
+ * Here rather than in the editor's paint pass because Fabric restores a serialised
+ * fill inside `loadFromJSON`, and the player resolves no palette paints at all —
+ * so a theme carrying a hand-authored filled arc reached a phone as the chord its
+ * own curve is not, while the editor that authored it showed the curve. The device
+ * is a lens on the document only if the two agree what the document says, and this
+ * is the one function both surfaces traverse.
+ *
+ * The authored reference is kept, so refusing on a display does not quietly
+ * rewrite the author's theme. `refusesFill` is the one answer to which kind this
+ * is; nothing here restates it.
+ */
+function refuseUndrawablePaint(objects: readonly FabricObject[]): void {
+  for (const object of objects) {
+    if (object instanceof Group) refuseUndrawablePaint(object.getObjects());
+    else if (refusesFill(object)) object.set("fill", "");
+  }
 }
 
 /** Refuse a different Fabric runtime instead of guessing its serialization semantics. */

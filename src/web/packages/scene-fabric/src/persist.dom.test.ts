@@ -34,6 +34,7 @@ import {
 } from "./object-asset.js";
 import {
   applyObjectPalettePaints,
+  paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 import {
@@ -42,6 +43,7 @@ import {
 } from "./object-type.js";
 import { reassignObjectPaletteReferences } from "./palette-references.js";
 import type { SerialisedScene } from "./persist.js";
+import { Arc, Wedge } from "./sector-object.js";
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
@@ -1227,5 +1229,111 @@ describe("there is exactly one owner of scene serialisation", () => {
       "evented",
       "locked",
     ]);
+  });
+});
+
+/**
+ * The refusal, on the path a **display** takes.
+ *
+ * Round 2 enforced it in the editor's paint pass, which the player never runs:
+ * `grep applyObjectPalettePaints packages/player` returns nothing, and the
+ * adapter resolves no paint at all. Fabric restores a serialised `fill` inside
+ * `loadFromJSON`, so a theme carrying a hand-authored filled arc reached a phone
+ * as the 1933-pixel chord — the figure these two kinds exist to eliminate — while
+ * the editor that authored it showed the curve. That inverts the plan's own
+ * position: the device is a lens on the document only if both agree what the
+ * document is.
+ *
+ * `reviveScene` is the one function both surfaces traverse, so it is the one
+ * place that can settle it for both. These cases go through the player's own
+ * entry, `reviveThemeEnvelope`, rather than the editor's, because an editor-side
+ * assertion cannot carry this finding — the editor already had the refusal.
+ */
+describe("a refusal both surfaces apply", () => {
+  /** A saved theme whose arc asks to be filled, as a hand-authored one would. */
+  const filledArcEnvelope = (): ReturnType<typeof serialiseThemeEnvelope> => {
+    const arc = new Arc({
+      left: 20,
+      top: 20,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+      stroke: "",
+    });
+    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    return serialiseThemeEnvelope(canvasOf(arc), {
+      id: "theme",
+      artboard: { width: 1920, height: 1080 },
+    });
+  };
+
+  it("stops a filled arc painting its chord when a display revives it", async () => {
+    // Through `reviveThemeEnvelope`, which is what `player/src/main.ts` calls.
+    // No paint pass runs here, so anything painted is what Fabric restored.
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(canvas, filledArcEnvelope());
+
+    const arc = canvas.getObjects()[0] as Arc;
+    expect(arc.fill, "the chord never reaches a display").toBe("");
+    expect(paintPropertyFor(arc)).toBe("stroke");
+  });
+
+  it("keeps the authored reference, because refusing a fill is not deleting it", async () => {
+    // The same guarantee R1 made for the editor, on the display's path: the
+    // document still says what it asked for, and still round-trips.
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(canvas, filledArcEnvelope());
+
+    const arc = canvas.getObjects()[0] as Arc;
+    expect(arc.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.cpu" });
+    expect(serialiseScene(canvas).objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+      fill: "palette.cpu",
+    });
+  });
+
+  it("leaves a wedge's fill alone, because its sector is a region it has", async () => {
+    const wedge = new Wedge({
+      left: 20,
+      top: 20,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+    });
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(
+      canvas,
+      serialiseThemeEnvelope(canvasOf(wedge), {
+        id: "theme",
+        artboard: { width: 1920, height: 1080 },
+      }),
+    );
+
+    expect((canvas.getObjects()[0] as Wedge).fill).toBe("#4da3ff");
+  });
+
+  it("refuses an arc nested in a group, which is where a card puts it", async () => {
+    const group = new Group([
+      new Arc({
+        left: 0,
+        top: 0,
+        radius: 40,
+        startAngle: 0,
+        endAngle: 90,
+        fill: "#4da3ff",
+      }),
+    ]);
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(
+      canvas,
+      serialiseThemeEnvelope(canvasOf(group), {
+        id: "theme",
+        artboard: { width: 1920, height: 1080 },
+      }),
+    );
+
+    const revived = canvas.getObjects()[0] as Group;
+    expect((revived.getObjects()[0] as Arc).fill).toBe("");
   });
 });

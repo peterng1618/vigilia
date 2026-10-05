@@ -86,13 +86,13 @@ export function paintPropertyFor(object: FabricObject): "fill" | "stroke" {
  * pixels where a quarter-disc is 5027 — a shape the author did not ask for and
  * cannot see the difference in.
  *
- * So an authored fill is dropped rather than resolved. The alternative, honouring
- * it, is the misleading figure this kind was added to eliminate; and a warning
- * alone would leave that chord on the canvas, which is the silent wrong render
- * this refusal exists to prevent. Nothing throws either way — the shape stays
- * selectable and keeps its stroke.
+ * **The single answer to that question**, consulted wherever it matters. It is
+ * exported because revival has to ask it too: Fabric restores a serialised fill
+ * inside `loadFromJSON`, so a display that never runs the paint pass would
+ * otherwise paint the chord while the editor did not. Two surfaces reading one
+ * predicate is what keeps them agreeing about the document.
  */
-function refusesFill(object: unknown): boolean {
+export function refusesFill(object: unknown): boolean {
   return object instanceof Arc;
 }
 
@@ -144,6 +144,10 @@ function applyPaints(
         // reference is kept — `vigiliaPaint` is persisted, so dropping it would
         // rewrite the author's document on the next save, and the refusal is
         // re-applied on every load, so nothing depends on its removal.
+        //
+        // This branch reads the **reference**, not the resolved fill, which is why
+        // it still has work to do after `reviveScene` cleared the fill: it is what
+        // tells the author. `reviveScene` withholds the paint; this says so.
         if (property === "fill" && refusesFill(object)) {
           object.set("fill", "");
           options.onRefusedPaint?.(ARC_FILL_REFUSED);
